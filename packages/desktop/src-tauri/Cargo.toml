@@ -1,9 +1,12 @@
 [package]
 name = "cezar-desktop"
 version = "0.1.11"
-description = "Desktop shell for cezar (PoC)"
+description = "Desktop shell for Onni Work"
 edition = "2021"
 publish = false
+license = "MIT"
+authors = ["DOANTUANIT"]
+repository = "https://github.com/doantuan22/Onni_Work"
 
 [lib]
 name = "cezar_desktop_lib"
