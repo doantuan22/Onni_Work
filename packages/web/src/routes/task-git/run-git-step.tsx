@@ -132,7 +132,7 @@ export function useRunGitStep(run: ApiRun): RunGitStep {
   const [commitAndPush, setCommitAndPush] = useState(false)
   // Every git step is a prompt to this task's own agent, through the same seam as the PR chip's
   // "Resolve conflicts": a live message, or a continue for a finished task.
-  const agent = useAskAnswer(run, undefined, 'git_step')
+  const agent = useAskAnswer(run)
   const queryClient = useQueryClient()
   const invalidateRuns = () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.all })
   const flight = useSyncExternalStore(subscribeFlights, () => flights.get(run.id) ?? null)

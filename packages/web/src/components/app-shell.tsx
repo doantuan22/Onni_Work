@@ -18,7 +18,6 @@ import { AddProjectDialog } from '@/components/add-project-dialog'
 import { CloneProjectDialog } from '@/components/clone-project-dialog'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
 import { DialogErrorBoundary } from '@/components/dialog-error-boundary'
-import { trackAddProjectOpened } from '@/lib/telemetry'
 import { CommandPaletteHint } from '@/components/command-palette-hint'
 import { GithubIcon } from '@/components/icons'
 import { Link, stripProjectPrefix } from '@/lib/project-router'
@@ -96,9 +95,6 @@ export type AppShellProps = {
    *  the slot is generic and currently unused (the #391 skills promo it once held is gone,
    *  replaced by the opt-in Import panel on the Skills page). */
   banner?: ReactNode
-  /** The bottom edge of the main column, above the composer row: the telemetry consent bar
-   *  (docs/telemetry.md) lives here, so it never covers the view or interrupts a flow. */
-  footerBanner?: ReactNode
   /** Step 3.3's multi-project sidebar: one collapsible group per registered project, each
    *  carrying its own nav + task list. When present it REPLACES the flat nav and the
    *  `taskQuickList` slot (each group brings its own copies of both); absent — the registry
@@ -183,7 +179,6 @@ export const AppShell = React.memo(function AppShell({
   tracker,
   singleProject = false,
   banner,
-  footerBanner,
   projectGroups,
   brandName = 'cezar',
   brandLogoUrl = null,
@@ -319,14 +314,12 @@ export const AppShell = React.memo(function AppShell({
 
         <AppShellMain mainRef={mainRef}>{children}</AppShellMain>
 
-        {/* Row 4: the composer dock (thread reply, Step R3) — the footer banner above it, and
-            the bottom safe-area gutter so the scroller never runs under the home indicator. */}
+        {/* Row 4: the composer dock (thread reply, Step R3) — the bottom safe-area gutter so the
+            scroller never runs under the home indicator. */}
         <div
           data-slot="composer"
           className="row-start-4 pb-[env(safe-area-inset-bottom)]"
-        >
-          {footerBanner}
-        </div>
+        />
       </div>
     </div>
   )
@@ -737,7 +730,6 @@ function AddProjectMenu() {
           data-slot="add-project-local"
           onSelect={() => {
             setBrowsing(true)
-            trackAddProjectOpened('folder')
           }}
         >
           <FolderIcon aria-hidden="true" />
@@ -747,7 +739,6 @@ function AddProjectMenu() {
           data-slot="add-project-clone"
           onSelect={() => {
             setCloning(true)
-            trackAddProjectOpened('clone')
           }}
         >
           <GithubIcon aria-hidden="true" />
@@ -757,7 +748,6 @@ function AddProjectMenu() {
           data-slot="add-project-create"
           onSelect={() => {
             setCreating(true)
-            trackAddProjectOpened('new')
           }}
         >
           <FolderPlusIcon aria-hidden="true" />

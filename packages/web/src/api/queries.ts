@@ -68,7 +68,6 @@ import {
   getWorkspaceUiState,
   getSkillsUpdate,
   getStarCount,
-  getTelemetryConsent,
   checkSkillsUpdate,
   applySkillsUpdate,
   getWorktrees,
@@ -122,7 +121,6 @@ import type {
   RunRecord,
   SelectAgentProfileInput,
   SetAgentConfigInput,
-  TaskActionSurface,
   UpdateAgentProfileInput,
   UpdateProjectInput,
   TrackerAssociation,
@@ -448,8 +446,6 @@ export const workspaceQueryKeys = {
   /** cezar's own GitHub star count via `GET /api/v1/star-count`, behind the sidebar's ⭐ ask.
    *  Workspace-led: the number is about cezar, not about whichever project is on screen. */
   starCount: ['workspace', 'star-count'] as const,
-  /** The opt-in telemetry answer via `GET /api/v1/telemetry/consent` — one per machine. */
-  telemetryConsent: ['workspace', 'telemetry-consent'] as const,
   /** One directory listing from `GET /api/fs/browse` (step 4.2's folder picker). Keyed by the
    *  browsed path — `null` is the browse root, whose absolute location only the server knows.
    *  Not scope-led: there is one filesystem behind the workspace, not one per project. */
@@ -1586,17 +1582,6 @@ export function useStarCount(enabled = true) {
   })
 }
 
-/** The opt-in telemetry answer. Read by the consent bar and Settings → Privacy; both write
- *  through `putTelemetryConsent` and set this cache from the answer. */
-export function useTelemetryConsent() {
-  return useQuery({
-    queryKey: workspaceQueryKeys.telemetryConsent,
-    queryFn: ({ signal }) => getTelemetryConsent({ signal }),
-    staleTime: Infinity,
-    retry: false,
-  })
-}
-
 /** Idle reads a skills snapshot gets before its poll stands down — five minutes at the cadence
  *  below, enough to cover a check queued behind a handful of others. */
 const SKILLS_UPDATE_IDLE_READ_LIMIT = 6
@@ -1818,17 +1803,12 @@ function withoutReceipt(run: RunRecord): RunRecord {
  *    project id: `useProjectRuns` caches the boot project under `'default'`, because that is the
  *    scope it mounts unscoped under, and invalidating `[<bootId>, 'runs']` would leave the
  *    sidebar's boot group showing the pre-pin order.
- *
- * `surface` names the button for telemetry (`task_pinned`'s label).
  */
-export function usePinRun(surface: TaskActionSurface, projectId?: string, cacheScope?: string) {
+export function usePinRun(projectId?: string, cacheScope?: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    // `surface` per call when one control can be reached two ways (⌘P: a row, or a shortcut).
-    mutationFn: ({ id, pinned, surface: via }: { id: string; pinned: boolean; surface?: TaskActionSurface }) =>
-      projectId === undefined
-        ? pinRun(id, pinned, via ?? surface)
-        : pinProjectRun(projectId, id, pinned, via ?? surface),
+    mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) =>
+      projectId === undefined ? pinRun(id, pinned) : pinProjectRun(projectId, id, pinned),
     // Hierarchical keys: this covers the list AND the open thread's own record.
     onSuccess: () =>
       queryClient.invalidateQueries({
@@ -1839,13 +1819,11 @@ export function usePinRun(surface: TaskActionSurface, projectId?: string, cacheS
 
 /** Archive or restore one run from a list row — `usePinRun`'s twin, same two parameters and the
  *  same invalidate-rather-than-patch rule (the answer moves the row between views). */
-export function useArchiveRun(surface: TaskActionSurface, projectId?: string, cacheScope?: string) {
+export function useArchiveRun(projectId?: string, cacheScope?: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
-      projectId === undefined
-        ? archiveRun(id, archived, surface)
-        : archiveProjectRun(projectId, id, archived, surface),
+      projectId === undefined ? archiveRun(id, archived) : archiveProjectRun(projectId, id, archived),
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: cacheScope === undefined ? queryKeys.runs.all : ([cacheScope, 'runs'] as const),

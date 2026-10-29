@@ -1567,7 +1567,7 @@ export function TasksOverviewRoute() {
     onError: (error: Error) => toast(error.message, { tone: 'danger' }),
   })
   // Pinning (#935) — this page is the scoped project's own table, so no explicit project id.
-  const pin = usePinRun('tasks_table')
+  const pin = usePinRun()
   // Stable across renders so the memoized rows they reach only re-render for their own run.
   const renameMutate = rename.mutate
   const onRename = React.useCallback(

@@ -17,8 +17,7 @@ import { toast } from '@/components/ui/toaster'
 import { useNavigate } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 import { startedRunPath } from '@/routes/new-task-form'
-import type { SkillsUpdateDropOutcome, SkillsUpdateState } from '@open-mercato/cezar-api-client'
-import { trackMessageSent, trackSkillsUpdateApplyDropped } from '@/lib/telemetry'
+import type { SkillsUpdateState } from '@open-mercato/cezar-api-client'
 
 type UpdateRequest =
   | { action: 'check'; seq: number }
@@ -30,7 +29,7 @@ const SETTLE_LIMIT_MS = 5 * 60_000
 /**
  * Apply, and survive losing the request. An apply runs `npx` for up to minutes, so a dropped
  * connection (status 0) or a 409 against an apply already running says nothing about the update
- * itself: follow the server's `updating` state to its end instead (telemetry edd8c83e). The
+ * itself: follow the server's `updating` state to its end instead. The
  * original error stands only when the server shows no apply finished.
  */
 export async function applySkillsUpdateSettled(
@@ -41,7 +40,6 @@ export async function applySkillsUpdateSettled(
     read?: typeof getSkillsUpdate
     wait?: (ms: number) => Promise<void>
     now?: () => number
-    onDropped?: (outcome: SkillsUpdateDropOutcome) => void
   } = {},
 ): Promise<SkillsUpdateState> {
   const {
@@ -49,37 +47,24 @@ export async function applySkillsUpdateSettled(
     read = getSkillsUpdate,
     wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     now = Date.now,
-    onDropped = trackSkillsUpdateApplyDropped,
   } = deps
   try {
     return await apply(projectId)
   } catch (error) {
     if (!(error instanceof ApiError) || (error.status !== 0 && error.status !== 409)) throw error
-    // Only a lost request is counted; a 409 is ordinary contention, not a transport fault.
-    const settle = (outcome: SkillsUpdateDropOutcome) => {
-      if (error.status === 0) onDropped(outcome)
-    }
     const deadline = now() + SETTLE_LIMIT_MS
     for (;;) {
       let state: SkillsUpdateState
       try {
         state = await read(projectId)
       } catch {
-        settle('unreachable')
         throw error
       }
       if (state.status !== 'updating') {
-        if (state.updatedAt && state.updatedAt !== previousUpdatedAt) {
-          settle('recovered')
-          return state
-        }
-        settle('not_applied')
+        if (state.updatedAt && state.updatedAt !== previousUpdatedAt) return state
         throw error
       }
-      if (now() >= deadline) {
-        settle('timed_out')
-        throw error
-      }
+      if (now() >= deadline) throw error
       await wait(SETTLE_POLL_MS)
     }
   }
@@ -117,7 +102,6 @@ export function SkillsUpdateCard({
         ],
       }),
     onSuccess: (created) => {
-      trackMessageSent('skills_import')
       setShowUpgradeNotesPrompt(false)
       void navigate(startedRunPath(created))
     },

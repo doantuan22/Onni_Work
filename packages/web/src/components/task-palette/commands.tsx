@@ -65,20 +65,18 @@ export interface TaskCommand {
   pressed?: boolean
   /** Runs from a shortcut but is not listed — the positional `tab:N` commands. */
   hidden?: boolean
-  /** `source` says where it was run from — pin and archive report it to telemetry. */
-  perform: (source?: CommandSource) => void
+  perform: () => void
   /** Alt+Enter: the same target opened beside what is on screen. */
   performBeside?: () => void
 }
 
 /** Where a command was run from: a palette row, or its keyboard shortcut. */
-export type CommandSource = 'palette' | 'shortcut'
 
 export interface TaskCommandHandlers {
   markRead: () => void
   markUnread: () => void
-  pin: (source?: CommandSource) => void
-  archive: (source?: CommandSource) => void
+  pin: () => void
+  archive: () => void
   rename: () => void
   finish: () => void
   confirmStop: () => void

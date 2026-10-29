@@ -11,11 +11,11 @@
 //! shell does on its own is the SUPERVISOR's job: launch whatever `current` points at, relaunch
 //! it when the Versions menu switches the link, and say plainly when no built engine is there.
 //!
-//! Commands exposed over Tauri IPC — `restart_app`, `send_error_report` and `show_versions_menu` —
-//! beside window dragging. The capability has to name loopback with a port wildcard (the
+//! Commands exposed over Tauri IPC — `restart_app` and `show_versions_menu` — beside window
+//! dragging. The capability has to name loopback with a port wildcard (the
 //! cockpit's port is picked at launch), so the narrowing happens HERE: every command refuses a
 //! caller that is not the splash or the cockpit on the port this shell spawned
-//! (`caller_is_trusted`) — the failure page's `restart_app` and `send_error_report` the splash
+//! (`caller_is_trusted`) — the failure page's `restart_app` the splash
 //! alone (`caller_is_splash`) — and the window itself never stays on another local server
 //! (`is_own_origin`, enforced at page load: the navigation hook also sees the Preview's iframes). A dev server on `localhost:3000` is somebody else's page.
 
@@ -30,10 +30,8 @@ use std::time::{Duration, Instant};
 
 mod disclaim;
 mod node_runtime;
-mod telemetry;
 pub use disclaim::disclaim_exec_if_asked;
 
-use telemetry::Failure;
 #[cfg(any(target_os = "windows", test))]
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -76,8 +74,8 @@ struct Shell {
 const INIT_SCRIPT: &str = r#"
   (function () {
     var platform = "__PLATFORM__";
-    // `microphone`: this shell is entitled to it — an older macOS one refuses every dictation
-    // (telemetry c55c7b0b), so the cockpit disables the mic there instead.
+    // `microphone`: this shell is entitled to it. An older macOS shell refuses every
+    // dictation, so the cockpit disables the mic there instead.
     window.__CEZ_DESKTOP__ = { platform: platform, microphone: true };
     // At document start the root element may not exist yet; the flag is a convenience, the
     // rest of this script is not.
@@ -458,14 +456,14 @@ fn refresh_versions_menu(app: &AppHandle, shell: &Shell) {
 }
 
 /// How long a stopping sidecar gets to run its own shutdown before it is killed. cezar's SIGTERM
-/// handler flushes run state and sends its `app_stop` telemetry, bounded at 1.5 s.
+/// handler flushes run state, bounded at 1.5 s.
 #[cfg(target_os = "macos")]
 const SIDECAR_STOP_GRACE: Duration = Duration::from_secs(2);
 
 /// Stop the sidecar the way Ctrl-C in a terminal would: SIGTERM first, so cezar's own shutdown
-/// runs (`store.flush()`, the `app_stop` event), then SIGKILL if it is still there after
-/// `SIDECAR_STOP_GRACE`. A bare `kill()` is SIGKILL — it skipped all of that. Only macOS links
-/// `libc` (Cargo.toml); elsewhere this keeps the hard kill.
+/// runs (`store.flush()`), then SIGKILL if it is still there after `SIDECAR_STOP_GRACE`. A bare
+/// `kill()` is SIGKILL — it skipped all of that. Only macOS links `libc` (Cargo.toml); elsewhere
+/// this keeps the hard kill.
 fn stop_sidecar(child: &mut Child) {
     #[cfg(target_os = "macos")]
     {
@@ -533,7 +531,6 @@ fn show_versions_menu(app: AppHandle, window: WebviewWindow, shell: tauri::State
 }
 
 pub fn run() {
-    telemetry::install_panic_hook();
     let shell = Arc::new(Shell {
         child: Mutex::new(None),
         port: AtomicU16::new(0),
@@ -565,7 +562,7 @@ pub fn run() {
     tauri::Builder::default()
         // First: a second launch must reach the RUNNING app, never start a second sidecar.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| show_main_window(app)))
-        .invoke_handler(tauri::generate_handler![restart_app, show_versions_menu, send_error_report])
+        .invoke_handler(tauri::generate_handler![restart_app, show_versions_menu])
         .setup(move |app| {
             app.manage(shell_for_state.clone());
             let handle = app.handle().clone();
@@ -710,7 +707,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         let mut child = match spawn_sidecar(&entry, port, project.as_deref(), log.clone()) {
             Ok(child) => child,
             Err(error) => {
-                fail(&window, "cezar could not start", &error, "", Some(Failure::new("sidecar_spawn_failed", &error)));
+                fail(&window, "cezar could not start", &error, "");
                 return;
             }
         };
@@ -746,12 +743,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
             });
         } else {
             let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
-            let failure = match child.try_wait() {
-                Ok(Some(status)) => Failure::new("sidecar_exited_at_start", format!("The cockpit process exited with {status} before answering."))
-                    .with("exit_code", status.code()),
-                _ => Failure::new("sidecar_health_timeout", format!("No answer within {}s.", HEALTH_TIMEOUT.as_secs())),
-            };
-            fail(&window, "cezar did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail, Some(failure));
+            fail(&window, "cezar did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail);
             let _ = child.kill();
             return;
         }
@@ -780,7 +772,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
             }
             Some(code) => {
                 let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
-                fail(&window, "cezar stopped", &stopped_detail(code), &tail, stopped_failure(code));
+                fail(&window, "cezar stopped", &stopped_detail(code), &tail);
                 return;
             }
             None => return,
@@ -909,7 +901,7 @@ fn require_node(window: &WebviewWindow) -> bool {
         Err(reason) => reason,
     };
     if std::env::var_os("CEZ_DESKTOP_NODE").is_some_and(|v| !v.is_empty()) {
-        fail(window, "cezar could not start Node.js", &reason, "", None);
+        fail(window, "cezar could not start Node.js", &reason, "");
         return false;
     }
     match install_managed_node(window) {
@@ -919,8 +911,7 @@ fn require_node(window: &WebviewWindow) -> bool {
             true
         }
         Err(error) => {
-            let failure = Failure::new("managed_node_install_failed", &error).retriable().with("node.reason", reason.as_str());
-            fail(window, "cezar could not set up Node.js", &format!("cezar runs on Node.js and could not download it: {error}"), "", Some(failure));
+            fail(window, "cezar could not set up Node.js", &format!("cezar runs on Node.js and could not download it: {error}"), "");
             false
         }
     }
@@ -1003,7 +994,6 @@ fn engine_missing(window: &WebviewWindow) {
         "No cezar engine found",
         "Build the engine in this repository with `npm run build`, then run `node packages/cezar/dist/index.js link --use` (or set CEZ_DESKTOP_ENTRY to packages/cezar/dist/index.js) and press Restart.",
         "",
-        None,
     );
 }
 
@@ -1014,7 +1004,7 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
     let mut command = tool_command(&node_program(), &args.iter().map(String::as_str).collect::<Vec<_>>());
     command
         // Never the project itself: on macOS a project under Desktop/Documents/Downloads the app may
-        // not read fails getcwd, and cezar exited 1 before answering (telemetry 5af5aec6).
+        // not read fails getcwd, and cezar exited 1 before answering.
         .current_dir(home_dir())
         .env("CEZ_DESKTOP", "1")
         .env("CEZ_SUPERVISED", "1")
@@ -1442,7 +1432,7 @@ fn caller_is_trusted(window: &WebviewWindow, shell: &Shell) -> bool {
     window.url().map(|url| is_own_origin(&url, shell.port.load(Ordering::SeqCst))).unwrap_or(false)
 }
 
-/// The failure page's commands (`restart_app`, `send_error_report`): the splash only, never the
+/// The failure page's command (`restart_app`): the splash only, never the
 /// cockpit — port 0 trusts nothing on loopback.
 fn caller_is_splash(window: &WebviewWindow) -> bool {
     window.url().is_ok_and(|url| is_own_origin(&url, 0))
@@ -1827,12 +1817,10 @@ fn splash_reset(window: &WebviewWindow, title: &str, detail: &str) {
     }
 }
 
-/// A failure page. `failure` is what the shell knows went wrong: reported on its own when the user
-/// opted in to error reports, otherwise offered on the page behind "Send error report".
-fn fail(window: &WebviewWindow, title: &str, detail: &str, log: &str, failure: Option<Failure>) {
-    let report = report_param(failure, log);
+/// A failure page: what went wrong, and its log.
+fn fail(window: &WebviewWindow, title: &str, detail: &str, log: &str) {
     if let Ok(url) = url::Url::parse(&format!(
-        "{}?error={}&title={}&log={}&report={report}",
+        "{}?error={}&title={}&log={}",
         app_origin(),
         urlencode(detail),
         urlencode(title),
@@ -1843,44 +1831,13 @@ fn fail(window: &WebviewWindow, title: &str, detail: &str, log: &str, failure: O
 }
 
 /// cezar exits 0 only through its own graceful shutdown — a SIGINT or SIGTERM from outside the
-/// shell. That is a stop someone asked for, not a crash: the page still offers a restart, but no
-/// error report (telemetry f3893dd3).
+/// shell. That is a stop someone asked for, not a crash: the page still offers a restart.
 fn stopped_detail(code: i32) -> String {
     if code == 0 {
         "The cockpit process was stopped from outside the app (it shut down cleanly).".into()
     } else {
         format!("The cockpit process exited with status {code}.")
     }
-}
-
-fn stopped_failure(code: i32) -> Option<Failure> {
-    (code != 0).then(|| Failure::new("sidecar_exited", stopped_detail(code)).with("exit_code", code))
-}
-
-/// The page's `report` mode, after adding what only the shell knows: the active cezar and where
-/// Node came from.
-fn report_param(failure: Option<Failure>, log: &str) -> &'static str {
-    let Some(failure) = failure else { return telemetry::Reported::Off.as_param() };
-    let node = match tool_path().node_dir {
-        Some(dir) if dir.starts_with(managed_node_root()) => "managed",
-        Some(_) => "install_folder",
-        None => "path",
-    };
-    let failure = failure.with("cezar.version", active_id(&cezar_home().join("versions"))).with("node.source", node);
-    telemetry::report_or_offer(failure, log).as_param()
-}
-
-/// The failure page's "Send error report" button. The splash only — never the cockpit, which
-/// has its own reporting. The send runs off the main thread; the page hears back through `eval`.
-#[tauri::command]
-fn send_error_report(window: WebviewWindow) {
-    if !caller_is_splash(&window) {
-        return;
-    }
-    std::thread::spawn(move || {
-        let sent = telemetry::send_offered();
-        let _ = window.eval(&format!("window.cezarSplash && window.cezarSplash.reportSent && window.cezarSplash.reportSent({sent})"));
-    });
 }
 
 fn app_origin() -> &'static str {
@@ -1908,7 +1865,7 @@ mod tests {
     }
 
     /// The boot project rides `--repo`, never the cwd: a cwd the app may not read made cezar
-    /// exit 1 before answering (telemetry 5af5aec6).
+    /// exit 1 before answering.
     #[test]
     fn the_sidecar_boots_its_project_through_repo() {
         let entry = Path::new("/c/index.js");
@@ -1920,11 +1877,9 @@ mod tests {
     }
 
     #[test]
-    fn a_clean_exit_is_a_stop_not_an_error_report() {
-        assert!(stopped_failure(0).is_none());
-        let failure = stopped_failure(1).expect("a non-zero exit is reported");
-        assert_eq!(failure.code, "sidecar_exited");
-        assert_eq!(failure.message, "The cockpit process exited with status 1.");
+    fn a_clean_exit_reads_as_a_stop() {
+        assert!(stopped_detail(0).contains("stopped from outside"));
+        assert_eq!(stopped_detail(1), "The cockpit process exited with status 1.");
     }
 
     #[test]
@@ -1944,7 +1899,7 @@ mod tests {
 
     #[test]
     fn the_bundle_may_use_the_microphone_it_advertises() {
-        // telemetry c55c7b0b: hardened runtime + no usage strings = every dictation `not-allowed`.
+        // Hardened runtime + no usage strings = every dictation `not-allowed`.
         let dir = env!("CARGO_MANIFEST_DIR");
         let read = |name: &str| std::fs::read_to_string(format!("{dir}/{name}")).unwrap();
         let conf: serde_json::Value = serde_json::from_str(&read("tauri.conf.json")).unwrap();
@@ -1976,7 +1931,7 @@ mod tests {
     }
 
     /// The splash's script runs only inside the app, so nothing else would notice a syntax error
-    /// that leaves every failure page without its message, report card and Restart button.
+    /// that leaves every failure page without its message and Restart button.
     #[test]
     #[ignore = "needs node"]
     fn the_splash_script_parses() {

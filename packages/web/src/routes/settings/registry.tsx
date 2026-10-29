@@ -16,7 +16,6 @@ import {
   KeyRoundIcon,
   BlocksIcon,
   TicketIcon,
-  ShieldCheckIcon,
 } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 
@@ -30,7 +29,6 @@ import { InstructionsSection } from './instructions-section'
 import { KeyboardSection } from './keyboard-section'
 import { BookmarkletsSection } from './bookmarklets-section'
 import { NotificationsSection } from './notifications-section'
-import { PrivacySection } from './privacy-section'
 import { ProjectsSection } from './projects-section'
 import { ResourcesSection } from './resources-section'
 import { SkillsSection } from './skills-section'
@@ -77,7 +75,6 @@ export type SettingsSectionId =
   | 'integrations'
   | 'webhooks'
   | 'workspace-secrets'
-  | 'privacy'
 
 /** Which settings area a section belongs to — and therefore which store it writes. */
 export type SettingsScope = 'project' | 'global'
@@ -248,14 +245,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     description: 'The workspace registry and where GitHub checkouts land.',
     icon: FoldersIcon,
     component: ProjectsSection,
-    scope: 'global',
-  },
-  {
-    id: 'privacy',
-    title: 'Privacy',
-    description: 'Whether cezar shares usage data with its maintainers. Off unless you turn it on.',
-    icon: ShieldCheckIcon,
-    component: PrivacySection,
     scope: 'global',
   },
 ]

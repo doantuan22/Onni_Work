@@ -4,7 +4,8 @@
 > Cập nhật: 2026-10-29. Nội dung phản ánh trạng thái mã nguồn hiện tại (commit `5f81448`, nhánh `dev`).
 >
 > Lưu ý: đây là ảnh chụp **trước** Phase 2 (fork hardening). Các thay đổi về license, updater,
-> telemetry, star-count, skills mặc định và publish nằm ở [`docs/upstream-audit.md`](upstream-audit.md) §10.
+> star-count, skills mặc định và publish nằm ở [`docs/upstream-audit.md`](upstream-audit.md) §10;
+> telemetry đã bị xoá hẳn trong đợt cleanup 2026-10-30.
 
 ---
 
@@ -51,12 +52,12 @@ D:\Multi Agent
 │   ├── api-client/       @open-mercato/cezar-api-client  Typed client + kiểu SSE/WS (Node-free)
 │   ├── web/              @open-mercato/cezar-web     Cockpit SPA (React 19 + Vite + Tailwind v4)
 │   └── desktop/          @open-mercato/cezar-desktop Shell Tauri 2 (KHÔNG phải npm workspace)
-│       ├── src-tauri/    Rust: lib.rs, node_runtime.rs, telemetry.rs, disclaim.rs
+│       ├── src-tauri/    Rust: lib.rs, node_runtime.rs, disclaim.rs
 │       └── ui/           Splash page + icon
 ├── docs/
 │   ├── site/             Trang docs Next.js + Fumadocs (không phải workspace), port 4322
 │   ├── adr/, brand/, screenshots/, server-install/, superpowers/
-│   └── *.md              reference, publishing, telemetry, e2e-verification, …
+│   └── *.md              reference, publishing, e2e-verification, …
 ├── scripts/              dev.mjs (boot API + Vite)
 ├── tests/                Smoke e2e cho runner agentic `e2e` (KHÔNG do vitest chạy)
 ├── .ai/                  Bộ nhớ vận hành: specs/, runs/, scripts/, skills/, qa/, plans/
@@ -118,7 +119,7 @@ không parse trong handler; mọi thứ trả lời dưới `/api/v1`.
 
 | Thư mục / file | Chức năng |
 | --- | --- |
-| `index.ts` | CLI: `serve` (mặc định), `run`, `init`, `projects`, `install`, `update`, `versions`, `use`, `link`, `server-*`, `telemetry` |
+| `index.ts` | CLI: `serve` (mặc định), `run`, `init`, `projects`, `install`, `update`, `versions`, `use`, `link`, `server-*` |
 | `server/` | Hono app, route families, SSE, WS hub, guard origin/CSRF, static UI, GitHub/PR, checkout, capabilities |
 | `runs/` | `RunStore`: index `runs.json` (atomic tmp+rename), 1 file NDJSON event/run, bus sự kiện in-process |
 | `workflows/` | Load/normalize YAML (`steps` hoặc shorthand `skills`), chạy step, retry, continue, recovery, dispatch, landing |
@@ -130,7 +131,6 @@ không parse trong handler; mọi thứ trả lời dưới `/api/v1`.
 | `git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` | Worktree/task, chọn base diff đúng, chọn remote PR/push |
 | `agent-config/` | Đọc/ghi file config gốc của các agent (chỉ local, byte-exact) |
 | `paths.ts` | `cezarHomeDir()` — mọi đường dẫn `~/.cezar` đi qua đây (`CEZ_HOME` cho test/container) |
-| `telemetry.ts`, `feature-telemetry.ts` | Telemetry **opt-in**, không gửi prompt/đường dẫn |
 | `release/`, `self-update/`, `server-install/` | Đóng gói, tự cập nhật, cài server |
 
 ### 4.4 Backend agent hiện có
@@ -175,7 +175,7 @@ Tauri start
               ├─ OK    → webview.navigate http://127.0.0.1:<port>
               │          + thread monitor_badge: 10s/lần GET /api/v1/runs
               │            → đếm run "running" → set overlay icon (Windows) / badge count
-              └─ FAIL  → trang failure + nút Restart / Send error report (consent từng lần)
+              └─ FAIL  → trang failure + nút Restart (không có báo lỗi qua mạng)
        └─ đóng cửa sổ = ẩn xuống tray (agent vẫn chạy); Quit ở tray/menu mới dừng sidecar
 ```
 
@@ -256,7 +256,7 @@ Nguyên tắc: **state được ghi, không bao giờ bị bắt buộc**. Xoá 
 thì hệ thống tự tái tạo (riêng `~/.cezar` xoá cả thư mục mới là reset thật).
 
 Các cờ môi trường đáng chú ý: `CEZ_HOME`, `CEZ_DRY_RUN`, `CEZ_DISPATCH`, `CEZ_AUTOMATIONS`,
-`CEZ_TELEMETRY`, `CEZ_NO_BANNER`, `CEZ_DESIGN_MODE`, `CEZ_SKILLS_AUTO_UPDATE`.
+`CEZ_NO_BANNER`, `CEZ_DESIGN_MODE`, `CEZ_SKILLS_AUTO_UPDATE`.
 
 ---
 
@@ -267,7 +267,8 @@ Các cờ môi trường đáng chú ý: `CEZ_HOME`, `CEZ_DRY_RUN`, `CEZ_DISPATC
 - CORS chỉ mở cho `/api/v1/health`; WS chỉ nhận origin loopback (WS không có CORS).
 - Ghi file config agent (`PUT /api/agent-config/:id`) là **năng lực local-only**, trả 409 khi
   `capabilities().localHandoff = false` — đóng đường RCE qua hooks.
-- Telemetry **opt-in**: chưa trả lời consent thì không gửi gì; route gửi dạng "shape", không prompt/đường dẫn/tên repo.
+- **Không có telemetry**: pipeline gửi usage/lỗi đã bị xoá (service, contract, cockpit, desktop);
+  không có đường nào rời máy. Host/process usage trong app là số liệu local, không gửi đi.
 - `assertCezarHomeWriteIsSandboxed` chặn test ghi nhầm vào `~/.cezar` thật.
 
 ---

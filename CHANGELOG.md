@@ -21,9 +21,9 @@ upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~
   compiled off. The CLI's `install`/`update`/`versions`/`use` and the self-update service are
   gated by a new `CEZ_SELF_UPDATE` flag, off by default, and answer
   "không khả dụng trong Onni Work".
-- **Telemetry.** The upstream endpoint is gone from both the service and the desktop shell;
-  opt-in telemetry is a no-op until an endpoint is configured, and the desktop error-report
-  button is hidden when none is.
+- **Telemetry.** Removed outright: the service module, `/api/v1/telemetry/*` routes and contract
+  schema, the cockpit's consent bar and Settings → Privacy section, and the desktop shell's
+  `telemetry.rs`, `send_error_report` command and failure-page report card are gone.
 - **Star count.** `GET /api/v1/star-count` always answers `{ available: false }` and makes no
   network request; the response shape is unchanged.
 - **Skills.** No default team skill repository is configured: `DEFAULT_SKILLS_REPOS` is empty, so

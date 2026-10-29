@@ -1,11 +1,10 @@
 import { deleteStagedUpload, stageUpload } from '@/api/client'
-import { reportAttachmentStagingFailed, trackAttachmentsRestaged } from '@/lib/telemetry'
 import { ATTACHMENT_UPLOAD_MISSING, type AttachmentEntry } from '@open-mercato/cezar-api-client'
 
 import { toAttachmentInput, type PendingAttachment } from './composer-attachments'
 
 /**
- * Staged attachments (telemetry 7054e5f2): each attachment is uploaded once, when it is attached,
+ * Staged attachments: each attachment is uploaded once, when it is attached,
  * and a message names it by id — so how much a message can carry is no longer one request body.
  *
  * Keyed by the base64 itself rather than the object: hosts re-create attachments freely (the draft
@@ -21,10 +20,7 @@ export function stageAttachment(attachment: PendingAttachment): Promise<string |
   if (!pending) {
     pending = stageUpload(toAttachmentInput(attachment)).then(
       (upload) => (typeof upload?.uploadId === 'string' ? upload.uploadId : null),
-      (error: unknown) => {
-        reportAttachmentStagingFailed(error)
-        return null
-      },
+      () => null,
     )
     staged.set(attachment.data, pending)
     // A failed upload is not remembered, so the next send tries again.
@@ -78,10 +74,8 @@ export async function sendWithStaged<T>(
     forgetStaged(attachments)
     try {
       const result = await send(await Promise.all(attachments.map(toWireAttachment)))
-      trackAttachmentsRestaged('recovered')
       return result
     } catch (retryError) {
-      trackAttachmentsRestaged('failed')
       throw retryError
     }
   }

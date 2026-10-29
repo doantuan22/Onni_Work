@@ -1,15 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { sid, uuidv7 } from './sid'
+import { uuidv7 } from './sid'
 
-describe('sid', () => {
-  afterEach(() => localStorage.clear())
-
-  it('is a v7 uuid, created once and kept under cezar:sid', () => {
-    const first = sid()
-    expect(first).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
-    expect(sid()).toBe(first)
-    expect(localStorage.getItem('cezar:sid')).toBe(first)
+describe('uuidv7', () => {
+  it('is a v7 uuid', () => {
+    expect(uuidv7()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 
   it('encodes its creation time', () => {

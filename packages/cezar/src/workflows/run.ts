@@ -18,7 +18,7 @@ import {
   type AskRequest,
 } from '../core/ask.ts';
 import { AUTO_END_DELAY_MS, type AgentSession } from '../core/claude-cli-runner.ts';
-import { interruptAfterGrace, MISSING_SESSION_NOTE, ResumeFallback, trackFallbackOutcome } from './resume-fallback.ts';
+import { interruptAfterGrace, MISSING_SESSION_NOTE, ResumeFallback } from './resume-fallback.ts';
 import {
   loadPrivateMcp,
   PRIVATE_MCP_FILE,
@@ -31,7 +31,6 @@ import { describeReaped, reapTaskProcesses, taskProcessReapEnabled } from '../co
 import { parseUsageLimit } from '../core/usage-limit.ts';
 import { diskFullAgentErrorText } from '../disk-space.ts';
 import { accountStateHint, classifyAgentFailure, MAX_TRANSIENT_RETRIES, transientRetryDelayMs } from '../core/agent-failure-class.ts';
-import { reportAgentError } from '../runs/agent-error-telemetry.ts';
 import { createRunner } from '../core/runner-factory.ts';
 import type { RunnerId } from '../core/agent-runner.ts';
 import { modelConflictsWithRunner, modelNativeToRunner } from '../core/model-presets.ts';
@@ -149,8 +148,6 @@ import { SecretStore } from '../workspace/secrets.ts';
 import { PROJECT_ID_RE, loadWorkspaceConfig } from '../workspace/config.ts';
 import { prunePrHeadRefs } from '../automations/pr-head.ts';
 import { MIN_SECRET_LEN } from '../core/secret-redaction.ts';
-import { track } from '../telemetry.ts';
-import { skillLabel, taskOriginOf, workflowLabel, type TaskOrigin } from '../feature-telemetry.ts';
 import { UiEventSink } from '../runs/ui-event-sink.ts';
 import type { UiEvent } from '../core/ui-events.ts';
 import {
@@ -504,9 +501,6 @@ interface ContinueRunOptions {
 }
 
 interface ActiveRun {
-  /** Skills this session already counted as `skill_used` (telemetry); lazily created, so neither
-   *  construction site (`execute`, `runContinuation`) has to know about it. */
-  trackedSkills?: Set<string>;
   /** Identity of this async owner; stale promises must not mutate a replacement owner. */
   ownerToken: symbol;
   cancelled: boolean;
@@ -514,10 +508,6 @@ interface ActiveRun {
   interrupt: () => void;
   /** Where this run's steps execute: the task worktree, or the repo root. */
   cwd: string;
-  /** The live session's backend, from its `session.started` — `skill_missing_in_session`'s label. */
-  sessionBackend?: string;
-  /** `skill_missing_in_session` is counted once per ActiveRun, not per agent retry. */
-  skillMissingReported?: boolean;
   /** Live claude session of the currently running agent step, if any. */
   session?: AgentSession;
   currentStepId?: string;
@@ -856,10 +846,6 @@ export interface StartRunInput {
   /** Internal child admission: inherit the launch guard without the scheduler's run identity. */
   deferredBinding?: RunRecord['deferredBinding'];
   task: string;
-  /** The cockpit device that started this task (telemetry only, `x-cezar-sid`). */
-  deviceSid?: string;
-  /** Where the task came from (telemetry only, `task_origin`); unset = derived in `taskOriginOf`. */
-  origin?: TaskOrigin;
   model?: string;
   /** Agent backend chosen for this task (GUI). Unset = the config default. */
   runner?: RunnerId;
@@ -1806,18 +1792,6 @@ export class RunManager {
       run.id,
       input.task.trim() ? this.autoNameRun(run.id, skillHint, input.task) : Promise.resolve(undefined),
     );
-    // `default` = no explicit pick; the runner/CLI chose. Never the prompt itself.
-    track(
-      'task_start',
-      { label: `${input.runner ?? 'default'}/${effectiveInput.model ?? 'default'}` },
-      { sid: input.deviceSid },
-    );
-    // Feature usage (docs/telemetry.md): one label per event, so the source and the workflow ride
-    // their own events beside `task_start`.
-    const origin = taskOriginOf(input);
-    track('task_origin', { label: origin }, { sid: input.deviceSid });
-    track('workflow_used', { label: workflowLabel(workflow, Boolean(input.dispatch?.parentRunId)) }, { sid: input.deviceSid });
-    if (input.dispatchIntent && !group) track('dispatch_tree_started', { label: 'toggle' }, { sid: input.deviceSid });
     this.pendingJobs.set(run.id, { workflow, input: effectiveInput });
     this.queue.push(run.id);
     void this.pump();
@@ -1834,7 +1808,6 @@ export class RunManager {
   startVariants(workflow: WorkflowDef, input: StartRunInput, count: number): RunRecord[] {
     const groupId = randomUUID();
     const variants = Math.min(Math.max(count, 1), VARIANT_LETTERS.length);
-    if (variants > 1) track('variants_started', { label: String(variants) }, { sid: input.deviceSid });
     return VARIANT_LETTERS.slice(0, variants).map(
       (variant) => {
         const hint = VARIANT_HINTS[variant];
@@ -2919,7 +2892,6 @@ export class RunManager {
     const rootRunId = parent.dispatch?.rootRunId ?? parent.id;
     if (!parent.dispatch) {
       this.store.updateRun(parentId, { dispatch: { rootRunId } });
-      track('dispatch_tree_started', { label: 'agent' });
     }
 
     const budget = this.carveChildBudget(this.store.getRun(parentId) ?? parent, runs, input.max_cost ?? intent?.budgetUsd);
@@ -3202,7 +3174,6 @@ export class RunManager {
   private scheduleTransientRetry(run: RunRecord): void {
     // Same refusals as a usage-limit resume: an archived task, the switch off, no session.
     if (run.archived || !this.semaphore.autoResumeOnUsageLimit() || !run.steps.some((step) => step.sessionId)) {
-      this.reportUnretriedTransient(run, 'not_retried');
       return;
     }
     const attempts = run.autoResumeAttempts ?? 0;
@@ -3211,7 +3182,6 @@ export class RunManager {
         type: 'note',
         message: `the provider is still failing after ${MAX_TRANSIENT_RETRIES} automatic retries — continue this task manually`,
       });
-      this.reportUnretriedTransient(run, 'retries_exhausted');
       return;
     }
     const wakeAt = new Date(Date.now() + transientRetryDelayMs(attempts + 1, run.error));
@@ -3220,13 +3190,6 @@ export class RunManager {
       type: 'lifecycle',
       message: `temporary provider failure — retrying automatically at ${formatWakeInstant(wakeAt)} (${attempts + 1}/${MAX_TRANSIENT_RETRIES})`,
     });
-  }
-
-  /** A transient failure cezar will not retry carries signal again: report it as the agent error
-   *  `reportAgentError` held back when the event arrived. */
-  private reportUnretriedTransient(run: RunRecord, outcome: 'not_retried' | 'retries_exhausted' | 'resume_refused'): void {
-    if (!run.error) return;
-    reportAgentError(this.failedBackend(run), { type: 'error', message: run.error }, { transientOutcome: outcome });
   }
 
   private armUsageLimitResume(run: RunRecord): void {
@@ -3310,7 +3273,6 @@ export class RunManager {
         type: 'note',
         message: `automatic resume could not start — ${resumed.error ?? 'unknown'}`,
       });
-      if (reason === 'transient') this.reportUnretriedTransient(run, 'resume_refused');
       return;
     }
     // `clearAutoResume` above retired the reason with the deadline; the resume in flight keeps it,
@@ -5201,14 +5163,9 @@ export class RunManager {
           this.store.readEvents(runId).filter((event) => event.stepId !== stepId),
           this.attachmentsDir(runId),
         );
-        await trackFallbackOutcome(() => {
-          session = launch(freshId, false, context);
-          for (const content of replay) session.sendMessage(content);
-          return session.result;
-        }, {
-          cancelled: () => state.cancelled || this.active.get(runId) !== state,
-          sessionError: () => sessionError,
-        });
+        session = launch(freshId, false, context);
+        for (const content of replay) session.sendMessage(content);
+        await session.result;
         if (sessionError) throw new Error(sessionError);
       }
       // Before any branch below publishes a terminal status: the finally's autosave comes after it.
@@ -6808,17 +6765,6 @@ export class RunManager {
       }
       // Only a selected step skill can be missing: a leading `/name` that is no skill is a
       // backend's own command (`/compact`), not a miss.
-      const stepSkillMissing = Boolean(stepSkill) && !catalog.some((s) => s.name === stepSkill);
-      if (!roots.length) {
-        if (stepSkillMissing) track('skills_provisioned', { label: 'root_not_found', value: 0 });
-        return [];
-      }
-      state.trackedSkills ??= new Set();
-      for (const skill of roots) {
-        if (state.trackedSkills.has(skill.name)) continue;
-        state.trackedSkills.add(skill.name);
-        track('skill_used', { label: skillLabel(skill) });
-      }
       let installed: string[];
       if (inPlace) {
         // In place, the cwd is the user's checkout: its skill dirs are what `discoverSkills` reads
@@ -6832,10 +6778,6 @@ export class RunManager {
       } else {
         installed = await provisionSkills(state.cwd, roots, catalog);
       }
-      track('skills_provisioned', {
-        label: stepSkillMissing ? 'root_not_found' : installed.length ? 'installed' : 'already_present',
-        value: installed.length,
-      });
       return installed;
     } catch {
       return [];
@@ -7358,14 +7300,9 @@ export class RunManager {
         this.store.updateStep(runId, step.id, { sessionId: freshId, backend });
         emit({ type: 'note', stepId: step.id, message: MISSING_SESSION_NOTE });
         const context = freshContinuationContext(record, this.store.readEvents(runId), this.attachmentsDir(runId));
-        result = await trackFallbackOutcome(() => {
-          session = attach(launch(freshId, false, `${context}\n\n---\n\n## New user instruction\n${userPrompt}`), false);
-          for (const content of replay) session.sendMessage(content);
-          return session.result;
-        }, {
-          cancelled: () => state.cancelled || this.active.get(runId) !== state,
-          sessionError: () => sessionError,
-        });
+        session = attach(launch(freshId, false, `${context}\n\n---\n\n## New user instruction\n${userPrompt}`), false);
+        for (const content of replay) session.sendMessage(content);
+        result = await session.result;
         if (sessionError) throw new Error(sessionError);
       }
       // v2 counterpart of v1's `done` (spec: the mappers leave session-close
@@ -7414,11 +7351,6 @@ export class RunManager {
   private handleRunnerUiEvent(runId: string, state: ActiveRun, sink: UiEventSink, event: UiEvent): void {
     if (state.cancelled || (this.active.has(runId) && this.active.get(runId) !== state)) return;
     this.recordUsageUiEvent(runId, state, event);
-    if (event.type === 'session.started') state.sessionBackend = event.backend;
-    if (!state.skillMissingReported && isUnknownSkillFailure(event)) {
-      state.skillMissingReported = true;
-      track('skill_missing_in_session', { label: state.sessionBackend ?? 'unknown' });
-    }
     sink.handle(event);
     if (event.type !== 'ask.requested' || state.cancelled) return;
     this.clearIdleTimer(state);
@@ -9005,17 +8937,6 @@ export function skillSystemPrompt(
   }
   lines.push('', 'Skill instructions:', skill.body.trim());
   return lines.join('\n');
-}
-
-/**
- * A tool call the backend refused because the skill it named is not installed — Claude's Skill
- * tool answers `Unknown skill: <name>`. The symptom `skill_missing_in_session` counts.
- */
-export function isUnknownSkillFailure(event: UiEvent): boolean {
-  if (event.type !== 'item.completed' || event.item.kind !== 'tool' || event.item.status !== 'failed') return false;
-  // The Skill tool only: a Bash run whose output merely mentions the phrase is not a miss.
-  if (event.item.name.toLowerCase() !== 'skill') return false;
-  return /Unknown skill\b/i.test(`${event.item.error ?? ''}\n${event.item.output ?? ''}`);
 }
 
 /** Bound on waiting for the first team-skill load before installing a task's skills. */

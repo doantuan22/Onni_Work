@@ -1,6 +1,6 @@
 ## What changed
 
-<!-- A few lines: what and why. Cite the issue, spec or telemetry group. -->
+<!-- A few lines: what and why. Cite the issue or spec. -->
 
 ## Verification
 

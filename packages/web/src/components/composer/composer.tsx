@@ -28,7 +28,6 @@ import { isEditableTarget } from '@/lib/use-command-shortcut'
 import { bumpSkillUsage, filterSkills, fuzzyMatch, isProjectSkill } from '@/lib/skills'
 import { useNow } from '@/lib/use-now'
 import { isSubmitShortcut } from '@/lib/use-submit-shortcut'
-import { reportDictationFailed, trackAttachmentsSent } from '@/lib/telemetry'
 import { cn } from '@/lib/utils'
 
 import {
@@ -239,8 +238,7 @@ export function Composer({
   const uiState = useUiState()
   const queryClient = useQueryClient()
   const dictation = useDictation(({ message, failure }) => {
-    if (failure) reportDictationFailed(failure)
-    toast(message, failure ? { tone: 'danger', reported: true } : {})
+    toast(message, failure ? { tone: 'danger' } : {})
   })
 
   // On-mount only, by design: re-focusing on a later `autoFocus` flip would steal focus mid-visit.
@@ -375,7 +373,7 @@ export function Composer({
       // append each pasted file twice (#double-paste). `imagesRef` gives the current count
       // without reading through state; each async append re-checks the cap functionally.
       const intake = screenFiles(files, imagesRef.current.length, attachedImageBytes(imagesRef.current))
-      // A size or count limit the user can act on, not a failure (telemetry eab86832, 08cc6528).
+      // A size or count limit the user can act on, not a failure.
       for (const reason of intake.rejected) toast(reason, { tone: 'danger', expected: true })
       for (const file of intake.accepted) {
         void fileToPendingAttachment(file, source).then((attachment) => {
@@ -386,7 +384,7 @@ export function Composer({
           setImages(next)
         }, (error: unknown) => {
           // A dropped folder, or a file gone before it was read, rejects `arrayBuffer()` with
-          // NotFoundError (WebKit: "The object can not be found here.", telemetry 159014d3).
+          // NotFoundError (WebKit: "The object can not be found here.").
           const gone = error instanceof DOMException && error.name === 'NotFoundError'
           toast(`“${file.name}” could not be read${gone ? ' — a folder, or a file that no longer exists' : ''}`, {
             tone: 'danger',
@@ -437,7 +435,6 @@ export function Composer({
           meta ? onSubmit(body, attachments, meta) : onSubmit(body, attachments),
         )
         releaseStaged(messageImages)
-        trackAttachmentsSent(messageImages.length)
       } catch (error) {
         toast(error instanceof Error ? error.message : String(error), { tone: 'danger' })
         if (restoreOnError) {
@@ -855,8 +852,8 @@ function AttachButton({
       >
         <PaperclipIcon aria-hidden="true" className="size-[15px]" />
       </Button>
-      {/* No `accept`: every file is taken (telemetry 48850f4a), and a filter greyed out ones the
-          composer would have accepted anyway (#950). */}
+      {/* No `accept`: every file is taken, and a filter greyed out ones the composer would have
+          accepted anyway (#950). */}
       <input
         ref={inputRef}
         type="file"

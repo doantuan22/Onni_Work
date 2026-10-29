@@ -6,7 +6,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { trackScheduleMenuOpened, trackStartOptionPicked } from '@/lib/telemetry'
 
 export type StartChoice = { start: StartCondition; preview?: Extract<DeferredPreview, { available: true }>; settingsKey?: string; invalidated?: string }
 type AtStart = Extract<StartCondition, { kind: 'at' }>
@@ -102,13 +101,7 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
   const setOpen = (next: boolean) => { setOpenState(next); onOpenChange?.(next) }
-  // Counted on the transition, so a host opening the menu (the summary beside Send) counts too.
-  const wasOpen = useRef(open)
-  useEffect(() => {
-    if (open && !wasOpen.current) trackScheduleMenuOpened()
-    wasOpen.current = open
-  }, [open])
-  const pick = (option: 'now' | 'at' | 'usage_reset', next: StartChoice | null) => { trackStartOptionPicked(option); onChange(next) }
+  const pick = (next: StartChoice | null) => onChange(next)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [retry, setRetry] = useState(false)
@@ -238,13 +231,13 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
     <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] max-h-(--radix-popover-content-available-height) overflow-y-auto overscroll-contain space-y-3">
       <fieldset className="space-y-3">
       <legend className="font-medium">Start task</legend>
-      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={describedBy} checked={!value} onChange={() => pick('now', null)} />Now</label>
+      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={describedBy} checked={!value} onChange={() => pick(null)} />Now</label>
       <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={describedBy} disabled={!!disabledReason} checked={value?.start.kind === 'at'} onChange={() => {
         const start = lastAt.current ?? defaultAtStart(currentOptions?.timeZone)
         autoDefault.current = !lastAt.current && !currentOptions ? start : null
-        pick('at', { start })
+        pick({ start })
       }} />Pick date &amp; time</label>
-      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={resetReason ? eligibilityId : describedBy} disabled={!!resetReason} checked={value?.start.kind === 'usage-reset'} onChange={() => pick('usage_reset', { start: { kind: 'usage-reset' } })} />After usage limit resets</label>
+      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={resetReason ? eligibilityId : describedBy} disabled={!!resetReason} checked={value?.start.kind === 'usage-reset'} onChange={() => pick({ start: { kind: 'usage-reset' } })} />After usage limit resets</label>
       </fieldset>
       {resetReason && !disabledReason && <p id={eligibilityId} className="text-sm text-muted-foreground">{resetReason}</p>}
       {optionsError && <Button type="button" variant="outline" onClick={() => setOptionsAttempt(n => n + 1)}>Retry options</Button>}

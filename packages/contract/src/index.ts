@@ -24,7 +24,6 @@ export * from './dashboard-overview.ts';
 export * from './dashboard-insights.ts';
 export * from './host.ts';
 export * from './tracker.ts';
-export * from './telemetry.ts';
 export * from './star-count.ts';
 export * from './worktree-lifecycle.ts';
 export * from './preview.ts';

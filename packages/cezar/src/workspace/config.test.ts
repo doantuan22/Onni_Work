@@ -522,7 +522,7 @@ describe('workspace config', () => {
 
         await expect(
           mergeWriteWorkspaceConfig((config) => {
-            config.lastActiveOn = '2026-10-23';
+            config.systemPrompt = 'global instructions';
           }),
         ).rejects.toBeInstanceOf(WorkspaceConfigUnreadableError);
         vi.restoreAllMocks();
@@ -542,7 +542,7 @@ describe('workspace config', () => {
         }) as typeof fsPromises.readFile);
 
         const written = await mergeWriteWorkspaceConfig((config) => {
-          config.lastActiveOn = '2026-10-23';
+          config.systemPrompt = 'global instructions';
         });
         expect(written.projects.map((p) => p.id)).toEqual(['shop']);
       });
@@ -573,17 +573,17 @@ describe('workspace config', () => {
 
         await expect(
           mergeWriteWorkspaceConfig((config) => {
-            config.lastActiveOn = '2026-10-23';
+            config.systemPrompt = 'global instructions';
           }),
         ).rejects.toThrow(`[cez] cannot read ${workspaceConfigBackupPath()} (EBUSY) — refusing to overwrite it`);
       });
 
       it('a fresh home (nothing to read) still writes the zero-config defaults', async () => {
         const written = await mergeWriteWorkspaceConfig((config) => {
-          config.lastActiveOn = '2026-10-23';
+          config.systemPrompt = 'global instructions';
         });
         expect(written.projects).toEqual([]);
-        expect(JSON.parse(readFileSync(workspaceConfigPath(), 'utf8')).lastActiveOn).toBe('2026-10-23');
+        expect(JSON.parse(readFileSync(workspaceConfigPath(), 'utf8')).systemPrompt).toBe('global instructions');
       });
     });
   });

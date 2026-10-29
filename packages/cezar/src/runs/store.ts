@@ -27,9 +27,6 @@ import { collectSecretValues, redactDeep, redactSecrets } from '../core/secret-r
 // Sibling module, files only — a draft belongs to a run and is deleted with it (#939).
 import { deleteRunDrafts } from './drafts.ts';
 import { deleteRunLayouts, pruneOrphanLayouts } from './layouts.ts';
-import { failureKind, taskFailedLabel } from './failure-kind.ts';
-import { track } from '../telemetry.ts';
-import { reportAgentError } from './agent-error-telemetry.ts';
 // Pure, dependency-free reference helpers — the same sanity bound the marker parser applies.
 import { MAX_REF } from './task-refs.ts';
 // Type-only module (zod + nothing else), so this cannot cycle back into the store.
@@ -1176,8 +1173,6 @@ export class RunStore extends EventEmitter {
     else this.lifecycleSnapshots.delete(id);
     try { this.lifecycleObserver(before, after, run ? 'change' : 'delete'); } catch { /* Capture cannot interrupt tasks. */ }
   }
-  /** The backend of each run's latest session (`session.started`), naming its agent errors. */
-  private sessionBackends = new Map<string, string>();
   /** Local snapshot at open/last successful save, for merging only our subsequent changes. */
   private persisted = new Map<string, string>();
   /** Ids this process removed on purpose — see `forget`, which is the only thing that writes it. */
@@ -1408,11 +1403,6 @@ export class RunStore extends EventEmitter {
     // projection often provide the replacement URL/number in the same patch; seeding afterward
     // would make the historical association unrecoverable.
     if (!run.prRefs && !normalized.prRefs) run.prRefs = legacyPrRefs(run);
-    // Counted on the transition only (#1438); an auto-resumed attempt failing again repeats a failure already counted.
-    if (normalized.status === 'failed' && run.status !== 'failed' && run.autoResumeAttempts === undefined) {
-      const kind = failureKind(normalized.error ?? run.error);
-      if (kind) track('task_failed', { label: taskFailedLabel(run.runner, kind) });
-    }
     Object.assign(run, this.redactPatch(normalized, id));
     // Keep legacy writers (including workflow resume/naming paths) in sync without requiring
     // every caller to know about the additive list. The list's provenance still decides the
@@ -1698,19 +1688,6 @@ export class RunStore extends EventEmitter {
     // appends at agent-event rates are effectively free.
     this.persistEvent(runId, full);
     this.emit('event', { runId, event: full });
-    if (full.type === 'session.started' && typeof full.backend === 'string') this.sessionBackends.set(runId, full.backend);
-    // A new step or Continue may run another backend: the last session's no longer names it.
-    if (full.type === 'step-start') this.sessionBackends.delete(runId);
-    if ((full.type === 'error' || full.type === 'session.error') && typeof full.message === 'string') {
-      // The step's backend is recorded before spawn, so it names a session that failed before
-      // `session.started` too — a per-step runner or a Continue override, not `run.runner`.
-      const stepBackend = run.steps.find((s) => s.id === full.stepId)?.backend;
-      reportAgentError(stepBackend ?? this.sessionBackends.get(runId) ?? run.runner, {
-        type: full.type,
-        message: full.message,
-        fatal: full.fatal,
-      });
-    }
     if (this.janitorSettled(run)) return full;
 
     // The janitor trick: agents print the PR URL after `gh pr create` — the
@@ -2137,7 +2114,6 @@ export class RunStore extends EventEmitter {
   private forget(id: string): boolean {
     this.forgotten.add(id);
     if (this.runs.has(id)) this.observeLifecycle(id, undefined);
-    this.sessionBackends.delete(id);
     this.persisted.delete(id);
     return this.runs.delete(id);
   }

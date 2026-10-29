@@ -228,22 +228,6 @@ const workspaceConfigSchema = z
               })
               .slice(0, MAX_ORG_SKILLS_REPOS),
       ),
-    /** The telemetry install id (random UUIDv7). Written on the first send after consent;
-     *  removed when consent is withdrawn. */
-    cezarId: z.string().uuid().optional().catch(undefined),
-    /** The user's telemetry answer (opt-in, `src/telemetry.ts`). Absent = never asked = nothing
-     *  sent; a `policyVersion` older than the current one asks again. */
-    telemetry: z
-      .object({
-        consent: z.enum(['granted', 'denied']),
-        policyVersion: z.number().int().min(0),
-        decidedAt: z.string(),
-      })
-      .passthrough()
-      .optional()
-      .catch(undefined),
-    /** Last UTC day (YYYY-MM-DD) cezar checked in — what keeps the daily ping to one a day. */
-    lastActiveOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
     /** Global instructions: read by every agent step in every project, merged BEFORE the
      *  project's own `systemPrompt`, which wins where they conflict (`resolveExtraSystemPrompt`). */
     systemPrompt: z.string().trim().min(1).max(20_000).optional().catch(undefined),
