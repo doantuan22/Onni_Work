@@ -52,14 +52,14 @@ D:\Multi Agent
 │   ├── api-client/       @open-mercato/cezar-api-client  Typed client + kiểu SSE/WS (Node-free)
 │   ├── web/              @open-mercato/cezar-web     Cockpit SPA (React 19 + Vite + Tailwind v4)
 │   └── desktop/          @open-mercato/cezar-desktop Shell Tauri 2 (KHÔNG phải npm workspace)
-│       ├── src-tauri/    Rust: lib.rs, node_runtime.rs, disclaim.rs
+│       ├── src-tauri/    Rust: lib.rs, disclaim.rs
 │       └── ui/           Splash page + icon
 ├── docs/
 │   ├── superpowers/      Plan/ghi chú của agent (không build)
 │   └── *.md              reference, project-overview, upstream-audit, …
 ├── scripts/              dev.mjs (boot API + Vite)
 ├── tests/                Smoke e2e cho runner agentic `e2e` (KHÔNG do vitest chạy)
-├── .ai/                  Bộ nhớ vận hành: specs/, runs/, scripts/, skills/, qa/, plans/
+├── .ai/                  Bộ nhớ vận hành: specs/, scripts/, skills/, qa/, plans/
 ├── .github/workflows/    ci, codeql, desktop-check, desktop-release, release-*, backport, nightly
 ├── AGENTS.md             Quy ước làm việc trong repo (đọc trước khi sửa code)
 ├── AGENT_PROTOCOL.md     Hợp đồng event giữa runner và UI
@@ -80,9 +80,9 @@ D:\Multi Agent
 ┌──────────────────────────────────────────────────────────────────────┐
 │  DESKTOP SHELL (Rust / Tauri 2)   packages/desktop/src-tauri         │
 │  • cửa sổ + title bar overlay, splash, tray, single-instance, badge  │
-│  • quản lý Node runtime riêng (node_runtime.rs)                      │
+│  • chạy engine đã build sẵn (link hoặc CEZ_DESKTOP_ENTRY)            │
 │  • spawn sidecar, chờ /api/v1/health, điều hướng webview tới cockpit │
-│  • updater (app + cezar), error report (opt-in)                      │
+│  • menu Versions (đổi link), trang lỗi + Restart                     │
 └───────────────┬──────────────────────────────────────────────────────┘
                 │ HTTP loopback 127.0.0.1:<port>  (transport nội bộ)
 ┌───────────────▼──────────────────────────────────────────────────────┐
@@ -156,7 +156,7 @@ Tất cả đi qua một seam duy nhất và phát đồng thời stream v1 `Age
 | Agent config | Sửa file settings/MCP/memory gốc của Claude/Codex/OpenCode theo scope |
 | Settings | Workspace (maxParallel, memory limit), agent profiles/accounts, tracker, privacy |
 | Đa project | Registry mọi repo đã mở; route `/p/:projectId`; `singleProject` mode |
-| Desktop | Tray (Open/Quit), single-instance, badge số run đang chạy, updater, error report opt-in |
+| Desktop | Tray (Open/Quit), single-instance, badge số run đang chạy, menu Versions, engine local |
 
 ---
 
@@ -169,6 +169,7 @@ Tauri start
   └─ setup: tạo window + splash, init tray, đăng ký single-instance
        └─ thread supervise():
             port = pick_port()                      # port trống
+            entry = CEZ_DESKTOP_ENTRY, else ~/.cezar/versions/current
             spawn: node <entry> serve --no-open --port <port>
             poll GET /api/v1/health (timeout)
               ├─ OK    → webview.navigate http://127.0.0.1:<port>

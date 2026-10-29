@@ -42,9 +42,9 @@ jobs:
         include:
           - name: Linux
             os: ubuntu-22.04
-          # Windows is where the shell differs most (no login shell, npm as a batch file,
-          # junctions instead of symlinks) and where nobody on the team can run it by hand:
-          # this leg is the evidence that it starts node, runs npm and links a version.
+          # Windows is where the shell differs most (no login shell, junctions instead of
+          # symlinks) and where nobody on the team can run it by hand: this leg is the evidence
+          # that it starts node, resolves a linked engine and hears its health.
           - name: Windows
             os: windows-latest
     runs-on: ${{ matrix.os }}
@@ -85,9 +85,8 @@ jobs:
         working-directory: packages/desktop/src-tauri
         run: cargo test --locked --lib
 
-      # The tests that use the REAL node and npm: find Node, start a sidecar and hear its
-      # health, install a package into a prefix with a space in it.
-      - name: cargo test against node and npm
+      # The tests that use the REAL Node: find it on PATH, start a sidecar and hear its health.
+      - name: cargo test against node
         working-directory: packages/desktop/src-tauri
         run: cargo test --locked --lib -- --ignored --test-threads=1
 

@@ -87,22 +87,6 @@
         animation: spin 0.9s linear infinite;
         margin-top: 4px;
       }
-      .progress {
-        width: 100%;
-        height: 4px;
-        border-radius: 2px;
-        background: var(--border);
-        overflow: hidden;
-      }
-      .progress > div {
-        height: 100%;
-        width: 0;
-        background: var(--accent);
-        transition: width 0.15s linear;
-      }
-      .progress-text {
-        font-variant-numeric: tabular-nums;
-      }
       @keyframes spin {
         to {
           transform: rotate(360deg);
@@ -166,8 +150,6 @@
         <h1 id="title">Starting cezar…</h1>
         <p id="detail">Launching the local cockpit.</p>
         <div id="spinner" class="spinner"></div>
-        <div id="progress" class="progress hidden"><div></div></div>
-        <p id="progress-text" class="progress-text hidden"></p>
         <pre id="log" class="hidden"></pre>
         <div id="actions" class="actions hidden">
           <button id="retry" class="button restart" type="button">
@@ -188,29 +170,9 @@
         fail(title, detail, log) {
           this.set(title, detail)
           document.getElementById('spinner').classList.add('hidden')
-          document.getElementById('progress').classList.add('hidden')
-          document.getElementById('progress-text').classList.add('hidden')
           const pre = document.getElementById('log')
           pre.textContent = log || ''
           pre.classList.toggle('hidden', !log)
-        },
-        // Streamed progress (an install or update running in the shell): keep the spinner,
-        // append the line, follow the tail.
-        log(line) {
-          const pre = document.getElementById('log')
-          pre.classList.remove('hidden')
-          pre.textContent += (pre.textContent ? '\n' : '') + line
-          pre.scrollTop = pre.scrollHeight
-        },
-        // A download running in the shell (the managed Node runtime): `fraction` 0..1, or
-        // negative when the size is unknown (the bar then stays put and only the text moves).
-        progress(fraction, text) {
-          const bar = document.getElementById('progress')
-          bar.classList.remove('hidden')
-          if (fraction >= 0) bar.firstElementChild.style.width = Math.min(100, fraction * 100).toFixed(1) + '%'
-          const label = document.getElementById('progress-text')
-          label.classList.remove('hidden')
-          label.textContent = text
         },
       }
       const params = new URLSearchParams(location.search)

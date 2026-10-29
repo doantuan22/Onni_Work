@@ -3,6 +3,22 @@
 All notable changes to Onni Work are recorded here. This repository keeps the cezar engine's
 provenance in `NOTICE`; cezar's own release notes are not copied into it.
 
+## 2026-10-30 — Cleanup: no network in the shell, local build only
+
+- **Desktop engine.** The shell no longer downloads anything. It runs the engine named by
+  `CEZ_DESKTOP_ENTRY`, else the one `node packages/cezar/dist/index.js link --use` registered
+  under `~/.cezar/versions/current`; the Versions menu still switches between linked checkouts.
+  The managed Node runtime (`node_runtime.rs`, `~/.cezar/node`) and the six crates that fetched
+  and unpacked it (`reqwest`, `rustls`, `sha2`, `flate2`, `tar`, `zip`) are gone — Node 20+ must
+  already be installed, and the failure page says so. With no built engine the page names
+  `npm install`, `npm run build` and `link --use`, plus the two environment overrides. The
+  splash's download progress bar went with the download.
+- **Dead flags and modules.** `CEZ_NO_BANNER` and `CEZ_DESKTOP_NO_UPDATE` had no reader left and
+  are deleted, with their test/e2e plumbing. `server/tracker/config.ts`, the `Kbd` primitive and
+  the unused `Separator` wrapper are gone.
+- **History.** `.ai/runs/` (360 files of past run logs) is removed; `.ai/specs/`,
+  `.ai/skills/` and `.ai/agentic.config.json` stay.
+
 ## 2026-10-29 — Fork hardening (Phase 2)
 
 Onni Work is now maintained as an independent project: every functional link to cezar's

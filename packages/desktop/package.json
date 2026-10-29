@@ -2,7 +2,7 @@
   "name": "@open-mercato/cezar-desktop",
   "version": "0.1.11",
   "private": true,
-  "description": "Desktop shell for Onni Work: a Tauri window around the managed install — a Dock/taskbar app, no terminal. Not an npm workspace on purpose: it pulls the Tauri CLI, which the service, contract and cockpit never need.",
+  "description": "Desktop shell for Onni Work: a Tauri window around the locally built engine — a Dock/taskbar app, no terminal. Not an npm workspace on purpose: it pulls the Tauri CLI, which the service, contract and cockpit never need.",
   "license": "MIT",
   "author": "DOANTUANIT",
   "type": "module",

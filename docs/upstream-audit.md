@@ -8,6 +8,12 @@
 
 > Ràng buộc đang giữ nguyên: **chưa đổi tên nội bộ** (`cez`, `.ai/cezar`, `~/.cezar`, `CEZ_*`, scope `@open-mercato/*`). Việc rename là bước sau, nên báo cáo này **không** tính các import `@open-mercato/*` là link cần cắt ở Phase 2.
 
+> **Cập nhật 2026-10-30:** đợt cleanup sau Phase 2 đã xoá thêm `docs/site`, `docs/upstream`,
+> `docs/brand`, `docs/screenshots`, `docs/adr`, `.ai/runs`, các workflow release/backport và
+> `packages/desktop/src-tauri/src/node_runtime.rs` (desktop giờ chạy engine build cục bộ, không
+> tải gì). Các bảng liệt kê file bên dưới mô tả trạng thái **tại thời điểm kiểm toán**; những
+> đường dẫn đã xoá được giữ lại chỉ để làm hồ sơ.
+
 ---
 
 ## 0. Kết luận nhanh
