@@ -67,15 +67,8 @@ import {
   getWorkspaceConfig,
   getWorkspaceUiState,
   getSkillsUpdate,
-  getSelfUpdate,
-  getSelfUpdateDevelopment,
   getStarCount,
   getTelemetryConsent,
-  refreshSelfUpdate,
-  setSelfUpdateChannel,
-  applySelfUpdate,
-  scheduleSelfUpdate,
-  cancelScheduledSelfUpdate,
   checkSkillsUpdate,
   applySkillsUpdate,
   getWorktrees,
@@ -135,7 +128,6 @@ import type {
   TrackerAssociation,
   TrackerItemsResponse,
   TrackerKind,
-  UpdateChannel,
 } from '@open-mercato/cezar-api-client'
 import { subscribeTopic } from './ws'
 
@@ -453,9 +445,6 @@ export const workspaceQueryKeys = {
     ['workspace', 'agent-profiles', 'status', routeId] as const,
   skillsUpdateAll: ['workspace', 'skills-update'] as const,
   skillsUpdate: (projectId: string) => ['workspace', 'skills-update', projectId] as const,
-  /** cezar's own updater via `GET /api/v1/workspace/self-update` (self-update PoC). */
-  selfUpdate: ['workspace', 'self-update'] as const,
-  selfUpdateDevelopment: ['workspace', 'self-update', 'development'] as const,
   /** cezar's own GitHub star count via `GET /api/v1/star-count`, behind the sidebar's ⭐ ask.
    *  Workspace-led: the number is about cezar, not about whichever project is on screen. */
   starCount: ['workspace', 'star-count'] as const,
@@ -1648,79 +1637,6 @@ export function useApplySkillsUpdate(projectId: string) {
   const queryClient = useQueryClient()
   const key = workspaceQueryKeys.skillsUpdate(projectId)
   return useMutation({ mutationFn: () => applySkillsUpdate(projectId), onSuccess: (state) => queryClient.setQueryData(key, state) })
-}
-
-/** cezar's own update state (self-update PoC). Polls fast while an install job runs so the
- *  dialog's log follows npm, and sits idle otherwise — the health chip carries the "update
- *  available" signal on its own. `enabled` gates the fetch to the open dialog. */
-export function useSelfUpdate(enabled = true) {
-  return useQuery({
-    queryKey: workspaceQueryKeys.selfUpdate,
-    queryFn: ({ signal }) => getSelfUpdate({ signal }),
-    enabled,
-    // A scheduled update can start while the dialog is open: watch for its job to appear.
-    refetchInterval: (query) =>
-      query.state.data?.job?.status === 'running' ? 1_000 : query.state.data?.scheduled ? 5_000 : false,
-  })
-}
-
-/** The development channel's worktrees and PR builds — fetched only while that channel's
- *  panel is on screen (a git call per worktree plus a GitHub round trip). */
-export function useSelfUpdateDevelopment(enabled = true) {
-  return useQuery({
-    queryKey: workspaceQueryKeys.selfUpdateDevelopment,
-    queryFn: ({ signal }) => getSelfUpdateDevelopment({ signal }),
-    enabled,
-    staleTime: 30_000,
-  })
-}
-
-export function useRefreshSelfUpdateDevelopment() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => getSelfUpdateDevelopment({ refresh: true }),
-    onSuccess: (state) => queryClient.setQueryData(workspaceQueryKeys.selfUpdateDevelopment, state),
-  })
-}
-
-export function useRefreshSelfUpdate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => refreshSelfUpdate(),
-    onSuccess: (state) => queryClient.setQueryData(workspaceQueryKeys.selfUpdate, state),
-  })
-}
-
-export function useSetSelfUpdateChannel() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (channel: UpdateChannel) => setSelfUpdateChannel(channel),
-    onSuccess: (state) => queryClient.setQueryData(workspaceQueryKeys.selfUpdate, state),
-  })
-}
-
-export function useApplySelfUpdate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (version: string) => applySelfUpdate(version),
-    onSuccess: (state) => queryClient.setQueryData(workspaceQueryKeys.selfUpdate, state),
-  })
-}
-
-export function useScheduleSelfUpdate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (version: string) => scheduleSelfUpdate(version),
-    onSuccess: (state) => queryClient.setQueryData(workspaceQueryKeys.selfUpdate, state),
-  })
-}
-
-export function useCancelScheduledSelfUpdate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => cancelScheduledSelfUpdate(),
-    onSuccess: (state) => queryClient.setQueryData(workspaceQueryKeys.selfUpdate, state),
-  })
 }
 
 /** Rename a run (#389): `PATCH /api/runs/:id`. Invalidates `runs.*` so the list and the detail

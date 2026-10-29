@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CreateWebhook, UpdateWebhook, WebhookReceiver, WebhookHistoricalReceiver, WebhookDelivery } from '@open-mercato/cezar-api-client'
-import { webhookApi, getSelfUpdate } from '@/api/client'
+import { webhookApi } from '@/api/client'
 import { useHealth } from '@/api/queries'
 import { useActiveProjectId } from '@/lib/project-router'
 import { useWebhookList, webhookKey } from '@/hooks/use-webhooks'
@@ -49,8 +49,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
     navigationSearch.current = next.toString()
     setSearchParams(next)
   }
-  const metadata = useQuery({ queryKey: ['workspace', 'self-update'], queryFn: ({ signal }) => getSelfUpdate({ signal }), retry: false })
-  const guide = webhookGuide(metadata.data)
+  const guide = webhookGuide()
   const list = useWebhookList(projectId, enabled)
   const [form, setForm] = useState<'new' | WebhookReceiver>()
   const [draft, setDraft] = useState(() => webhookDraft())

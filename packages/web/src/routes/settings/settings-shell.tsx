@@ -458,7 +458,6 @@ function SettingsSidebarContent({
   const [only] = tree.projects
   const health = useHealth().data
   const version = health?.version ?? null
-  const latestVersion = health?.latestVersion ?? null
   const stars = useStarCount().data
   const starCount = stars?.available ? (stars.count ?? null) : null
   // White-label branding (main): the same name and logo the app sidebar's lockup and chips show.
@@ -575,7 +574,7 @@ function SettingsSidebarContent({
         <div data-slot="settings-sidebar-footer-controls" className="flex items-center gap-2">
           {/* The app footer's chips, same data: the version (and its update affordance) and the
               star ask. Health is cached by the shell; the star count by its own query. */}
-          {version ? <VersionChip version={version} latestVersion={latestVersion} brandName={brandName} /> : null}
+          {version ? <VersionChip version={version} /> : null}
           {starCount === null ? null : <StarChip count={starCount} />}
           <ThemeToggle className="ml-auto" />
         </div>

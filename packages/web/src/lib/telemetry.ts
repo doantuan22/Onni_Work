@@ -272,7 +272,6 @@ const session = {
   navigations: 0,
   errors: 0,
   serverVersion: null as string | null,
-  latestVersion: null as string | null,
 }
 
 /** `desktop` inside the Tauri shell, `browser` otherwise. The shell's init script stamps
@@ -303,8 +302,6 @@ function wideContext(extra: Context = {}): Context {
     'client.viewport_w': window.innerWidth,
     'build.entry': entryAsset(),
     'build.server_version_at_load': session.serverVersion,
-    'build.update_available':
-      session.latestVersion !== null && session.latestVersion !== session.serverVersion,
   }
 }
 
@@ -559,7 +556,6 @@ export function Telemetry() {
     // The version the page was loaded against: set once, so a later restart shows up as a skew
     // between this and the server's `server.version` on the report.
     if (health.data && session.serverVersion === null) session.serverVersion = health.data.version
-    session.latestVersion = health.data?.latestVersion ?? session.latestVersion
   }, [health.data])
 
   useEffect(() => {

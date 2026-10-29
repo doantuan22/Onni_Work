@@ -5,11 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { webhookEventSchema, type WebhookReceiver } from '@open-mercato/cezar-api-client'
 import { WebhooksSection } from './webhooks-section'
 
-const mocks = vi.hoisted(() => ({ enabled: true, project: 'alpha', list: vi.fn(), create: vi.fn(), update: vi.fn(), activate: vi.fn(), rotate: vi.fn(), history: vi.fn(), activity: vi.fn(), deliveries: vi.fn(), metadata: vi.fn(), test: vi.fn(), toast: vi.fn() }))
+const mocks = vi.hoisted(() => ({ enabled: true, project: 'alpha', list: vi.fn(), create: vi.fn(), update: vi.fn(), activate: vi.fn(), rotate: vi.fn(), history: vi.fn(), activity: vi.fn(), deliveries: vi.fn(), test: vi.fn(), toast: vi.fn() }))
 vi.mock('@/components/ui/toaster', () => ({ toast: mocks.toast }))
 vi.mock('@/api/queries', () => ({ useHealth: () => ({ data: { capabilities: { webhooks: mocks.enabled } } }) }))
 vi.mock('@/lib/project-router', () => ({ useActiveProjectId: () => mocks.project }))
-vi.mock('@/api/client', () => ({ getSelfUpdate: mocks.metadata, webhookApi: mocks }))
+vi.mock('@/api/client', () => ({ webhookApi: mocks }))
 const receiver: WebhookReceiver = {
   kind: 'live', id: 'receiver', name: 'Alerts', destination: 'http://example.invalid/[redacted]', format: 'cezar.json.v1',
   state: 'inactive', revision: 1, deliveryRevision: 1, profile: 'standard', preset: 'all', events: [],
@@ -37,7 +37,7 @@ beforeEach(() => {
   vi.resetAllMocks(); mocks.enabled = true; mocks.project = 'alpha'
   vi.stubGlobal('EventSource', undefined)
   vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Unexpected network: fixtures only') }))
-  mocks.list.mockResolvedValue(list()); mocks.metadata.mockResolvedValue({ version: '0.15.0', installKind: 'global-npm' })
+  mocks.list.mockResolvedValue(list())
   mocks.deliveries.mockResolvedValue({ items: [], total: 0, timezone: 'America/New_York' })
   mocks.activity.mockResolvedValue({ items: [], total: 0, timezone: 'America/New_York' })
 })
@@ -185,10 +185,6 @@ describe('independent webhook UI corrections', () => {
     mocks.enabled = false; mount()
     await waitFor(() => expect(screen.getByRole('link', { name: 'Webhook guide' }).getAttribute('href')).toContain('/blob/main/'))
     expect(screen.queryByText(/requires Linux/)).toBeNull()
-  })
-  it.each([{ version: '0.15.0', installKind: 'checkout' }, { version: '0.15.1-nightly.123', installKind: 'managed' }, { version: '0.15.0', installKind: 'unknown' }])('labels the main guide fallback honestly for $installKind $version', async metadata => {
-    mocks.enabled = false; mocks.metadata.mockResolvedValue(metadata); mount()
-    expect(screen.getByRole('link', { name: 'Webhook guide' }).getAttribute('href')).toContain('/blob/main/')
   })
   it('uses semantic state tones', async () => {
     mocks.list.mockResolvedValue(list([{ ...receiver, state: 'suspended' }]))

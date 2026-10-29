@@ -306,13 +306,6 @@ describe('AppShell', () => {
       expect(opened).toHaveBeenCalledTimes(1)
     })
 
-    it('still shows the version chip update affordance (#368) in the narrower row', () => {
-      renderShell('/', { version: '1.2.3', latestVersion: '1.3.0' })
-      const chip = controls().querySelector('[data-slot="version-chip"]') as HTMLElement
-      expect(chip.getAttribute('data-update-available')).toBe('true')
-      expect(chip.querySelector('[data-slot="status-dot"]')).not.toBeNull()
-    })
-
     /* The two-row footer holds only while something in the controls row can give: every icon
      * button is `shrink-0` (button base class), so a long version string — `0.9.2-nightly.…`,
      * the nightly dist-tag of #876 — used to push the gear and the toggle outside the 264px
@@ -409,36 +402,6 @@ describe('AppShell', () => {
         renderShell('/', { starCount: 1000 })
         expect(chip()?.tagName).toBe('A')
         expect(chip()?.textContent ?? '').not.toMatch(/\b(unlock|reward|free|upgrade|pro|premium)\b/i)
-      })
-    })
-
-    describe('version chip update affordance (#368)', () => {
-      const chip = () => document.querySelector('[data-slot="version-chip"]') as HTMLElement
-
-      it('stays plain while the registry has nothing newer', () => {
-        renderShell('/', { version: '1.2.3' })
-        expect(chip().getAttribute('data-update-available')).toBeNull()
-        // A tooltip, but one that claims nothing: the chip truncates, so the full version has to
-        // stay reachable on hover even when there is no update to announce.
-        expect(chip().getAttribute('title')).toBe('v1.2.3')
-        expect(chip().querySelector('[data-slot="status-dot"]')).toBeNull()
-      })
-
-      it('stays plain when latestVersion equals the running version', () => {
-        renderShell('/', { version: '1.2.3', latestVersion: '1.2.3' })
-        expect(chip().getAttribute('data-update-available')).toBeNull()
-        expect(chip().querySelector('[data-slot="status-dot"]')).toBeNull()
-      })
-
-      it('pulses and names the newer version when one exists', () => {
-        renderShell('/', { version: '1.2.3', latestVersion: '1.3.0' })
-        expect(chip().getAttribute('data-update-available')).toBe('true')
-        expect(chip().getAttribute('title')).toBe('v1.2.3 — update available: v1.3.0')
-        const dot = chip().querySelector('[data-slot="status-dot"]') as HTMLElement
-        expect(dot.getAttribute('data-tone')).toBe('pending')
-        expect(dot.className).toContain('animate-pulse')
-        // The version shown is still the one actually running.
-        expect(chip().textContent).toContain('v1.2.3')
       })
     })
 

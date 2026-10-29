@@ -538,7 +538,6 @@ describe('response parsing', () => {
   it('returns the health payload as-is', async () => {
     const health = {
       version: '0.1.3',
-      latestVersion: '0.2.0',
       repoRoot: '/home/me/cezar',
       repo: { root: '/home/me/cezar', branch: 'main', remote: 'origin' },
       checks: [{ name: 'claude', available: true, version: '2.0.1' }],

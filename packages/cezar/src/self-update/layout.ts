@@ -1,24 +1,23 @@
 /**
- * The managed install layout (PoC of the self-update design):
+ * The managed layout that decides which engine the desktop shell (and `cezar link`) runs:
  *
- *   ~/.cezar/versions/<id>/                       one `npm install --prefix` tree per version
+ *   ~/.cezar/versions/<id>/                       one cezar build per id
  *   ~/.cezar/versions/<id>/.cezar-install.json    manifest: version, source, installedAt
  *   ~/.cezar/versions/<id>/node_modules/@open-mercato/cezar/dist/index.js   the entry
  *   ~/.cezar/versions/current  →  <id>            the active version (a symlink; a junction on
  *                                                 Windows)
- *   ~/.cezar/bin/cezar, cez                       launchers that exec `current`'s entry
  *
- * `<id>` is the version string, plus `+local` for a build installed from a checkout so it never
- * collides with the registry release it was cut from.
+ * `<id>` is the version string, plus `+<branch>` for a linked checkout so two worktrees never
+ * collide.
  *
- * A LINKED checkout (`cezar link`, source `link`) is the development variant: instead of a copy,
+ * A LINKED checkout (`cezar link`, source `link`) is the only way a version gets here now:
  * `versions/<version>+<branch>/node_modules/@open-mercato/cezar` is a symlink (a junction on
  * Windows) to a worktree's `packages/cezar`. Node runs the entry through its realpath, so the
  * checkout's own `node_modules` resolve, and every rebuild of that worktree is live on the next
- * restart. Anything that reads `current` — the launchers, the desktop shell — runs it unchanged.
- * Removing a link removes the link, never the checkout. Everything is under `cezarHomeDir()` so
- * `CEZ_HOME` keeps tests off the real home. Delete the whole directory and `cezar install`
- * rebuilds it — state, never configuration.
+ * restart. Anything that reads `current` — the desktop shell — runs it unchanged. Removing a
+ * link removes the link, never the checkout. Everything is under `cezarHomeDir()` so `CEZ_HOME`
+ * keeps tests off the real home. Delete the whole directory and it is simply gone — state,
+ * never configuration.
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -37,17 +36,11 @@ export function versionsDir(env: NodeJS.ProcessEnv = process.env): string {
   return join(cezarHomeDir(env), 'versions');
 }
 
-export function binDir(env: NodeJS.ProcessEnv = process.env): string {
-  return join(cezarHomeDir(env), 'bin');
-}
-
 /**
- * A version id becomes a DIRECTORY NAME under `versions/`, and `installSpec` `rm -rf`s the path
- * it resolves to — so an id that can climb out of `versions/` is a wipe of whatever it lands on.
- * The wire schema (`selfUpdateApplyRequestSchema`) bounds the charset but still admits `..`, and
- * npm rejecting `@open-mercato/cezar@..` today is a coincidence of npm's parser, not a guard we
- * own. Require a leading alphanumeric and forbid `..` outright: every real version id
- * (`0.12.0`, `0.12.0+local`, `0.12.0-nightly.20260927.60`) passes untouched.
+ * A version id becomes a DIRECTORY NAME under `versions/`, and an id is also a `git branch`
+ * slug source — so an id that can climb out of `versions/` would point the layout at whatever it
+ * lands on. Require a leading alphanumeric and forbid `..` outright: every real version id
+ * (`0.12.0`, `0.12.0+cez-abc12345`) passes untouched.
  */
 export function assertSafeId(id: string): string {
   if (!/^[0-9A-Za-z][0-9A-Za-z.+-]*$/.test(id) || id.includes('..')) throw new Error(`invalid version id: ${id}`);
@@ -63,7 +56,7 @@ export function versionEntry(id: string, env: NodeJS.ProcessEnv = process.env): 
   return join(versionDir(id, env), 'node_modules', ...PACKAGE_NAME.split('/'), 'dist', 'index.js');
 }
 
-/** The entry the launcher execs: through `current`, so a swap never edits the launcher. */
+/** The entry behind `current`, which is what the desktop shell runs. */
 export function currentEntry(env: NodeJS.ProcessEnv = process.env): string {
   return join(versionsDir(env), CURRENT_LINK, 'node_modules', ...PACKAGE_NAME.split('/'), 'dist', 'index.js');
 }
@@ -95,37 +88,9 @@ export function writeManifest(id: string, manifest: InstallManifest, env: NodeJS
   writeFileSync(join(dir, MANIFEST_FILE), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-/** Directory id for a version from a given source — local builds get the `+local` suffix. */
-export function installId(version: string, source: 'registry' | 'local'): string {
-  return source === 'local' ? `${version}+local` : version;
-}
-
 export interface InstalledEntry extends InstallManifest {
   id: string;
   active: boolean;
-}
-
-/** Every complete install under `versions/` (a manifest AND an entry file), newest first. */
-export function listInstalled(env: NodeJS.ProcessEnv = process.env): InstalledEntry[] {
-  const dir = versionsDir(env);
-  if (!existsSync(dir)) return [];
-  const active = activeId(env);
-  const out: InstalledEntry[] = [];
-  for (const name of readdirSync(dir)) {
-    if (name === CURRENT_LINK || name.startsWith('.')) continue;
-    const manifest = readManifest(name, env);
-    if (!manifest || !existsSync(versionEntry(name, env))) continue;
-    out.push({ ...manifest, id: name, active: name === active });
-  }
-  return out.sort((a, b) => b.installedAt.localeCompare(a.installedAt));
-}
-
-/** Resolve an apply target to an installed entry: an exact id (`0.11.1+local`) first, else a
- *  REGISTRY install of that version — a local build never stands in for the published release
- *  it was cut from, or `cezar update` on a checkout would only ever re-activate the checkout. */
-export function findInstalled(target: string, env: NodeJS.ProcessEnv = process.env): InstalledEntry | undefined {
-  const installed = listInstalled(env);
-  return installed.find((entry) => entry.id === target) ?? installed.find((entry) => entry.source === 'registry' && entry.version === target);
 }
 
 /** The id `current` points at, or null when nothing is activated. */
@@ -254,8 +219,8 @@ export function linkCheckout(packageRoot: string, branch: string, env: NodeJS.Pr
   return { id, version, entry: versionEntry(id, env) };
 }
 
-/** Every linked checkout, dangling ones included (a worktree that was removed) — `listInstalled`
- *  hides those, but they still need finding to be pruned or replaced. */
+/** Every linked checkout, dangling ones included (a worktree that was removed) — they still
+ *  need finding to be pruned or replaced. */
 export function listLinks(env: NodeJS.ProcessEnv = process.env): InstalledEntry[] {
   const dir = versionsDir(env);
   if (!existsSync(dir)) return [];
@@ -281,10 +246,10 @@ function shortHash(value: string): string {
 }
 
 /**
- * How the running entry file was installed. Decides what the dialog offers:
- *   managed     → `~/.cezar/versions/…` — self-update works
- *   global-npm  → `npm i -g` prefix (`…/lib/node_modules/@open-mercato/cezar/…`) — update via npm
- *   npx         → the `_npx` cache — nothing to update in place; offer `cezar install`
+ * How the running entry file was installed:
+ *   managed     → `~/.cezar/versions/…` — a link the desktop shell switches
+ *   global-npm  → `npm i -g` prefix (`…/lib/node_modules/@open-mercato/cezar/…`)
+ *   npx         → the `_npx` cache
  *   checkout    → a git checkout (`packages/cezar/dist/index.js` beside `src/`) — dev mode
  */
 export function detectInstallKind(entry: string, env: NodeJS.ProcessEnv = process.env): InstallKind {
@@ -309,9 +274,4 @@ export function runsFromCheckout(entry: string, env: NodeJS.ProcessEnv = process
     // A missing entry keeps its own path.
   }
   return detectInstallKind(real, env) === 'checkout';
-}
-
-/** The package root (the directory holding package.json) for a running entry file. */
-export function packageRootOf(entry: string): string {
-  return dirname(dirname(resolve(entry)));
 }

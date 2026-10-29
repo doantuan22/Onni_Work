@@ -35,13 +35,9 @@ import {
   unavailableProviderMessage,
   withSelectedAccounts,
 } from './server/provider-action-gate.ts';
-import { SelfUpdateService } from './self-update/service.ts';
-import { selfUpdateEnabled } from './self-update/enabled.ts';
 import { runsFromCheckout } from './self-update/layout.ts';
 import { devVersion } from './self-update/semver.ts';
-import { isSupervised, restartProcess } from './self-update/restart.ts';
 import { runSelfUpdateCommand } from './self-update/cli.ts';
-import { writeLaunchers } from './self-update/launcher.ts';
 import { initWorkspace } from './workspace/boot.ts';
 import { loadWorkspaceConfig } from './workspace/config.ts';
 import { runProjectsCommand } from './workspace/projects-cli.ts';
@@ -77,15 +73,10 @@ Usage:
   cezar server-install      interactive wizard to host cezar on a server
   cezar server-deploy       redeploy a new version (reload the service) + verify
   cezar server-uninstall    reverse a server-install
-  cezar install             install THIS cezar permanently under ~/.cezar — OFF by default
-                            in Onni Work (CEZ_SELF_UPDATE=1 re-enables this and \`update\`)
-  cezar update              update the managed install to the channel's newest version
-                            (--channel stable|nightly, --version <x> to pin or downgrade)
-  cezar versions            list installed versions and cezar worktrees (\`cezar use <id>\` switches)
   cezar link [<dir>]        run a cezar checkout/worktree (default: cwd) as a version — a
                             link, not a copy, so rebuilds are live (--use to switch to it now);
                             the desktop app runs it after a restart or from Cezar ▸ Versions
-  cezar unlink <id>         forget a linked checkout (the checkout itself is untouched)
+  cezar unlink <id|dir>     forget a linked checkout (the checkout itself is untouched)
 
 Options:
   -p, --port <n>              cockpit port (default 4321; server-install: this
@@ -161,9 +152,6 @@ async function main(): Promise<void> {
       yes: { type: 'boolean', default: false },
       reconfigure: { type: 'string' },
       reinstall: { type: 'boolean', default: false },
-      channel: { type: 'string' },
-      version: { type: 'string' },
-      'no-modify-path': { type: 'boolean', default: false },
       use: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
@@ -235,18 +223,10 @@ async function main(): Promise<void> {
         domain: values.domain,
       });
       return;
-    case 'install':
-    case 'update':
-    case 'versions':
-    case 'use':
     case 'link':
     case 'unlink':
-      // Managed install (self-update PoC): no server, no repo — only ~/.cezar and the registry.
+      // Managed layout: no server, no repo — only ~/.cezar.
       process.exitCode = await runSelfUpdateCommand(command, positionals.slice(1), {
-        service: buildSelfUpdateService({ restart: () => {} }),
-        channel: values.channel,
-        version: values.version,
-        modifyPath: !values['no-modify-path'],
         use: Boolean(values.use),
       });
       return;
@@ -357,44 +337,11 @@ async function serveCommand(
 
   webhooks?.ready(repoRoot);
 
-  // Update discovery (#368) through the self-update service (PoC): the channel's newest
-  // version lands on /api/v1/health as `latestVersion` for the chip, and the dialog behind the
-  // chip can apply it when this cezar runs from the managed layout (`cezar install`).
-  const pkgName = readOwnName();
-  const update: { latest?: string } = {};
-  const selfUpdate = buildSelfUpdateService({
-    // Workspace-wide, every project's manager — not the boot repo's store (#1524).
-    runs: semaphore,
-    // The server's own predicate, not a second spelling of it: the `/apply` guard decides hosted
-    // mode through `resolveCapabilities`, and the two must never disagree (they did, on 127.0.0.2).
-    trimPaths: () => !resolveCapabilities(process.env, bindHost).localHandoff,
-    restart: () => {
-      void (httpServer?.shutdownLifecycle() ?? manager.lifecycle.shutdown()).then(() => {
-        store.flush({ pretty: true });
-        // The old process stops here, so it reports its own stop before handing over (bounded).
-        track('app_stop', { label: 'restart' });
-        void flushTelemetry(1_000).finally(() =>
-          restartProcess({ server: httpServer, args: process.argv.slice(2), port, supervised: isSupervised() }),
-        );
-        restartProcess({ server: httpServer, args: process.argv.slice(2), port, supervised: isSupervised() });
-      }).catch((error: unknown) => {
-        console.error('cezar: lifecycle shutdown failed before restart', error);
-        process.exit(1);
-      });
-    },
-  });
-  void selfUpdate.updateAvailable().then((latest) => {
-    if (!latest) return;
-    update.latest = latest;
-    const how = selfUpdate.installKind === 'managed' ? 'update from the cockpit or: cezar update' : `restart with: npx ${pkgName}@latest`;
-    console.log(`\n  ⬆ cezar ${latest} is available (running ${version}) — ${how}\n`);
-  });
   // What the process is doing, on every error report (a wide event, not a bare message).
   registerTelemetryContext(() => {
     const runs = store.listRuns();
     const count = (status: string) => runs.filter((r) => r.status === status).length;
     return {
-      'app.install_kind': selfUpdate.installKind,
       'runs.running': count('running'),
       'runs.waiting': count('waiting'),
       'runs.queued': count('queued'),
@@ -423,7 +370,6 @@ async function serveCommand(
     store,
     manager,
     version,
-    update,
     bootProjectId,
     semaphore,
     bindHost,
@@ -431,7 +377,6 @@ async function serveCommand(
     providerRuntimeAuth,
     workspaceEvents,
     webhooks,
-    selfUpdate,
   }, port);
   httpServer.once('listening', () => manager.lifecycle.start());
   const url = `http://localhost:${port}`;
@@ -446,16 +391,6 @@ async function serveCommand(
   if (port !== preferredPort) console.log(`  (port ${preferredPort} was busy — using ${port})`);
   console.log(`\n  cockpit → ${url}\n`);
 
-  // Under the desktop shell a managed install may exist without launchers (the shell installs
-  // cezar itself on first launch, spec 2026-09-25-desktop-distribution): write them so
-  // `cezar` in a terminal works too. Idempotent; never touches the shell profile.
-  if (process.env.CEZ_DESKTOP === '1' && selfUpdate.installKind === 'managed') {
-    try {
-      writeLaunchers();
-    } catch {
-      // A read-only home is not a reason to refuse to serve.
-    }
-  }
   // A supervisor that names itself (the desktop shell sets CEZ_SUPERVISOR_PID) may die without
   // a chance to kill us — a force-quit, a crash. Nobody would find a headless cockpit still
   // holding the port, so follow the parent down: `kill(pid, 0)` only probes for existence.
@@ -871,34 +806,6 @@ function openStore(repoRoot: string, opts?: { keepLive?: boolean }): RunStore {
   armRepoHandle(store, repoRoot);
   ensureDataGitignore(repoRoot);
   return store;
-}
-
-/** The self-update service over THIS process: its package, version and entry file. */
-function buildSelfUpdateService(
-  overrides: Partial<Pick<ConstructorParameters<typeof SelfUpdateService>[0], 'restart' | 'runs' | 'trimPaths'>> & {
-    restart: () => void;
-  },
-): SelfUpdateService {
-  return new SelfUpdateService({
-    pkgName: readOwnName(),
-    version: readOwnVersion(),
-    displayVersion: shownVersion(),
-    entry: resolve(process.argv[1] ?? fileURLToPath(import.meta.url)),
-    supervised: isSupervised(),
-    enabled: selfUpdateEnabled(),
-    ...overrides,
-  });
-}
-
-/** Own package name — for the npm-registry update check (#368). */
-function readOwnName(): string {
-  try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const pkg = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8')) as { name?: string };
-    return pkg.name ?? '@open-mercato/cezar';
-  } catch {
-    return '@open-mercato/cezar';
-  }
 }
 
 /** The running version as shown: `-dev` when the code is a source checkout, linked or not. */

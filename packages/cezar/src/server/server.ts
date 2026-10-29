@@ -157,9 +157,6 @@ import {
 import { planChain, slugify } from '../planner.ts';
 import { discoverSkills } from '../skills.ts';
 import { SkillsUpdateConflictError, SkillsUpdateCoordinator, SkillsUpdateService, type SkillsUpdateState } from '../skills-update.ts';
-import { selfUpdateApplyRequestSchema, selfUpdateChannelRequestSchema, selfUpdateDevelopmentQuerySchema } from '@open-mercato/cezar-contract';
-import { SelfUpdateBusyError, SelfUpdateService } from '../self-update/service.ts';
-import { selfUpdateEnabled } from '../self-update/enabled.ts';
 import { StarCountReader } from './star-count.ts';
 import { DesignProxies } from './preview/design-proxy.ts';
 import { getTeamSkillsCached, isSafeRef, refreshTeamSkills, safeRemoteFor, waitForTeamSkills } from '../skills-remote.ts';
@@ -361,9 +358,6 @@ export interface ServerDeps {
   store: RunStore;
   manager: RunManager;
   version: string;
-  /** Mutable holder for the async npm-registry update check (#368) —
-   *  `latest` appears once the registry answers with a newer version. */
-  update?: { latest?: string };
   /** Host the HTTP server binds (default 127.0.0.1). A non-loopback host
    *  implies hosted mode — `capabilities.localHandoff:false`. */
   bindHost?: string;
@@ -437,10 +431,6 @@ export interface ServerDeps {
   /** The project/workspace secret store (spec 2026-10-10-project-secrets-vault-options). Tests
    *  inject one with a fake keychain; the default reads the OS keychain or a key file. */
   secrets?: SecretStore;
-  /** The cockpit's own updater (`/api/v1/workspace/self-update`, src/self-update/). Built by
-   *  the CLI, which knows the entry file, the port and how to restart; absent in tests and for
-   *  bare `createApp` callers, where the family answers a read-only "not available" status. */
-  selfUpdate?: SelfUpdateService;
   /** cezar's own GitHub star count behind `GET /api/v1/star-count` (the cockpit's ⭐ ask).
    *  Defaults to a reader that asks github.com at most once per ten seconds, paced to GitHub's rate limit, and caches the answer
    *  under `~/.cache/cez/`; tests inject their own so no suite ever reaches the network. */
@@ -1381,7 +1371,7 @@ async function probeWritableDir(dir: string, create: boolean): Promise<string | 
 // Annotating it `Hono` here would erase every route from the type and leave the typed client
 // with nothing to offer. See the `routed` assembly at the end of the function.
 export function createApp(deps: ServerDeps) {
-  const { version, update, bindHost, bootProjectId } = deps;
+  const { version, bindHost, bootProjectId } = deps;
   // Boot singletons keep DELIBERATELY distinct names (`boot*`): every
   // project-scoped handler must resolve its `{store, manager, root, dataDir,
   // launchKey}` from `c.get('project')` — a bare `store`/`repoRoot` in a
@@ -1460,20 +1450,6 @@ export function createApp(deps: ServerDeps) {
   const openFile = deps.openFile ?? openFileInDefaultApp;
   const openApp = deps.openApp ?? openInApp;
   const skillsUpdate = deps.skillsUpdate ?? new SkillsUpdateService();
-  // No injected updater (tests, embedded callers): a READ-ONLY service over the running entry.
-  // It has no way to restart the process, so it must not install either — an install that
-  // flips `current` under a process that keeps running the old code is the worst of both.
-  const selfUpdate =
-    deps.selfUpdate ??
-    new SelfUpdateService({
-      pkgName: '@open-mercato/cezar',
-      version: deps.version,
-      entry: process.argv[1] ?? '',
-      restart: () => {},
-      readOnly: true,
-      enabled: selfUpdateEnabled(),
-      trimPaths: () => !capabilities().localHandoff,
-    });
   const starCount = deps.starCount ?? new StarCountReader();
 
   // ---- workspace boot-project identity (multi-project spec) ----------------
@@ -1922,11 +1898,6 @@ export function createApp(deps: ServerDeps) {
     const caps = capabilities();
     return {
       version,
-      // Spread rather than `latestVersion: update?.latest`: an `undefined` VALUE is dropped by
-      // JSON.stringify, so the key is absent on the wire — but writing it unconditionally types
-      // the key as always-present, which is a shape no client ever receives. The contract schema
-      // says `.optional()`, and contract-parity.test.ts holds the two together.
-      ...(update?.latest !== undefined ? { latestVersion: update.latest } : {}),
       // Health is CORS-open and, in hosted mode, reachable off the loopback —
       // so any site/host that reads it would learn the developer's absolute
       // checkout path and username (#431). Local mode keeps the full path (the
@@ -3444,13 +3415,6 @@ export function createApp(deps: ServerDeps) {
       }
     });
 
-  // ---- chained family: cezar self-update (workspace-level, PoC) ----
-  // The browser supplies a version STRING (validated shape, never a URL, a path or a tarball)
-  // and a channel; the server resolves both against the npm registry and its own managed
-  // layout. Allowed in hosted mode on purpose: an update pulls a published package from the
-  // registry, so the request cannot inject code, and a VPS behind the installer's Basic auth
-  // is exactly where "update from the cockpit" replaces `cezar server-deploy` — but hosted
-  // applies are FORWARD-ONLY (see the guard on /apply below).
   // ---- chained family: the star ask (workspace-level) ----------------------
   // cezar's own star count, for the cockpit's ⭐ button. Workspace-level and single-mount, like
   // `/health`: it says nothing about any project, and there is nothing for a project scope to
@@ -3474,54 +3438,6 @@ export function createApp(deps: ServerDeps) {
     if (!opened.ok) return c.json({ error: opened.reason }, 400);
     return c.json({ origin: opened.origin });
   });
-
-  const selfUpdateRoutes = new Hono()
-    .get('/workspace/self-update', async (c) => c.json(await selfUpdate.status()))
-
-    .post('/workspace/self-update/refresh', async (c) => c.json(await selfUpdate.status({ refresh: true })))
-
-    // The development channel's pickers: cezar's own worktrees and its open PRs' preview builds.
-    // A separate read because it costs a git call per worktree and a GitHub round trip.
-    .get('/workspace/self-update/development', queryZodValidator(selfUpdateDevelopmentQuerySchema), async (c) =>
-      c.json(await selfUpdate.development({ refresh: c.req.valid('query').refresh === '1' })),
-    )
-
-    .put('/workspace/self-update/channel', jsonZodValidator(selfUpdateChannelRequestSchema, { message: 'body must be { channel: "stable" | "nightly" | "development" }' }), async (c) => {
-      const { channel } = c.req.valid('json');
-      await selfUpdate.setChannel(channel);
-      return c.json(await selfUpdate.status());
-    })
-
-    .post('/workspace/self-update/apply', jsonZodValidator(selfUpdateApplyRequestSchema, { message: 'body must be { version, whenIdle? }' }), async (c) => {
-      const { version: target } = c.req.valid('json');
-      // SECURITY: a hosted cockpit may only move FORWARD. Installing a published package cannot
-      // inject code, but installing an OLDER one can: every hosted-mode guard — the `/api/*`
-      // request-origin check (#426), the `localHandoff` 409 that closes the agent-config hooks
-      // RCE path — lives in the running version, so a downgrade to a release that predates them
-      // re-opens exactly what they close, through a route those guards never get to see. A
-      // local cockpit keeps the full picker, downgrades included: there is no boundary left to
-      // escalate across when the caller already owns the machine. `forwardOnlyRefusal` decides
-      // what "forward" means — publish time, not just semver order, because a nightly for the
-      // next minor outranks every later patch of the current one.
-      if (!capabilities().localHandoff) {
-        const refusal = await selfUpdate.forwardOnlyRefusal(target);
-        if (refusal) return c.json({ error: refusal }, 409);
-      }
-      try {
-        if (c.req.valid('json').whenIdle) selfUpdate.scheduleWhenIdle(target);
-        else selfUpdate.apply(target);
-      } catch (error) {
-        if (error instanceof SelfUpdateBusyError) return c.json({ error: error.message }, 409);
-        return c.json({ error: error instanceof Error ? error.message : String(error) }, 409);
-      }
-      return c.json(await selfUpdate.status());
-    })
-
-    // Cancels a pending "update when idle"; a no-op when nothing is scheduled.
-    .delete('/workspace/self-update/scheduled', async (c) => {
-      selfUpdate.cancelScheduled();
-      return c.json(await selfUpdate.status());
-    });
 
   // ---- GUI clone (multi-project spec, step 4.3) ----------------------------
   // "Add project → Clone from GitHub": clone into the checkout root, then
@@ -8015,7 +7931,6 @@ export function createApp(deps: ServerDeps) {
     .route('/', projectsRoutes)
     .route('/', agentProfilesRoutes)
     .route('/', skillsUpdateRoutes)
-    .route('/', selfUpdateRoutes)
     .route('/', starCountRoutes)
     .route('/', previewRoutes)
     .route('/', workspaceConfigRoutes)

@@ -25,8 +25,6 @@ import { Link, stripProjectPrefix } from '@/lib/project-router'
 import { isSettingsPathname } from '@/lib/settings-path'
 import { CEZAR_REPO_URL, formatStarCount } from '@/lib/star-promo'
 import { BrandLockup } from '@/components/brand-mark'
-import { SelfUpdateDialog } from '@/components/self-update-dialog'
-import { StatusDot } from '@/components/status-dot'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import {
@@ -66,9 +64,6 @@ export type AppShellProps = {
   skillsUpdateAvailable?: boolean
   /** cezar version for the footer chip. Null until Step 3.1 reads it from `/api/health`. */
   version?: string | null
-  /** The npm registry's newer version, when the server's update check found one (#368). The
-   *  chip grows a pulsing pending dot + tooltip; absent or equal to `version`, it stays plain. */
-  latestVersion?: string | null
   /** cezar's own GitHub star count for the footer's ⭐ ask. `null` — offline, rate-limited, or
    *  promos silenced with `CEZ_NO_BANNER=1` — renders NO chip at all rather than an empty one:
    *  a button asking to be clicked while admitting it cannot count is worse than no button. */
@@ -178,7 +173,6 @@ export const AppShell = React.memo(function AppShell({
   unreadCount = null,
   skillsUpdateAvailable = false,
   version = null,
-  latestVersion = null,
   starCount = null,
   taskQuickList,
   hostWidget,
@@ -262,7 +256,6 @@ export const AppShell = React.memo(function AppShell({
     unreadCount,
     skillsUpdateAvailable,
     version,
-    latestVersion,
     starCount,
     taskQuickList,
     hostWidget,
@@ -294,11 +287,7 @@ export const AppShell = React.memo(function AppShell({
           data-slot="desktop-titlebar"
           data-tauri-drag-region=""
           className="fixed inset-x-0 top-0 z-[60] flex h-[28px] select-none items-center pl-[80px]"
-        >
-          {version && latestVersion && latestVersion !== version ? (
-            <TitlebarUpdateButton latestVersion={latestVersion} brandName={brandName} />
-          ) : null}
-        </div>
+        />
       ) : null}
       {chromeless ? null : (
         <Sidebar {...nav} width={sidebarWidth} onWidthChange={changeSidebarWidth} desktop={desktop} />
@@ -343,33 +332,6 @@ export const AppShell = React.memo(function AppShell({
   )
 })
 
-/**
- * The title strip's "Update cezar" button (desktop shell only): shown whenever the channel the
- * cockpit follows has something newer than what is running, sitting right after the traffic
- * lights where the native title would be. With nothing running, one click starts the update and
- * the dialog shows the install log and the restart. With tasks in flight the dialog opens to its
- * warning instead and waits for "Update & restart": a restart interrupts them.
- */
-function TitlebarUpdateButton({ latestVersion, brandName }: { latestVersion: string; brandName: string }) {
-  const [open, setOpen] = React.useState(false)
-  return (
-    <>
-      <button
-        type="button"
-        data-slot="titlebar-update"
-        onClick={() => setOpen(true)}
-        title={`Update ${brandName} to v${latestVersion} and restart`}
-        className="inline-flex h-[18px] items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-primary/30"
-      >
-        <StatusDot tone="pending" pulse className="size-[5px] shrink-0" />
-        Update {brandName}
-        <span className="font-mono font-medium text-muted-foreground">v{latestVersion}</span>
-      </button>
-      {open ? <SelfUpdateDialog open={open} onOpenChange={setOpen} autoApply={latestVersion} brandName={brandName} /> : null}
-    </>
-  )
-}
-
 type NavProps = {
   activeTo: string | null
   items: NavItem[]
@@ -378,7 +340,6 @@ type NavProps = {
   unreadCount: number | null
   skillsUpdateAvailable: boolean
   version: string | null
-  latestVersion: string | null
   starCount: number | null
   taskQuickList?: ReactNode
   hostWidget?: ReactNode
@@ -428,7 +389,6 @@ function SidebarContent({
   unreadCount,
   skillsUpdateAvailable,
   version,
-  latestVersion,
   starCount,
   taskQuickList,
   hostWidget,
@@ -615,7 +575,7 @@ function SidebarContent({
           <div data-slot="tools-menu" className="shrink-0">
             {toolsMenu}
           </div>
-          {version ? <VersionChip version={version} latestVersion={latestVersion} brandName={brandName} /> : null}
+          {version ? <VersionChip version={version} /> : null}
           {starCount === null ? null : <StarChip count={starCount} />}
           <GlobalSettingsLink onNavigate={onNavigate} className="ml-auto" />
           <ThemeToggle />
@@ -826,9 +786,7 @@ function AddProjectMenu() {
 
 /**
  * The footer's `v{version}` chip — exported, with `StarChip`, for the settings sidebar's footer,
- * which mirrors this one (spec 2026-10-13-unified-settings). When the server's npm-registry check found something newer
- * (`latestVersion`, #368), the chip grows a pulsing pending-tone dot and names the version in
- * its tooltip — an affordance, not an alert: updating is optional, so the chrome stays quiet.
+ * which mirrors this one (spec 2026-10-13-unified-settings).
  *
  * The chip is the controls row's ONE elastic item, and that is load-bearing. Every other control
  * there is `shrink-0` (the icon buttons inherit it from the button base class), so whatever a
@@ -836,29 +794,17 @@ function AddProjectMenu() {
  * chip was `shrink-0` too, there was nowhere for it to come from: a nightly version (#876's
  * dist-tag, some 173px of it) shoved the gear and the theme toggle clean outside the sidebar
  * rather than clipping anything. Truncating from the tail keeps the half that carries meaning,
- * the semver, and the `title` keeps the whole string — which is why the tooltip is now there
- * even with no update to announce.
+ * the semver, and the `title` keeps the whole string.
  */
-export function VersionChip({ version, latestVersion, brandName }: { version: string; latestVersion: string | null; brandName: string }) {
-  const updateAvailable = Boolean(latestVersion && latestVersion !== version)
-  // The chip opens the self-update dialog (PoC): channel, latest, and a version picker.
-  const [open, setOpen] = React.useState(false)
+export function VersionChip({ version }: { version: string }) {
   return (
-    <>
-      <button
-        type="button"
-        data-slot="version-chip"
-        data-update-available={updateAvailable ? 'true' : undefined}
-        title={updateAvailable ? `v${version} — update available: v${latestVersion}` : `v${version}`}
-        aria-label={updateAvailable ? `${brandName} v${version}, update to v${latestVersion} available — open updater` : `${brandName} v${version} — open updater`}
-        onClick={() => setOpen(true)}
-        className="flex min-w-0 cursor-pointer items-center gap-1 rounded-full border border-border px-1.5 py-px font-mono text-[10px] font-medium text-soft-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
-      >
-        {updateAvailable ? <StatusDot tone="pending" pulse className="size-[5px] shrink-0" /> : null}
-        <span className="truncate">v{version}</span>
-      </button>
-      {open ? <SelfUpdateDialog open={open} onOpenChange={setOpen} brandName={brandName} /> : null}
-    </>
+    <span
+      data-slot="version-chip"
+      title={`v${version}`}
+      className="flex min-w-0 items-center gap-1 rounded-full border border-border px-1.5 py-px font-mono text-[10px] font-medium text-soft-foreground"
+    >
+      <span className="truncate">v{version}</span>
+    </span>
   )
 }
 

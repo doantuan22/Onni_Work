@@ -228,10 +228,6 @@ const workspaceConfigSchema = z
               })
               .slice(0, MAX_ORG_SKILLS_REPOS),
       ),
-    /** Release channel the self-updater follows (`stable` → npm `latest`, `nightly` → `nightly`,
-     *  `development` → none: a worktree or PR preview picked by hand). Absent inherits
-     *  `CEZ_UPDATE_CHANNEL`, then stable. */
-    updateChannel: z.enum(['stable', 'nightly', 'development']).optional().catch(undefined),
     /** The telemetry install id (random UUIDv7). Written on the first send after consent;
      *  removed when consent is withdrawn. */
     cezarId: z.string().uuid().optional().catch(undefined),

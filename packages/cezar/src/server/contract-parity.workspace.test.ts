@@ -33,7 +33,6 @@ import type {
   runnerModelCatalogResponseSchema,
   setConfigResponseSchema,
   skillsUpdateStateSchema,
-  selfUpdateStatusSchema,
   starCountSchema,
   designProxyResponseSchema,
   setTelemetryConsentInputSchema,
@@ -126,13 +125,6 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     (typeof client.api.v1.workspace)['skills-update']['apply']['$post'],
     200
   >;
-
-  // ---- self-update (PoC) --------------------------------------------------------------------
-  type SelfUpdate200 = InferResponseType<(typeof client.api.v1.workspace)['self-update']['$get'], 200>;
-  type SelfUpdateRefresh200 = InferResponseType<(typeof client.api.v1.workspace)['self-update']['refresh']['$post'], 200>;
-  type SelfUpdateChannel200 = InferResponseType<(typeof client.api.v1.workspace)['self-update']['channel']['$put'], 200>;
-  type SelfUpdateApply200 = InferResponseType<(typeof client.api.v1.workspace)['self-update']['apply']['$post'], 200>;
-  type SelfUpdateCancelScheduled200 = InferResponseType<(typeof client.api.v1.workspace)['self-update']['scheduled']['$delete'], 200>;
 
   // ---- the star ask -------------------------------------------------------------------------
   type StarCount200 = InferResponseType<(typeof client.api.v1)['star-count']['$get'], 200>;
@@ -236,12 +228,6 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     Assert<Exact<z.infer<typeof skillsUpdateStateSchema>, SkillsUpdate200>>,
     Assert<Exact<z.infer<typeof skillsUpdateStateSchema>, SkillsUpdateCheck200>>,
     Assert<Exact<z.infer<typeof skillsUpdateStateSchema>, SkillsUpdateApply200>>,
-    // self-update
-    Assert<Exact<z.infer<typeof selfUpdateStatusSchema>, SelfUpdate200>>,
-    Assert<Exact<z.infer<typeof selfUpdateStatusSchema>, SelfUpdateRefresh200>>,
-    Assert<Exact<z.infer<typeof selfUpdateStatusSchema>, SelfUpdateChannel200>>,
-    Assert<Exact<z.infer<typeof selfUpdateStatusSchema>, SelfUpdateApply200>>,
-    Assert<Exact<z.infer<typeof selfUpdateStatusSchema>, SelfUpdateCancelScheduled200>>,
     // the star ask
     Assert<Exact<z.infer<typeof starCountSchema>, StarCount200>>,
     // Design Mode

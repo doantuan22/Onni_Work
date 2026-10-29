@@ -1,4 +1,4 @@
-import type { SelfUpdateStatus, WebhookDeliveryStatus, WebhookReceiver, WebhookReceiverState } from '@open-mercato/cezar-api-client'
+import type { WebhookDeliveryStatus, WebhookReceiver, WebhookReceiverState } from '@open-mercato/cezar-api-client'
 
 import type { StatusDotTone } from '@/components/status-dot'
 
@@ -78,7 +78,7 @@ export function webhookTime(value: string, zone?: string) {
   return date.toLocaleString(undefined, { timeZone: webhookTimeZone(zone).zone, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
 }
 
-export function webhookGuide(_metadata?: Pick<SelfUpdateStatus, 'version' | 'installKind'>) {
+export function webhookGuide() {
   return {
     href: 'https://github.com/doantuan22/Onni_Work/blob/main/packages/cezar/docs/webhooks.md',
     note: 'Webhook guide',

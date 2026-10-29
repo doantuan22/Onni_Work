@@ -110,7 +110,6 @@ export type DiskInfo = z.infer<typeof diskInfoSchema>;
  */
 export const healthResponseSchema = z.object({
   version: z.string(),
-  latestVersion: z.string().optional(),
   repoRoot: z.string(),
   repo: repoInfoSchema.nullable(),
   checks: z.array(backendCheckSchema),

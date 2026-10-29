@@ -13,8 +13,8 @@ Markdown under `.ai/cezar/`.
 Onni Work is built on the **cezar** engine by Patryk Lewczuk and is maintained as its own
 project with its own desktop-first surface. Upstream services are not used:
 
-- self-update, CLI install/update and the desktop updater are disabled by default
-  (`CEZ_SELF_UPDATE=0`, no updater endpoints or signing keys shipped);
+- self-update, CLI install/update and the desktop updater are removed (no updater
+  endpoints or signing keys shipped); the desktop runs the engine you build locally;
 - telemetry is off by default and has no configured endpoint — the consent flow and interface
   are kept, but nothing is sent;
 - the GitHub star-count chip always reports `available: false` and makes no network request.

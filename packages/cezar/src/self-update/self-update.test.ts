@@ -1,49 +1,16 @@
 import { existsSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { currentEntry, activate, activeId, assertSafeId, detectInstallKind, installId, runsFromCheckout, listInstalled, versionDir, versionEntry, versionsDir, writeManifest } from './layout.ts';
-import { fetchPackageDocument, RegistryCache, registryPath } from './registry.ts';
-import { SelfUpdateService } from './service.ts';
-import { restartArgs } from './restart.ts';
-import { runSelfUpdateCommand } from './cli.ts';
-import { SELF_UPDATE_DISABLED_MESSAGE } from './enabled.ts';
-import { classifyVersion, compareVersions, devVersion, isNewer } from './semver.ts';
+import { currentEntry, activate, activeId, assertSafeId, detectInstallKind, listLinks, runsFromCheckout, versionDir, versionEntry, versionsDir, writeManifest } from './layout.ts';
+import { devVersion } from './semver.ts';
 
 describe('semver', () => {
   it('shows a checkout build as -dev of its release', () => {
     expect(devVersion('0.15.2')).toBe('0.15.2-dev');
     expect(devVersion('0.15.2-nightly.20261019.4')).toBe('0.15.2-dev');
     expect(devVersion('0.15.2+cez-abc12345')).toBe('0.15.2-dev');
-  });
-
-  it('orders releases numerically, not lexically', () => {
-    expect(compareVersions('1.2.10', '1.2.9')).toBe(1);
-    expect(compareVersions('0.11.1', '0.9.2')).toBe(1);
-    expect(compareVersions('0.11.1', '0.11.1')).toBe(0);
-  });
-
-  it('ranks a release above every prerelease of the same core, and nightlies by date', () => {
-    expect(isNewer('0.11.1', '0.11.1-nightly.20260924.49')).toBe(true);
-    expect(isNewer('0.11.1-nightly.20260924.49', '0.11.1')).toBe(false);
-    expect(isNewer('0.11.1-nightly.20260925.50', '0.11.1-nightly.20260924.49')).toBe(true);
-    expect(isNewer('0.11.2-nightly.20260901.1', '0.11.1')).toBe(true);
-  });
-
-  it('classifies dist-tag families from the prerelease identifier', () => {
-    expect(classifyVersion('0.11.1')).toBe('stable');
-    expect(classifyVersion('0.11.1-nightly.20260924.49')).toBe('nightly');
-    expect(classifyVersion('0.9.2-pr743.1156.2')).toBe('preview');
-    expect(classifyVersion('0.1.5-develop.124')).toBe('preview');
-  });
-
-  // An unparseable version must never reach the picker as a release: `status()` keeps only
-  // non-preview entries, so `preview` is what drops registry junk instead of offering it.
-  it('treats an unparseable version as a preview, never as a stable release', () => {
-    expect(classifyVersion('not-a-version')).toBe('preview');
-    expect(classifyVersion('')).toBe('preview');
-    expect(classifyVersion('0.11')).toBe('preview');
   });
 });
 
@@ -57,47 +24,41 @@ describe('managed layout', () => {
   });
   afterEach(() => rmSync(home, { recursive: true, force: true }));
 
-  const fakeInstall = (id: string, version: string, source: 'registry' | 'local') => {
+  const fakeLink = (id: string, version: string, checkout = join(home, 'repo', 'packages', 'cezar')) => {
     const entry = versionEntry(id, env);
     mkdirSync(join(entry, '..'), { recursive: true });
     writeFileSync(entry, '// entry\n');
-    writeManifest(id, { version, source, installedAt: new Date(Date.parse('2026-09-25T10:00:00Z') + (source === 'local' ? 1 : 0)).toISOString() }, env);
+    writeManifest(id, { version, source: 'link', installedAt: '2026-09-25T10:00:00.000Z', checkout, branch: 'main' }, env);
   };
 
-  it('lists complete installs only and flips `current` atomically', () => {
-    fakeInstall('0.11.0', '0.11.0', 'registry');
-    fakeInstall('0.11.1+local', '0.11.1', 'local');
-    // A manifest without an entry file is a torn install and must not be offered.
-    writeManifest('0.10.0', { version: '0.10.0', source: 'registry', installedAt: '2026-09-01T00:00:00Z' }, env);
+  it('lists linked checkouts and flips `current` atomically', () => {
+    fakeLink('0.11.0+main', '0.11.0');
+    fakeLink('0.11.1+dev', '0.11.1');
 
-    expect(listInstalled(env).map((entry) => entry.id)).toEqual(['0.11.1+local', '0.11.0']);
+    expect(listLinks(env).map((entry) => entry.id).sort()).toEqual(['0.11.0+main', '0.11.1+dev']);
     expect(activeId(env)).toBeNull();
 
-    activate('0.11.0', env);
-    expect(activeId(env)).toBe('0.11.0');
+    activate('0.11.0+main', env);
+    expect(activeId(env)).toBe('0.11.0+main');
     // The link's NAME is the id on every platform; its target is relative on POSIX and
     // absolute on Windows, where `current` is a junction.
-    expect(basename(readlinkSync(join(versionsDir(env), 'current')))).toBe('0.11.0');
+    expect(basename(readlinkSync(join(versionsDir(env), 'current')))).toBe('0.11.0+main');
     expect(existsSync(currentEntry(env))).toBe(true);
+    expect(listLinks(env).find((entry) => entry.active)?.id).toBe('0.11.0+main');
 
-    activate('0.11.1+local', env);
-    expect(activeId(env)).toBe('0.11.1+local');
-    expect(listInstalled(env).find((entry) => entry.active)?.id).toBe('0.11.1+local');
+    activate('0.11.1+dev', env);
+    expect(activeId(env)).toBe('0.11.1+dev');
+    expect(listLinks(env).find((entry) => entry.active)?.id).toBe('0.11.1+dev');
     // Replacing a link leaves the version it used to point at in place.
     expect(existsSync(currentEntry(env))).toBe(true);
-    expect(existsSync(versionEntry('0.11.0', env))).toBe(true);
+    expect(existsSync(versionEntry('0.11.0+main', env))).toBe(true);
     expect(existsSync(join(versionsDir(env), `.current.${process.pid}.tmp`))).toBe(false);
     expect(() => activate('9.9.9', env)).toThrow(/not installed/);
   });
 
-  it('derives the install id from the source', () => {
-    expect(installId('0.11.1', 'registry')).toBe('0.11.1');
-    expect(installId('0.11.1', 'local')).toBe('0.11.1+local');
-  });
-
-  // `versionDir` is the path `installSpec` rm -rf's before it renames staging into place, so an
-  // id that climbs out of `versions/` is a wipe of whatever it lands on. The wire schema's
-  // charset alone still admits `..`; the layout has to refuse it itself.
+  // `versionDir` is the path a removal rm -rf's, so an id that climbs out of `versions/` is a
+  // wipe of whatever it lands on. The wire schema's charset alone still admits `..`; the layout
+  // has to refuse it itself.
   it('refuses a version id that could escape the versions directory', () => {
     for (const id of ['..', '.', '.hidden', '0.11.1/../..', 'a..b', '']) {
       expect(() => assertSafeId(id)).toThrow(/invalid version id/);
@@ -109,15 +70,15 @@ describe('managed layout', () => {
     }
   });
 
-  // A bad id must not take the listing down with it. `versionDir` throws for these names now,
-  // so the graceful skip has to come from `readManifest`'s own catch — none of them is
-  // dot-prefixed, so the pre-existing `startsWith('.')` skip cannot be what saves the listing.
-  it('skips an unsafe directory name instead of throwing out of listInstalled', () => {
-    fakeInstall('0.11.0', '0.11.0', 'registry');
+  // A bad id must not take the listing down with it: the graceful skip has to come from
+  // `readManifest`'s own catch — none of these is dot-prefixed, so the `startsWith('.')` skip
+  // cannot be what saves the listing.
+  it('skips an unsafe directory name instead of throwing out of listLinks', () => {
+    fakeLink('0.11.0+main', '0.11.0');
     for (const junk of ['a..b', '-weird', 'has space', '0.1.0;rm']) {
       mkdirSync(join(versionsDir(env), junk), { recursive: true });
     }
-    expect(listInstalled(env).map((entry) => entry.id)).toEqual(['0.11.0']);
+    expect(listLinks(env).map((entry) => entry.id)).toEqual(['0.11.0+main']);
   });
 
   it('tells install kinds apart by where the entry file lives', () => {
@@ -145,45 +106,8 @@ describe('managed layout', () => {
     const entry = join(link, 'dist', 'index.js');
     expect(detectInstallKind(entry, env)).toBe('managed');
     expect(runsFromCheckout(entry, env)).toBe(true);
-    fakeInstall('0.15.1', '0.15.1', 'registry');
-    expect(runsFromCheckout(versionEntry('0.15.1', env), env)).toBe(false);
-  });
-});
-
-describe('restart args', () => {
-  it('keeps the command and flags, pins the port and never opens a second tab', () => {
-    expect(restartArgs(['serve', '--repo', '/x', '--port', '4000'], 4321)).toEqual(['serve', '--repo', '/x', '--port', '4321', '--no-open']);
-    expect(restartArgs(['-p', '4000', '--no-open'], 4321)).toEqual(['--port', '4321', '--no-open']);
-    expect(restartArgs(['--port=4000'], 4321)).toEqual(['--port', '4321', '--no-open']);
-  });
-});
-
-describe('registry document', () => {
-  it('sorts versions newest first, stamps channels and publish dates, and survives a bad payload', async () => {
-    const doc = await fetchPackageDocument('@open-mercato/cezar', (async () =>
-      new Response(
-        JSON.stringify({
-          'dist-tags': { latest: '0.11.1', nightly: '0.11.1-nightly.20260924.49' },
-          versions: { '0.11.0': {}, '0.11.1': {}, '0.11.1-nightly.20260924.49': {}, '0.9.2-pr743.1156.2': {} },
-          time: { '0.11.1': '2026-09-20T00:00:00.000Z' },
-        }),
-        { status: 200 },
-      )) as unknown as typeof fetch);
-    expect(doc?.versions.map((entry) => entry.version)).toEqual(['0.11.1', '0.11.1-nightly.20260924.49', '0.11.0', '0.9.2-pr743.1156.2']);
-    expect(doc?.versions[0]).toMatchObject({ channel: 'stable', publishedAt: '2026-09-20T00:00:00.000Z' });
-    expect(doc?.versions[1]?.channel).toBe('nightly');
-    expect(doc?.distTags.nightly).toBe('0.11.1-nightly.20260924.49');
-
-    expect(await fetchPackageDocument('x', (async () => new Response('nope', { status: 500 })) as unknown as typeof fetch)).toBeNull();
-    expect(await fetchPackageDocument('x', (async () => { throw new Error('offline'); }) as unknown as typeof fetch)).toBeNull();
-  });
-});
-
-describe('registryPath', () => {
-  it('keeps the scope marker and encodes everything after it', () => {
-    expect(registryPath('@open-mercato/cezar')).toBe('@open-mercato%2Fcezar');
-    expect(registryPath('cezar-cli')).toBe('cezar-cli');
-    expect(registryPath('@a/b@c')).toBe('@a%2Fb%40c');
+    fakeLink('0.15.1+main', '0.15.1');
+    expect(runsFromCheckout(versionEntry('0.15.1+main', env), env)).toBe(false);
   });
 });
 
@@ -198,185 +122,6 @@ describe('activeId without a symlink', () => {
       expect(activeId(env)).toBe('0.11.1');
     } finally {
       rmSync(home, { recursive: true, force: true });
-    }
-  });
-});
-
-describe('update when idle', () => {
-  let home: string;
-  let env: NodeJS.ProcessEnv;
-  let idle: boolean;
-  let restart: ReturnType<typeof vi.fn<() => void>>;
-  let service: SelfUpdateService;
-
-  const fakeInstall = (id: string) => {
-    const entry = versionEntry(id, env);
-    mkdirSync(join(entry, '..'), { recursive: true });
-    writeFileSync(entry, '// entry\n');
-    writeManifest(id, { version: id, source: 'registry', installedAt: '2026-10-18T10:00:00Z' }, env);
-  };
-
-  beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-update-idle-'));
-    env = { ...process.env, CEZ_HOME: home };
-    fakeInstall('0.12.0');
-    fakeInstall('0.12.1');
-    activate('0.12.0', env);
-    idle = false;
-    restart = vi.fn<() => void>();
-    const offline = (async () => new Response('', { status: 503 })) as unknown as typeof fetch;
-    service = new SelfUpdateService({
-      pkgName: '@open-mercato/cezar',
-      version: '0.12.0',
-      entry: versionEntry('0.12.0', env),
-      restart,
-      runs: { idle: () => idle, activeRuns: () => (idle ? 0 : 1) },
-      idlePollMs: 10,
-      env,
-      registry: new RegistryCache('@open-mercato/cezar', offline),
-    });
-  });
-  afterEach(() => {
-    service.cancelScheduled();
-    rmSync(home, { recursive: true, force: true });
-  });
-
-  it('waits while tasks run, then installs and restarts once the workspace is idle', async () => {
-    service.scheduleWhenIdle('0.12.1');
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect((await service.status()).scheduled?.target).toBe('0.12.1');
-    expect((await service.status()).job).toBeNull();
-    expect(activeId(env)).toBe('0.12.0');
-
-    idle = true;
-    await vi.waitFor(() => expect(restart).toHaveBeenCalledTimes(1), { timeout: 3_000 });
-    expect(activeId(env)).toBe('0.12.1');
-    const status = await service.status();
-    expect(status.scheduled).toBeNull();
-    expect(status.job?.status).toBe('restarting');
-  });
-
-  it('applies at once when nothing is running', async () => {
-    idle = true;
-    service.scheduleWhenIdle('0.12.1');
-    expect((await service.status()).scheduled).toBeNull();
-    expect((await service.status()).job?.target).toBe('0.12.1');
-  });
-
-  it('never applies a cancelled schedule', async () => {
-    service.scheduleWhenIdle('0.12.1');
-    service.cancelScheduled();
-    idle = true;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const status = await service.status();
-    expect(status.scheduled).toBeNull();
-    expect(status.job).toBeNull();
-    expect(activeId(env)).toBe('0.12.0');
-  });
-
-  it('an explicit apply supersedes the schedule', async () => {
-    service.scheduleWhenIdle('0.12.1');
-    service.apply('0.12.1');
-    expect((await service.status()).scheduled).toBeNull();
-    await vi.waitFor(() => expect(restart).toHaveBeenCalledTimes(1), { timeout: 3_000 });
-    idle = true;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(restart).toHaveBeenCalledTimes(1);
-  });
-
-  // A checkout shows `0.12.0-dev`; `cezar update` must still compare the raw `0.12.0`.
-  it('cezar update from a checkout of the latest release is already up to date', async () => {
-    vi.stubEnv('CEZ_HOME', home);
-    activate('0.12.1', env);
-    const registry = (async () =>
-      new Response(JSON.stringify({ 'dist-tags': { latest: '0.12.0' }, versions: { '0.12.0': {} } }), { status: 200 })) as unknown as typeof fetch;
-    const checkout = new SelfUpdateService({
-      pkgName: '@open-mercato/cezar',
-      version: '0.12.0',
-      displayVersion: '0.12.0-dev',
-      entry: join(home, 'repo', 'dist', 'index.js'),
-      restart,
-      env: { ...env, CEZ_UPDATE_CHANNEL: 'stable' },
-      registry: new RegistryCache('@open-mercato/cezar', registry),
-    });
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    try {
-      expect(await runSelfUpdateCommand('update', [], { service: checkout, modifyPath: false })).toBe(0);
-      expect(log.mock.calls.flat().join('\n')).toContain('already up to date');
-      expect(activeId(env)).toBe('0.12.1');
-    } finally {
-      log.mockRestore();
-      vi.unstubAllEnvs();
-    }
-  });
-
-  it('refuses up front when this install cannot update itself', () => {
-    const unmanaged = new SelfUpdateService({ pkgName: 'x', version: '0.12.0', entry: join(home, 'elsewhere.js'), restart, env });
-    expect(() => unmanaged.scheduleWhenIdle('0.12.1')).toThrow();
-  });
-});
-
-describe('disabled self-update (Onni Work default)', () => {
-  let home: string;
-  let env: NodeJS.ProcessEnv;
-  let fetched: number;
-
-  beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-update-off-'));
-    env = { ...process.env, CEZ_HOME: home };
-    fetched = 0;
-  });
-  afterEach(() => rmSync(home, { recursive: true, force: true }));
-
-  const offline = () =>
-    new SelfUpdateService({
-      pkgName: '@open-mercato/cezar',
-      version: '0.12.0',
-      entry: join(home, 'repo', 'dist', 'index.js'),
-      restart: () => {},
-      env,
-      enabled: false,
-      registry: new RegistryCache('@open-mercato/cezar', (async () => {
-        fetched += 1;
-        throw new Error('network');
-      }) as unknown as typeof fetch),
-    });
-
-  it('reports itself unavailable and never touches the registry', async () => {
-    const service = offline();
-    expect(service.enabled).toBe(false);
-    const status = await service.status({ refresh: true });
-    expect(status.canSelfUpdate).toBe(false);
-    expect(status.reason).toBe(SELF_UPDATE_DISABLED_MESSAGE);
-    expect(status.latest).toEqual({ stable: null, nightly: null });
-    expect(status.updateAvailable).toBeNull();
-    expect(status.checkedAt).toBeNull();
-    expect(status.available).toEqual([]);
-    expect(await service.updateAvailable(true)).toBeNull();
-    expect(await service.development({ refresh: true })).toEqual({
-      checkouts: [],
-      pulls: { available: false, reason: SELF_UPDATE_DISABLED_MESSAGE, repo: '', items: [] },
-    });
-    expect(fetched).toBe(0);
-  });
-
-  it('refuses every installer action with the Onni Work message', async () => {
-    const service = offline();
-    expect(() => service.apply('0.13.0')).toThrow(SELF_UPDATE_DISABLED_MESSAGE);
-    expect(() => service.scheduleWhenIdle('0.13.0')).toThrow(SELF_UPDATE_DISABLED_MESSAGE);
-    await expect(service.installSelf(() => {})).rejects.toThrow(SELF_UPDATE_DISABLED_MESSAGE);
-  });
-
-  it('answers install/update/versions/use with the message and no network', async () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    try {
-      for (const command of ['install', 'update', 'versions', 'use']) {
-        expect(await runSelfUpdateCommand(command, ['0.12.0'], { service: offline(), modifyPath: false })).toBe(1);
-      }
-      expect(log.mock.calls.flat().join('\n')).toContain(SELF_UPDATE_DISABLED_MESSAGE);
-      expect(fetched).toBe(0);
-    } finally {
-      log.mockRestore();
     }
   });
 });

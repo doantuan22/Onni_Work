@@ -500,9 +500,7 @@ Useful environment variables:
 | `CEZ_BROWSE_ROOT=~/` | Default root for **Add project → Open local folder…**. The picker cannot navigate above it; a saved workspace value overrides the environment default and must name an existing folder. |
 | `CEZ_PROJECTS_DIR=~/cezar/projects` | Default destination for **Clone from GitHub**. Saved workspace settings override it, and missing directories are created recursively. |
 | `CEZ_SKILLS_AUTO_UPDATE=0` | Disable automatic checks and updates for upstream-CLI-tracked Open Mercato skill installations. On by default; a saved global Skills setting overrides this environment default. Checks are delayed, bounded, cached, and non-blocking. |
-| `CEZ_SELF_UPDATE=1` | Enable the installer paths: `cezar install`, `cezar update`, `cezar versions`, `cezar use`, the cockpit's update dialog and the self-update service. **Off in Onni Work** — unset, those commands answer "không khả dụng trong Onni Work", the service makes no registry request, and the dialog reports itself unavailable. Only the exact value `1` enables them, and only for a build with its own update source; the desktop shell ships without updater endpoints and never installs or replaces itself. |
-| `CEZ_UPDATE_CHANNEL=nightly` | Release channel the self-updater follows: `stable` (npm `latest`, the default), `nightly`, or `development` (no automatic updates; pick a cezar worktree or an open PR's preview build by hand). A channel saved from the version chip's dialog overrides this seed. Read only when `CEZ_SELF_UPDATE=1`. |
-| `CEZ_SUPERVISED=1` | A supervisor relaunches cezar (the desktop shell sets `CEZ_DESKTOP=1`, which implies it): after an update the process exits with status 75 instead of re-exec'ing itself, so the supervisor starts the new version. Off by default. |
+| `CEZ_SUPERVISED=1` | Marks a supervised launch — the desktop shell sets it beside `CEZ_SUPERVISOR_PID`. Off by default. |
 | `CEZ_AUTONOMOUS_DEFAULT=0` | Seed the New Task Autonomous default (`0` or `1`). Without a seed, skills default on and workflows off; a saved global Resources setting overrides it. |
 | `CEZ_WORKTREE_DEFAULT=1` | Seed the New Task Worktree default (`0` or `1`). Without a seed, eligible runs default on; a saved global Resources setting overrides it. |
 | `CEZ_DISABLE_REPO_LOCK=1` | **Dangerous escape hatch:** allow any run executing in the repository root — an explicit `worktree=false` run, non-Git degradation, or a continuation whose worktree cannot be restored — to proceed without Cezar’s repository-root lease. Agents can overwrite each other’s files or Git state; isolated worktree runs are unaffected. Off by default; only the exact value `1` enables it. |
@@ -1027,8 +1025,8 @@ node packages/cezar/dist/index.js          # cockpit for the current repo
 node packages/cezar/dist/index.js --help   # flags, same binary as `cezar`
 ```
 
-To make this checkout the engine the **desktop app** and the managed launcher run, register it as
-a version (see [Run the desktop app (or `cezar`) on a worktree](#run-the-desktop-app-or-cezar-on-a-worktree)):
+To make this checkout the engine the **desktop app** runs, register it as a version
+(see [Point the desktop app at a worktree](#point-the-desktop-app-at-a-worktree)):
 
 ```bash
 node packages/cezar/dist/index.js link .   # a link, not a copy — rebuilds are live
@@ -1040,46 +1038,29 @@ Edit source → `npm run build` → the linked version reflects it on the next r
 needed (it is a live symlink into this checkout — don't move or delete the checkout while it's
 linked).
 
-### Run the desktop app (or `cezar`) on a worktree
+### Point the desktop app at a worktree
 
-The desktop app and the managed `cezar` launcher both run whatever `~/.cezar/versions/current`
-points at. A **linked checkout** puts a worktree there without copying it: the version entry is a
-symlink to the worktree's `packages/cezar`, so it runs straight off the worktree (and its own
-`node_modules`), and every rebuild is live on the next restart.
+The desktop app runs whatever `~/.cezar/versions/current` points at. A **linked checkout** puts a
+worktree there without copying it: the version entry is a symlink to the worktree's
+`packages/cezar`, so it runs straight off the worktree (and its own `node_modules`), and every
+rebuild is live on the next restart.
 
-A worktree has to be built to run. The cockpit does that for you; the desktop menu and the
-terminal need it done by hand (`npm install && npm run build` in the worktree). Pick one of:
+A worktree has to be built to run (`npm install && npm run build` in it). Then pick one of:
 
-- **Cockpit**: open the version chip and switch the release channel to **Development**. The
-  **Worktrees** tab lists every worktree of every registered cezar repo (task worktrees included),
-  newest commit first, each with its task title, last commit, open PR and build age (a build older
-  than the last commit is marked **needs rebuild**). The filter matches task, branch, commit
-  subject or `#PR`. Pick one and choose **Switch & restart**. A worktree marked **not built** or
-  **needs rebuild** offers **Build & switch** / **Rebuild & switch** instead: cezar runs
-  `npm install` (when its dependencies are missing or its lockfile changed) and the server and
-  cockpit builds in the worktree, with the output in the dialog, then switches. Picking the
-  running worktree while it needs a rebuild offers **Rebuild & restart**. The **Pull requests** tab lists
-  cezar's open pull requests with the preview build CI published for them (npm dist-tag
-  `pr-<N>`); pick one and choose **Install & restart**. A PR without a build (a fork, CI not green
-  yet) is listed but cannot be picked. The development channel never offers updates on its own;
-  switch back to **Stable** or **Nightly** to follow releases again.
-- **Desktop menu**: **Cezar ▸ Versions** lists linked worktrees by branch
+- **Desktop menu**: **Cezar ▸ Versions** lists linked checkouts by branch
   (`cez/cb28888e — 0.13.0 (worktree)`). Clicking one switches and restarts.
 - **Terminal**:
 
   ```bash
   cezar link [<dir>] --use   # link the checkout (default: cwd) and make it current
-  cezar versions             # installs, links, and cezar worktrees not linked yet
-  cezar use 0.13.0           # back to a published release
   cezar unlink <id>          # forget a link (the worktree is untouched)
   ```
 
   The desktop app picks up a terminal switch on its next start, and the Versions menu refreshes
   when the window regains focus.
 
-Links are hidden from the lists once their worktree is deleted. Switch away before you remove a
-worktree the app is running from. Cockpits in hosted mode never list worktrees and never link
-one. Releases older than this feature ignore links, but the desktop menu still switches from them.
+Switch away before you remove a worktree the app is running from. Cockpits in hosted mode never
+list worktrees and never link one.
 
 ### In-checkout scripts
 
