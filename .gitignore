@@ -16,6 +16,8 @@ skills-lock.json
 
 # agent-pipeline scratch state (worktrees, per-run QA artifacts, test-env working files)
 .ai/tmp/
+# local scratch output (baseline logs, one-off scripts)
+.tmp/
 .ai/qa/artifacts_*/
 .ai/qa/test-env.json
 .ai/qa/test-env.lock/
