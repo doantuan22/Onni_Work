@@ -9,6 +9,7 @@ import type { SelfUpdateDevelopment, SelfUpdateJob, SelfUpdateScheduled, SelfUpd
 
 import { loadWorkspaceConfig, mergeWriteWorkspaceConfig } from '../workspace/config.ts';
 import type { WorkspaceSemaphore } from '../workspace/semaphore.ts';
+import { SELF_UPDATE_DISABLED_MESSAGE } from './enabled.ts';
 import { installFromLocal, installFromRegistry } from './installer.ts';
 import { buildCheckout, discoverCheckouts } from './checkouts.ts';
 import { activate, detectInstallKind, findInstalled, linkCheckout, listInstalled, packageRootOf, type InstallKind } from './layout.ts';
@@ -40,6 +41,9 @@ export interface SelfUpdateDeps {
   /** Report only: `capability()` answers false whatever the install kind, so `apply()` can
    *  never install or activate. For a service that has no way to restart the process. */
   readOnly?: boolean;
+  /** Whether installer paths may run at all (production passes `selfUpdateEnabled()`). Absent
+   *  means enabled, so a directly constructed service keeps its old behavior. */
+  enabled?: boolean;
   env?: NodeJS.ProcessEnv;
   registry?: RegistryCache;
   /** cezar's open pull requests, for the development channel. Defaults to GitHub. */
@@ -56,6 +60,7 @@ export class SelfUpdateBusyError extends Error {
 
 export class SelfUpdateService {
   readonly installKind: InstallKind;
+  readonly enabled: boolean;
   private readonly registry: RegistryCache;
   private readonly env: NodeJS.ProcessEnv;
   private job: SelfUpdateJob | null = null;
@@ -65,6 +70,7 @@ export class SelfUpdateService {
 
   constructor(private readonly deps: SelfUpdateDeps) {
     this.env = deps.env ?? process.env;
+    this.enabled = deps.enabled ?? true;
     this.installKind = detectInstallKind(deps.entry, this.env);
     this.registry = deps.registry ?? new RegistryCache(deps.pkgName);
     this.pulls = new OpenPullsCache(deps.pulls ?? (() => fetchOpenPulls(CEZAR_REPO, { env: this.env })));
@@ -92,6 +98,7 @@ export class SelfUpdateService {
   /** The channel's newest version when it is newer than the running one — what health's
    *  `latestVersion` reports and the version chip pulses for. */
   async updateAvailable(refresh = false): Promise<string | null> {
+    if (!this.enabled) return null;
     const doc = refresh ? await this.registry.refresh() : await this.registry.get();
     const channel = await this.channel();
     // Development runs whatever was picked by hand; nothing is ever "newer" than a worktree.
@@ -104,7 +111,8 @@ export class SelfUpdateService {
    *  or missing one is refreshed behind the response. `refresh` forces a registry round trip. */
   async status(opts: { refresh?: boolean } = {}): Promise<SelfUpdateStatus> {
     let doc: PackageDocument | null;
-    if (opts.refresh) doc = await this.registry.refresh();
+    if (!this.enabled) doc = null;
+    else if (opts.refresh) doc = await this.registry.refresh();
     else {
       doc = this.registry.current();
       void this.registry.get().catch(() => {});
@@ -161,6 +169,12 @@ export class SelfUpdateService {
    * `linkDiscovered`), and never worth a git call there.
    */
   async development(opts: { refresh?: boolean } = {}): Promise<SelfUpdateDevelopment> {
+    if (!this.enabled) {
+      return {
+        checkouts: [],
+        pulls: { available: false, reason: SELF_UPDATE_DISABLED_MESSAGE, repo: '', items: [] },
+      };
+    }
     const trim = this.deps.trimPaths?.() ?? false;
     const [checkouts, pulls, doc] = await Promise.all([
       trim ? Promise.resolve([]) : discoverCheckouts(this.env).catch(() => []),
@@ -235,6 +249,7 @@ export class SelfUpdateService {
   }
 
   capability(): { canSelfUpdate: boolean; reason?: string } {
+    if (!this.enabled) return { canSelfUpdate: false, reason: SELF_UPDATE_DISABLED_MESSAGE };
     if (this.deps.readOnly) return { canSelfUpdate: false, reason: 'This cezar was started without an updater.' };
     switch (this.installKind) {
       case 'managed':
@@ -355,6 +370,7 @@ export class SelfUpdateService {
   /** `cezar install` from a checkout or the npx cache: pack the running package into the managed
    *  layout and activate it. Headless — the CLI prints the log. */
   async installSelf(onLog: (line: string) => void): Promise<{ id: string; entry: string }> {
+    if (!this.enabled) throw new Error(SELF_UPDATE_DISABLED_MESSAGE);
     const result = await installFromLocal(packageRootOf(this.deps.entry), { onLog, env: this.env });
     activate(result.id, this.env);
     return result;

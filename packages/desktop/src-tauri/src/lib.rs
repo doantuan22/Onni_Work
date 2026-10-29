@@ -51,6 +51,10 @@ const LOG_TAIL: usize = 60;
 /// beside the app whenever it can; a busy one falls through to the next few, then to any.
 const PREFERRED_PORTS: std::ops::Range<u16> = 4321..4331;
 const PACKAGE: &str = "@open-mercato/cezar";
+/// Onni Work ships no signed release channel and no upstream npm package, so every installer
+/// path is compiled off: the shell never replaces itself, never npm-installs a sidecar and never
+/// offers an update. The code stays here for a build that has its own release source.
+const SELF_UPDATE_ENABLED: bool = false;
 
 /// Everything the supervisor thread and the menu handler share.
 struct Shell {
@@ -333,7 +337,7 @@ fn build_main_window(app: &AppHandle, shell: &Arc<Shell>) -> tauri::Result<Webvi
 }
 
 fn build_menu(app: &AppHandle, shell: &Shell) -> tauri::Result<()> {
-    let update_item = MenuItem::with_id(app, "update-cezar", "Update cezar to latest…", true, None::<&str>)?;
+    let update_item = MenuItem::with_id(app, "update-cezar", "Update cezar to latest…", SELF_UPDATE_ENABLED, None::<&str>)?;
     let versions_menu = Submenu::with_id(app, "versions", "Versions", true)?;
     *shell.versions_menu.lock().unwrap() = Some(versions_menu.clone());
     refresh_versions_menu(app, shell);
@@ -540,6 +544,10 @@ fn update_cezar_command(app: AppHandle, window: WebviewWindow, shell: tauri::Sta
     if !caller_is_trusted(&window, &shell) {
         return;
     }
+    if !SELF_UPDATE_ENABLED {
+        self_update_off(&window);
+        return;
+    }
     let app = app.clone();
     let shell = shell.inner().clone();
     std::thread::spawn(move || update_cezar(&app, &shell, "Updating cezar…"));
@@ -588,6 +596,9 @@ fn version_newer(candidate: &str, current: &str) -> bool {
 /// dist-tag points at, and remember it when it is newer than the running sidecar. Silent on
 /// any failure — offline is "nothing to offer".
 fn check_cezar_update(app: &AppHandle, shell: &Shell) {
+    if !SELF_UPDATE_ENABLED {
+        return;
+    }
     let running = shell.running_version.lock().unwrap().clone();
     let Some(running) = running else { return };
     let Some(tag) = release_tag() else { return };
@@ -685,7 +696,6 @@ pub fn run() {
     tauri::Builder::default()
         // First: a second launch must reach the RUNNING app, never start a second sidecar.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| show_main_window(app)))
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![update_cezar_command, restart_app, show_versions_menu, send_error_report])
         .setup(move |app| {
             app.manage(shell_for_state.clone());
@@ -731,6 +741,9 @@ pub fn run() {
                 });
             }
             "update-cezar" => {
+                if !SELF_UPDATE_ENABLED {
+                    return;
+                }
                 let app = app.clone();
                 let shell = shell_for_menu.clone();
                 std::thread::spawn(move || update_cezar(&app, &shell, "Updating cezar…"));
@@ -801,7 +814,7 @@ pub fn run() {
 /// the shell — only the cockpit's own updater does that, and it asks first.
 async fn check_shell_update(app: AppHandle) {
     use tauri_plugin_updater::UpdaterExt;
-    if std::env::var_os("CEZ_DESKTOP_NO_UPDATE").is_some() || cfg!(debug_assertions) {
+    if !SELF_UPDATE_ENABLED || std::env::var_os("CEZ_DESKTOP_NO_UPDATE").is_some() || cfg!(debug_assertions) {
         return;
     }
     let Ok(updater) = app.updater() else { return };
@@ -840,6 +853,10 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         let entry = match resolve_entry() {
             Some(entry) => entry,
             None => {
+                if !SELF_UPDATE_ENABLED {
+                    self_update_off(&window);
+                    return;
+                }
                 // First launch on this machine: the supervisor puts a cezar in place itself.
                 if !update_cezar(&app, &shell, "Installing cezar…") {
                     return;
@@ -1054,8 +1071,10 @@ fn restart_app(app: AppHandle, window: WebviewWindow, shell: tauri::State<'_, Ar
     let shell = shell.inner().clone();
     std::thread::spawn(move || {
         splash_reset(&window, "Checking for updates…", "A newer version may already fix this.");
-        install_shell_update_now(&app, &window);
-        update_cezar_if_newer(&app, &shell);
+        if SELF_UPDATE_ENABLED {
+            install_shell_update_now(&app, &window);
+            update_cezar_if_newer(&app, &shell);
+        }
         splash_reset(&window, "Restarting cezar…", "");
         if let Some(mut child) = shell.child.lock().unwrap().take() {
             stop_sidecar(&mut child);
@@ -1069,7 +1088,7 @@ fn restart_app(app: AppHandle, window: WebviewWindow, shell: tauri::State<'_, Ar
 /// follows starts it. Skipped where the background check is (`CEZ_DESKTOP_NO_UPDATE`, debug).
 fn install_shell_update_now(app: &AppHandle, window: &WebviewWindow) {
     use tauri_plugin_updater::UpdaterExt;
-    if std::env::var_os("CEZ_DESKTOP_NO_UPDATE").is_some() || cfg!(debug_assertions) {
+    if !SELF_UPDATE_ENABLED || std::env::var_os("CEZ_DESKTOP_NO_UPDATE").is_some() || cfg!(debug_assertions) {
         return;
     }
     let Ok(updater) = app.updater() else { return };
@@ -1090,6 +1109,9 @@ const RESTART_CHECK_TIMEOUT: Duration = Duration::from_secs(20);
 /// A newer cezar on the update channel than the active install: put it in place before the
 /// restart. Nothing installed yet is the supervisor's job on the way back up.
 fn update_cezar_if_newer(app: &AppHandle, shell: &Shell) {
+    if !SELF_UPDATE_ENABLED {
+        return;
+    }
     let Some(tag) = release_tag() else { return };
     let Some(active) = active_id(&cezar_home().join("versions")) else { return };
     if check_node().is_err() {
@@ -1198,11 +1220,26 @@ fn update_managed_node_in_background() {
 
 // ---- installing / updating cezar from the shell ------------------------------------------
 
+/// The page every installer path shows while `SELF_UPDATE_ENABLED` is false: no update source
+/// is configured, so the shell says so instead of pointing npm at somebody else's package.
+fn self_update_off(window: &WebviewWindow) {
+    fail(
+        window,
+        "Updates are off",
+        "This build of Onni Work does not install or update itself. Point CEZ_DESKTOP_ENTRY at a built install and relaunch.",
+        "",
+        None,
+    );
+}
+
 /// Install the channel's newest cezar into the managed layout and make it current — the same
 /// layout and manifest the cockpit's own updater writes, so the two never disagree. Streams
 /// npm's output to the splash. On success with a sidecar running, asks the supervisor loop to
 /// relaunch. Returns whether the install succeeded.
 fn update_cezar(app: &AppHandle, shell: &Shell, title: &str) -> bool {
+    if !SELF_UPDATE_ENABLED {
+        return false;
+    }
     // The development channel never replaces the build picked by hand; only a machine with no
     // cezar at all gets the newest release, so the app can start.
     let tag = match release_tag() {

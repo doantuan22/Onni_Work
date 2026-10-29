@@ -7,6 +7,7 @@
 import { resolve } from 'node:path';
 
 import { branchOf, cezarPackageRoot, discoverCheckouts } from './checkouts.ts';
+import { SELF_UPDATE_DISABLED_MESSAGE } from './enabled.ts';
 import { activate, activeId, findInstalled, linkCheckout, listInstalled, listLinks, removeInstalled } from './layout.ts';
 import { ensurePathHook, isOnPath, writeLaunchers } from './launcher.ts';
 import { installFromRegistry } from './installer.ts';
@@ -24,6 +25,11 @@ export interface SelfUpdateCliOptions {
 }
 
 export async function runSelfUpdateCommand(command: string, args: string[], opts: SelfUpdateCliOptions): Promise<number> {
+  const installerCommand = command === 'install' || command === 'update' || command === 'versions' || command === 'use';
+  if (installerCommand && !opts.service.enabled) {
+    console.log(`\n  cezar ${command}: ${SELF_UPDATE_DISABLED_MESSAGE} (CEZ_SELF_UPDATE=1 bật lại)\n`);
+    return 1;
+  }
   switch (command) {
     case 'install':
       return installCommand(opts);

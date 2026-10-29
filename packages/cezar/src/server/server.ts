@@ -159,6 +159,7 @@ import { discoverSkills } from '../skills.ts';
 import { SkillsUpdateConflictError, SkillsUpdateCoordinator, SkillsUpdateService, type SkillsUpdateState } from '../skills-update.ts';
 import { selfUpdateApplyRequestSchema, selfUpdateChannelRequestSchema, selfUpdateDevelopmentQuerySchema } from '@open-mercato/cezar-contract';
 import { SelfUpdateBusyError, SelfUpdateService } from '../self-update/service.ts';
+import { selfUpdateEnabled } from '../self-update/enabled.ts';
 import { StarCountReader } from './star-count.ts';
 import { DesignProxies } from './preview/design-proxy.ts';
 import { getTeamSkillsCached, isSafeRef, refreshTeamSkills, safeRemoteFor, waitForTeamSkills } from '../skills-remote.ts';
@@ -1470,6 +1471,7 @@ export function createApp(deps: ServerDeps) {
       entry: process.argv[1] ?? '',
       restart: () => {},
       readOnly: true,
+      enabled: selfUpdateEnabled(),
       trimPaths: () => !capabilities().localHandoff,
     });
   const starCount = deps.starCount ?? new StarCountReader();

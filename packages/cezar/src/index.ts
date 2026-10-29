@@ -37,6 +37,7 @@ import {
 } from './server/provider-action-gate.ts';
 import { printSkillsBanner, printStarBanner } from './skills-banner.ts';
 import { SelfUpdateService } from './self-update/service.ts';
+import { selfUpdateEnabled } from './self-update/enabled.ts';
 import { runsFromCheckout } from './self-update/layout.ts';
 import { devVersion } from './self-update/semver.ts';
 import { isSupervised, restartProcess } from './self-update/restart.ts';
@@ -77,8 +78,8 @@ Usage:
   cezar server-install      interactive wizard to host cezar on a server
   cezar server-deploy       redeploy a new version (reload the service) + verify
   cezar server-uninstall    reverse a server-install
-  cezar install             install THIS cezar permanently under ~/.cezar (a \`cezar\`
-                            command on PATH that updates itself from the cockpit)
+  cezar install             install THIS cezar permanently under ~/.cezar — OFF by default
+                            in Onni Work (CEZ_SELF_UPDATE=1 re-enables this and \`update\`)
   cezar update              update the managed install to the channel's newest version
                             (--channel stable|nightly, --version <x> to pin or downgrade)
   cezar versions            list installed versions and cezar worktrees (\`cezar use <id>\` switches)
@@ -889,6 +890,7 @@ function buildSelfUpdateService(
     displayVersion: shownVersion(),
     entry: resolve(process.argv[1] ?? fileURLToPath(import.meta.url)),
     supervised: isSupervised(),
+    enabled: selfUpdateEnabled(),
     ...overrides,
   });
 }

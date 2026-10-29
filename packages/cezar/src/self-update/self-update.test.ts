@@ -8,6 +8,7 @@ import { fetchPackageDocument, RegistryCache, registryPath } from './registry.ts
 import { SelfUpdateService } from './service.ts';
 import { restartArgs } from './restart.ts';
 import { runSelfUpdateCommand } from './cli.ts';
+import { SELF_UPDATE_DISABLED_MESSAGE } from './enabled.ts';
 import { classifyVersion, compareVersions, devVersion, isNewer } from './semver.ts';
 
 describe('semver', () => {
@@ -312,5 +313,70 @@ describe('update when idle', () => {
   it('refuses up front when this install cannot update itself', () => {
     const unmanaged = new SelfUpdateService({ pkgName: 'x', version: '0.12.0', entry: join(home, 'elsewhere.js'), restart, env });
     expect(() => unmanaged.scheduleWhenIdle('0.12.1')).toThrow();
+  });
+});
+
+describe('disabled self-update (Onni Work default)', () => {
+  let home: string;
+  let env: NodeJS.ProcessEnv;
+  let fetched: number;
+
+  beforeEach(() => {
+    home = mkdtempSync(join(tmpdir(), 'cez-update-off-'));
+    env = { ...process.env, CEZ_HOME: home };
+    fetched = 0;
+  });
+  afterEach(() => rmSync(home, { recursive: true, force: true }));
+
+  const offline = () =>
+    new SelfUpdateService({
+      pkgName: '@open-mercato/cezar',
+      version: '0.12.0',
+      entry: join(home, 'repo', 'dist', 'index.js'),
+      restart: () => {},
+      env,
+      enabled: false,
+      registry: new RegistryCache('@open-mercato/cezar', (async () => {
+        fetched += 1;
+        throw new Error('network');
+      }) as unknown as typeof fetch),
+    });
+
+  it('reports itself unavailable and never touches the registry', async () => {
+    const service = offline();
+    expect(service.enabled).toBe(false);
+    const status = await service.status({ refresh: true });
+    expect(status.canSelfUpdate).toBe(false);
+    expect(status.reason).toBe(SELF_UPDATE_DISABLED_MESSAGE);
+    expect(status.latest).toEqual({ stable: null, nightly: null });
+    expect(status.updateAvailable).toBeNull();
+    expect(status.checkedAt).toBeNull();
+    expect(status.available).toEqual([]);
+    expect(await service.updateAvailable(true)).toBeNull();
+    expect(await service.development({ refresh: true })).toEqual({
+      checkouts: [],
+      pulls: { available: false, reason: SELF_UPDATE_DISABLED_MESSAGE, repo: '', items: [] },
+    });
+    expect(fetched).toBe(0);
+  });
+
+  it('refuses every installer action with the Onni Work message', async () => {
+    const service = offline();
+    expect(() => service.apply('0.13.0')).toThrow(SELF_UPDATE_DISABLED_MESSAGE);
+    expect(() => service.scheduleWhenIdle('0.13.0')).toThrow(SELF_UPDATE_DISABLED_MESSAGE);
+    await expect(service.installSelf(() => {})).rejects.toThrow(SELF_UPDATE_DISABLED_MESSAGE);
+  });
+
+  it('answers install/update/versions/use with the message and no network', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      for (const command of ['install', 'update', 'versions', 'use']) {
+        expect(await runSelfUpdateCommand(command, ['0.12.0'], { service: offline(), modifyPath: false })).toBe(1);
+      }
+      expect(log.mock.calls.flat().join('\n')).toContain(SELF_UPDATE_DISABLED_MESSAGE);
+      expect(fetched).toBe(0);
+    } finally {
+      log.mockRestore();
+    }
   });
 });
