@@ -12,5 +12,10 @@ export const TELEMETRY_CODE_URL =
   'https://github.com/open-mercato/cezar/blob/main/packages/cezar/src/telemetry.ts'
 
 export function shouldAskForTelemetry(payload: TelemetryConsentPayload | undefined): boolean {
-  return payload !== undefined && payload.consent === 'unknown' && payload.blockedBy === null
+  return (
+    payload !== undefined &&
+    payload.endpoint !== '' &&
+    payload.consent === 'unknown' &&
+    payload.blockedBy === null
+  )
 }

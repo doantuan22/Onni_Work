@@ -316,13 +316,13 @@ import {
 import { createDraftPr, type DraftPrOutcome } from './pr.ts';
 import { findBranchPr, resolvePrTarget } from './forge/github.ts';
 import {
-  DEFAULT_TELEMETRY_URL,
   TELEMETRY_POLICY_VERSION,
   deviceSid,
   loadTelemetryConsent,
   reportError,
   setTelemetryConsent,
   telemetryBlockedBy,
+  telemetryUrl,
   track,
 } from '../telemetry.ts';
 import { automationLabel } from '../feature-telemetry.ts';
@@ -7951,7 +7951,7 @@ export function createApp(deps: ServerDeps) {
     consent,
     policyVersion: TELEMETRY_POLICY_VERSION,
     blockedBy: telemetryBlockedBy(),
-    endpoint: (process.env.CEZ_TELEMETRY_URL || DEFAULT_TELEMETRY_URL).replace(/\/+$/, ''),
+    endpoint: telemetryUrl(),
   });
   const telemetryRoutes = new Hono()
     .get('/telemetry/consent', async (c) => c.json(telemetryConsentBody(await loadTelemetryConsent())))

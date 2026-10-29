@@ -16,6 +16,7 @@ describe('cezar telemetry', () => {
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockClear();
     vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'cez-telemetry-cli-')));
+    vi.stubEnv('CEZ_TELEMETRY_URL', 'https://telemetry.test');
   });
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -44,7 +45,17 @@ describe('cezar telemetry', () => {
     lines = [];
     expect(await runTelemetryCommand(['inspect'], io)).toBe(0);
     expect(lines.join('\n')).toContain('"indexKey": "<created on the first send>"');
+    expect(lines.join('\n')).toContain('POST https://telemetry.test/track/<event>');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('says no endpoint is configured when CEZ_TELEMETRY_URL is empty', async () => {
+    vi.stubEnv('CEZ_TELEMETRY_URL', '');
+    expect(await runTelemetryCommand([], io)).toBe(0);
+    expect(lines.join('\n')).toContain('endpoint: (none configured — nothing can be sent)');
+    lines = [];
+    expect(await runTelemetryCommand(['inspect'], io)).toBe(0);
+    expect(lines.join('\n')).toContain('POST <nowhere — no endpoint configured>');
   });
 
   it('refuses an unknown subcommand', async () => {

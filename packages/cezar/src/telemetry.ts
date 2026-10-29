@@ -26,7 +26,10 @@ import { cezarHomeDir } from './paths.ts';
 import { runsFromCheckout } from './self-update/layout.ts';
 import { loadWorkspaceConfig, mergeWriteWorkspaceConfig } from './workspace/config.ts';
 
-export const DEFAULT_TELEMETRY_URL = 'https://stats.openmercato.cloud';
+/** Where events go. EMPTY on purpose: Onni Work has no telemetry endpoint, so the whole module
+ *  is a no-op sink unless `CEZ_TELEMETRY_URL` names one. The consent flow, policy version and
+ *  event vocabulary stay in place for a deployment that does. */
+export const DEFAULT_TELEMETRY_URL = '';
 /** Bump when what is collected changes: a `granted` for an older version counts as never asked. */
 export const TELEMETRY_POLICY_VERSION = 1;
 /** Development builds (local, worktrees, PR previews) report under this service. */
@@ -71,7 +74,7 @@ export function telemetryBlockedBy(): 'env' | 'automation' | null {
 }
 
 export function telemetryEnabled(): boolean {
-  return consent === 'granted' && telemetryBlockedBy() === null;
+  return telemetryUrl() !== '' && consent === 'granted' && telemetryBlockedBy() === null;
 }
 
 export function telemetryConsent(): TelemetryConsent {
@@ -121,7 +124,8 @@ async function stillGranted(): Promise<boolean> {
   return (await loadTelemetryConsent()) === 'granted' && telemetryBlockedBy() === null;
 }
 
-function telemetryUrl(): string {
+/** The configured endpoint, or `''` when this build has none. */
+export function telemetryUrl(): string {
   return (process.env.CEZ_TELEMETRY_URL || DEFAULT_TELEMETRY_URL).replace(/\/+$/, '');
 }
 
@@ -240,7 +244,9 @@ function inFlight(p: Promise<unknown>): void {
 }
 
 function post(path: string, body: Record<string, unknown>): Promise<boolean> {
-  const p = fetch(`${telemetryUrl()}${path}`, {
+  const base = telemetryUrl();
+  if (!base) return Promise.resolve(false);
+  const p = fetch(`${base}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),

@@ -17,6 +17,8 @@ export function PrivacySection() {
   const [saving, setSaving] = React.useState(false)
   const data = consent.data
   const blockedBy = data?.blockedBy ?? null
+  const endpoint = data?.endpoint ?? ''
+  const configured = endpoint !== ''
 
   const onToggle = (next: boolean) => {
     setSaving(true)
@@ -35,17 +37,26 @@ export function PrivacySection() {
               <label htmlFor="telemetry-enabled">Share usage data</label>
             </h2>
             <p className="text-[13px] text-muted-foreground">
-              Task counts and crash reports, sent to cezar’s maintainers at Open Mercato
-              {data ? <> (<span className="font-mono text-[12px]">{data.endpoint}</span>)</> : null}. Never
-              prompts, code, diffs, paths or repository names. Off unless you turn it on; turning it
-              off deletes this machine’s install id.
+              {configured ? (
+                <>
+                  Task counts and crash reports, sent to cezar’s maintainers at Open Mercato
+                  {data ? <> (<span className="font-mono text-[12px]">{endpoint}</span>)</> : null}. Never
+                  prompts, code, diffs, paths or repository names. Off unless you turn it on; turning it
+                  off deletes this machine’s install id.
+                </>
+              ) : (
+                <>
+                  No telemetry endpoint is configured in this build, so nothing is sent — not even
+                  prompts, code, diffs, paths or repository names. The consent record stays local.
+                </>
+              )}
             </p>
           </div>
           <Switch
             id="telemetry-enabled"
             data-slot="telemetry-toggle"
             checked={data?.consent === 'granted'}
-            disabled={!data || saving}
+            disabled={!data || !configured || saving}
             onCheckedChange={onToggle}
           />
         </div>

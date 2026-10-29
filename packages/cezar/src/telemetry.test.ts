@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { DEV_TELEMETRY_SERVICE, TELEMETRY_POLICY_VERSION, deviceSid, flushTelemetry, initTelemetry, installCrashReporter, loadTelemetryConsent, scrub, setTelemetryConsent, stampedTelemetryService, registerTelemetryContext, registerDailyInventory, reportError, sendDailyPing, telemetryBlockedBy, telemetryEnabled, telemetryRuntime, telemetryVersion, track, uuidv7 } from './telemetry.ts';
+import { DEV_TELEMETRY_SERVICE, TELEMETRY_POLICY_VERSION, deviceSid, flushTelemetry, initTelemetry, installCrashReporter, loadTelemetryConsent, scrub, setTelemetryConsent, stampedTelemetryService, registerTelemetryContext, registerDailyInventory, reportError, sendDailyPing, telemetryBlockedBy, telemetryEnabled, telemetryRuntime, telemetryUrl, telemetryVersion, track, uuidv7 } from './telemetry.ts';
 import { loadWorkspaceConfig } from './workspace/config.ts';
 
 describe('telemetry', () => {
@@ -18,6 +18,8 @@ describe('telemetry', () => {
 
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock);
+    // This build has no default endpoint; a test that expects a send names one.
+    vi.stubEnv('CEZ_TELEMETRY_URL', 'https://telemetry.test');
     fetchMock.mockClear();
   });
   afterEach(() => {
@@ -35,6 +37,17 @@ describe('telemetry', () => {
   it('never sends from a test run unless forced', () => {
     expect(telemetryEnabled()).toBe(false);
     reportError(new Error('quiet'));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op sink when no endpoint is configured, even after a yes', async () => {
+    await optIn();
+    vi.stubEnv('CEZ_TELEMETRY_URL', '');
+    expect(telemetryUrl()).toBe('');
+    expect(telemetryEnabled()).toBe(false);
+    track('app_start');
+    reportError(new Error('nowhere to go'));
+    await flushTelemetry();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

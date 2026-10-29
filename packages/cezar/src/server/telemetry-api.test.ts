@@ -176,7 +176,7 @@ describe('telemetry routes', () => {
 
     it('starts unanswered, and says when the server could never send', async () => {
       const body = telemetryConsentSchema.parse(await (await apiRequest(app(), '/api/v1/telemetry/consent')).json());
-      expect(body).toMatchObject({ consent: 'unknown', policyVersion: TELEMETRY_POLICY_VERSION, blockedBy: 'automation' });
+      expect(body).toMatchObject({ consent: 'unknown', policyVersion: TELEMETRY_POLICY_VERSION, blockedBy: 'automation', endpoint: '' });
       vi.stubEnv('DO_NOT_TRACK', '1');
       expect((await consentOf(await apiRequest(app(), '/api/v1/telemetry/consent'))).blockedBy).toBe('env');
     });

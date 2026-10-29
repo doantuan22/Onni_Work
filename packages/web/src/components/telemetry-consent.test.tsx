@@ -50,6 +50,7 @@ afterEach(() => {
 describe('shouldAskForTelemetry', () => {
   it('asks only an unanswered machine that could actually send', () => {
     expect(shouldAskForTelemetry(UNKNOWN)).toBe(true)
+    expect(shouldAskForTelemetry({ ...UNKNOWN, endpoint: '' })).toBe(false)
     expect(shouldAskForTelemetry({ ...UNKNOWN, consent: 'granted' })).toBe(false)
     expect(shouldAskForTelemetry({ ...UNKNOWN, consent: 'denied' })).toBe(false)
     expect(shouldAskForTelemetry({ ...UNKNOWN, blockedBy: 'env' })).toBe(false)

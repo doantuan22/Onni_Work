@@ -1,11 +1,11 @@
 import { loadWorkspaceConfig } from './workspace/config.ts';
 import {
-  DEFAULT_TELEMETRY_URL,
   TELEMETRY_EVENTS,
   loadTelemetryConsent,
   setTelemetryConsent,
   telemetryBlockedBy,
   telemetryEnvelope,
+  telemetryUrl,
 } from './telemetry.ts';
 
 /**
@@ -37,14 +37,15 @@ const BLOCKED: Record<'env' | 'automation', string> = {
 
 export async function runTelemetryCommand(args: string[], io: TelemetryCommandIo = defaultIo): Promise<number> {
   const [sub = 'status'] = args;
-  const endpoint = (process.env.CEZ_TELEMETRY_URL || DEFAULT_TELEMETRY_URL).replace(/\/+$/, '');
+  const endpoint = telemetryUrl();
+  const endpointLabel = endpoint || '(none configured — nothing can be sent)';
   switch (sub) {
     case 'status': {
       const consent = await loadTelemetryConsent();
       const blocked = telemetryBlockedBy();
       io.log(`telemetry: ${consent === 'granted' ? 'on' : consent === 'denied' ? 'off' : 'off (never asked)'}`);
       if (blocked) io.log(`  ${BLOCKED[blocked]}`);
-      io.log(`  endpoint: ${endpoint}`);
+      io.log(`  endpoint: ${endpointLabel}`);
       return 0;
     }
     case 'enable':
@@ -60,7 +61,7 @@ export async function runTelemetryCommand(args: string[], io: TelemetryCommandIo
       const consent = await loadTelemetryConsent();
       const { cezarId } = await loadWorkspaceConfig();
       io.log(`telemetry: ${consent}${telemetryBlockedBy() ? ` (${telemetryBlockedBy()})` : ''} — nothing was sent by this command`);
-      io.log(`POST ${endpoint}/track/<event>`);
+      io.log(`POST ${endpoint ? `${endpoint}/track/<event>` : '<nowhere — no endpoint configured>'}`);
       io.log(JSON.stringify({ ...telemetryEnvelope(), indexKey: cezarId ?? '<created on the first send>' }, null, 2));
       io.log(`events: ${TELEMETRY_EVENTS.join(', ')}`);
       io.log('each may add a `label` from a closed set; see docs/telemetry.md');

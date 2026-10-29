@@ -13,7 +13,10 @@ use std::time::{Duration, Instant};
 
 use serde_json::{json, Map, Value};
 
-const DEFAULT_URL: &str = "https://stats.openmercato.cloud";
+/// Where shell reports go. EMPTY on purpose: Onni Work has no telemetry endpoint, so the shell
+/// never sends unless `CEZ_TELEMETRY_URL` names one. That also hides the failure page's
+/// "Send error report" button — there is nowhere for that one report to go.
+const DEFAULT_URL: &str = "";
 /// `TELEMETRY_POLICY_VERSION` in packages/cezar/src/telemetry.ts. A bump there stops these
 /// reports until this is bumped too — the shell fails closed, never open.
 const POLICY_VERSION: u64 = 1;
@@ -82,7 +85,7 @@ impl Reported {
 /// A failure the user sees: report it when they opted in, otherwise keep it — with the log the
 /// page shows — for the page's "Send error report" button.
 pub fn report_or_offer(failure: Failure, log: &str) -> Reported {
-    if blocked_here() {
+    if endpoint().is_none() || blocked_here() {
         return Reported::Off;
     }
     if consented() {
@@ -101,6 +104,7 @@ pub fn send_offered() -> bool {
     if blocked_here() {
         return false;
     }
+    let Some(endpoint) = endpoint() else { return false };
     let tail: String = log.chars().rev().take(1024).collect::<Vec<_>>().into_iter().rev().collect();
     failure.context.push(("report.manual", json!(true)));
     if !tail.is_empty() {
@@ -108,7 +112,7 @@ pub fn send_offered() -> bool {
     }
     let config = read_config().unwrap_or(Value::Null);
     let body = error_body(&failure, None, &Scrubber::new(&config), &crate::iso_now());
-    let sent = send(&endpoint(), &body);
+    let sent = send(&endpoint, &body);
     if sent {
         OFFERED.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).take();
     }
@@ -165,21 +169,23 @@ fn consented() -> bool {
     read_config().is_some_and(|config| consent_granted(&config))
 }
 
-fn endpoint() -> String {
+/// The configured report URL, or `None` when this build has no endpoint.
+fn endpoint() -> Option<String> {
     let url = std::env::var("CEZ_TELEMETRY_URL").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| DEFAULT_URL.into());
-    format!("{}/track/error", url.trim_end_matches('/'))
+    (!url.is_empty()).then(|| format!("{}/track/error", url.trim_end_matches('/')))
 }
 
 fn prepare(failure: &Failure) -> Option<(String, Value)> {
     if blocked_here() {
         return None;
     }
+    let endpoint = endpoint()?;
     let config = read_config()?;
     if !consent_granted(&config) || throttled(&format!("{}:{}", failure.code, failure.message)) {
         return None;
     }
     let user = config.get("cezarId").and_then(Value::as_str);
-    Some((endpoint(), error_body(failure, user, &Scrubber::new(&config), &crate::iso_now())))
+    Some((endpoint, error_body(failure, user, &Scrubber::new(&config), &crate::iso_now())))
 }
 
 /// Only an explicit yes for the current policy; anything else — no answer, a no, an older
@@ -381,7 +387,11 @@ mod tests {
         }
         let failure = Failure::new("shell_selftest", "a test report from cezar-desktop's test suite").with("exit_code", 1).with("log.tail", "line one\nline two");
         let body = error_body(&failure, None, &Scrubber::from_pairs(vec![]), &crate::iso_now());
-        assert!(send(&format!("{DEFAULT_URL}/track/error"), &body), "{body}");
+        let Ok(base) = std::env::var("CEZ_TELEMETRY_URL") else { return };
+        if base.is_empty() {
+            return; // no endpoint in this build: nothing to check against
+        }
+        assert!(send(&format!("{}/track/error", base.trim_end_matches('/')), &body), "{body}");
     }
 
     #[test]

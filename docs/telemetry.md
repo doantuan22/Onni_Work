@@ -124,7 +124,8 @@ on its own (code, message, cezar and shell version, architecture, how Node was f
 failure page says so. Without one, nothing is sent; the failure page offers a **Send error
 report** button instead, which sends that one report — the error and the log the page shows, paths
 masked as above, no install id — and only when clicked. `CEZ_TELEMETRY=0` / `DO_NOT_TRACK=1` hide
-the button too.
+the button too, and so does an unset endpoint: with no `CEZ_TELEMETRY_URL` there is nowhere for
+the report to go, so Onni Work does not offer the button at all.
 
 ## What is never sent
 
@@ -134,7 +135,9 @@ server as with any HTTPS request; cezar does not put it in any payload.
 
 ## Where it goes
 
-`https://stats.openmercato.cloud` (override with `CEZ_TELEMETRY_URL`). Sends are fire-and-forget
+Nowhere, by default: Onni Work configures **no telemetry endpoint**, so every send is a no-op —
+the consent flow, the event vocabulary and the routes stay in place, but no request is made.
+Set `CEZ_TELEMETRY_URL` to an endpoint you own to activate them. Sends are fire-and-forget
 with a 3 s timeout and never block or break cezar.
 
 ## Withdrawing
@@ -149,5 +152,5 @@ later opt in again, you start as a new installation.
 |---|---|
 | `CEZ_TELEMETRY=0` / `DO_NOT_TRACK=1` | Block sending, whatever the stored answer. |
 | `CEZ_TELEMETRY=1` | Lift the automatic block under CI, test runners and `CEZ_DRY_RUN=1`. It does **not** grant consent. |
-| `CEZ_TELEMETRY_URL` | Send to another endpoint. |
+| `CEZ_TELEMETRY_URL` | The endpoint to send to. Unset: no endpoint, nothing is ever sent. |
 | `CEZ_TELEMETRY_DEBUG=1` | Log each request's status and body to the server console. |
