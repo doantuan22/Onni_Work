@@ -255,7 +255,7 @@ Nguyên tắc: **state được ghi, không bao giờ bị bắt buộc**. Xoá 
 thì hệ thống tự tái tạo (riêng `~/.cezar` xoá cả thư mục mới là reset thật).
 
 Các cờ môi trường đáng chú ý: `CEZ_HOME`, `CEZ_DRY_RUN`, `CEZ_DISPATCH`, `CEZ_AUTOMATIONS`,
-`CEZ_NO_BANNER`, `CEZ_DESIGN_MODE`, `CEZ_SKILLS_AUTO_UPDATE`.
+`CEZ_DESIGN_MODE`, `CEZ_SKILLS_AUTO_UPDATE`.
 
 ---
 

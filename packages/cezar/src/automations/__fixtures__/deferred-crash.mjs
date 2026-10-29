@@ -8,7 +8,6 @@ const [dir, boundary] = process.argv.slice(2);
 process.env.CEZ_HOME = join(dir, 'home');
 process.env.CEZ_DRY_RUN = '1';
 process.env.CEZ_AUTONAME = '0';
-process.env.CEZ_NO_BANNER = '1';
 const store = AutomationStore.open(dir);
 const runs = RunStore.open(dir);
 const manager = new RunManager(runs, dir);
