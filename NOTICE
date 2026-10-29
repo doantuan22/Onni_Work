@@ -6,5 +6,5 @@ Copyright (c) 2026 Patryk Lewczuk, and is distributed under the MIT License.
 The original copyright and permission notice is retained in LICENSE and in
 packages/cezar/LICENSE.
 
-Upstream release notes for the cezar lineage are kept unchanged in
-docs/upstream/CHANGELOG-cezar.md.
+Upstream release notes for the cezar lineage are not copied into this repository;
+they remain available at the upstream project named above.

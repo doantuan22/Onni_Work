@@ -55,9 +55,8 @@ D:\Multi Agent
 │       ├── src-tauri/    Rust: lib.rs, node_runtime.rs, disclaim.rs
 │       └── ui/           Splash page + icon
 ├── docs/
-│   ├── site/             Trang docs Next.js + Fumadocs (không phải workspace), port 4322
-│   ├── adr/, brand/, screenshots/, server-install/, superpowers/
-│   └── *.md              reference, publishing, e2e-verification, …
+│   ├── superpowers/      Plan/ghi chú của agent (không build)
+│   └── *.md              reference, project-overview, upstream-audit, …
 ├── scripts/              dev.mjs (boot API + Vite)
 ├── tests/                Smoke e2e cho runner agentic `e2e` (KHÔNG do vitest chạy)
 ├── .ai/                  Bộ nhớ vận hành: specs/, runs/, scripts/, skills/, qa/, plans/
@@ -68,8 +67,8 @@ D:\Multi Agent
 └── e2e.config.ts         Cấu hình runner e2e agentic (target: web, CEZ_DRY_RUN=1)
 ```
 
-**4 npm workspace**: `contract`, `api-client`, `cezar`, `web`. `desktop` và `docs/site` cố ý đứng ngoài
-để `npm ci` ở root không kéo Tauri CLI / Next.js.
+**4 npm workspace**: `contract`, `api-client`, `cezar`, `web`. `desktop` cố ý đứng ngoài
+để `npm ci` ở root không kéo Tauri CLI.
 
 ---
 
@@ -284,7 +283,6 @@ npm run test:unit           # node:test: core module nhanh
 npm run build               # tsc → dist, vite → packages/cezar/web/dist, check:pack
 npm run test:package        # pack tarball rồi chạy CLI đã build
 npm run test:e2e            # UI smoke thật (agent-browser), CEZ_DRY_RUN=1
-npm run docs:dev            # docs site, port 4322
 ```
 
 | Workflow CI | Nội dung |

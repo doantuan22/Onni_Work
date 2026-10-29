@@ -710,16 +710,13 @@ npx cezar-run server-install --platform ubuntu-vps \
 `--bind-host` is only needed when the proxy runs in a **container** (Traefik
 can't reach the host's loopback); a host-installed proxy uses the `127.0.0.1`
 default. In this mode **your proxy must enforce authentication** — cezar has
-none of its own. [Details →](server-install/ubuntu-vps.md#the-box-already-has-a-reverse-proxy-dokploy-coolify-caddy)
+none of its own.
 
-| Provider | `--platform` | Public front | Guide |
-|----------|--------------|--------------|-------|
-| Ubuntu / Debian VPS | `ubuntu-vps` | nginx + Let's Encrypt HTTPS, htpasswd login, systemd | [Step-by-step →](server-install/ubuntu-vps.md) |
-| Ubuntu + existing proxy | `ubuntu-vps --external-proxy` | your Dokploy/Traefik/Caddy front; cezar ships the service only | [Step-by-step →](server-install/ubuntu-vps.md#the-box-already-has-a-reverse-proxy-dokploy-coolify-caddy) |
-| macOS + ngrok | `macosx-ngrok` | ngrok tunnel + `--basic-auth`, launchd | [Step-by-step →](server-install/macosx-ngrok.md) |
-
-See the **[Remote access overview](server-install/README.md)** for how it
-works and how to redeploy new versions.
+| Provider | `--platform` | Public front |
+|----------|--------------|--------------|
+| Ubuntu / Debian VPS | `ubuntu-vps` | nginx + Let's Encrypt HTTPS, htpasswd login, systemd |
+| Ubuntu + existing proxy | `ubuntu-vps --external-proxy` | your Dokploy/Traefik/Caddy front; cezar ships the service only |
+| macOS + ngrok | `macosx-ngrok` | ngrok tunnel + `--basic-auth`, launchd |
 
 ---
 

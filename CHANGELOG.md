@@ -1,7 +1,7 @@
 # Changelog — Onni Work
 
-All notable changes to Onni Work are recorded here. The cezar release notes this project was
-forked from are kept unchanged in [`docs/upstream/CHANGELOG-cezar.md`](docs/upstream/CHANGELOG-cezar.md).
+All notable changes to Onni Work are recorded here. This repository keeps the cezar engine's
+provenance in `NOTICE`; cezar's own release notes are not copied into it.
 
 ## 2026-10-29 — Fork hardening (Phase 2)
 
@@ -31,5 +31,8 @@ upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~
   entry is needed before team skills can load. Local, agent-mirror and built-in skills are
   unaffected, and the skills repos you name yourself still load. The terminal promo banner
   (`skills-banner.ts`) is gone for the same reason.
-- **Docs.** `docs/site` keeps its upstream content and gains a README banner; no workflow
-  deploys it.
+- **Docs.** The Next.js documentation site (`docs/site`, its `docs:*` scripts and the
+  `cezar-docs` skill), `docs/upstream/`, the server-install guides, the brand assets, the ADR and
+  the screenshots are removed. `docs/reference.md`, `docs/project-overview.md`,
+  `docs/upstream-audit.md`, `docs/adding-issue-tracker.md`, `docs/issue-trackers.md`,
+  `docs/e2e-verification.md` and `docs/superpowers/` stay.

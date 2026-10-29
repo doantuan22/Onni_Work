@@ -21,8 +21,7 @@ project with its own desktop-first surface. Upstream services are not used:
   request to github.com is made.
 
 Internal identifiers (`cez`, `.ai/cezar`, `~/.cezar`, `CEZ_*`, the `@open-mercato/*` package
-scope) are unchanged. See `NOTICE` for attribution and `CHANGELOG.md` for this fork's history;
-cezar's own release notes are preserved unchanged in `docs/upstream/CHANGELOG-cezar.md`.
+scope) are unchanged. See `NOTICE` for attribution and `CHANGELOG.md` for this fork's history.
 
 ## Layout
 
