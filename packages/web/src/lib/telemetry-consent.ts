@@ -7,9 +7,9 @@ import type { TelemetryConsentPayload } from '@open-mercato/cezar-api-client'
  */
 
 /** cezar's own write-up of what is sent, and the module that sends it. */
-export const TELEMETRY_DOC_URL = 'https://github.com/open-mercato/cezar/blob/main/docs/telemetry.md'
+export const TELEMETRY_DOC_URL = 'https://github.com/doantuan22/Onni_Work/blob/main/docs/telemetry.md'
 export const TELEMETRY_CODE_URL =
-  'https://github.com/open-mercato/cezar/blob/main/packages/cezar/src/telemetry.ts'
+  'https://github.com/doantuan22/Onni_Work/blob/main/packages/cezar/src/telemetry.ts'
 
 export function shouldAskForTelemetry(payload: TelemetryConsentPayload | undefined): boolean {
   return (

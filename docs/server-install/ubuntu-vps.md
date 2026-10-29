@@ -38,16 +38,10 @@ command is verified before the installer moves on.
 
 ## Install
 
-From a published release:
+From a git checkout on the box (Onni Work publishes no npm package):
 
 ```bash
-npx cezar-run server-install --platform ubuntu-vps
-```
-
-Or from a git checkout on the box:
-
-```bash
-git clone https://github.com/open-mercato/cezar && cd cezar
+git clone https://github.com/doantuan22/Onni_Work.git && cd Onni_Work
 npm install && npm run build
 node packages/cezar/dist/index.js server-install --platform ubuntu-vps
 ```

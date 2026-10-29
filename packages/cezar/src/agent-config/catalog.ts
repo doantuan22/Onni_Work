@@ -86,7 +86,7 @@ const OPENCODE_RULES_DOCS = 'https://opencode.ai/docs/rules/';
 const CURSOR_CLI_CONFIG_DOCS = 'https://cursor.com/docs/cli/reference/configuration';
 const COPILOT_CONFIG_DOCS = 'https://docs.github.com/en/copilot/how-tos/copilot-cli';
 const COPILOT_MCP_DOCS = 'https://docs.github.com/en/copilot/how-tos/copilot-cli#mcp-servers';
-const PRIVATE_MCP_DOCS = 'https://github.com/open-mercato/cezar/blob/main/.ai/specs/2026-10-07-private-project-mcp.md';
+const PRIVATE_MCP_DOCS = 'https://github.com/doantuan22/Onni_Work/blob/main/.ai/specs/2026-10-07-private-project-mcp.md';
 const COPILOT_INSTRUCTIONS_DOCS =
   'https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot';
 

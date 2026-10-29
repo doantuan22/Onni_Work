@@ -26,6 +26,10 @@ upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~
   button is hidden when none is.
 - **Star count.** `GET /api/v1/star-count` always answers `{ available: false }` and makes no
   network request; the response shape is unchanged.
-- **Skills.** No default team skill repository is configured.
+- **Skills.** No default team skill repository is configured: `DEFAULT_SKILLS_REPOS` is empty, so
+  `GET /api/v1/config` reports `teamSkills: false` out of the box and Settings says a `skillsRepos`
+  entry is needed before team skills can load. Local, agent-mirror and built-in skills are
+  unaffected, and the skills repos you name yourself still load. The terminal promo banner
+  (`skills-banner.ts`) is gone for the same reason.
 - **Docs.** `docs/site` keeps its upstream content and gains a README banner; no workflow
   deploys it.

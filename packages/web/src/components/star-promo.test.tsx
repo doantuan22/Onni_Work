@@ -112,7 +112,7 @@ describe('StarPromo', () => {
     expect(screen.getByRole('heading', { name: 'Is cezar pulling its weight?' })).toBeTruthy()
     expect(screen.getByText(/1\.2k stars on GitHub/)).toBeTruthy()
     expect(screen.getByRole('link', { name: /Star cezar on GitHub/ }).getAttribute('href')).toBe(
-      'https://github.com/open-mercato/cezar',
+      'https://github.com/doantuan22/Onni_Work',
     )
     expect(record()).toMatchObject({ asks: 1 })
   })

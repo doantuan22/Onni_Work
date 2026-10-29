@@ -93,7 +93,8 @@ describe('the config API', () => {
       requiredChecks: [],
       defaultSkill: null,
       askSkill: null,
-      teamSkills: true,
+      // No default team skill repository in Onni Work, so zero-config means off.
+      teamSkills: false,
     });
   });
 
@@ -461,7 +462,8 @@ describe('reviewGate round-trip (optional review gate, #489)', () => {
       askSkill: null,
       teamSkills: true,
     })).json()) as Record<string, unknown>;
-    expect(off).toMatchObject({ profile: null, taskWorkspace: null, landing: null, requiredChecks: [], defaultSkill: null, teamSkills: true });
+    // `teamSkills: true` restores the default repo set, which is empty in Onni Work.
+    expect(off).toMatchObject({ profile: null, taskWorkspace: null, landing: null, requiredChecks: [], defaultSkill: null, teamSkills: false });
     expect(Object.keys(rawFile()).sort()).toEqual([]);
   });
 

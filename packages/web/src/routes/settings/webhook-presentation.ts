@@ -80,7 +80,7 @@ export function webhookTime(value: string, zone?: string) {
 
 export function webhookGuide(_metadata?: Pick<SelfUpdateStatus, 'version' | 'installKind'>) {
   return {
-    href: 'https://github.com/open-mercato/cezar/blob/main/packages/cezar/docs/webhooks.md',
+    href: 'https://github.com/doantuan22/Onni_Work/blob/main/packages/cezar/docs/webhooks.md',
     note: 'Webhook guide',
   }
 }

@@ -246,7 +246,7 @@ describe('diffSuccessTransition', () => {
 })
 
 describe('the link', () => {
-  it('points at cezar, over https', () => {
-    expect(CEZAR_REPO_URL).toBe('https://github.com/open-mercato/cezar')
+  it('points at this project, over https', () => {
+    expect(CEZAR_REPO_URL).toBe('https://github.com/doantuan22/Onni_Work')
   })
 })

@@ -317,7 +317,7 @@ test('skillsDirOnly: only files under a skills/ folder are skills, at any depth'
   for (const name of ['alpha', 'beta', 'lint', 'deploy', 'README']) assert.ok(legacy.includes(name), name);
 });
 
-test('an org entry for the implicit default repo overrides its ref, and ungates it', async (t) => {
+test('no team-skill source ships by default, so nothing is ever gated', async (t) => {
   const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
   const prevCez = process.env.CEZ_HOME;
   process.env.CEZ_HOME = join(home, '.cezar');
@@ -328,15 +328,14 @@ test('an org entry for the implicit default repo overrides its ref, and ungates 
     rmSync(home, { recursive: true, force: true });
     rmSync(root, { recursive: true, force: true });
   });
-  const before = await gatedSkillsRepos(root);
-  assert.ok(before.has('open-mercato/skills'));
+  assert.equal((await gatedSkillsRepos(root)).size, 0);
   await mergeWriteWorkspaceConfig((config) => {
-    config.orgSkillsRepos = [{ repo: 'open-mercato/skills', ref: 'v1' }];
+    config.orgSkillsRepos = [{ repo: 'acme/skills', ref: 'v1' }];
   });
-  assert.equal((await gatedSkillsRepos(root)).has('open-mercato/skills'), false);
+  assert.equal((await gatedSkillsRepos(root)).size, 0);
 });
 
-test('implicit default is detected like loadConfig: an invalid skillsRepos is not explicit', async (t) => {
+test('a project listing its own skillsRepos loads them ungated, and an invalid value degrades to the default', async (t) => {
   const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
   const prevCez = process.env.CEZ_HOME;
   process.env.CEZ_HOME = join(home, '.cezar');
@@ -349,9 +348,9 @@ test('implicit default is detected like loadConfig: an invalid skillsRepos is no
   });
   mkdirSync(join(root, '.ai/cezar'), { recursive: true });
   const cfg = join(root, '.ai/cezar', 'config.json');
-  writeFileSync(cfg, JSON.stringify({ skillsRepos: 'nonsense' }));
-  assert.ok((await projectGatedSkillsRepos(root)).has('open-mercato/skills'));
   writeFileSync(cfg, JSON.stringify({ skillsRepos: [{ repo: 'acme/skills' }] }));
+  assert.equal((await projectGatedSkillsRepos(root)).size, 0);
+  writeFileSync(cfg, JSON.stringify({ skillsRepos: 'nonsense' }));
   assert.equal((await projectGatedSkillsRepos(root)).size, 0);
 });
 

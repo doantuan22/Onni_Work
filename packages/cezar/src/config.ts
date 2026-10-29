@@ -19,9 +19,9 @@ const skillsRepoSchema = z.object({
 
 export type SkillsRepoSource = z.infer<typeof skillsRepoSchema>;
 
-export const DEFAULT_SKILLS_REPOS: SkillsRepoSource[] = [
-  { repo: 'open-mercato/skills', ref: 'main' },
-];
+/** No team-skill source ships by default: Onni Work resolves skills from the repo, the agent
+ *  mirrors and the user's own `skillsRepos`, and never from an upstream catalogue. */
+export const DEFAULT_SKILLS_REPOS: SkillsRepoSource[] = [];
 
 /** Last-resort retention when neither the repo nor the workspace says anything. */
 export const DEFAULT_WORKTREE_RETENTION = 10;

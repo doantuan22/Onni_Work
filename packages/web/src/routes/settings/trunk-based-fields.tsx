@@ -142,7 +142,11 @@ export function TrunkBasedFields({ config }: { config: ConfigResponse }) {
 
       <SettingsField
         title="Team skill repositories"
-        hint="Skills from the shared team repositories. Turn off for a project whose skills live in the repo itself. Project-wide instructions for every task are under Instructions."
+        hint={
+          config.teamSkills
+            ? 'Skills from the shared team repositories. Turn off for a project whose skills live in the repo itself. Project-wide instructions for every task are under Instructions.'
+            : 'No team skill repository is configured. Onni Work ships none by default — add "skillsRepos" to .ai/cezar/config.json to load skills from a repository of your own.'
+        }
       >
         <label className="flex w-fit items-center gap-3">
           <Switch

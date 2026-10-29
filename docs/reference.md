@@ -519,7 +519,7 @@ Useful environment variables:
 | `CEZ_TITLE_UPDATES=0` | Turn off the live task-title refresh (namer re-runs on each turn end). The Settings → Tasks toggle overrides this default. |
 | `CEZ_AUTONAME=0` | Disable ALL LLM task naming (creation + live) — titles stay heuristic (`437: /om-auto-review-pr`). Under `CEZ_DRY_RUN=1` naming is already off unless forced with `CEZ_AUTONAME=1`. |
 | `CEZ_REVIEW_GATE=1` | Turn ON the optional diff-first review gate (#489): a successful, non-autonomous run with changes parks at `review` (Accept / Send back / Draft PR) instead of finishing. Off by default — changed runs settle to `done` with the diff left in the worktree. Only `1` enables. The Settings → Tasks toggle overrides this; autonomous runs always skip it. |
-| `CEZ_NO_BANNER=1` | Silence every promo: the `open-mercato/skills` banner and the star-ask line on `cezar serve` startup, the sidebar's ⭐ chip, and the star-ask dialog (shown at most three times per browser, only after a task ends well once three have, and only while you are at the screen). It is also the star count's off switch — with it set, `GET /api/v1/star-count` answers `available: false` and cezar makes no request to github.com for it. Unset, the count refreshes every 10 seconds while a cockpit tab is visible, paced to GitHub's rate limit (about once a minute unauthenticated; every 10 s with `GITHUB_TOKEN`/`GH_TOKEN` set, which is then sent with the request). Dismissing the banner in the cockpit (back when it had one) still silences the terminal half on its own. |
+| `CEZ_NO_BANNER=1` | Compatibility only in Onni Work. The promos it used to silence — the `open-mercato/skills` banner and star-ask line on startup, the sidebar ⭐ chip and dialog — and the GitHub star-count request were removed, so `GET /api/v1/star-count` always answers `available: false` and setting this changes nothing. |
 | `VITE_CEZ_API_BASE=http://localhost:4321` | **Build time only**, and only when the cockpit bundle is deployed apart from the service it talks to. Empty (the default) means "the origin that served this page", which is right for both normal cases: the CLI serves the bundle itself, and `npm run dev` proxies `/api` to the local service. A deployment that must be configured without a rebuild can put `<meta name="cez-api-base" content="…">` in the served HTML instead, which wins over this. |
 
 ### Troubleshooting: the agent's shell returns nothing
@@ -734,7 +734,7 @@ never blocks startup; configured lifecycle transitions pause on malformed config
 
 ```jsonc
 {
-  "skillsRepos": [{ "repo": "open-mercato/skills", "ref": "main" }], // team skills; [] disables
+  "skillsRepos": [{ "repo": "acme/team-skills", "ref": "main" }], // team skills; [] (the default) disables
   // Team-skill repos are code-trusted: a skill body becomes an agent system prompt.
   // Only owner/name, https/ssh URLs, or local paths (`/abs`, `./rel`, `~/dir`,
   // `C:\dir`) are accepted — no ext::/fd:: transport helpers. Write a relative
@@ -990,47 +990,10 @@ information.
 
 ---
 
-## Nightly and preview builds
+## Builds and releases
 
-Every night we publish the trunk to npm, so the features landing in the next
-release are one command away:
-
-```bash
-npx cezar-run@nightly      # everything merged as of last night
-```
-
-**Come build this with us.** cezar is shaped by the people who run it on real
-repos: if you try a nightly and something feels wrong — a workflow that stalls, a
-diff that reads badly, a runner that should exist — [open an
-issue](https://github.com/open-mercato/cezar/issues) and tell us. That feedback,
-early, is worth more than a bug report six weeks after a release, and it is how
-most of the features here got their final shape.
-
-**Know what you're installing.** A nightly is verified (typecheck, unit suites,
-packaged-CLI e2e — the same gate a release runs) but it is *not* a release: it
-can be rough, a flag or a screen may change under you, and something occasionally
-breaks in a way no test caught. Nothing is at risk beyond your patience — every
-task runs in its own git worktree and cezar never auto-merges — but if you need a
-boring day, stay on the stable release. Pin a nightly you liked with its exact
-version (`npx cezar-run@0.9.2-nightly.20260813.126` — the cockpit prints the
-version it booted, and the date in it tells you how old the build is), and drop
-back to stable any time with a plain `npx cezar-run`.
-
-### Preview builds
-
-Every green CI run also publishes an installable npm snapshot
-([how it works](publishing.md)), so you can try code that has not even
-merged yet:
-
-```bash
-npx cezar-run@develop      # current develop head
-```
-
-Every pull request gets its own preview too — the CI bot posts a sticky comment
-on the PR with the exact pinned version to copy-paste
-(`npx cezar-run@<version>-pr<N>.<run>`). Nightlies and previews are all
-prerelease versions under their own dist-tags; a plain `npx cezar-run` always
-resolves to the latest stable release.
+Onni Work publishes nothing: there are no nightlies, previews or npm releases to install with
+`npx`. Build and run it from source instead — see [Local development](#local-development) below.
 
 ---
 
@@ -1045,8 +1008,8 @@ as in [Quick start](../README.md#quick-start)).
 **2. Clone & install**
 
 ```bash
-git clone https://github.com/open-mercato/cezar.git
-cd cezar
+git clone https://github.com/doantuan22/Onni_Work.git
+cd Onni_Work
 npm install
 ```
 

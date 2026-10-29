@@ -57,22 +57,15 @@ describe('the star-count API', () => {
     expect(await res.json()).toEqual({ available: false, url: CEZAR_REPO_URL });
   });
 
-  it('is workspace-level: no project scope, and the default reader spends no request while silenced', async () => {
-    // `CEZ_NO_BANNER=1` is the promo's single off switch, and it must stop the request itself —
-    // not merely hide the chip after paying for it.
-    const reader = new StarCountReader({
-      env: { CEZ_NO_BANNER: '1' },
-      fetchImpl: (() => {
-        throw new Error('the silenced reader must not reach the network');
-      }) as unknown as typeof fetch,
-      cachePath: join(repoRoot, 'unused.json'),
-    });
+  it('is workspace-level: no project scope, and the shipped reader answers without any I/O', async () => {
+    // The default reader makes no request at all in Onni Work; injecting it here proves the
+    // route is wired to the offline reader rather than to a count the unit gate might fetch.
     const app = createApp({
       repoRoot,
       store,
       manager: {} as RunManager,
       version: '0.0.0-test',
-      starCount: reader,
+      starCount: new StarCountReader(),
     });
     const res = await apiRequest(app, '/api/v1/star-count');
     expect(res.status).toBe(200);

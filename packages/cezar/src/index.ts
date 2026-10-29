@@ -35,7 +35,6 @@ import {
   unavailableProviderMessage,
   withSelectedAccounts,
 } from './server/provider-action-gate.ts';
-import { printSkillsBanner, printStarBanner } from './skills-banner.ts';
 import { SelfUpdateService } from './self-update/service.ts';
 import { selfUpdateEnabled } from './self-update/enabled.ts';
 import { runsFromCheckout } from './self-update/layout.ts';
@@ -113,8 +112,8 @@ Options:
   -h, --help                  show this help
 
 Zero config: uses your logged-in \`claude\` CLI (and \`gh\` for GitHub bits).
-Skills live in .ai/skills/, .ai/cezar/skills/ and your team skills repo
-(default open-mercato/skills; override via .ai/cezar/config.json);
+Skills live in .ai/skills/, .ai/cezar/skills/ and any team skills repos you
+configure (none by default — set skillsRepos in .ai/cezar/config.json);
 workflows in .ai/cezar/workflows/.`;
 
 async function main(): Promise<void> {
@@ -446,10 +445,6 @@ async function serveCommand(
   }
   if (port !== preferredPort) console.log(`  (port ${preferredPort} was busy — using ${port})`);
   console.log(`\n  cockpit → ${url}\n`);
-  // Silenced by CEZ_NO_BANNER=1 or by dismissing the cockpit's banner (#391).
-  await printSkillsBanner(repoRoot);
-  // The star ask's terminal line — same block, same two off switches.
-  await printStarBanner(repoRoot);
 
   // Under the desktop shell a managed install may exist without launchers (the shell installs
   // cezar itself on first launch, spec 2026-09-25-desktop-distribution): write them so

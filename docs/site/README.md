@@ -1,3 +1,8 @@
+> **Not rebranded, not deployed.** Everything under `docs/site` is the original cezar
+> documentation, kept as-is for reference. It still says "Cezar", still links to cezar.run and
+> upstream repositories, and it is **not** built or published for Onni Work in this phase.
+> Nội dung gốc của cezar, chưa chuyển sang Onni Work, không deploy.
+
 # Cezar documentation site
 
 The Cezar user documentation as a Next.js app ([Fumadocs](https://fumadocs.dev)): MDX pages in

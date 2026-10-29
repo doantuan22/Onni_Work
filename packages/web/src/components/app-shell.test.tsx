@@ -378,9 +378,9 @@ describe('AppShell', () => {
         expect(within(footer()).getByText('0')).toBeTruthy()
       })
 
-      it('links to cezar, in a new tab, leaking neither opener nor referrer', () => {
+      it('links to the project repo, in a new tab, leaking neither opener nor referrer', () => {
         renderShell('/', { starCount: 42 })
-        expect(chip()?.getAttribute('href')).toBe('https://github.com/open-mercato/cezar')
+        expect(chip()?.getAttribute('href')).toBe('https://github.com/doantuan22/Onni_Work')
         expect(chip()?.getAttribute('target')).toBe('_blank')
         expect(chip()?.getAttribute('rel')).toContain('noopener')
         expect(chip()?.getAttribute('rel')).toContain('noreferrer')
