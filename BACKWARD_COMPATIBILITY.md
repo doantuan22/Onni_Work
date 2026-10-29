@@ -1,5 +1,10 @@
 # Backward compatibility — protected surfaces
 
+> **Onni Work fork.** This document is inherited from cezar and still describes the file/API
+> surfaces this repo keeps compatible. One thing no longer applies: Onni Work publishes nothing.
+> Every package here is `private` (see §6), the release and nightly npm-publish jobs were
+> removed, and nothing installs or updates itself (see `.env.example` → `CEZ_SELF_UPDATE`).
+
 cezar is a published npm CLI (`@open-mercato/cezar`, currently 0.x — renamed from the now-deprecated `@pat-lewczuk/cezar` when the package moved to the open-mercato org; the unscoped `npx cezar-cli` alias is unchanged) whose state lives as plain files inside users' repos. Users upgrade with `npx cezar@latest` against `.ai/cezar/` directories written by older versions, and they script the CLI and hand-edit the files — the README promises "plain JSON, NDJSON and Markdown you can `cat` and fix by hand." That promise is the compatibility contract.
 
 **General rule for every surface below:** additive changes (new optional field, new flag, new route) are fine; anything that makes an existing input rejected, an existing output disappear, or an existing file unreadable is breaking. While the package is 0.x, a breaking change requires: a deprecation note in the README + CHANGELOG, a migration path (code that reads the old shape, or a documented manual fix), and a **minor** version bump called out as breaking. From 1.0 on, breaking = major bump.
@@ -321,6 +326,10 @@ The Manage-skills opt-out (`importedSkills` in the global `~/.cezar/ui-state.jso
 
 ## 6. npm package surface (`package.json`)
 
+- **Onni Work does not publish.** `packages/cezar`, `packages/api-client`, `packages/contract`,
+  `packages/web` and both alias directories carry `"private": true`, and no `publishConfig`
+  remains. `npm pack` still works on private packages, so `check:pack` and `test:package` are
+  unchanged. The npm names below describe the inherited layout, not a publication.
 - Name `@open-mercato/cezar` (plus the `cezar-cli` and `cezar-run` npx aliases); `bin` entries `cezar` + `cez`; published `files`: `dist`, `packages/cezar/web/dist`, `scripts`, `README.md`; `engines.node >= 20`; `"type": "module"`. The brand mark ships inside the Vite build as `web/dist/icon.svg` (source: `packages/web/public/icon.svg`).
 - There is **no** `exports`/library API — the package is CLI-only. Keep it that way deliberately: adding one creates a new compatibility surface; if it happens, this document gains a section first.
 - `dist/index.js` must remain the bin entry, and `web/` must stay resolvable relative to `dist/server` (`resolveWebDir` walks `../../web`; the built cockpit lives at `packages/cezar/web/dist`).

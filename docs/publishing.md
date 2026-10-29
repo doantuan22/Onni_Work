@@ -1,5 +1,10 @@
 # Publishing — stable releases and npm previews
 
+> **Disabled in Onni Work.** This page documents the inherited cezar release process. Onni Work
+> publishes nothing: every package is `private`, the CI `publish-snapshot` job and `nightly.yml`
+> were removed, and the remaining release workflows need credentials this repo does not have.
+> Keep it as a reference for the inherited layout; do not run these workflows here.
+
 How cezar reaches npm. Two paths, deliberately separate
 (spec: `.ai/specs/2026-07-18-npm-preview-publish.md`, issue #482):
 
@@ -7,13 +12,11 @@ How cezar reaches npm. Two paths, deliberately separate
   [`Release`](../.github/workflows/release.yml) workflow, run from the
   `release/vX.Y.x` line to ship (see [Release lines](#release-lines)). CI never
   moves `latest` — a push publishes nothing.
-- **Previews** are **CI-driven**: the `publish-snapshot` job in
-  [`ci.yml`](../.github/workflows/ci.yml) publishes a snapshot of every package
-  after fully green `verify`, `vitest` and `webhooks-cross-platform` runs — on `develop`
-  pushes and same-repo PRs only.
-- **Nightlies** are **clock-driven**: [`nightly.yml`](../.github/workflows/nightly.yml)
-  cuts `main`'s tip every night under the `nightly` dist-tag, so `npx cezar-run@nightly`
-  is always the trunk. Also runnable on demand from the Actions tab.
+- **Previews** were **CI-driven**: the `publish-snapshot` job published a snapshot of every
+  package after fully green `verify`, `vitest` and `webhooks-cross-platform` runs — on `develop`
+  pushes and same-repo PRs only. The job was removed in Onni Work.
+- **Nightlies** were **clock-driven**: `nightly.yml` cut `main`'s tip every night under the
+  `nightly` dist-tag. The workflow was removed in Onni Work.
 
 The Linux jobs run the full unit suites, typecheck, build and packaged-CLI tests.
 `webhooks-cross-platform` runs the webhook suite on Linux, macOS and Windows;

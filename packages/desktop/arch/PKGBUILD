@@ -1,4 +1,4 @@
-# Arch Linux package for the cezar desktop shell (Arch, Omarchy, Manjaro, EndeavourOS).
+# Arch Linux package for the Onni Work desktop shell (Arch, Omarchy, Manjaro, EndeavourOS).
 #
 # A `-bin` package: it repackages the binary the release workflow built for Debian, against the
 # system's own WebKitGTK. That is what the AppImage cannot do — it carries a web view built on
@@ -10,15 +10,15 @@
 pkgname=cezar-desktop-bin
 pkgver=@VERSION@
 pkgrel=1
-pkgdesc="Desktop app for cezar, the local cockpit for AI coding agents"
+pkgdesc="Desktop shell for Onni Work, a local cockpit for AI coding agents"
 arch=('x86_64')
-url="https://github.com/open-mercato/cezar"
+url="https://github.com/doantuan22/Onni_Work"
 license=('MIT')
 depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator')
 # Not a hard dependency: the shell finds Node through the login shell, so an nvm, volta or fnm
 # install counts. With none at all it shows a page that says so.
 optdepends=('nodejs: Node.js 20 or newer, required to run cezar (any install on PATH works)'
-            'npm: installs and updates cezar itself')
+            'npm: package manager for the Node.js toolchain (Onni Work never installs cezar itself)')
 provides=('cezar-desktop')
 conflicts=('cezar-desktop')
 options=('!strip' '!debug')

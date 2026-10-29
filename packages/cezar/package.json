@@ -4,6 +4,7 @@
   "description": "Local cockpit for running and tracking AI agent tasks in your repo. Uses your logged-in `claude` CLI and `gh` — zero config, zero database.",
   "license": "MIT",
   "author": "DOANTUANIT",
+  "private": true,
   "type": "module",
   "bin": {
     "cezar": "dist/index.js",
@@ -70,9 +71,6 @@
     "type": "git",
     "url": "https://github.com/doantuan22/Onni_Work",
     "directory": "packages/cezar"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "optionalDependencies": {
     "@lydell/node-pty": "^1.2.0-beta.15",
