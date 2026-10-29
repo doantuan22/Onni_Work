@@ -67,7 +67,6 @@ import {
   getWorkspaceConfig,
   getWorkspaceUiState,
   getSkillsUpdate,
-  getStarCount,
   checkSkillsUpdate,
   applySkillsUpdate,
   getWorktrees,
@@ -443,9 +442,6 @@ export const workspaceQueryKeys = {
     ['workspace', 'agent-profiles', 'status', routeId] as const,
   skillsUpdateAll: ['workspace', 'skills-update'] as const,
   skillsUpdate: (projectId: string) => ['workspace', 'skills-update', projectId] as const,
-  /** cezar's own GitHub star count via `GET /api/v1/star-count`, behind the sidebar's ⭐ ask.
-   *  Workspace-led: the number is about cezar, not about whichever project is on screen. */
-  starCount: ['workspace', 'star-count'] as const,
   /** One directory listing from `GET /api/fs/browse` (step 4.2's folder picker). Keyed by the
    *  browsed path — `null` is the browse root, whose absolute location only the server knows.
    *  Not scope-led: there is one filesystem behind the workspace, not one per project. */
@@ -1558,27 +1554,6 @@ export function useAgentProfiles() {
   return useQuery({
     queryKey: workspaceQueryKeys.agentProfiles,
     queryFn: ({ signal }) => getAgentProfiles({ signal }),
-  })
-}
-
-/** The chip's refresh cadence — matches the server's `STAR_CACHE_TTL_MS`, which also paces
- *  itself to GitHub's rate limit, so a poll never costs more than one cached read. */
-export const STAR_COUNT_REFRESH_MS = 10_000
-
-/**
- * cezar's own star count, for the sidebar's ⭐ ask — refreshed every ten seconds while the tab is
- * visible (TanStack pauses `refetchInterval` in the background). No retry: the server answers
- * `{ available: false }` for every failure, and the next tick is the retry.
- */
-export function useStarCount(enabled = true) {
-  return useQuery({
-    queryKey: workspaceQueryKeys.starCount,
-    queryFn: ({ signal }) => getStarCount({ signal }),
-    enabled,
-    staleTime: STAR_COUNT_REFRESH_MS,
-    refetchInterval: STAR_COUNT_REFRESH_MS,
-    retry: false,
-    refetchOnMount: false,
   })
 }
 

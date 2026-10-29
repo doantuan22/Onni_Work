@@ -22,10 +22,9 @@ Practical rules:
    `/api/v1/telemetry/*` routes, no desktop error reports (`telemetry.rs` and its **Send error
    report** button are gone). Nothing about usage, errors, prompts, paths or project names leaves
    the machine. Do not reintroduce a send path without an owner decision.
- - **Star ask is off in Onni Work (2026-10-29)**: the route `GET /api/v1/star-count` still exists for
-   contract parity, but its reader answers `{ available: false }` unconditionally — no fetch, no disk
-   cache, no GitHub token. The sidebar chip, the first-run toast and the `serve` star line therefore
-   never render, and the terminal promo block (skills + star) was removed with `skills-banner.ts`.
+ - **Star ask removed in Onni Work (2026-10-30)**: `GET /api/v1/star-count`, its contract schema
+   and reader, the sidebar ⭐ chip, the first-run toast and the dialog are deleted — nothing asks
+   github.com for a count. The terminal promo block (skills + star) is gone with `skills-banner.ts`.
 - **Pending owner ratification (2026-10-11)**: the fork-parent lookup in `git-remotes.ts` (#1383) is default-on. When `origin` is on github.com or a GitHub Enterprise host (`*.ghe.com`, or one `gh` is signed in to — `github-hosts.ts`) and the repo has a second remote, cezar runs one `gh api repos/<origin>` call against that host, with the user's own `gh` auth, to learn whether that remote is `origin`'s fork parent. It runs at most once per process, retries after 10 minutes if it got no answer, and never runs under `CEZ_DRY_RUN=1`. `gh repo set-default` skips it. Without it, a contributor's fork clone would fork tasks from and open PRs on the fork.
 - Owner-approved exception (2026-10-17): Design Mode (spec `.ai/specs/2026-10-09-design-mode.md`, the task's Preview) is AVAILABLE by default on a LOCAL cockpit, but its toggle starts OFF every time the Preview opens — the user switches it on by clicking; `CEZ_DESIGN_MODE=0` turns it off, and it is always off on a hosted one. Switching it on opens a second `127.0.0.1` listener that mirrors the previewed loopback `http://` dev server with a picker script injected. It is loopback-only, mirrors only what already listens on loopback, opens only after an explicit click and closes when idle.
 - A missing dependency, an absent peer, a read-only home: degrade to a smaller working cockpit, never fail the boot.

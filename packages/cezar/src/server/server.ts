@@ -76,7 +76,6 @@ import {
   type PickVariantResponse,
   type RunIndexEntry,
   type RunsIndexResponse,
-  type StarCountPayload,
   designProxyRequestSchema,
   type WorkspaceConfigResponse,
   workspaceBrandingLogoResponseSchema,
@@ -150,7 +149,6 @@ import {
 import { planChain, slugify } from '../planner.ts';
 import { discoverSkills } from '../skills.ts';
 import { SkillsUpdateConflictError, SkillsUpdateCoordinator, SkillsUpdateService, type SkillsUpdateState } from '../skills-update.ts';
-import { StarCountReader } from './star-count.ts';
 import { DesignProxies } from './preview/design-proxy.ts';
 import { getTeamSkillsCached, isSafeRef, refreshTeamSkills, safeRemoteFor, waitForTeamSkills } from '../skills-remote.ts';
 import { appendHandoffHeartbeat, handoffProgressExcerpt, readHandoff } from '../handoff.ts';
@@ -406,10 +404,6 @@ export interface ServerDeps {
   /** The project/workspace secret store (spec 2026-10-10-project-secrets-vault-options). Tests
    *  inject one with a fake keychain; the default reads the OS keychain or a key file. */
   secrets?: SecretStore;
-  /** cezar's own GitHub star count behind `GET /api/v1/star-count` (the cockpit's ⭐ ask).
-   *  Defaults to a reader that asks github.com at most once per ten seconds, paced to GitHub's rate limit, and caches the answer
-   *  under `~/.cache/cez/`; tests inject their own so no suite ever reaches the network. */
-  starCount?: { read(): Promise<StarCountPayload> };
   /** The Design Mode proxies behind `POST /api/v1/preview/design-proxy` (src/server/preview/).
    *  Injected by tests that need to close the listeners they opened. */
   designProxies?: DesignProxies;
@@ -1423,7 +1417,6 @@ export function createApp(deps: ServerDeps) {
   const openFile = deps.openFile ?? openFileInDefaultApp;
   const openApp = deps.openApp ?? openInApp;
   const skillsUpdate = deps.skillsUpdate ?? new SkillsUpdateService();
-  const starCount = deps.starCount ?? new StarCountReader();
 
   // ---- workspace boot-project identity (multi-project spec) ----------------
   // The boot flow (`initWorkspace` in src/index.ts) registers the boot repo
@@ -3362,13 +3355,6 @@ export function createApp(deps: ServerDeps) {
         throw error;
       }
     });
-
-  // ---- chained family: the star ask (workspace-level) ----------------------
-  // cezar's own star count, for the cockpit's ⭐ button. Workspace-level and single-mount, like
-  // `/health`: it says nothing about any project, and there is nothing for a project scope to
-  // change about it. Never fails — `{ available: false }` is the ordinary offline answer, so the
-  // cockpit's chip simply is not there rather than showing an error nobody asked for.
-  const starCountRoutes = new Hono().get('/star-count', async (c) => c.json(await starCount.read()));
 
   // ---- chained family: Design Mode (workspace-level) -----------------------
   // Spec `.ai/specs/2026-10-09-design-mode.md`. Single-mount: the proxy mirrors a loopback dev
@@ -7775,7 +7761,6 @@ export function createApp(deps: ServerDeps) {
     .route('/', projectsRoutes)
     .route('/', agentProfilesRoutes)
     .route('/', skillsUpdateRoutes)
-    .route('/', starCountRoutes)
     .route('/', previewRoutes)
     .route('/', workspaceConfigRoutes)
     .route('/', workspaceSecretsRoutes)

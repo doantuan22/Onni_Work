@@ -250,7 +250,7 @@ tại thời điểm run bắt đầu) để không tính lịch sử ngoài tas
 | `~/.cezar/config.json` (+ `.bak`) | Workspace config **và** registry project | ghi qua read-modify-write + lock |
 | `~/.cezar/agent-accounts.json` | Account các agent | file riêng để không bị mất khi config cũ |
 | `~/.cezar/tracker-connections/` | Credentials tracker theo project | parse vào object, không vào `process.env` |
-| `~/.cache/cez/` | Cache mạng: skills team, star-count, … | xoá được, tự dựng lại |
+| `~/.cache/cez/` | Cache mạng: skills team, … | xoá được, tự dựng lại |
 
 Nguyên tắc: **state được ghi, không bao giờ bị bắt buộc**. Xoá `.ai/cezar/`, `~/.cache/cez/`, `~/.cezar/`
 thì hệ thống tự tái tạo (riêng `~/.cezar` xoá cả thư mục mới là reset thật).

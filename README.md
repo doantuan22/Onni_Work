@@ -15,9 +15,10 @@ project with its own desktop-first surface. Upstream services are not used:
 
 - self-update, CLI install/update and the desktop updater are removed (no updater
   endpoints or signing keys shipped); the desktop runs the engine you build locally;
-- telemetry is off by default and has no configured endpoint — the consent flow and interface
-  are kept, but nothing is sent;
-- the GitHub star-count chip always reports `available: false` and makes no network request.
+- telemetry is removed, not disabled — no consent flow, no consent bar, no send path: nothing
+  leaves the machine;
+- the GitHub star-count chip, its one-time toast and `GET /api/v1/star-count` are removed; no
+  request to github.com is made.
 
 Internal identifiers (`cez`, `.ai/cezar`, `~/.cezar`, `CEZ_*`, the `@open-mercato/*` package
 scope) are unchanged. See `NOTICE` for attribution and `CHANGELOG.md` for this fork's history;

@@ -33,7 +33,6 @@ import type {
   runnerModelCatalogResponseSchema,
   setConfigResponseSchema,
   skillsUpdateStateSchema,
-  starCountSchema,
   designProxyResponseSchema,
   uiStateSchema,
   workspaceConfigResponseSchema,
@@ -123,9 +122,6 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     (typeof client.api.v1.workspace)['skills-update']['apply']['$post'],
     200
   >;
-
-  // ---- the star ask -------------------------------------------------------------------------
-  type StarCount200 = InferResponseType<(typeof client.api.v1)['star-count']['$get'], 200>;
 
   // ---- Design Mode --------------------------------------------------------------------------
   type DesignProxy200 = InferResponseType<(typeof client.api.v1.preview)['design-proxy']['$post'], 200>;
@@ -221,8 +217,6 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     Assert<Exact<z.infer<typeof skillsUpdateStateSchema>, SkillsUpdate200>>,
     Assert<Exact<z.infer<typeof skillsUpdateStateSchema>, SkillsUpdateCheck200>>,
     Assert<Exact<z.infer<typeof skillsUpdateStateSchema>, SkillsUpdateApply200>>,
-    // the star ask
-    Assert<Exact<z.infer<typeof starCountSchema>, StarCount200>>,
     // Design Mode
     Assert<Exact<z.infer<typeof designProxyResponseSchema>, DesignProxy200>>,
     // providers, models, open targets
