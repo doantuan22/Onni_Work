@@ -61,7 +61,6 @@ D:\Multi Agent
 ├── tests/                Smoke e2e cho runner agentic `e2e` (KHÔNG do vitest chạy)
 ├── .ai/                  Bộ nhớ vận hành: specs/, runs/, scripts/, skills/, qa/, plans/
 ├── .github/workflows/    ci, codeql, desktop-check, desktop-release, release-*, backport, nightly
-├── alias-cezar*/         Launcher đóng gói trong release
 ├── AGENTS.md             Quy ước làm việc trong repo (đọc trước khi sửa code)
 ├── AGENT_PROTOCOL.md     Hợp đồng event giữa runner và UI
 ├── BACKWARD_COMPATIBILITY.md  Bề mặt công khai không được phá vỡ
