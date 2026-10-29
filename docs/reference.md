@@ -1020,47 +1020,25 @@ npm install
 npm run build
 ```
 
-**4. Install as a global command** — build + put `cezar` / `cez` / `cezar-cli` / `cezar-run` on
-your PATH pointing at *this checkout*:
+**4. Run it** — straight from the built checkout:
 
 ```bash
-npm run install-as-command            # live link (default) — see the change loop below
-#   or: npm run install-as-command:global   # self-contained snapshot copy
+node packages/cezar/dist/index.js          # cockpit for the current repo
+node packages/cezar/dist/index.js --help   # flags, same binary as `cezar`
 ```
 
-Now `cd` into any other repo and run it:
+To make this checkout the engine the **desktop app** and the managed launcher run, register it as
+a version (see [Run the desktop app (or `cezar`) on a worktree](#run-the-desktop-app-or-cezar-on-a-worktree)):
 
 ```bash
-cd ~/some-other-project
-cezar            # cockpit for that repo, straight off your checkout
-cezar-run --help # same binary; the name matches `npx cezar-run`
+node packages/cezar/dist/index.js link .   # a link, not a copy — rebuilds are live
 ```
 
 **5. The change loop**
 
-- **Link mode** (default): edit source → `npm run build` → the global command
-  reflects it immediately. No relink needed. (It is a live symlink into this
-  checkout — don't move or delete the checkout while it's linked.)
-- **Snapshot mode** (`:global`): re-run `npm run install-as-command:global` to
-  refresh the installed copy. It survives moving/deleting the checkout.
-
-**6. Uninstall**
-
-```bash
-npm run uninstall-as-command    # removes cezar / cez / cezar-cli / cezar-run (either flavor)
-```
-
-**7. Troubleshooting**
-
-- **`cezar: command not found`** after install → your npm global bin dir isn't on
-  PATH. The script prints the exact dir; add it to your shell profile
-  (`export PATH="$(npm prefix -g)/bin:$PATH"`).
-- **`EACCES` / permission denied** → your global prefix is root-owned. Point npm
-  at a user-writable one and retry — **never** sudo:
-  `npm config set prefix ~/.npm-global`.
-- **Already installed the published `@open-mercato/cezar` globally?** The
-  link/snapshot install replaces it; `uninstall-as-command` removes ours, and
-  `npm i -g @open-mercato/cezar` brings the published one back.
+Edit source → `npm run build` → the linked version reflects it on the next restart. No relink
+needed (it is a live symlink into this checkout — don't move or delete the checkout while it's
+linked).
 
 ### Run the desktop app (or `cezar`) on a worktree
 

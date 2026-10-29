@@ -57,7 +57,7 @@ D:\Multi Agent
 │   ├── site/             Trang docs Next.js + Fumadocs (không phải workspace), port 4322
 │   ├── adr/, brand/, screenshots/, server-install/, superpowers/
 │   └── *.md              reference, publishing, telemetry, e2e-verification, …
-├── scripts/              dev.mjs (boot API + Vite), release*.mts, release-snapshot.mjs
+├── scripts/              dev.mjs (boot API + Vite)
 ├── tests/                Smoke e2e cho runner agentic `e2e` (KHÔNG do vitest chạy)
 ├── .ai/                  Bộ nhớ vận hành: specs/, runs/, scripts/, skills/, qa/, plans/
 ├── .github/workflows/    ci, codeql, desktop-check, desktop-release, release-*, backport, nightly
@@ -277,7 +277,7 @@ Các cờ môi trường đáng chú ý: `CEZ_HOME`, `CEZ_DRY_RUN`, `CEZ_DISPATC
 ```bash
 npm install                 # 4 workspace
 npm run dev                 # API + Vite (HMR), mở browser cho dev
-npm run typecheck           # contract + api-client + server + web + scripts release
+npm run typecheck           # contract + api-client + server + web
 npm test                    # vitest: server + cockpit unit suites
 npm run test:unit           # node:test: core module nhanh
 npm run build               # tsc → dist, vite → packages/cezar/web/dist, check:pack
@@ -290,12 +290,10 @@ npm run docs:dev            # docs site, port 4322
 | --- | --- |
 | `ci.yml` | typecheck, vitest, test:unit, build, test:package |
 | `desktop-check.yml` | `cargo check --locked --all-targets` + `cargo test --locked --lib` (Linux + Windows) |
-| `desktop-release.yml` | matrix dmg (macOS arm64/x64), NSIS (Windows), AppImage/deb/Arch (Linux); hỗ trợ `workflow_dispatch` + `dry_run` |
-| `codeql.yml`, `nightly.yml`, `release-*.yml`, `backport.yml` | Bảo mật, nightly, cắt/phát hành release, backport |
+| `codeql.yml` | Quét bảo mật CodeQL |
 
-**Ràng buộc trên máy dev hiện tại (Windows 11)**: Smart App Control chặn thực thi binary do
-build-script sinh ra (os error 4551) → `cargo test`/`cargo build` không chạy được local,
-`cargo check` vẫn OK. Vì vậy xác minh desktop phải đi qua **CI dry-run** của `desktop-release.yml`.
+**Ràng buộc trên máy dev hiện tại (Windows 11)**: Smart App Control đã tắt và Developer Mode đã
+bật, nên `cargo check` / `cargo test` / `cargo build` chạy được local (không còn os error 4551).
 
 ---
 

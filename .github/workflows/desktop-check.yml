@@ -1,13 +1,11 @@
 name: Desktop check
 
 # Compiles and tests the desktop shell (packages/desktop) on every change to it. The shell sits
-# OUTSIDE the npm workspaces, so the main CI job never sees it, and `desktop-release.yml` only
-# runs on a `desktop-v*` tag — without this job the first thing to compile a change to
-# `src-tauri/` would be the release itself, on every runner at once.
+# OUTSIDE the npm workspaces, so the main CI job never sees it — without this job the first thing
+# to compile a change to `src-tauri/` would be whatever build the developer runs next.
 #
 # `cargo check` and `cargo test` only: no bundling, no signing, no secrets. Linux and Windows:
-# the two systems nobody builds on locally. macOS-only code is `cfg`-gated and stays the
-# release build's to prove.
+# the two systems nobody builds on locally.
 
 on:
   pull_request:
@@ -72,7 +70,7 @@ jobs:
         with:
           workspaces: packages/desktop/src-tauri
 
-      # The same list as desktop-release.yml's Linux leg.
+      # The Linux packages the Tauri shell links against.
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
