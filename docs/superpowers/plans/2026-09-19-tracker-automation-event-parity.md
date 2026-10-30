@@ -17,7 +17,7 @@ PR/statusu pozostają; naprawiamy redakcję i wiązanie poświadczeń, bez noweg
 **Spec:** brief w §1 jest samowystarczalnym zapisem ostatnich ustaleń użytkownika. Kontekst:
 `.ai/specs/2026-09-18-jira-linear-tracker-browsing.md` (przeglądanie),
 `.ai/specs/2026-09-14-automations-redesign.md` (istniejące automatyzacje),
-`/tmp/cezar-review-2026-09-19.md` (audyt; plik pomocniczy, nie wymagana zależność wykonania).
+`/tmp/onni-review-2026-09-19.md` (audyt; plik pomocniczy, nie wymagana zależność wykonania).
 Stan odniesienia audytu: HEAD `91345396`; 414 plików / 7380 testów przechodziło przed poprawkami.
 
 Status dokumentu: **zaimplementowany lokalnie dla zweryfikowanych zdarzeń; nieopublikowany**.

@@ -8,10 +8,10 @@
 
 ## 📝 TLDR
 
-Today cezar runs four native coding-agent CLIs (`claude`, `codex`, `opencode`, `pi`). Adding a fifth
+Today Onni Work runs four native coding-agent CLIs (`claude`, `codex`, `opencode`, `pi`). Adding a fifth
 means editing ~50 places that still list the runner ids by hand, and you can use Azure or xAI models
 on codex only after editing `~/.codex/config.toml` by hand, with no per-task choice. Gemini and
-Copilot users cannot drive their own CLI from cezar at all. This spec proposes, in four
+Copilot users cannot drive their own CLI from Onni Work at all. This spec proposes, in four
 independently shippable phases:
 
 0. deriving every runner enumeration from one tuple, so a new backend is one line plus typecheck;
@@ -30,7 +30,7 @@ and carry the confirmation marker. Q12–Q15 came up while designing this spec.
 | U1 | Split the four issues into separate specs? | **No — one spec, four phases**, each its own implementation PR. | Triage comment on #581–#584 (2026-07-21) and #881 Wave 1 row 9; the phases share one seam and one provider-identity decision. | reversible |
 | U2 | Explicit Phase 0 (seam de-duplication)? | **Yes**, merged before any new runner. | Halves the diff of every later runner PR and of Cursor (#807). | reversible |
 | U3 | Provider identity model | **Build on the existing `configuredProvider` path**: widen it to the *declared* provider set read from `config.toml`, and pass the chosen provider to codex explicitly per run. No generic served-provider set in `BACKEND_MODEL_MAP`. | Keeps the #405 invariant (only persist a provider that served the run) with the smallest contract change; see § Phase 1. | ⚠ NEEDS HUMAN CONFIRMATION |
-| U4 | Document or generate the `model_providers` entry? | **Document.** cezar never writes `~/.codex/config.toml`. | `agent-config/catalog.ts` treats vendor config as the user's file; config writes are localHandoff-gated (AGENTS.md). | reversible |
+| U4 | Document or generate the `model_providers` entry? | **Document.** Onni Work never writes `~/.codex/config.toml`. | `agent-config/catalog.ts` treats vendor config as the user's file; config writes are localHandoff-gated (AGENTS.md). | reversible |
 | U5 | #584: codex + custom provider (A) or a dedicated Grok runner (B)? | **Option A**, conditional on xAI serving the Responses API (codex removed `wire_api = "chat"`). If Step 1.1 finds it does not, #584 is documented as unsupported on codex and stays open. Option B stays out of scope. | No official headless xAI coding CLI was found. Option A needs no new `RunnerId`, and the Phase 1 mechanism is provider-agnostic, so nothing is built specifically for xAI. | reversible |
 | U6 | Gemini: one long-lived process or a new process per turn? | **One long-lived process over ACP** (`gemini --acp`), follow-ups as further `session/prompt` calls, resume via `session/load`. Headless `-p` with `--resume` per turn is the documented fallback, not the design. | Gemini CLI 0.60 ships an ACP mode with `loadSession`, `cancel` and token counts (§ Research). That beats both options the brief listed, and it shares a client with Copilot. | ⚠ NEEDS HUMAN CONFIRMATION |
 | U7 | Copilot: ACP stdio server or one-shot commands? | **ACP stdio server** (`copilot --acp --stdio`), persistent. | Issue #582 preference; same shape as the codex JSON-RPC runner. | reversible |
@@ -65,7 +65,7 @@ and carry the confirmation marker. Q12–Q15 came up while designing this spec.
   worse: codex's env allowlist (`core/agent-env.ts:223`) drops `XAI_API_KEY`, so a correctly configured xAI provider
   fails with an auth error from inside codex.
 - **Gemini and Copilot users cannot use their own agent.** Both CLIs have a documented headless or streaming
-  surface (#581, #582), and cezar has no runner for either.
+  surface (#581, #582), and Onni Work has no runner for either.
 
 ## 📝 Proposed Solution
 
@@ -82,15 +82,15 @@ One seam, extended in dependency order:
 
 - *Route Azure and Grok through OpenCode.* The issues were revised on 2026-07-21 to require native CLIs; it adds a
   second runtime and no capability.
-- *A generic "served-provider set" in `BACKEND_MODEL_MAP`* (#583 candidate 2). It hard-codes in cezar which providers
+- *A generic "served-provider set" in `BACKEND_MODEL_MAP`* (#583 candidate 2). It hard-codes in Onni Work which providers
   codex may serve, while codex already knows: the user's `model_providers` table *is* that set. Reading it keeps
-  cezar ignorant of vendors (the #548 "no provider allowlist" rule, `model-identity.ts:48-56`).
+  Onni Work ignorant of vendors (the #548 "no provider allowlist" rule, `model-identity.ts:48-56`).
 - *`providerByModel`* (#583 candidate 1). It is keyed by bare model id, and Azure deployment names are user-chosen,
   so the keys collide.
 - *A dedicated Grok runner* (#584 Option B). No official headless xAI coding CLI exists (see § Research).
 - *Antigravity CLI instead of Gemini CLI now* (U11 option b). `agy` is what individuals can log in to for free, but its
   wire format (`init` / `step_update` / `result`), keyring credentials and permission model are all different and
-  unverified in cezar. Gemini CLI is what #581 asked for and what API-key, Vertex and Workspace users run. Keeping the
+  unverified in Onni Work. Gemini CLI is what #581 asked for and what API-key, Vertex and Workspace users run. Keeping the
   mapper and fixture layout per CLI lets `agy` land later as its own runner id without reshaping this one.
 - *One `gemini` id with two transports* (U11 option c). Rejected: a runner id that means two different binaries breaks
   `resumeCommand()`, detection, the auth probe and fixtures, all of which key on the id.
@@ -111,7 +111,7 @@ marked *unverified* come from prior knowledge. Each phase's first Step re-checks
   (`ThreadStartParams` / `ThreadResumeParams` in `codex_app_server_protocol.v2.schemas.json`, codex 0.154.0).
   `codex app-server` also accepts `-c key=value` at spawn. A per-thread provider is therefore a documented request
   field, not a config write. **Verified.**
-- `wire_api = "chat"` is removed. The binary rejects it with "set `wire_api = "responses"`". Any provider cezar
+- `wire_api = "chat"` is removed. The binary rejects it with "set `wire_api = "responses"`". Any provider Onni Work
   documents must be a Responses-API provider. **Verified.**
 - The `model_providers` keys are `base_url`, `env_key`, `env_key_instructions`, `query_params`, `http_headers`,
   `env_http_headers`, `experimental_bearer_token`, `requires_openai_auth`, plus retry/timeout keys. There is also a
@@ -211,7 +211,7 @@ client and mapper, and each adds a runner class plus a dialect: `AGENT_PROTOCOL.
 - Every `Record<RunnerId, …>` table stays a `Record` (the compiler already enforces it). Every hand-written
   `z.object({claude, codex, opencode, pi})` becomes `perRunner(…)`, with the same per-field schema, `.optional()` and
   `.catch()` behavior at every site. `perRunner` yields required keys, so optional-key sites add `.partial()`. The
-  `~/.cezar` schemas (`workspace/config.ts:153`, `agent-accounts.ts:127`) keep their `.passthrough()`, so unknown keys
+  `~/.onni` schemas (`workspace/config.ts:153`, `agent-accounts.ts:127`) keep their `.passthrough()`, so unknown keys
   survive round-trips (BACKWARD_COMPATIBILITY.md §9).
 - Cockpit literal lists and predicates (`provider-status.ts:3`, `provider-auth-alert.ts:7`, `accounts-section.tsx:147`,
   `editor-draft.ts:217`, `thread-state.ts:73,217`, `e2e/tools-menu.e2e.ts:24`) import
@@ -300,7 +300,7 @@ optional field for every runner; only codex fills it.
 
 Project scope contributes **nothing** to providers or credential names. Codex itself refuses provider and auth keys at
 project scope (`agent-config/catalog.ts:205`). Worse, honouring them would let a cloned repository's
-`.codex/config.toml` name any host secret as an `env_key` next to its own `base_url`, and cezar would forward the
+`.codex/config.toml` name any host secret as an `env_key` next to its own `base_url`, and Onni Work would forward the
 secret, bypassing the #427 least-privilege allowlist. A test pins that a project-scope `[model_providers.*]` changes
 neither `declaredProviders` nor the child env.
 
@@ -321,7 +321,7 @@ explicitly (never only when it differs from the default, so the record and the r
 
 - the `modelProvider` field on `thread/start` / `thread/resume`. Both param types carry it in codex 0.154
   (§ Research), next to the `model` the runner already sends at `codex-app-server-runner.ts:344-357`;
-- the value is validated against `^[A-Za-z0-9._-]+$` and is always a key cezar itself read from
+- the value is validated against `^[A-Za-z0-9._-]+$` and is always a key Onni Work itself read from
   `declaredProviders`, never free text;
 - an older codex might **ignore** an unknown field instead of rejecting it, which would persist `azure/x` for a run the
   default provider served. So the runner reads the codex version it already probes, and below the minimum recorded in
@@ -379,7 +379,7 @@ custom provider's models is version-dependent. Deployment names are user-chosen,
 the reliable path.
 
 **Docs.** `docs/providers.md` (new, linked from `docs/reference.md`) gives the `config.toml` stanzas for Azure OpenAI /
-Foundry and for xAI, taken from § Research, with the variable names and the "cezar never edits this file" note.
+Foundry and for xAI, taken from § Research, with the variable names and the "Onni Work never edits this file" note.
 
 ### The shared ACP layer (built by whichever of Phases 2 and 3 merges first)
 
@@ -414,7 +414,7 @@ permission-modes spec). So the two runners share one transport and one mapper, a
 | `session/request_permission` | `permission.requested`, then `permission.resolved` on the answer | `note` |
 | `user_message_chunk`, `available_commands_update`, unknown kinds | no events | — |
 
-**Session lifecycle (both runners).** One child and one ACP session per cezar session. The first turn runs
+**Session lifecycle (both runners).** One child and one ACP session per Onni Work session. The first turn runs
 `session/new` (or `session/load` with the recorded id when `spec.resume`) and then `session/prompt` with text plus
 image blocks. `systemPrompt` is prepended to the first prompt, since neither CLI has a native channel. Follow-ups are
 further `session/prompt` calls on the same process. `interrupt()` sends `session/cancel`: the pending prompt resolves
@@ -446,7 +446,7 @@ mode does (§6).
 - **Fallback (U6):** if Step 2.1 finds `--acp` unusable on the installed version, the runner uses
   `gemini -p … --output-format stream-json --resume <uuid>` with one child per turn. This is the Cursor v1 precedent
   (#807), and the mapping for that path is recorded beside the fixtures. The `AgentSession` contract stays the same.
-- **Exit codes** (child death outside a prompt): 41 → `provider-auth-required`; 52 / 55 → `error` with a cezar-authored
+- **Exit codes** (child death outside a prompt): 41 → `provider-auth-required`; 52 / 55 → `error` with a onni-authored
   hint ("Gemini config invalid" / "workspace not trusted"); others → `error`.
 - **Detection and auth:** `probeGemini()` in `backend-detect.ts` (`gemini --version`, `ONNI_GEMINI_BIN`). The
   `provider-auth.ts` descriptor reads the environment, because Gemini has no `status` subcommand:
@@ -514,7 +514,7 @@ mode does (§6).
   codex child may inherit for the provider serving the run (§ Phase 1, "The carrier, end to end"); set by the same
   helper at the same two sites, and read only by the codex runner, which hands it to the transport's
   `buildChildEnv({ extraNames })`.
-- No new files under `.ai/cezar/` or `~/.cezar/`. Credentials stay in the environment and the vendors' own stores.
+- No new files under `.ai/onni/` or `~/.onni/`. Credentials stay in the environment and the vendors' own stores.
 
 ## 📝 API Contracts
 
@@ -558,10 +558,10 @@ Text-only (U10). The deltas:
 |---|---|
 | `config.toml` unreadable or malformed | `declaredProviders = []`; codex behaves exactly as today (bare ids, configured provider). |
 | Explicit `azure/x` but `azure` not declared | `ModelIdentityError` before spawn, with the message naming the missing stanza and the docs link. |
-| Declared provider's `env_key` unset | Settings hint beforehand; at run time codex's auth error surfaces as `provider-auth-required` for codex with a cezar-authored hint (no vendor text). |
+| Declared provider's `env_key` unset | Settings hint beforehand; at run time codex's auth error surfaces as `provider-auth-required` for codex with a onni-authored hint (no vendor text). |
 | Resume of a codex thread started on another provider | The recorded provider is passed again. If that provider is no longer declared, Continue fails before spawn with the identity error naming the missing stanza, and the user picks another model; nothing is silently re-routed. |
 | Gemini individual with Google login only | Detection says `unknown` with the API-key hint; a live `UNSUPPORTED_CLIENT` becomes `provider-auth-required`. The run never hangs. |
-| Gemini exit 41 (auth) / 52 (config) / 55 (untrusted workspace) | `provider-auth-required` / `error` with a cezar-authored hint; 55 should not occur because the runner sets `GEMINI_CLI_TRUST_WORKSPACE=true`. |
+| Gemini exit 41 (auth) / 52 (config) / 55 (untrusted workspace) | `provider-auth-required` / `error` with a onni-authored hint; 55 should not occur because the runner sets `GEMINI_CLI_TRUST_WORKSPACE=true`. |
 | `gemini --acp` unusable on the installed version | Per-turn `-p … --resume` fallback with `--approval-mode yolo` (headless `ask_user` = deny). |
 | ACP child (either runner) dies mid-turn | Pending prompt rejects → `turn.completed{error}` + `error`; the next message respawns and `session/load`s if supported, otherwise a fresh session with a `note`. |
 | ACP permission request arrives despite the `auto` start mode | Auto-answered `allow_always`, plus a `note`; never parks. |
@@ -574,7 +574,7 @@ Text-only (U10). The deltas:
   the union sites Phase 0 rewrites. If Phase 0 lands first, each rebases once and its union-site edits collapse to one
   line. If #807 lands first, Phase 0 absorbs `cursor` into the tuple instead, with no design change. This is a direction
   call, not a defect.
-- **Older cezar reading a newer `runs.json`** (§3). Today a downgrade after one run on a new runner wipes the whole index
+- **Older Onni Work reading a newer `runs.json`** (§3). Today a downgrade after one run on a new runner wipes the whole index
   on the next save (`packages/work/src/runs/store.ts:723-740`). Phase 0's per-record salvage fixes this for every later version. Versions
   before Phase 0 keep the old behavior, and the Phase 2/3 CHANGELOG entries warn about it.
 - **Vendor churn.** Gemini's flags (`--yolo` → `--approval-mode`), auth policy, and ACP maturity in Copilot all moved
@@ -588,7 +588,7 @@ Text-only (U10). The deltas:
 - **Rollback.** Phases 0 and 1 revert cleanly (no persisted state). After Phase 0, reverting Phase 2 or 3 is safe too: records carrying the
   removed runner id are preserved unread by the salvage path and come back if the phase is re-applied.
 - **Out of scope:** Antigravity CLI runner (named follow-up), Grok Option B, Kimi/GLM (#510/#511), routing through
-  OpenCode, writing vendor config, storing provider credentials under `.ai/cezar/`.
+  OpenCode, writing vendor config, storing provider credentials under `.ai/onni/`.
 
 ## 📋 Phasing
 

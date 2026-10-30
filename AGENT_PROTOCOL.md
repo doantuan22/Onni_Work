@@ -1,6 +1,6 @@
-# AGENT_PROTOCOL.md — the cezar agent protocol
+# AGENT_PROTOCOL.md — the Onni Work agent protocol
 
-cezar runs coding-agent CLIs behind **one backend-agnostic seam** and renders
+Onni Work runs coding-agent CLIs behind **one backend-agnostic seam** and renders
 every backend through **one normalized event vocabulary**. This document is the
 operational contract for that seam: what a runner must implement, what it must
 emit, how the emissions are tested, and what a *new* runner (e.g. `pi`, PR #387)
@@ -17,7 +17,7 @@ executable, the prose is not.
 The protocol has **two layers that ship together**:
 
 - **v1 `AgentEvent`** — the original flat stream. Persisted in old NDJSON
-  recordings and still consumed by `cezar run`'s console renderer. Never
+  recordings and still consumed by `onni run`'s console renderer. Never
   removed; old recordings must keep replaying forever.
 - **v2 `UiEvent`** — the normalized, item-lifecycle protocol the redesigned
   cockpit renders. Emitted **alongside** v1, never replacing it. A mixed NDJSON
@@ -144,7 +144,7 @@ can be written to the claude CLI's stdin verbatim.
 ## 2. v1 `AgentEvent` — the flat stream
 
 The original normalized stream. Still emitted by every runner, still persisted,
-still rendered by `cezar run`. **Do not remove or rename a variant** — v1 event
+still rendered by `onni run`. **Do not remove or rename a variant** — v1 event
 `type` strings are part of the on-disk NDJSON format.
 
 ```ts
@@ -177,7 +177,7 @@ Every v1 event stays **derivable** from the v2 stream, so a consumer can migrate
 one panel at a time. New work should read v2; v1 exists for the console renderer
 and old recordings.
 
-### Cezar-owned run metadata events
+### Onni Work-owned run metadata events
 
 `provider-auth-required` is not emitted by a backend runner. The server derives it
 from an authoritative v1/v2 authentication error, persists a provider id, opaque
@@ -263,8 +263,8 @@ type UiEvent =
 
 **AskUser (`ask.requested`, #473, #565).** The portable path remains
 backend-neutral: the agent asks a structured
-multiple-choice question by ending a turn with a `CEZ:ASK <json>` control marker
-(a sibling of `CEZ:DONE` / `CEZ:MONITORING`); the RunManager detects it on the
+multiple-choice question by ending a turn with a `ONNI:ASK <json>` control marker
+(a sibling of `ONNI:DONE` / `ONNI:MONITORING`); the RunManager detects it on the
 *assembled* turn text — uniform across claude, codex and opencode with no mapper
 work — validates the payload (`packages/work/src/core/ask.ts`, shaped after Claude Code's
 `AskUserQuestion`: `header` ≤12 chars, 1–`ASK_MAX_QUESTIONS` questions,
@@ -429,7 +429,7 @@ these events get persisted as NDJSON), and asserts `toStrictEqual` against the
 - **NDJSON** — one append-only `runs/<id>.ndjson` per run, one JSON object per
   line (`seq`, `ts`, `type`, free extra keys). Never rewrite, reorder or
   re-number; readers skip bad lines. Both v1 and v2 events live here; a mixed
-  file is valid. Cezar-owned task events are additive too: for example,
+  file is valid. Onni Work-owned task events are additive too: for example,
   `provider-auth-required` records only `{ provider, authFailureId, stepId? }`
   when a runtime rejection needs user authorization; it never carries vendor
   error text or credentials.
@@ -487,7 +487,7 @@ To be first-class:
    the existing inconsistencies (opencode drops a bare model silently) — do not
    reproduce a silent-drop. A backend with no default provider gets no entry in
    `BACKEND_MODEL_MAP`'s default column, so a bare id fails loud.
-10. **Permissions** — a backend cezar starts in an "approve everything" mode MUST still answer an
+10. **Permissions** — a backend Onni Work starts in an "approve everything" mode MUST still answer an
    approval request that arrives anyway. No cockpit surface can answer one yet, so a run parked on
    a `session/request_permission` would be a state with no exit; `copilot-acp-runner.ts`
    auto-approves with a `note` instead.

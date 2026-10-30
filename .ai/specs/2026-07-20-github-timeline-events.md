@@ -23,9 +23,9 @@ Authored unattended; each default is overridable before implementation starts �
 
 ## Problem Statement
 
-`fetchGithubComments` (`src/server/forge/github.ts:443-474`) makes exactly two calls: `gh api repos/{owner}/{repo}/issues/{n}/comments --paginate` (`:455`) and, for PRs only, `.../pulls/{n}/reviews --paginate` (`:458`). There is no call to `/issues/{n}/timeline`, `/issues/{n}/events`, `/pulls/{n}/commits`, or GraphQL `timelineItems` anywhere in the repository — commits, label transitions, assignments, merges, force-pushes and cross-references simply do not exist in cezar's data layer.
+`fetchGithubComments` (`src/server/forge/github.ts:443-474`) makes exactly two calls: `gh api repos/{owner}/{repo}/issues/{n}/comments --paginate` (`:455`) and, for PRs only, `.../pulls/{n}/reviews --paginate` (`:458`). There is no call to `/issues/{n}/timeline`, `/issues/{n}/events`, `/pulls/{n}/commits`, or GraphQL `timelineItems` anywhere in the repository — commits, label transitions, assignments, merges, force-pushes and cross-references simply do not exist in Onni Work's data layer.
 
-The practical cost is that the GitHub tab shows *discussion without consequence*. On PR #517 the thread renders nine comments — including agent checkpoint evidence describing commits by SHA — while the two `committed` events those comments describe, the five `labeled` transitions, the `merged` event and the `cross-referenced` link to #520 are all invisible. A reviewer reading cezar cannot tell whether a PR was merged, when CI went green, or that the branch was force-pushed under a comment thread.
+The practical cost is that the GitHub tab shows *discussion without consequence*. On PR #517 the thread renders nine comments — including agent checkpoint evidence describing commits by SHA — while the two `committed` events those comments describe, the five `labeled` transitions, the `merged` event and the `cross-referenced` link to #520 are all invisible. A reviewer reading Onni Work cannot tell whether a PR was merged, when CI went green, or that the branch was force-pushed under a comment thread.
 
 CI status compounds this. `ghCheckRunSchema` (`:59-63`) and `rollupToChecks` (`:82-88`) already collapse `gh`'s `statusCheckRollup` array into a single `passing|failing|pending|null` for the *item*, discarding every check's name, conclusion and URL — and that rollup is attached to the PR, never to a commit. So even with commits rendered there is nothing to hang a status marker on.
 
@@ -104,7 +104,7 @@ With all three, the whole timeline fetch is bounded by **one 15 s window**, the 
 
 The `Accept` header is carried over from #525 step 2 and is pinned deliberately rather than left to `gh`'s default. Current `gh` already sends a compatible media type, so this changes nothing today. It is pinned because the timeline spent years behind the `mockingbird-preview` media type, so its payload shape has a history of depending on what the client asks for. That history is not unique to it — `/pulls/{n}/reviews` was gated behind `black-cat-preview` and Phase 2's `statusCheckRollup` behind `antiope-preview`, both long since GA — which is precisely why pinning here is a cheap habit rather than a special case. One flag, no behavior change, one less silent dependency on a client default. The existing calls at `:455`/`:458` omit it and are deliberately left alone; retrofitting them is unrelated churn.
 
-The loop walks oldest-first, so the page cap and the entry cap truncate the *same* end: on a thread exceeding 10 pages the newest events are never fetched, and `slice(-cap)` can only keep the newest of what arrived. Accepted for v1 — the `truncated` flag plus the existing "view on GitHub" row covers it, and threads past ~1000 timeline rows are far outside cezar's working set. Revisit with reverse pagination only if it shows up in practice.
+The loop walks oldest-first, so the page cap and the entry cap truncate the *same* end: on a thread exceeding 10 pages the newest events are never fetched, and `slice(-cap)` can only keep the newest of what arrived. Accepted for v1 — the `truncated` flag plus the existing "view on GitHub" row covers it, and threads past ~1000 timeline rows are far outside Onni Work's working set. Revisit with reverse pagination only if it shows up in practice.
 
 **The page cap is a *combined* budget — and that is the one place `comments[]` can still shrink.** The two entry caps are independent, but the fetch budget is not: today's call is an *unbounded* `--paginate` over a comments-only endpoint (`:455`), so every comment is fetched and `mergeThread` picks the oldest 200 from the complete set. Under the timeline the same 200 slots are filled from at most 1000 rows in which events compete with comments for space. On a 1500-row thread carrying 250 evenly-interleaved comments, the first 1000 rows hold ~167 of them — so `comments[]` would return 167 where today it returns 200, silently dropping 33 entries from a §2-protected response. This is the same defect class as a combined *entry* cap, arriving through the source set rather than the slice.
 
@@ -195,7 +195,7 @@ No grouping fields on the wire — commit runs are collapsed client-side (Q6), s
 
 Caps: `message` 120 chars; `TIMELINE_EVENT_CAP = 200` on events, `THREAD_ENTRY_CAP = 200` on comments+reviews, independently. Fetch bounds: `TIMELINE_MAX_PAGES = 10` pages of `per_page=100`, under a shared `TIMELINE_BUDGET_MS = 15_000` with a `TIMELINE_MIN_PAGE_MS = 2_000` floor. `COMMENT_BODY_CAP` untouched.
 
-No persisted state, no migration: fetched, cached in memory for 60 s, never written to `.ai/cezar/`.
+No persisted state, no migration: fetched, cached in memory for 60 s, never written to `.ai/onni/`.
 
 ## API Contracts
 

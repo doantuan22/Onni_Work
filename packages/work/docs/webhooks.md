@@ -1,8 +1,8 @@
 # Outbound task webhooks
 
-Webhooks send task notifications from a running cezar server to your own receiver, Slack or Discord.
+Webhooks send task notifications from a running Onni Work server to your own receiver, Slack or Discord.
 Your receiver can process these events in an automation workflow. They do not start tasks or accept answers.
-Choose **Custom receiver** for signed cezar JSON, **Slack channel** for an Incoming Webhook, or **Discord channel** for a channel Webhook URL.
+Choose **Custom receiver** for signed Onni Work JSON, **Slack channel** for an Incoming Webhook, or **Discord channel** for a channel Webhook URL.
 
 ## Supported server platforms
 
@@ -12,9 +12,9 @@ process start + boot id + PID namespace), **macOS** (`ps` start time + `sysctl k
 delivery stays off until explicitly enabled. Ownership is fenced by an OS-verified process start
 token and, where stable, a boot-session identity, so a lock left by a crashed or rebooted process is recovered,
 while a process the OS still reports as live keeps it. If the OS cannot verify an identity (an
-unopenable process on Windows, a changed hostname, an unreadable owner file), cezar keeps webhooks
-unavailable instead of stealing the lock; after confirming no cezar process is running, an operator
-may remove the stale `.ai/cezar/webhooks/owner.lock`. Windows boot timestamps are diagnostic only:
+unopenable process on Windows, a changed hostname, an unreadable owner file), Onni Work keeps webhooks
+unavailable instead of stealing the lock; after confirming no Onni Work process is running, an operator
+may remove the stale `.ai/onni/webhooks/owner.lock`. Windows boot timestamps are diagnostic only:
 a changed timestamp never proves a live owner has died. Linux owners from another PID namespace
 or locks without namespace evidence remain unverifiable. On macOS, safe ownership recovery
 requires the boot-session identifier to stay constant across sleep/wake.
@@ -30,11 +30,11 @@ enabled. An ownership or storage failure reports the existing storage/coordinato
 
 ## Enable and connect
 
-1. Start cezar with `ONNI_WEBHOOKS=1` in its server environment. Restart after changing the flag.
+1. Start Onni Work with `ONNI_WEBHOOKS=1` in its server environment. Restart after changing the flag.
    Without the flag, the Webhooks settings page explains how to enable delivery; it creates no
    webhook storage, capture observers, timers or requests.
 2. Open your project's **Settings → Webhooks**, then **Add receiver**. Use an HTTPS receiver URL.
-   Paths and query strings may contain credentials: cezar masks them in lists and delivery history.
+   Paths and query strings may contain credentials: Onni Work masks them in lists and delivery history.
 3. Keep **Minimal** initially. For a custom receiver, save and copy the signing key into its secret storage.
    The cockpit shows that key once. If you lose it, use **Rotate key** in the receiver's **⋯** menu. Slack and Discord use their secret URL instead.
 4. Send a test. It contains only a synthetic connection event, never a project name, task or question.
@@ -44,7 +44,7 @@ enabled. An ownership or storage failure reports the existing storage/coordinato
 
 A local server can send to a private receiver after explicit local-network consent, including for
 Test. Hosted mode requires public HTTPS. Local HTTP is unencrypted even with a signed body.
-Loopback cezar ports, metadata services and unsafe DNS/address forms are always denied. Redirects
+Loopback Onni Work ports, metadata services and unsafe DNS/address forms are always denied. Redirects
 and corporate environment proxies are unsupported; use a directly reachable receiver with a valid
 TLS certificate. DNS is revalidated and pinned for every attempt.
 
@@ -125,7 +125,7 @@ Do not use these notifications alone to approve payments, deployments or privile
 ## Delivery and acknowledgement
 
 Return 2xx only after the desired work is completed durably, or after it is in your own durable queue.
-The total request budget is ten seconds. cezar retries connection errors, 408, 429 and 5xx, using
+The total request budget is ten seconds. Onni Work retries connection errors, 408, 429 and 5xx, using
 backoff and Retry-After, within a 72-hour delivery lifetime. Other 4xx stop that delivery; 410 disables
 the receiver. No redirect is followed. Ordering across events is not guaranteed.
 Queued attention/review notifications are also subject to freshness suppression, including the
@@ -184,7 +184,7 @@ already dropped deliveries are not automatically recovered.
 
 Delivery payloads and Replay eligibility are retained for seven days after terminal completion.
 Masked delivery/activity history is retained up to thirty days within finite storage limits. If a
-delivery or activity log cannot be read, cezar preserves it beside the original
+delivery or activity log cannot be read, Onni Work preserves it beside the original
 (`*.corrupt-<id>`) and starts a fresh log; the receiver list reports degraded health, and neither
 capture nor delivery is disabled.
 An unreadable admission is also quarantined, but its lost delivery evidence requires a safe reset:
@@ -203,8 +203,8 @@ them; heed any warning if that write fails or another server owns the project.
 ## External automation receivers
 
 Configure the webhook URL of your own backend or automation workflow (for example Make or n8n)
-as the receiver. cezar sends signed JSON; your workflow decides how to format it and whether to
-send a Slack/Discord message or perform another action. No cezar relay process is required or supplied.
+as the receiver. Onni Work sends signed JSON; your workflow decides how to format it and whether to
+send a Slack/Discord message or perform another action. No Onni Work relay process is required or supplied.
 
 Follow the signature verification and duplicate-handling requirements above. A successful HTTP
 response acknowledges receipt by your workflow, not delivery to a downstream chat. If the workflow
@@ -216,7 +216,7 @@ Select the Minimal or Standard profile deliberately: the automation service rece
 Create or use a Slack app, enable Incoming Webhooks, and install a webhook into the desired channel
 ([Slack setup guide](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)).
 In Settings → Webhooks choose **Slack channel (Incoming Webhook)**, paste its URL, Save, Test, then
-Activate. This requires no bot process, relay or OAuth flow in cezar. Only `hooks.slack.com/services/…`
+Activate. This requires no bot process, relay or OAuth flow in Onni Work. Only `hooks.slack.com/services/…`
 URLs are supported; GovSlack is outside this scope.
 
 Messages contain an event label, project/task identifiers and status. Standard also includes the
@@ -230,7 +230,7 @@ disables an active receiver. Fixed Slack error codes appear in delivery diagnost
 In Discord Server Settings → Integrations → Webhooks, create a channel webhook and copy its URL
 ([Discord setup guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)).
 Choose **Discord channel (Webhook URL)**, paste the URL, Save, Test, then Activate. No bot is needed.
-Cezar asks Discord to confirm that the message was saved before marking a delivery successful.
+Onni Work asks Discord to confirm that the message was saved before marking a delivery successful.
 The returned message content is discarded.
 The `discordapp.com`, `ptb.discord.com` and `canary.discord.com` hosts and `/api/v10/webhooks/…`
 paths are accepted and saved as `discord.com/api/webhooks/…`. Queries, forum/thread parameters and
@@ -242,22 +242,22 @@ task text. A deleted webhook (404/code 10015) or invalid token (401/code 50027) 
 receiver; only a fixed vocabulary of Discord diagnostics is retained.
 
 Both services use the shared queue, Retry-After/backoff, 72-hour delivery expiry and history.
-Retained delivery storage keeps the canonical cezar event; history exposes metadata only.
+Retained delivery storage keeps the canonical Onni Work event; history exposes metadata only.
 The provider-specific message is rendered when sending. Changing destination type resets the receiver to Inactive. To switch back to a custom
 receiver, rotate its signing key and copy it before testing/activating.
 Treat each chat webhook URL as a password: anyone who has it can post. It is masked in the cockpit
-and redacted from diagnostics. Chat deliveries carry no cezar signature headers and chat receivers
+and redacted from diagnostics. Chat deliveries carry no Onni Work signature headers and chat receivers
 have no key reveal/rotation. Standard sends potentially sensitive content into the external workspace.
 These are one-way notifications: no answers, approvals, message updates or task threads.
 
 ## Operation and boundaries
 
-Private state lives below each project's `.ai/cezar/webhooks/`, with owner-only permissions on POSIX
+Private state lives below each project's `.ai/onni/webhooks/`, with owner-only permissions on POSIX
 (Windows does not apply filesystem modes) and verified git exclusion. One verified owner process sends for each project; another instance reports
 unavailability instead of competing. Unsupported owner-identity platforms fail this optional service
 closed. The owner verifies process start and boot identity through `/proc`
 (Linux), `ps`/`sysctl` (macOS) or PowerShell (Windows). A probe that fails, times out or cannot read
-an owner's own identity is unverified: cezar reports webhooks unavailable rather than claiming the
+an owner's own identity is unverified: Onni Work reports webhooks unavailable rather than claiming the
 owner is dead and stealing the lock. On Linux a `/proc/<pid>` ENOENT read is itself proof of
 absence only within the verified same PID namespace, and a PID above the platform's ceiling is provably absent on every platform; otherwise only
 a complete, normally exited listing may show that an owner's PID is absent.
@@ -279,7 +279,7 @@ attempts can restore only the episodes they prove. Health remains **degraded** a
 when completeness cannot be established; some later failure alerts may be unavailable. The
 service does not invent historical alerts from current task metadata. New captures continue.
 
-Only a server observing its project sees live transitions. A separate headless `cezar run` or
+Only a server observing its project sees live transitions. A separate headless `onni run` or
 non-owner process can change a task without producing a lifecycle webhook. Lightweight discovery
 of enrolled projects does not start task managers. A server that never opened a task context treats
 persisted resume metadata as manual; a live scheduled notification requires a real manager timer.
@@ -287,7 +287,7 @@ persisted resume metadata as manual; a live scheduled notification requires a re
 After the owner restarts, queued attention/review notifications for a project whose task context
 has not opened in the new process are permanently superseded as `owner_restarted` when checked
 for delivery. This applies even if the question is still unanswered or the task still awaits
-review. cezar does not start a task manager merely to validate a webhook. Opening the project
+review. Onni Work does not start a task manager merely to validate a webhook. Opening the project
 later does not resend these suppressed notifications; they are not a recoverable backlog.
 
 `ONNI_WORKFLOW_WEBHOOKS` is independent: it enables an HTTP node **inside a workflow graph**, whose
@@ -295,7 +295,7 @@ result can affect graph execution. `ONNI_WEBHOOKS` observes task lifecycle outsi
 They do not share receivers, signing keys, delivery IDs, retries or rate budgets. Pausing lifecycle
 receivers does not stop workflow-node HTTP, and a lifecycle delivery failure cannot fail the task.
 
-Use the receiver guide and JSON Schema from the same cezar release/tag you run. These are
+Use the receiver guide and JSON Schema from the same Onni Work release/tag you run. These are
 repository documentation assets, not runtime imports or components of the npm service.
 
 ## Manual browser regression suites

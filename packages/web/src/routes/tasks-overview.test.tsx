@@ -257,13 +257,13 @@ describe('TasksOverview — the table', () => {
           id: 'queued-issue',
           status: 'queued',
           issueNumber: 554,
-          referencedIssueUrl: 'https://github.com/open-mercato/cezar/issues/554',
+          referencedIssueUrl: 'https://github.com/open-mercato/onni/issues/554',
         }),
       ],
     })
     const chip = tableRow('queued-issue')?.querySelector('[data-slot="issue-chip"]')
     expect(chip?.textContent).toBe('Issue #554')
-    expect(chip?.getAttribute('href')).toBe('https://github.com/open-mercato/cezar/issues/554')
+    expect(chip?.getAttribute('href')).toBe('https://github.com/open-mercato/onni/issues/554')
   })
 
   it('fills the columns with the run facts, and honest dashes where no fact exists', () => {

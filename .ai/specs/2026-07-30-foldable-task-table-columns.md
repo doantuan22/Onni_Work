@@ -11,7 +11,7 @@ Let users fold optional columns in the desktop Tasks table to reclaim horizontal
 | Q1 | Only Branch is folded by default; Workflow and the remaining optional columns start expanded. | This directly satisfies issue #738 while changing the smallest amount of the current table on upgrade. |
 | Q2 | Status and Task are permanently expanded; Workflow, Branch, ±, Ref, Tokens, Cost, CPU, Mem, and Started are foldable when present. | The issue explicitly protects Status and Task and asks for a general mechanism rather than one-off Branch logic. |
 | Q3 | A folded column keeps a narrow, icon-based header control while its row values are visually and accessibly omitted. | The column must remain discoverable and independently restorable without adding a separate settings surface. |
-| Q4 | Column state is a workspace-global preference in `~/.cezar/ui-state.json`. | Table layout describes the person using the cockpit, not repository data, and should not reset when switching projects. |
+| Q4 | Column state is a workspace-global preference in `~/.onni/ui-state.json`. | Table layout describes the person using the cockpit, not repository data, and should not reset when switching projects. |
 | Q5 | The feature applies only to the desktop table; mobile task cards keep their current compact metadata layout. | Header-click interaction has no mobile-table equivalent, and changing cards would widen the feature without solving the reported problem. |
 
 ## 📝 Problem Statement
@@ -42,7 +42,7 @@ Persist explicit user overrides in workspace UI state. Missing state uses the de
 
 “Folded” is not the same as removing the column. The logical column keeps a narrow header cell so the user can restore it in place, but its row value is not rendered. This is a better fit for the requested header-click interaction than a detached “Columns” menu: the restore affordance stays where the information will reappear.
 
-The registry is a project-owned primitive, not a reason to add a table framework. TanStack Table and MUI Data Grid both model visibility as stable column ids mapped to booleans and allow identity columns to opt out of hiding. Cezar can reuse that useful state shape without importing their sorting, pagination, or row-model machinery into a single readable component. The Cezar-specific folded-header interaction is deliberately smaller than their toolbar/menu surfaces.
+The registry is a project-owned primitive, not a reason to add a table framework. TanStack Table and MUI Data Grid both model visibility as stable column ids mapped to booleans and allow identity columns to opt out of hiding. Onni Work can reuse that useful state shape without importing their sorting, pagination, or row-model machinery into a single readable component. The Onni Work-specific folded-header interaction is deliberately smaller than their toolbar/menu surfaces.
 
 References:
 
@@ -54,13 +54,13 @@ References:
 1. **Special-case Branch with local component state.** Rejected because it would satisfy only the first sentence of #738, could not cover Workflow or later columns, and would reset on reload.
 2. **Hide optional columns from a toolbar menu.** Rejected for this iteration because the issue explicitly asks for header-click expansion. A menu also makes restoring one hidden column require leaving the scan position.
 3. **Persist a list of hidden column ids.** Rejected in favor of an `expandedColumns` map because an explicit boolean composes cleanly with optimistic updates, records either user choice, and gives new columns an independent default when their id is absent.
-4. **Store the preference in per-project `.ai/cezar/ui-state.json`.** Rejected because column density is a user/workspace preference. Switching projects should not change the table shape.
+4. **Store the preference in per-project `.ai/onni/ui-state.json`.** Rejected because column density is a user/workspace preference. Switching projects should not change the table shape.
 5. **Adopt TanStack Table or MUI Data Grid.** Rejected because the current table has no need for their broader state machine. A declarative local registry provides the visibility invariant with less dependency and migration risk.
 
 ## 📝 Architecture
 
 ```text
-~/.cezar/ui-state.json
+~/.onni/ui-state.json
   └─ taskTable.expandedColumns
        └─ GET/PUT /api/v1/workspace/ui-state
             └─ session-global TanStack Query workspace ui-state cache
@@ -145,7 +145,7 @@ Semantics:
 - `status` and `task` values in a manually edited file are ignored because the registry marks those columns non-foldable.
 - The client does not materialize defaults merely by loading the page. State is written only after a user toggles a header.
 
-The state lives in `~/.cezar/ui-state.json` through the existing `cezarHomeDir()` path and merge-write machinery. No migration is required. Deleting the file restores the zero-config defaults on the next run.
+The state lives in `~/.onni/ui-state.json` through the existing `onniHomeDir()` path and merge-write machinery. No migration is required. Deleting the file restores the zero-config defaults on the next run.
 
 ## 📝 API Contracts
 
@@ -208,7 +208,7 @@ Status and Task keep their current plain labels and expose no misleading button,
 
 ### Visual evidence
 
-- Current Cezar Tasks table: [`assets/foldable-task-table-columns/current-01-tasks-overview.png`](assets/foldable-task-table-columns/current-01-tasks-overview.png)
+- Current Onni Work Tasks table: [`assets/foldable-task-table-columns/current-01-tasks-overview.png`](assets/foldable-task-table-columns/current-01-tasks-overview.png)
 - Proposed fresh-workspace state with Branch folded: [`assets/foldable-task-table-columns/mockup-01-branch-folded.png`](assets/foldable-task-table-columns/mockup-01-branch-folded.png)
 - Proposed user-customized state with Workflow and Branch folded: [`assets/foldable-task-table-columns/mockup-02-multiple-columns-folded.png`](assets/foldable-task-table-columns/mockup-02-multiple-columns-folded.png)
 
@@ -227,10 +227,10 @@ Status and Task keep their current plain labels and expose no misleading button,
 - **Older workspace UI-state file:** The absent key parses and the defaults apply.
 - **Newer file with unknown column ids:** The renderer ignores unknown ids; the client preserves them when it writes a known toggle.
 - **Malformed Status/Task overrides:** The renderer ignores them and keeps both columns expanded.
-- **Persistence failure or read-only home:** The optimistic change is reconciled back to server truth after a toast. Cezar remains a working cockpit with the default layout.
+- **Persistence failure or read-only home:** The optimistic change is reconciled back to server truth after a toast. Onni Work remains a working cockpit with the default layout.
 - **Rapid toggles:** Optimistic cache reads compose, serialized PUTs preserve click order, and only the newest response reconciles the cache.
 - **Navigation immediately after a toggle:** The PUT starts on the click and uses Fetch `keepalive`, so the small bounded preference payload may complete after the document begins unloading; there is no component-unmount-only flush that silently launches an ordinary abortable request too late.
-- **Two Cezar/browser processes update near-simultaneously:** The existing file merge prevents unrelated top-level preferences from being lost. Same-map last-write-wins is acceptable for a personal presentation preference; each writer sends its complete cached map.
+- **Two Onni Work/browser processes update near-simultaneously:** The existing file merge prevents unrelated top-level preferences from being lost. Same-map last-write-wins is acceptable for a personal presentation preference; each writer sends its complete cached map.
 - **Token metrics disabled:** Tokens and Cost are absent, not narrow folded stubs. Saved booleans are retained and take effect if the capability later becomes visible.
 - **Queued row:** The queue note keeps correct CPU/Mem span and remains readable at the minimum folded widths.
 - **All optional columns folded:** Status and Task still identify every row; each optional column remains recoverable from its ordered header icon.
@@ -242,7 +242,7 @@ Status and Task keep their current plain labels and expose no misleading button,
 
 ### Compatibility
 
-`~/.cezar/ui-state.json` is a protected user-owned surface. The change is additive: both `taskTable` and `expandedColumns` are optional, the parent and nested object preserve unknown keys, and no existing key changes meaning. Older Cezar versions continue to parse and round-trip the unknown top-level key under the existing passthrough and merge-write contract. No migration or manual repair is required.
+`~/.onni/ui-state.json` is a protected user-owned surface. The change is additive: both `taskTable` and `expandedColumns` are optional, the parent and nested object preserve unknown keys, and no existing key changes meaning. Older Onni Work versions continue to parse and round-trip the unknown top-level key under the existing passthrough and merge-write contract. No migration or manual repair is required.
 
 The workspace UI-state response gains an optional field. Update `packages/contract` first, keep the route response exact, and retain contract-parity coverage. No endpoint is removed, renamed, or moved.
 
@@ -260,7 +260,7 @@ Workspace-global state means a toggle in one project affects every project. That
 
 ### Rollback
 
-Reverting the UI and schema additions restores the current fixed table. The optional `taskTable` key may remain on disk as unknown data; existing passthrough behavior preserves it harmlessly, and a later reintroduction can reuse it. Deleting `~/.cezar/ui-state.json` also restores defaults but is never required.
+Reverting the UI and schema additions restores the current fixed table. The optional `taskTable` key may remain on disk as unknown data; existing passthrough behavior preserves it harmlessly, and a later reintroduction can reuse it. Deleting `~/.onni/ui-state.json` also restores defaults but is never required.
 
 ## 📋 Phasing
 
@@ -277,4 +277,4 @@ Ship the additive workspace state contract, registry, persistence controller, ac
 3. Add `useTaskTableColumns()` using `useWorkspaceUiState`, `putWorkspaceUiState`, and `workspaceQueryKeys.uiState`. Cover optimistic cache updates, full nested-map preservation, serialized rapid toggles, stale-response suppression, keepalive requests during navigation, authoritative response adoption, and failure toast/invalidation.
 4. Refactor `packages/web/src/routes/tasks-overview.tsx` so desktop headers and row cells share the registry, while existing cell renderers and mobile cards remain intact. Add registry-derived widths, folded header buttons, blank presentation cells, and remove the fixed minimum width that prevents folding from saving space.
 5. Extend `packages/web/src/routes/tasks-overview.test.tsx` for mouse and keyboard toggles, accessible names/state, fixed Status/Task columns, fresh and persisted defaults, row/header alignment, hidden token-metric capability, queued CPU/Mem span, archived/search reuse, and unchanged mobile cards.
-6. Run the configured validation gate, boot the real Cezar UI, and exercise a fresh state plus persisted reload. Capture desktop screenshots with only Branch folded and with Workflow + Branch folded at representative widths; confirm there is no unexpected navigation, focus loss, clipped restore control, or horizontal overflow regression.
+6. Run the configured validation gate, boot the real Onni Work UI, and exercise a fresh state plus persisted reload. Capture desktop screenshots with only Branch folded and with Workflow + Branch folded at representative widths; confirm there is no unexpected navigation, focus loss, clipped restore control, or horizontal overflow regression.

@@ -51,7 +51,7 @@ describe('isLoopback', () => {
   })
 
   it('leaves a real site alone', () => {
-    expect(isLoopback('https://github.com/open-mercato/cezar')).toBe(false)
+    expect(isLoopback('https://github.com/open-mercato/onni')).toBe(false)
   })
 
   it('is false for nonsense rather than throwing', () => {

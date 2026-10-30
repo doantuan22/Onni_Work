@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>cezar — global settings mockup</title>
+<title>Onni Work — global settings mockup</title>
 <style>
   :root {
     --bg: #f7f7f8; --card: #ffffff; --fg: #18181b; --muted: #71717a; --soft: #52525b;
@@ -66,17 +66,17 @@
         <a href="#">◔ Resources</a>
         <a class="active" href="#">▣ Projects</a>
       </nav>
-      <div class="navlabel">Stored in ~/.cezar</div>
+      <div class="navlabel">Stored in ~/.onni</div>
     </aside>
 
     <main class="main">
       <div class="crumbs">Global settings</div>
       <h1>Projects</h1>
-      <p class="sub">The workspace registry and where GitHub checkouts land. Stored per user in <code style="font-family:ui-monospace,monospace">~/.cezar/config.json</code> — shared by every cezar on this machine.</p>
+      <p class="sub">The workspace registry and where GitHub checkouts land. Stored per user in <code style="font-family:ui-monospace,monospace">~/.onni/config.json</code> — shared by every Onni Work on this machine.</p>
 
       <section class="field">
         <h2>Checkout root</h2>
-        <p class="hint">Where “Clone from GitHub” puts new projects: <b>&lt;root&gt;/&lt;project name&gt;</b>. The folder must be writable — cezar verifies before saving.</p>
+        <p class="hint">Where “Clone from GitHub” puts new projects: <b>&lt;root&gt;/&lt;project name&gt;</b>. The folder must be writable — Onni Work verifies before saving.</p>
         <div class="control">
           <input class="txt err" value="/opt/checkouts" />
           <button class="btn">Save</button>
@@ -86,13 +86,13 @@
 
       <section class="field">
         <h2>Registered projects</h2>
-        <p class="hint">Every folder cezar has run in, plus GUI-added ones. Removing only unregisters — no files are touched.</p>
+        <p class="hint">Every folder Onni Work has run in, plus GUI-added ones. Removing only unregisters — no files are touched.</p>
         <div class="panel">
           <table>
             <thead><tr><th>Project</th><th>Status</th><th>Added</th><th></th></tr></thead>
             <tbody>
               <tr>
-                <td><div class="pname">cezar</div><div class="ppath">/Users/piotr/Projects/cezar</div></td>
+                <td><div class="pname">Onni Work</div><div class="ppath">/Users/piotr/Projects/onni</div></td>
                 <td><span class="st ok">ok</span> <span class="src">· local</span></td>
                 <td class="src">Jul 20</td>
                 <td class="ra"><button class="btn danger">Remove</button></td>
@@ -104,7 +104,7 @@
                 <td class="ra"><button class="btn danger">Remove</button></td>
               </tr>
               <tr>
-                <td><div class="pname">shop-backend</div><div class="ppath">~/cezar/projects/shop-backend</div></td>
+                <td><div class="pname">shop-backend</div><div class="ppath">~/onni/projects/shop-backend</div></td>
                 <td><span class="st ok">ok</span> <span class="src">· checkout</span></td>
                 <td class="src">Jul 20</td>
                 <td class="ra"><button class="btn danger">Remove</button></td>

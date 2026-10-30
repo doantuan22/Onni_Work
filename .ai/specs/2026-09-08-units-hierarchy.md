@@ -7,15 +7,15 @@
 
 ## TLDR
 
-cezar runs are flat: a task is one agent in one worktree. This spec adds a **hierarchy of runs**
+Onni Work runs are flat: a task is one agent in one worktree. This spec adds a **hierarchy of runs**
 named after the Roman army in English — **Caesar → Legate → Centurion**, with **legionaries** being
 the centurion's own backend sub-agents. A running unit delegates by ending its turn with
-`CEZ:SPAWN <json>`; cezar creates child runs one role below, each in its own worktree forked off the parent's branch.
-Children report upward with `CEZ:REPORT <json>`; when a child settles, its report is delivered
+`ONNI:SPAWN <json>`; Onni Work creates child runs one role below, each in its own worktree forked off the parent's branch.
+Children report upward with `ONNI:REPORT <json>`; when a child settles, its report is delivered
 into the parent's session. Budgets cap spend per node, cancel cascades, and the existing
-`CEZ:ASK` card is the **Guard**: a unit run must ask before anything irreversible, and an
+`ONNI:ASK` card is the **Guard**: a unit run must ask before anything irreversible, and an
 autonomous unit run never auto-continues past its own question. Per-role system prompts ship as
-defaults and can be overridden per repo under `.ai/cezar/units/<role>.md` (delete = restore).
+defaults and can be overridden per repo under `.ai/onni/units/<role>.md` (delete = restore).
 The cockpit gains a **Missions** tree, a **New mission** composer with a per-role runner+model
 ladder, a **Guard** inbox (a filtered view of waiting unit runs), a role chip in the task thread,
 and **Settings → Units** for the prompts.
@@ -25,9 +25,9 @@ and **Settings → Units** for the prompts.
 | # | Question | Applied default | Why |
 |---|---|---|---|
 | Q1 | Gating | Opt-in `ONNI_UNITS=1`, `capabilities.units` in `/api/v1/health` (the `ONNI_AUTOMATIONS` pattern). Off: no `/units*`/`/missions*` routes, markers not parsed, role prompts not composed. | Widest cost-widening feature so far; AGENTS.md §Zero config. |
-| Q2 | Which layers are real runs | Caesar, Legate, Centurion are runs. Legionaries = the centurion's native sub-agents (claude `Task`, added to its `allowedTools`). A centurion's `CEZ:SPAWN` is refused with a transcript note. Max **4 children in flight per parent**. | `maxParallel` defaults to 2 and only 2 monitors are slot-exempt; a four-layer tree of runs starves itself. |
-| Q3 | Worktrees | Each child gets **its own worktree as today, forked off the parent's branch**: at spawn the child record is seeded with `baseBranch: parent.branch`, which `execute()` already prefers over the configured base (run.ts ~2661). The parent **merges the child branches it accepts** (`git merge --no-ff cez/<id8>`) in its own worktree; role prompts require committing before spawning and owning sibling conflicts. The mission root's branch accumulates the result and is the one draft PR. | A shared tree needs a lease held across parks (#438), which would block a parent's own children; releasing on park re-derives that guarantee across ~9 resume paths. Own worktrees reuse only shipped mechanisms and keep each child's Changes tab and review gate honest. |
-| Q4 | Guard | Reuse `CEZ:ASK`. Role prompts require asking before irreversible actions. The autonomous nudge must **not** fire past an ask on a unit run (both turn-end sites). Guard inbox = unit runs at `waiting` with a pending ask. | No new marker, route, or record field; the resume path is plain `sendMessage`. |
+| Q2 | Which layers are real runs | Caesar, Legate, Centurion are runs. Legionaries = the centurion's native sub-agents (claude `Task`, added to its `allowedTools`). A centurion's `ONNI:SPAWN` is refused with a transcript note. Max **4 children in flight per parent**. | `maxParallel` defaults to 2 and only 2 monitors are slot-exempt; a four-layer tree of runs starves itself. |
+| Q3 | Worktrees | Each child gets **its own worktree as today, forked off the parent's branch**: at spawn the child record is seeded with `baseBranch: parent.branch`, which `execute()` already prefers over the configured base (run.ts ~2661). The parent **merges the child branches it accepts** (`git merge --no-ff onni/<id8>`) in its own worktree; role prompts require committing before spawning and owning sibling conflicts. The mission root's branch accumulates the result and is the one draft PR. | A shared tree needs a lease held across parks (#438), which would block a parent's own children; releasing on park re-derives that guarantee across ~9 resume paths. Own worktrees reuse only shipped mechanisms and keep each child's Changes tab and review gate honest. |
+| Q4 | Guard | Reuse `ONNI:ASK`. Role prompts require asking before irreversible actions. The autonomous nudge must **not** fire past an ask on a unit run (both turn-end sites). Guard inbox = unit runs at `waiting` with a pending ask. | No new marker, route, or record field; the resume path is plain `sendMessage`. |
 | Q5 | Order of battle preview | None. Caesar's first turn plans and spawns. | A preview Caesar can ignore is worse than none; costs tokens before commitment. |
 | Q6 | Budget brakes | All three: refuse a spawn beyond the parent's remaining budget (note in transcript); at turn end an over-budget unit run stops auto-continue, disarms its monitoring wake timer and parks `waiting` with a note; `cancel` cascades to descendants (depth-first, children first). | A cost feature with no working brake fails the "cost-safe AND functional" review. |
 | Q7 | Parent wake | `deliverMessage(parent, blocks, false)` if the session is open; else `enqueueMessage`; else `continueRun(parent, …, deferForCapacity: true)`; and **always persist** the report on the parent as `unit.pendingReports[]`, flushed on session open, so a parent recovered after restart cannot lose it. | A `waiting` parent with no `ActiveRun` is reachable by none of the live paths. |
@@ -57,7 +57,7 @@ unitSchema = z.object({
   parentRunId: z.string().optional(), // absent on the root
   budgetUsd: z.number().nonnegative().optional(),
   ladder: unitLadderSchema.optional(),
-  report: unitReportSchema.optional(),              // this run's own CEZ:REPORT (last wins)
+  report: unitReportSchema.optional(),              // this run's own ONNI:REPORT (last wins)
   pendingReports: z.array(z.object({ fromRunId, title, report, at })).optional(), // waiting for this run's next session
   overBudget: z.boolean().optional(),
 })
@@ -83,12 +83,12 @@ unitSpawnSchema = z.object({
 
 ## Markers (turn-end, both handlers, accumulated turn text)
 
-Precedence: `CEZ:DONE` > `CEZ:SPAWN` > `CEZ:REPORT` > `CEZ:ASK` > `CEZ:MONITORING` > plain end.
-A `CEZ:SPAWN` implies the parent keeps working on its own downstream work: after spawning, the
-parent is parked exactly like `CEZ:MONITORING` (running + `activity: 'monitoring'`, wake timer
-armed) so it surrenders its slot to the children. `CEZ:REPORT` stores `unit.report`; a report
-without `CEZ:DONE` leaves the session as today's rules dictate. All markers are stripped from the
-persisted text the way `CEZ:ASK` is. Parsed **only** when `capabilities.units` is on and the run
+Precedence: `ONNI:DONE` > `ONNI:SPAWN` > `ONNI:REPORT` > `ONNI:ASK` > `ONNI:MONITORING` > plain end.
+A `ONNI:SPAWN` implies the parent keeps working on its own downstream work: after spawning, the
+parent is parked exactly like `ONNI:MONITORING` (running + `activity: 'monitoring'`, wake timer
+armed) so it surrenders its slot to the children. `ONNI:REPORT` stores `unit.report`; a report
+without `ONNI:DONE` leaves the session as today's rules dictate. All markers are stripped from the
+persisted text the way `ONNI:ASK` is. Parsed **only** when `capabilities.units` is on and the run
 has a `unit`.
 
 ## Child run creation
@@ -107,8 +107,8 @@ accepted child branch with `git merge --no-ff`; sibling conflicts are the parent
 
 ## Reports and settle
 
-When a child settles (done / review / failed / cancelled) or emits `CEZ:REPORT`, build a compact user-role
-message: `Report from <role> "<title>" (<runId>, branch cez/<id8> off <baseBranch>): status … result …
+When a child settles (done / review / failed / cancelled) or emits `ONNI:REPORT`, build a compact user-role
+message: `Report from <role> "<title>" (<runId>, branch onni/<id8> off <baseBranch>): status … result …
 evidence … diff stat … cost $x` — the branch is what makes the report actionable for the merge. Deliver per
 Q7. When a parent's session opens (first step or continuation), any `unit.pendingReports` are
 prepended to its prompt and cleared.
@@ -123,13 +123,13 @@ and the child names no cost). At both turn-end handlers, if `costUsd ≥ budgetU
 ## Role prompts
 
 `packages/work/src/units/prompts.ts`: `DEFAULT_UNIT_PROMPTS: Record<UnitRole, string>` and
-`resolveUnitPrompt(repoRoot, role)` reading `.ai/cezar/units/<role>.md` when present. Composed
+`resolveUnitPrompt(repoRoot, role)` reading `.ai/onni/units/<role>.md` when present. Composed
 into the step system prompt after the handoff contract and before skills. Each default prompt
-states: who you are, what you receive (a task order), how you delegate (`CEZ:SPAWN <json>` with the
+states: who you are, what you receive (a task order), how you delegate (`ONNI:SPAWN <json>` with the
 schema above; centurions dispatch legionaries as native sub-agents instead), how you report
-(`CEZ:REPORT <json>`), when to park (`CEZ:MONITORING`), escalation rules (retry ≤ retry_limit on
+(`ONNI:REPORT <json>`), when to park (`ONNI:MONITORING`), escalation rules (retry ≤ retry_limit on
 transient failure; conflicting evidence goes up as a report), and the Guard rule (before anything
-irreversible, financial or scope-widening, end the turn with `CEZ:ASK` and stop; never work around a
+irreversible, financial or scope-widening, end the turn with `ONNI:ASK` and stop; never work around a
 blocked action; prefer draft PRs; never merge).
 
 ## Routes (project-scoped, gated, chained families, validated through the validators trio)
@@ -153,7 +153,7 @@ blocked action; prefer draft PRs; never merge).
 
 - Marker parsers (`units/markers.test.ts`): valid, malformed, unknown keys, too many children.
 - Prompts module: default, file override, restore.
-- Engine (fake runner, both turn-end sites): a caesar emitting `CEZ:SPAWN` creates N children with the right role/ladder/budget and parks as monitoring; a centurion's spawn is refused; 5th in-flight spawn refused; over-budget spawn refused; child settle delivers a report into an open parent session and persists a pending report for a closed one; over-budget turn end parks without auto-continue and disarms the wake timer; cancel cascades; autonomous unit run does not auto-continue past `CEZ:ASK` while a non-unit autonomous run still does (guard test).
+- Engine (fake runner, both turn-end sites): a caesar emitting `ONNI:SPAWN` creates N children with the right role/ladder/budget and parks as monitoring; a centurion's spawn is refused; 5th in-flight spawn refused; over-budget spawn refused; child settle delivers a report into an open parent session and persists a pending report for a closed one; over-budget turn end parks without auto-continue and disarms the wake timer; cancel cascades; autonomous unit run does not auto-continue past `ONNI:ASK` while a non-unit autonomous run still does (guard test).
 - Routes: missions start for all three sizes; prompts CRUD; gate off → 409; parity/typed-bodies/route-inventory suites pass.
 - Web: tree grouping is a pure function with tests; nav gating; settings section renders and saves.
 

@@ -65,7 +65,7 @@ New `src/runs/auto-name.ts`, mirroring `src/planner.ts` (spec 008) exactly:
 - `createRunner(config.defaultRunner).run({...})`, `allowedTools: []`, ~20 s timeout; new
   config key **`namerModel`** (default a cheap alias, e.g. `haiku`; passed only on the claude
   backend — the `plannerModel` precedent).
-- User prompt carries a `[cez-namer]` marker (dry-run mockability, like `[cez-planner]`),
+- User prompt carries a `[onni-namer]` marker (dry-run mockability, like `[onni-planner]`),
   the skill name + description, the first ~500 chars of the task, and the step-0 numbers as
   *advisory* context.
 - Output contract: strict JSON `{"title": string, "pr"?: number, "issue"?: number}` via
@@ -117,7 +117,7 @@ turn-text `titleSummary` gets set — expected churn, update it in the same step
 ### Degradation (zero-config rules)
 
 No runner / `ONNI_DRY_RUN` mock / timeout / junk twice → the heuristic title simply stays; at
-most a `note` event. `scripts/mock-claude.mjs` gets a `[cez-namer]` branch next to the
+most a `note` event. `scripts/mock-claude.mjs` gets a `[onni-namer]` branch next to the
 planner's returning canned JSON so tests are deterministic. Naming must never block task
 start, never park a run, never surface an error state.
 
@@ -125,11 +125,11 @@ start, never park a run, never surface an error state.
 
 Asking the main agent to emit a `ONNI_TITLE:` line contaminates every skill's prompt, is
 unreliable across backends, arrives a full turn late — and no surveyed tool does it. Revisit
-only if cezar adopts ACP `session_info_update` natively.
+only if Onni Work adopts ACP `session_info_update` natively.
 
 > **Superseded in part (owner decision 2026-07-18):** spec
-> `2026-07-18-task-ref-markers.md` introduces in-band `CEZ:PR` / `CEZ:ISSUE` /
-> `CEZ:TITLE` markers after conversation-borne references kept defeating both
+> `2026-07-18-task-ref-markers.md` introduces in-band `ONNI:PR` / `ONNI:ISSUE` /
+> `ONNI:TITLE` markers after conversation-borne references kept defeating both
 > the janitor and this namer. The namer stays the default title mechanism; a
 > marker title takes precedence and silences the live refresh (`titleOrigin:
 > 'marker'`), and marker-declared numbers block the namer's `pr`/`issue`.

@@ -1,4 +1,4 @@
-# 001 — Packaging: `npx`, dane w `.ai/cezar/`, zero tarcia przy starcie
+# 001 — Packaging: `npx`, dane w `.ai/onni/`, zero tarcia przy starcie
 
 Status: ZAIMPLEMENTOWANE 2026-07-10 · Fala: 1 · Zależy od: —
 
@@ -12,27 +12,27 @@ bez zajętego portu, bez pytań.
 
 ```bash
 cd moje-repo
-npx cezar                      # ...i tyle. Otwiera się przeglądarka.
+npx onni                      # ...i tyle. Otwiera się przeglądarka.
 ```
 
 - Jeśli port zajęty → bierzemy następny wolny, bez pytania.
 - Jeśli brak `claude`/`gh` → cockpit i tak startuje, w headerze czerwony chip
   z jednozdaniową instrukcją instalacji. Nigdy nie blokujemy startu.
-- Żadnego `init` wymaganego. `cez init` zostaje jako *opcjonalny* scaffolding
+- Żadnego `init` wymaganego. `onni init` zostaje jako *opcjonalny* scaffolding
   przykładów.
 
 ## Zakres
 
 1. **Nazwa paczki — ROZSTRZYGNIĘTE**: `@onni/work` (publikacja w
-   org scope) **plus** alias unscoped `cezar` (`alias-cezar/`: bin-shim z
-   zależnością na scoped paczkę), bo `npx cezar` instaluje paczkę unscoped —
-   nazwa była wolna, zajmujemy ją. Bin: `cezar` + `cez`.
-2. **Katalog danych: `.cez/` → `.ai/cezar/`** (ustalenie z Piotrem; skille
+   org scope) **plus** alias unscoped `onni` (`alias-onni/`: bin-shim z
+   zależnością na scoped paczkę), bo `npx onni` instaluje paczkę unscoped —
+   nazwa była wolna, zajmujemy ją. Bin: `onni` + `onni-cli`.
+2. **Katalog danych: `.onni/` → `.ai/onni/`** (ustalenie z Piotrem; skille
    zostają w konwencji `.ai/skills/`, wspólnej z innymi narzędziami):
    ```
    .ai/
      skills/                  # skille repo (bez zmian, konwencja wspólna)
-     cezar/
+     Onni Work/
        workflows/*.yaml       # chainy użytkownika (commitowalne)
        skills/*.md            # skille tylko-cezowe (commitowalne)
        config.json            # OPCJONALNY (maxParallel, skillsRepos, model)
@@ -50,15 +50,15 @@ npx cezar                      # ...i tyle. Otwiera się przeglądarka.
 
 ## Poza zakresem
 
-- Migracja danych z `.cez/` (nikt jeszcze nie używa — twarda zmiana ścieżki).
+- Migracja danych z `.onni/` (nikt jeszcze nie używa — twarda zmiana ścieżki).
 - Autoupdate, telemetria — nie robimy.
 
 ## Projekt techniczny
 
-- `src/index.ts`: stała `DATA_DIR = '.ai/cezar'`; funkcja `pickPort(start)`
+- `src/index.ts`: stała `DATA_DIR = '.ai/onni'`; funkcja `pickPort(start)`
   (pętla `canListen`); `openUrl` po healthchecku zamiast po starcie.
-- `src/workflows/load.ts`: `WORKFLOWS_DIR = '.ai/cezar/workflows'`.
-- `src/skills.ts`: źródła `.ai/skills` + `.ai/cezar/skills`.
+- `src/workflows/load.ts`: `WORKFLOWS_DIR = '.ai/onni/workflows'`.
+- `src/skills.ts`: źródła `.ai/skills` + `.ai/onni/skills`.
 - `src/runs/store.ts`: bez zmian logiki, tylko ścieżka bazowa.
 - Opcjonalny `config.json` czytany przez zod z **pełnym fallbackiem defaultów**
   (brak pliku = pełna funkcjonalność).
@@ -75,5 +75,5 @@ npx cezar                      # ...i tyle. Otwiera się przeglądarka.
 - Na maszynie bez klonu Ceza: `npx <paczka>` w dowolnym repo → cockpit otwarty,
   chipy statusu poprawne, task da się odpalić.
 - Dwa cockpity w dwóch repo jednocześnie → drugi sam bierze inny port.
-- `git status` w repo użytkownika po sesji: tylko `.ai/cezar/` (z poprawnym
+- `git status` w repo użytkownika po sesji: tylko `.ai/onni/` (z poprawnym
   gitignore — żadnych runs.json w statusie).

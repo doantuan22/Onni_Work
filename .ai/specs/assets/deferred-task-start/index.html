@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>cezar — schedule a task</title>
+<title>Onni Work — schedule a task</title>
 <style>
 :root{color-scheme:dark;--bg:#111113;--card:#19191c;--raised:#222226;--line:#34343b;--text:#f1f1f3;--muted:#a4a4b0;--accent:#c4b5fd;--accent-bg:#302443;--warn:#fcd34d;--warn-bg:#3a3114;--error:#fca5a5;--error-bg:#3b1d22;--shadow:0 18px 50px #0007}
 html.light{color-scheme:light;--bg:#f7f7f9;--card:#fff;--raised:#f0f0f4;--line:#d7d7e0;--text:#202026;--muted:#636370;--accent:#6542a6;--accent-bg:#eee7fa;--warn:#8a5a00;--warn-bg:#fdf3d7;--error:#b42336;--error-bg:#fbe6e9;--shadow:0 18px 50px #2020261c}
@@ -96,7 +96,7 @@ code{font-size:11px;color:var(--accent)}
 </head>
 <body>
 <div class="shell">
-<header class="top"><span class="logo">cezar</span><span class="tag">PROPOSED UI · MOCKUP</span><button id="theme" type="button">Light theme</button></header>
+<header class="top"><span class="logo">Onni Work</span><span class="tag">PROPOSED UI · MOCKUP</span><button id="theme" type="button">Light theme</button></header>
 
 <div class="intro">
 <span class="eyebrow">Schedule from the task composer</span>
@@ -106,7 +106,7 @@ code{font-size:11px;color:var(--accent)}
 
 <div class="layout">
 <main class="app" id="app">
-<div class="crumb">cezar / my-shop / New task</div>
+<div class="crumb">Onni Work / my-shop / New task</div>
 <div class="composer" data-slot="composer">
 <label for="prompt" class="sr">Describe a task for the agent</label>
 <textarea id="prompt" placeholder="Describe a task for the agent — / for skills…">Fix login form validation and add tests for an empty e-mail.</textarea>
@@ -391,7 +391,7 @@ function renderResetPanel(account) {
     p.append(el('p', 'ferr', 'Couldn’t check usage limits.'), r); return;
   }
   if (u.state === 'over') { p.append(el('p', 'help', `The last known reset was at ${u.ended}. No upcoming reset is known. Start now or pick a time.`)); return; }
-  if (u.state === 'none') { p.append(el('p', 'help', 'Cezar learns this account’s limits from its tasks. Pick a date and time instead.')); return; }
+  if (u.state === 'none') { p.append(el('p', 'help', 'Onni Work learns this account’s limits from its tasks. Pick a date and time instead.')); return; }
   for (const w of u.windows) {
     const row = el('div', 'win');
     row.append(el('span', 'name', w.name), el('span', '', `${w.used >= 100 ? 'Used up' : `${w.used}% used`} · resets ${resetPhrase(w.reset)}`));

@@ -54,7 +54,7 @@ layouts) lives in the run header behind the mouse, and only for the task on scre
   opened by the workspace when it mounts.
 - `lib/keybindings.ts` (chords, defaults, reserved set, override merging) and
   `lib/use-keybindings.ts` (storage). Overrides live in the workspace ui-state
-  (`~/.cezar/ui-state.json`, `keybindings`: command id → chord, or `null` to unbind a default),
+  (`~/.onni/ui-state.json`, `keybindings`: command id → chord, or `null` to unbind a default),
   beside Appearance — one set per person, every project and browser. Absent means the defaults.
 - `lib/recent-tasks.ts` — most-recently-opened run ids, browser-local (`localStorage`), capped.
   No server state.
@@ -64,7 +64,7 @@ layouts) lives in the run header behind the mouse, and only for the task on scre
 
 ## Telemetry
 
-Opt-in like all of cezar's (docs/telemetry.md), through the cockpit relay, closed label sets in
+Opt-in like all of Onni Work's (docs/telemetry.md), through the cockpit relay, closed label sets in
 `packages/contract/src/telemetry.ts`: `palette_opened`, `task_command_run` / `task_shortcut_used`
 (the command — batched in the tab, one event per label with `value`), `task_switched`,
 `palette_mode_used` (search shape, never text), `palette_dismissed`, `shortcut_rebound`. Pin and

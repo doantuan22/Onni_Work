@@ -330,7 +330,7 @@ describe('reduceThread — legacy per-delta transcripts (codex/opencode runs rec
   // Verbatim shape from a real broken recording: the codex runner used to emit one v1 `text`
   // per streaming delta, so the file holds one line per token — and the exact-match dedup
   // never fired, rendering one paragraph per token. The v2 item carries the whole message.
-  const full = 'QA done — see github.com/open-mercato/cezar/pull/628\n\nONNI:DONE'
+  const full = 'QA done — see github.com/open-mercato/onni/pull/628\n\nONNI:DONE'
   // Per-token persistence: the server stripped markers per event (a split marker slips
   // through: CE / Z / :D / ONE) and dropped whitespace-only deltas entirely.
   const tokens = ['QA', ' done', ' —', ' see', ' github', '.com', '/open', '-merc', 'ato', '/ce', 'zar', '/p', 'ull', '/', '628', 'CE', 'Z', ':D', 'ONE']
@@ -346,7 +346,7 @@ describe('reduceThread — legacy per-delta transcripts (codex/opencode runs rec
     const { turns } = reduceThread(events)
     expect(kinds(turns[0]!.items)).toEqual(['message'])
     expect((turns[0]!.items[0] as UiMessageItem).id).toBe('item_1')
-    expect((turns[0]!.items[0] as UiMessageItem).text).toBe('QA done — see github.com/open-mercato/cezar/pull/628')
+    expect((turns[0]!.items[0] as UiMessageItem).text).toBe('QA done — see github.com/open-mercato/onni/pull/628')
   })
 
   it('drops one run spanning TWO v2 messages (v1 tool suppression made them adjacent)', () => {

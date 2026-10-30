@@ -4,7 +4,7 @@
 
 ## TLDR
 
-Monitoring wakes the same live agent every 5 minutes by default after it emits `CEZ:MONITORING`. Each wake creates a model turn, never overlaps another turn, and counts toward the 40-wakeup cap per monitoring epoch. A childless monitor that keeps re-parking hands off as `waiting` after 40 × 5 = 200 minutes; an unanswered hand-off settles `failed` after the default 15-minute idle timeout (215 minutes total). Setting `monitoringWakeIntervalMinutes` to `null` explicitly selects park mode with no automatic model turns: the hand-off bound is four times the configured idle timeout (60 minutes at the default 15, also the fallback when idle timeout is disabled). A dispatched child still in flight postpones the hand-off.
+Monitoring wakes the same live agent every 5 minutes by default after it emits `ONNI:MONITORING`. Each wake creates a model turn, never overlaps another turn, and counts toward the 40-wakeup cap per monitoring epoch. A childless monitor that keeps re-parking hands off as `waiting` after 40 × 5 = 200 minutes; an unanswered hand-off settles `failed` after the default 15-minute idle timeout (215 minutes total). Setting `monitoringWakeIntervalMinutes` to `null` explicitly selects park mode with no automatic model turns: the hand-off bound is four times the configured idle timeout (60 minutes at the default 15, also the fallback when idle timeout is disabled). A dispatched child still in flight postpones the hand-off.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -12,8 +12,8 @@ Monitoring wakes the same live agent every 5 minutes by default after it emits `
 |---|----------|-----------------|-----|----------|
 | Q1 | Fixed or adaptive cadence? | Fixed 1–60 minute interval; default 5 minutes. | It is predictable across backends and easy to explain, test, and budget. | ok |
 | Q2 | Default behavior? | `monitoringWakeIntervalMinutes` defaults to `5`. A childless monitor that keeps re-parking is handed to the user as `waiting` after 40 wakeups; an unanswered hand-off settles `failed` with Continue after the configured idle timeout (40 × 5 + 15 = 215 minutes by default). Explicit `null` selects park mode: hand-off after four times `resources.idleTimeoutMinutes` (60 minutes at the default 15, or when idle timeout is disabled), followed by the configured idle timeout (75 minutes total with idle timeout 15). With idle timeout `null` or `0`, either hand-off raises attention and rests at `waiting` with the session open. | The default cadence gives monitoring an exit that needs no human; explicit park mode spends no model turns, and disabling idle timeout deliberately leaves the hand-off open. | ok |
-| Q3 | Native backend scheduler or cezar timer? | Cezar timer using `AgentSession.sendMessage`. | Claude has `/loop`, but Codex CLI/app-server has no documented equivalent; parity belongs at the runner seam. | ok |
-| Q4 | Safety bound? | 40 automatic wakeups per monitoring epoch. | Reuses cezar's existing autonomous continuation ceiling and prevents forgotten loops from spending indefinitely. | ok |
+| Q3 | Native backend scheduler or Onni Work timer? | Onni Work timer using `AgentSession.sendMessage`. | Claude has `/loop`, but Codex CLI/app-server has no documented equivalent; parity belongs at the runner seam. | ok |
+| Q4 | Safety bound? | 40 automatic wakeups per monitoring epoch. | Reuses Onni Work's existing autonomous continuation ceiling and prevents forgotten loops from spending indefinitely. | ok |
 
 ## Problem Statement
 
@@ -23,22 +23,22 @@ Automatic wake-ups default to five minutes (#810); setting the interval to `null
 
 ## Research
 
-Claude Code's session-scoped [`/loop`](https://code.claude.com/docs/en/scheduled-tasks) is explicitly designed to poll deployments, PRs, and long builds. It supports fixed or adaptive intervals with one-minute minimum granularity, fires only between turns, restores unexpired jobs on resume, and expires recurring loops after seven days. Codex documents [scheduled tasks inside an existing chat](https://learn.chatgpt.com/docs/automations) for checking long-running operations at minute intervals, but that management surface is in ChatGPT web/desktop rather than Codex CLI; cezar drives Codex through app-server. Both validate returning to the same conversation on a cadence, but neither supplies a portable runner contract cezar can delegate to.
+Claude Code's session-scoped [`/loop`](https://code.claude.com/docs/en/scheduled-tasks) is explicitly designed to poll deployments, PRs, and long builds. It supports fixed or adaptive intervals with one-minute minimum granularity, fires only between turns, restores unexpired jobs on resume, and expires recurring loops after seven days. Codex documents [scheduled tasks inside an existing chat](https://learn.chatgpt.com/docs/automations) for checking long-running operations at minute intervals, but that management surface is in ChatGPT web/desktop rather than Codex CLI; Onni Work drives Codex through app-server. Both validate returning to the same conversation on a cadence, but neither supplies a portable runner contract Onni Work can delegate to.
 
-The shared subset is small: schedule while idle, send a normal follow-up into the same session, never replay missed ticks, and bound forgotten loops. Cezar can implement that once through `AgentSession.sendMessage` without importing vendor cron state or commands.
+The shared subset is small: schedule while idle, send a normal follow-up into the same session, never replay missed ticks, and bound forgotten loops. Onni Work can implement that once through `AgentSession.sendMessage` without importing vendor cron state or commands.
 
 ## Proposed Solution
 
 Add nullable workspace resource `monitoringWakeIntervalMinutes`:
 
 - `null` (explicit user choice): durable monitoring stays parked with no automatic wake-ups until user/external input, a dispatched child's report, or the liveness bound below;
-- integer 1–60 (default `5`): after a turn parks with `CEZ:MONITORING`, schedule a wake after N minutes;
-- wake prompt: “Re-check the downstream work you were monitoring. Continue toward the task goal; emit `CEZ:MONITORING` again only if it is still pending.”;
+- integer 1–60 (default `5`): after a turn parks with `ONNI:MONITORING`, schedule a wake after N minutes;
+- wake prompt: “Re-check the downstream work you were monitoring. Continue toward the task goal; emit `ONNI:MONITORING` again only if it is still pending.”;
 - when the next turn monitors again, schedule one new timer;
 - after 40 automatic wakeups in the current monitoring epoch, emit a lifecycle note and hand the run to the user as an ordinary `waiting` park (idle timer armed if enabled, session left open for a reply); a run with a dispatched child still in flight stays parked for that child's report instead. A real user follow-up starts a new epoch; a child's report does not;
 - while a dispatched child is in flight, a due wake-up is skipped (not counted) and re-armed: the child's settle report wakes the run on its own;
 - a monitoring park with nothing in flight that hears nothing for four times the configured `resources.idleTimeoutMinutes` (default 15 minutes; `MONITORING_LIVENESS_MS` = 4 × `DEFAULT_IDLE_TIMEOUT_MINUTES` = 60 minutes is the fallback for `null` or `0`) is handed to the user as `waiting` the same way, which is the bound when the interval is null. At the wake-up cap the same bound is armed as a fallback; if a dispatched child is still in flight when it expires, it re-arms and waits for that child;
-- a hand-off is parked like a mid-workflow `CEZ:ASK` (`askParked`): the second half of the fuse follows the configured idle timeout. When enabled, the idle timer closes the session without a reply and the run settles `failed` ("the session closed before you replied — continue to reply") with the Continue button, never `done`/`review` on work the agent said was still pending. With idle timeout `null` or `0`, no idle timer closes it: the hand-off raises attention and rests at `waiting` with the session open rather than settling. A cezar restart still settles a handed-off run `failed` the same way. With no dispatched child in flight, the default total fuse is 40 × 5 + 15 = 215 minutes; explicitly selecting park mode with interval `null` gives 60 + 15 = 75 minutes at the default idle timeout.
+- a hand-off is parked like a mid-workflow `ONNI:ASK` (`askParked`): the second half of the fuse follows the configured idle timeout. When enabled, the idle timer closes the session without a reply and the run settles `failed` ("the session closed before you replied — continue to reply") with the Continue button, never `done`/`review` on work the agent said was still pending. With idle timeout `null` or `0`, no idle timer closes it: the hand-off raises attention and rests at `waiting` with the session open rather than settling. An Onni Work restart still settles a handed-off run `failed` the same way. With no dispatched child in flight, the default total fuse is 40 × 5 + 15 = 215 minutes; explicitly selecting park mode with interval `null` gives 60 + 15 = 75 minutes at the default idle timeout.
 
 Immediate autonomous mode keeps precedence and existing behavior. The timed mode starts only after the run actually parks as monitoring, including after immediate autonomous continuation reaches its own cap.
 
@@ -80,7 +80,7 @@ Add a Settings → Resources field below Extra monitoring sessions:
 - mode select: **Park until resumed** or **Re-check on an interval**;
 - interval mode reveals a 1–60 minute numeric input and Save button; the default is 5 minutes, also the initial value when switching back from park mode;
 - hint: **Park uses no model turns. Re-check sends the same agent a follow-up on this cadence until work completes or the 40-wakeup safety cap is reached.**;
-- helper: **Claude offers a similar `/loop`; cezar applies this consistently to Claude, Codex, and OpenCode.**
+- helper: **Claude offers a similar `/loop`; Onni Work applies this consistently to Claude, Codex, and OpenCode.**
 
 The control uses the existing resource mutation, cache update, toast, keyboard, mobile, and validation patterns. Proposed mockup: `assets/long-running-waiting-sessions/mockup-01-resources-monitoring-capacity.png`.
 
@@ -106,10 +106,10 @@ The same deadline should appear in the compact run status/header when space perm
 - Refreshing or opening the session on another browser reconstructs the same exact deadline from `RunRecord.monitoringWakeAt`.
 - A slow agent turn cannot overlap the cadence; no timer exists during the turn.
 - A timer racing with terminal state re-checks synchronously and becomes a no-op.
-- Wake #40 runs normally; if it monitors again, cezar emits the cap note and parks it `waiting` (or keeps it monitoring while a dispatched child is in flight).
+- Wake #40 runs normally; if it monitors again, Onni Work emits the cap note and parks it `waiting` (or keeps it monitoring while a dispatched child is in flight).
 - A user message resets the epoch; a config refresh alone does not.
 - Backend disconnect uses the existing visible error/terminal path.
-- Cezar restart does not promise vendor-process resurrection or missed-wake replay.
+- Onni Work restart does not promise vendor-process resurrection or missed-wake replay.
 
 ## Risks & Impact Review
 

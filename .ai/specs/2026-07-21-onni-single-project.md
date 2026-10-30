@@ -14,7 +14,7 @@ Add an opt-in `ONNI_SINGLE_PROJECT=1` boot mode that exposes only the launch pro
 
 ## Problem Statement
 
-The multi-project workspace makes one cezar server discover and operate across a user's registered repositories. Some users intentionally run one server per repository and need a hard capability boundary that prevents accidentally exposing or adding another project while preserving cezar's zero-config boot behavior.
+The multi-project workspace makes one Onni Work server discover and operate across a user's registered repositories. Some users intentionally run one server per repository and need a hard capability boundary that prevents accidentally exposing or adding another project while preserving Onni Work's zero-config boot behavior.
 
 ## Proposed Solution
 
@@ -38,13 +38,13 @@ Write-side enforcement sits at existing chokepoints:
 - `POST /api/projects/checkout` refuses before starting a clone, so the server never incurs network or disk work that cannot be registered.
 - `DELETE /api/projects/:projectId` refuses before context disposal or registry mutation.
 - `GET /api/fs/browse` refuses before resolving or reading a requested path.
-- `cezar projects add/remove` refuse before validating paths or touching the registry; `list` uses the same pinned read behavior when invoked from a server launch context, while standalone CLI listing remains a registry inspection unless the flag and launch root are available.
+- `onni projects add/remove` refuse before validating paths or touching the registry; `list` uses the same pinned read behavior when invoked from a server launch context, while standalone CLI listing remains a registry inspection unless the flag and launch root are available.
 
 The cockpit derives `singleProject` once in `AppShellContainer` and passes it to presentation boundaries. The add-project menu is absent, and the static settings registry becomes capability-aware so the global Projects section is absent from navigation and routing. Existing `projects.length > 1` gates naturally collapse project groups and the new-task project picker after the registry response is pinned. URL grammar does not change: `/p/<boot>/*`, `/p/default/*`, and legacy flat redirects remain intact; hidden project ids resolve as unknown.
 
 ## Data Model
 
-No persisted schema changes. `~/.cezar/config.json` retains every existing project row byte-for-byte. `ONNI_SINGLE_PROJECT` is process input only and is never written to workspace or per-repository state.
+No persisted schema changes. `~/.onni/config.json` retains every existing project row byte-for-byte. `ONNI_SINGLE_PROJECT` is process input only and is never written to workspace or per-repository state.
 
 The public health capability grows additively:
 
@@ -77,7 +77,7 @@ All mutating routes keep their zod boundary validation convention. The capabilit
 
 CLI contract:
 
-- `cezar projects add …` and `cezar projects remove …` print a concise single-project refusal to stderr and return exit code `1`.
+- `onni projects add …` and `onni projects remove …` print a concise single-project refusal to stderr and return exit code `1`.
 - Usage text mentions that these mutations are unavailable under `ONNI_SINGLE_PROJECT=1`.
 - Boot registration still runs before serving, and listing presents the launch project only when the mode supplies boot identity.
 
@@ -93,7 +93,7 @@ This mode intentionally removes choices instead of adding a settings control:
 
 Accessibility is preserved because controls are not rendered rather than visually disabled. Existing keyboard order therefore closes over the remaining controls without dead focus targets.
 
-Illustrative proposed-state mockup: [single-project shell](assets/cez-single-project/mockup-01-single-project-shell.png). Current-state references: [sidebar](assets/cez-single-project/current-01-sidebar.png) and [Projects settings](assets/cez-single-project/current-02-projects-settings.png).
+Illustrative proposed-state mockup: [single-project shell](assets/onni-single-project/mockup-01-single-project-shell.png). Current-state references: [sidebar](assets/onni-single-project/current-01-sidebar.png) and [Projects settings](assets/onni-single-project/current-02-projects-settings.png).
 
 ## Edge Cases & Failure Scenarios
 
@@ -119,11 +119,11 @@ Illustrative proposed-state mockup: [single-project shell](assets/cez-single-pro
 
 ## Research — market anchors
 
-- VS Code treats a single opened folder as a workspace and only creates a multi-root workspace through explicit add/open-multiple gestures. That supports cezar's choice to make the one-root presentation genuinely omit multi-root affordances instead of leaving misleading disabled controls: https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces
-- VS Code Workspace Trust re-evaluates trust when another folder is added. Cezar's stricter opt-in mode prevents the analogous exposure expansion entirely at the server boundary, rather than relying on UI intent: https://code.visualstudio.com/docs/editing/workspaces/workspace-trust
+- VS Code treats a single opened folder as a workspace and only creates a multi-root workspace through explicit add/open-multiple gestures. That supports Onni Work's choice to make the one-root presentation genuinely omit multi-root affordances instead of leaving misleading disabled controls: https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces
+- VS Code Workspace Trust re-evaluates trust when another folder is added. Onni Work's stricter opt-in mode prevents the analogous exposure expansion entirely at the server boundary, rather than relying on UI intent: https://code.visualstudio.com/docs/editing/workspaces/workspace-trust
 - Docker Compose profiles use an explicit environment/CLI opt-in while leaving the default model intact. The useful precedent is strict activation with no persisted migration, not Compose's broader profile feature set: https://docs.docker.com/compose/how-tos/profiles/
 
-What cezar deliberately skips: per-project toggles, runtime switching, a second registry, or a saved workspace file. One env bit narrows existing behavior and is reversible by restart.
+What Onni Work deliberately skips: per-project toggles, runtime switching, a second registry, or a saved workspace file. One env bit narrows existing behavior and is reversible by restart.
 
 ## Phasing
 

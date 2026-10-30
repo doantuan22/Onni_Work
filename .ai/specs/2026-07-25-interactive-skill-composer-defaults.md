@@ -112,7 +112,7 @@ required.
 
 The only new data is the optional in-memory/API `Skill.interactive` boolean.
 Skill Markdown remains valid without frontmatter. There is no migration or new
-persistent cezar state.
+persistent Onni Work state.
 
 ## API Contracts
 

@@ -51,19 +51,19 @@ describe('checkout — repo reference parsing', () => {
   it('accepts every GitHub spelling and normalizes to owner/repo', () => {
     for (const input of [
       'open-mercato/onni',
-      'https://github.com/open-mercato/cezar',
-      'https://github.com/open-mercato/cezar.git',
-      'http://www.github.com/open-mercato/cezar/',
-      'github.com/open-mercato/cezar',
+      'https://github.com/open-mercato/onni',
+      'https://github.com/open-mercato/onni.git',
+      'http://www.github.com/open-mercato/onni/',
+      'github.com/open-mercato/onni',
       'git@github.com:open-mercato/onni.git',
-      'ssh://git@github.com/open-mercato/cezar',
+      'ssh://git@github.com/open-mercato/onni',
       '  open-mercato/onni  ',
     ]) {
       expect(parseRepoRef(input), input).toEqual({
         owner: 'open-mercato',
         repo: 'onni',
         slug: 'open-mercato/onni',
-        cloneUrl: 'https://github.com/open-mercato/cezar.git',
+        cloneUrl: 'https://github.com/open-mercato/onni.git',
       });
     }
   });
@@ -103,7 +103,7 @@ describe('checkout — GitHub transport', () => {
     expect(ghCloneArgs(ref!, '/checkouts/onni')).toEqual([
       'repo',
       'clone',
-      'https://github.com/open-mercato/cezar.git',
+      'https://github.com/open-mercato/onni.git',
       '/checkouts/onni',
       '--',
       '--progress',
@@ -462,7 +462,7 @@ describe('POST /api/v1/projects/checkout', () => {
     writeFileSync(join(existing, 'precious.txt'), 'mine', 'utf8');
 
     const { status, body } = await post({
-      url: 'https://github.com/open-mercato/cezar.git',
+      url: 'https://github.com/open-mercato/onni.git',
     });
     expect(status).toBe(409);
     expect(body.error).toContain('already exists');

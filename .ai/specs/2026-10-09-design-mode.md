@@ -45,7 +45,7 @@ on a **different origin**: its own loopback port.
    answers `{ origin }`.
 3. The column frames the same path on the mirror instead of on the dev server. The mirror passes
    everything through, splices WebSocket upgrades (hot reload keeps working), and inserts one
-   `<script src="/__cezar_design__/picker.js">` into HTML documents.
+   `<script src="/__onni_design__/picker.js">` into HTML documents.
 4. The picker announces itself to its parent window; the cockpit answers `set-active`. While
    active it highlights the element under the cursor, swallows the click, and posts a bounded
    description of the element to the cockpit.
@@ -89,7 +89,7 @@ The proxy is the new exposure, so each property below is load-bearing and has a 
 | Open proxy | It forwards only to the one loopback `http://` origin it was opened for. `parseDesignTarget` refuses anything else. |
 | DNS rebinding through the mirror | Dev servers check `Host`; the mirror rewrites `Host`, so it checks it first itself (`isLoopbackHostHeader`) and answers 403. |
 | Defeating the app's CORS/CSRF | `Origin`/`Referer` are rewritten to the app's only when they are the mirror's own. A foreign origin is forwarded untouched. |
-| Mirroring cezar itself | Refused: the cockpit origin from the body and the request's own `Host`, under every loopback spelling. A mirrored cockpit would be the API with `Origin` rewritten to look same-origin. |
+| Mirroring Onni Work itself | Refused: the cockpit origin from the body and the request's own `Host`, under every loopback spelling. A mirrored cockpit would be the API with `Origin` rewritten to look same-origin. |
 | A page driving or reading the picker | The picker posts to, and obeys, one window (its parent) at one origin (the cockpit's, baked in when the mirror was opened). The cockpit accepts messages only from the mirror's origin AND its own frame's window. |
 | Hostile element data in a prompt | Every field is length-capped twice — in the picker and again in `parseDesignPick` — and the markup is fenced with a fence longer than any backtick run inside it. It is still text from an untrusted page; it is presented to the agent as data about an element, the same trust level as the diff the agent already reads. |
 | Network exposure | `127.0.0.1` only, opened only after a user switches Design Mode on. Off on a hosted cockpit, where a loopback mirror reaches nobody. |
@@ -198,7 +198,7 @@ notes are memory-only: a receipt for this review.
 
 An empty tab on a local cockpit with the terminal allowed offers **Run the app** instead of a bare
 hint. The suggested command is the one this browser last started the app with for the project
-(`localStorage`, `cez:preview-run:<projectId>` — a convenience, never configuration), else the
+(`localStorage`, `onni:preview-run:<projectId>` — a convenience, never configuration), else the
 first discovered `dev` / `start` / `serve` / `preview` / `run` script or Make target
 (`/runs/:id/terminal/commands`). **Other command** lists the rest and takes a custom one.
 
@@ -229,8 +229,8 @@ The team recipe may live in a committed file although #1495 refuses setup script
 on their own when a worktree is created, while a recipe runs only on a click that shows its commands
 verbatim — the same trust as a `package.json` script offered by **Run**.
 
-Two places, both optional: the repo's `.ai/cezar/config.json` (the team's — committable) and the
-project's entry in `~/.cezar/config.json` (yours), which wins. `GET/PUT /api/v1/start-app` reads and
+Two places, both optional: the repo's `.ai/onni/config.json` (the team's — committable) and the
+project's entry in `~/.onni/config.json` (yours), which wins. `GET/PUT /api/v1/start-app` reads and
 writes them; a write is refused (409) wherever the terminal is off, since it stores a command a
 terminal will run. `/runs/:id/terminal/commands` carries the recipe in force as `recipe`, with its
 `scope`. The empty Preview tab then offers **Start app** with the services listed, and **Edit start
@@ -245,7 +245,7 @@ running `<install> && <service>` cannot hold several services back.
 
 A page that moves without a load (`pushState`, `replaceState`, a hash change) is invisible to a
 cross-origin embedder, so the bar kept the first address and Reload went back to it. A **location
-reporter** inside the page now posts `{ source: 'cezar-preview', type: 'location', url, how }` to its
+reporter** inside the page now posts `{ source: 'onni-preview', type: 'location', url, how }` to its
 parent at the cockpit's origin; it only reports and obeys nothing. Two carriers: the Design Mode
 picker (`location-reporter.ts`, so it works through the mirror), and the desktop shell, which injects
 a copy into every frame and acts only in a direct child of a cockpit origin (`FRAME_SCRIPT`). A plain

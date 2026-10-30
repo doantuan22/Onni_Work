@@ -26,7 +26,7 @@ one return that IS re-gated: `fireAutoResume` hands it to the ordinary queued-co
 (`run.ts:2318-2322`), so it obeys the cap like any other queued work. Ordinary tasks
 keep their normal capacity path. The default (`null`) is byte-for-byte today's
 behavior. It is configured in **Settings → Resources** (the browser surface), persisted in
-`~/.cezar/config.json`, enforced event-driven inside the existing `pump()` — no database, no new
+`~/.onni/config.json`, enforced event-driven inside the existing `pump()` — no database, no new
 route, no record field, no browser loop, no timer, no dead-end state.
 
 ## 📝 Problem Statement
@@ -54,7 +54,7 @@ route, no record field, no browser loop, no timer, no dead-end state.
 ## 📝 Proposed Solution
 
 1. **One additive workspace resource.** `resources.dispatchMaxConcurrent: number | null` in
-   `~/.cezar/config.json` (`null`/`0` = no cap, otherwise `1..16`). Workspace-wide, like
+   `~/.onni/config.json` (`null`/`0` = no cap, otherwise `1..16`). Workspace-wide, like
    `maxParallel`, so every browser, project and CLI reads one value; edited in Settings →
    Resources through the existing `PUT /api/v1/workspace/config`.
 2. **A per-run predicate in `pump().startable()`** (`run.ts:1379-1383`). When the candidate is a
@@ -102,7 +102,7 @@ route, no record field, no browser loop, no timer, no dead-end state.
 
 ```mermaid
 flowchart LR
-  parent[Parent task] -- cez task create --> dispatch["dispatch()"]
+  parent[Parent task] -- onni task create --> dispatch["dispatch()"]
   dispatch --> queue["queue.push + pump()"]
   settings["Settings → Resources: dispatchMaxConcurrent"] -- "PUT /workspace/config" --> cache["WorkspaceSemaphore cache + pump"]
   queue -- "startable(): dispatch child AND dispatchBusy() >= cap" --> wait["stays queued; next startable run considered"]
@@ -170,7 +170,7 @@ dispatchMaxConcurrent: z.number().int().min(0).max(16).nullable().default(null).
   reach the `.catch`; the worst case of a wrong value is a missing ceiling, never a blocked queue.
 - The GET body materializes `null`; the PUT body accepts it optionally and applies it only when
   present (`PUT` is partial, like every other resource key).
-- `backward compatibility`: an older cezar ignores the unknown key through `.passthrough()`;
+- `backward compatibility`: an older Onni Work ignores the unknown key through `.passthrough()`;
   nothing else in `runs.json` or the NDJSON changes.
 
 ## 📝 API Contracts
@@ -222,7 +222,7 @@ section are updated.
 | Nested dispatch, child blocking **synchronously** on its own child with the last slot held | The intended flow resolves it: the parent ends its turn instead of foreground-waiting, which parks it (`waiting.add` + `releaseSlot()`, `run.ts:2685`) and pumps the whole workspace, so the grandchild is admitted. The containment argument in §Risks holds **under that condition** and is stated there. |
 | A capped child with no slot in sight | Stays `queued`, with its position visible in the task list. Deliberately **not** re-checked on a timer, and unlike the usage-limit hold it needs no durable re-check record: the events that change the answer (a child settling, being cancelled or deleted, a `resources` write, a restart re-enqueueing it) are exactly the ones that already pump or rebuild the queue. |
 | Cross-project | `dispatchBusy()` sums every manager, so the ceiling is workspace-wide like `maxParallel`. |
-| Restart | The key persists in `~/.cezar/config.json`; queued children resume through the normal `recover()` path with no special handling. |
+| Restart | The key persists in `~/.onni/config.json`; queued children resume through the normal `recover()` path with no special handling. |
 | Cancel/delete a queued dispatch child | Unchanged; the next startable run takes the freed position. |
 | `ONNI_DISPATCH=0` | No children exist; the key is inert. |
 | Remote mode | Applies everywhere — there is no browser-bound state to lose. |
@@ -268,7 +268,7 @@ section are updated.
 | # | Question | Applied answer | Rationale |
 |---|----------|----------------|-----------|
 | A1 | Is the browser the decision surface or the runtime? | The browser is the **configuration surface** (Settings → Resources); enforcement is event-driven in the engine. No browser loop. | Resolved by the brief's *Agreed direction* ("no lease, no admit route, no browser loop, no held flag, no timer"); the review (H1) showed a browser-driven lease buys only approval, and a browser-owned runtime would add a liveness window and a dead-end state. Per-child approval stays a separate spec. |
-| A2 | Where does the policy live? | `~/.cezar/config.json` `resources` (workspace-wide). | Same home as `maxParallel`; agrees across browsers/projects/CLI; immune to origin/port changes. |
+| A2 | Where does the policy live? | `~/.onni/config.json` `resources` (workspace-wide). | Same home as `maxParallel`; agrees across browsers/projects/CLI; immune to origin/port changes. |
 | A3 | What is capped? | Dispatch children holding a compute slot (`starting` + `active − waiting`), workspace-wide. | "Admission of runners"; `waiting` holds no turn, and `active` includes it, so the exclusion is explicit. |
 | A4 | Cap scope | Global, no per-tree override. | Tree brakes already exist; the key protects the host. |
 | A4a | Why not just tighten `intent.inFlight`? | It bounds children **per parent**; this cap is workspace-wide. | Per-parent brakes do not compose across concurrent trees — four trees at `inFlight = 4` is sixteen children, exactly the saturation this feature exists to prevent — and a host cap cannot be expressed per tree. `intent.inFlight` remains the narrower, per-parent knob. |
@@ -349,14 +349,14 @@ Harness-local research notes from the authoring task tree (`06328893-4e50-4dbe-9
 not part of this repository — cited so a reviewer with the cockpit can audit the raw findings; every
 claim below is also verifiable in the source files named inline):
 
-- Engine/config map: `.ai/cezar/dispatch/06328893-4e50-4dbe-9a56-243891c933bc/units/3006b0b7/notes.md`
+- Engine/config map: `.ai/onni/dispatch/06328893-4e50-4dbe-9a56-243891c933bc/units/3006b0b7/notes.md`
   (`startable()` `run.ts:1379-1383`, `capacity()` `:1353-1356`, `busySlots()` `:1265`,
   `releaseSlot()` `:1307-1318`, dispatch creation `:2032` → `:1220-1222`).
-- Governance/prior art: `.ai/cezar/dispatch/06328893-4e50-4dbe-9a56-243891c933bc/units/61b93cd8/notes.md`
+- Governance/prior art: `.ai/onni/dispatch/06328893-4e50-4dbe-9a56-243891c933bc/units/61b93cd8/notes.md`
   (semaphore `busy()`/`maxParallel()` `semaphore.ts:175-184`, `projectMaxParallel()` `:284-287`;
   dispatch caps `dispatch/engine.ts:25,45-51,62-79` and the enforcement in `run.ts:1990-1996`;
   `queued` already counts in flight and reserves budget).
-- Browser/policy doctrine: `.ai/cezar/dispatch/06328893-4e50-4dbe-9a56-243891c933bc/units/b2a52605/notes.md`
+- Browser/policy doctrine: `.ai/onni/dispatch/06328893-4e50-4dbe-9a56-243891c933bc/units/b2a52605/notes.md`
   (`BACKWARD_COMPATIBILITY.md:40` browser-state vs workspace choices; `appearance.tsx:17-26`;
   origin/port split `index.ts:252,266,281,290`; Settings patterns).
 - Focused tests reproduced by the parent on this commit, all green:

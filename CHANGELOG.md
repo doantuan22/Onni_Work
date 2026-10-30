@@ -7,8 +7,8 @@ provenance in `NOTICE`; cezar's own release notes are not copied into it.
 
 - **Desktop engine.** The shell no longer downloads anything. It runs the engine named by
   `ONNI_DESKTOP_ENTRY`, else the one `node packages/work/dist/index.js link --use` registered
-  under `~/.cezar/versions/current`; the Versions menu still switches between linked checkouts.
-  The managed Node runtime (`node_runtime.rs`, `~/.cezar/node`) and the six crates that fetched
+  under `~/.onni/versions/current`; the Versions menu still switches between linked checkouts.
+  The managed Node runtime (`node_runtime.rs`, `~/.onni/node`) and the six crates that fetched
   and unpacked it (`reqwest`, `rustls`, `sha2`, `flate2`, `tar`, `zip`) are gone — Node 20+ must
   already be installed, and the failure page says so. With no built engine the page names
   `npm install`, `npm run build` and `link --use`, plus the two environment overrides. The
@@ -16,14 +16,19 @@ provenance in `NOTICE`; cezar's own release notes are not copied into it.
 - **Dead flags and modules.** `ONNI_NO_BANNER` and `ONNI_DESKTOP_NO_UPDATE` had no reader left and
   are deleted, with their test/e2e plumbing. `server/tracker/config.ts`, the `Kbd` primitive and
   the unused `Separator` wrapper are gone.
+- **Rename.** Every internal identifier is now `onni`: the directory `packages/work`, the
+  packages `@onni/{work,contract,api-client,web,desktop}`, the `onni` command, the `ONNI_*`
+  environment variables, `.ai/onni/`, `~/.onni/`, `~/.cache/onni/`, the `onni/<id8>` branch
+  prefix and the desktop product `Onni Work` (`com.onni.work`). No compatibility layer and no
+  data migration is included.
 - **History.** `.ai/runs/` (360 files of past run logs) is removed; `.ai/specs/`,
   `.ai/skills/` and `.ai/agentic.config.json` stay.
 
 ## 2026-10-29 — Fork hardening (Phase 2)
 
 Onni Work is now maintained as an independent project: every functional link to cezar's
-upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~/.cezar`,
-`ONNI_*`, the `@open-mercato/*` package scope) stay unchanged.
+upstream services is cut, while the internal identifiers still carried the upstream
+`cez`/`cezar` names.
 
 - **Attribution.** `Copyright (c) 2026 DOANTUANIT` added below the original cezar copyright in
   `LICENSE` and `packages/work/LICENSE`; new `NOTICE` records the derivation. Root `README.md`
@@ -48,7 +53,7 @@ upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~
   unaffected, and the skills repos you name yourself still load. The terminal promo banner
   (`skills-banner.ts`) is gone for the same reason.
 - **Docs.** The Next.js documentation site (`docs/site`, its `docs:*` scripts and the
-  `cezar-docs` skill), `docs/upstream/`, the server-install guides, the brand assets, the ADR and
+  `docs:*` scripts and the docs skill), `docs/upstream/`, the server-install guides, the brand assets, the ADR and
   the screenshots are removed. `docs/reference.md`, `docs/project-overview.md`,
   `docs/upstream-audit.md`, `docs/adding-issue-tracker.md`, `docs/issue-trackers.md`,
   `docs/e2e-verification.md` and `docs/superpowers/` stay.

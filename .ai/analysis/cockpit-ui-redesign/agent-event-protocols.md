@@ -1,6 +1,6 @@
 # Agent Event Protocols — How Coding-Agent Backends Stream Status & Metadata to GUIs
 
-Research date: 2026-07-14. Sources: docs.claude.com / code.claude.com (Agent SDK + headless stream-json), agentclientprotocol.com (ACP by Zed), developers.openai.com + github.com/openai/codex (app-server), opencode.ai docs + sst/opencode SDK generated types. Cross-referenced against cezar's current normalization in `src/core/agent-runner.ts`, `claude-cli-runner.ts`, `codex-app-server-runner.ts`, `opencode-server-runner.ts`.
+Research date: 2026-07-14. Sources: docs.claude.com / code.claude.com (Agent SDK + headless stream-json), agentclientprotocol.com (ACP by Zed), developers.openai.com + github.com/openai/codex (app-server), opencode.ai docs + sst/opencode SDK generated types. Cross-referenced against Onni Work's current normalization in `src/core/agent-runner.ts`, `claude-cli-runner.ts`, `codex-app-server-runner.ts`, `opencode-server-runner.ts`.
 
 ---
 
@@ -49,9 +49,9 @@ Transport: one JSON object per line on stdout; input side is `--input-format str
  "permission_denials":[{"tool_name":"Bash","tool_use_id":"toolu_…","tool_input":{…}}]}
 ```
 
-Subtypes: `success`, `error_max_turns`, `error_during_execution`. In persistent stream-json sessions (cezar's mode) a `result` message ends **each turn**, not the process — cezar already uses this as its `turn-end` signal.
+Subtypes: `success`, `error_max_turns`, `error_during_execution`. In persistent stream-json sessions (Onni Work's mode) a `result` message ends **each turn**, not the process — Onni Work already uses this as its `turn-end` signal.
 
-**`stream_event`** (only with `--include-partial-messages`) — wraps raw Anthropic streaming events (`message_start`, `content_block_start`, `content_block_delta` with `text_delta`/`thinking_delta`/`input_json_delta`, `content_block_stop`, `message_stop`). This is how you get token-by-token text and *live tool input as it's being typed*. cezar does not enable this today — it gets whole text blocks per API round-trip, which is why claude text appears "chunky" in the GUI.
+**`stream_event`** (only with `--include-partial-messages`) — wraps raw Anthropic streaming events (`message_start`, `content_block_start`, `content_block_delta` with `text_delta`/`thinking_delta`/`input_json_delta`, `content_block_stop`, `message_stop`). This is how you get token-by-token text and *live tool input as it's being typed*. Onni Work does not enable this today — it gets whole text blocks per API round-trip, which is why claude text appears "chunky" in the GUI.
 
 **`control_request` / `control_response`** — bidirectional control protocol (the SDK's plumbing, available on the CLI wire in stream-json input mode):
 
@@ -61,7 +61,7 @@ Subtypes: `success`, `error_max_turns`, `error_during_execution`. In persistent 
   "permission_suggestions":[…],"blocked_path":null}}
 ```
 
-Client replies `{"type":"control_response","response":{"subtype":"success","request_id":"req_1","response":{"behavior":"allow","updatedInput":{…}}}}` or `{"behavior":"deny","message":"…"}`. Other control subtypes: `interrupt`, `initialize`, `set_permission_mode`, `hook_callback`, `mcp_message`. SDK equivalents: `canUseTool` callback returning `PermissionResult` (`{type:"approve"|"deny"}`). This is the hook cezar would use to surface **interactive permission prompts** instead of hard-wiring `--permission-mode acceptEdits`.
+Client replies `{"type":"control_response","response":{"subtype":"success","request_id":"req_1","response":{"behavior":"allow","updatedInput":{…}}}}` or `{"behavior":"deny","message":"…"}`. Other control subtypes: `interrupt`, `initialize`, `set_permission_mode`, `hook_callback`, `mcp_message`. SDK equivalents: `canUseTool` callback returning `PermissionResult` (`{type:"approve"|"deny"}`). This is the hook Onni Work would use to surface **interactive permission prompts** instead of hard-wiring `--permission-mode acceptEdits`.
 
 ### 1.2 Plan/todo and subagents (conventions on top of tool_use)
 
@@ -71,7 +71,7 @@ Client replies `{"type":"control_response","response":{"subtype":"success","requ
   ```
   `status ∈ pending | in_progress | completed`. Each call carries the **full replacement list** (same semantics as ACP plans). `activeForm` is the present-continuous label shown while in_progress.
 - **Subagents (Task tool)** — `tool_use` with `name:"Task"`, input `{description, prompt, subagent_type}`. All messages generated inside the subagent then stream with `parent_tool_use_id` = that tool_use id, so a GUI can nest them under the Task row. The `tool_result` for the Task id is the subagent's final report.
-- **Thinking** — `thinking` content blocks inside `assistant` messages (cezar currently drops them).
+- **Thinking** — `thinking` content blocks inside `assistant` messages (Onni Work currently drops them).
 
 ---
 
@@ -134,13 +134,13 @@ Then `tool_call_update` with any changed fields:
 - **Gemini CLI**: native ACP support (was Zed's launch partner / reference implementation; `gemini --experimental-acp`).
 - **Claude Code**: no native ACP; Zed ships an **adapter** (`claude-code-acp`, npm `@zed-industries/claude-code-acp`) that wraps the Claude Agent SDK and translates to ACP — proof that stream-json maps cleanly onto ACP's model.
 - JetBrains announced ACP adoption across its IDEs; the ACP registry lists ~50 agents (Claude Code, Gemini CLI, Codex, Copilot, Goose…), several via adapters.
-- **Takeaway for cezar:** ACP is the closest thing to an industry-neutral GUI event vocabulary; aligning cezar's normalized events with ACP names (tool status enum, ToolKind, PlanEntry, diff shape, stopReason) buys future compatibility (a cezar ACP-client backend would make *any* ACP agent a fourth backend nearly for free).
+- **Takeaway for Onni Work:** ACP is the closest thing to an industry-neutral GUI event vocabulary; aligning Onni Work's normalized events with ACP names (tool status enum, ToolKind, PlanEntry, diff shape, stopReason) buys future compatibility (an Onni Work ACP-client backend would make *any* ACP agent a fourth backend nearly for free).
 
 ---
 
 ## 3. OpenAI Codex — `codex app-server` (JSON-RPC 2.0 JSONL over stdio)
 
-The protocol behind the VS Code extension, desktop app, and partner integrations. Bidirectional JSON-RPC; also `ws://` and `unix://` transports. Requires `initialize` with `capabilities.experimentalApi: true` for the v2 thread/turn/item API (which cezar already sends).
+The protocol behind the VS Code extension, desktop app, and partner integrations. Bidirectional JSON-RPC; also `ws://` and `unix://` transports. Requires `initialize` with `capabilities.experimentalApi: true` for the v2 thread/turn/item API (which Onni Work already sends).
 
 ### 3.1 Model: Thread → Turn → Item
 
@@ -166,7 +166,7 @@ The protocol behind the VS Code extension, desktop app, and partner integrations
 
 Plus `enteredReviewMode` / `exitedReviewMode`, `contextCompaction`, and a **`plan`** item (`{type:'plan', id, text}` — plan-MODE prose, streamed via `item/plan/delta`).
 
-> **Correction (2026-07-17, verified against `openai/codex@main`).** An earlier revision of this section listed a **`todoList`** item updated via `item/updated`. Neither exists: the app-server v2 `ThreadItem` union has no todo variant, and `ServerNotification` has no `item/updated` method (only `item/started` and `item/completed`). The agent's step checklist (the `update_plan` tool) arrives as the turn-level notification **`turn/plan/updated`** → `{threadId, turnId, explanation: string|null, plan: [{step, status}]}`, where `status` is **camelCase** `pending|inProgress|completed` on the app-server wire (codex's core type is snake_case; the app-server layer re-serializes). It is full-replacement and the steps carry no ids. Plan-mode prose and `update_plan` are mutually exclusive — codex rejects `update_plan` in plan mode. Sources: `app-server-protocol/schema/typescript/v2/{ThreadItem,TurnPlanUpdatedNotification,TurnPlanStep,TurnPlanStepStatus}.ts`, `schema/typescript/ServerNotification.ts`. (codex's *exec* transport — which cezar does not spawn — does have a `todo_list` item on dot-named methods.)
+> **Correction (2026-07-17, verified against `openai/codex@main`).** An earlier revision of this section listed a **`todoList`** item updated via `item/updated`. Neither exists: the app-server v2 `ThreadItem` union has no todo variant, and `ServerNotification` has no `item/updated` method (only `item/started` and `item/completed`). The agent's step checklist (the `update_plan` tool) arrives as the turn-level notification **`turn/plan/updated`** → `{threadId, turnId, explanation: string|null, plan: [{step, status}]}`, where `status` is **camelCase** `pending|inProgress|completed` on the app-server wire (codex's core type is snake_case; the app-server layer re-serializes). It is full-replacement and the steps carry no ids. Plan-mode prose and `update_plan` are mutually exclusive — codex rejects `update_plan` in plan mode. Sources: `app-server-protocol/schema/typescript/v2/{ThreadItem,TurnPlanUpdatedNotification,TurnPlanStep,TurnPlanStepStatus}.ts`, `schema/typescript/ServerNotification.ts`. (codex's *exec* transport — which Onni Work does not spawn — does have a `todo_list` item on dot-named methods.)
 
 Delta notifications:
 
@@ -183,13 +183,13 @@ Delta notifications:
  "params":{"itemId":"…","threadId":"…","turnId":"…","changes":[…]}}
 ```
 
-Response decisions: `accept`, `acceptForSession`, `decline`, `cancel` (command approval also `acceptWithExecpolicyAmendment`). A declined item completes with `status:"declined"`. cezar suppresses these entirely via `approvalPolicy:"never"` + `sandbox:"workspace-write"`.
+Response decisions: `accept`, `acceptForSession`, `decline`, `cancel` (command approval also `acceptWithExecpolicyAmendment`). A declined item completes with `status:"declined"`. Onni Work suppresses these entirely via `approvalPolicy:"never"` + `sandbox:"workspace-write"`.
 
 ### 3.4 Usage + legacy `codex proto`
 
-`thread/tokenUsage/updated` → `{threadId, tokenUsage:{total:{totalTokens,…}, last:{…}}}` — **cumulative** totals (cezar reads `tokenUsage.total.totalTokens`). No cost-in-USD field (ChatGPT-plan auth); GUIs show tokens/context-window, not dollars.
+`thread/tokenUsage/updated` → `{threadId, tokenUsage:{total:{totalTokens,…}, last:{…}}}` — **cumulative** totals (Onni Work reads `tokenUsage.total.totalTokens`). No cost-in-USD field (ChatGPT-plan auth); GUIs show tokens/context-window, not dollars.
 
-The older **`codex proto`** NDJSON interface (Submission Queue ops in / Event Queue `EventMsg` out: `task_started`, `agent_message_delta`, `agent_reasoning`, `exec_command_begin/end`, `exec_approval_request`, `apply_patch_approval_request`, `token_count`, `plan_update`, `turn_diff`, `task_complete`…) is effectively superseded by app-server; OpenAI's docs now steer all integrations to app-server. cezar is on the right transport — no reason to touch `proto`.
+The older **`codex proto`** NDJSON interface (Submission Queue ops in / Event Queue `EventMsg` out: `task_started`, `agent_message_delta`, `agent_reasoning`, `exec_command_begin/end`, `exec_approval_request`, `apply_patch_approval_request`, `token_count`, `plan_update`, `turn_diff`, `task_complete`…) is effectively superseded by app-server; OpenAI's docs now steer all integrations to app-server. Onni Work is on the right transport — no reason to touch `proto`.
 
 ---
 
@@ -214,7 +214,7 @@ Headless HTTP server (OpenAPI 3.1 at `/doc`), the same API the TUI uses. `GET /e
 
 `AssistantMessage`: `{id, sessionID, role:"assistant", time:{created,completed?}, error?, parentID, modelID, providerID, mode, path:{cwd,root}, summary?, cost, tokens:{input, output, reasoning, cache:{read, write}}, finish?}` — **cumulative-per-message** cost (USD) and token breakdown.
 
-`Part` union: `text`, `reasoning`, `file`, **`tool`**, **`step-start`**, **`step-finish`** (one per LLM round-trip; carries per-step `cost` + `tokens`), `snapshot`, **`patch`** (file diff/revert point), `agent`, `retry`, `compaction`, `subtask` (`{prompt, description, agent}` — subagent spawn). Text parts carry the **full accumulated text** each update (cezar diffes against a cursor to synthesize deltas; newer server versions also include `delta`).
+`Part` union: `text`, `reasoning`, `file`, **`tool`**, **`step-start`**, **`step-finish`** (one per LLM round-trip; carries per-step `cost` + `tokens`), `snapshot`, **`patch`** (file diff/revert point), `agent`, `retry`, `compaction`, `subtask` (`{prompt, description, agent}` — subagent spawn). Text parts carry the **full accumulated text** each update (Onni Work diffes against a cursor to synthesize deltas; newer server versions also include `delta`).
 
 **Tool part**: `{id, messageID, sessionID, type:"tool", callID, tool: "<name>", state: ToolState}` with a genuine 4-state lifecycle:
 
@@ -229,17 +229,17 @@ Built-in tool names include `bash`, `edit`, `write`, `read`, `grep`, `glob`, `we
 
 ### 4.3 Permissions
 
-`permission.updated` carries `Permission {id, type, pattern?, sessionID, messageID, callID?, title, metadata, time:{created}}`. Client replies `POST /session/:id/permissions/:permissionID` with `{response: "once"|"always"|"reject"}`. cezar today auto-approves via server config and never surfaces these.
+`permission.updated` carries `Permission {id, type, pattern?, sessionID, messageID, callID?, title, metadata, time:{created}}`. Client replies `POST /session/:id/permissions/:permissionID` with `{response: "once"|"always"|"reject"}`. Onni Work today auto-approves via server config and never surfaces these.
 
 ---
 
-## 5. What cezar normalizes today (and the gaps)
+## 5. What Onni Work normalizes today (and the gaps)
 
 Current `AgentEvent` union (`src/core/agent-runner.ts`): `text`, `tool-call {id,tool,input}`, `tool-result {toolCallId,result,isError}`, `image`, `token-usage {tokensUsed}` (single cost-weighted number), `cost {usd}`, `session`, `turn-end`, `note`, `done`, `error`.
 
 Per-backend mapping as implemented:
 
-| cezar event | claude runner | codex runner | opencode runner |
+| Onni Work event | claude runner | codex runner | opencode runner |
 |---|---|---|---|
 | `text` | `assistant` text blocks (whole blocks, no deltas) | `item/agentMessage/delta` (+ completed fallback) | text-part cursor diffing |
 | `tool-call` | `tool_use` block | `item/started` for non-message items (name = **item type**, input = whole item) | first sight of a tool part |
@@ -250,7 +250,7 @@ Per-backend mapping as implemented:
 
 **Concrete gaps this research exposes:**
 
-1. **No tool lifecycle** — cezar has call→result (2 states). Every protocol has 3–5 states (ACP `pending/in_progress/completed/failed`; codex `inProgress/completed/failed/declined`; opencode `pending/running/completed/error`). The GUI can't show a spinner on a *running* tool vs a queued one, and a claude tool is "running" implicitly between two events.
+1. **No tool lifecycle** — Onni Work has call→result (2 states). Every protocol has 3–5 states (ACP `pending/in_progress/completed/failed`; codex `inProgress/completed/failed/declined`; opencode `pending/running/completed/error`). The GUI can't show a spinner on a *running* tool vs a queued one, and a claude tool is "running" implicitly between two events.
 2. **Plan/todo invisible** — claude `TodoWrite` arrives as a generic tool-call blob; codex `plan`/`todoList` items are in `NON_TOOL_ITEMS` and **dropped entirely**; opencode `todowrite` is a generic tool. All three have the same full-replacement checklist semantics as ACP `plan` — a trivially unifiable, high-value GUI feature.
 3. **Reasoning/thinking dropped** — claude `thinking` blocks are skipped in `handleClaudeMessage`; codex `reasoning` is in `NON_TOOL_ITEMS` (and no `item/reasoning/textDelta` case); opencode `reasoning` parts are ignored in `handlePart`.
 4. **Permissions bypassed, not surfaced** — all three backends are forced into auto-approve. All three *do* have a wire-level interactive ask (claude `control_request/can_use_tool`, codex `requestApproval` JSON-RPC requests, opencode `permission.updated` + reply endpoint) that could power a GUI approval flow later; the normalized schema should reserve events for it now.
@@ -286,7 +286,7 @@ Per-backend mapping as implemented:
 
 ---
 
-## 7. RECOMMENDED — cezar normalized UI-event schema v2
+## 7. RECOMMENDED — Onni Work normalized UI-event schema v2
 
 Design rules: (1) item-lifecycle model like Codex/ACP — one stable `id` per item, `started/delta/completed` phases — because 2 of 3 backends are natively item-shaped and claude maps trivially; (2) ACP vocabulary wherever a choice is arbitrary (tool status, tool kind, plan entries, diff shape, stop reasons) for ecosystem alignment; (3) every v1 `AgentEvent` remains derivable, so the store/GUI can migrate incrementally.
 
@@ -396,4 +396,4 @@ type UiItem =
 - v1 events are pure projections of v2 (`text` ⇐ message item deltas; `tool-call`/`tool-result` ⇐ tool item started/completed; `turn-end` ⇐ turn.completed; `token-usage` ⇐ usage.updated with the cost-weighting moved to the *presentation* layer, not the wire). Ship v2 alongside v1, port GUI panels one at a time.
 - Persisting v2 events keyed by `itemId` gives replay/reconnect for free (codex explicitly persists items; opencode parts are idempotent snapshots; claude uuids are stable) — the store can upsert instead of append-only.
 - The `plan.updated` + tool-status + `item.delta{field:'output'}` trio is the biggest visible GUI win: a live checklist header, spinners on running tools, and streaming command output — matching what the Codex IDE extension and Zed's agent panel already ship.
-- Keeping enums/shape ACP-adjacent means an eventual `acp` backend (Gemini CLI etc. via `session/update`) is mostly a transcription, and cezar could even *expose* ACP to editors later.
+- Keeping enums/shape ACP-adjacent means an eventual `acp` backend (Gemini CLI etc. via `session/update`) is mostly a transcription, and Onni Work could even *expose* ACP to editors later.

@@ -2,29 +2,29 @@
 
 ## TLDR
 
-Update the cockpit's single browser-document title writer so every hydrated route identifies the active project and page while retaining `cezar` as the product suffix and pre-hydration fallback. Use the workspace registry name as the authoritative project label, derive static page labels from the project-relative route map, and use an already loaded run title for task-detail routes without ever exposing raw ids or loading placeholders.
+Update the cockpit's single browser-document title writer so every hydrated route identifies the active project and page while retaining `onni` as the product suffix and pre-hydration fallback. Use the workspace registry name as the authoritative project label, derive static page labels from the project-relative route map, and use an already loaded run title for task-detail routes without ever exposing raw ids or loading placeholders.
 
 ## Resolved assumptions (autonomous defaults)
 
 | # | Question | Applied default | Rationale | Confirm? |
 |---|----------|-----------------|-----------|----------|
-| Q1 | What should a global page with no selected project show? | `${pageLabel} · cezar` | It preserves useful page context while avoiding a guessed project and follows the existing honesty rule. | ok |
+| Q1 | What should a global page with no selected project show? | `${pageLabel} · Onni Work` | It preserves useful page context while avoiding a guessed project and follows the existing honesty rule. | ok |
 | Q2 | Should task subtabs add `Changes`, `Files`, or `Commits` after the task title? | Use the task title alone for every `/tasks/:id/*` route. | The task is the meaningful tab-strip discriminator; omitting subtab text keeps titles compact and avoids expanding the route-label contract. | ok |
 
 ## Problem Statement
 
-The static SPA shell title remains `cezar` after hydration, so multiple tabs for different projects or cockpit pages are indistinguishable. The merged multi-project workspace makes the selected project a URL fact and exposes authoritative registry display names, but no runtime seam currently combines that state with route context.
+The static SPA shell title remains `onni` after hydration, so multiple tabs for different projects or cockpit pages are indistinguishable. The merged multi-project workspace makes the selected project a URL fact and exposes authoritative registry display names, but no runtime seam currently combines that state with route context.
 
 ## Proposed Solution
 
 Add a pure title formatter plus a thin React effect hook, add a pure project-relative route-label resolver beside the route table, and call the hook exactly once from `AppShellContainer`. Resolve the active project from the URL-aware project-router helper and registry, fall back to the health repo basename only when registry truth is unavailable, and derive task-detail labels from the shared run-list cache once it has answered.
 
-The static `<title>cezar</title>` in `web/app/index.html` remains the pre-hydration value. The build-hint document in `src/server/static-ui.ts` is a separate non-SPA surface and does not change.
+The static `<title>Onni Work</title>` in `web/app/index.html` remains the pre-hydration value. The build-hint document in `src/server/static-ui.ts` is a separate non-SPA surface and does not change.
 
 ## Research and Alternatives
 
 - The browser-native `document.title` property is sufficient and broadly supported; adding a head-management dependency would create a second abstraction for one string assignment.
-- Accessible title guidance recommends a concise, unique page purpose followed by site identity. The proposed format keeps the selected project first because distinguishing several cezar project tabs is the primary use case, then adds page context and the stable product suffix.
+- Accessible title guidance recommends a concise, unique page purpose followed by site identity. The proposed format keeps the selected project first because distinguishing several Onni Work project tabs is the primary use case, then adds page context and the stable product suffix.
 - React Router supports route metadata through `handle`/`useMatches` in data-router mode, but this cockpit uses declarative `<BrowserRouter><Routes>` routing. Migrating router modes solely for titles would be disproportionate. A pure ordered pattern table beside `AppRoutes` keeps the metadata adjacent to the route source without changing router architecture.
 - Scattered route-level effects were rejected because navigation could briefly expose stale or competing titles. `AppShellContainer` remains the only writer.
 
@@ -54,12 +54,12 @@ export function useDocumentTitle(parts: DocumentTitleParts): void
 
 | Project | Page | Result |
 |---------|------|--------|
-| present | present | `${projectName} — ${pageLabel} · cezar` |
-| present | absent | `${projectName} · cezar` |
-| absent | present | `${pageLabel} · cezar` |
-| absent | absent | `cezar` |
+| present | present | `${projectName} — ${pageLabel} · Onni Work` |
+| present | absent | `${projectName} · Onni Work` |
+| absent | present | `${pageLabel} · Onni Work` |
+| absent | absent | `onni` |
 
-`useDocumentTitle` is a thin `useEffect` that assigns the pure result to `document.title` whenever either input changes. It does not restore an intermediate value in effect cleanup: dependency changes must move directly from the old truthful title to the new truthful title without a transient `cezar` write. The app-lifetime owner is `AppShellContainer`.
+`useDocumentTitle` is a thin `useEffect` that assigns the pure result to `document.title` whenever either input changes. It does not restore an intermediate value in effect cleanup: dependency changes must move directly from the old truthful title to the new truthful title without a transient `onni` write. The app-lifetime owner is `AppShellContainer`.
 
 ### Route metadata
 
@@ -105,19 +105,19 @@ No new endpoints or changes to existing request/response shapes. The registry re
 
 ## UI/UX
 
-- Before hydration, the tab reads `cezar` exactly as today.
-- A scoped tasks page reads, for example, `cezar — Tasks · cezar` when the registered project is named `cezar`.
-- A scoped task page reads, for example, `cezar — Implement page titles · cezar` after the run list answers; before that it reads `cezar · cezar` rather than exposing the run id or a loading word.
-- A global settings page reads `Settings · cezar` because no project is selected.
+- Before hydration, the tab reads `onni` exactly as today.
+- A scoped tasks page reads, for example, `onni — Tasks · onni` when the registered project is named `onni`.
+- A scoped task page reads, for example, `onni — Implement page titles · onni` after the run list answers; before that it reads `Onni Work · Onni Work` rather than exposing the run id or a loading word.
+- A global settings page reads `Settings · Onni Work` because no project is selected.
 - A project registry rename updates the title on the next authoritative query result; navigation between projects or pages updates the existing title writer rather than mounting another writer.
 - No visible in-page layout changes are introduced. Static mockups and viewport screenshots are not useful for a browser-tab metadata change; implementation QA should verify the browser-reported title across routes instead.
 
 ## Edge Cases and Failure Scenarios
 
 - `/api/projects` pending or failed: show a project name only for the confirmed boot project via the health repo fallback; never show the boot name on a non-boot URL.
-- Health pending, unreachable, or `repo: null`: omit the fallback. Page-only context may still render (for example `Settings · cezar`); otherwise use `cezar`.
+- Health pending, unreachable, or `repo: null`: omit the fallback. Page-only context may still render (for example `Settings · Onni Work`); otherwise use `onni`.
 - Unknown project or route: do not guess a project/page label. The existing routed error surface remains responsible for its visible explanation.
-- Legacy flat URL during redirect: retain `cezar` or page-only truth until the boot-project scoped URL is known; the redirect's next render supplies the project label.
+- Legacy flat URL during redirect: retain `onni` or page-only truth until the boot-project scoped URL is known; the redirect's next render supplies the project label.
 - Empty registry names or labels: normalize them as absent so the title never contains blank separators.
 - Task deleted, missing, or not loaded: omit the page label and never expose the id.
 - Task or project renamed: subscribed query data recomputes the title; no boot-time value is cached locally.
@@ -130,7 +130,7 @@ No new endpoints or changes to existing request/response shapes. The registry re
 - **Risk: extra task-list traffic or a startup cache-key flip.** Enable the explicit project run-list subscription only on task routes after the registry identifies the project, and reuse its existing query keys so established consumers deduplicate the request.
 - **Risk: title flicker/staleness.** Keep one effect writer, derive values from live queries, and do not reset the title during effect cleanup.
 - **Compatibility:** no protected API, CLI, state, workflow, environment, or packaging surface changes. The static `web/app/index.html` title and `src/server/static-ui.ts` stay unchanged.
-- **Rollback:** remove the hook call and helper modules/tests; the static `cezar` title immediately becomes the only title again. No state rollback is needed.
+- **Rollback:** remove the hook call and helper modules/tests; the static `onni` title immediately becomes the only title again. No state rollback is needed.
 
 ## Phasing
 

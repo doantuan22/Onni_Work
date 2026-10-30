@@ -2,22 +2,22 @@
 
 ## TLDR
 
-cezar should detect updates for locally installed skills that came from `open-mercato/skills`, update them through the existing `npx skills` CLI without adding a dependency, and surface actionable update state in the cockpit. A global Settings preference controls automatic application; an environment variable supplies its inherited default, which is enabled when neither source says otherwise.
+Onni Work should detect updates for locally installed skills that came from `open-mercato/skills`, update them through the existing `npx skills` CLI without adding a dependency, and surface actionable update state in the cockpit. A global Settings preference controls automatic application; an environment variable supplies its inherited default, which is enabled when neither source says otherwise.
 
 ## Resolved assumptions (autonomous defaults)
 
 | # | Question | Applied default | Why | Confirm? |
 |---|----------|-----------------|-----|----------|
-| Q1 | Is the preference project-scoped or machine-wide? | Machine-wide in `~/.cezar/config.json`. | Global installations and PR #603's skill selection already follow the user across projects. | ok |
+| Q1 | Is the preference project-scoped or machine-wide? | Machine-wide in `~/.onni/config.json`. | Global installations and PR #603's skill selection already follow the user across projects. | ok |
 | Q2 | What does “automatically update” mean? | Check in the background, then apply a detected update automatically when enabled; disabled mode still checks and offers the manual button. | This makes the checkbox useful without hiding available updates from users who opt out. | ok |
-| Q3 | Which installations may cezar modify? | Only project/global entries tracked by the upstream skills CLI with source `open-mercato/skills`; never untracked folders or other sources. | Preserves manually maintained skills and local precedence while supporting normal manual `npx skills add` installations. | ok |
+| Q3 | Which installations may Onni Work modify? | Only project/global entries tracked by the upstream skills CLI with source `open-mercato/skills`; never untracked folders or other sources. | Preserves manually maintained skills and local precedence while supporting normal manual `npx skills add` installations. | ok |
 | Q4 | When is the post-update migration skill run? | Never silently; after a successful file update, ask whether to start a new `/om-apply-upgrade-notes` session. | That playbook can change generated repository descriptors, so the user explicitly confirms the agent-driven run. | ok |
 
 ## Problem Statement
 
-PR #603 made the default Open Mercato catalog manageable without breaking existing installations: the global `importedSkills` value is tri-state, and local/project skills retain precedence. It does not update copies installed into `.agents/skills` or agent mirrors. Users must currently leave cezar, remember whether their installation is project or global, run the correct update command, and then remember the upgrade-notes playbook.
+PR #603 made the default Open Mercato catalog manageable without breaking existing installations: the global `importedSkills` value is tri-state, and local/project skills retain precedence. It does not update copies installed into `.agents/skills` or agent mirrors. Users must currently leave Onni Work, remember whether their installation is project or global, run the correct update command, and then remember the upgrade-notes playbook.
 
-The feature must work in cezar's normal constrained environments: `gh` may be missing or unauthenticated, the machine may be offline, `npx` or the skills CLI may be unavailable, `$HOME` may be read-only, and multiple cezar servers may share one global installation. None of these may block boot or hide the existing Skills catalog.
+The feature must work in Onni Work's normal constrained environments: `gh` may be missing or unauthenticated, the machine may be offline, `npx` or the skills CLI may be unavailable, `$HOME` may be read-only, and multiple Onni Work servers may share one global installation. None of these may block boot or hide the existing Skills catalog.
 
 Success means:
 
@@ -25,22 +25,22 @@ Success means:
 - an inherited-on global preference automatically applies detected updates;
 - disabling it retains detection and a manual update action;
 - the Skills navigation row marks actionable update state, and Manage skills explains and performs the update;
-- local, manually copied, symlinked-development, custom-repository, and non-Open-Mercato skills are never overwritten merely because cezar discovered them;
+- local, manually copied, symlinked-development, custom-repository, and non-Open-Mercato skills are never overwritten merely because Onni Work discovered them;
 - unavailable tools, auth, or network degrade to a concise status with retry, never a boot failure.
 
 ## Proposed Solution
 
 Add a small `SkillsUpdateService` that owns discovery, checking, update execution, caching, and cross-process exclusion. It shells directly to the already-available Node toolchain (`npx`) with an argument array and bounded output; it does not import or add the upstream CLI as a dependency and does not use `gh`.
 
-The service reads the upstream skills lock metadata rather than inferring ownership from directory names. It selects only tracked entries whose normalized source is `open-mercato/skills` or its canonical GitHub URL, groups their names by project/global scope, and invokes the upstream CLI with those explicit names. The upstream repository documents `npx skills update -p` and `-g`; the current CLI also accepts skill names, allowing cezar to avoid updating unrelated sources.
+The service reads the upstream skills lock metadata rather than inferring ownership from directory names. It selects only tracked entries whose normalized source is `open-mercato/skills` or its canonical GitHub URL, groups their names by project/global scope, and invokes the upstream CLI with those explicit names. The upstream repository documents `npx skills update -p` and `-g`; the current CLI also accepts skill names, allowing Onni Work to avoid updating unrelated sources.
 
 Detection is background-only. It starts after the server is listening, is deduplicated across project contexts, and refreshes at a conservative six-hour TTL plus explicit user refresh. Automatic application runs once per newly observed remote version/hash when enabled. Manual update is available whenever detection reports an update or a previous automatic attempt failed.
 
-After a successful update, cezar refreshes its skill catalog, presents a persistent follow-up explaining that `/om-apply-upgrade-notes` applies repository descriptor migrations while preserving local edits, and asks whether to start that skill in a new session. Declining has no side effects.
+After a successful update, Onni Work refreshes its skill catalog, presents a persistent follow-up explaining that `/om-apply-upgrade-notes` applies repository descriptor migrations while preserving local edits, and asks whether to start that skill in a new session. Declining has no side effects.
 
 Alternatives rejected:
 
-- Updating the cached team repository only: that refreshes cezar's read-only team catalog but not agent-installed skills.
+- Updating the cached team repository only: that refreshes Onni Work's read-only team catalog but not agent-installed skills.
 - Running `npx skills update -p/-g` without names: it can modify skills from unrelated sources.
 - Comparing GitHub commits directly: it duplicates upstream lock/update semantics, introduces authentication/rate-limit handling, and would still need the CLI to preserve install layout.
 - Watching or rewriting discovered skill directories: ownership cannot be established safely from a directory alone and would break manual copies or development symlinks.
@@ -82,11 +82,11 @@ Implementation constraints:
 - Execute the absolute `npx` adjacent to `process.execPath` when present, falling back to a PATH probe; use `execFile`/`spawn` with argument arrays, `shell: false`, a timeout, an output cap, and no environment logging.
 - Resolve the installed `skills` CLI through `npx --yes skills ...`. `--yes` suppresses package-install prompts; missing `npx`, npm cache failure, offline resolution, unsupported CLI output, and non-zero exit all become `unavailable`/`error` state.
 - Inspect project `skills-lock.json` and global `~/.agents/.skill-lock.json` tolerantly. Unknown versions/shapes produce a scope-specific unavailable reason and no mutation. Normalize only the documented GitHub shorthand/URL spellings; never accept lookalike hosts.
-- Use the current upstream machine-readable listing where it can prove source/scope; lock metadata remains the ownership authority. Do not treat cezar's own `Skill.source` enum as installation provenance.
+- Use the current upstream machine-readable listing where it can prove source/scope; lock metadata remains the ownership authority. Do not treat Onni Work's own `Skill.source` enum as installation provenance.
 - Call `npx --yes skills update <sorted unique OM names...> -p -y` from the registered project root and the equivalent `-g -y` for global entries. Run scopes serially, preserve partial success, then force a check and refresh both the local discovery query and team-cache-backed catalog.
-- Serialize check/update operations in-process. Also acquire a short-lived exclusive lock under `~/.cache/cez/skills-update.lock` with PID/timestamp stale recovery so two cezar servers cannot update the same global installation concurrently. Failure to create a cache directory disables automation for that attempt only.
+- Serialize check/update operations in-process. Also acquire a short-lived exclusive lock under `~/.cache/onni/skills-update.lock` with PID/timestamp stale recovery so two Onni Work servers cannot update the same global installation concurrently. Failure to create a cache directory disables automation for that attempt only.
 - Cache status in memory, keyed by project id plus one machine-global scope, not a required state file. A restart or another server may recheck/reapply; upstream hash comparison, the TTL, explicit-name idempotence, and the lock keep that safe. The feature does not promise once-per-version persistence.
-- Never require or invoke `gh`. GitHub credentials, if the upstream CLI chooses to use them, remain its concern and are not captured or displayed by cezar.
+- Never require or invoke `gh`. GitHub credentials, if the upstream CLI chooses to use them, remain its concern and are not captured or displayed by Onni Work.
 
 ### Scheduling and workspace lifecycle
 
@@ -96,7 +96,7 @@ Only the background coordinator may turn a successful detection into automatic a
 
 ### Preference precedence
 
-Add optional `skillsAutoUpdate?: boolean` to `~/.cezar/config.json` using the existing tolerant, `.passthrough()` workspace schema and merge writer. Effective value:
+Add optional `skillsAutoUpdate?: boolean` to `~/.onni/config.json` using the existing tolerant, `.passthrough()` workspace schema and merge writer. Effective value:
 
 1. explicit workspace setting;
 2. `ONNI_SKILLS_AUTO_UPDATE` (`0` disables, `1` enables; invalid/unset is ignored);
@@ -121,7 +121,7 @@ This preserves `BACKWARD_COMPATIBILITY.md` sections 5 and 9. New config and resp
 
 ## Data Model
 
-`~/.cezar/config.json` gains one optional key:
+`~/.onni/config.json` gains one optional key:
 
 ```json
 { "skillsAutoUpdate": false }
@@ -129,7 +129,7 @@ This preserves `BACKWARD_COMPATIBILITY.md` sections 5 and 9. New config and resp
 
 Absence is meaningful and must remain absence on unrelated writes. No migration is required. The effective default is computed at read time; the writer never materializes it. Existing unknown-key preservation, atomic rename, permissions, and read-only-home degradation remain unchanged.
 
-Update/check state is ephemeral and contains no tokens, raw child-process environment, or complete stderr. User-facing reasons are normalized to bounded categories such as “npx is unavailable,” “offline,” “installation is not tracked,” or “update command failed.” The `needsUpgradeNotes` callout lasts for the current server process only: cezar cannot observe an independently run agent skill, so a restart clears it and the UI never claims migration completion.
+Update/check state is ephemeral and contains no tokens, raw child-process environment, or complete stderr. User-facing reasons are normalized to bounded categories such as “npx is unavailable,” “offline,” “installation is not tracked,” or “update command failed.” The `needsUpgradeNotes` callout lasts for the current server process only: Onni Work cannot observe an independently run agent skill, so a restart clears it and the UI never claims migration completion.
 
 ## API Contracts
 
@@ -175,7 +175,7 @@ At the top of PR #603's Manage skills detail panel, add a compact update card ab
 - partial/error: name the successful and failed scopes, keep **Retry**, and never discard the usable catalog.
 - success: refresh the skills list, clear the sidebar marker, toast the result, show a persistent callout, and open a Yes/No dialog asking whether to start `/om-apply-upgrade-notes` in a new session. Yes creates the skill-backed run for the active project and opens it; No closes the dialog without starting a run.
 
-The existing skill checkboxes remain solely catalog curation. Explain the distinction: “These checkboxes choose what cezar shows; updates refresh installed skill files.” The update button is shown only when tracked Open Mercato installations exist and an update is available or retryable.
+The existing skill checkboxes remain solely catalog curation. Explain the distinction: “These checkboxes choose what Onni Work shows; updates refresh installed skill files.” The update button is shown only when tracked Open Mercato installations exist and an update is available or retryable.
 
 Illustrative mockups:
 
@@ -205,10 +205,10 @@ Illustrative mockups:
 
 - **External CLI contract:** output and lock formats can evolve. Keep parsing isolated, fixture-tested, tolerant, and fail closed on provenance.
 - **Unintended writes:** updating by broad scope could alter unrelated skills. Explicit proven OM names and source validation are mandatory, not an optimization.
-- **Concurrent global writes:** multiple cezar processes share global skills. The cache lock and serialized scopes prevent overlapping updates.
+- **Concurrent global writes:** multiple Onni Work processes share global skills. The cache lock and serialized scopes prevent overlapping updates.
 - **Network/cost default:** the requested default is enabled as an explicit documented exception to the repository's normal safe-default rule. All work happens after boot, with a long TTL, bounded retries, and an explicit env/Settings off switch.
 - **Post-update migrations:** updated playbooks may expect descriptor changes. Keeping `/om-apply-upgrade-notes` explicit avoids silently changing repositories while ensuring the user sees the required hand-off.
-- **Rollback:** turn off the setting or set `ONNI_SKILLS_AUTO_UPDATE=0`; the feature adds no required state. A bad upstream skill version is rolled back with the upstream CLI/manual reinstall mechanism, not by cezar maintaining a second package cache.
+- **Rollback:** turn off the setting or set `ONNI_SKILLS_AUTO_UPDATE=0`; the feature adds no required state. A bad upstream skill version is rolled back with the upstream CLI/manual reinstall mechanism, not by Onni Work maintaining a second package cache.
 - **Security:** browser input cannot select executable names/arguments. Child processes use fixed executables and argument arrays. Errors are bounded/redacted. Existing request-origin protection covers mutations.
 
 ## Phasing

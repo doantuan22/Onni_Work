@@ -54,7 +54,7 @@ const FIXTURE = [
     inputTokens: 100_000,
     outputTokens: 28_400,
     diffStat: { adds: 128, dels: 14, files: 6 },
-    pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/396',
+    pullRequestUrl: 'https://github.com/open-mercato/onni/pull/396',
     archived: false,
     steps: [],
   },
@@ -291,7 +291,7 @@ describe('task quick-list', () => {
       const el = document.querySelector('[data-run-id="fix-review-pr"] [data-slot="pr-chip"]')
       return { href: el.href, target: el.target }
     })()`) as { href: string; target: string }
-    expect(chip.href).toBe('https://github.com/open-mercato/cezar/pull/396')
+    expect(chip.href).toBe('https://github.com/open-mercato/onni/pull/396')
     expect(chip.target).toBe('_blank')
 
     // Only the run that has one.
@@ -395,7 +395,7 @@ describe('tasks table overview', () => {
     expect(reviewRow.text).toContain('100.0k / 28.4k')
     expect(reviewRow.text).toContain('Structured changes endpoint for the git view')
     expect(reviewRow.text).not.toContain('add a structured changes endpoint plz')
-    expect(reviewRow.prHref).toBe('https://github.com/open-mercato/cezar/pull/396')
+    expect(reviewRow.prHref).toBe('https://github.com/open-mercato/onni/pull/396')
     expect(reviewRow.prTarget).toBe('_blank')
 
     browser.screenshot(`${artifactsDir}/tasks-table.png`)
@@ -602,7 +602,7 @@ describe('a row under width contention, in a column the user can widen', () => {
             finishedAt: ago(3_600_000),
             tokensUsed: 512_000,
             diffStat: { adds: 59_514, dels: 12_160, files: 208 },
-            pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/775',
+            pullRequestUrl: 'https://github.com/open-mercato/onni/pull/775',
             archived: false,
             steps: [],
           },
@@ -668,7 +668,7 @@ describe('a row under width contention, in a column the user can widen', () => {
 
     expect(painted.title).toBe('implementing comment threads across the whole thread view')
     expect(painted.chip).toBe('#775')
-    expect(painted.chipHref).toBe('https://github.com/open-mercato/cezar/pull/775')
+    expect(painted.chipHref).toBe('https://github.com/open-mercato/onni/pull/775')
     // The number was moved, not deleted — the stored title is still one hover away.
     expect(painted.tooltip).toBe(FULL_TITLE)
   })

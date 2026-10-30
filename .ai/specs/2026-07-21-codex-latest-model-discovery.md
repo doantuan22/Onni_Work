@@ -2,7 +2,7 @@
 
 ## TLDR
 
-cezar currently renders a hard-coded Codex model list that has drifted far behind the models the same host's Codex CLI makes available. Replace Codex's static presets with a zero-config, host-local catalog discovered through the Codex app-server `model/list` protocol, expose that catalog through a small workspace API, and let every model picker consume the same query result. Discovery is best-effort and cached: `auto` always remains usable, an unavailable or incompatible CLI never blocks cockpit boot, and configured/custom model identifiers remain representable.
+Onni Work currently renders a hard-coded Codex model list that has drifted far behind the models the same host's Codex CLI makes available. Replace Codex's static presets with a zero-config, host-local catalog discovered through the Codex app-server `model/list` protocol, expose that catalog through a small workspace API, and let every model picker consume the same query result. Discovery is best-effort and cached: `auto` always remains usable, an unavailable or incompatible CLI never blocks cockpit boot, and configured/custom model identifiers remain representable.
 
 ## Update — OpenCode discovery (#794)
 
@@ -14,7 +14,7 @@ same service, the same route (`GET /api/v1/models?runner=claude|codex|opencode`)
 picker merge; its adapter is `packages/work/src/core/opencode-model-catalog.ts`. Everything else
 in this spec — the in-memory-only cache, `auto` always usable, custom ids preserved, no persisted
 catalog — applies unchanged. Q1's Claude half was lifted separately by #784 (see the note below),
-so every runner cezar ships now reads its models from the host.
+so every runner Onni Work ships now reads its models from the host.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -30,18 +30,18 @@ so every runner cezar ships now reads its models from the host.
 > One deviation from the Codex design below: Claude's static presets are kept as an explicit
 > FALLBACK rather than emptied to `auto`, because its tier aliases (`opus`, `sonnet`, `haiku`)
 > are resolved by the CLI and therefore cannot go stale. Only the dated ids were removed.
-| Q2 | Should cezar persist a model catalog in user-authored configuration? | No. Keep only a short-lived in-memory last-known-good cache and discover again automatically. | Catalogs are host/account/version dependent; requiring persisted state violates cezar's zero-config rule and creates migration burden. | ok |
+| Q2 | Should Onni Work persist a model catalog in user-authored configuration? | No. Keep only a short-lived in-memory last-known-good cache and discover again automatically. | Catalogs are host/account/version dependent; requiring persisted state violates Onni Work's zero-config rule and creates migration burden. | ok |
 | Q3 | Should hidden or legacy Codex models appear in the default picker? | No. Request the normal visible catalog and preserve arbitrary configured model IDs as a clearly marked custom option. | This matches Codex CLI's normal picker while retaining backward compatibility for users who deliberately pin a legacy/custom ID. | ok |
 
 ## Problem Statement
 
-`web/app/src/routes/new-task-form.ts` owns `MODELS_BY_RUNNER`, a static table reused by the new-task composer and `EnginePills`. Its Codex entries stop at `gpt-5.1-codex`, `gpt-5.1-codex-mini`, and `gpt-5-codex`, and even describe `gpt-5.1-codex` as latest. On the same server, Codex CLI 0.144.6 currently offers `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, and `gpt-5.3-codex-spark`. Users therefore cannot select models in cezar that their authenticated CLI account can already run.
+`web/app/src/routes/new-task-form.ts` owns `MODELS_BY_RUNNER`, a static table reused by the new-task composer and `EnginePills`. Its Codex entries stop at `gpt-5.1-codex`, `gpt-5.1-codex-mini`, and `gpt-5-codex`, and even describe `gpt-5.1-codex` as latest. On the same server, Codex CLI 0.144.6 currently offers `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, and `gpt-5.3-codex-spark`. Users therefore cannot select models in Onni Work that their authenticated CLI account can already run.
 
-Updating the constants would repair only today's screenshot and drift again with the next rollout. Availability may vary by Codex version, authentication/account, rollout, provider configuration, and host. The Codex app-server protocol already provides the required authoritative source through paginated `model/list`; cezar should consume that source rather than mirror vendor catalog knowledge.
+Updating the constants would repair only today's screenshot and drift again with the next rollout. Availability may vary by Codex version, authentication/account, rollout, provider configuration, and host. The Codex app-server protocol already provides the required authoritative source through paginated `model/list`; Onni Work should consume that source rather than mirror vendor catalog knowledge.
 
 ### Goals
 
-- Show the same visible, ordered Codex catalog available to the local authenticated Codex CLI, including newly rolled-out models without a cezar release.
+- Show the same visible, ordered Codex catalog available to the local authenticated Codex CLI, including newly rolled-out models without an Onni Work release.
 - Use one catalog across the new-task composer, follow-up/continue surfaces, inbox starts, and any future shared runner/model picker.
 - Preserve `auto`, configured custom/legacy model IDs, and existing create/continue request semantics.
 - Degrade quietly when Codex is missing, logged out, slow, old, or returns an unfamiliar payload.
@@ -77,9 +77,9 @@ The Codex adapter must reuse shared app-server process primitives extracted from
 Flow:
 
 1. Spawn `codex app-server` with stdio and a short discovery deadline.
-2. Send `initialize` with cezar client metadata, await a valid response, then notify `initialized`.
+2. Send `initialize` with Onni Work client metadata, await a valid response, then notify `initialized`.
 3. Request `model/list` with `includeHidden: false`; follow `nextCursor` until null, rejecting cursor loops and enforcing a defensive page/item cap.
-4. Validate every page with zod. Map vendor data to cezar's minimal `ModelOption` shape and preserve the returned order.
+4. Validate every page with zod. Map vendor data to Onni Work's minimal `ModelOption` shape and preserve the returned order.
 5. Close stdin and enforce the existing TERM/KILL grace sequence so a broken child cannot leak.
 6. Cache a successful result in memory. Coalesce simultaneous refreshes into one promise.
 
@@ -89,11 +89,11 @@ Cache behavior:
 - After TTL, the next request refreshes; concurrent callers share it.
 - On refresh failure, return the last-known-good in-memory value as stale and record a concise reason.
 - With no successful value, return an empty Codex list and a non-fatal unavailable reason. The UI still renders `auto` and any configured/custom value.
-- Nothing is written to `.ai/cezar/`, `~/.cezar/`, or Codex-owned files.
+- Nothing is written to `.ai/onni/`, `~/.onni/`, or Codex-owned files.
 
 ### API placement
 
-Register `GET /api/models` as a workspace-level route, not a project-scoped route. Model availability belongs to the cezar host process and its Codex installation/account, so it is identical for all registered projects. It must remain behind the existing `/api/*` request-origin guard and must not be added to the project route manifest.
+Register `GET /api/models` as a workspace-level route, not a project-scoped route. Model availability belongs to the Onni Work host process and its Codex installation/account, so it is identical for all registered projects. It must remain behind the existing `/api/*` request-origin guard and must not be added to the project route manifest.
 
 ### Web query and option resolution
 
@@ -175,9 +175,9 @@ The dropdown retains its existing radio semantics, keyboard navigation, focus ma
 
 Evidence and illustrative proposed state:
 
-- Current cezar hard-coded picker: `assets/codex-latest-model-discovery/current-01-cezar-static-picker.png`
+- Current Onni Work hard-coded picker: `assets/codex-latest-model-discovery/current-01-onni-static-picker.png`
 - Current Codex CLI catalog on the same host: `assets/codex-latest-model-discovery/current-02-codex-cli-picker.png`
-- Proposed cezar live-catalog picker: `assets/codex-latest-model-discovery/mockup-01-live-codex-models.png`
+- Proposed Onni Work live-catalog picker: `assets/codex-latest-model-discovery/mockup-01-live-codex-models.png`
 
 ## Edge Cases & Failure Scenarios
 

@@ -15,7 +15,7 @@ Add a GitHub-shaped merge box to the PR Conversation view that shows reviews, in
 
 ## Problem Statement
 
-Cezar shows only an aggregate checks badge. It cannot explain which check/review/rule blocks a PR, show the repository’s enabled merge methods, or merge after the user’s review. GitHub’s [PR model](https://docs.github.com/en/pull-requests/get-started/about-pull-requests) makes its merge box the consolidated view of checks and unmet requirements; its [merge documentation](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/merging-a-pull-request) treats draft status, repository methods, branch rules, and checks as authoritative. Cezar needs that safe decision surface locally.
+Onni Work shows only an aggregate checks badge. It cannot explain which check/review/rule blocks a PR, show the repository’s enabled merge methods, or merge after the user’s review. GitHub’s [PR model](https://docs.github.com/en/pull-requests/get-started/about-pull-requests) makes its merge box the consolidated view of checks and unmet requirements; its [merge documentation](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/merging-a-pull-request) treats draft status, repository methods, branch rules, and checks as authoritative. Onni Work needs that safe decision surface locally.
 
 ## Goals
 

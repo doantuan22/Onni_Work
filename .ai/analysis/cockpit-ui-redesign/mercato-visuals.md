@@ -1,4 +1,4 @@
-# Mercato Sandboxes — Visual Language Research (for cezar redesign)
+# Mercato Sandboxes — Visual Language Research (for Onni Work redesign)
 
 **Source:** `open-mercato/mercato-sandboxes` (private repo, accessed via authenticated `gh`; researched from a temporary shallow clone).
 The web UI lives in `apps/portal-web` — Next.js 15 + **Tailwind v4** (CSS-first `@theme inline`, no tailwind.config)
@@ -142,9 +142,9 @@ Deliberately quiet; almost everything is stock Tailwind/`tw-animate` utilities. 
 
 ---
 
-## 3. Signature visual elements (reuse these in cezar)
+## 3. Signature visual elements (reuse these in Onni Work)
 
-1. **Brand gradient tile logo** (`public/brand/sandboxes-mark.svg`): 30×30 rounded-rect (r≈4/30) filled with the lime→yellow→violet diagonal gradient, dark `#1B1B1B` geometric glyph on top. Self-contained colors → works on both themes. Cezar should adopt the same construction (gradient tile + dark glyph) with its own glyph.
+1. **Brand gradient tile logo** (`public/brand/sandboxes-mark.svg`): 30×30 rounded-rect (r≈4/30) filled with the lime→yellow→violet diagonal gradient, dark `#1B1B1B` geometric glyph on top. Self-contained colors → works on both themes. Onni Work should adopt the same construction (gradient tile + dark glyph) with its own glyph.
 
 2. **Grain texture** (`grain-background.tsx`): canvas-rendered static noise behind "home" surfaces (dashboard, list pages) — dark mode: white specks max-alpha 0.13 modulated by a 3-node Gaussian mesh so it glows toward the top; light mode: even fine neutral grain rgb(120,120,128) alpha ≤0.15 at device resolution. Rendered once (no animation loop), `-z-10`, `aria-hidden`. Dense screens stay flat. This texture is *the* Mercato surface feel.
 
@@ -156,7 +156,7 @@ Deliberately quiet; almost everything is stock Tailwind/`tw-animate` utilities. 
 
 6. **Status pill grammar**: neutral pill (`bg-muted`, `rounded-full` or `rounded-md`, `text-xs`) + 7px colored leading dot carrying ALL status color; dot pulses while transitioning. Colored pill fills only at 12% tint (`bg-emerald-500/12`, `bg-danger/12`). Amber never appears as text.
 
-7. **Startup checklist** (`startup-steps.tsx`): live step list — emerald check (done), amber-tinted spinner (running), faint circle (pending), danger X (failed) — above a thin emerald progress bar with `done + 0.5·running` percentage. Dense variant switches to `font-mono text-[13px]`. Directly applicable to cezar's workflow-step live view.
+7. **Startup checklist** (`startup-steps.tsx`): live step list — emerald check (done), amber-tinted spinner (running), faint circle (pending), danger X (failed) — above a thin emerald progress bar with `done + 0.5·running` percentage. Dense variant switches to `font-mono text-[13px]`. Directly applicable to Onni Work's workflow-step live view.
 
 8. **CenteredState empty/lifecycle template** (`centered-state.tsx`): grain + twinkle backdrop, 72px `rounded-[18px]` icon tile (tinted border+fill by tone: `border-primary/25 bg-primary/15 text-primary`, neutral = card+shadow-xs, danger = danger/15), `text-2xl font-semibold` title, `text-sm text-muted-foreground` subtitle, actions row. One template for every loading/paused/error/empty state.
 
@@ -164,9 +164,9 @@ Deliberately quiet; almost everything is stock Tailwind/`tw-animate` utilities. 
 
 10. **Contrast-inverse CTA**: primary actions are either lime (`bg-primary` + near-black text) or the inverse surface (`bg-contrast` — black in light / off-white in dark). The pure-black pill (`bg-neutral-900`, dark: `+ border-white/10`) is the "open/go" affordance.
 
-11. **SandboxIcon glyph style** (`sandbox-icon.tsx`): stroke-2 rounded rect + `</>` code marks + two rows of 0.7r speckle dots, all `currentColor` — the speckle/grain motif carried into iconography. Cezar's custom glyphs should echo the dot-speckle motif. Everything else is lucide-react.
+11. **SandboxIcon glyph style** (`sandbox-icon.tsx`): stroke-2 rounded rect + `</>` code marks + two rows of 0.7r speckle dots, all `currentColor` — the speckle/grain motif carried into iconography. Onni Work's custom glyphs should echo the dot-speckle motif. Everything else is lucide-react.
 
-12. **Design-guardian test** (`design-guardian.test.ts`): vitest static scan banning raw hex outside an allowlist of brand/illustration files, amber text, raw `bg-white/bg-black/text-black` outside primitives, native `confirm()`, and `bg-muted` progress tracks. Copy this into cezar to keep the redesign from regressing.
+12. **Design-guardian test** (`design-guardian.test.ts`): vitest static scan banning raw hex outside an allowlist of brand/illustration files, amber text, raw `bg-white/bg-black/text-black` outside primitives, native `confirm()`, and `bg-muted` progress tracks. Copy this into Onni Work to keep the redesign from regressing.
 
 ---
 

@@ -1,8 +1,8 @@
 # 02 — Validation and the ladder
 
-Audit of **how a parent validates what comes back** in cezar's mission/units feature
+Audit of **how a parent validates what comes back** in Onni Work's mission/units feature
 (Caesar → Legate → Centurion), against `.ai/specs/2026-09-08-units-hierarchy.md` and the code at
-HEAD (`df73cfa9`, branch `cez/49d757ef`, forked from `cez/d9628fff`). Every citation below was
+HEAD (`df73cfa9`, branch `onni/49d757ef`, forked from `onni/d9628fff`). Every citation below was
 re-read at HEAD in this worktree; line numbers are what I actually saw, not carried over from the
 task order.
 
@@ -25,7 +25,7 @@ Scope: analysis only. No source, test or other spec file was touched.
 - Why it matters: `unitSpawnSchema.children[].scope` and `.allowed_tools`
   (`packages/contract/src/units.ts:136,140`) are the mechanism the whole design leans on for a
   child staying inside its task order, and the Guard rule ("stay inside your scope... end the turn
-  with CEZ:ASK") assumes that mechanism is real. On codex and opencode it isn't: a child spawned
+  with ONNI:ASK") assumes that mechanism is real. On codex and opencode it isn't: a child spawned
   with `allowed_tools: ["Read"]` still has unrestricted shell/filesystem access, because the field
   is never read by either runner. This is a bigger and more general gap than the legionary
   question (Q8) asks about — it means the scope brake on the *task order itself*, not just the
@@ -62,7 +62,7 @@ Scope: analysis only. No source, test or other spec file was touched.
 - Why it matters: the parent's only validation of "did this child actually meet its criteria and
   produce its evidence" is the parent-agent *reading prose in its own context window* — nothing
   structural connects the order to the report. A child that ignores `required_evidence` entirely
-  still produces a schema-valid `CEZ:REPORT` and settles normally.
+  still produces a schema-valid `ONNI:REPORT` and settles normally.
 
 ### F3 — HIGH — `unitReportSchema`'s only structured, non-free-text signal is what the engine itself appends (Q5)
 
@@ -340,7 +340,7 @@ the task order has no way to know which backend its centurion will land on until
    parallelizable objective is warned *before* the mission starts that it will run sequentially,
    rather than the parent finding out after burning 3-4x the wall-clock of the claude case.
 4. **(L, don't ship without real demand)** Give non-claude centurions a genuinely narrower
-   fan-out primitive — e.g. allow `CEZ:SPAWN` for exactly one more rung of plain (non-unit) runs
+   fan-out primitive — e.g. allow `ONNI:SPAWN` for exactly one more rung of plain (non-unit) runs
    when `BACKEND_HAS_SUBAGENT_TOOL[backend]` is false, capped tighter than the claude legionary
    cap. This is the only option that actually closes the capability gap instead of documenting it,
    but it directly reopens the design decision the spec made on purpose

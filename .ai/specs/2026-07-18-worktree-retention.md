@@ -2,20 +2,20 @@
 
 ## TLDR
 
-cezar leaves one git worktree per task under `.ai/cezar/worktrees/<runId>` and
+Onni Work leaves one git worktree per task under `.ai/onni/worktrees/<runId>` and
 only reclaims it on startup-orphan prune, a lost variant, or an explicit
 delete. Every finished run keeps its worktree — a full checked-out copy of the
 repo — indefinitely, so a busy cockpit slowly saturates the disk. This spec
 adds an always-on, count-based **retention policy** (keep the last *N* finished
-worktrees; reclaim the directory of the rest while keeping their `cez/<id8>`
+worktrees; reclaim the directory of the rest while keeping their `onni/<id8>`
 branch so work stays recoverable), with a zero-config default of 10 and an
 optional override in Settings → Resources, plus a management panel to see
 per-worktree disk use and reclaim on demand.
 
 ## Problem Statement
 
-Each task runs in its own worktree at `.ai/cezar/worktrees/<runId>` on branch
-`cez/<id8>` (spec 006, `src/git-worktree.ts`). A worktree is a **full working
+Each task runs in its own worktree at `.ai/onni/worktrees/<runId>` on branch
+`onni/<id8>` (spec 006, `src/git-worktree.ts`). A worktree is a **full working
 copy of the repository** — for a large repo that is tens to hundreds of MB
 each. Today a worktree directory is removed in only three places:
 
@@ -27,7 +27,7 @@ each. Today a worktree directory is removed in only three places:
 
 A normal finished run stays in `runs.json`, so its worktree is **never**
 reclaimed automatically. Nothing bounds the total. On an active machine that
-runs dozens of tasks a day, `.ai/cezar/worktrees/` grows without limit until
+runs dozens of tasks a day, `.ai/onni/worktrees/` grows without limit until
 the disk fills — at which point new tasks fail to create a worktree and the
 cockpit degrades. The user asked (#483) for management/rotation that keeps "up
 to X" worktrees, configurable, "so old WTs don't saturate full disk space".
@@ -47,7 +47,7 @@ An always-on **count-based retention policy** layered on the existing
   its worktree to render the diff and open a draft PR. Reclaiming it would
   break the gate.
 - **Reclaim = directory only.** Call `removeWorktree(repoRoot, path)` *without*
-  the branch argument, so the `cez/<id8>` branch (and every autosave commit on
+  the branch argument, so the `onni/<id8>` branch (and every autosave commit on
   it) survives. The work is fully recoverable — re-materialize with
   `git worktree add`. Autosave already commits all worktree changes to the
   branch, so nothing is lost.
@@ -233,7 +233,7 @@ explicit `aria-label`s and a confirm step; respects existing light/dark theming.
   `review`/live runs excluded; default is generous (10); `0` fully disables.
 - **Zero-config compliance:** ships on with a working default; the setting is
   an optional override, never required (AGENTS.md).
-- **Default-on deletion is intentional.** This is a behavioral change — cezar
+- **Default-on deletion is intentional.** This is a behavioral change — Onni Work
   keeps every worktree today; this ships auto-deleting directories at N=10 by
   default. It is deliberately default-on (owner call on #483: "so old WTs don't
   saturate disk"), made safe by keeping the branch (recoverable), excluding

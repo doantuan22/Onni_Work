@@ -44,7 +44,7 @@ Lịch sử upstream (open-mercato/cezar) **không còn** trong repo này; muố
 ```
 D:\Multi Agent
 ├── packages/
-│   ├── cezar/            @onni/work        Service + CLI (toàn bộ engine)
+│   ├── Onni Work/            @onni/work        Service + CLI (toàn bộ engine)
 │   │   ├── src/          ~150 module nguồn + test cạnh file
 │   │   ├── test/         unit (node:test) + e2e package (pack/install tarball)
 │   │   └── web/dist/     cockpit đã build, CLI phục vụ tĩnh (gitignored)
@@ -67,7 +67,7 @@ D:\Multi Agent
 └── e2e.config.ts         Cấu hình runner e2e agentic (target: web, ONNI_DRY_RUN=1)
 ```
 
-**4 npm workspace**: `contract`, `api-client`, `cezar`, `web`. `desktop` cố ý đứng ngoài
+**4 npm workspace**: `contract`, `api-client`, `onni`, `web`. `desktop` cố ý đứng ngoài
 để `npm ci` ở root không kéo Tauri CLI.
 
 ---
@@ -91,7 +91,7 @@ D:\Multi Agent
 │  • RunManager, workflow runner, runner adapters cho từng CLI agent   │
 │  • git worktree per task, diff base, review gate, tạo draft PR (gh)  │
 │  • dispatch task con, automations, skills, tracker, webhooks          │
-│  • trạng thái: JSON/NDJSON dưới .ai/cezar/ và ~/.cezar/              │
+│  • trạng thái: JSON/NDJSON dưới .ai/onni/ và ~/.onni/              │
 └───────────────┬──────────────────────────────────────────────────────┘
                 │ contract (zod) — một định nghĩa cho cả hai phía
 ┌───────────────▼──────────────────────────────────────────────────────┐
@@ -126,10 +126,10 @@ không parse trong handler; mọi thứ trả lời dưới `/api/v1`.
 | `dispatch/` | Agent cha giao task con: tối đa 4 con in-flight, budget con trích từ cha, report queue 20 |
 | `automations/` | Timer/poll GitHub, deferred start, coordinator, builtin skill |
 | `skills*` | Playbook Markdown: local → `.agents` → global → team repo (cache nền) |
-| `workspace/` | Registry `~/.cezar/config.json`, migrations, semaphore `maxParallel`, agent accounts |
+| `workspace/` | Registry `~/.onni/config.json`, migrations, semaphore `maxParallel`, agent accounts |
 | `git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` | Worktree/task, chọn base diff đúng, chọn remote PR/push |
 | `agent-config/` | Đọc/ghi file config gốc của các agent (chỉ local, byte-exact) |
-| `paths.ts` | `cezarHomeDir()` — mọi đường dẫn `~/.cezar` đi qua đây (`ONNI_HOME` cho test/container) |
+| `paths.ts` | `onniHomeDir()` — mọi đường dẫn `~/.onni` đi qua đây (`ONNI_HOME` cho test/container) |
 | `release/`, `self-update/`, `server-install/` | Đóng gói, tự cập nhật, cài server |
 
 ### 4.4 Backend agent hiện có
@@ -150,7 +150,7 @@ Tất cả đi qua một seam duy nhất và phát đồng thời stream v1 `Age
 | Review gate | Mọi task dừng ở `review`; xem diff, commit theo step, chỉnh message, land vào branch |
 | Git/PR | Tạo **draft PR** qua `gh` (không `gh` → `{available:false}`), base remote tự xác định (fork-parent) |
 | So sánh | Chạy cùng một task trên nhiều backend rồi so sánh kết quả (`compare-variants`) |
-| Dispatch | Agent cha tạo task con (`cez task create`), theo dõi/report; con có worktree + branch riêng |
+| Dispatch | Agent cha tạo task con (`onni task create`), theo dõi/report; con có worktree + branch riêng |
 | Automations | Bật automation theo lịch/poll GitHub issue-PR, có lookback an toàn |
 | Skills | Playbook Markdown local/team áp vào system prompt; slash-skill trong prompt |
 | Agent config | Sửa file settings/MCP/memory gốc của Claude/Codex/OpenCode theo scope |
@@ -169,7 +169,7 @@ Tauri start
   └─ setup: tạo window + splash, init tray, đăng ký single-instance
        └─ thread supervise():
             port = pick_port()                      # port trống
-            entry = ONNI_DESKTOP_ENTRY, else ~/.cezar/versions/current
+            entry = ONNI_DESKTOP_ENTRY, else ~/.onni/versions/current
             spawn: node <entry> serve --no-open --port <port>
             poll GET /api/v1/health (timeout)
               ├─ OK    → webview.navigate http://127.0.0.1:<port>
@@ -179,8 +179,8 @@ Tauri start
        └─ đóng cửa sổ = ẩn xuống tray (agent vẫn chạy); Quit ở tray/menu mới dừng sidecar
 ```
 
-Chế độ khác: `npm run dev` (API + Vite, `scripts/dev.mjs`), `cez serve` (port mặc định **4321**),
-`cez run <workflow>` (headless, không cần server).
+Chế độ khác: `npm run dev` (API + Vite, `scripts/dev.mjs`), `onni serve` (port mặc định **4321**),
+`onni run <workflow>` (headless, không cần server).
 
 ### 6.2 Tạo và chạy một task
 
@@ -188,7 +188,7 @@ Chế độ khác: `npm run dev` (API + Vite, `scripts/dev.mjs`), `cez serve` (p
 POST /api/v1/runs  (project-scoped: /api/v1/p/:projectId/runs)
   └─ RunStore.create → status "queued"   (prompt còn sửa được, queuedMessages xếp chồng)
        └─ WorkflowRunner dequeue (scheduler / maxParallel semaphore)
-            ├─ tạo worktree .ai/cezar/worktrees/<runId> + branch cez/<id8>
+            ├─ tạo worktree .ai/onni/worktrees/<runId> + branch onni/<id8>
             ├─ với mỗi step: dựng prompt ({{task}} + skill + context)
             │    → AgentRunner(backend).start()  → stream AgentEvent
             │    → map sang UiEvent → ghi NDJSON + phát SSE
@@ -220,8 +220,8 @@ refetch toàn bộ chỉ khi reconnect hoặc tab hiện lại.
 
 ### 6.4 Dispatch (agent chính giao việc cho agent con)
 
-`cez task create` (HTTP tới `ONNI_API_URL`) → task con có worktree/branch riêng, budget trích từ cha,
-tối đa **4 con in-flight**, report queue 20, kết quả quay về agent cha (`cez task report`).
+`onni task create` (HTTP tới `ONNI_API_URL`) → task con có worktree/branch riêng, budget trích từ cha,
+tối đa **4 con in-flight**, report queue 20, kết quả quay về agent cha (`onni task report`).
 Bật mặc định; tắt bằng `ONNI_DISPATCH=0`.
 
 ### 6.5 Automations
@@ -241,19 +241,19 @@ tại thời điểm run bắt đầu) để không tính lịch sử ngoài tas
 
 | Đường dẫn | Nội dung | Ghi chú |
 | --- | --- | --- |
-| `.ai/cezar/runs.json` | Index toàn bộ run của project | atomic tmp+rename, debounce, zod-validate |
-| `.ai/cezar/runs/<id>.ndjson` | Event append-only của từng run | nguồn replay SSE |
-| `.ai/cezar/runs/<id>.handoff.md`, `<id>-images/` | Handoff note, ảnh đính kèm | ảnh không nhét base64 vào runs.json |
-| `.ai/cezar/worktrees/<runId>` | Worktree của task | prune orphan khi khởi động |
-| `.ai/cezar/workflows/`, `skills/` | Workflow + skill của repo (committable) | `quick-task` luôn có sẵn |
-| `.ai/cezar/config.json` (optional) | Cấu hình project | mọi key có default |
-| `~/.cezar/config.json` (+ `.bak`) | Workspace config **và** registry project | ghi qua read-modify-write + lock |
-| `~/.cezar/agent-accounts.json` | Account các agent | file riêng để không bị mất khi config cũ |
-| `~/.cezar/tracker-connections/` | Credentials tracker theo project | parse vào object, không vào `process.env` |
-| `~/.cache/cez/` | Cache mạng: skills team, … | xoá được, tự dựng lại |
+| `.ai/onni/runs.json` | Index toàn bộ run của project | atomic tmp+rename, debounce, zod-validate |
+| `.ai/onni/runs/<id>.ndjson` | Event append-only của từng run | nguồn replay SSE |
+| `.ai/onni/runs/<id>.handoff.md`, `<id>-images/` | Handoff note, ảnh đính kèm | ảnh không nhét base64 vào runs.json |
+| `.ai/onni/worktrees/<runId>` | Worktree của task | prune orphan khi khởi động |
+| `.ai/onni/workflows/`, `skills/` | Workflow + skill của repo (committable) | `quick-task` luôn có sẵn |
+| `.ai/onni/config.json` (optional) | Cấu hình project | mọi key có default |
+| `~/.onni/config.json` (+ `.bak`) | Workspace config **và** registry project | ghi qua read-modify-write + lock |
+| `~/.onni/agent-accounts.json` | Account các agent | file riêng để không bị mất khi config cũ |
+| `~/.onni/tracker-connections/` | Credentials tracker theo project | parse vào object, không vào `process.env` |
+| `~/.cache/onni/` | Cache mạng: skills team, … | xoá được, tự dựng lại |
 
-Nguyên tắc: **state được ghi, không bao giờ bị bắt buộc**. Xoá `.ai/cezar/`, `~/.cache/cez/`, `~/.cezar/`
-thì hệ thống tự tái tạo (riêng `~/.cezar` xoá cả thư mục mới là reset thật).
+Nguyên tắc: **state được ghi, không bao giờ bị bắt buộc**. Xoá `.ai/onni/`, `~/.cache/onni/`, `~/.onni/`
+thì hệ thống tự tái tạo (riêng `~/.onni` xoá cả thư mục mới là reset thật).
 
 Các cờ môi trường đáng chú ý: `ONNI_HOME`, `ONNI_DRY_RUN`, `ONNI_DISPATCH`, `ONNI_AUTOMATIONS`,
 `ONNI_DESIGN_MODE`, `ONNI_SKILLS_AUTO_UPDATE`.
@@ -269,7 +269,7 @@ Các cờ môi trường đáng chú ý: `ONNI_HOME`, `ONNI_DRY_RUN`, `ONNI_DISP
   `capabilities().localHandoff = false` — đóng đường RCE qua hooks.
 - **Không có telemetry**: pipeline gửi usage/lỗi đã bị xoá (service, contract, cockpit, desktop);
   không có đường nào rời máy. Host/process usage trong app là số liệu local, không gửi đi.
-- `assertCezarHomeWriteIsSandboxed` chặn test ghi nhầm vào `~/.cezar` thật.
+- `assertOnniHomeWriteIsSandboxed` chặn test ghi nhầm vào `~/.onni` thật.
 
 ---
 
@@ -297,9 +297,9 @@ bật, nên `cargo check` / `cargo test` / `cargo build` chạy được local (
 
 ---
 
-## 10. Khác biệt của bản này so với cezar gốc
+## 10. Khác biệt của bản này so với Onni Work gốc
 
-| Hạng mục | cezar gốc | Bản hiện tại |
+| Hạng mục | Onni Work gốc | Bản hiện tại |
 | --- | --- | --- |
 | Bề mặt | Cockpit web mở bằng browser | **Desktop-first**: app Tauri, không còn mục "Open in browser" trong menu |
 | Tray | không có | Tray icon Open/Quit, click trái mở lại cửa sổ |
@@ -317,6 +317,6 @@ Phần **hosted/remote mode** (`ONNI_REMOTE`) được giữ nguyên, không đ�
 
 1. **Đóng cửa sổ = ẩn xuống tray**: hành vi mới, người dùng quen "đóng là thoát" sẽ thấy app còn chạy nền.
 2. **Badge chỉ đếm run của project đang mở** (không phải toàn workspace) vì dùng `GET /api/v1/runs` của boot project.
-3. **`cez serve` từ CLI vẫn tự mở browser** (`--no-open` để tắt) — desktop đã truyền `--no-open`, nhưng CLI thuần vẫn mở.
+3. **`onni serve` từ CLI vẫn tự mở browser** (`--no-open` để tắt) — desktop đã truyền `--no-open`, nhưng CLI thuần vẫn mở.
 4. README rỗng — cần nội dung giới thiệu riêng cho Onni Work.
-5. `README.zh-CN.md`, `README.zh-TW.md` vẫn là bản dịch của cezar.
+5. `README.zh-CN.md`, `README.zh-TW.md` vẫn là bản dịch củan Onni Work.

@@ -102,7 +102,7 @@ Pełny obieg na dry-run cockpicie (repo testowe musi mieć remote na github.com)
 ```bash
 ONNI_AUTOMATIONS=1 ONNI_DRY_RUN=1 npx tsx src/index.ts --no-open -p 4599 --repo /sciezka/do/repo &
 export ONNI_API_URL=http://127.0.0.1:4599 ONNI_PROJECT_ID=<id projektu z /api/v1/projects>
-curl -s $ONNI_API_URL/api/v1/p/$ONNI_PROJECT_ID/skills | grep -o '"name":"create-cezar-automation"[^}]*"source":"builtin"'
+curl -s $ONNI_API_URL/api/v1/p/$ONNI_PROJECT_ID/skills | grep -o '"name":"create-onni-automation"[^}]*"source":"builtin"'
 cat > /tmp/def.json <<'EOF'
 { "name": "Review new PRs", "events": ["pull_request.opened"], "intervalSeconds": 600,
   "filters": {}, "task": { "prompt": "Review PR #{{github.number}} at {{github.url}}", "worktree": true, "autonomous": true } }
@@ -125,25 +125,25 @@ go przy release (tak samo zrobił PR #972).
 Użytkownik wpisuje w **New task** np. „whenever a PR is opened, review it” i zamiast
 jednorazowego runu dostaje automatyzację GitHub. Dwie drogi wejścia, jeden mechanizm:
 
-1. **Skill `create-cezar-automation`** — wbudowany w cezar (pierwszy i jedyny „builtin” skill,
+1. **Skill `create-onni-automation`** — wbudowany w Onni Work (pierwszy i jedyny „builtin” skill,
    `source: 'builtin'`, `interactive: true`), widoczny w pickerze skilli i pod
-   `/create-cezar-automation`. Wybranie go wypełnia pole promptu szablonem „Create an automation”
+   `/create-onni-automation`. Wybranie go wypełnia pole promptu szablonem „Create an automation”
    (trigger + task). Skill to pełny playbook: zrozum → napisz definicję JSON →
-   `cez automation create` (PAUSED) → `cez automation check` (preview, nic nie odpala) →
+   `onni automation create` (PAUSED) → `onni automation check` (preview, nic nie odpala) →
    zaraportuj link.
 2. **System prompt** — każdy task dostaje krótki fragment `AUTOMATIONS_PROMPT`, dzięki któremu
-   agent rozpoznaje intencję „whenever / every time …” i zna CLI (`cez automation schema` drukuje
-   pełny kształt definicji). Czyli „cezar sam wie, kiedy tego użyć”.
+   agent rozpoznaje intencję „whenever / every time …” i zna CLI (`onni automation schema` drukuje
+   pełny kształt definicji). Czyli „Onni Work sam wie, kiedy tego użyć”.
 
-Pod spodem: CLI `cez automation schema|create|update|check|list|show|enable|pause|delete`
+Pod spodem: CLI `onni automation schema|create|update|check|list|show|enable|pause|delete`
 (`packages/work/src/automations/automation-cli.ts`) — cienki klient HTTP nad ISTNIEJĄCYMI
-trasami `/api/v1/p/:projectId/automations*`, adresowany tymi samymi zmiennymi co `cez task`
+trasami `/api/v1/p/:projectId/automations*`, adresowany tymi samymi zmiennymi co `onni task`
 (`ONNI_API_URL`, `ONNI_PROJECT_ID`, `ONNI_BIN`). Zero nowych tras, zero nowego stanu, zero nowych
 flag.
 
 **Bramkowanie** (lekcja z dispatch, spec 2026-09-10 A2/A8): wszystko — prompt, skill, szablon —
 pojawia się tylko gdy `capabilities.automations` (`ONNI_AUTOMATIONS=1`) ORAZ cockpit jest
-osiągalny (`ONNI_API_URL`). Headless `cezar run` albo cockpit bez flagi: nic nie jest
+osiągalny (`ONNI_API_URL`). Headless `onni run` albo cockpit bez flagi: nic nie jest
 komponowane, nic nie jest listowane. CLI bez `ONNI_API_URL` kończy się kodem 2 z komunikatem
 „stop and report, nie zastępuj cronem”; 409 z wyłączonej trasy jest przekazywane dosłownie
 z kodem 1.
@@ -156,7 +156,7 @@ z kodem 1.
   go przesłania).
 - `packages/contract/src/skills.ts` — enum `source` dostaje `'builtin'` (addytywne).
 - `packages/work/src/index.ts` — import `runAutomationCommand`; w `HELP` linia
-  `cezar automation …`; w `main()` tuż po routingu `task` analogiczny `if (process.argv[2] ===
+  `onni automation …`; w `main()` tuż po routingu `task` analogiczny `if (process.argv[2] ===
   'automation')`.
 - `packages/work/src/workflows/run.ts` — importy `automationsReachable` i `AUTOMATIONS_PROMPT`;
   pole `automationsPrompt?: string` w `ActiveRun` (obok `dispatchPrompt`); metoda
@@ -166,11 +166,11 @@ z kodem 1.
   po `dispatchPromptPart(...)`, przed extra system promptem.
 - `packages/work/src/server/capabilities.ts` — tylko komentarz dokumentacyjny.
 - `packages/web/src/lib/prompt-templates.ts` — nowy wbudowany szablon `create-automation`
-  (`skills: ['create-cezar-automation']`); `AUTOMATIONS_TEMPLATE_IDS`;
+  (`skills: ['create-onni-automation']`); `AUTOMATIONS_TEMPLATE_IDS`;
   `availablePromptTemplates` przyjmuje `{ dispatch?, automations? }` i filtruje po obu bramkach
   (trzy composery już przekazują cały obiekt `capabilities`, więc nic więcej nie trzeba ruszać).
 - `README.md` (wiersz `ONNI_AUTOMATIONS=1` w tabeli env), `.env.example` (sekcja automations +
-  wzmianka o `cez automation` przy `ONNI_BIN`), `BACKWARD_COMPATIBILITY.md` (sekcja 1 — lista
+  wzmianka o `onni automation` przy `ONNI_BIN`), `BACKWARD_COMPATIBILITY.md` (sekcja 1 — lista
   komend CLI; sekcja „GitHub automations — opt-in gating” — nota o addytywnych zmianach).
 - Testy: `skills.test.ts` (nowy `describe` + import `beforeEach`),
   `workflows/system-prompt.test.ts` (import `AUTOMATIONS_PROMPT`, zapis/odtworzenie

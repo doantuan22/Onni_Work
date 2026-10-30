@@ -1,8 +1,8 @@
 # Restore the Last Project Location
 
 > **Superseded on storage (2026-08-04):** the remembered location moved from
-> `~/.cezar/ui-state.json` to the browser's own `localStorage`
-> (`packages/web/src/lib/last-location.ts`, key `cez-last-location`). The rejected
+> `~/.onni/ui-state.json` to the browser's own `localStorage`
+> (`packages/web/src/lib/last-location.ts`, key `onni-last-location`). The rejected
 > alternative below — "localStorage would give each browser a different answer" —
 > turned out to be the requirement, not the objection: a workspace-wide value let
 > whichever client navigated last decide where every *other* client's next launch
@@ -15,7 +15,7 @@
 
 ## 📝 TLDR
 
-Cezar remembers the last valid project-scoped cockpit location in the existing
+Onni Work remembers the last valid project-scoped cockpit location in the existing
 workspace UI-state file and restores it when the cockpit starts at the bare root
 URL. Explicit deep links remain authoritative, so bookmarks and shared URLs never
 get replaced by remembered state.
@@ -30,7 +30,7 @@ project, task, sub-tab, query, and fragment the user was working in.
 ## 📝 Proposed Solution
 
 Persist the most recent valid `/p/:projectId/...` location in
-`~/.cezar/ui-state.json`. On the bare `/` entry only, restore that location when
+`~/.onni/ui-state.json`. On the bare `/` entry only, restore that location when
 its project remains registered and usable; otherwise keep the existing boot
 project Tasks fallback.
 
@@ -43,7 +43,7 @@ so startup does not leave the transient `/` entry in browser history.
 Alternatives considered:
 
 - Browser `localStorage` would restore synchronously, but would give each browser
-  a different answer and bypass Cezar's established workspace preference store.
+  a different answer and bypass Onni Work's established workspace preference store.
 - Inferring the destination from project `lastOpenedAt` and recent runs would
   avoid a new UI-state key, but cannot recover the exact task sub-tab, query, or
   fragment and can guess the wrong session.
@@ -132,7 +132,7 @@ Example workspace UI-state:
 {
   "sidebar": {
     "collapsed": {
-      "cezar": false,
+      "onni": false,
       "shop": true
     }
   },
@@ -171,7 +171,7 @@ never mounted below `/api/v1/p/:projectId`.
 
 ## 📝 UI/UX
 
-There is no new control or visual state. When the host reopens Cezar at `/`, the
+There is no new control or visual state. When the host reopens Onni Work at `/`, the
 user sees the same project and exact page they last used rather than a flash of
 the boot project's Tasks page. The quiet existing resolving view remains until
 the destination is known.
@@ -188,7 +188,7 @@ context.
 - **Malformed or forward-incompatible state:** ignore it and use the boot
   project; never throw during render.
 - **Saved project unregistered or missing on disk:** use the boot project.
-- **Saved project is `not-git`:** restore it because Cezar treats that status as
+- **Saved project is `not-git`:** restore it because Onni Work treats that status as
   usable.
 - **Workspace UI-state GET fails:** retain today's boot-project redirect.
 - **Workspace UI-state PUT fails or home is read-only:** navigation continues;
@@ -219,7 +219,7 @@ write volume.
 Rollback is removal of the controller, redirect branch, DTO field, and known Zod
 field. Existing files may retain an unknown `lastLocation` key, which the
 passthrough contract safely preserves and ignores; users can also delete
-`~/.cezar/ui-state.json` and Cezar rebuilds defaults.
+`~/.onni/ui-state.json` and Onni Work rebuilds defaults.
 
 There are no breaking changes to routes, API spellings, configuration, or stored
 run records.

@@ -426,7 +426,7 @@ describe('taskReferences', () => {
           referencedPullRequestUrl: 'https://github.com/open-mercato/open-mercato/pull/1977',
           referencedIssueCandidates: ['https://github.com/open-mercato/open-mercato/issues/4143'],
         }),
-        'https://github.com/open-mercato/cezar',
+        'https://github.com/open-mercato/onni',
       ),
     ).toEqual([
       { kind: 'PR', number: 1977, url: 'https://github.com/open-mercato/open-mercato/pull/1977' },
@@ -467,7 +467,7 @@ describe('taskReferences', () => {
           prNumber: 1977,
           referencedPrCandidates: ['https://github.com/open-mercato/open-mercato/pull/1977'],
         }),
-        'https://github.com/open-mercato/cezar',
+        'https://github.com/open-mercato/onni',
       ),
     ).toEqual([])
   })
@@ -504,7 +504,7 @@ describe('taskReferences', () => {
           prNumber: 1977,
           referencedPrCandidates: ['https://github.com/open-mercato/open-mercato/pull/1977'],
         }),
-        'https://github.com/open-mercato/cezar',
+        'https://github.com/open-mercato/onni',
       ),
     ).toEqual([
       { kind: 'PR', number: 1977, url: 'https://github.com/open-mercato/open-mercato/pull/1977' },
@@ -569,7 +569,7 @@ describe('taskIssueUrl', () => {
         'https://github.com/open-mercato/open-mercato/issues/4826',
       ],
     })
-    expect(taskIssueUrl(r, 'https://github.com/open-mercato/cezar')).toBeUndefined()
+    expect(taskIssueUrl(r, 'https://github.com/open-mercato/onni')).toBeUndefined()
   })
 
   it('still synthesizes when the foreign candidates carry other numbers (#819)', () => {
@@ -607,7 +607,7 @@ describe('taskIssueUrl', () => {
       markerRefs: { issue: 4143 },
       referencedIssueCandidates: ['https://github.com/open-mercato/open-mercato/issues/4143'],
     })
-    expect(taskIssueUrl(r, 'https://github.com/open-mercato/cezar')).toBeUndefined()
+    expect(taskIssueUrl(r, 'https://github.com/open-mercato/onni')).toBeUndefined()
   })
 
   it('prefers a real discovered issue URL over the synthesized one (#526)', () => {
@@ -623,12 +623,12 @@ describe('taskIssueUrl', () => {
 
 describe('githubRepoBase', () => {
   it.each([
-    ['https://github.com/open-mercato/cezar.git', 'https://github.com/open-mercato/cezar'],
-    ['https://github.com/open-mercato/cezar', 'https://github.com/open-mercato/cezar'],
-    ['https://user:token@github.com/open-mercato/cezar.git', 'https://github.com/open-mercato/cezar'],
-    ['git@github.com:open-mercato/onni.git', 'https://github.com/open-mercato/cezar'],
-    ['ssh://git@github.com:22/open-mercato/onni.git', 'https://github.com/open-mercato/cezar'],
-    ['https://github.com/open-mercato/cezar/', 'https://github.com/open-mercato/cezar'],
+    ['https://github.com/open-mercato/onni.git', 'https://github.com/open-mercato/onni'],
+    ['https://github.com/open-mercato/onni', 'https://github.com/open-mercato/onni'],
+    ['https://user:token@github.com/open-mercato/onni.git', 'https://github.com/open-mercato/onni'],
+    ['git@github.com:open-mercato/onni.git', 'https://github.com/open-mercato/onni'],
+    ['ssh://git@github.com:22/open-mercato/onni.git', 'https://github.com/open-mercato/onni'],
+    ['https://github.com/open-mercato/onni/', 'https://github.com/open-mercato/onni'],
   ])('normalizes %s', (remote, expected) => {
     expect(githubRepoBase(remote)).toBe(expected)
   })

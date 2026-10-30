@@ -142,7 +142,7 @@ deps.socketHub?.registerTopic('health', publisher, { loopbackReadable: true })
 cache is stale-while-revalidate with *two* numbers, and the second one is the load-bearing one:
 `HEALTH_TTL_MS` decides how often a revalidation is kicked off, but the revalidation is
 fire-and-forget, so on its own it bounds nothing. While a cockpit holds the topic the publisher's
-interval keeps the cache warm — but the normal state of a background `cezar serve` is **no
+interval keeps the cache warm — but the normal state of a background `onni serve` is **no
 subscriber**, and then nothing refreshes it at all, so a GET an hour later would answer with the
 boot pre-warm's payload. `HEALTH_MAX_STALE_MS` is the ceiling past which the read waits for a real
 compute instead of serving the cache. Any future topic that fronts a route needs the same pair.

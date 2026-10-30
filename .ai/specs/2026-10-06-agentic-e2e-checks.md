@@ -14,7 +14,7 @@ a model credential) a first-class verification step in two places:
 2. **On an existing pull request.** A `pull_request.*` automation launches a run whose worktree is the PR's head,
    runs the e2e check against it, and reports back. Today such a run tests the base branch, not the PR.
 
-Throughout, cezar keeps its existing stance on credentials: it never owns, ships, proxies or pools a model
+Throughout, Onni Work keeps its existing stance on credentials: it never owns, ships, proxies or pools a model
 credential. A check's credential is the project owner's own key, stored on their machine, handed to the one
 process that needs it.
 
@@ -25,12 +25,12 @@ All references are to `main` @ `05471fd`.
 - **Check steps inherit the full server env.** `RunManager.runCheckStep` spawns
   `bash -lc <command>` with `env: process.env` (`packages/work/src/workflows/run.ts` ~5530). There is no
   per-step and no per-project env. `docs/e2e-verification.md` therefore tells users to "export the model
-  credential your provider reads (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, …) before starting cezar".
+  credential your provider reads (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, …) before starting Onni Work".
 - **That advice leaks the key into agent sessions.** Agents get a curated env from `buildChildEnv`
   (`core/agent-env.ts`), and the curation is prefix-based: `claude: ['ANTHROPIC_', 'CLAUDE_']`,
   `codex: ['OPENAI_', 'CODEX_', 'AZURE_OPENAI_']`, and `MULTI_PROVIDER_PREFIXES` for opencode and pi
   (`OPENAI_`, `ANTHROPIC_`, `OPENROUTER_`, …). An `ANTHROPIC_API_KEY` exported for e2e is passed to every
-  Claude Code session cezar starts. Claude Code then authenticates with the API key instead of the user's
+  Claude Code session Onni Work starts. Claude Code then authenticates with the API key instead of the user's
   subscription account selected in Agent accounts. The effect is a silent billing switch, and it bypasses the
   account the user chose. The same holds for `OPENAI_API_KEY` and Codex.
 - **Check output reaches the next agent prompt unredacted.** Events are scrubbed in `RunStore.appendEvent`
@@ -45,11 +45,11 @@ All references are to `main` @ `05471fd`.
   field. The `GithubCandidate` comes from `/search/issues` and carries no head repo, ref or sha
   (`automations/github-poller.ts`).
 - **The replay cache is cold in every worktree.** `e2e init` adds `.e2e/cache/` to `.gitignore`, and each task
-  starts in a fresh worktree, so every `agent.act` step calls the model on every task. Not a cezar bug, but
-  cezar can offer a shared directory.
+  starts in a fresh worktree, so every `agent.act` step calls the model on every task. Not an Onni Work bug, but
+  Onni Work can offer a shared directory.
 - **Precedent for project-scoped secrets exists.** Tracker credentials live in
-  `~/.cezar/tracker-connections/` (`server/tracker/connections.ts`): `0600` files, atomic tmp/rename writes,
-  `assertCezarHomeWriteIsSandboxed`, and values registered via `registerRunSecrets` before spawn
+  `~/.onni/tracker-connections/` (`server/tracker/connections.ts`): `0600` files, atomic tmp/rename writes,
+  `assertOnniHomeWriteIsSandboxed`, and values registered via `registerRunSecrets` before spawn
   (`run.ts` ~1218).
 
 ## Non-goals
@@ -68,15 +68,15 @@ All references are to `main` @ `05471fd`.
 ### Phase 1: project check credentials (`check-env`)
 
 > **Superseded before shipping** by `2026-10-10-project-secrets-vault-options.md`: the store is
-> `~/.cezar/secrets/` (encrypted, project and workspace scope, audiences), the routes are
-> `/secrets` and `/workspace/secrets`, the CLI is `cezar secrets`, and a check step may bind
+> `~/.onni/secrets/` (encrypted, project and workspace scope, audiences), the routes are
+> `/secrets` and `/workspace/secrets`, the CLI is `onni secrets`, and a check step may bind
 > exactly the secrets it needs with `secrets:`. The injection, redaction and fork-head rules
 > below still hold as written.
 
 **Storage.** New store `CheckEnv` in `packages/work/src/workspace/check-env.ts`, one file per project at
-`~/.cezar/check-env/<projectId>.env`. Same write discipline as `TrackerConnections`: directory `0700` with a
-`*` `.gitignore`, files `0600`, `O_NOFOLLOW` reads, atomic tmp/rename writes, `assertCezarHomeWriteIsSandboxed`,
-every path through `cezarHomeDir()`. Format is `NAME=value` lines; no interpolation, no `export`, no quotes
+`~/.onni/check-env/<projectId>.env`. Same write discipline as `TrackerConnections`: directory `0700` with a
+`*` `.gitignore`, files `0600`, `O_NOFOLLOW` reads, atomic tmp/rename writes, `assertOnniHomeWriteIsSandboxed`,
+every path through `onniHomeDir()`. Format is `NAME=value` lines; no interpolation, no `export`, no quotes
 processing beyond a single optional pair of surrounding quotes.
 
 **Names.** `^[A-Z_][A-Z0-9_]{0,127}$`. Refused: anything starting with `ONNI_`, and `PATH`, `HOME`, `SHELL`,
@@ -105,7 +105,7 @@ exits, both uses of the output go through redaction:
 Writes are gated exactly like tracker connection writes. Copy their capability check rather than inventing a
 new one, and name the gate in the PR description.
 
-**CLI.** `cez check-env list | set <NAME> | unset <NAME>`. `set` reads the value from stdin (no value in argv,
+**CLI.** `onni check-env list | set <NAME> | unset <NAME>`. `set` reads the value from stdin (no value in argv,
 so nothing lands in shell history or `ps`), refuses a TTY echo, and prints only the name.
 
 **Cockpit.** Settings → project → "Check credentials": a names list, an add form with a password input, and a
@@ -124,7 +124,7 @@ delete action. No reveal, no copy.
 | `ONNI_BASE` | the recorded fork point (`run.baseBranch`) |
 | `ONNI_STEP_ID` | the check step's id |
 | `ONNI_ATTEMPT` | 1-based attempt number of this check within the run |
-| `ONNI_SHARED_CACHE_DIR` | `~/.cezar/cache/<projectId>`, created `0700` on first use |
+| `ONNI_SHARED_CACHE_DIR` | `~/.onni/cache/<projectId>`, created `0700` on first use |
 | `ONNI_GITHUB_REPO`, `ONNI_GITHUB_NUMBER`, `ONNI_GITHUB_EVENT` | from the automation provenance, GitHub runs only |
 | `ONNI_PR_HEAD_SHA`, `ONNI_PR_HEAD_REF`, `ONNI_PR_BASE_REF` | Phase 3 PR-head runs only |
 
@@ -133,8 +133,8 @@ delete action. No reveal, no copy.
 Parallel tasks on different branches can overwrite each other's recordings. The cost is a re-recording (model
 calls), not a wrong verdict, because e2e verifies the end state of every replay. Documented, not mitigated.
 
-These are cezar-set outputs, not user knobs, but they are `ONNI_*` names: list them in `docs/reference.md` and add
-a commented "set by cezar for check steps, do not set" block to `.env.example` in the same commit.
+These are onni-set outputs, not user knobs, but they are `ONNI_*` names: list them in `docs/reference.md` and add
+a commented "set by Onni Work for check steps, do not set" block to `.env.example` in the same commit.
 
 ### Phase 3: pull-request head worktrees for automations
 
@@ -155,7 +155,7 @@ PR-review automations that run `gh pr checkout` themselves keep working byte-for
    `state`, parsed with a zod schema.
 2. `state !== 'open'` → no run; the receipt records `skipped: pr-not-open`.
 3. `head.repo.full_name !== repo` and `!allowForkHeads` → no run; receipt `skipped: fork-head`.
-4. `git fetch origin +refs/pull/{number}/head:refs/cezar/pr/{number}`. Use a namespaced ref, never a branch, so
+4. `git fetch origin +refs/pull/{number}/head:refs/Onni Work/pr/{number}`. Use a namespaced ref, never a branch, so
    nothing appears in the user's branch list.
 5. Fetched sha differs from `head.sha` → proceed with the fetched sha and add a note event (the PR moved between
    poll and launch). The fetched sha is what is tested and what is recorded.
@@ -177,9 +177,9 @@ secrets"). Running untrusted heads in an Open Mercato sandbox is a follow-up, no
 
 **Publishing.** `POST /runs/:id/pr` on a run with `forkRef` returns `409 { error: 'this run verified pull
 request #N; publishing its changes is not supported yet' }`. Without this, a draft PR would be opened from the
-cezar branch into the default base and would contain the whole foreign PR.
+Onni Work branch into the default base and would contain the whole foreign PR.
 
-**Worktree cleanup.** `refs/cezar/pr/{number}` is deleted when the last run referencing it is deleted or its
+**Worktree cleanup.** `refs/Onni Work/pr/{number}` is deleted when the last run referencing it is deleted or its
 worktree removed (`removeWorktree` path). A stale ref is harmless; leaking one per PR forever is not.
 
 ### Reporting back to the PR
@@ -234,7 +234,7 @@ A `pr-head` launch has exactly these outcomes, and each one ends somewhere:
 | Why not a per-step `env:` in workflow YAML? | Workflow files are committed. Secrets would end up in the repo, or the YAML would need an interpolation language. A project store keeps values off disk in the repo and off the agent. |
 | Why not reuse `ONNI_ENV_PASSTHROUGH`? | It widens what agents receive. The goal is the opposite. |
 | Why not put model keys into Agent accounts? | Accounts select how a coding agent authenticates. A check's credential belongs to the project, not to the agent backend, and must never reach the agent. |
-| Should cezar set `E2E_TELEMETRY_FLEET` by default? | No. That is a vendor-specific default in the engine. Documented in `docs/e2e-verification.md`; users can put it in `check-env`. |
+| Should Onni Work set `E2E_TELEMETRY_FLEET` by default? | No. That is a vendor-specific default in the engine. Documented in `docs/e2e-verification.md`; users can put it in `check-env`. |
 | Does a checks-only workflow work? | Must be verified by a test (below). The PR verification workflow has no agent step. If the engine requires one, fixing that is in scope for Phase 3. |
 
 ## Tests
@@ -277,14 +277,14 @@ Prove-red rule applies: for each fix test, `git stash push -- <source files>`, c
 ## Docs (same PR as the code that needs them)
 
 - `docs/e2e-verification.md`:
-  - Replace "export the model credential before starting cezar" with `cez check-env set`, and state why: a
+  - Replace "export the model credential before starting Onni Work" with `onni check-env set`, and state why: a
     prefix-matched key reaches agents and switches Claude Code or Codex to API billing.
   - Add `ONNI_SHARED_CACHE_DIR` to the `e2e.config.ts` snippet.
   - Add a "Verify a pull request" section with `checkout: 'pr-head'` and the comment-posting check.
   - Add an "On every PR, in CI" section pointing to GitHub Actions with `@e2e-dev/github`, with secrets in
     repository secrets and fork PRs excluded.
   - State that check tools must use API keys or service-account keys, not subscription logins.
-- `docs/reference.md`: env table for check steps, `cez check-env`, the two automation fields.
+- `docs/reference.md`: env table for check steps, `onni check-env`, the two automation fields.
 - `.env.example`: the commented `ONNI_*` check-context block.
 - `CHANGELOG.md`: one entry per phase.
 

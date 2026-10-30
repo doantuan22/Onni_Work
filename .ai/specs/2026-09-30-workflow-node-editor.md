@@ -16,8 +16,8 @@ what happens when it gives up.
 - Only control flow: `check.onFail {retry, max}` — a bounded jump to an EARLIER step; the failing
   output is appended to the retried agent's prompt. `stepsIssue` forbids forward jumps.
 - Every agent step gets the same `{{task}}`; context flows via the worktree + handoff journal.
-  `chainStepNote` stops a later step treating an earlier step's `CEZ:DONE` as the run's.
-- Review gate, draft PR, CI monitoring (`CEZ:MONITORING`) and dispatch live OUTSIDE the workflow,
+  `chainStepNote` stops a later step treating an earlier step's `ONNI:DONE` as the run's.
+- Review gate, draft PR, CI monitoring (`ONNI:MONITORING`) and dispatch live OUTSIDE the workflow,
   as run-level mechanisms.
 
 Guarantees the new engine must keep: bounded loops (`max`), failing-output injection on retry,
@@ -39,10 +39,10 @@ the chain note, `quick-task` byte-for-byte unchanged, every parked state has an 
 | D10 | Agent ports | Always `done` / `failed`; optional author-declared `verdicts` the agent picks with an end-of-turn marker. |
 | D11 | Editor | React Flow (`@xyflow/react`) canvas + node property panel + two-way YAML pane + path simulator. |
 | D12 | Subagent | `dispatch` node = child task through the existing dispatch engine (own worktree, carved budget, 4 in flight). |
-| D13 | Agent `done` | **Corrected 2026-09-30 after reading `run.ts`:** keeps today's semantics. A non-terminal agent node emits `done` when its turn ends without parking (no `CEZ:ASK` / `CEZ:MONITORING`), exactly like a non-final v1 step. The *terminal* agent node — whose `done` leads straight to a success `end` (or is unwired) — is interactive like v1's last step: it waits for follow-ups until `CEZ:DONE` / Finish. The original wording (every node waits for `CEZ:DONE`) would have stalled every multi-step workflow after each step. |
+| D13 | Agent `done` | **Corrected 2026-09-30 after reading `run.ts`:** keeps today's semantics. A non-terminal agent node emits `done` when its turn ends without parking (no `ONNI:ASK` / `ONNI:MONITORING`), exactly like a non-final v1 step. The *terminal* agent node — whose `done` leads straight to a success `end` (or is unwired) — is interactive like v1's last step: it waits for follow-ups until `ONNI:DONE` / Finish. The original wording (every node waits for `ONNI:DONE`) would have stalled every multi-step workflow after each step. |
 | D14 | Missing verdict | One automatic nudge reminding the agent of the required marker (autonomous-nudge path); still none → `failed`. |
 | D15 | Review gate | Independent: the config gate still applies at the run's end; `gate.human` is an extra mid-graph decision point. Zero change to the default path. |
-| D17 | Verdict syntax | `CEZ:VERDICT <name>` at the end of the turn text (detected on accumulated turn text, like `CEZ:DONE`). A verdict completes the node — no `CEZ:DONE` needed. An undeclared name counts as no verdict (→ D14). The allowed list is injected into the node's prompt. |
+| D17 | Verdict syntax | `ONNI:VERDICT <name>` at the end of the turn text (detected on accumulated turn text, like `ONNI:DONE`). A verdict completes the node — no `ONNI:DONE` needed. An undeclared name counts as no verdict (→ D14). The allowed list is injected into the node's prompt. |
 | D18 | Loop counter | One counter per loop node for the whole run; never reset. Guarantees every run is finite. Shown as "iteration 2/3". |
 | D19 | Built-ins | Ship 2–3 exemplar graphs (implement → test loop; implement → review → PR; fix-CI loop) as built-ins, duplicable in the editor. `quick-task` stays the default and byte-for-byte unchanged. |
 | D16 | Budgets | Run-level only in v1 (plus dispatch budgets). Per-node cost is still recorded for the live view. |
@@ -137,7 +137,7 @@ validator and editor: `{ type, category, configSchema (zod), ports, outputs }`.
 - Every waiting node has a bounded exit: `wait-ci` requires a timeout (uses the monitoring wake
   timer); `gate.human` / `ask-user` park the run as `waiting` exactly like today's asks.
 - `ONNI_DRY_RUN=1`: GitHub nodes fake their results (PR URL as today, CI = green).
-- Git/GitHub nodes run cezar's own code (not an agent) and degrade like `server/github.ts`:
+- Git/GitHub nodes run Onni Work's own code (not an agent) and degrade like `server/github.ts`:
   no `gh` → the node emits `failed` with a one-line reason, never throws.
 
 ## Editor (packages/web)
@@ -171,7 +171,7 @@ validator and editor: `{ type, category, configSchema (zod), ports, outputs }`.
      v1 workflows keep the untouched step loop (swapping them onto `compileV1` is a later,
      separately-proven change). No cursor persistence: recovery already fails-and-continues an
      interrupted run rather than resuming mid-workflow, for v1 and v2 alike.
-   - **1b (done):** agent `verdicts` → one port per verdict, `CEZ:VERDICT <name>` parsed from
+   - **1b (done):** agent `verdicts` → one port per verdict, `ONNI:VERDICT <name>` parsed from
      the node's last turn, one nudge on the node's own session when missing, then `failed`;
      a verdict node is never the interactive tail. `session: { continue: <agent node> }`
      reopens that node's session (claude/codex/pi); it degrades to a fresh session with a note
@@ -224,7 +224,7 @@ validator and editor: `{ type, category, configSchema (zod), ports, outputs }`.
   Run errors keep the v1 wording (`step "x" failed: …`, `check "x" failed after N attempts`),
   and a loop going back re-opens the rail steps between its target and the failing node.
 - **Resume after a restart.** `graphState` also carries `cursor` (the node being run) and
-  `outputs`. `recover()` re-queues a run whose cursor is a node cezar runs itself (gate,
+  `outputs`. `recover()` re-queues a run whose cursor is a node Onni Work runs itself (gate,
   question, check, dispatch, commit, PR, CI wait) and the walk resumes AT that node with loop
   counters and outputs restored. Side effects are idempotent: `dispatch` waits for the child it
   already sent, `draft-pr` reports a PR the run already has. **Deliberately not** for an agent

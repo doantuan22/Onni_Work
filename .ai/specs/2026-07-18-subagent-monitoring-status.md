@@ -8,10 +8,10 @@
 
 When a task's agent ends a turn while it is **still working on its own downstream
 work** — waiting on a sub-agent or a long-running command it is monitoring, not on
-the user — cezar parks the run at `waiting`, which the cockpit renders as **"Needs
+the user — Onni Work parks the run at `waiting`, which the cockpit renders as **"Needs
 attention" / "The agent is paused, waiting for your reply."** That is a false
 positive. This spec lets the agent **declare** that state with a new turn-end
-marker, **`CEZ:MONITORING`** (a sibling of the existing `CEZ:DONE`), which cezar maps
+marker, **`ONNI:MONITORING`** (a sibling of the existing `ONNI:DONE`), which Onni Work maps
 to the existing **`running`** status plus a new optional **`activity: 'monitoring'`**
 sub-state. The cockpit then shows a distinct, non-attention *monitoring* label and
 never fires the attention/notification path. A genuine hand-off to the user (no
@@ -40,9 +40,9 @@ An earlier design tried to *infer* the state server-side by watching for an open
 sub-agent (`Task`) tool-use at turn-end. Investigation of the actual runtime
 disproved it, and it is recorded here so it is not re-attempted:
 
-- **cezar models no background/async work at all** — there is zero handling of
+- **Onni Work models no background/async work at all** — there is zero handling of
   `run_in_background`, background tasks, or completion-notifications anywhere in
-  `src/`. A turn ends when the backend emits its terminal message; cezar has no
+  `src/`. A turn ends when the backend emits its terminal message; Onni Work has no
   signal for "ended but work still pending."
 - **Sub-agents are observed as synchronous.** The claude golden fixture
   (`src/core/__fixtures__/claude/subagent-task.ndjson`), this feature's own run
@@ -57,19 +57,19 @@ disproved it, and it is recorded here so it is not re-attempted:
 The information that separates "still working" from "needs you" is **not present in
 the event stream** — but the *agent itself* knows which one it is (it chose to end
 the turn). So the agent should declare it, the same way it already declares
-completion with `CEZ:DONE`.
+completion with `ONNI:DONE`.
 
 ## Proposed Solution
 
-Mirror cezar's existing agent-contract marker mechanism:
+Mirror Onni Work's existing agent-contract marker mechanism:
 
 1. **Agent contract** — extend the injected handoff instructions
    (`HANDOFF_ONLY_INSTRUCTIONS`, `src/handoff.ts:139`, which every backend receives)
    with one rule: *if you end a turn still working on your own downstream work (a
    sub-agent or a command you're monitoring) and are NOT waiting on the user, end
-   your final message with a line containing exactly `CEZ:MONITORING`.*
-2. **Server detection** — at both turn-end sites, after the `CEZ:DONE` check, test
-   the accumulated turn text for `CEZ:MONITORING`. When present (and the session is
+   your final message with a line containing exactly `ONNI:MONITORING`.*
+2. **Server detection** — at both turn-end sites, after the `ONNI:DONE` check, test
+   the accumulated turn text for `ONNI:MONITORING`. When present (and the session is
    open and the turn wasn't auto-continued), set `status: 'running', activity:
    'monitoring'` instead of `waiting` — but otherwise treat the run **identically to
    a waiting run** (same slot release, same idle-liveness timer, same resume path).
@@ -82,8 +82,8 @@ Mirror cezar's existing agent-contract marker mechanism:
 contract is injected for claude, codex, and opencode alike → satisfies FR Q4 "work
 for all agents"), **reliable and observable** (turn text is always present; detection
 runs on the *accumulated* text so delta-streaming backends can't split the marker —
-the same guarantee `CEZ:DONE` relies on), and **idiomatic** (it reuses the existing
-`CEZ:DONE` pattern rather than inventing a parallel mechanism). Agents that don't emit
+the same guarantee `ONNI:DONE` relies on), and **idiomatic** (it reuses the existing
+`ONNI:DONE` pattern rather than inventing a parallel mechanism). Agents that don't emit
 the marker degrade gracefully to today's `waiting` behavior.
 
 **Why `activity` and not a new `RunStatus`** (per FR Q1: *"it should be a state of
@@ -100,7 +100,7 @@ Separating *in-progress* from *action-required* is standard in job/agent dashboa
 (GitHub Actions splits "in progress" from manual-approval "waiting"; agent cockpits
 distinguish an actively-working agent from one that asked the operator a question).
 The rule they get right — *an agent blocked on its own downstream work is not blocked
-on you* — is exactly this split. The novel constraint here is that cezar can't
+on you* — is exactly this split. The novel constraint here is that Onni Work can't
 observe that distinction from the stream, so it adopts the same agent-declared
 sentinel it already uses for completion.
 
@@ -109,9 +109,9 @@ sentinel it already uses for completion.
 ### Agent contract (`src/handoff.ts`)
 
 Add to `HANDOFF_ONLY_INSTRUCTIONS` (inherited by `HANDOFF_INSTRUCTIONS`), alongside
-the existing `CEZ:DONE` sentence, one rule introducing `CEZ:MONITORING`: emit it as
+the existing `ONNI:DONE` sentence, one rule introducing `ONNI:MONITORING`: emit it as
 the final line when ending a turn while still working on downstream work and not
-waiting on the user; never combine it with `CEZ:DONE`; a plain end (no marker) still
+waiting on the user; never combine it with `ONNI:DONE`; a plain end (no marker) still
 means "genuinely waiting on the user." Because both `HANDOFF_ONLY_INSTRUCTIONS` and
 `HANDOFF_INSTRUCTIONS` are composed into the system prompt for every agent step
 (`composeSystemPrompt`, `run.ts:803` and `:1226`), all three backends receive it.
@@ -121,7 +121,7 @@ means "genuinely waiting on the user." Because both `HANDOFF_ONLY_INSTRUCTIONS` 
 Add, next to `DONE_MARKER_RE` (`run.ts:42`):
 
 ```ts
-const MONITORING_MARKER_RE = /CEZ:MONITORING\s*$/;   // detected on accumulated turn text
+const MONITORING_MARKER_RE = /ONNI:MONITORING\s*$/;   // detected on accumulated turn text
 function stripMonitoringMarker(text: string): string { … }  // mirror stripDoneMarker
 ```
 
@@ -144,7 +144,7 @@ this.armIdleTimer(runId, state);  // 15-min liveness reclaim — KEPT (see below
 void this.pump();
 ```
 
-`CEZ:DONE` keeps precedence (checked first). The two sites are **not identical** —
+`ONNI:DONE` keeps precedence (checked first). The two sites are **not identical** —
 only `runContinuation` has the autonomous-nudge escape hatch — so the branch is
 inserted into each with its local structure; the autonomous nudge still wins over
 monitoring (an autonomous run never parks).
@@ -177,7 +177,7 @@ The marker is agent-declared, so it works for **any** backend whose agent follow
 injected contract — claude, codex, and opencode all receive it. Backends/agents that
 do not emit it fall back to `waiting`, exactly as today. This is strictly better than
 the rejected tool-inference approach, which only ever had a chance on claude. (Same
-reliability profile as `CEZ:DONE`: model-followed, gracefully degrading.)
+reliability profile as `ONNI:DONE`: model-followed, gracefully degrading.)
 
 ### Data model
 
@@ -213,14 +213,14 @@ Mirrored in `web/app/src/api/types.ts` (`RunActivity` + `RunRecord.activity?`). 
 - **Bucketing** (`task-groups.ts`): `running` → *Working* already; unchanged.
 - **Notifications** (`notifications.ts`): gated on `wantsAttention` → a transition into
   `monitoring` fires **no** notification. Covered by a test.
-- **Transcript hygiene**: strip a trailing `CEZ:MONITORING` from displayed text
+- **Transcript hygiene**: strip a trailing `ONNI:MONITORING` from displayed text
   wherever `stripDoneMarker` is applied, so the marker doesn't show in the thread.
 
 ### Edge Cases & Failure Scenarios
 
-- **Agent emits `CEZ:MONITORING`, then the user replies anyway.** `sendMessage`
+- **Agent emits `ONNI:MONITORING`, then the user replies anyway.** `sendMessage`
   clears `activity` → back to plain `running`. Correct.
-- **Agent emits both markers.** `CEZ:DONE` wins (checked first) → run completes.
+- **Agent emits both markers.** `ONNI:DONE` wins (checked first) → run completes.
 - **Agent never emits the marker** (older agents, a backend ignoring the contract):
   falls back to `waiting` — status quo, no regression.
 - **Monitoring run that never resumes.** The 15-minute idle timer closes the session
@@ -229,7 +229,7 @@ Mirrored in `web/app/src/api/types.ts` (`RunActivity` + `RunRecord.activity?`). 
 - **Cancel / fail while monitoring.** Terminal transitions clear `activity`.
 - **Delta-streaming backends** (codex/opencode) splitting the marker across text
   events: detection runs on the *accumulated* `turnText`, so the marker is matched
-  whole — same guarantee `CEZ:DONE` documents (`run.ts:39-40`).
+  whole — same guarantee `ONNI:DONE` documents (`run.ts:39-40`).
 
 ### Risks & Impact Review
 
@@ -253,24 +253,24 @@ Each phase leaves the app working and is independently shippable.
 
 - **Phase 1 — contract + server detection:** marker regex/strip, agent-contract line,
   the `activity` field, and the turn-end branch. After this, an agent that emits
-  `CEZ:MONITORING` parks as `running`/`monitoring` server-side instead of `waiting`.
+  `ONNI:MONITORING` parks as `running`/`monitoring` server-side instead of `waiting`.
 - **Phase 2 — UI surfacing:** `deriveAttention` label + tests proving no "paused"
   hint, no notification, correct pill/bucket.
 - **Phase 3 — polish & docs:** transcript marker-stripping, heartbeat wording, and
-  documenting the new marker beside `CEZ:DONE` in the agent-contract docs.
+  documenting the new marker beside `ONNI:DONE` in the agent-contract docs.
 
 ## Implementation Plan
 
 ### Phase 1 — Agent contract + server detection
 
 1. **Marker + strip helpers.** In `src/workflows/run.ts` add `MONITORING_MARKER_RE =
-   /CEZ:MONITORING\s*$/` and `stripMonitoringMarker` (mirror `DONE_MARKER_RE` /
+   /ONNI:MONITORING\s*$/` and `stripMonitoringMarker` (mirror `DONE_MARKER_RE` /
    `stripDoneMarker`, `run.ts:42-48`).
    *Test:* the regex matches only at end-of-text (accumulated), tolerant of trailing
    whitespace; strip removes a trailing marker and leaves other text intact.
-2. **Agent-contract line.** Add the `CEZ:MONITORING` rule to
+2. **Agent-contract line.** Add the `ONNI:MONITORING` rule to
    `HANDOFF_ONLY_INSTRUCTIONS` (`src/handoff.ts:139`).
-   *Test:* `system-prompt.test.ts` — the composed prompt contains `CEZ:MONITORING`
+   *Test:* `system-prompt.test.ts` — the composed prompt contains `ONNI:MONITORING`
    (both handoff variants).
 3. **`activity` field.** `src/runs/store.ts`: add `RunActivity = 'monitoring'`,
    `RunRecord.activity?`, zod `activity: z.enum(['monitoring']).optional()`. Mirror in
@@ -282,9 +282,9 @@ Each phase leaves the app working and is independently shippable.
    `waiting` per `MONITORING_MARKER_RE`; keep `this.waiting.add`, `armIdleTimer`,
    `pump` in both branches. Clear `activity` on `sendMessage` resume (`~601`),
    continuation start (`~711`), and terminal transitions.
-   *Test:* a fake turn-text ending in `CEZ:MONITORING` → run becomes
+   *Test:* a fake turn-text ending in `ONNI:MONITORING` → run becomes
    `running`+`activity:'monitoring'`, is added to `this.waiting`, and arms the idle
-   timer; without the marker → `waiting`; `CEZ:DONE` still wins; a `sendMessage`
+   timer; without the marker → `waiting`; `ONNI:DONE` still wins; a `sendMessage`
    resume clears `activity`. (Use the existing run-test harness / dry-run mock, adding
    a `mock:monitoring` trigger analogous to `mock:done`.)
 
@@ -307,7 +307,7 @@ Each phase leaves the app working and is independently shippable.
 7. **Transcript hygiene + heartbeat + docs.** Apply `stripMonitoringMarker` wherever
    `stripDoneMarker` is applied so the marker never shows in the thread; reflect
    `monitoring` in the turn-end handoff-heartbeat message (`run.ts:793`, `:1215`).
-   Document `CEZ:MONITORING` beside `CEZ:DONE` in the agent-contract docs
-   (`AGENTS.md` and/or `AGENT_PROTOCOL.md` — wherever `CEZ:DONE` is described). No
+   Document `ONNI:MONITORING` beside `ONNI:DONE` in the agent-contract docs
+   (`AGENTS.md` and/or `AGENT_PROTOCOL.md` — wherever `ONNI:DONE` is described). No
    `ONNI_*` env var, so `.env.example` is untouched.
    *Test:* a text event ending in the marker is stripped in the emitted transcript.

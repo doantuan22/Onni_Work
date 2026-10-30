@@ -1,8 +1,8 @@
 # Upward reporting & delivery — audit
 
 > Topic: the CHILD → PARENT channel in the units hierarchy (spec `.ai/specs/2026-09-08-units-hierarchy.md`
-> §"Reports and settle" / Q7). Analysis only, verified against HEAD `df73cfa9` on `cez/3c0a1bdb`
-> (== fork point `cez/36533222`). Every line number below was re-read at that commit; where a test
+> §"Reports and settle" / Q7). Analysis only, verified against HEAD `df73cfa9` on `onni/3c0a1bdb`
+> (== fork point `onni/36533222`). Every line number below was re-read at that commit; where a test
 > file is cited, its line numbers were re-read too. `npx vitest run packages/work/src/units
 > packages/work/src/workflows/units-engine.test.ts packages/work/src/workflows/recover-unit.test.ts`
 > → **5 files, 86 tests, all passing** — nothing here is a currently-red test; every finding is a gap
@@ -10,7 +10,7 @@
 
 ## The chain the task asked me to confirm or refute
 
-Claim: a child that emits `CEZ:ASK` parks at `waiting`; `waiting` is not terminal so the parent is
+Claim: a child that emits `ONNI:ASK` parks at `waiting`; `waiting` is not terminal so the parent is
 never told; `waiting` is still in-flight so it still occupies a slot; the autonomous nudge is
 deliberately disabled for a unit run that asked; meanwhile the parent gets nudged with nothing new
 up to `MAX_AUTO_CONTINUES` times.
@@ -21,7 +21,7 @@ them.**
 
 | # | Claim | Verdict | Evidence |
 |---|---|---|---|
-| a | `CEZ:ASK` parks a child at `waiting` | **Confirmed** | `packages/work/src/workflows/run.ts:3035-3036` (streaming/`runContinuation`) and `:3737-3738` (`runAgentStep`): `this.store.updateRun(runId, { status: 'waiting', activity: undefined })`, reached when `ask` is true (`monitoring` is false whenever `ask` is true — `!ask` at `run.ts:2978` and `:3705`). |
+| a | `ONNI:ASK` parks a child at `waiting` | **Confirmed** | `packages/work/src/workflows/run.ts:3035-3036` (streaming/`runContinuation`) and `:3737-3738` (`runAgentStep`): `this.store.updateRun(runId, { status: 'waiting', activity: undefined })`, reached when `ask` is true (`monitoring` is false whenever `ask` is true — `!ask` at `run.ts:2978` and `:3705`). |
 | b | `waiting` is not terminal → parent never told | **Confirmed** | `TERMINAL_STATUSES` = `['done', 'review', 'failed', 'cancelled']`, `packages/work/src/units/engine.ts:42`. `isTerminalStatus`, `engine.ts:44-46`. Gate: `packages/work/src/workflows/run.ts:1762` — `if (!isTerminalStatus(child.status)) return;` inside `reportSettledChildToParent` (`run.ts:1756`). No other call site ever inspects a non-terminal child's status for reporting purposes (grepped `parentRunId` repo-wide — only `run.ts`, `engine.ts`, and their tests reference it). |
 | c | `waiting` still counts against the in-flight cap | **Confirmed** | `IN_FLIGHT_STATUSES = ['queued', 'running', 'waiting']`, `engine.ts:37`, read by `inFlightChildren` (`engine.ts:54-56`) and enforced at the spawn refusal, `run.ts:1627`: `if (inFlight + spawn.children.length > MAX_CHILDREN_IN_FLIGHT)`. `MAX_CHILDREN_IN_FLIGHT = 4`, `engine.ts:29`. |
 | d | The autonomous nudge is deliberately disabled for a unit run that asked, in **both** turn-end handlers | **Confirmed in one handler; the other has no nudge to disable at all — see F-U2** | `runContinuation`'s turn-end (`run.ts:2955-3044`) has the guarded auto-continue block at `:3002-3018`, condition `!(unitTurn.hasUnit && Boolean(ask))` at `:3006`. `runAgentStep`'s turn-end (`run.ts:3676-3757`) has **no such block anywhere** — `AUTONOMOUS_NUDGE` (`run.ts:314-315`) is referenced exactly once in the whole file, at `run.ts:3010`, inside `runContinuation` only. |
@@ -58,7 +58,7 @@ turn on the parent's entire accumulated session context (every prior spawn note,
 report, every tool call) for a message that says nothing more than "re-check the downstream work…"
 (`run.ts:317`). For an Army/Squad mission where the commander's own transcript has grown across
 several spawn→report cycles, that is 40 non-trivial-cost turns that read a large and growing context
-to produce, at best, a repeated `CEZ:MONITORING`, and at worst nothing (if the model errors, drifts,
+to produce, at best, a repeated `ONNI:MONITORING`, and at worst nothing (if the model errors, drifts,
 or answers something unrelated) — with **zero new information** to justify any of them if the reason
 nothing changed is a single stuck-and-unreported child (F-U1).
 
@@ -68,11 +68,11 @@ nothing changed is a single stuck-and-unreported child (F-U1).
 `run.ts`, `engine.ts`, and their test files — no SSE stream, no shared events bus, no handoff-file
 watcher, no store subscription lets a parent's *session* (as opposed to a human looking at the
 cockpit) observe a child before it settles. `handleUnitMarkers` (`run.ts:1531-1567`) stores a
-`CEZ:REPORT` onto `unit.report` on the **child's own** record the instant it's parsed (`run.ts:1546-1554`),
-regardless of whether the same turn also said `CEZ:DONE` — but nothing reads that field for delivery
+`ONNI:REPORT` onto `unit.report` on the **child's own** record the instant it's parsed (`run.ts:1546-1554`),
+regardless of whether the same turn also said `ONNI:DONE` — but nothing reads that field for delivery
 to the parent until the child later reaches a `TERMINAL_STATUS` and `reportSettledChildToParent` runs
 `childSettleReport` (`engine.ts:157-189`), which reads `child.unit?.report` at settle time
-(`engine.ts:161`). The spec already documents this as intentional ("a report without `CEZ:DONE` leaves
+(`engine.ts:161`). The spec already documents this as intentional ("a report without `ONNI:DONE` leaves
 the session as today's rules dictate", spec §Markers) — it is not a bug, but it does mean a child with
 a multi-hour task gives its commander (and any human reading the mission tree) nothing to read until
 it is completely finished, refused, or killed.
@@ -81,7 +81,7 @@ it is completely finished, refused, or killed.
 
 ## Findings
 
-### F-U1 — HIGH — A child parked on `CEZ:ASK` is invisible to its parent for as long as the ask is open
+### F-U1 — HIGH — A child parked on `ONNI:ASK` is invisible to its parent for as long as the ask is open
 **Evidence:** the confirmed chain above — `run.ts:3035-3036`/`:3737-3738` (park), `engine.ts:42`+
 `run.ts:1762` (not reported), `engine.ts:37`+`run.ts:1627` (still occupies a slot).
 **Why it matters:** with `MAX_CHILDREN_IN_FLIGHT = 4`, one child stuck on a Guard question that
@@ -109,10 +109,10 @@ its own comment and works around it (`armAutonomous`, `:487-496`) by manually se
 (`spawnChildren` → `startRun`, spec §"Child run creation"; `interactive` for a single-step workflow
 is `i === lastAgentIdx && i === workflow.steps.length - 1`, `run.ts:3460`, always true here) —
 meaning **every child's first turn goes through `runAgentStep`, not `runContinuation`.** If that
-first turn ends without `CEZ:DONE`/`CEZ:SPAWN`/`CEZ:REPORT`+`CEZ:DONE`/`CEZ:ASK`/`CEZ:MONITORING` —
+first turn ends without `ONNI:DONE`/`ONNI:SPAWN`/`ONNI:REPORT`+`ONNI:DONE`/`ONNI:ASK`/`ONNI:MONITORING` —
 which is the ordinary case for any task not finished in one shot — the child parks at `waiting` with
 **no nudge attempt at all**, autonomous or not, unit or not. This makes the F-U1 scenario reachable
-without the child ever calling `CEZ:ASK`: any incomplete first turn produces the exact same invisible,
+without the child ever calling `ONNI:ASK`: any incomplete first turn produces the exact same invisible,
 slot-occupying `waiting` child. This is the general #autonomous bug (already fixed elsewhere, see
 project memory: PR #967, "units branch must re-apply its nudge exceptions after rebase"), but it is
 squarely in scope here because it is the single biggest amplifier of the upward-reporting gap this
@@ -132,7 +132,7 @@ unconditionally for **every** run found at `waiting` on restart — with no chec
 `waiting` was a live human question (`ask.requested`, unanswered) versus an ordinary end-of-turn park.
 `settleSuccess` resolves to `'done'` for any `run.autonomous === true` (`run.ts:4159`, review is gated
 off), which every unit run is. The synthesized report (`childSettleReport`, `engine.ts:141-146` +
-`:157-189`) then tells the parent `status done (cezar: done)` for a child that may have been sitting on
+`:157-189`) then tells the parent `status done (Onni Work: done)` for a child that may have been sitting on
 an entirely unanswered, irreversible-action question. `recover-unit.test.ts:136-167` pins the general
 "a waiting child is settled and reported on restart" mechanic, but seeds no `ask.requested` event, so
 this specific interaction — the one the Guard exists for — is untested.
@@ -175,7 +175,7 @@ loss mode found in this audit is silent by construction.
 ### F-U7 — LOW (documented, not a bug) — No mid-flight progress channel exists
 **Evidence:** see "Is there any mid-flight progress channel" above.
 **Why it matters:** listed for completeness per the task; the spec already calls this out as accepted
-scope (`CEZ:REPORT` without `CEZ:DONE` is inert until settle). Recorded here because P-U2 below
+scope (`ONNI:REPORT` without `ONNI:DONE` is inert until settle). Recorded here because P-U2 below
 proposes narrowing — not closing — this gap for exactly one case (a blocked child), not general
 progress streaming.
 
@@ -212,7 +212,7 @@ re-threading one boolean condition into the merged helper.
 ### P-U2 — A live "child is blocked" notice to the parent, reusing the report delivery ladder
 **Rank 2 · Effort M · Risk Low-Medium**
 **Problem:** F-U1 — a parent has no way to learn that one specific in-flight child is parked on an
-unanswered `CEZ:ASK`, as opposed to "still working."
+unanswered `ONNI:ASK`, as opposed to "still working."
 **Concrete change:** add an optional `unit.blockedChildren?: { fromRunId: string; title: string;
 askedAt: string }[]` field to `RunUnit` (contract + store persistence twin, same parity discipline as
 `pendingReports`). In both turn-end handlers, at the exact point `ask` is computed true for a run that

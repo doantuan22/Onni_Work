@@ -28,7 +28,7 @@ for every coding-agent backend**; restrictive behavior is opt-in.
 
 ## Problem Statement
 
-- cezar's pitch includes a review gate, but *during* the run the agent has
+- Onni Work's pitch includes a review gate, but *during* the run the agent has
   near-unrestricted autonomy: any Bash command (claude's default `Bash` entry
   is unrestricted unless a workflow sets `bashAllowlist`), full workspace
   writes plus network (codex), everything auto-approved (opencode).
@@ -102,7 +102,7 @@ action in Settings), and codex sandbox escalation flows.
 | Attention | `permission` already tops the priority ladder | `web/app/src/lib/attention.ts:16` |
 | Settings UI | Settings → Agents: runner, models, system prompt, base branch — `PUT /api/config` partial patches | `web/app/src/routes/settings/agents-section.tsx` |
 | Composer | Autonomous toggle (`#autonomous`), per-task runner/model | `web/app/src/routes/new-task.tsx:135` |
-| Config | `.ai/cezar/config.json`, zod, additive-safe keys (`.catch(undefined)`), zero-config defaults | `src/config.ts` |
+| Config | `.ai/onni/config.json`, zod, additive-safe keys (`.catch(undefined)`), zero-config defaults | `src/config.ts` |
 | Workflows | per-step `allowedTools` / `bashAllowlist` | `src/workflows/types.ts:22` |
 
 ## Proposed Solution
@@ -140,8 +140,8 @@ assert on the emitted note.
 Alternatives considered: (a) vendor-config passthrough (rejected: leaks
 backend formats past the `AgentRunSpec` seam and violates the agent-agnostic
 copy rule); (b) presets only (rejected by gate decision — the issue explicitly
-asks for globs); (c) cezar-side permission engine intercepting tool calls
-(rejected: cezar doesn't sit between the CLI and its tools; the backends'
+asks for globs); (c) onni-side permission engine intercepting tool calls
+(rejected: Onni Work doesn't sit between the CLI and its tools; the backends'
 native gates are the only enforcement point that actually blocks anything).
 
 Interactive prompts activate the reserved protocol: backends surface their
@@ -159,7 +159,7 @@ Settings → Agents          /new composer                    Run thread (cockpi
   (global default)           per-task override +                   │ answer
         │                    autonomous guard                      ▼
         ▼                          │                    POST /api/runs/:id/permissions/:requestId
-  .ai/cezar/config.json            ▼                               │
+  .ai/onni/config.json            ▼                               │
   permissions key         POST /api/runs { permissions }           ▼
         └──────────────┬───────────┘               AgentSession.respondPermission()
                        ▼                                           │
@@ -336,7 +336,7 @@ conventions. Copy stays agent-agnostic (capability names, never vendor flags).
 - **Security posture**: `auto` is deliberately unrestricted across all three
   backends per the issue author's 2026-07-21 clarification; guarded,
   read-only, manual, and advanced deny rules opt into tighter policies. The
-  `deny` list is enforced by the backend, not by cezar string-matching. No new
+  `deny` list is enforced by the backend, not by Onni Work string-matching. No new
   secrets or server network surface; the server stays loopback-only.
 - **Rollback**: revert the code; the `permissions` config key is ignored by
   older builds (unknown-key tolerant), runs.json stays parseable. No

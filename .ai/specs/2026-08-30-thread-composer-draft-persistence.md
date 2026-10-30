@@ -11,7 +11,7 @@ the inline message/prompt editors — lives only in the React component that ren
 another task unmounts that component, so a half-written message is gone on return, with no warning
 and no way back. This spec adds a **server-side, per-run, per-surface draft store**: every in-task
 text input is restored exactly as it was left, including pasted image attachments, from any
-browser pointed at the same cezar. Drafts are cleared only by sending or emptying them.
+browser pointed at the same Onni Work. Drafts are cleared only by sending or emptying them.
 
 ## ✅ Resolved decisions
 
@@ -20,7 +20,7 @@ The four gate questions, as answered:
 | # | Question | Answer |
 | --- | --- | --- |
 | Q1 | Scope | **Every text input in a task** — composer, review notes, inline message/prompt editors, title rename. |
-| Q2 | Storage | **Server-side**, so a draft follows the user across browsers and survives a reload and a `cez` restart. |
+| Q2 | Storage | **Server-side**, so a draft follows the user across browsers and survives a reload and a `onni` restart. |
 | Q3 | Attachments | **Text + images** — a restored composer draft brings its pasted screenshots back. |
 | Q4 | Cleanup | **On send or empty only** — no expiry, no age or count sweep. |
 
@@ -31,7 +31,7 @@ lead to the same user-visible behavior:
   file, and it is the wrong one: its `PUT` carries a hard `128 KiB` body limit
   (`UI_STATE_BODY_LIMIT`, `server.ts:877`), its merge is shallow at the top level so every write
   would have to re-send *every* run's draft, and the cockpit `GET`s the whole file on every load.
-  Drafts get their **own project-scoped route family and their own files** under `.ai/cezar/drafts/`
+  Drafts get their **own project-scoped route family and their own files** under `.ai/onni/drafts/`
   — same server, same "shared across browsers" property, without turning a preferences file into a
   message spool. `ui-state.json` is untouched by this spec.
 - **"Cleared on send or empty only" is the user-facing policy, not a promise never to delete a
@@ -75,7 +75,7 @@ The thread composer, the highest-traffic text input in the product, is the one t
 | Product | Where the draft lives | What it does that matters here |
 | --- | --- | --- |
 | **Slack** | Server, synced across devices | Per-conversation drafts, restored on return; drafts are surfaced in a dedicated "Drafts" list so an abandoned message is findable, not just recoverable. Attachments upload at attach time, not at send. |
-| **Discord** | Client, per channel | Instant, zero-latency restore; drafts do not follow you to another device — the trade-off cezar is explicitly rejecting in Q2. |
+| **Discord** | Client, per channel | Instant, zero-latency restore; drafts do not follow you to another device — the trade-off Onni Work is explicitly rejecting in Q2. |
 | **Linear / Height** | Client, per entity | Comment drafts restore per issue; an "unsaved" affordance appears in the issue list. |
 | **GitHub** | Browser storage, per comment box | Restores a half-written comment after a reload, keyed to the box — the same per-surface keying this spec needs for a task with four editable inputs at once. |
 | **ChatGPT / Claude** | Client, per conversation | Confirms the baseline expectation: a conversational input that forgets on navigation reads as a bug, not as a missing feature. |
@@ -85,7 +85,7 @@ That is what makes images-in-drafts cheap here — the bytes go to the server on
 draft record only references them.
 
 Worth skipping: cross-device *live* sync (operational transforms, presence, "editing elsewhere"
-banners) and a global Drafts inbox. cezar has one user on one machine; last-write-wins between two
+banners) and a global Drafts inbox. Onni Work has one user on one machine; last-write-wins between two
 tabs is a documented behavior, not a correctness problem, and a Drafts list is a separate feature
 with its own spec.
 
@@ -94,7 +94,7 @@ with its own spec.
 Three pieces, none of them new mechanisms:
 
 1. **A per-run draft store on the server** (`packages/work/src/runs/drafts.ts`) writing plain files
-   under `.ai/cezar/drafts/`, in the same "files, not a DB, degrade to empty, never throw" style as
+   under `.ai/onni/drafts/`, in the same "files, not a DB, degrade to empty, never throw" style as
    `ui-state.ts` and `runs/store.ts`.
 2. **A project-scoped route family** (`/api/v1/runs/:id/drafts…`, mounted under both the boot and
    `/p/:projectId/` spellings) with every shape declared as a zod schema in `packages/contract`.
@@ -126,7 +126,7 @@ packages/contract/src/drafts.ts        ← every request/response shape (zod, ty
         ▲                    ▲
         │                    │
 packages/work/src/runs/drafts.ts      ← the store: read/write/delete, caps, atomic writes
-        ▲                                 .ai/cezar/drafts/<runId>/draft.json + images/<imageId>
+        ▲                                 .ai/onni/drafts/<runId>/draft.json + images/<imageId>
         │
 packages/work/src/server/server.ts    ← chained `draftRoutes` family, validated as middleware
         ▲
@@ -181,7 +181,7 @@ back to see.
 
 ## 📝 Data Model
 
-**On disk**, under the project's data dir (`.ai/cezar/`):
+**On disk**, under the project's data dir (`.ai/onni/`):
 
 ```
 drafts/
@@ -283,10 +283,10 @@ text is there, the caret at the end, the thumbnails intact.
 | Send fails after the optimistic clear | The composer restores the text (existing behavior); the restore flows through `onValueChange` and rewrites the draft. Image blobs are deleted **only** on a resolved-successful send. |
 | Tab closed mid-sentence | `visibilitychange → hidden` flushes the pending debounce with `keepalive: true`. |
 | Image over 5 MiB / 5th image | Rejected by the composer's existing intake caps before the store sees it; the route re-validates so a non-cockpit client cannot bypass them. |
-| Draft written, cezar restarted | Restored — it is a file, not a session. |
+| Draft written, Onni Work restarted | Restored — it is a file, not a session. |
 | Run finishes while a draft sits in its composer | Kept. The composer may go disabled, the text stays; `Continue` sends it when the user comes back. |
 | Orphan blobs (a `POST`ed image never referenced by a `PUT`) | Swept when the run's draft is next written or deleted — blobs not named by any surface are removed. |
-| Remote mode | Works unchanged (ordinary HTTP, covered by the existing origin guard). Worth stating plainly: on a remote cezar, unsent drafts rest on the server host, not in the browser. |
+| Remote mode | Works unchanged (ordinary HTTP, covered by the existing origin guard). Worth stating plainly: on a remote Onni Work, unsent drafts rest on the server host, not in the browser. |
 
 ## 📝 Risks & Impact Review
 
@@ -306,8 +306,8 @@ text is there, the caret at the end, the thumbnails intact.
   constant.
 - **Rollback.** Per phase, each is a self-contained revert: the hosts go back to uncontrolled
   inputs and the routes stop being called. Leftover `drafts/` directories are inert — no migration,
-  no schema version, nothing to undo. Deleting `.ai/cezar/drafts/` at any time is safe, which is
-  the zero-config contract ("delete any of it and cezar rebuilds what it needs").
+  no schema version, nothing to undo. Deleting `.ai/onni/drafts/` at any time is safe, which is
+  the zero-config contract ("delete any of it and Onni Work rebuilds what it needs").
 - **Zero config.** No new config key, no new `ONNI_*` env var, no setting. The feature is on, or it
   degrades quietly to today's behavior.
 

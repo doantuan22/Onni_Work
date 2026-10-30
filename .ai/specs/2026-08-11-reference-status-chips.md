@@ -288,7 +288,7 @@ and says so: the chip is neutral and its tooltip reads *Checking GitHub…*.
 ### The one change we do not have to poll for
 
 GitHub cannot push to a cockpit with no public endpoint, so a status changed by anyone else is
-found by asking. But cezar changes pull requests **itself**, in exactly two places, and those it
+found by asking. But Onni Work changes pull requests **itself**, in exactly two places, and those it
 knows about the instant they happen:
 
 - `POST /github/prs/:number/merge` — on a successful merge only. A refused merge changed nothing,

@@ -37,7 +37,7 @@ no new env var, no change to `health` or any existing payload.
   (`packages/contract/src/health.ts`), and `totalmem|freemem|loadavg|os.cpus()` has zero hits in
   the repo. The only machine-wide read is the per-run `ps` snapshot.
 - **The owner asked for it explicitly:** a live, visual view of "jak wyglądają zasoby maszyny, na
-  której pracuje Cezar", so a fan-out's appetite is visible while it runs.
+  której pracuje Onni Work", so a fan-out's appetite is visible while it runs.
 
 ## 📝 Proposed Solution
 
@@ -176,7 +176,7 @@ export const hostUsageSchema = z.object({
 ```
 
 Optional keys are spread conditionally on the wire (no `undefined` sent). No persistence: the
-server keeps the latest sample only; the card keeps 30 samples (~60 s). No `~/.cezar` file, no
+server keeps the latest sample only; the card keeps 30 samples (~60 s). No `~/.onni` file, no
 `data-gitignore` change, no DB.
 
 ## 📝 API Contracts

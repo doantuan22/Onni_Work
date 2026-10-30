@@ -47,8 +47,8 @@ describe('parseTaskMarkers — report-tier reference lines', () => {
   it('reads the human-friendly PR/Issue report lines', () => {
     const report = [
       'om-auto-create-pr: add dark mode',
-      'Issue: #433 (link: https://github.com/open-mercato/cezar/issues/433)',
-      'PR: #442 (link: https://github.com/open-mercato/cezar/pull/442)',
+      'Issue: #433 (link: https://github.com/open-mercato/onni/issues/433)',
+      'PR: #442 (link: https://github.com/open-mercato/onni/pull/442)',
       'Status: complete',
     ].join('\n');
     expect(parseTaskMarkers(report)).toEqual({ pr: 442, issue: 433 });

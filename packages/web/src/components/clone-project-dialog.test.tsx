@@ -104,7 +104,7 @@ describe('CloneProjectDialog', () => {
     const { onOpenChange } = renderDialog()
     await waitFor(() => expect(slot('clone-target')).toBeTruthy())
 
-    fireEvent.change(urlInput(), { target: { value: 'https://github.com/open-mercato/cezar.git' } })
+    fireEvent.change(urlInput(), { target: { value: 'https://github.com/open-mercato/onni.git' } })
     // The name defaults to the repo half — the same rule the server applies.
     await waitFor(() => expect(slot('clone-target')?.textContent).toBe('~/onni/projects/onni'))
     expect(rootSettingsControl().tagName).toBe('A')
@@ -114,7 +114,7 @@ describe('CloneProjectDialog', () => {
 
     fireEvent.click(cloneButton())
     await waitFor(() => expect(posted).toHaveLength(1))
-    expect(posted[0]).toMatchObject({ url: 'https://github.com/open-mercato/cezar.git' })
+    expect(posted[0]).toMatchObject({ url: 'https://github.com/open-mercato/onni.git' })
     // No `name` when it was never edited: the server owns the default.
     expect(posted[0]).not.toHaveProperty('name')
     expect(typeof posted[0]?.checkoutId).toBe('string')

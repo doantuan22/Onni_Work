@@ -2,7 +2,7 @@
 
 ## TLDR
 
-Add a PR-only `Conversation | Changes` navigation inside Cezar’s GitHub detail pane so reviewers can inspect a pull request file-by-file without opening github.com. The read-only feature lazily fetches bounded, structured patches through the existing forge driver, reuses the cockpit’s diff components, and degrades honestly for binary, oversized, private-fork, offline, or unavailable content.
+Add a PR-only `Conversation | Changes` navigation inside Onni Work’s GitHub detail pane so reviewers can inspect a pull request file-by-file without opening github.com. The read-only feature lazily fetches bounded, structured patches through the existing forge driver, reuses the cockpit’s diff components, and degrades honestly for binary, oversized, private-fork, offline, or unavailable content.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -13,11 +13,11 @@ Add a PR-only `Conversation | Changes` navigation inside Cezar’s GitHub detail
 
 ## Problem Statement
 
-The GitHub tab already shows PR descriptions, comments, reviews, activity, aggregate `+/-`, and check rollups. It does not show the changed files or patches, so the user must leave the local cockpit at the decisive manual-review step. GitHub’s [review guidance](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request) recommends reviewing one file at a time, and its [file-filter guidance](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/filtering-files-in-a-pull-request) uses a file tree to navigate large changes. Cezar needs the useful read-only core of that workflow without becoming a second review-authoring client.
+The GitHub tab already shows PR descriptions, comments, reviews, activity, aggregate `+/-`, and check rollups. It does not show the changed files or patches, so the user must leave the local cockpit at the decisive manual-review step. GitHub’s [review guidance](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request) recommends reviewing one file at a time, and its [file-filter guidance](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/filtering-files-in-a-pull-request) uses a file tree to navigate large changes. Onni Work needs the useful read-only core of that workflow without becoming a second review-authoring client.
 
 ## Goals
 
-- Deep-link to a PR’s complete-as-bounded Changes view inside Cezar.
+- Deep-link to a PR’s complete-as-bounded Changes view inside Onni Work.
 - Navigate, filter, expand, and collapse per-file structured patches.
 - Reuse the forge seam, project-scoped route pattern, TanStack Query, and diff facade.
 - Make missing, binary, oversized, and truncated content unmistakable.
@@ -145,7 +145,7 @@ Ship routes, file navigation, structured patch rendering, responsive/accessibili
 
 ## Acceptance Criteria
 
-- A reviewer can deep-link to and inspect every returned PR file without leaving Cezar.
+- A reviewer can deep-link to and inspect every returned PR file without leaving Onni Work.
 - The view clearly distinguishes complete, truncated, binary, oversized, and unavailable patches.
 - Another project can never receive this project’s cached diff.
 - Existing GitHub conversation and protected diff/API surfaces remain compatible.

@@ -28,7 +28,7 @@ Two concrete failures today, both rooted in `settleSuccess` (`src/workflows/run.
 parks any successful run with a non-empty worktree diff at `review` regardless of context:
 
 1. **The gate is mandatory.** Every changed run stops for a human accept, even for users who want
-   cezar to just run and leave the changes in the worktree. There is no way to turn the gate off.
+   Onni Work to just run and leave the changes in the worktree. There is no way to turn the gate off.
 2. **Autonomous runs still park at `review`.** The "autonomous" checkbox (`new-task.tsx`,
    `AutonomousToggle`) only suppresses the *mid-run* `waiting` pause (auto-nudge at
    `src/workflows/run.ts:744-766`). It does **not** reach the terminal review gate — `settleSuccess`
@@ -64,7 +64,7 @@ Alternatives considered and rejected:
   `review` in the store, still show the violet "needs review" pill (`attention.ts:99`), and still
   survive restarts at `review`. The decision belongs in the engine (`settleSuccess`), not the view.
 - **Reuse permission modes (`acceptEdits`).** Rejected — permission mode is the Claude-CLI init
-  field (`src/core/__fixtures__/claude/*.ndjson`), unrelated to cezar's `autonomous` flag, and the
+  field (`src/core/__fixtures__/claude/*.ndjson`), unrelated to Onni Work's `autonomous` flag, and the
   `permission` attention bucket is a reserved always-false stub (`attention.ts:56`). Keep distinct.
 
 ## Architecture

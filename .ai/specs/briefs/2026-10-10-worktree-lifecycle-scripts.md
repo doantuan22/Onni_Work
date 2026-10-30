@@ -10,15 +10,15 @@
 
 ## Problem
 
-A Cezar user may need to build/start a Docker Compose environment before an agent uses a worktree, then remove its containers and volumes before that worktree disappears. Manual commands or workflow-only setup are disconnected from automatic worktree reclamation. Different users may need different scripts for the same project. This need is reported directly by the requesting user; frequency, broad demand and time savings have not been measured.
+An Onni Work user may need to build/start a Docker Compose environment before an agent uses a worktree, then remove its containers and volumes before that worktree disappears. Manual commands or workflow-only setup are disconnected from automatic worktree reclamation. Different users may need different scripts for the same project. This need is reported directly by the requesting user; frequency, broad demand and time savings have not been measured.
 
 ## Product and scope
 
-Cezar is a local coding-agent cockpit. This first slice concerns the lifetime of Cezar-managed worktree directories, not general task lifecycle events. The actor is a local project user configuring and operating their own script lists. Scripts can operate on Docker or other resources; Cezar is not becoming a Docker environment manager.
+Onni Work is a local coding-agent cockpit. This first slice concerns the lifetime of Onni Work-managed worktree directories, not general task lifecycle events. The actor is a local project user configuring and operating their own script lists. Scripts can operate on Docker or other resources; Onni Work is not becoming a Docker environment manager.
 
 ## Agreed direction
 
-Two ordered lists of scripts, configured locally per project through Project Settings and held in existing `.ai/cezar/config.json`: setup after worktree preparation and before the agent starts, and teardown immediately before physical worktree removal while its files remain available. Empty lists leave current behavior intact. Multiple scripts execute sequentially and stop at the first failure, with visible results and recovery choices.
+Two ordered lists of scripts, configured locally per project through Project Settings and held in existing `.ai/onni/config.json`: setup after worktree preparation and before the agent starts, and teardown immediately before physical worktree removal while its files remain available. Empty lists leave current behavior intact. Multiple scripts execute sequentially and stop at the first failure, with visible results and recovery choices.
 
 The conversation considered built-in Compose environment management, generic lifecycle scripts, and building nothing (workflow setup plus manual cleanup). Generic scripts fit differing local needs and address removal/retention paths that workflow setup does not cover. Shared, committed hook lists were explicitly deferred because users need different local commands.
 
@@ -46,7 +46,7 @@ Source for D01–D09: this brainstorming conversation, reaffirmed by the user's 
 2. See separate setup and teardown lists, their trigger descriptions, and that they apply locally to this project.
 3. Add multiple entries, edit them, change their order and remove them. An empty list is valid.
 4. Save explicitly. Blank added entries produce a useful inline validation error and can be corrected or removed; successful save is acknowledged.
-5. Leave and return without losing saved configuration during the simulation. No prototype setting is written to Cezar's real config.
+5. Leave and return without losing saved configuration during the simulation. No prototype setting is written to Onni Work's real config.
 
 ### F02 — Execute setup
 
@@ -64,7 +64,7 @@ Source for D01–D09: this brainstorming conversation, reaffirmed by the user's 
 
 ### F04 — Remove a worktree or delete a task
 
-1. From an inactive task or worktree-management view, choose removal or task deletion. Confirm the destructive operation, using Cezar's existing confirmation-dialog pattern.
+1. From an inactive task or worktree-management view, choose removal or task deletion. Confirm the destructive operation, using Onni Work's existing confirmation-dialog pattern.
 2. Keep the worktree available while executing the teardown list in order with statuses and logs.
 3. On success, perform the original removal operation. Reclamation retains the task and branch; explicit worktree deletion uses current semantics (directory and branch removed); task deletion removes its record as well.
 4. With no teardown entries, proceed directly. Task deletion without a worktree does not run teardown.
@@ -114,7 +114,7 @@ The user authorized a simulation of the agreed scope with assumptions marked. Th
 - Q04: How should interrupted attempts and uncertain script completion recover across process restarts? Scripts may need to tolerate retries; no exactly-once guarantee is established.
 - Q05: Should startup orphan cleanup invoke teardown, and from which trusted configuration when the task record is missing? This was discovered in code, not explicitly decided by the user.
 - Q06: How should execution approvals, remote mode and configuration portability interact with local commands? The local choice to add scripts is established; no new trust system was agreed.
-- Q07: How do concurrent worktrees obtain unique external resource names and ports? Docker-specific naming is the script author's concern, but Cezar-provided context needs design.
+- Q07: How do concurrent worktrees obtain unique external resource names and ports? Docker-specific naming is the script author's concern, but Onni Work-provided context needs design.
 - Q08: How should cleanup history survive task deletion, and when can a retained cleanup-needs-attention item be retried automatically? No retry schedule was agreed.
 
 ## Non-goals

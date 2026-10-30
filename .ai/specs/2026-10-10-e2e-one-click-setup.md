@@ -6,14 +6,14 @@ Status: implemented on PR #1291 · Base: `feat/check-env` @ `af752cc6` (2026-10-
 
 ## Goal
 
-A user who wants browser e2e tests in a project clicks one button. cezar installs and configures
+A user who wants browser e2e tests in a project clicks one button. Onni Work installs and configures
 TesterArmy's [`e2e`](https://github.com/tester-army/e2e), proves it works, and leaves an
 `implement-and-e2e` workflow behind, on a branch the user merges. The user never runs `npx e2e init`, edits `e2e.config.ts`,
 writes workflow YAML or exports a key.
 
 ## Why this reverses two earlier non-goals
 
-The #1265 plan (`.ai/runs/2026-10-04-e2e-verification-steps.md`) listed "no `cez init` scaffolding
+The #1265 plan (`.ai/runs/2026-10-04-e2e-verification-steps.md`) listed "no `onni init` scaffolding
 of an e2e workflow, and no built-in workflow — a built-in would appear in every project's catalog".
 `2026-10-06-agentic-e2e-checks` listed "any e2e-specific code in the engine". The owner rejected the
 result — five manual steps in `docs/e2e-verification.md` — as too complicated (2026-10-10): § Zero
@@ -41,7 +41,7 @@ field and one button. Submitting starts the setup and navigates to its task.
 The transcript of a setup run ends on collapsed check cards and a dim "run finished", which tells
 someone who only wanted e2e set up nothing. `E2eSetupVerdict` (task thread, setup runs only, once
 settled) says it in one card: **e2e works** (`done`/`review` — reachable only after both checks
-passed) plus "merge branch cez/… " or, once the config is in the checkout, "live — pick
+passed) plus "merge branch onni/… " or, once the config is in the checkout, "live — pick
 `implement-and-e2e`"; **e2e is not working yet** naming the check that failed, with Continue or
 Settings → External integrations as the way forward; or cancelled. With a draft PR open, it links
 the PR instead of naming the branch.
@@ -76,7 +76,7 @@ stored, so re-running a setup does not switch providers by accident.
 | `e2e-list` | check | `npx --no-install e2e list` — loads the config, collects tests, no model, no app — then `grep -qF '{{task}}'` on the written workflow. |
 | `e2e-smoke` | check | `npx --no-install e2e run --reporter list,markdown --max-failures 3`, printing `.e2e/summary.md`. |
 
-| `pr` | `github.draft-pr` | cezar opens the draft PR itself (`createDraftPr`, the review gate's mechanism), title `chore: set up e2e browser tests (TesterArmy e2e)`. Both its ports lead to the success end. |
+| `pr` | `github.draft-pr` | Onni Work opens the draft PR itself (`createDraftPr`, the review gate's mechanism), title `chore: set up e2e browser tests (TesterArmy e2e)`. Both its ports lead to the success end. |
 
 The workflow is a `version: 2` graph only for the `pr` node: the steps compile exactly as a v1
 chain would (`compileV1`) and the node is spliced in before `end`. A PR that cannot be opened (no
@@ -96,11 +96,11 @@ The agent is told the key NAME only. Values never enter a prompt, a workflow def
 record; check steps get them from the secret store.
 
 `--no-install` pins every check to the version the setup installed. `E2E_TELEMETRY_DISABLED=1` is on
-every e2e command cezar writes: cezar does not widen network exposure on the user's behalf.
+every e2e command Onni Work writes: Onni Work does not widen network exposure on the user's behalf.
 
 ## Live verification (2026-10-10)
 
-A fresh Vite + React app (`npm create vite -- --template react-ts`), cezar booted from this branch's
+A fresh Vite + React app (`npm create vite -- --template react-ts`), Onni Work booted from this branch's
 build with an isolated `ONNI_HOME`, real Claude Code runner, no model key:
 
 1. **Run 1** (`d050f86f`): all three steps green in ~2 min, but it exposed two bugs. The engine's
@@ -113,17 +113,17 @@ build with an isolated `ONNI_HOME`, real Claude Code runner, no model key:
    `--host 127.0.0.1 --port {port} --strictPort`.
 3. After merging the branch, `GET /e2e` read `configFile: e2e.config.ts, workflow: true`, and
    `implement-and-e2e` was in the catalog.
-4. **A real task** on `implement-and-e2e` (`1bc892d7`, "change the h1 to Hello cezar") was green
+4. **A real task** on `implement-and-e2e` (`1bc892d7`, "change the h1 to Hello Onni Work") was green
    in ~1 min: `deps` → `implement` (it changed `App.tsx` AND the smoke test's assertion) → `browser`
    (real e2e run, 1 passed).
 
 The review gate is off by default (`ONNI_REVIEW_GATE`), so a setup run normally settles as `done`
-with its branch unmerged. The section says "Setup finished — merge branch cez/… to finish" until
+with its branch unmerged. The section says "Setup finished — merge branch onni/… to finish" until
 the config is in the checkout.
 
 5. **Graph + PR node** (`fbbb303d`, a copy of the app with no remote): green in ~1 min. The `pr`
    node failed with "no git remote — add one … or merge the branch locally", the run settled `done`,
-   and the verdict read "e2e works — merge branch cez/fbbb303d (or open a draft PR from the header)".
+   and the verdict read "e2e works — merge branch onni/fbbb303d (or open a draft PR from the header)".
    The PR-created path was not run live: that needs a real GitHub repository.
 
 ## Facts the design rests on (e2e 0.19.0, verified 2026-10-10)
@@ -159,7 +159,7 @@ Network use (npm, the browser download) happens only inside a task the user star
   through `workflowFileSchema` with `retryOn: [1]`, and each key name selects its provider hint.
 - `src/server/e2e-setup-api.test.ts`: empty status on both mounts; key stored as a `checks` secret
   and absent from the workflow and input; in-flight 409; settled run allows a retry; non-git 409
-  before anything is stored; unknown key name 400; a workspace `checks` key counts, a `cezar`-only one
+  before anything is stored; unknown key name 400; a workspace `checks` key counts, a `onni`-only one
   does not.
 - `src/server/contract-parity.e2e.test.ts`: route types match the contract.
 - `packages/web/src/routes/settings/e2e-section.test.tsx`: empty state, start with and without a key,

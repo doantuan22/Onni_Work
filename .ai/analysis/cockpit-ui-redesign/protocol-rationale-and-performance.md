@@ -15,7 +15,7 @@ Key observation: all of these converged independently on the same shape — *an 
 
 ## 2. Why not adopt ACP wholesale?
 
-ACP models *one editor driving one agent session*. cezar is an orchestrator: it needs runs, workflow steps and check steps, variants, worktree/branch context, queue positions, token/cost accounting, and NDJSON persistence/replay — none of which ACP covers (usage/cost is not even in ACP core). The spec therefore uses **ACP vocabulary wherever the choice is arbitrary** (tool status, `ToolKind`, plan entry shape, diff shape, stop reasons, permission options) and adds the orchestrator layer on top.
+ACP models *one editor driving one agent session*. Onni Work is an orchestrator: it needs runs, workflow steps and check steps, variants, worktree/branch context, queue positions, token/cost accounting, and NDJSON persistence/replay — none of which ACP covers (usage/cost is not even in ACP core). The spec therefore uses **ACP vocabulary wherever the choice is arbitrary** (tool status, `ToolKind`, plan entry shape, diff shape, stop reasons, permission options) and adds the orchestrator layer on top.
 
 ## 3. Where does translation happen?
 
@@ -38,13 +38,13 @@ opencode ─── HTTP + SSE parts ─────▶ opencode-runner ───
 
 - **Shared 1:1**: tool lifecycle/status (+ `declined`), `ToolKind` (+ `task`, `plan`), plan entries with full-replacement semantics, `{path, oldText, newText}` diffs, stop reasons, permission-request shape (reserved), streamed text/reasoning chunks.
 - **v2 adds**: the run/workflow envelope (steps, checks, lifecycle, queue), variants and worktree context, usage/cost + context-window telemetry, persistence fields (`seq`/`ts`/`stepId`) for replay, image events with persisted URLs, title summaries / diff stats.
-- **Not taken from ACP**: the JSON-RPC method surface (`initialize`, `session/new`, capability negotiation) and the fs/terminal extensions — cezar's runners already own process lifecycle per backend.
+- **Not taken from ACP**: the JSON-RPC method surface (`initialize`, `session/new`, capability negotiation) and the fs/terminal extensions — Onni Work's runners already own process lifecycle per backend.
 
-This containment keeps two future moves cheap: an ACP *backend* fills only the shared core; an ACP *server mode* (editors driving cezar) projects v2 down to the shared core.
+This containment keeps two future moves cheap: an ACP *backend* fills only the shared core; an ACP *server mode* (editors driving Onni Work) projects v2 down to the shared core.
 
 ## 5. Is the design performant? (SSE, streaming, replay)
 
-**Transport — SSE is the right fit.** The stream is strictly server→client (client input rides normal POSTs). `EventSource` gives auto-reconnect for free; cezar's reconnect doctrine (full-list resync on the global stream, per-run replay with `seq` dedup, authoritative refetch) already assumes it. The HTTP/1.1 six-connections-per-origin limit — the classic SSE objection — does not bite: the cockpit holds exactly two streams (global + selected run). WebSocket would add bidirectionality cezar doesn't need (paseo needs it for voice PCM streaming).
+**Transport — SSE is the right fit.** The stream is strictly server→client (client input rides normal POSTs). `EventSource` gives auto-reconnect for free; Onni Work's reconnect doctrine (full-list resync on the global stream, per-run replay with `seq` dedup, authoritative refetch) already assumes it. The HTTP/1.1 six-connections-per-origin limit — the classic SSE objection — does not bite: the cockpit holds exactly two streams (global + selected run). WebSocket would add bidirectionality Onni Work doesn't need (paseo needs it for voice PCM streaming).
 
 **Event volume.** Agent events are human-paced (tool calls, step transitions, ~2 s usage ticks) — trivial. The one new pressure point is `item.delta` (token-level text/reasoning/command-output streaming), which can reach 50–100 raw events/s. Guardrails, stated in the spec:
 

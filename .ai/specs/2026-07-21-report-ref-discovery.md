@@ -1,7 +1,7 @@
 # Report-tier reference discovery — skill report lines and issue links
 
 Status: implemented · Date: 2026-07-21 · Relates: spec 2026-07-18-task-ref-markers
-(the CEZ:* tier above this one), spec 2026-07-16-pr-autodiscovery (the fuzzy URL
+(the ONNI:* tier above this one), spec 2026-07-16-pr-autodiscovery (the fuzzy URL
 tier below it), open-mercato/skills#38 (the emitter-side contract change)
 
 ## Problem
@@ -17,8 +17,8 @@ PR: #442 (link: https://github.com/owner/repo/pull/442)
 Spec: .ai/specs/2026-07-21-foo.md
 ```
 
-cezar discovered PR numbers from those sessions only via the fuzzy URL janitor
-(spec 2026-07-16) or an explicit `CEZ:PR` declaration — the report lines
+Onni Work discovered PR numbers from those sessions only via the fuzzy URL janitor
+(spec 2026-07-16) or an explicit `ONNI:PR` declaration — the report lines
 themselves were invisible, and **issue** links in conversation were never
 discovered at all (only the task prompt's issue reference seeded
 `issueNumber`).
@@ -28,21 +28,21 @@ discovered at all (only the task prompt's issue reference seeded
 ### 1. Report-tier marker parsing (`src/runs/task-markers.ts`)
 
 `parseTaskMarkers` now also recognizes, line-anchored and exact-shape, in the
-accumulated turn text (the agent's own words — same trust boundary as `CEZ:*`):
+accumulated turn text (the agent's own words — same trust boundary as `ONNI:*`):
 
 - `PR: #<n> (link: <url>)` and `Issue: #<n> (link: <url>)` — the new skill
   report lines;
 - `PR_NUMBER=<n>`, `PR_URL=<…/pull/n>`, `ISSUE_NUMBER=<n>` — the legacy
   markers older skill versions still emit.
 
-Precedence inside one turn: `CEZ:PR`/`CEZ:ISSUE` (explicit declaration) >
+Precedence inside one turn: `ONNI:PR`/`ONNI:ISSUE` (explicit declaration) >
 report line > legacy marker; last occurrence wins within each tier, later
 turns win over earlier ones — all through the existing `applyMarkerRefs`
-pipeline, so a recognized report line behaves exactly like a `CEZ:*`
+pipeline, so a recognized report line behaves exactly like a `ONNI:*`
 declaration (owns the display tier, filters the referenced-URL candidates,
 silences the namer for that kind).
 
-`stripTaskMarkers` is unchanged: only `CEZ:*` control lines are stripped from
+`stripTaskMarkers` is unchanged: only `ONNI:*` control lines are stripped from
 display — the report lines are human-readable by design and stay visible.
 
 ### 2. Referenced-issue janitor (`src/runs/store.ts`)
@@ -80,11 +80,11 @@ pretty distinguished"):
 ## Degradation & compatibility
 
 - Additive only: no marker/report line → every existing layer behaves as
-  before. The `CEZ:*` vocabulary and the handoff instruction fragment are
-  untouched — `CEZ:PR`/`CEZ:ISSUE` remain the explicit override.
+  before. The `ONNI:*` vocabulary and the handoff instruction fragment are
+  untouched — `ONNI:PR`/`ONNI:ISSUE` remain the explicit override.
 - Sessions running **older** skill versions keep working via the legacy
   `PR_URL=`/`PR_NUMBER=` parsing; sessions running the new skills work with
-  **older** cezars through the URL janitor (the report line contains the URL).
+  **older** Onni Work builds through the URL janitor (the report line contains the URL).
 - The cockpit renders the strongest known task reference in the tasks table:
   PR first, otherwise issue. Issue URLs are seeded from the prompt at run
   creation, so an issue-driven run has its linked issue chip while queued

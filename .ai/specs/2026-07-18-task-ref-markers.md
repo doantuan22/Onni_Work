@@ -1,8 +1,8 @@
-# In-band task-reference markers — CEZ:PR / CEZ:ISSUE / CEZ:TITLE
+# In-band task-reference markers — ONNI:PR / ONNI:ISSUE / ONNI:TITLE
 
 Status: proposed · Date: 2026-07-18 · Owner direction 2026-07-18 · Relates:
 spec 2026-07-16-pr-autodiscovery (the fuzzy tier this overrides), spec
-2026-07-17-task-auto-naming (the namer this can silence), #347 (`CEZ:DONE`,
+2026-07-17-task-auto-naming (the namer this can silence), #347 (`ONNI:DONE`,
 the marker this extends)
 
 ## Problem
@@ -29,19 +29,19 @@ Spec 2026-07-17 §"Rejected: in-band title markers" declined in-band markers for
 following the surveyed tools. The owner explicitly overrode that on 2026-07-18
 for **reference discovery**: the separate-call approach keeps failing on
 conversation-borne references and burns tokens; the main thread should declare
-its subject the way it already declares completion (`CEZ:DONE`). Titles come
+its subject the way it already declares completion (`ONNI:DONE`). Titles come
 along as an *optional* marker because they share the transport for free — the
 namer remains the default title mechanism.
 
 ## The protocol
 
-Three new markers join `CEZ:DONE` in the agent's plain-text output. Each stands
+Three new markers join `ONNI:DONE` in the agent's plain-text output. Each stands
 on its own line, anywhere in a turn:
 
 ```
-CEZ:PR=<number>      the GitHub pull request this task is working on / opened
-CEZ:ISSUE=<number>   the GitHub issue this task is working on
-CEZ:TITLE=<phrase>   optional: a terse task title (≤ ~40 chars, gerund phrase)
+ONNI:PR=<number>      the GitHub pull request this task is working on / opened
+ONNI:ISSUE=<number>   the GitHub issue this task is working on
+ONNI:TITLE=<phrase>   optional: a terse task title (≤ ~40 chars, gerund phrase)
 ```
 
 Rules, mirrored in the handoff system-prompt fragment (`src/handoff.ts`):
@@ -55,15 +55,15 @@ Rules, mirrored in the handoff system-prompt fragment (`src/handoff.ts`):
 
 ### Parsing (`src/runs/task-markers.ts`)
 
-Line-anchored, case-sensitive: `/^CEZ:PR=(\d+)\s*$/m`,
-`/^CEZ:ISSUE=(\d+)\s*$/m`, `/^CEZ:TITLE=(.+)$/m` (title trimmed, clipped to the
+Line-anchored, case-sensitive: `/^ONNI:PR=(\d+)\s*$/m`,
+`/^ONNI:ISSUE=(\d+)\s*$/m`, `/^ONNI:TITLE=(.+)$/m` (title trimmed, clipped to the
 namer's `TITLE_MAX` budget by the shared post-validation). Numbers share
 `task-refs.ts`'s `MAX_REF` sanity bound. The instruction text's own
-`CEZ:PR=<number>` placeholder is non-numeric and can never parse — a literal
+`ONNI:PR=<number>` placeholder is non-numeric and can never parse — a literal
 echo of the contract is inert.
 
 Parsing input is the **accumulated turn text** the engine already collects for
-`CEZ:DONE` (`turnText` in `run.ts`) — the main thread's own words. Tool
+`ONNI:DONE` (`turnText` in `run.ts`) — the main thread's own words. Tool
 results, tool inputs and reasoning text are never scanned, so an agent *reading*
 this spec or `handoff.ts` cannot poison its own record via tool output echoes.
 
@@ -72,13 +72,13 @@ this spec or `handoff.ts` cannot poison its own record via tool output echoes.
 | Field | marker | namer (LLM) | janitor (regex) | user |
 |---|---|---|---|---|
 | `prNumber` / `issueNumber` | **wins** | only while no marker of that kind | seed at creation (task prompt regex) | — |
-| `referencedPullRequestUrl` | marker number filters candidates — only a URL ending in the declared number resolves; no match → unset (no chip beats a wrong chip). Exception: a number equal to the created PR's is ignored here — see the amendment below | — | fuzzy resolution only while no `CEZ:PR` marker | — |
+| `referencedPullRequestUrl` | marker number filters candidates — only a URL ending in the declared number resolves; no match → unset (no chip beats a wrong chip). Exception: a number equal to the created PR's is ignored here — see the amendment below | — | fuzzy resolution only while no `ONNI:PR` marker | — |
 | `pullRequestUrl` (created tier) | untouched — `CREATED_PR_RE` / cockpit draft-PR flow stay authoritative | — | unchanged | — |
-| `titleSummary` | `CEZ:TITLE` wins over namer | only while `titleOrigin` is unset/`auto` | — | **PATCH rename always wins** (`titleOrigin: 'user'`) |
+| `titleSummary` | `ONNI:TITLE` wins over namer | only while `titleOrigin` is unset/`auto` | — | **PATCH rename always wins** (`titleOrigin: 'user'`) |
 
 ### Amendment — a declaration naming the PR the run CREATED
 
-The instruction fragment asks the agent to re-emit `CEZ:PR` when it opens a PR later in the task,
+The instruction fragment asks the agent to re-emit `ONNI:PR` when it opens a PR later in the task,
 so on such a run the LAST declaration is the number of the run's OWN PR — not the PR it is about.
 Fed to the referenced tier that declaration erased the subject: no candidate ends in the created
 number, and "no match → unset" cleared the chip (seen on a task started on open-mercato#4326 that
@@ -96,7 +96,7 @@ restore a chip, never remove one.
 ### Amendment — an uncorroborated declaration leads the chips
 
 `taskReferences` (cockpit) orders references created-PR first, then about-PR, then issue. One thing
-now sits ahead of all of them: a `CEZ:PR` number that **no** scraped URL on the record carries.
+now sits ahead of all of them: a `ONNI:PR` number that **no** scraped URL on the record carries.
 Normally there is none — the agent re-declares with the PR it opened, so the declaration IS the
 created URL and the order is unchanged. When there IS one, the URL tier is naming something the
 agent never did, and that tier is the one built from transcript guesses: a task that quoted
@@ -114,7 +114,7 @@ Record model (additive, old `runs.json` files keep parsing):
 
 Once a run holds a `titleOrigin: 'marker'` title, the live-refresh namer call
 (`maybeRefreshTitle`, one cheap-model call per turn end) is **skipped** for that
-run — the main thread has taken ownership and can re-emit `CEZ:TITLE` any time.
+run — the main thread has taken ownership and can re-emit `ONNI:TITLE` any time.
 Creation-time naming is untouched (it races the first turn and still provides
 the instant-quality title for agents that never emit markers). Runs without
 markers behave exactly as today — markers are a fast path, not a dependency.
@@ -122,7 +122,7 @@ markers behave exactly as today — markers are a fast path, not a dependency.
 ## Display
 
 Marker lines are stripped from rendered transcript text, exactly like
-`CEZ:DONE`: the server strips complete marker lines from v1 `text` events
+`ONNI:DONE`: the server strips complete marker lines from v1 `text` events
 before persisting; the cockpit's `thread-state.ts` strips them from v2 message
 items at display time (v2 persists raw — the store's NDJSON is the honest
 record). A marker split across v1 text chunks may transiently render; the
@@ -141,11 +141,11 @@ parse itself always runs on the whole turn text, so state is never affected.
 
 ## Compatibility
 
-The marker vocabulary (`CEZ:DONE`, `CEZ:PR`, `CEZ:ISSUE`, `CEZ:TITLE`) is an
+The marker vocabulary (`ONNI:DONE`, `ONNI:PR`, `ONNI:ISSUE`, `ONNI:TITLE`) is an
 agent-facing contract: **additive-only**. Removing or renaming a marker, or
 changing what an emitted marker does, follows the deprecation path in
 `BACKWARD_COMPATIBILITY.md`. New markers may be added freely — unknown
-`CEZ:*` lines are inert prose to older cezars, which is the property that makes
+`ONNI:*` lines are inert prose to older Onni Work builds, which is the property that makes
 the protocol forward-compatible.
 
 ## Test plan

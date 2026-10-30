@@ -2,7 +2,7 @@
 
 ## 🎯 Change
 
-Let users submit a new task now and have cezar start it **only after the selected account's usage limit resets** — even when the current window still has allowance left. This lets them keep the remaining allowance for their own interactive work and hand the next window to cezar.
+Let users submit a new task now and have Onni Work start it **only after the selected account's usage limit resets** — even when the current window still has allowance left. This lets them keep the remaining allowance for their own interactive work and hand the next window to Onni Work.
 
 The composer entry point was already requested in [#771](https://github.com/open-mercato/cezar/issues/771). This issue builds on that direction and adds a start time derived from the selected account's usage limit:
 
@@ -27,7 +27,7 @@ The server and computer must be running at the start time; the browser tab may b
 
 There is no new configuration, daemon or `ONNI_*` variable. With `ONNI_AUTOMATIONS=0`, both deferred options are disabled with an explanation, and **Now** works as before. A deferred choice never becomes the default for the next task.
 
-The selected time is a **not-before time**, not a reservation of future allowance. Other tasks or activity outside cezar may use that allowance first; ordinary account holds and capacity limits still apply. Scheduling must preserve the chosen workflow, account, model, autonomy setting and review gates, rather than implicitly making the task autonomous.
+The selected time is a **not-before time**, not a reservation of future allowance. Other tasks or activity outside Onni Work may use that allowance first; ordinary account holds and capacity limits still apply. Scheduling must preserve the chosen workflow, account, model, autonomy setting and review gates, rather than implicitly making the task autonomous.
 
 ## 📋 Scope
 
@@ -39,7 +39,7 @@ This issue delivers one complete capability, covering:
 
 In scope: ordinary submission, execution of an approved plan (inline `steps`), and ×1–×3 variants.
 
-Out of scope: recurring schedules (already shipped, #985), deferred Continue, changes to automatic resume, percentage thresholds, switching accounts to bypass limits, and reset data for backends other than Claude and Codex (follow-up). GitHub/bookmarklet entry and `cez task create` keep their current start behavior.
+Out of scope: recurring schedules (already shipped, #985), deferred Continue, changes to automatic resume, percentage thresholds, switching accounts to bypass limits, and reset data for backends other than Claude and Codex (follow-up). GitHub/bookmarklet entry and `onni task create` keep their current start behavior.
 
 Option-specific limits:
 
@@ -113,7 +113,7 @@ Start
   ○ After usage limit resets                    unavailable
 
     No upcoming reset is known for this account.
-    Claude usage information comes from previous tasks in cezar.
+    Claude usage information comes from previous tasks in Onni Work.
     Pick a date and time instead.
 ```
 
@@ -209,7 +209,7 @@ A deferred start is a `once` automation created from the composer, marked as suc
 
 - **Runner boundary.** Forward the events through a normalized, backend-neutral metadata callback, covering both execution modes and the account each step actually ran on. Keep backend types out of the manager. Document the callback in `AGENT_PROTOCOL.md` as an optional capability and cover it with golden fixtures.
 - **Normalization.** Handle null values, partial updates, absent windows, usage above 100%, model-specific limits and `rateLimitsByLimitId` selection. Keep the source and the observation time. Do not copy a global rejected status onto every window, and do not treat `overageStatus: rejected` as a block when the main status is allowed.
-- **Store.** Keep account snapshots in `~/.cezar/usage-windows.json`, resolved through `cezarHomeDir()`, written atomically with mode `0600` and read-modify-write merging, and covered by `assertCezarHomeWriteIsSandboxed`. A corrupt file or read-only home means “no data” plus one warning, never a boot failure. Store no raw messages, prompts or credentials.
+- **Store.** Keep account snapshots in `~/.onni/usage-windows.json`, resolved through `onniHomeDir()`, written atomically with mode `0600` and read-modify-write merging, and covered by `assertOnniHomeWriteIsSandboxed`. A corrupt file or read-only home means “no data” plus one warning, never a boot failure. Store no raw messages, prompts or credentials.
 
 ### API contract
 
@@ -234,7 +234,7 @@ Every shape is a Zod schema in `packages/contract` with an inferred type. Projec
 - [ ] **Now** and all existing request shapes behave exactly as before; `POST /runs` is unchanged.
 - [ ] A deferred start creates no run, title, worktree or model call before its time, including with LLM naming enabled.
 - [ ] It launches once at its time with the browser tab closed, in a project not opened in the UI, through the existing schedule runner, subject to existing limits.
-- [ ] Two compatible cezar processes competing for a start, cancellation, reschedule or retry produce at most one launch per variant; exercise real process contention, persisted-state reload and stale revisions, not only in-process mocks.
+- [ ] Two compatible Onni Work processes competing for a start, cancellation, reschedule or retry produce at most one launch per variant; exercise real process contention, persisted-state reload and stale revisions, not only in-process mocks.
 - [ ] Restarting before the start time keeps it. Up to 24 h late it launches once as a catch-up; later it shows as missed and launches nothing by itself.
 - [ ] Run now, Change time and Cancel racing with a due tick resolve through the receipt and the `revision`; a stale request changes nothing.
 - [ ] Repeating creation with the same idempotency key returns the original outcome before and after launch, cancellation, definition cleanup, receipt compaction and restart, even with an expired preview. Reusing it with a different body is refused. Run deletion does not turn a replay into a new launch.

@@ -21,13 +21,13 @@ is cancelled. The strongest use case is a developer running several long tasks w
 cockpit and wants to know when to return. Existing browser notifications
 (Settings → Notifications) fire only while a cockpit tab is open in the background; they do not
 reach a closed tab, a phone or a team’s backend. Notifications are one-way; on a local installation they
-do not let the developer answer or resume a task from a phone. The computer and cezar server must
+do not let the developer answer or resume a task from a phone. The computer and Onni Work server must
 be running to send anything.
 
 Users can connect a Slack Incoming Webhook or Discord channel Webhook
 URL directly, or send signed JSON to their own endpoint/automation workflow such as Make or n8n.
 The [receiver guide](../../packages/work/docs/webhooks.md) documents setup and the receiver contract.
-Native destinations need no cezar bot, OAuth flow or relay; Slack setup still requires the user
+Native destinations need no Onni Work bot, OAuth flow or relay; Slack setup still requires the user
 to install an Incoming Webhook app. Notifications remain one-way, with no replies or approvals
 from chat and no guarantee that a phone displays them.
 
@@ -49,7 +49,7 @@ A workflow using both can produce two independent notifications.
 
 ## Non-goals
 
-No inbound webhooks, challenge–response, dispatch-tree question correlation, chat replies, bots, cezar-managed OAuth or relay, global receivers, tenant RBAC,
+No inbound webhooks, challenge–response, dispatch-tree question correlation, chat replies, bots, onni-managed OAuth or relay, global receivers, tenant RBAC,
 automatic merge/deploy/ticket closure, or lossless audit ledger. No lifecycle scheduling rewrite.
 No CLI command or agent skill for managing webhooks. The HTTP API remains callable by same-user
 processes; omitting a CLI is not an access-control mechanism.
@@ -81,8 +81,8 @@ is implied or introduced by this specification.
 Agents receive `ONNI_API_URL` through dispatch and can call the local API without an Origin header.
 They can create, activate, edit and rotate receivers and read accessible project secrets. Existing
 Bash already permits outbound traffic; the added risk is persistence across later tasks under a
-cezar signing key. Activation and banner acknowledgement are consent UX, not proof of a human.
-A signature proves key possession, not that cezar observed the claimed event. In hosted mode,
+Onni Work signing key. Activation and banner acknowledgement are consent UX, not proof of a human.
+A signature proves key possession, not that Onni Work observed the claimed event. In hosted mode,
 a local process can also reach loopback and bypass reverse-proxy authentication.
 Host-local authentication is outside the webhook access boundary.
 
@@ -96,7 +96,7 @@ The implementation shares code, not receiver data: formatter/signing/transport h
 an explicitly scoped project service. Optional process-wide protection stores only transient
 host concurrency/cooldown counters, never project payloads, receiver URLs, secrets or history.
 A slow/full/broken project queue cannot take another project's quota or suspend its receivers.
-No webhook payload or secret is persisted under `~/.cezar`.
+No webhook payload or secret is persisted under `~/.onni`.
 
 ## Architecture and integration
 
@@ -115,7 +115,7 @@ the contract; UI labels, colors, pulses and `deriveAttention` rendering live in 
 | `packages/work/src/server-install/state.ts`, `paths.ts` | Multiple installer records exist; never assume the default record describes the running server. |
 | `packages/web/src/routes/settings/registry.tsx`, `packages/work/src/server/server.ts` | Project settings and project-scoped SSE keep receiver state out of global broadcasts. |
 
-Headless `cezar run` neither captures webhook source events nor sends them. Its normal lifecycle
+Headless `onni run` neither captures webhook source events nor sends them. Its normal lifecycle
 logging is unaffected. Webhook source capture is enabled explicitly by server-owned store
 construction, including boot, lazy project and recovery construction paths. A later server must
 not backfill headless lifecycle records into webhook notifications.
@@ -221,8 +221,8 @@ no old question is authorized merely because a debounced record still says waiti
 
 | Resolution | Evidence required |
 |---|---|
-| `pr_opened` | The cezar PR-creation operation succeeded and the same operation changes this task to done |
-| `accepted` | Explicit acceptance of review without cezar creating a PR |
+| `pr_opened` | The Onni Work PR-creation operation succeeded and the same operation changes this task to done |
+| `accepted` | Explicit acceptance of review without Onni Work creating a PR |
 | `no_changes` | Successful task-relative diff check found no changes; never inferred from skipping review or a failed diff command |
 | `completed` | Normal successful completion, including autonomous/review-disabled runs with changes |
 | `unknown` | Completion without sufficient recorded evidence |
@@ -240,7 +240,7 @@ Task-relative diff determination uses `resolveTaskDiffBase` with branch and star
 the review-gate helper retains its whole-branch meaning.
 Creating/linking a PR after done does not rewrite the historical finished event and does not
 emit a second finished event. There is no separate PR-linked notification. An existing PR URL can be included
-with `completed`; its existence does not prove that cezar just opened it.
+with `completed`; its existence does not prove that Onni Work just opened it.
 
 `finished` is one task's outcome, not deployment, merge or tree settlement. Children can later
 resume a parent. Include root/parent task IDs where known; descendant counts are optional,
@@ -608,7 +608,7 @@ Redaction removes known values and recognized token patterns; it cannot reliably
 business-confidential text or arbitrary secrets. Standard consent explicitly says this. Text
 fields are data, never markup: receiver docs state that a title, question or
 error must be escaped for the target (for example `&`, `<`, `>` in Slack mrkdwn, `@everyone` in
-Discord) before display. Only `links.*` are validated by cezar; agent-provided text is untrusted.
+Discord) before display. Only `links.*` are validated by Onni Work; agent-provided text is untrusted.
 
 Bound every optional string/array in the schema. After JSON serialization measure UTF-8 bytes:
 maximum 64 KiB. Trim optional questions/title/error/other lists deterministically, set
@@ -624,7 +624,7 @@ and [Appendix B](#appendix-b-external-automation-and-native-chat-integrations). 
 ## Storage, privacy and degradation
 
 All paths below are relative to the owning project context's canonical `dataDir`, normally
-`<project-root>/.ai/cezar`. Resolve it from the server context, not a client-supplied path or an
+`<project-root>/.ai/onni`. Resolve it from the server context, not a client-supplied path or an
 agent task's current worktree. Construct one private webhook service per canonical dataDir; contexts and boot aliases attach to it.
 
 | Path | Contents |
@@ -990,7 +990,7 @@ changes require a new `schemaVersion`. Validation results are recorded separatel
 
 ## Appendix A: Signing, network safety and retry
 
-Cezar JSON uses Standard Webhooks: per-endpoint 32-byte random secret encoded as `whsec_<base64>`.
+Onni Work JSON uses Standard Webhooks: per-endpoint 32-byte random secret encoded as `whsec_<base64>`.
 Decode the key before HMAC-SHA256; sign the exact UTF-8 `id.timestamp.body` bytes. Send
 `webhook-id`, `webhook-timestamp` (attempt time in Unix seconds), and `webhook-signature` with
 `v1,<base64 signature>`. Body `occurredAt` stays unchanged. Rotation accepts two keys for 24 h;
@@ -1002,7 +1002,7 @@ oldest key early, extend its deadline, or retain a third key. The UI offers wait
 or explicit revoke-now, including recovery when the current one-time secret was lost. Revoke-now
 generates a replacement and retires every predecessor; warn that deliveries may fail until the
 receiver is updated. Persist the original deadline across restart and expire it before evaluating
-a boundary-time request. Revision validation still applies. A receiver must also stop accepting compromised keys; cezar
+a boundary-time request. Revision validation still applies. A receiver must also stop accepting compromised keys; Onni Work
 cannot revoke a key in somebody else's verifier. Already in-flight requests cannot be recalled.
 A 72 h dedupe store may accept a later explicit Replay: document this intended behavior. See [Standard Webhooks](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md).
 
@@ -1015,7 +1015,7 @@ in local mode. Revalidate after WHATWG URL parsing (including numeric forms such
 then classify every DNS answer; any denied answer rejects the whole set. Test requires the same
 local-network consent BEFORE transmission, never only at activation. Deny this server's listen
 ports and every port reported by `listServerInstances()` as destination ports, even with local
-consent; conservative false positives are preferable to a POST into cezar's API.
+consent; conservative false positives are preferable to a POST into Onni Work's API.
 
 Pin the actual connection to the validated IP while retaining TLS hostname validation/SNI for
 the original hostname; no second uncontrolled DNS lookup, implicit proxy or certificate bypass.
@@ -1070,17 +1070,17 @@ deduplication and may duplicate a downstream chat message; explain this in the c
 ## Appendix B: External automation and native chat integrations
 
 Custom receivers use signed JSON. A user supplies a receiver URL from their backend or an
-automation workflow such as Make or n8n, then configures downstream actions there. cezar does
+automation workflow such as Make or n8n, then configures downstream actions there. Onni Work does
 not ship a relay or a workflow template that depends on one.
 
 Custom receivers should verify signatures and handle duplicate event IDs. A 2xx acknowledges acceptance
 by that receiver; it does not prove downstream Slack/Discord delivery. A workflow that acknowledges
 before completing its actions owns their retries and failure reporting.
 
-Native cezar-to-Slack/Discord notifications follow the
+Native onni-to-Slack/Discord notifications follow the
 [Slack](2026-10-19-slack-webhook-receivers.md) and
 [Discord](2026-10-19-discord-webhook-receivers.md) contracts. Those specs define provider formatting, response classification, rate handling, URL
 validation and setup UX. They share the queue and privacy profiles, and require no
-cezar bot, OAuth flow or relay. They do not accept replies or approvals, and HTTP acceptance
+Onni Work bot, OAuth flow or relay. They do not accept replies or approvals, and HTTP acceptance
 is not a phone display/read receipt. Dry-run checks send no receiver traffic and cannot
 verify that a provider displayed a message.

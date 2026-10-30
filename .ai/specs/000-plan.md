@@ -13,7 +13,7 @@ Status: aktywny · Aktualizowany przy każdej zmianie zakresu
    Nie wprowadzamy pojęć typu "binding", "workspace", "dispatch", "runner".
 3. **Jedna funkcja = jeden klik.** Jeżeli funkcja wymaga formularza z więcej niż
    2 polami albo drugiego ekranu — projekt jest zły, wracamy do deski.
-4. **Pliki zamiast bazy.** Cały stan w `.ai/cezar/` w repo użytkownika: JSON +
+4. **Pliki zamiast bazy.** Cały stan w `.ai/onni/` w repo użytkownika: JSON +
    NDJSON + Markdown. Wszystko da się przeczytać `cat`-em i naprawić edytorem.
 5. **CLI hosta jest źródłem mocy.** `claude` (auth przez subskrypcję), `gh`
    (auth przez `gh auth login`), `git`. Nie trzymamy żadnych sekretów.
@@ -34,7 +34,7 @@ GUI (Runs/Repo/Skills), CLI (`serve`/`run`/`init`), mock `ONNI_DRY_RUN=1`.
 ### Fala 1 — "poniedziałek": Piotr może się przesiąść z janitora
 | Spec | Co | Zależy od |
 |---|---|---|
-| [001](001-packaging-npx.md) | Nazwa paczki, `npx`, dane w `.ai/cezar/`, auto-port, publish | — |
+| [001](001-packaging-npx.md) | Nazwa paczki, `npx`, dane w `.ai/onni/`, auto-port, publish | — |
 | [002](002-live-session.md) | Żywa sesja: follow-upy + obrazki przez stdin, status `needs_input` | — |
 | [003](003-handoff-cli.md) | Handoff: „Kontynuuj" + „Otwórz w terminalu" (`claude --resume`) | 002 |
 | [004](004-cockpit-tasklist.md) | Lista tasków: link do PR, archiwizacja, koszt $ | — |
@@ -72,7 +72,7 @@ na końcu oglądasz diff → wysyłasz PR draft" bez dotykania YAML-a — plus
 | — (2026-07-10/11) | Cockpit v2: redesign GUI, zakładka GitHub przez `gh`, obrazki task→agent i agent→transcript, pill-dropdowny z wyszukiwarką | — |
 | [012](012-workflow-builder.md) | Workflow builder: zakładka Workflows, drag & drop skilli, przenośny YAML (`skills:`), import/export/save | 005, 008 |
 | — (2026-07-11, feedback Piotra) | Notes renderują markdown; plan jako overlay w głównym oknie (nie w sidebarze); klikalne commity w Repo (rozwijany diff + link GitHub); discovery skilli z `npx skills` (`.agents/skills` + mirrory agentów + globalne `~/.agents`, `~/.claude`, SKILL.md → nazwa z katalogu, unia bez duplikatów); picker domyślnie na Skills + ikonki w menu i pasku akcji | — |
-| — (2026-07-11, feedback #2) | Default = ostatnio używany skill (`.ai/cezar/ui-state.json`, GET/PUT /api/ui-state), fallback pierwszy skill; GitHub bez capa 30 (szybki strzał + tło `?limit=1000`, liczniki `30+` do czasu pełnego fetcha, scroll zachowany przy re-renderze); markdown w gh body i tekstach transkryptu (+ blockquote, checkboxy); workflow-chip odznaczalny (null → skille jako chain / quick-task); filtr nad chipami skilli (>10); drag issue/PR → pole taska prefiluje prompt; szersza kolumna listy (`clamp(340px,27vw,560px)`); DELETE /api/workflows/:name + Delete w builderze | — |
+| — (2026-07-11, feedback #2) | Default = ostatnio używany skill (`.ai/onni/ui-state.json`, GET/PUT /api/ui-state), fallback pierwszy skill; GitHub bez capa 30 (szybki strzał + tło `?limit=1000`, liczniki `30+` do czasu pełnego fetcha, scroll zachowany przy re-renderze); markdown w gh body i tekstach transkryptu (+ blockquote, checkboxy); workflow-chip odznaczalny (null → skille jako chain / quick-task); filtr nad chipami skilli (>10); drag issue/PR → pole taska prefiluje prompt; szersza kolumna listy (`clamp(340px,27vw,560px)`); DELETE /api/workflows/:name + Delete w builderze | — |
 | — (2026-07-11, feedback #3) | Statusy: resync listy runów przy każdym (re)connect SSE i powrocie karty (stale "Working" po śnie laptopa), pill `review` → "needs review"; **base branch** konfigurowalny (Repo tab → `PUT /api/config` → `config.json baseBranch`): worktree forkuje z niego (fallback `origin/<base>`, potem bieżący branch + note), draft PR dostaje `--base` | — |
 
 ## Kolejność wykonania (co po czym)
@@ -90,8 +90,8 @@ Zasada wydawnicza: po każdej fali publikacja na npm i test na czystej maszynie
 ## Otwarte decyzje
 
 1. ~~Nazwa paczki npm~~ → **ROZSTRZYGNIĘTE (2026-07-10, Patryk):**
-   `@onni/work` (org scope dostępny) + alias unscoped `cezar`
-   (folder `alias-cezar/`), żeby `npx cezar` działało dosłownie. Bin: `cezar`
-   (+ `cez` jako skrót).
+   `@onni/work` (org scope dostępny) + alias unscoped `onni`
+   (folder `alias-onni/`), żeby `npx onni` działało dosłownie. Bin: `onni`
+   (+ `onni` jako skrót).
 2. **Idle-timeout otwartej sesji** — propozycja 15 min (spec 002), do walidacji.
 3. **Domyślny `maxParallel`** — propozycja 2 (spec 006).

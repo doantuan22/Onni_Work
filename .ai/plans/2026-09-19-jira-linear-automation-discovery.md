@@ -56,7 +56,7 @@ locally installed binary). Requires:
   Given the existing `TrackerProvider` interface is already provider-agnostic on the read side,
   a unified `tracker` kind is the smaller surface and matches how `createTrackerService` already
   abstracts over both vendors — but it's a naming/versioning decision that affects storage
-  migration and the CLI (`cez automation schema`), so it belongs in the actual spec's gate
+  migration and the CLI (`onni automation schema`), so it belongs in the actual spec's gate
   questions, not assumed here.
 - `isGithubAutomation`/`isScheduleAutomation`-style guard + a `TrackerAutomationDefinition` type.
 - `ProjectAutomationHandle` (`scheduler.ts`) needs a `tracker?: { kind, provider }` sibling to
@@ -70,7 +70,7 @@ locally installed binary). Requires:
 ### 2.3 Prompt template vocabulary
 `automations/prompts.ts` + `task-template.ts` need new placeholders
 (`{{jira.key}}`, `{{jira.title}}`, `{{jira.url}}`, `{{jira.status}}` /
-`{{linear.identifier}}`, …) documented in `cez automation schema`, mirroring `{{github.number}}`.
+`{{linear.identifier}}`, …) documented in `onni automation schema`, mirroring `{{github.number}}`.
 
 ### 2.4 UI
 Automations list/editor (`.ai/specs/assets/github-automations/*`,
@@ -90,7 +90,7 @@ Two independent mechanisms, not mutually exclusive:
   `TrackerDriver`/`jira.ts`/`linear.ts` (currently 100% read-only), (b) a hook point where a
   finished run with a known triggering automation+candidate can be correlated back to its issue,
   (c) an explicit per-connection "allow writes" opt-in — the current credential form and its
-  copy ("write-only form", "no write scope is required by cezar") would need to change, which is
+  copy ("write-only form", "no write scope is required by Onni Work") would need to change, which is
   a user-facing trust/scope decision, not just code.
 - **Agent-side** (mirrors how GitHub handoff works: the agent itself runs `gh` inside its own
   task): would require exposing Jira/Linear write credentials into the agent's child env
@@ -150,7 +150,7 @@ The user answered the open questions live, choosing speed over the safer design 
 2. Write-back mechanism: **agent-side**, not the recommended server-side-only path — "zróbmy to
    dzisiaj, jak najprościej, nawet kosztem tego, że agent dostanie token" (do it today, as simply
    as possible, even at the cost of the agent getting the token). The write-back ACTION itself is
-   not hardcoded by cezar at all: the automation's own prompt template tells the agent what to do
+   not hardcoded by Onni Work at all: the automation's own prompt template tells the agent what to do
    on completion (e.g. "transition this to Done"), mirroring exactly how the GitHub kind already
    works (the agent uses `gh` itself; the engine has no built-in "close the issue" step).
 3. Trigger condition: status/workflow-state only (`filters.status`), no label/assignee parity —
@@ -159,7 +159,7 @@ The user answered the open questions live, choosing speed over the safer design 
    connection), as recommended in §3.
 6. Poll interval: reused the GitHub 60s–86 400s bound as-is.
 
-Implemented and green (full typecheck + 2198 cezar tests + 3880 web tests):
+Implemented and green (full typecheck + 2198 Onni Work tests + 3880 web tests):
 
 - `packages/work/src/automations/types.ts` — `kind: 'tracker'`, `filters.status`,
   `TrackerAutomationDefinition`, `isTrackerAutomation`.
@@ -198,15 +198,15 @@ Implemented and green (full typecheck + 2198 cezar tests + 3880 web tests):
 
 **Explicitly out of scope for this pass** (by design, for speed — not forgotten):
 - No settings/automations-editor UI to CREATE or EDIT a tracker automation. Today it is
-  hand-authored directly into `.ai/cezar/automations.json`. Opening one in the existing editor
+  hand-authored directly into `.ai/onni/automations.json`. Opening one in the existing editor
   (`packages/web/src/routes/automations/editor.tsx`) shows a short read-only notice instead of the
   github/schedule form; "run now", "duplicate" and "copy as CLI" refuse it with an explanatory
   toast (`use-automations.ts`) rather than mis-behaving.
-- No `cez automation` CLI support for creating one (`AUTOMATION_SCHEMA_REFERENCE` in `prompts.ts`
+- No `onni automation` CLI support for creating one (`AUTOMATION_SCHEMA_REFERENCE` in `prompts.ts`
   only mentions that the kind exists and must be hand-authored).
-- No status/comment write-back is performed by cezar itself — the prompt author decides what "on
+- No status/comment write-back is performed by Onni Work itself — the prompt author decides what "on
   completion" means, and the agent must call the vendor API itself (e.g. via curl) using the
-  env vars now available to it. There is no `cez tracker` CLI helper.
+  env vars now available to it. There is no `onni tracker` CLI helper.
 - `filters.status` is not yet in the WIRE `automationFiltersSchema` (contract) used by
   `GET /automations`'s response type — a tracker automation's status filter is invisible to any
   future UI reading that response until that schema is extended too (internal polling is

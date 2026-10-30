@@ -27,7 +27,7 @@ pojedynczego agenta kodującego.
    `groupId` + `variant: 'A'|'B'|'C'`). Żadnej nowej encji — grupa jest
    widokiem na taski (prostota modelu > elegancja).
 2. **Start**: `POST /api/runs` z `variants: 2|3` tworzy N tasków z tym samym
-   promptem/chainem; każdy własny worktree/branch `cez/<id8>` (006) i własna
+   promptem/chainem; każdy własny worktree/branch `onni/<id8>` (006) i własna
    sesja. Kolejka/`maxParallel` obowiązuje normalnie (przy `maxParallel=2`
    trzeci wariant czeka — świadomie OK).
 3. **Dywersyfikacja**: wariant B/C dostaje dopisek do promptu

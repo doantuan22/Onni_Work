@@ -13,34 +13,34 @@
 
 ## TLDR
 
-One `cezar serve` becomes a **workspace over all of the user's projects**. A
-per-user registry in `~/.cezar/config.json` remembers every project cezar has
-ever run in — running cezar in an unknown folder adds it. The cockpit sidebar
+One `onni serve` becomes a **workspace over all of the user's projects**. A
+per-user registry in `~/.onni/config.json` remembers every project Onni Work has
+ever run in — running Onni Work in an unknown folder adds it. The cockpit sidebar
 lists every project as a collapsible group with its own Tasks / Git / GitHub /
 Skills / Workflows / Settings, the ten most recent tasks and a "More…" link;
 every page URL carries the project id (`/p/<projectId>/…`) so any pane
 deep-links. Projects can also be added from the GUI: browse the server's home
 folder from a configurable browse root, or `gh`-clone a GitHub URL into an independent checkout root
-(default `~/cezar/projects/<name>`). Global preferences — appearance,
-notifications, resources — move from per-repo files into `~/.cezar`, and a new
+(default `~/onni/projects/<name>`). Global preferences — appearance,
+notifications, resources — move from per-repo files into `~/.onni`, and a new
 boot-time config-migration step upgrades existing installs so the user running
 the new version notices no difference.
 
 ## Problem Statement
 
-cezar is per-repo by construction: `repoRoot` is resolved once at boot
+Onni Work is per-repo by construction: `repoRoot` is resolved once at boot
 (`src/index.ts:82-85`) and closed over by every route (`createApp`,
 `src/server/server.ts:363-365`). Working on three repos means three processes,
 three ports, three cockpits — and each cockpit is blind to the others:
 
-- **No memory of projects.** Nothing records where cezar has run. Every repo is
+- **No memory of projects.** Nothing records where Onni Work has run. Every repo is
   rediscovered from `cwd` and forgotten on exit.
 - **The UI has zero project identity.** One `health.repo`, flat routes
   (`/tasks/:id`), global localStorage keys. A URL never says which project it
   belongs to, so nothing project-scoped can be bookmarked or shared.
 - **Settings that are really per-user live per-repo.** Appearance,
   notifications and resource caps (`maxParallel`, `memoryLimitMb`) are stored
-  in `.ai/cezar/{config,ui-state}.json` of whichever repo the process happens
+  in `.ai/onni/{config,ui-state}.json` of whichever repo the process happens
   to serve — the same knob has N values on one machine, and resource caps that
   exist to protect the *host* are enforced per-repo, so N cockpits multiply
   them.
@@ -55,7 +55,7 @@ three ports, three cockpits — and each cockpit is blind to the others:
 **One process, N projects, in-process.** The server keeps one HTTP listener and
 one cockpit bundle, and multiplexes projects by an explicit id in the path:
 
-- `~/.cezar/config.json` — the per-user **workspace config**: schema version,
+- `~/.onni/config.json` — the per-user **workspace config**: schema version,
   global settings, and the **project registry**. Booting in an unregistered
   folder appends it (state is *written, never required* — delete the file and
   it rebuilds from the next boots).
@@ -66,21 +66,21 @@ one cockpit bundle, and multiplexes projects by an explicit id in the path:
   Contexts live in a `Map<projectId, ProjectContext>`, created lazily.
 - **Project-scoped API + UI routes**: `/api/p/:projectId/*` mirrors today's
   `/api/*`; the cockpit mounts under `/p/:projectId/*`. Legacy unprefixed
-  routes keep working against the **boot project** (the repo `cezar` was
+  routes keep working against the **boot project** (the repo `onni` was
   started in), which preserves every protected surface in
   `BACKWARD_COMPATIBILITY.md` including the bookmarklet deep-link grammar.
-- All project *state* stays where it is — `.ai/cezar/` inside each repo. Only
-  user-level preferences move to `~/.cezar`. No task data migrates at all.
+- All project *state* stays where it is — `.ai/onni/` inside each repo. Only
+  user-level preferences move to `~/.onni`. No task data migrates at all.
 
 ### Why this shape, and not the alternatives
 
 **Rejected — per-process instances + reverse proxy (PR #406).** Explicitly
 abandoned by the user. Beyond that decision it also carried real cost: version
 skew between one project's bundle and another's server, SSE proxy corrections,
-pid-liveness pruning, and it never solved "cezar knows all my projects when
+pid-liveness pruning, and it never solved "Onni Work knows all my projects when
 none of them are running".
 
-**Rejected — N ports, one launcher.** A thin `cezar workspace` that spawns one
+**Rejected — N ports, one launcher.** A thin `onni workspace` that spawns one
 server per project keeps today's code untouched but re-imports every #406
 problem (port discovery, cross-origin, N processes to babysit) and makes
 "one sidebar over everything" impossible without a proxy again.
@@ -116,7 +116,7 @@ is never served under another's scope. Everything else is closure plumbing.
   (`store.ts:266`). Stores stay separate event buses; they are never merged.
 - `RunManager(store, repoRoot)` — one manager (queue, workers, worktrees) per
   project (`run.ts:245-249`). Worktrees stay at
-  `<repo>/.ai/cezar/worktrees/<runId>`.
+  `<repo>/.ai/onni/worktrees/<runId>`.
 - `loadConfig(repoRoot)`, skills discovery, workflow loading, `getRepoInfo`,
   forge/PR code — already per-call on `repoRoot` *except their module-level
   caches* (singleton inventory items 4–6 above), which get keyed per project.
@@ -126,19 +126,19 @@ is never served under another's scope. Everything else is closure plumbing.
   assets, everything else → shell); the package-relative resolution is
   `resolveWebDir()` (`server.ts:1663`, wired at `:380`). Neither needs a
   change — the shell is project-agnostic.
-- `src/paths.ts` — `cezarHomeDir()` / `ONNI_HOME` is the single home resolver;
+- `src/paths.ts` — `onniHomeDir()` / `ONNI_HOME` is the single home resolver;
   this spec only adds path helpers to it.
 
 ### What is new
 
 | Component | File | Responsibility |
 |---|---|---|
-| Workspace config | `src/workspace/config.ts` (new) | Read/merge/write `~/.cezar/config.json` (zod, `.passthrough()`, atomic tmp+rename, `0600`; read-modify-write merge so concurrent processes don't drop registrations). |
+| Workspace config | `src/workspace/config.ts` (new) | Read/merge/write `~/.onni/config.json` (zod, `.passthrough()`, atomic tmp+rename, `0600`; read-modify-write merge so concurrent processes don't drop registrations). |
 | Project registry ops | `src/workspace/projects.ts` (new) | `registerProject(root)`, `listProjects()`, `removeProject(id)`, slug allocation, realpath dedupe, existence/git probing. |
 | Migrations | `src/workspace/migrations.ts` (new) | Ordered, idempotent boot-time config migrations keyed by `schemaVersion` (below). |
 | Project contexts | `src/server/project-context.ts` (new) | Lazy `Map<projectId, ProjectContext>`; builds `{store, manager, dataDir, launchKey}` per project (launch-key ensured at context build, today's `server.ts:372`); dispose on removal closes the store **and** calls a new `RunManager.dispose()` (unsubscribes its `onUsage` listener — `run.ts:252` currently never unsubscribes — and clears timers/queue). |
 | Route multiplexing | `src/server/server.ts` (edit) | Register every project route once under `/api/p/:projectId/*`; resolve the context from the param; keep unprefixed aliases bound to the boot project. |
-| Global settings API | `src/server/server.ts` (edit) | `GET/PUT /api/workspace/config`, `GET/PUT /api/workspace/ui-state` (backed by `~/.cezar/{config,ui-state}.json`). |
+| Global settings API | `src/server/server.ts` (edit) | `GET/PUT /api/workspace/config`, `GET/PUT /api/workspace/ui-state` (backed by `~/.onni/{config,ui-state}.json`). |
 | Folder browser + checkout | `src/server/fs-browse.ts`, `src/server/checkout.ts` (new) | `GET /api/fs/browse` (`browseRoot`-rooted dir listing) and `POST /api/projects/checkout` (`gh repo clone` into the independent checkout root). |
 | De-singletonized todos | `src/todos.ts` (edit) | Watcher/emitter per `dataDir` (`Map`), scoped `onTodosChanged(dataDir, cb)`. |
 | Per-project cache keying | `src/server/forge/github.ts`, `src/skills-remote.ts` (edit) | Key the GitHub list cache, GitHub comments cache and team-skills cache by project (`repoRoot`), following the pattern `detectCache` already uses (`forge/github.ts:641`). |
@@ -167,8 +167,8 @@ never shadow the alias or a route.
 ### Boot flow
 
 ```
-cezar serve (in /Users/x/proj-b)
-  ├─ runMigrations()                       # ~/.cezar schemaVersion → latest (idempotent)
+onni serve (in /Users/x/proj-b)
+  ├─ runMigrations()                       # ~/.onni schemaVersion → latest (idempotent)
   ├─ ws = loadWorkspaceConfig()            # degrade: unreadable → in-memory defaults
   ├─ boot = registerProject(cwd-repoRoot)  # only while the registry is empty (or the root is known); bumps lastOpenedAt
   ├─ contexts = ProjectContexts(ws)        # lazy — nothing instantiated yet
@@ -179,16 +179,16 @@ cezar serve (in /Users/x/proj-b)
 
 **Registration guards** — auto-registration is suppressed (the process still
 serves the folder, it just doesn't pollute the registry) when the resolved
-`repoRoot` is: inside any path matching `…/.ai/cezar/worktrees/…` (task
-worktrees and nested `cez` invocations — the same nesting reality the
+`repoRoot` is: inside any path matching `…/.ai/onni/worktrees/…` (task
+worktrees and nested `onni` invocations — the same nesting reality the
 `ONNI_TODOS_FILE=''` guard in `run.ts:294-305` acknowledges), or the user's
-home directory itself. Headless `cezar run` applies the same guards.
+home directory itself. Headless `onni run` applies the same guards.
 
 **Seed once** — boot registration is additionally suppressed once the registry
 holds ANY project and the boot root is not one of them. Booting in a folder is
 an implicit "this is my project" only for the very first run; after that the
 cwd is where the cockpit was *opened from*, and adding a project stays an
-explicit gesture (`cezar projects add`, the cockpit's Add project dialog —
+explicit gesture (`onni projects add`, the cockpit's Add project dialog —
 both keep using the path-shape guard alone). An unregistered boot root is
 served exactly as a suppressed one is: `resolveBootProject` falls back to its
 would-be slug and `/p/<slug>/` binds to the boot context; only the registry
@@ -217,7 +217,7 @@ and are load-bearing:
   with nothing remembered lands on the registry's lead project instead, because
   opening on a project with no sidebar row is the same takeover by another name.
 
-  `cezar serve` itself opens `/p/default/`, not `/` (#1432): starting cezar in a
+  `onni serve` itself opens `/p/default/`, not `/` (#1432): starting Onni Work in a
   folder means "show me this folder", and a bare `/` handed that choice to the
   browser's remembered page or the registry's lead project, which put another
   repo's tasks on screen. While the cockpit is ON the unlisted launch folder, the
@@ -236,7 +236,7 @@ Other registered projects get their `ProjectContext` on first API touch
 context is built. A registered project whose `root` no longer exists (or is
 unreadable) is listed with `status: 'missing'` and never instantiated.
 
-Concurrent `cezar serve` processes remain allowed (each picks its own port, as
+Concurrent `onni serve` processes remain allowed (each picks its own port, as
 today). Registry writes are read-modify-write + atomic rename, and
 registration is additive, so the worst race outcome is a lost `lastOpenedAt`
 bump — never a lost project.
@@ -244,7 +244,7 @@ bump — never a lost project.
 ### Resource governance (why resources go global)
 
 `maxParallel` and `memoryLimitMb` protect the *host*, not a repo. They move to
-`~/.cezar/config.json`. The semantics are deliberately plain: **the global
+`~/.onni/config.json`. The semantics are deliberately plain: **the global
 value is the only effective one.** Leftover per-repo `maxParallel` /
 `memoryLimitMb` keys are imported once by Migration 001 and ignored
 afterwards; the settings UI stops writing them. `worktreeRetention` stays
@@ -273,13 +273,13 @@ and acquires slots normally.
 
 ## Data Model
 
-### `~/.cezar/config.json` (new — workspace config + registry)
+### `~/.onni/config.json` (new — workspace config + registry)
 
 ```jsonc
 {
   "schemaVersion": 1,                    // migration cursor (int, .catch(0))
   "browseRoot": "~/",                    // folder-browser root; validated writable on change
-  "projectsDir": "~/cezar/projects",     // checkout root; validated writable on change
+  "projectsDir": "~/onni/projects",     // checkout root; validated writable on change
   "resources": {                          // moved from per-repo config.json
     "maxParallel": 2,                     // workspace-wide cap, 1-16
     "memoryLimitMb": null,
@@ -287,9 +287,9 @@ and acquires slots normally.
   },
   "projects": [
     {
-      "id": "cezar",                      // slug, unique, ^[a-z0-9][a-z0-9-]{0,63}$
-      "root": "/Users/x/Projects/cezar",  // absolute, realpath-normalized
-      "name": "cezar",                    // display name (basename by default)
+      "id": "onni",                      // slug, unique, ^[a-z0-9][a-z0-9-]{0,63}$
+      "root": "/Users/x/Projects/onni",  // absolute, realpath-normalized
+      "name": "onni",                    // display name (basename by default)
       "addedAt": "2026-07-20T10:00:00Z",
       "lastOpenedAt": "2026-07-20T10:00:00Z",
       "source": "local"                   // 'local' | 'checkout'
@@ -305,7 +305,7 @@ one-line boot warning (losing it costs no work — the `config.json.bak`
 snapshot restores it on load, and what it holds is a list of roots, never
 anything from inside a repo).
 
-### `~/.cezar/ui-state.json` (new — global GUI state)
+### `~/.onni/ui-state.json` (new — global GUI state)
 
 The workspace twin of the existing per-repo `ui-state.json`, reusing the same
 `.passthrough()` + merge-on-write + key-cap pattern. Note that pattern is
@@ -320,21 +320,21 @@ than copying it:
   "appearance": { "accent": "violet", "density": "comfortable" },  // moved global
   "notifications": { "enabled": true },                            // moved global
   "sidebar": {
-    "collapsed": { "cezar": false, "other-repo": true }            // per-project collapse
+    "collapsed": { "onni": false, "other-repo": true }            // per-project collapse
   }
 }
 ```
 
-Theme stays in browser localStorage (`cez-theme`) — it is per-device by
+Theme stays in browser localStorage (`onni-theme`) — it is per-device by
 nature. Project-scoped UI prefs (`githubView`, dismissed banners, prompt
-templates) stay in each repo's `.ai/cezar/ui-state.json`.
+templates) stay in each repo's `.ai/onni/ui-state.json`.
 
 ### Per-project state — unchanged
 
 `runs.json`, NDJSON event logs, worktrees, launch-key, workflows, skills,
 `config.json` (minus the moved resource keys) all remain under
-`<repo>/.ai/cezar/`. A project checked out on another machine carries its
-cezar history with it; removing a project from the registry touches nothing in
+`<repo>/.ai/onni/`. A project checked out on another machine carries its
+Onni Work history with it; removing a project from the registry touches nothing in
 the repo.
 
 ### Migrations (new framework + first migration)
@@ -364,13 +364,13 @@ the same result because each step is idempotent.
 **Migration 001 — `workspace-config` (`schemaVersion 0 → 1`)**, the "current
 version up" migration the user asked for:
 
-1. Create `~/.cezar/config.json` with defaults if absent.
-2. If booting inside a repo: import that repo's `.ai/cezar/config.json`
+1. Create `~/.onni/config.json` with defaults if absent.
+2. If booting inside a repo: import that repo's `.ai/onni/config.json`
    `maxParallel` / `memoryLimitMb` into `resources`, and its `appearance` /
-   `notifications` keys from `.ai/cezar/ui-state.json` into
-   `~/.cezar/ui-state.json`. Keys already set globally are never overwritten
+   `notifications` keys from `.ai/onni/ui-state.json` into
+   `~/.onni/ui-state.json`. Keys already set globally are never overwritten
    (this is what makes a crash-interrupted re-run safe).
-3. Leave every per-repo file untouched in place, so an older cezar run in the
+3. Leave every per-repo file untouched in place, so an older onni run in the
    same repo still works (forward compatibility is free; the old version
    simply keeps reading its local copies).
 
@@ -392,17 +392,17 @@ difference until they add a second project.
 | `POST /api/projects/checkout` | `{ url, name? } → { project }` \| `{ error }` | `gh repo clone <url> <projectsDir>/<name>`; zod-validates `url` as a GitHub repo URL/`owner/name`; 409 target dir exists; degrades to `{ error, reason }` when `gh` is unavailable (mirrors `github.ts` degradation). Long-running: answers when the clone finishes; the dialog shows progress from `checkout-progress` SSE events. |
 | `DELETE /api/projects/:projectId` | `{ ok: true }` | Unregisters only. 409 while the project has running tasks. Never deletes files. |
 | `GET /api/fs/browse?path=` | `{ path, parent, dirs: [{name, path, isRepo}] }` | Directories only, rooted at `browseRoot`; rejects paths escaping it (realpath check); dotfolders hidden by default, `showHidden=1` opts in. |
-| `GET/PUT /api/workspace/config` | global settings (`browseRoot`, `projectsDir`, `resources`) | Each root validates independently on PUT: expand `~`; require `browseRoot` to already be a directory, use `mkdir -p` for `projectsDir`, then probe writability (`access W_OK` + create/delete a probe file). On failure → 400 `{ error }` and no change. Defaults come from `ONNI_BROWSE_ROOT` (`~/`) and `ONNI_PROJECTS_DIR` (`~/cezar/projects`). |
+| `GET/PUT /api/workspace/config` | global settings (`browseRoot`, `projectsDir`, `resources`) | Each root validates independently on PUT: expand `~`; require `browseRoot` to already be a directory, use `mkdir -p` for `projectsDir`, then probe writability (`access W_OK` + create/delete a probe file). On failure → 400 `{ error }` and no change. Defaults come from `ONNI_BROWSE_ROOT` (`~/`) and `ONNI_PROJECTS_DIR` (`~/onni/projects`). |
 | `GET/PUT /api/workspace/ui-state` | global GUI state | Same merge/cap semantics as the per-repo ui-state route. |
 
 ### Project-scoped (mirrored)
 
 Every existing project route gains a scoped twin:
 `/api/p/:projectId/<existing path minus /api/>` — e.g.
-`POST /api/p/cezar/runs`, `GET /api/p/cezar/skills`,
-`GET /api/p/cezar/events` (SSE), `GET /api/p/cezar/runs/:id/events` (SSE),
-`GET/PUT /api/p/cezar/config`, `GET /api/p/cezar/github`,
-`GET /api/p/cezar/launch-key`, workflows, repo, todos, worktrees, groups —
+`POST /api/p/Onni Work/runs`, `GET /api/p/Onni Work/skills`,
+`GET /api/p/Onni Work/events` (SSE), `GET /api/p/Onni Work/runs/:id/events` (SSE),
+`GET/PUT /api/p/Onni Work/config`, `GET /api/p/Onni Work/github`,
+`GET /api/p/Onni Work/launch-key`, workflows, repo, todos, worktrees, groups —
 the full table from `server.ts` unchanged in shape. Implementation registers
 each handler once against a context-resolver (`c.get('project')`), not two
 copies: unknown/missing `projectId` → 404 `{ error }`; a `missing`-status
@@ -448,10 +448,10 @@ One SSE connection per cockpit stays doctrine — it just moves up a level:
 
 ### CLI
 
-- `cezar serve` — as today, plus registration + migrations (above).
-- `cezar run "<task>"` — headless, unchanged, still operates on cwd's repo
+- `onni serve` — as today, plus registration + migrations (above).
+- `onni run "<task>"` — headless, unchanged, still operates on cwd's repo
   (registers it as a side effect).
-- `cezar projects` (new, small) — list registered projects with status; handy
+- `onni projects` (new, small) — list registered projects with status; handy
   for scripting and for the server-install autostart unit (below).
 
 ## UI/UX
@@ -462,13 +462,13 @@ live in `assets/2026-07-20-multi-project-workspace/`.
 ### URL scheme
 
 Every route from `routes.tsx` moves under a project prefix — `/p/:projectId/`
-(`/p/cezar/tasks/abc123`, `/p/cezar/github/prs/42`, `/p/cezar/settings/agents`)
+(`/p/Onni Work/tasks/abc123`, `/p/Onni Work/github/prs/42`, `/p/Onni Work/settings/agents`)
 — via one pathless layout route supplying `ProjectScopeContext` (id + scoped
 API base). **Backward compatibility of URLs is two-layered:** legacy flat URLs
 (`/tasks/:id`, `/new?...`) redirect to `/p/<boot>/…` preserving params, and
 the reserved `/p/default/…` prefix resolves to the boot project too
 (normalized to the real slug with a `replace` navigation on load) — so a URL
-with **no project id or with `default`** always lands in the project cezar
+with **no project id or with `default`** always lands in the project Onni Work
 was started in, and old bookmarks plus the bookmarklet contract survive. One
 known limit: a legacy `/tasks/:id` bookmark whose run belongs to a non-boot
 project 404s on the boot project — acceptable, since all pre-multi-project
@@ -516,7 +516,7 @@ leading `projectId` segment.
     pane).
 - Collapse state persists per project — **superseded on storage (2026-08-04):**
   in the browser's own `localStorage` (`packages/web/src/lib/sidebar-collapse.ts`,
-  key `cez-sidebar-collapsed`), not in `~/.cezar/ui-state.json`. Sharing one map
+  key `onni-sidebar-collapsed`), not in `~/.onni/ui-state.json`. Sharing one map
   across every browser meant collapsing a group on a phone collapsed it on the
   desktop, and each toggle cost a PUT a second cockpit could clobber; which groups
   are shut describes the window you are looking at. It still survives reloads and
@@ -538,11 +538,11 @@ scope: skills/workflows/backends/base-branch pickers, `/`-autocomplete and the
 draft key all re-resolve against the selected project (each project has its
 own skills and settings), and submit posts to
 `POST /api/p/<selected>/runs`. The localStorage draft key becomes per-project
-(`cez-new-task-draft:<projectId>`) so switching projects doesn't leak drafts.
+(`onni-new-task-draft:<projectId>`) so switching projects doesn't leak drafts.
 
 **Amended 2026-09-17 (#1018): the composition follows an explicit switch.** The
 per-project keys stay, and so does what they are for — a half-typed task for the
-shop frontend must not SURFACE in the cezar composer. They were being applied to
+shop frontend must not SURFACE in the Onni Work composer. They were being applied to
 the one case they were never about: changing the project pill is not navigating
 away, it is deciding mid-sentence where the task you are writing belongs, and as
 built that decision silently discarded the prompt (re-read from the arriving
@@ -573,7 +573,7 @@ refusing them (four 5 MB images as base64 against a ~5 MB quota) is unchanged, a
 - **Global settings** (`/settings/global/…`) — Appearance, Notifications,
   Resources (workspace-wide `maxParallel`/`memoryLimitMb`), and **Projects**:
   the registry list (name, path, status, remove), the **browse root** (default
-  `~/`) and the independent **checkout root** (default `~/cezar/projects`),
+  `~/`) and the independent **checkout root** (default `~/onni/projects`),
   whose save buttons validate writability
   server-side and surfaces the 400 reason inline (mockup shows the error
   state).
@@ -583,7 +583,7 @@ refusing them (four 5 MB images as base64 against a ~5 MB quota) is unchanged, a
 Option A — **Open local folder**: a dialog listing directories from
 `GET /api/fs/browse`, starting at `browseRoot`, breadcrumb navigation, git repos marked
 with a badge; selecting a folder calls `POST /api/projects` and navigates to
-`/p/<new>/`. Non-git folders are allowed (cezar degrades exactly as `cezar
+`/p/<new>/`. Non-git folders are allowed (Onni Work degrades exactly as `onni
 serve` in a non-git dir does today).
 
 Option B — **Clone from GitHub** (gh-gated): a URL/`owner/repo` input, the
@@ -597,29 +597,29 @@ dialog verbatim from `{ error }`.
 The bookmarklets pane lives under each project's settings; generated
 bookmarklet URLs become `<origin>/p/<projectId>/new?skill=…&key=<that
 project's launch-key>` and the visible label keeps the project name stamp.
-Each project keeps its own `.ai/cezar/launch-key`. Legacy `/new?...`
+Each project keeps its own `.ai/onni/launch-key`. Legacy `/new?...`
 bookmarklets keep working via the redirect (boot project).
 
 ## Edge Cases & Failure Scenarios
 
 | Scenario | Behavior |
 |---|---|
-| `~/.cezar` unwritable / read-only home | Boot proceeds with an in-memory single-project workspace (boot repo only); one boot-time warning. Nothing requires the file. |
-| Corrupt `~/.cezar/config.json` | Restore from `config.json.bak` when it still holds projects, else degrade to defaults + warning (rebuild with `cezar projects add` — opening a project no longer re-registers it). Never crash, never overwrite the corrupt file until the next successful merge-write. |
+| `~/.onni` unwritable / read-only home | Boot proceeds with an in-memory single-project workspace (boot repo only); one boot-time warning. Nothing requires the file. |
+| Corrupt `~/.onni/config.json` | Restore from `config.json.bak` when it still holds projects, else degrade to defaults + warning (rebuild with `onni projects add` — opening a project no longer re-registers it). Never crash, never overwrite the corrupt file until the next successful merge-write. |
 | Registered project folder deleted/moved | `status: 'missing'`: greyed in sidebar, panes 409, remove offered. Never auto-removed. |
 | Project registered twice (symlink, trailing slash) | Realpath-normalized on registration → dedupe to the existing entry. |
-| `cezar` invoked inside a task worktree / nested `cez` / `$HOME` | Registration guard suppresses the registry write; the process still serves that folder normally. |
+| `onni` invoked inside a task worktree / nested `onni` / `$HOME` | Registration guard suppresses the registry write; the process still serves that folder normally. |
 | Deep link `/p/default/…` or unprefixed legacy URL | Resolves to the boot project (reserved alias / redirect); normalized to the real slug in the address bar. |
 | Slug collision (`~/work/api`, `~/personal/api`) | Second registration gets `api-2`; sidebar disambiguates with the parent-dir segment like the group header tooltip. |
 | Deep link to unknown `projectId` | Cockpit shows a "project not registered here" screen with the registry list; API returns 404 `{ error }`. |
-| Two `cezar serve` processes concurrently | Both serve the full registry on different ports; registry writes merge additively; per-project `.ai/cezar` files keep their existing single-writer-per-repo assumptions (unchanged from today — two processes in *one* repo were never supported). |
+| Two `onni serve` processes concurrently | Both serve the full registry on different ports; registry writes merge additively; per-project `.ai/onni` files keep their existing single-writer-per-repo assumptions (unchanged from today — two processes in *one* repo were never supported). |
 | Run started in project B while A's tasks run | Independent stores/managers; workspace semaphore caps total agent processes at global `maxParallel`. |
 | `gh` missing / unauthenticated | Clone option disabled with reason (same degradation contract as the GitHub pane). |
 | Clone fails mid-way (network, auth) | Partial target dir removed if the clone created it; dialog shows the error; nothing registered. |
 | `browseRoot` or `projectsDir` set to an unwritable path | 400 with reason on save; setting unchanged (validated server-side, shown inline). A missing browse root is rejected; a missing checkout root is created recursively. |
 | Checkout target already exists | 409; offer "register the existing folder instead". |
 | Migration crashes mid-run | `schemaVersion` unbumped → re-run next boot; steps idempotent. |
-| Older cezar run after the new one | Reads its per-repo files as always (they were left in place); ignores `~/.cezar/config.json` extras (`.passthrough()` both ways). |
+| Older onni run after the new one | Reads its per-repo files as always (they were left in place); ignores `~/.onni/config.json` extras (`.passthrough()` both ways). |
 | Boot in a folder while home has 40 registered projects | Contexts are lazy; only the boot project (plus any the user touches) instantiates. Sidebar virtualizes/scrolls; collapsed groups cost one registry row. |
 | Hosted mode (`ONNI_REMOTE=1`) | Whole workspace is reachable through the one exposed cockpit — by design now (the operator's own projects). `fs/browse` is restricted to `browseRoot`; operators should set `ONNI_BROWSE_ROOT` narrowly when the default home root is too broad. `open-in-*` capability gating is unchanged. Documented in `.env.example`. |
 
@@ -639,13 +639,13 @@ bookmarklets keep working via the redirect (boot project).
 - **Protected surfaces**: `/api/health` (additive fields only), bookmarklet
   grammar (redirect keeps it), `ui-state.json` CLI reads (per-repo file stays),
   run-record schema (untouched). `BACKWARD_COMPATIBILITY.md` gains sections for
-  `~/.cezar/config.json`, `~/.cezar/ui-state.json`, `/api/projects`,
+  `~/.onni/config.json`, `~/.onni/ui-state.json`, `/api/projects`,
   `/api/p/*`, `/p/*` URLs, the `project` SSE field, and the migration
   framework. Per the document's preamble ("additive changes are fine … a
   breaking change requires a documented path") and its §2 route inventory,
   **each section lands in the same PR as the code that creates the surface**,
   not in Phase 5 — Phase 5 only carries the prose that has no earlier home
-  (README, `.env.example`). Phase 1 therefore documents `~/.cezar/*`,
+  (README, `.env.example`). Phase 1 therefore documents `~/.onni/*`,
   `/api/projects` and the health additions; Phase 2 documents `/api/p/*`, the
   workspace SSE stream and the `project` field; Phase 3 documents `/p/*` URLs
   and the bookmarklet redirect.
@@ -660,13 +660,13 @@ bookmarklets keep working via the redirect (boot project).
   side effect of running; migrations are invisible and optional-to-succeed.
   Browse and checkout locations are independent user choices.
 - **Server-install alignment.** Unchanged mechanics: host-level state stays at
-  `~/.cezar/server.json` + `~/.cezar/server-instances/<slug>.json` and
+  `~/.onni/server.json` + `~/.onni/server-instances/<slug>.json` and
   coexists with `config.json` in the same home. The topology *simplifies*: one
   autostart unit now serves every project of its unix user, so multi-repo
   hosts no longer need one unit per repo; domain-keyed instances that want
   disjoint project sets run with distinct `ONNI_HOME` (existing, documented
   mechanism — each home carries its own registry and global config). The
-  `~/.cezar/instances/` live-instance dir from #406 is never created;
+  `~/.onni/instances/` live-instance dir from #406 is never created;
   `liveInstancesExist()` (`server-install/engine.ts:380`, module-private, called
   at `:271`) keeps working (always empty) and its removal is noted as a
   follow-up cleanup, not part of this spec — being unexported, that cleanup is
@@ -693,7 +693,7 @@ windows, and any daemon — one process, plain files, loopback only.
 
 Each phase ships independently and leaves the app fully working.
 
-- **Phase 1 — Workspace foundation (invisible).** `~/.cezar/config.json` +
+- **Phase 1 — Workspace foundation (invisible).** `~/.onni/config.json` +
   registry + migrations framework + migration 001; boot registration;
   `GET /api/projects`; health additions. Cockpit unchanged.
 - **Phase 2 — Project-scoped server.** Context map, `/api/p/:projectId/*`,
@@ -708,15 +708,15 @@ Each phase ships independently and leaves the app fully working.
   checkout flow, `projectsDir` setting with writable validation.
 - **Phase 5 — Docs + server-install alignment.** BACKWARD_COMPATIBILITY,
   AGENTS.md routing rows, README, `.env.example` (`ONNI_HOME` note, hosted
-  exposure), `cezar projects` CLI, uninstall live-check follow-up issue.
+  exposure), `onni projects` CLI, uninstall live-check follow-up issue.
 
 ## Implementation Plan
 
 ### Phase 1 — Workspace foundation
 
 1.1 `src/paths.ts`: add `workspaceConfigPath()`, `workspaceUiStatePath()`
-    (under `cezarHomeDir()`); update the stale `:56-57` docstring that still
-    points the "per-project registry" at `~/.cezar/instances/` (the abandoned
+    (under `onniHomeDir()`); update the stale `:56-57` docstring that still
+    points the "per-project registry" at `~/.onni/instances/` (the abandoned
     #406 design). *Test:* unit, `ONNI_HOME` override.
 1.2 `src/workspace/config.ts`: zod schema (all fields `.catch`/optional,
     `.passthrough()`), `loadWorkspaceConfig`, `mergeWriteWorkspaceConfig`
@@ -732,7 +732,7 @@ Each phase ships independently and leaves the app fully working.
     per migration.
 1.5 `src/index.ts`: run migrations + registration (with the worktree/`$HOME`
     guards) in `serveCommand` and `runCommand`. *Test:* e2e dry-run — serve
-    in a fresh repo registers it; serve inside `…/.ai/cezar/worktrees/…` does
+    in a fresh repo registers it; serve inside `…/.ai/onni/worktrees/…` does
     not.
 1.6 `GET /api/projects` + additive `/api/health` fields (`projects`,
     `bootProject`). *Test:* server unit — shapes; health's existing fields
@@ -820,10 +820,10 @@ Each phase ships independently and leaves the app fully working.
 5.1 `AGENTS.md` routing rows (`src/workspace/`, project-scoped routes),
     README multi-project section, `.env.example` prose (`ONNI_HOME`, hosted
     exposure note).
-5.2 `cezar projects` CLI + server-install docs note (one unit serves the
+5.2 `onni projects` CLI + server-install docs note (one unit serves the
     user's workspace; `ONNI_HOME` for disjoint sets). *Test:* e2e package test
     lists the registered project.
-5.3 Follow-up issue: retire `liveInstancesExist()`/`~/.cezar/instances/`
+5.3 Follow-up issue: retire `liveInstancesExist()`/`~/.onni/instances/`
     remnants of #406.
 
 ### Validation
@@ -833,4 +833,4 @@ npm run test:package`; Phases 3-4 additionally `npm run test:e2e`
 (`TEST_E2E_STATUS=skipped` is not a pass). The e2e and `test:package`
 harnesses must pin `ONNI_HOME` to a temp dir from Phase 1 on — they boot the
 real CLI, which now writes migrations and registrations, and must never touch
-the developer's real `~/.cezar`.
+the developer's real `~/.onni`.

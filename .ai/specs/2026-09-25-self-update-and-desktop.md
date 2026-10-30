@@ -1,37 +1,37 @@
 # Self-update, managed install and the desktop shell (PoC)
 
-**Status:** proof of concept on branch `cez/5dd4afed`, 2026-09-25. Everything below runs
+**Status:** proof of concept on branch `onni/5dd4afed`, 2026-09-25. Everything below runs
 locally; nothing is published.
 
 ## Problem
 
-`npx cezar-cli` reuses a stale cached version forever, `npm i -g` needs write access to a
+`npx onni-cli` reuses a stale cached version forever, `npm i -g` needs write access to a
 global prefix, and neither gives the cockpit a way to update the process it runs in. The user
-asked for: one command to install, a plain `cezar` on PATH, an update button in the cockpit
+asked for: one command to install, a plain `onni` on PATH, an update button in the cockpit
 that restarts the app, channel picking (stable/nightly), version picking (downgrades), the
 current `npx` flow untouched — and a desktop app for macOS/Windows/Linux.
 
 ## Design
 
-### Managed install — `~/.cezar/versions`
+### Managed install — `~/.onni/versions`
 
 ```
-~/.cezar/versions/<id>/                                one `npm install --prefix` tree per version
-~/.cezar/versions/<id>/.cezar-install.json             {version, source: registry|local, installedAt}
-~/.cezar/versions/<id>/node_modules/@onni/work/dist/index.js
-~/.cezar/versions/current -> <id>                      the active version (symlink, renamed into place)
-~/.cezar/bin/cezar, cez                                launchers: exec node <current entry>
+~/.onni/versions/<id>/                                one `npm install --prefix` tree per version
+~/.onni/versions/<id>/.onni-install.json             {version, source: registry|local, installedAt}
+~/.onni/versions/<id>/node_modules/@onni/work/dist/index.js
+~/.onni/versions/current -> <id>                      the active version (symlink, renamed into place)
+~/.onni/bin/Onni Work, onni                                launchers: exec node <current entry>
 ```
 
 `<id>` is the version, plus `+local` for a build installed from a checkout or the npx cache
 (`npm pack` of the running package). npm is the downloader and verifier — the same thing `npx`
-does, into a directory cezar owns. Node stays an external requirement. State, never
-configuration: delete the directory and `cezar install` rebuilds it.
+does, into a directory Onni Work owns. Node stays an external requirement. State, never
+configuration: delete the directory and `onni install` rebuilds it.
 
-`cezar install` packs THIS running package into the layout, writes the launchers and appends
-one marked `export PATH=…` line to the shell rc (`--no-modify-path` to skip). `cezar update
-[--channel] [--version]`, `cezar versions` and `cezar use <id>` are the headless twins of the
-dialog. The launcher itself understands `cezar use` too, so a downgrade into a version that
+`onni install` packs THIS running package into the layout, writes the launchers and appends
+one marked `export PATH=…` line to the shell rc (`--no-modify-path` to skip). `onni update
+[--channel] [--version]`, `onni versions` and `onni use <id>` are the headless twins of the
+dialog. The launcher itself understands `onni use` too, so a downgrade into a version that
 predates all of this can always be undone from the shell.
 
 ### Install kinds
@@ -39,7 +39,7 @@ predates all of this can always be undone from the shell.
 `detectInstallKind(process.argv[1])`: `managed`, `npx` (`/_npx/`), `global-npm`
 (`/node_modules/`), `checkout` (`dist/` with a sibling `src/`), `unknown`. Only `managed` can
 self-update; every other kind gets the reason and the one command that gets it there.
-`npx cezar-cli` is unchanged.
+`npx onni-cli` is unchanged.
 
 ### API — `/api/v1/workspace/self-update` (workspace-level, single-mount)
 
@@ -50,7 +50,7 @@ job's npm log is on the status, and the cockpit polls health until a different p
 (a different version, or the same version with no job) and reloads. Not gated on
 `localHandoff`: a hosted cockpit behind the installer's auth updates from here.
 
-Channel lives in `~/.cezar/config.json` as `updateChannel`, seeded by `ONNI_UPDATE_CHANNEL`,
+Channel lives in `~/.onni/config.json` as `updateChannel`, seeded by `ONNI_UPDATE_CHANNEL`,
 default stable. The boot-time check (#368) now resolves the channel's dist-tag with a
 prerelease-aware compare, so nightlies work.
 
@@ -64,14 +64,14 @@ and the dialog says so.
 
 ### Desktop shell — `packages/desktop` (Tauri 2)
 
-A thin Rust supervisor, not an npm workspace: resolves `~/.cezar/versions/current` (or
+A thin Rust supervisor, not an npm workspace: resolves `~/.onni/versions/current` (or
 `ONNI_DESKTOP_ENTRY`), spawns `node … serve --no-open --port <free>` through the user's LOGIN
 shell (so nvm/volta/homebrew PATH and the agent CLIs resolve as in their terminal), waits for
 health, navigates the webview to the cockpit. Exit 75 → relaunch (the cockpit updated itself).
 Other exit → splash with the log tail. `ONNI_SUPERVISOR_PID` lets the sidecar follow a
 force-quit shell down. Closing the window hides it (Dock app); Cmd+Q quits and kills the
 sidecar. `ONNI_DESKTOP_CWD` overrides the boot folder, else the most recently opened registered
-project. The shell needs no release to ship a cezar update.
+project. The shell needs no release to ship an Onni Work update.
 
 ## Not done (PoC)
 

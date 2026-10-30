@@ -11,7 +11,7 @@ lokalnych z `.ai/skills/`.
 ## UX (jak cep)
 
 - User nic nie robi. Zakładka **Skills** po prostu pokazuje też skille z
-  `open-mercato/skills`, z małą etykietą źródła (`team` / `repo` / `cez`).
+  `open-mercato/skills`, z małą etykietą źródła (`team` / `repo` / `onni`).
 - Jeden przycisk **„Refresh"** w zakładce Skills (robi `git fetch`).
 - Brak sieci / brak dostępu do repo → skille zdalne po cichu znikają z listy,
   lokalne działają. Zero błędów blokujących.
@@ -25,7 +25,7 @@ lokalnych z `.ai/skills/`.
    ```
    Brak pliku = dokładnie ta wartość. Klucz można nadpisać/wyczyścić.
 2. **Bare clone bez checkoutu** (mechanizm janitora):
-   - cache w `~/.cache/cez/skills/<owner>__<name>/` (globalnie, nie per repo —
+   - cache w `~/.cache/onni/skills/<owner>__<name>/` (globalnie, nie per repo —
      jeden fetch służy wszystkim projektom),
    - `git clone --bare` przy pierwszym użyciu; jedna próba na proces
      (`cloneAttempted` — git wisi bez sieci); „Refresh" = `git fetch`,
@@ -37,7 +37,7 @@ lokalnych z `.ai/skills/`.
    Nasz istniejący format `.ai/skills/*.md` (frontmatter `name`/`description`)
    też pozostaje wspierany w repo zdalnym.
 4. **Priorytet źródeł przy kolizji nazw** (od najsilniejszego):
-   `.ai/cezar/skills` → `.ai/skills` → skills-repo. Lokalny override zawsze
+   `.ai/onni/skills` → `.ai/skills` → skills-repo. Lokalny override zawsze
    wygrywa — zasada "repo użytkownika jest źródłem prawdy".
 5. **Seed do kontekstu agenta**: body skilla nadal idzie w
    `--append-system-prompt` (jak dziś). Dla skilli katalogowych (`SKILL.md` +

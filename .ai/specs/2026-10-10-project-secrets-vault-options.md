@@ -9,7 +9,7 @@ Status: decided 2026-10-10 (owner: backend D with A as fallback, reworked on PR 
 
 PR #1291 adds *check credentials*: per-project `NAME=value` secrets handed to a workflow's CHECK steps
 and never to an agent session. The owner wants the same mechanism to be **generic** — a project (and,
-later, workspace) secret store that other consumers can draw from (an LLM key for cezar-level
+later, workspace) secret store that other consumers can draw from (an LLM key for onni-level
 "intelligent actions", future integrations) — and **safer than a plain `0600` file**, while still
 letting a workflow pick the credential a check step logs in with, today.
 
@@ -19,14 +19,14 @@ decisions, and because most of PR #1291 survives either way.
 
 ## What PR #1291 is, as of its head
 
-- **Store** `workspace/check-env.ts`: `~/.cezar/check-env/<projectId>.env`, `0700`/`0600`, `O_NOFOLLOW`,
-  atomic writes, mkdir lock, `assertCezarHomeWriteIsSandboxed`, owner-root line, bounded 256 KiB read.
+- **Store** `workspace/check-env.ts`: `~/.onni/check-env/<projectId>.env`, `0700`/`0600`, `O_NOFOLLOW`,
+  atomic writes, mkdir lock, `assertOnniHomeWriteIsSandboxed`, owner-root line, bounded 256 KiB read.
   A copy of the `TrackerConnections` discipline with a simpler record format.
 - **Policy**: `runCheckStep` spawns with `{ ...process.env, ...checkEnv, ...context }`; every stored
   value goes to every check step of the project; values ≥ 12 chars are registered as run secrets; the
   failing check's output is redacted before it becomes the retry prompt; fork-head (`untrustedHead`)
   runs get nothing. Agent steps are untouched by construction (values never enter `process.env`).
-- **Surfaces**: `GET /check-env` → names only; `PUT`/`DELETE /check-env/:name`; `cezar check-env
+- **Surfaces**: `GET /check-env` → names only; `PUT`/`DELETE /check-env/:name`; `onni check-env
   list|set|unset` (value on stdin); Settings → *Check credentials*. Contract in
   `packages/contract/src/check-env.ts` (`checkEnvNameIssue`, `checkEnvValueIssue`).
 - Phases 2–3 (run context `ONNI_*` vars, PR-head worktrees) are merged into the same branch.
@@ -47,15 +47,15 @@ Threats and whether a private file already answers them:
 | Threat | `0600` dotenv | Notes |
 | --- | --- | --- |
 | Another OS user on the box | ✅ | mode bits |
-| The secret landing in a repo / worktree | ✅ | lives under `~/.cezar`, `.gitignore *` |
+| The secret landing in a repo / worktree | ✅ | lives under `~/.onni`, `.gitignore *` |
 | The secret reaching an agent session | ✅ (policy, not storage) | never in `process.env`; `buildChildEnv` cannot see it |
 | Backups, dotfile sync, `tar ~`, a stolen laptop with disk unlocked | ❌ plaintext | the realistic gap |
-| A same-user process (including an agent's `Bash`) reading `~/.cezar/…` | ❌ | an OS keychain closes this **on macOS only** (per-binary ACL + prompt); Linux secret-service and Windows CredMan hand the value to any same-user process |
-| A secret in the process memory of cezar | ❌ | no backend fixes this |
+| A same-user process (including an agent's `Bash`) reading `~/.onni/…` | ❌ | an OS keychain closes this **on macOS only** (per-binary ACL + prompt); Linux secret-service and Windows CredMan hand the value to any same-user process |
+| A secret in the process memory of Onni Work | ❌ | no backend fixes this |
 
 Two neighbours set the bar: Claude Code keeps `~/.claude/.credentials.json` plaintext on Linux (Keychain on
 macOS); Codex keeps `~/.codex/auth.json` plaintext; `gh` uses the OS keyring when present and falls back to
-a plaintext `hosts.yml`. cezar's tracker store (spec 2026-09-18) deliberately deferred encryption with the
+a plaintext `hosts.yml`. Onni Work's tracker store (spec 2026-09-18) deliberately deferred encryption with the
 sentence "a store interface isolates this temporary representation so a future vault can replace it".
 This analysis is that future vault's decision.
 
@@ -70,13 +70,13 @@ interface SecretRecord {
   ref?: string;                 // backend 'ref': an op://, bws://, env:// … locator; no value stored
   createdAt: string; updatedAt: string;
 }
-type Audience = 'checks' | 'cezar' | 'tracker';
+type Audience = 'checks' | 'onni' | 'tracker';
 ```
 
-- **Scope.** `project` secrets live with the project (`~/.cezar/secrets/<projectId>…`, owner-root
-  line as in the PR). `workspace` secrets are user-wide (an LLM key for cezar's own features, shared
+- **Scope.** `project` secrets live with the project (`~/.onni/secrets/<projectId>…`, owner-root
+  line as in the PR). `workspace` secrets are user-wide (an LLM key for Onni Work's own features, shared
   by every project). Resolution for a consumer: project first, then workspace, by name.
-- **Audiences, not consumers.** `checks` = a workflow check step; `cezar` = cezar's own code
+- **Audiences, not consumers.** `checks` = a workflow check step; `onni` = Onni Work's own code
   (auto-name, future "intelligent actions", automations' LLM calls); `tracker` = the Jira/Linear
   clients (migration target for `tracker-connections`, later). The list is closed and lives in the
   contract. **There is no `agent` audience and the type does not allow one** — the PR's guarantee
@@ -104,9 +104,9 @@ type Audience = 'checks' | 'cezar' | 'tracker';
   silent empty env — the PR already has the "nothing stored stays silent" test to extend. Agent
   steps refuse the key at load time (`stepsIssue`), so YAML cannot route a secret to an agent.
 - **Redaction** unchanged from the PR (register before spawn, `MIN_SECRET_LEN` floor, retry-prompt
-  scrub). A `cezar`-audience read registers the value against the run that triggered it, if any.
-- **Naming.** `check-env` → `secrets` everywhere: `~/.cezar/secrets/`, `/api/v1/p/:id/secrets`,
-  `cezar secret list|set|unset`, Settings → *Secrets* (project) and Settings → Global → *Secrets*
+  scrub). A `onni`-audience read registers the value against the run that triggered it, if any.
+- **Naming.** `check-env` → `secrets` everywhere: `~/.onni/secrets/`, `/api/v1/p/:id/secrets`,
+  `onni secret list|set|unset`, Settings → *Secrets* (project) and Settings → Global → *Secrets*
   (workspace). The PR's `checkEnvNameIssue`/`checkEnvValueIssue` become `secretNameIssue`/
   `secretValueIssue` with the same rules.
 
@@ -139,7 +139,7 @@ runs (no prompt at check time), headless Linux (SSH boxes, containers — this v
 - Cost: a native optional dependency in the published tarball (`optionalDependencies`, one ~1–2 MB
   platform package fetched on install; `test:package` must prove the CLI boots when the platform
   package is missing). First read on macOS prompts "node wants to access…" once per binary path —
-  a `npx` upgrade changes the path and prompts again; cezar desktop (Tauri sidecar) is a stable path.
+  a `npx` upgrade changes the path and prompts again; Onni Work desktop (Tauri sidecar) is a stable path.
 - Value size limits apply (Windows CredMan ≈ 2.5 KB; secret-service and Keychain are fine with 16 KiB).
 - **Requires A as fallback**: with no keychain the store must still work, and the user must be told
   which backend holds a given secret (metadata `backend`, shown in Settings and `secret list`).
@@ -158,9 +158,9 @@ runs (no prompt at check time), headless Linux (SSH boxes, containers — this v
 
 ### D. Encrypted file, key in the OS keychain (hybrid; what VS Code / Electron `safeStorage` do)
 
-- `~/.cezar/secrets/<projectId>.json` holds AES-256-GCM ciphertext (Node `crypto`, no new dep for the
+- `~/.onni/secrets/<projectId>.json` holds AES-256-GCM ciphertext (Node `crypto`, no new dep for the
   cipher); one 32-byte data key per machine lives in the OS keychain (via B). No keychain → the data
-  key is written to `~/.cezar/secrets/.key` at `0600`, and the store is exactly as strong as A
+  key is written to `~/.onni/secrets/.key` at `0600`, and the store is exactly as strong as A
   (metadata records `keyBackend: 'keychain' | 'file'` so the UI can say so).
 - One keychain item total (the data key), so one macOS prompt per binary, one Windows CredMan entry,
   no per-secret size limits, and the file keeps carrying the metadata (`audiences`, `scope`, `ref`).
@@ -173,12 +173,12 @@ runs (no prompt at check time), headless Linux (SSH boxes, containers — this v
 
 ### E. References into an external secret manager (`op://`, `bws://`, `pass:`, `env://`, `sops`)
 
-- cezar stores only a **locator**; the value is resolved at use time through the manager's CLI
+- Onni Work stores only a **locator**; the value is resolved at use time through the manager's CLI
   discovered on `PATH`: 1Password `op read op://vault/item/field` (service accounts give unattended
   reads via `OP_SERVICE_ACCOUNT_TOKEN`), Bitwarden Secrets Manager `bws secret get`, `pass show`,
-  `sops -d`, HashiCorp `vault kv get`, Doppler/Infisical. `env://NAME` reads the cezar server's own
-  env (makes today's "export before starting cezar" an explicit, auditable choice instead of a leak).
-- Nothing secret ever sits in `~/.cezar`; rotation happens in the manager; teams share one source.
+  `sops -d`, HashiCorp `vault kv get`, Doppler/Infisical. `env://NAME` reads the Onni Work server's own
+  env (makes today's "export before starting Onni Work" an explicit, auditable choice instead of a leak).
+- Nothing secret ever sits in `~/.onni`; rotation happens in the manager; teams share one source.
 - Not zero-config on its own (a manager must exist and be logged in), so it is an *additional*
   backend per secret, never the only one: a secret is `file`/`keychain` **or** `ref`.
 - Cost: one CLI spawn per resolution per check execution (cache for the run), a zod-validated
@@ -188,7 +188,7 @@ runs (no prompt at check time), headless Linux (SSH boxes, containers — this v
 ### F. Tauri desktop shell (`tauri-plugin-stronghold` / `keyring` in Rust)
 
 - Only the desktop shell could use it, but the *server* is what spawns check steps and will run
-  under `npx cezar-run` without the shell. The shell would have to proxy reads over IPC — a daemon-like
+  under `npx onni-run` without the shell. The shell would have to proxy reads over IPC — a daemon-like
   mechanism the Zero-config section asks to avoid. Not a standalone option; B/D cover the desktop too.
 
 ### G. Passphrase-encrypted file (`age`, `gpg`, scrypt + AES)
@@ -230,7 +230,7 @@ runs (no prompt at check time), headless Linux (SSH boxes, containers — this v
 
 What this buys the original ask: the e2e check binds `secrets: [E2E_GATEWAY_KEY]` in its workflow,
 the value is encrypted at rest on a desktop and private-file on a server, the agent never sees it,
-and the same store later hands an `ANTHROPIC_API_KEY`-audience-`cezar` secret to cezar's own LLM
+and the same store later hands an `ANTHROPIC_API_KEY`-audience-`onni` secret to Onni Work's own LLM
 features without touching the agents' subscription login.
 
 ## Default path, with every new knob at its shipped default
@@ -249,13 +249,13 @@ features without touching the agents' subscription login.
    AES-256-GCM under one per-machine data key; `workspace/secret-keyring.ts` keeps that key in the
    OS keychain through `@napi-rs/keyring` (an `optionalDependency`; Linux pinned to Secret Service,
    because the library's default falls back to the kernel keyutils store, which does not survive a
-   reboot) and `~/.cezar/secrets/.key` (`0600`) holds it otherwise. `GET …/secrets` and
-   `cezar secrets list` report `keyBackend`. `ONNI_SECRETS_KEYCHAIN=0` forces the file.
+   reboot) and `~/.onni/secrets/.key` (`0600`) holds it otherwise. `GET …/secrets` and
+   `onni secrets list` report `keyBackend`. `ONNI_SECRETS_KEYCHAIN=0` forces the file.
 2. **Reworked on PR #1291's branch**, before it merges: `check-env` → `secrets` everywhere (store,
    routes, CLI, cockpit, docs), JSON records with `audiences`, the step-level `secrets:` binding
    (refused on agent steps at load time), fork-head runs still get nothing.
-3. **Workspace scope in the same PR**: `~/.cezar/secrets/workspace.json`, single-mount
-   `/api/v1/workspace/secrets`, `cezar secrets … --workspace`, Settings → Global → Secrets.
-   Audiences shipped: `checks` and `cezar` (the latter reserved: no consumer reads it yet; the
-   first one resolves through `SecretStore.resolve(project, 'cezar')`). `tracker` is deferred with
+3. **Workspace scope in the same PR**: `~/.onni/secrets/workspace.json`, single-mount
+   `/api/v1/workspace/secrets`, `onni secrets … --workspace`, Settings → Global → Secrets.
+   Audiences shipped: `checks` and `onni` (the latter reserved: no consumer reads it yet; the
+   first one resolves through `SecretStore.resolve(project, 'onni')`). `tracker` is deferred with
    the tracker-store migration. Backend E (`op://`, `env://` references) is a follow-up.

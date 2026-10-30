@@ -20,7 +20,7 @@ None of these defaults weakens security, data scoping, or compatibility, and non
 
 ## 📝 Problem Statement
 
-Cezar currently presents a single `tokensUsed` value plus optional `costUsd` for each run. The token number comes from the legacy v1 runner stream and is not a raw count for every backend: Claude cache-read and cache-creation tokens are deliberately weighted in `packages/work/src/core/usage.ts` so the number roughly follows cost. It is useful for legacy console output and old recordings, but it cannot answer the basic operational question, "how much went into the model and how much came out?"
+Onni Work currently presents a single `tokensUsed` value plus optional `costUsd` for each run. The token number comes from the legacy v1 runner stream and is not a raw count for every backend: Claude cache-read and cache-creation tokens are deliberately weighted in `packages/work/src/core/usage.ts` so the number roughly follows cost. It is useful for legacy console output and old recordings, but it cannot answer the basic operational question, "how much went into the model and how much came out?"
 
 The normalized v2 protocol already answers that question. Every supported backend emits cumulative `usage.updated` events with `TokenUsage.input` and `TokenUsage.output`, enforced by the golden-fixture parity test in `packages/work/src/core/ui-parity.test.ts`. `UiEventSink` persists those snapshots to NDJSON, but `RunManager` does not copy the direction counters into `runs.json`; list and header views therefore cannot render them without replaying the full event log.
 
@@ -52,16 +52,16 @@ Only the exact string `1` enables any opt-out. The flags change presentation onl
 1. **Rename `ONNI_HIDE_TOKEN_METRICS` to mean only tokens.** Rejected because existing deployments use it to hide both values. Reinterpreting it would reveal cost after an upgrade.
 2. **Remove `tokenMetrics` immediately.** Rejected because `/api/v1/health` is protected and old browser bundles can remain cached. The derived legacy field is cheap and gives fail-closed presentation behavior.
 3. **Reconstruct directional usage by replaying NDJSON on every list request.** Rejected because `runs.json` is the list index, list rendering must stay cheap, and old recordings still cannot be split when they contain v1-only telemetry.
-4. **Infer cost from input/output counts for Codex.** Rejected because model prices, cache discounts, reasoning rates, subscriptions, and provider billing rules are external and unstable. Cezar continues showing only backend-reported `costUsd`.
-5. **Fold cache/reasoning detail into `IN`/`OUT`.** Deferred until `TokenUsage` defines mutually exclusive direction buckets across all runners. Langfuse's usage model demonstrates why this matters: details must be non-overlapping or totals and inferred cost double-count. Cezar should not guess across inconsistent upstream schemas.
+4. **Infer cost from input/output counts for Codex.** Rejected because model prices, cache discounts, reasoning rates, subscriptions, and provider billing rules are external and unstable. Onni Work continues showing only backend-reported `costUsd`.
+5. **Fold cache/reasoning detail into `IN`/`OUT`.** Deferred until `TokenUsage` defines mutually exclusive direction buckets across all runners. Langfuse's usage model demonstrates why this matters: details must be non-overlapping or totals and inferred cost double-count. Onni Work should not guess across inconsistent upstream schemas.
 
 ## 📝 Research
 
 [Langfuse's token and cost tracking](https://langfuse.com/docs/observability/features/token-and-cost-tracking) validates the high-level UI vocabulary—input usage, output usage, and cost are separate dimensions—and warns that detail buckets may overlap unless normalized explicitly. This spec adopts the separate directional display and reported-cost preference, while deliberately deferring arbitrary bucket aggregation.
 
-[OpenHands metrics](https://docs.openhands.dev/sdk/guides/metrics) exposes detailed token usage at the LLM-call level and accumulated cost at conversation level. That supports Cezar's existing shape: raw session updates are normalized at the runner seam, then accumulated into a run record for cheap cockpit summaries.
+[OpenHands metrics](https://docs.openhands.dev/sdk/guides/metrics) exposes detailed token usage at the LLM-call level and accumulated cost at conversation level. That supports Onni Work's existing shape: raw session updates are normalized at the runner seam, then accumulated into a run record for cheap cockpit summaries.
 
-Both systems carry more pricing/observability machinery than Cezar needs. Cezar keeps its local, provider-reported, zero-config model and adds no tokenizer, pricing table, database, analytics endpoint, or cloud dependency.
+Both systems carry more pricing/observability machinery than Onni Work needs. Onni Work keeps its local, provider-reported, zero-config model and adds no tokenizer, pricing table, database, analytics endpoint, or cloud dependency.
 
 ## 📝 Architecture
 
@@ -106,7 +106,7 @@ Valid `turn.completed.usage` is added exactly once to the current step's optiona
 
 Extend the canonical API zod schemas in `packages/contract/src/runs.ts` **and** the persistence schemas in `packages/work/src/runs/store.ts`. Today `RunStore.open` parses private, stripping `stepStateSchema`/`runRecordSchema` definitions rather than the contract package; both schema layers must accept the new fields until they are deliberately unified. Add a save-close-reopen regression test so a server restart cannot silently strip directional accounting. The store's `updateStep` continues recomputing run aggregates on every step patch:
 
-- The user-visible **session** in this spec is one Cezar `RunRecord` (the task session shown in the cockpit), aggregated across its agent steps and turns. A backend `AgentSession`, vendor thread, process, and workflow step remain internal accounting boundaries, not separate UI rows.
+- The user-visible **session** in this spec is one Onni Work `RunRecord` (the task session shown in the cockpit), aggregated across its agent steps and turns. A backend `AgentSession`, vendor thread, process, and workflow step remain internal accounting boundaries, not separate UI rows.
 - Each agent step optionally persists `usageInvocationsStarted`, `usageInvocationsObserved`, `usageTurnsStarted`, `usageTurnsRecorded`, and `usageInvocationEpoch` alongside `inputTokens`/`outputTokens`. A step is complete for directional accounting only when it has at least one observed invocation and tracked turn, every launched invocation produced a turn (`usageInvocationsStarted === usageInvocationsObserved`), every tracked turn was recorded (`usageTurnsStarted === usageTurnsRecorded`), and both direction counters exist.
 - A run exposes directional aggregates only when every started agent step (`iterations > 0`) is complete by that rule. Then each run field is the sum across those complete steps.
 - If an agent iteration exists with zero tracked turns, or any step contains an abandoned, unmetered, malformed, interrupted, or historical turn, both run aggregates stay absent. This prevents a partial suffix from being presented as the whole session. A later metered retry does not erase the earlier mismatch.
@@ -192,7 +192,7 @@ type GroupVariant = {
 
 The new fields are non-negative finite counters validated at both the public-contract and store-persistence zod boundaries. Direction counters contain top-level raw provider values accumulated from v2 events; invocation and turn checkpoints make completeness durable across retries and restarts. The full run API already exposes its persisted `steps`, so these optional checkpoint fields are additive members of that response even though their semantics are internal accounting; summary DTOs such as `GroupVariant` receive only `inputTokens` and `outputTokens`. Cache-read, cache-write, and reasoning detail remain available in NDJSON `usage.updated` events but are not folded into these fields in this phase.
 
-No migration or replay backfill runs. Old records remain valid with absent fields; deleting `.ai/cezar/` still rebuilds ordinary state as before.
+No migration or replay backfill runs. Old records remain valid with absent fields; deleting `.ai/onni/` still rebuilds ordinary state as before.
 
 ## 📝 API Contracts
 
@@ -290,7 +290,7 @@ Independent visibility doubles the prior presentation matrix. Centralize the res
 
 ### Rollback
 
-Unset the new flags and restart Cezar to restore the visible default. Reverting the feature leaves optional fields in existing `runs.json`. The current older store schemas strip unknown keys on their next save, so rollback may discard the new optional telemetry, but the underlying run still parses and operates through the retained legacy fields. No migration, irreversible state, or external side effect exists.
+Unset the new flags and restart Onni Work to restore the visible default. Reverting the feature leaves optional fields in existing `runs.json`. The current older store schemas strip unknown keys on their next save, so rollback may discard the new optional telemetry, but the underlying run still parses and operates through the retained legacy fields. No migration, irreversible state, or external side effect exists.
 
 ## 📋 Phasing
 

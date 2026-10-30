@@ -9,7 +9,7 @@ settings the cockpit's first full-screen surface, with its own nav and its own w
 nav is the app sidebar's own frame, not a copy of it: `components/sidebar-frame.tsx`
 (`SidebarFrame` with the #788 resize handle, `SidebarDrawer`, `useSidebarWidth`) wraps both
 sidebars, and one stored width serves both. Inside it, settings keeps the app sidebar's header
-row, row heights and footer: the cezar brand lockup and Back at the top, a labelled **General
+row, row heights and footer: the Onni Work brand lockup and Back at the top, a labelled **General
 settings** group above a labelled **Project settings** tree, and the footer with the ⌘K
 launcher, the version and star chips and the theme toggle. Below `md` the same content is a
 drawer behind a hamburger, in a top bar shaped like the app's (menu and title only). There is
@@ -126,7 +126,7 @@ The frame is sidebar | (page header, pill row, content), on every viewport.
 
 ```
 ┌─────────────────────┬────────────────────────────────────────────────────┐
-│ ◆ cezar    ← Back   │ cezar / Agents   Providers, default runner…        │  page header
+│ ◆ Onni Work    ← Back   │ Onni Work / Agents   Providers, default runner…        │  page header
 ├─────────────────────┼────────────────────────────────────────────────────┤
 │ GENERAL SETTINGS    │                                                    │
 │ Appearance          │   (section body, unchanged)                        │
@@ -135,10 +135,10 @@ The frame is sidebar | (page header, pill row, content), on every viewport.
 │ Skills · Secrets    │                                                    │
 │ Agent accounts      │                                                    │
 │ Projects · Privacy  │                                                    │
-│ Stored in ~/.cezar  │                                                    │
+│ Stored in ~/.onni  │                                                    │
 │ ─────────────       │                                                    │
 │ PROJECT SETTINGS    │                                                    │
-│ ▾ cezar             │                                                    │
+│ ▾ Onni Work             │                                                    │
 │    General          │                                                    │
 │    Issue tracker …  │                                                    │
 │    Agents           │                                                    │
@@ -158,7 +158,7 @@ the shared `SidebarFrame`, resizable, at the same width as the app sidebar.
   settings opens.
 - Nav (`data-slot="settings-nav"`, `data-scope` = scope of the current page). The **General
   settings** group lists the global sections as plain react-router `NavLink`s (never
-  prefixed), with no `General` row of its own, then "Stored in ~/.cezar".
+  prefixed), with no `General` row of its own, then "Stored in ~/.onni".
 - **Project settings** tree: one row per registered project, ordered like the sidebar, with a
   chevron, the name and a `folder not found` pill for `missing`. No branch: settings describe
   the repo, not what is checked out. Each project's sections start with **General** (its index
@@ -226,7 +226,7 @@ wrong: it would walk back through settings pages. Instead:
   owner as the cost of the full-screen decision. `run-notifications` (browser notifications)
   keep firing — they are not sidebar-bound.
 - **The provider banner still shows** (kept row, see above).
-- **Document title** is unchanged (`Settings · cezar` for global, `Agents · <project> · cezar`
+- **Document title** is unchanged (`Settings · Onni Work` for global, `Agents · <project> · Onni Work`
   for project pages).
 - **The boot project's Settings row lighting up on `/settings/global*`** (today's
   `activeNavPath` quirk) becomes unobservable — the sidebar is not rendered there. No fix

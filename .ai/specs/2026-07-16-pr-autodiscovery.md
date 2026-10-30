@@ -49,7 +49,7 @@ The created tier always wins. Both fields are additive and optional — old
     in another repository — and, because the first adoption freezes the tier,
     never looked at the one it really opened. The claim is now read from
     `eventCreationClaimFragments` (the agent's own turn text, an assistant
-    message item, and the tool TITLE cezar renders from the command it saw
+    message item, and the tool TITLE Onni Work renders from the command it saw
     run) while the URL is still taken from the whole event, since `gh` prints
     it in the output. The referenced tier is untouched by this: it may be
     wrong about a *subject*, never about *authorship*.
@@ -112,7 +112,7 @@ The created tier always wins. Both fields are additive and optional — old
 
 > **That next step landed (2026-07-18):** discovery-by-reference did prove too
 > fuzzy (wrong-chip reports, e.g. #777 on an issue-#500 task). Spec
-> `2026-07-18-task-ref-markers.md` adds the in-band `CEZ:PR=<n>` declaration;
+> `2026-07-18-task-ref-markers.md` adds the in-band `ONNI:PR=<n>` declaration;
 > when present it owns the referenced tier's resolution (a candidate URL must
 > end in the declared number). The created tier and this spec's janitor rules
 > are unchanged for runs without markers.

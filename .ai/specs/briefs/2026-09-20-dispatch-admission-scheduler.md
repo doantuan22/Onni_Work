@@ -24,7 +24,7 @@ the cockpit.
 browser loop, no held flag, no timer.**
 
 1. New additive workspace resource `resources.dispatchMaxConcurrent` (`null`/`0` = no cap,
-   otherwise `1..16`), stored in `~/.cezar/config.json` and edited in **Settings → Resources**
+   otherwise `1..16`), stored in `~/.onni/config.json` and edited in **Settings → Resources**
    (the browser is the configuration surface). It is workspace-wide, like `maxParallel`, so every
    browser, project and CLI sees the same value.
 2. Enforced per-run in `pump().startable()` (`run.ts:1379-1383`): if the candidate is a dispatch
@@ -67,7 +67,7 @@ browser loop, no held flag, no timer.**
 | Question | Answer (design research + review) |
 |----------|-----------------------------------|
 | What exactly is capped? | Dispatch children (`dispatch.parentRunId` present) that hold a compute slot (`starting` plus `active − waiting`, the `busySlots()` exclusion), counted workspace-wide. `waiting`/parked children hold no turn and are not counted — `active` includes them, so the subtraction is load-bearing. |
-| Where is the cap stored? | `~/.cezar/config.json` `resources.dispatchMaxConcurrent` — additive, nullable, default `null`; visible to every browser and CLI. |
+| Where is the cap stored? | `~/.onni/config.json` `resources.dispatchMaxConcurrent` — additive, nullable, default `null`; visible to every browser and CLI. |
 | Where is it configured? | Settings → Resources, one numeric field (empty = no cap), saved through the existing `PUT /api/v1/workspace/config`; no new route. |
 | Where is it enforced? | `pump().startable()` per candidate run, before dequeue; ordinary runs keep their existing capacity path. |
 | How many knobs? | One: `dispatchMaxConcurrent`. No mode, no interval, no per-tree override. |
@@ -111,7 +111,7 @@ browser loop, no held flag, no timer.**
 - `resources` is read through the semaphore's in-memory cache, refreshed on
   `PUT /workspace/config`; do not re-read the file per pump.
 - The key is additive: `null` **and** `0` both mean "no cap" (the Settings field sends `null` when
-  cleared, matching `memoryLimitMb`), an older cezar ignores it through `.passthrough()`, and
+  cleared, matching `memoryLimitMb`), an older Onni Work ignores it through `.passthrough()`, and
   `BACKWARD_COMPATIBILITY.md` §2's resources shape plus the GET body must carry it exactly.
   (NIT-2 of the specification review: an earlier draft of this line said absent/`null` must stay
   distinguishable from a chosen `0`; the spec's reading is the right one and this line now agrees

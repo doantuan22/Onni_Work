@@ -124,7 +124,7 @@ sheet over the run's own state is simpler and keeps deep-linking out of scope.
 
 What leaders carry that this spec skips: cross-run agent trees (Amp-style
 multi-session graphs), per-agent token accounting, and pause/steer controls for
-individual sub-agents. All are out of scope — cezar's protocol does not carry
+individual sub-agents. All are out of scope — Onni Work's protocol does not carry
 per-sub-agent usage or control channels today, and this feature must not invent
 protocol to get a display.
 

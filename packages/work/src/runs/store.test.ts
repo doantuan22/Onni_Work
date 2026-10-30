@@ -466,7 +466,7 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Reviewed https://github.com/open-mercato/cezar/pull/1 — looks good, no changes needed.',
+      result: 'Reviewed https://github.com/open-mercato/onni/pull/1 — looks good, no changes needed.',
     } as never);
     expect(store.getRun(run.id)?.pullRequestUrl).toBeUndefined();
   });
@@ -475,18 +475,18 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Opened a draft pull request: https://github.com/open-mercato/cezar/pull/42',
+      result: 'Opened a draft pull request: https://github.com/open-mercato/onni/pull/42',
     } as never);
-    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/42');
+    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/42');
   });
 
   it('recognizes the raw `gh pr create` output form', () => {
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: '$ gh pr create --draft\nhttps://github.com/open-mercato/cezar/pull/7',
+      result: '$ gh pr create --draft\nhttps://github.com/open-mercato/onni/pull/7',
     } as never);
-    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/7');
+    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/7');
   });
 
   it('spots creation reported through a v2 tool item (nested under `item`)', () => {
@@ -501,10 +501,10 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
         title: 'Ran gh pr create',
         status: 'completed',
         input: { command: 'gh pr create --draft --title "fix"' },
-        output: 'https://github.com/open-mercato/cezar/pull/9',
+        output: 'https://github.com/open-mercato/onni/pull/9',
       },
     });
-    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/9');
+    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/9');
   });
 
   it('adopts the CREATED PR, not one referenced earlier in the same event (#495)', () => {
@@ -512,20 +512,20 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'Read the linked PR https://github.com/open-mercato/cezar/pull/1 for context, then ' +
-        'opened a draft pull request: https://github.com/open-mercato/cezar/pull/500',
+        'Read the linked PR https://github.com/open-mercato/onni/pull/1 for context, then ' +
+        'opened a draft pull request: https://github.com/open-mercato/onni/pull/500',
     } as never);
     // The first URL in the text is the referenced one — the created URL wins.
-    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/500');
+    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/500');
   });
 
   it('falls back to the URL before the phrase when gh prints it first', () => {
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'https://github.com/open-mercato/cezar/pull/321\nDraft pull request created.',
+      result: 'https://github.com/open-mercato/onni/pull/321\nDraft pull request created.',
     } as never);
-    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/321');
+    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/321');
   });
 
   // The claim must come from something that can speak FOR this run. Verbatim from the task that
@@ -568,7 +568,7 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
         title: 'packages/work/src/runs/store.test.ts',
         status: 'completed',
         input: {
-          new_string: "result: 'Opened a draft pull request: https://github.com/open-mercato/cezar/pull/42'",
+          new_string: "result: 'Opened a draft pull request: https://github.com/open-mercato/onni/pull/42'",
         },
       },
     });
@@ -587,11 +587,11 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
         title: 'Ran gh pr create --repo open-mercato/onni --base main --head onni/x --title "fix…',
         status: 'completed',
         input: { command: 'gh pr create --repo open-mercato/onni --base main' },
-        output: 'https://github.com/open-mercato/cezar/pull/901',
+        output: 'https://github.com/open-mercato/onni/pull/901',
       },
     });
     expect(store.getRun(run.id)?.pullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/901',
+      'https://github.com/open-mercato/onni/pull/901',
     );
   });
 });
@@ -807,9 +807,9 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Opened a draft pull request: https://github.com/open-mercato/cezar/pull/42',
+      result: 'Opened a draft pull request: https://github.com/open-mercato/onni/pull/42',
     } as never);
-    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/42');
+    expect(store.getRun(run.id)?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/42');
   });
 });
 
@@ -832,11 +832,11 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Reviewed https://github.com/open-mercato/cezar/pull/1 — looks good.',
+      result: 'Reviewed https://github.com/open-mercato/onni/pull/1 — looks good.',
     });
     const loaded = store.getRun(run.id);
     expect(loaded?.pullRequestUrl).toBeUndefined();
-    expect(loaded?.referencedPullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/1');
+    expect(loaded?.referencedPullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/1');
   });
 
   it('sees PR URLs nested in v2 message items', () => {
@@ -847,11 +847,11 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
         kind: 'message',
         id: 'm1',
         role: 'assistant',
-        text: 'Working on https://github.com/open-mercato/cezar/pull/4170 now.',
+        text: 'Working on https://github.com/open-mercato/onni/pull/4170 now.',
       },
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/4170',
+      'https://github.com/open-mercato/onni/pull/4170',
     );
   });
 
@@ -862,7 +862,7 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
       item: {
         kind: 'reasoning',
         id: 'r1',
-        text: 'Maybe similar to https://github.com/open-mercato/cezar/pull/99?',
+        text: 'Maybe similar to https://github.com/open-mercato/onni/pull/99?',
       },
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBeUndefined();
@@ -872,14 +872,14 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'See https://github.com/open-mercato/cezar/pull/1',
+      result: 'See https://github.com/open-mercato/onni/pull/1',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/1',
+      'https://github.com/open-mercato/onni/pull/1',
     );
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Also related: https://github.com/open-mercato/cezar/pull/2',
+      result: 'Also related: https://github.com/open-mercato/onni/pull/2',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBeUndefined();
   });
@@ -889,23 +889,23 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'Reviewing https://github.com/open-mercato/cezar/pull/4170; it supersedes https://github.com/open-mercato/cezar/pull/12.',
+        'Reviewing https://github.com/open-mercato/onni/pull/4170; it supersedes https://github.com/open-mercato/onni/pull/12.',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/4170',
+      'https://github.com/open-mercato/onni/pull/4170',
     );
   });
 
   it('disambiguates by a PR number the prompt names as a pasted URL, not just a bare number', () => {
-    const { store, run } = freshRun('review https://github.com/open-mercato/cezar/pull/3777 please');
+    const { store, run } = freshRun('review https://github.com/open-mercato/onni/pull/3777 please');
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'It supersedes https://github.com/open-mercato/cezar/pull/12.',
+      result: 'It supersedes https://github.com/open-mercato/onni/pull/12.',
     });
     // Two candidates now (3777 seeded from the prompt, 12 from the event); the
     // prompt names 3777 even though it only appears inside the URL path.
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/3777',
+      'https://github.com/open-mercato/onni/pull/3777',
     );
   });
 
@@ -914,7 +914,7 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'https://github.com/open-mercato/cezar/pull/170 and https://github.com/open-mercato/cezar/pull/70',
+        'https://github.com/open-mercato/onni/pull/170 and https://github.com/open-mercato/onni/pull/70',
     });
     // Neither 170 nor 70 is named (only "4170" is in the prompt) → ambiguous.
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBeUndefined();
@@ -924,21 +924,21 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Opened a draft pull request: https://github.com/open-mercato/cezar/pull/42',
+      result: 'Opened a draft pull request: https://github.com/open-mercato/onni/pull/42',
     });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Compare with https://github.com/open-mercato/cezar/pull/50',
+      result: 'Compare with https://github.com/open-mercato/onni/pull/50',
     });
     const loaded = store.getRun(run.id);
-    expect(loaded?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/42');
+    expect(loaded?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/42');
     expect(loaded?.referencedPullRequestUrl).toBeUndefined();
   });
 
   it('seeds the referenced tier from a PR URL pasted into the task prompt', () => {
-    const { store, run } = freshRun('review https://github.com/open-mercato/cezar/pull/3777 please');
+    const { store, run } = freshRun('review https://github.com/open-mercato/onni/pull/3777 please');
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/3777',
+      'https://github.com/open-mercato/onni/pull/3777',
     );
   });
 
@@ -946,15 +946,15 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'See https://github.com/open-mercato/cezar/pull/1',
+      result: 'See https://github.com/open-mercato/onni/pull/1',
     });
     store.flush();
     const reopened = RunStore.open(dataDir);
     expect(reopened.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/1',
+      'https://github.com/open-mercato/onni/pull/1',
     );
     expect(reopened.getRun(run.id)?.referencedPrCandidates).toEqual([
-      'https://github.com/open-mercato/cezar/pull/1',
+      'https://github.com/open-mercato/onni/pull/1',
     ]);
     // legacy record without the fields still parses (see LEGACY_RUN above)
     writeFileSync(join(dataDir, 'runs.json'), JSON.stringify([LEGACY_RUN]), 'utf8');
@@ -991,11 +991,11 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     store.applyMarkerRefs(run.id, { pr: 42 });
     store.recordPrRef(run.id, {
       number: 42,
-      url: 'https://github.com/open-mercato/cezar/pull/42',
+      url: 'https://github.com/open-mercato/onni/pull/42',
       origin: 'marker',
     });
     expect(store.getRun(run.id)?.prRefs).toHaveLength(1);
-    expect(store.getRun(run.id)?.prRefs?.[0]?.url).toBe('https://github.com/open-mercato/cezar/pull/42');
+    expect(store.getRun(run.id)?.prRefs?.[0]?.url).toBe('https://github.com/open-mercato/onni/pull/42');
   });
 
   it('preserves legacy scalar associations before a replacement patch is applied', () => {
@@ -1030,12 +1030,12 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'Comparing https://github.com/open-mercato/cezar/pull/500 with https://github.com/open-mercato/cezar/pull/777',
+        'Comparing https://github.com/open-mercato/onni/pull/500 with https://github.com/open-mercato/onni/pull/777',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBeUndefined(); // ambiguous
     store.applyMarkerRefs(run.id, { pr: 500 });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/500',
+      'https://github.com/open-mercato/onni/pull/500',
     );
   });
 
@@ -1043,10 +1043,10 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Related work: https://github.com/open-mercato/cezar/pull/777',
+      result: 'Related work: https://github.com/open-mercato/onni/pull/777',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/777',
+      'https://github.com/open-mercato/onni/pull/777',
     );
     store.applyMarkerRefs(run.id, { pr: 500 });
     const loaded = store.getRun(run.id);
@@ -1059,15 +1059,15 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     store.applyMarkerRefs(run.id, { pr: 500 });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'See https://github.com/open-mercato/cezar/pull/777 for prior art.',
+      result: 'See https://github.com/open-mercato/onni/pull/777 for prior art.',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBeUndefined();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Now updating https://github.com/open-mercato/cezar/pull/500.',
+      result: 'Now updating https://github.com/open-mercato/onni/pull/500.',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/500',
+      'https://github.com/open-mercato/onni/pull/500',
     );
   });
 
@@ -1075,11 +1075,11 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'See https://github.com/open-mercato/cezar/pull/777',
+      result: 'See https://github.com/open-mercato/onni/pull/777',
     });
     store.applyMarkerRefs(run.id, { issue: 500 });
     const loaded = store.getRun(run.id);
-    expect(loaded?.referencedPullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/777');
+    expect(loaded?.referencedPullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/777');
     expect(loaded?.issueNumber).toBe(500);
     expect(loaded?.prNumber).toBeUndefined();
   });
@@ -1088,11 +1088,11 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Opened a draft pull request: https://github.com/open-mercato/cezar/pull/42',
+      result: 'Opened a draft pull request: https://github.com/open-mercato/onni/pull/42',
     });
     store.applyMarkerRefs(run.id, { pr: 500 });
     expect(store.getRun(run.id)?.pullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/42',
+      'https://github.com/open-mercato/onni/pull/42',
     );
   });
 
@@ -1150,7 +1150,7 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     const { store, run } = freshRun('ship the devices work');
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Created a pull request: https://github.com/open-mercato/cezar/pull/42',
+      result: 'Created a pull request: https://github.com/open-mercato/onni/pull/42',
     });
     store.applyMarkerRefs(run.id, { pr: 42 });
     expect(store.getRun(run.id)?.prNumber).toBe(42);
@@ -1180,7 +1180,7 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     const { store, run } = freshRun('task');
     store.updateRun(run.id, {
       referencedPullRequestUrl: undefined,
-      referencedPrCandidates: ['https://github.com/open-mercato/cezar/pull/777'],
+      referencedPrCandidates: ['https://github.com/open-mercato/onni/pull/777'],
       markerRefs: { pr: 500 },
     });
     store.flush();
@@ -1190,13 +1190,13 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
   it('never takes a referenced PR away from a record whose candidates no longer explain it', () => {
     const { store, run } = freshRun('task');
     store.updateRun(run.id, {
-      referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/777',
+      referencedPullRequestUrl: 'https://github.com/open-mercato/onni/pull/777',
       referencedPrCandidates: undefined,
       markerRefs: { pr: 777 },
     });
     store.flush();
     expect(RunStore.open(dataDir).getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/777',
+      'https://github.com/open-mercato/onni/pull/777',
     );
   });
 
@@ -1204,7 +1204,7 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
     const { store, run } = freshRun('task');
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Created a pull request: https://github.com/open-mercato/cezar/pull/42',
+      result: 'Created a pull request: https://github.com/open-mercato/onni/pull/42',
     });
     store.applyMarkerRefs(run.id, { pr: 500 });
     const loaded = store.getRun(run.id);
@@ -1234,16 +1234,16 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Fixing https://github.com/open-mercato/cezar/issues/433 now.',
+      result: 'Fixing https://github.com/open-mercato/onni/issues/433 now.',
     });
     const loaded = store.getRun(run.id);
-    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/cezar/issues/433');
+    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/onni/issues/433');
     expect(loaded?.issueNumber).toBe(433);
   });
 
   it('keeps issue links from tool output display-only until the agent names them', () => {
     const { store, run } = freshRun();
-    const issueUrl = 'https://github.com/open-mercato/cezar/issues/99';
+    const issueUrl = 'https://github.com/open-mercato/onni/issues/99';
     store.appendEvent(run.id, {
       type: 'item.completed',
       item: {
@@ -1268,10 +1268,10 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
   });
 
   it('seeds an issue link while the run is still queued', () => {
-    const { store, run } = freshRun('Fix https://github.com/open-mercato/cezar/issues/554');
+    const { store, run } = freshRun('Fix https://github.com/open-mercato/onni/issues/554');
     const loaded = store.getRun(run.id);
     expect(loaded?.status).toBe('queued');
-    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/cezar/issues/554');
+    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/onni/issues/554');
     expect(loaded?.issueNumber).toBe(554);
   });
 
@@ -1280,11 +1280,11 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'Opened a draft pull request: https://github.com/open-mercato/cezar/pull/42 closing https://github.com/open-mercato/cezar/issues/7',
+        'Opened a draft pull request: https://github.com/open-mercato/onni/pull/42 closing https://github.com/open-mercato/onni/issues/7',
     });
     const loaded = store.getRun(run.id);
-    expect(loaded?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/42');
-    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/cezar/issues/7');
+    expect(loaded?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/42');
+    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/onni/issues/7');
     expect(loaded?.issueNumber).toBe(7);
   });
 
@@ -1292,14 +1292,14 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     const { store: firstStore, run } = freshRun();
     firstStore.appendEvent(run.id, {
       type: 'result',
-      result: 'See https://github.com/open-mercato/cezar/issues/1',
+      result: 'See https://github.com/open-mercato/onni/issues/1',
     });
     expect(firstStore.getRun(run.id)?.issueNumber).toBe(1);
     firstStore.flush();
     const store = RunStore.open(dataDir, { keepLive: true });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Also https://github.com/open-mercato/cezar/issues/2',
+      result: 'Also https://github.com/open-mercato/onni/issues/2',
     });
     const loaded = store.getRun(run.id);
     expect(loaded?.referencedIssueUrl).toBeUndefined();
@@ -1311,11 +1311,11 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     store.updateRun(run.id, { issueNumber: 12 });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'See https://github.com/open-mercato/cezar/issues/12',
+      result: 'See https://github.com/open-mercato/onni/issues/12',
     });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Also https://github.com/open-mercato/cezar/issues/433',
+      result: 'Also https://github.com/open-mercato/onni/issues/433',
     });
     const loaded = store.getRun(run.id);
     expect(loaded?.referencedIssueUrl).toBeUndefined();
@@ -1327,10 +1327,10 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'Working https://github.com/open-mercato/cezar/issues/433, related to https://github.com/open-mercato/cezar/issues/12.',
+        'Working https://github.com/open-mercato/onni/issues/433, related to https://github.com/open-mercato/onni/issues/12.',
     });
     expect(store.getRun(run.id)?.referencedIssueUrl).toBe(
-      'https://github.com/open-mercato/cezar/issues/433',
+      'https://github.com/open-mercato/onni/issues/433',
     );
   });
 
@@ -1339,11 +1339,11 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'See https://github.com/open-mercato/cezar/issues/1 and https://github.com/open-mercato/cezar/issues/2',
+        'See https://github.com/open-mercato/onni/issues/1 and https://github.com/open-mercato/onni/issues/2',
     });
     store.applyMarkerRefs(run.id, { issue: 2 });
     const loaded = store.getRun(run.id);
-    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/cezar/issues/2');
+    expect(loaded?.referencedIssueUrl).toBe('https://github.com/open-mercato/onni/issues/2');
     expect(loaded?.issueNumber).toBe(2);
   });
 
@@ -1352,7 +1352,7 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     store.applyMarkerRefs(run.id, { issue: 500 });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Mentioned in https://github.com/open-mercato/cezar/issues/9',
+      result: 'Mentioned in https://github.com/open-mercato/onni/issues/9',
     });
     expect(store.getRun(run.id)?.issueNumber).toBe(500);
   });
@@ -1580,7 +1580,7 @@ describe("RunStore — a task never adopts another repository's ref (#945)", () 
         task: 'task',
         referencedPullRequestUrl: undefined,
         referencedPrCandidates: [
-          'https://github.com/open-mercato/cezar/pull/1',
+          'https://github.com/open-mercato/onni/pull/1',
           'https://github.com/supabase/cli/pull/6056',
         ],
       });
@@ -1612,7 +1612,7 @@ describe("RunStore — a task never adopts another repository's ref (#945)", () 
     store.appendEvent(run.id, {
       type: 'result',
       result:
-        'Compare https://github.com/open-mercato/cezar/pull/1 with https://github.com/supabase/cli/pull/6056.',
+        'Compare https://github.com/open-mercato/onni/pull/1 with https://github.com/supabase/cli/pull/6056.',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBeUndefined();
   });

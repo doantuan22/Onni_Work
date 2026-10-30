@@ -5,12 +5,12 @@ Provider contract extending [outbound webhooks](2026-10-12-outbound-webhooks.md)
 ## Goal
 
 A user pastes a Slack **Incoming Webhook URL** into Settings → Webhooks and gets readable task
-notifications in a Slack channel — no relay, no cezar-managed Slack app or OAuth (the user installs an Incoming Webhook app in Slack). Admission, grace, freshness, retries, suspension, history, privacy profiles and ownership
+notifications in a Slack channel — no relay, no onni-managed Slack app or OAuth (the user installs an Incoming Webhook app in Slack). Admission, grace, freshness, retries, suspension, history, privacy profiles and ownership
 use the shared webhook pipeline.
 
 ## Out of scope
 
-Cezar-managed Slack app / OAuth / bot token, channel picker, interactive buttons or answering a question from
+Onni Work-managed Slack app / OAuth / bot token, channel picker, interactive buttons or answering a question from
 Slack, threading per task, mentions, per-event channels, Teams, GovSlack
 (`hooks.slack-gov.com`).
 
@@ -19,12 +19,12 @@ Slack, threading per task, mentions, per-event channels, Teams, GovSlack
 ### 1. Receiver format (contract)
 
 - `packages/contract/src/webhooks.ts`: receiver `format` is
-  `z.enum(['cezar.json.v1', 'slack.v1', 'discord.v1']).default('cezar.json.v1')`
-  in private settings and public responses. An omitted format means `cezar.json.v1`.
+  `z.enum(['onni.json.v1', 'slack.v1', 'discord.v1']).default('onni.json.v1')`
+  in private settings and public responses. An omitted format means `onni.json.v1`.
   Slack renders the event defined by `webhookEventSchema` / `webhooks.schema.json`.
 - Refinement: `format === 'slack.v1'` ⇒ URL is `https://hooks.slack.com/services/<T…>/<B…>/<token>`
   (exact host, no port/query) and `allowLocalNetwork === false`. A `hooks.slack.com` URL with
-  `format: 'cezar.json.v1'` is rejected with "Choose Slack as the destination type" — it could only
+  `format: 'onni.json.v1'` is rejected with "Choose Slack as the destination type" — it could only
   ever answer `400 invalid_payload`.
 - `endpoints.ts`: `format` belongs to the delivery-relevant `fields` list, so changing it resets the
   receiver to `inactive` like any other delivery change.
@@ -33,8 +33,8 @@ Slack, threading per task, mentions, per-event channels, Teams, GovSlack
 ### 2. Rendering (`webhooks/slack.ts`)
 
 `renderSlackMessage(eventJson: string, ctx): string` takes the **already rendered, redacted,
-profile-filtered** cezar event body and maps it to Slack JSON. Privacy stays single-source: Slack
-can never see a field the cezar payload for that profile would not carry.
+profile-filtered** Onni Work event body and maps it to Slack JSON. Privacy stays single-source: Slack
+can never see a field the Onni Work payload for that profile would not carry.
 
 - `text` (fallback / notification line): `<label> · <title or task id8> · <projectId>`.
 - `blocks`: one `section` (mrkdwn: label, title, status `previous → current`), one `context`
@@ -45,14 +45,14 @@ can never see a field the cezar payload for that profile would not carry.
   `Task failed`, `Task cancelled`, `Test message`).
 - Escape `&`, `<`, `>` in every interpolated string; clip each text block to 2900 chars and the
   question list to what fits; whole body ≤ 40 KB (Slack limit) — fallback to `text` only.
-- `webhook.test` → "cezar is connected to this channel" with the receiver name.
+- `webhook.test` → "Onni Work is connected to this channel" with the receiver name.
 
 ### 3. Send path
 
-- Snapshot `format` on the delivery record (optional field, default cezar) at admission, so a
+- Snapshot `format` on the delivery record (optional field, default Onni Work) at admission, so a
   retry renders what was admitted even if the receiver is later edited.
 - `service.ts`: if `format === 'slack.v1'`,
-  wrap the cezar body with `renderSlackMessage`. Retained delivery storage keeps the canonical cezar JSON; history exposes metadata only.
+  wrap the Onni Work body with `renderSlackMessage`. Retained delivery storage keeps the canonical Onni Work JSON; history exposes metadata only.
 - `transport.ts`: for Slack, send `content-type: application/json` without `webhook-id` /
   `webhook-timestamp` / `webhook-signature` (the URL itself is the secret; Slack ignores them and
   signing a body nobody verifies only adds confusion). DNS pinning, no redirects, 10 s timeouts,
@@ -65,7 +65,7 @@ can never see a field the cezar payload for that profile would not carry.
 
 ### 4. Cockpit (`webhook-form.tsx`, `webhook-card.tsx`)
 
-- First field **Destination**: "Custom receiver (signed cezar JSON)" / "Slack channel
+- First field **Destination**: "Custom receiver (signed Onni Work JSON)" / "Slack channel
   (Incoming Webhook)" / "Discord channel (Webhook URL)".
 - Slack: placeholder `https://hooks.slack.com/services/…`, one sentence + link to Slack's
   "Sending messages using incoming webhooks" page, local-network checkbox hidden, JSON preview

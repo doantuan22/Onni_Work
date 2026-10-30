@@ -12,7 +12,7 @@
 CPU/Mem. Nothing aggregates the host: `health` carries version/repo/capabilities only, and the
 codebase never reads `os.totalmem`, `os.freemem`, `os.loadavg` or `os.cpus()`. A user watching a
 fan-out sees which task eats memory but not whether the machine is at 90% CPU or low on RAM. The
-owner asked for a live, visual view of "jak wyglądają zasoby maszyny, na której pracuje Cezar".
+owner asked for a live, visual view of "jak wyglądają zasoby maszyny, na której pracuje Onni Work".
 
 ## Agreed direction
 

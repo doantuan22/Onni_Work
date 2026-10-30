@@ -6,7 +6,7 @@ and a workflow; each task runs in its own git worktree, is streamed live (steps,
 tokens, diffs), ends at a review gate, and can be pushed as a draft PR through `gh`.
 
 Everything is local: no accounts, no database, no cloud. State is plain JSON, NDJSON and
-Markdown under `.ai/cezar/`.
+Markdown under `.ai/onni/`.
 
 ## What this repository is
 
@@ -20,8 +20,9 @@ project with its own desktop-first surface. Upstream services are not used:
 - the GitHub star-count chip, its one-time toast and `GET /api/v1/star-count` are removed; no
   request to github.com is made.
 
-Internal identifiers (`cez`, `.ai/cezar`, `~/.cezar`, `ONNI_*`, the `@open-mercato/*` package
-scope) are unchanged. See `NOTICE` for attribution and `CHANGELOG.md` for this fork's history.
+Internal identifiers use `onni`: the `onni` command, `.ai/onni/`, `~/.onni/`, `~/.cache/onni/`,
+the `ONNI_*` environment variables and the `@onni/*` package scope. See `NOTICE` for attribution
+and `CHANGELOG.md` for this fork's history.
 
 ## Layout
 

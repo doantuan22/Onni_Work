@@ -4,13 +4,13 @@ Status: approved in design review · Date: 2026-07-22
 
 ## Summary
 
-cezar currently knows whether the Claude Code, Codex, OpenCode, and pi executables are installed,
+Onni Work currently knows whether the Claude Code, Codex, OpenCode, and pi executables are installed,
 but it treats an installed CLI as runnable even when that CLI has no usable provider
 credentials. The task composer then offers an agent that fails only after a run starts, while
 Settings → Agents cannot explain or repair the missing authentication.
 
 This feature adds a same-origin, host-wide provider-status API and extends Settings → Agents
-with provider connection cards. cezar asks each vendor CLI for its own authentication status;
+with provider connection cards. Onni Work asks each vendor CLI for its own authentication status;
 it never reads credential files or handles tokens. When no CLI reports usable credentials, a
 compact, non-dismissible banner links directly to the provider controls, and task surfaces stop
 offering disconnected providers.
@@ -28,18 +28,18 @@ user explicitly asks to check again.
 - Reuse credentials automatically by continuing to launch each runner as the same host user;
   no token injection or credential copy is necessary.
 - Guide local users through the vendor's login flow and give hosted users an exact command to
-  run on the cezar host.
+  run on the Onni Work host.
 - Keep provider setup inside the existing Settings → Agents page.
 - Make disconnected providers unavailable in task and follow-up runner pickers.
 - Preserve zero configuration, dry-run behavior, and graceful degradation.
 
 ## Non-goals
 
-- cezar does not implement, proxy, or embed a third-party OAuth flow.
-- cezar does not read Keychain entries, credential JSON, environment-secret values, emails,
+- Onni Work does not implement, proxy, or embed a third-party OAuth flow.
+- Onni Work does not read Keychain entries, credential JSON, environment-secret values, emails,
   organizations, subscription tiers, or provider tokens.
-- cezar does not install missing CLIs automatically.
-- cezar does not validate billing, quotas, model access, or network reachability. A connected
+- Onni Work does not install missing CLIs automatically.
+- Onni Work does not validate billing, quotas, model access, or network reachability. A connected
   credential can still fail later for reasons only the provider can diagnose.
 - Request shapes remain compatible, but every new agent-starting action now applies a
   provider-availability gate before it starts a runner. A request that requires a disabled
@@ -68,7 +68,7 @@ unrecognized future output degrades to `unknown` rather than guessing.
 
 `connected` means the CLI found provider-owned stored credentials, including OAuth where the CLI
 supports it. In Settings this is presented as **Credentials found** with a green dot; it is not a
-claim that the next model request will succeed. cezar deliberately trusts the CLI's effective
+claim that the next model request will succeed. Onni Work deliberately trusts the CLI's effective
 discovery answer instead of trying to classify or reproduce the vendor's credential-precedence
 rules.
 
@@ -232,7 +232,7 @@ Behavior:
 - If no terminal emulator can be opened, the route returns 409 with a human error and the exact
   copyable `command`.
 - When `capabilities.localHandoff` is false, the route never attempts a local GUI launch. It
-  returns 409 with the command and tells the user to run it on the cezar host.
+  returns 409 with the command and tells the user to run it on the Onni Work host.
 - Invalid JSON or provider ids return
   `400 { error: 'provider must be claude, codex, opencode, or pi' }`.
 - If the selected provider row cannot be found after a fresh probe, the route returns
@@ -241,7 +241,7 @@ Behavior:
   terminal-launch cases.
 
 Launching the vendor CLI is the maximum safe automation: the CLI owns browser authorization,
-callback handling, credential storage, and consent. cezar neither observes nor receives the
+callback handling, credential storage, and consent. Onni Work neither observes nor receives the
 resulting token.
 
 ### `PUT /api/providers/:provider/enabled`
@@ -297,7 +297,7 @@ shows a toast explaining that the vendor flow must be completed there. A 409 car
 reveals a copyable manual command; other failures use the server's message verbatim. Check again
 uses `GET /api/providers/status?refresh=1` and refreshes discovery only. Try again posts the
 visible opaque `authFailureId` to the retry route only when that current runtime incident exists;
-it explains that cezar cannot validate the credential without a later task/model request.
+it explains that Onni Work cannot validate the credential without a later task/model request.
 
 The existing project-specific Default runner and Default models controls remain where they are.
 Every provider stays visible for discoverability, but controls for anything other than
@@ -352,7 +352,7 @@ because config-file visibility depends on installation rather than login.
 - Connect is gated by `localHandoff`, matching other open-on-this-machine capabilities.
 - Credential files, keychains, tokens, account identifiers, and raw command output never cross
   the API boundary.
-- Probe failures degrade per provider; they never prevent cezar from booting.
+- Probe failures degrade per provider; they never prevent Onni Work from booting.
 
 ## Compatibility and zero configuration
 

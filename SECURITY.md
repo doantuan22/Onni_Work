@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-cezar is pre-1.0, so only the latest minor release line receives security fixes.
+Onni Work is pre-1.0, so only the latest minor release line receives security fixes.
 Please upgrade to the newest release before reporting an issue.
 
 | Version  | Supported          |
@@ -18,7 +18,7 @@ pull requests or discussions.**
 Instead, email **[security@openmercato.com](mailto:security@openmercato.com)** with:
 
 - a description of the vulnerability and its potential impact,
-- the affected version (`cezar --version`) and platform (OS, Node version),
+- the affected version (`onni --version`) and platform (OS, Node version),
 - step-by-step instructions to reproduce it, or a proof of concept,
 - any suggested fix or mitigation, if you have one.
 
@@ -38,14 +38,14 @@ the issue publicly. We will coordinate the disclosure date with you.
 
 ## Scope
 
-cezar is a local tool: the server binds to `127.0.0.1` and state lives in plain
-files under `.ai/cezar/` and `~/.cezar/`. Reports we are especially interested in:
+Onni Work is a local tool: the server binds to `127.0.0.1` and state lives in plain
+files under `.ai/onni/` and `~/.onni/`. Reports we are especially interested in:
 
 - ways for a web page, another local user or a remote host to reach or drive
   the cockpit API (DNS rebinding, CSRF, origin-guard bypasses, WebSocket abuse),
 - command or code execution beyond what a task's agent is already allowed to do,
-- leakage of credentials, tokens or tracker secrets managed by cezar,
-- path traversal or writes outside cezar's own state directories and worktrees.
+- leakage of credentials, tokens or tracker secrets managed by Onni Work,
+- path traversal or writes outside Onni Work's own state directories and worktrees.
 
 Out of scope: actions a coding agent takes with the permissions you granted it,
 vulnerabilities in the agent CLIs themselves (Claude Code, Codex, OpenCode) or

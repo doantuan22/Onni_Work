@@ -1443,8 +1443,8 @@ describe('ThreadView', () => {
         run={run('done', {
           issueNumber: 524,
           markerRefs: { issue: 524 },
-          referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/454',
-          referencedPrCandidates: ['https://github.com/open-mercato/cezar/pull/454'],
+          referencedPullRequestUrl: 'https://github.com/open-mercato/onni/pull/454',
+          referencedPrCandidates: ['https://github.com/open-mercato/onni/pull/454'],
         })}
         thread={reduceThread(EVENTS)}
       />,
@@ -1456,7 +1456,7 @@ describe('ThreadView', () => {
     })
     const footer = document.querySelector('[data-slot="thread-footer"]')
     expect(footer?.querySelector('[data-slot="issue-link"]')?.getAttribute('href')).toBe(
-      'https://github.com/open-mercato/cezar/issues/524',
+      'https://github.com/open-mercato/onni/issues/524',
     )
     expect(footer?.querySelector('[data-slot="issue-link"]')?.textContent).toContain('Issue')
     expect(footer?.querySelector('[data-slot="pr-link"]')).toBeNull()
@@ -1479,7 +1479,7 @@ describe('ThreadView', () => {
     renderView(<ThreadView run={issueRun} thread={reduceThread(EVENTS)} />, undefined, health)
     await waitFor(() => {
       expect(document.querySelector('[data-slot="issue-link"]')?.getAttribute('href')).toBe(
-        'https://github.com/open-mercato/cezar/issues/524',
+        'https://github.com/open-mercato/onni/issues/524',
       )
     })
     cleanup()
@@ -1500,7 +1500,7 @@ describe('ThreadView', () => {
   it('a PR-subject closed run still gets its PR link and no invented issue link (#526)', () => {
     renderView(
       <ThreadView
-        run={run('done', { pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/900' })}
+        run={run('done', { pullRequestUrl: 'https://github.com/open-mercato/onni/pull/900' })}
         thread={reduceThread(EVENTS)}
       />,
       undefined,
@@ -1508,7 +1508,7 @@ describe('ThreadView', () => {
     )
     const footer = document.querySelector('[data-slot="thread-footer"]')
     expect(footer?.querySelector('[data-slot="pr-link"]')?.getAttribute('href')).toBe(
-      'https://github.com/open-mercato/cezar/pull/900',
+      'https://github.com/open-mercato/onni/pull/900',
     )
     expect(footer?.querySelector('[data-slot="issue-link"]')).toBeNull()
   })

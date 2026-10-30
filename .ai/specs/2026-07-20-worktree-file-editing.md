@@ -57,7 +57,7 @@ mutating file-adjacent routes are git-level (`POST /api/runs/:id/git/commit`,
 `/git/push`) or hand off to an external editor (`POST /api/runs/:id/open-in`),
 which needs a local desktop and is disabled in hosted mode anyway.
 
-From #515: *"It would be great to edit the files inside cezar — sometimes it is
+From #515: *"It would be great to edit the files inside Onni Work — sometimes it is
 faster to do manually like changing one variable."* Today that one variable
 costs a full agent turn: a prompt, a model round-trip, tokens, and tool-call
 latency — to do what a two-second keystroke would, in a file the user already
@@ -139,7 +139,7 @@ One additive write route, one small read route, one shared resolver, one reused 
   mode. A crashed write cannot truncate a source file. `src/runs/store.ts` is
   the precedent for the *pattern* only — `store.ts:689-692` uses a **fixed**
   tmp name and does **not** preserve mode, so both the randomized
-  `.<file>.cez-tmp-<rand>` name and the mode preservation are **new work with
+  `.<file>.onni-tmp-<rand>` name and the mode preservation are **new work with
   their own tests**, not inherited behavior.
 - **Overwrite only — no file creation.** A nonexistent path resolves to
   `missing` and is refused (`409`), and `baseHash` is required from day one, so
@@ -294,7 +294,7 @@ open the parent directory once and perform the write and rename relative to
 that descriptor — `openat`/`renameat` semantics. Node's `fs` exposes no
 dirfd-relative operations: no `openat`, no `renameat`, no `AT_FDCWD`
 equivalent; `FileHandle` has no path-relative methods. The `/proc/self/fd/`
-emulation is Linux-only and cezar supports macOS. `O_NOFOLLOW` (which Node does
+emulation is Linux-only and Onni Work supports macOS. `O_NOFOLLOW` (which Node does
 expose) constrains only the final component and does not bind the subsequent
 `rename()`, which re-resolves the parent by name regardless. So a real fix
 means a native addon — disproportionate here.
@@ -369,7 +369,7 @@ No `content`. Two independent reasons, either of which is sufficient:
   caps the *number* of runs (`MAX_RUNS_KEPT = 300`), never one event file's size.
 
 **Recovery — a bounded snapshot beside the event.** The exact bytes go to
-`.ai/cezar/runs/<id>-edits/<hex>`, written unredacted by the same atomic
+`.ai/onni/runs/<id>-edits/<hex>`, written unredacted by the same atomic
 tmp+rename. The `-edits` suffix follows the established per-run layout — every
 existing artifact is a flat sibling (`runs/<id>.ndjson`,
 `runs/<id>.handoff.md`, `runs/<id>-images/`, `store.ts:639-652`), documented at
@@ -395,7 +395,7 @@ existing artifact is a flat sibling (`runs/<id>.ndjson`,
 - **One case where that argument does not hold, stated rather than glossed:**
   when the worktree is reclaimed under retention (#483, §Edge Cases), the
   snapshot **outlives its source** and becomes the only persistent unredacted
-  copy — inside `.ai/cezar/`, which is what `ONNI_REDACT_SECRETS` exists to keep
+  copy — inside `.ai/onni/`, which is what `ONNI_REDACT_SECRETS` exists to keep
   clean. Accepted, because a redacted snapshot is not a recovery record at all
   (that is the whole point of the split), and because reclamation already
   destroys the worktree the user would restore into. `ONNI_REDACT_SECRETS=0`
@@ -413,13 +413,13 @@ existing artifact is a flat sibling (`runs/<id>.ndjson`,
 
 **Reading a snapshot back.** Recovery needs a read path, so the snapshot gets
 one route — `GET /api/runs/:id/edits/:hash` (§API Contracts). Without it the
-bytes are recoverable only by hand-navigating `.ai/cezar/`, which is not a
+bytes are recoverable only by hand-navigating `.ai/onni/`, which is not a
 feature. The route validates `:hash` as `^[0-9a-f]{64}$` and reads exactly
 `runs/<id>-edits/<hash>`, so no caller-supplied path fragment reaches the
 filesystem — the same shape as the existing images route (`server.ts:1039-1049`),
 minus its permissiveness.
 
-This does add state under `.ai/cezar/`, which an earlier draft ruled out. That
+This does add state under `.ai/onni/`, which an earlier draft ruled out. That
 was the wrong call: zero config forbids *knobs the user must set*, not internal
 bounded state (the same reasoning as Q5). See Q8.
 
@@ -448,7 +448,7 @@ This is the strongest argument against everything above, and an earlier draft
 did not make it. Stating it properly, because it nearly wins.
 
 `autosaveCommit()` (`src/workflows/run.ts` callers → `git-worktree.ts:234-254`)
-is `status --porcelain` → `add -A` → `commit --no-verify -m "cezar autosave"`.
+is `status --porcelain` → `add -A` → `commit --no-verify -m "onni autosave"`.
 A single `await autosaveCommit(worktree)` after a successful `PUT` would give
 recovery via a real git object and delete, in one line:
 
@@ -456,7 +456,7 @@ recovery via a real git object and delete, in one line:
 - the 20-file / 5 MB eviction policy and the mtime-touch trick it needs,
 - `GET /api/runs/:id/edits/:hash` and its client,
 - the `deleteRun()` / `pruneOldRuns()` changes,
-- the unredacted-store-under-`.ai/cezar/` exposure argued below,
+- the unredacted-store-under-`.ai/onni/` exposure argued below,
 - and the "snapshot expired" UI state.
 
 That is roughly half of Phase 1. `add -A` also covers untracked and ignored
@@ -465,7 +465,7 @@ path — so it is strictly better there, not merely equivalent.
 
 Q4's stated objection ("pollutes the branch") does **not** survive contact with
 the code: on a running task — Q3's primary use case — the branch is already
-being auto-committed wholesale at every turn end, so one more `cezar autosave`
+being auto-committed wholesale at every turn end, so one more `onni autosave`
 commit changes nothing a user would notice.
 
 **Why the snapshot store is kept anyway**, narrowed to the case that actually
@@ -973,7 +973,7 @@ resolution shared.
 | Content grows past the cap in the editor | Refused (`409`); the editor warns as the cap is approached, not only on save. |
 | Request body over the cap | `413` before parsing. |
 | Disk full / EACCES during write | tmp write fails → tmp removed → `500` with the OS message; the original is untouched. |
-| Process dies between tmp write and rename | Original intact; a stray `.<file>.cez-tmp-<rand>` remains. No sweeper — zero-config forbids *required* new state, and a recognizable tmp name is enough. |
+| Process dies between tmp write and rename | Original intact; a stray `.<file>.onni-tmp-<rand>` remains. No sweeper — zero-config forbids *required* new state, and a recognizable tmp name is enough. |
 | File with no resolvable grammar — no usable extension (`Dockerfile`, `.gitignore`) or an unsupported one (`.rb`, `.php`) | `langForPath` → `null` by either route → plaintext in **both** modes, and still fully editable. Highlighting coverage never gates editing (§Syntax highlighting H1, Non-goal). |
 | File longer than `HIGHLIGHT_MAX_LINES` (1500) | Plaintext in edit mode too, matching the preview (§Syntax highlighting H4). Editable up to the byte cap regardless. Note `data-lang` still reports the real language in this state — it does not track the fallback. |
 | **Grammar** chunk fails to fetch while the editor is open | Plaintext now, retried on a later render; `ensureLang` deletes the failed entry and never rejects. The textarea's value and selection are untouched (§Syntax highlighting). |
@@ -1025,7 +1025,7 @@ it carries its own tests.
   `isV2WireEventType` with non-dotted types riding `run-event`
   (`server.ts:1338-1341`), the thread reducer's `default: break`
   (`thread-state.ts:481-486`) renders unknown types as nothing deliberately,
-  and the `cezar run` console switch (`src/index.ts:259-282`) has no default
+  and the `onni run` console switch (`src/index.ts:259-282`) has no default
   branch.
 - **§Security 5's middleware is the one non-additive piece** and is scoped to
   avoid the documented break: mutating methods (plus the new `GET
@@ -1119,7 +1119,7 @@ phase completion.
    `readWorktreePath()`; reject directory / binary / non-UTF-8 / over-cap /
    missing; compare `baseHash`; re-hash from the open descriptor
    immediately before the rename (narrows race 1; race 3 is accepted — see
-   §Concurrency); atomic tmp+rename with a randomized `.<file>.cez-tmp-<rand>` name and
+   §Concurrency); atomic tmp+rename with a randomized `.<file>.onni-tmp-<rand>` name and
    explicit mode preservation (neither is inherited from the `store.ts`
    precedent — see §Proposed Solution); return `{ path, size, hash }`. *Tests (temp dir, no server):* success; traversal; `.git`;
    symlink; symlinked parent; directory target; binary; non-UTF-8; over-cap;

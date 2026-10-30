@@ -12,12 +12,12 @@ pracę ("agent robi, ja dalej koduję u siebie").
 ## UX (jak cep)
 
 - User niczego nie wybiera. Task po prostu **nie dotyka** jego plików —
-  pracuje na branchu `cez/<krótkie-id>` w ukrytym katalogu.
+  pracuje na branchu `onni/<krótkie-id>` w ukrytym katalogu.
 - Na kafelku taska w kolejce: badge `queued (2 w kolejce)`.
 - W szczegółach taska: zakładka **Diff** pokazuje zmiany *tego taska*
   (diff worktree vs branch bazowy) — to jest widok "co agent zrobił".
 - Zmiany trafiają do repo usera wyłącznie przez PR (przycisk w spec 009) —
-  albo ręcznie (`git merge cez/<id>`); komenda do skopiowania w headerze.
+  albo ręcznie (`git merge onni/<id>`); komenda do skopiowania w headerze.
 - Awaryjny czysty tryb: task typu `quick-task` z pytaniem "w moim katalogu?"
   — NIE. Zero opcji. Zawsze worktree, bo prościej *dla usera* jest nie musieć
   rozumieć różnicy.
@@ -26,12 +26,12 @@ pracę ("agent robi, ja dalej koduję u siebie").
 
 1. **Worktree per task** (z lokalnego repo — bez bare clone, jesteśmy już w
    working copy):
-   - `git worktree add -b cez/<id8> .ai/cezar/worktrees/<id> <baseBranch>`
+   - `git worktree add -b onni/<id8> .ai/onni/worktrees/<id> <baseBranch>`
      (baza = bieżący branch w momencie startu; zapisana na tasku),
-   - `.ai/cezar/worktrees/` w generowanym `.gitignore`,
+   - `.ai/onni/worktrees/` w generowanym `.gitignore`,
    - run.cwd = worktree; `--add-dir` bez zmian.
 2. **Autosave-commit** (wzorzec janitora): co 90 s i na końcu taska
-   `git add -A && git commit --no-verify -m "cez autosave"` w worktree —
+   `git add -A && git commit --no-verify -m "onni autosave"` w worktree —
    postęp agenta zawsze odzyskiwalny z historii. Commity autosave squashuje
    krok PR (009) — na razie zostają w branchu.
    *Aneks (2026-07-17, #471):* okresowy timer 90 s jest **opt-in** przez
@@ -62,7 +62,7 @@ pracę ("agent robi, ja dalej koduję u siebie").
 
 - Nowy moduł `src/git-worktree.ts` (~120 LOC): `createWorktree(runId, base)`,
   `removeWorktree`, `autosaveCommit`, `worktreeDiff`, `pruneOrphans` — wszystko
-  `execFile('git')`, wzorowane na `worktree.ts` ze starego cezara + autosave
+  `execFile('git')`, wzorowane na `worktree.ts` ze starego Onni Work + autosave
   z janitora.
 - `src/workflows/run.ts`: kolejka/pump/limit; `cwd` per run; timer autosave
   (clearInterval na końcu); check-steps też w worktree.
@@ -80,7 +80,7 @@ pracę ("agent robi, ja dalej koduję u siebie").
 ## Kryteria akceptacji
 
 - Dwa taski równolegle nie modyfikują working tree usera ani siebie nawzajem.
-- `git branch` po tasku: jest `cez/<id8>` z commitami autosave + final.
+- `git branch` po tasku: jest `onni/<id8>` z commitami autosave + final.
 - Zakładka Diff pokazuje dokładnie zmiany taska.
 - Delete sprząta worktree i branch; restart procesu nie zostawia zombie
   worktrees (prune + raport w logu startowym).
@@ -99,9 +99,9 @@ For a Git repository, an isolated task now has a fail-closed contract:
 - Worktree creation is idempotent for the same task. A registered, valid
   worktree is reused.
 - Stale Git worktree metadata is pruned before creation. If the task branch
-  survived while its worktree directory did not, cezar reattaches that branch
+  survived while its worktree directory did not, Onni Work reattaches that branch
   instead of trying `-b` again and failing with “branch already exists”.
-- An existing managed path is repaired when Git can recover it. Cezar never
+- An existing managed path is repaired when Git can recover it. Onni Work never
   repurposes a worktree registered to another branch.
 - If isolation still cannot be established, the task fails before any workflow
   step or agent process starts. It does not run in the repository root.

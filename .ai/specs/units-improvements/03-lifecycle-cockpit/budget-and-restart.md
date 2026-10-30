@@ -1,8 +1,8 @@
 # 03 — Budget and restart lifecycle
 
-Audit of cezar's mission (units) **budget brake** and **restart recovery** against
+Audit of Onni Work's mission (units) **budget brake** and **restart recovery** against
 `.ai/specs/2026-09-08-units-hierarchy.md` and the code at HEAD `076cead2785891af80b9ea7440bf3be973c0bbfe`
-(branch `cez/6f88c659`, forked from `cez/5a23b3d1`). Every citation below was re-read at HEAD in
+(branch `onni/6f88c659`, forked from `onni/5a23b3d1`). Every citation below was re-read at HEAD in
 this worktree with `sed`/`grep`; line numbers are what I actually saw, not carried over from the
 task order (they matched exactly — see "Verification" at the end).
 
@@ -24,7 +24,7 @@ export function remainingBudgetUsd(parent: RunRecord, children: readonly RunReco
 ```
 
 `budgetUsd - costUsd - Σ children.budgetUsd`. `undefined` parent budget → `undefined` remaining
-(uncapped, engine.ts:61-65's own comment: "the pre-existing behaviour of every cezar run"). It can
+(uncapped, engine.ts:61-65's own comment: "the pre-existing behaviour of every onni run"). It can
 go **negative** — `engine.test.ts:65-67` pins this deliberately ("goes negative rather than
 clamping — an overspent commander must read as overspent"). `children` is `childrenOf(runs,
 parent.id)` (engine.ts:49-51), which is **every** child regardless of status — done, failed,
@@ -88,12 +88,12 @@ explicitly — *"leaves budgetUsd ABSENT when none was given, rather than writin
 `budgetUsd` then means, per §1 above: `remainingBudgetUsd` is `undefined` (uncapped),
 `carveChildBudgets` carves nothing and never refuses a spawn for cost, and `enforceUnitBudget`
 never fires — the mission and every rank spawned under it can spend without limit for as long as it
-keeps ending turns with `CEZ:SPAWN`/`CEZ:MONITORING`/the autonomous nudge.
+keeps ending turns with `ONNI:SPAWN`/`ONNI:MONITORING`/the autonomous nudge.
 
 The brakes that remain with no `budgetUsd` are all **throughput** caps, not **spend** caps:
 `MAX_CHILDREN_IN_FLIGHT = 4` per parent (`engine.ts:29`) and the workspace's `maxParallel` (default
 2, counted across the whole workspace, `run.ts:1082-1088`). Neither bounds total dollars over the
-lifetime of an autonomous run — a flat, non-unit autonomous cezar run has always had this same
+lifetime of an autonomous run — a flat, non-unit autonomous onni run has always had this same
 property, so *by itself* this is not a new regression.
 
 **Explicit recommendation: the zero-config mission is not cost-safe, and this is a real
@@ -104,7 +104,7 @@ the old scenario do now?"* — a flat autonomous run was always one uncapped age
 `CHILD_ROLE`, `engine.ts:21-25`), each of which can itself fan out further, all uncapped, all
 running autonomously (`unit: { autonomous: true }` is forced on every spawned child, `run.ts:1671`)
 with no human turn required to keep going. That is a materially larger blast radius than "the
-pre-existing behaviour of every cezar run" the code comment invokes to justify leaving it
+pre-existing behaviour of every onni run" the code comment invokes to justify leaving it
 uncapped (`engine.ts:63-65`) — the comment is true of one run in isolation, not of the tree the
 same absence of a cap now permits. The composer/API default should not silently multiply an
 already-accepted risk without at least surfacing it; see Proposal P2.
@@ -217,7 +217,7 @@ expect(store.getRun(child.id)?.unit?.role).toBe('legate'); // the unit survives 
 const pending = store.getRun(parent.id)?.unit?.pendingReports ?? [];
 expect(pending).toHaveLength(1);
 expect(pending[0]?.fromRunId).toBe(child.id);
-// No CEZ:REPORT was ever emitted, so the report is synthesised from what the run left.
+// No ONNI:REPORT was ever emitted, so the report is synthesised from what the run left.
 expect(pending[0]?.report.status).toBe('done');
 ```
 
@@ -226,13 +226,13 @@ The child here never ran a single turn — no session, no cost, no steps beyond 
 `done` (`run.ts:1330-1332`), calls `settleSuccess` (`run.ts:4152-4176`, always `status: 'done'` when
 there is no worktree diff or the run is autonomous — every unit child is `autonomous: true`,
 `run.ts:1671`, so `review` never applies to it), then reports. `childSettleReport`
-(`engine.ts:157-189`) has no `own` report to fall back to (the child never emitted `CEZ:REPORT`), so
+(`engine.ts:157-189`) has no `own` report to fall back to (the child never emitted `ONNI:REPORT`), so
 it synthesizes one from `statusToReportStatus('done') → 'done'` (`engine.ts:141-145`) with `result`
 defaulting to the generic string `'no structured report — the run settled without emitting
-CEZ:REPORT'` (`engine.ts:169`). The parent receives that as a **done** report indistinguishable, at
+ONNI:REPORT'` (`engine.ts:169`). The parent receives that as a **done** report indistinguishable, at
 the `status` field, from a child that actually finished its task order. This is the same code path
 as Finding F1's over-budget case — `waiting` is used for at least three distinct reasons (a plain
-`CEZ:ASK`, an over-budget park, or — as this test shows — a child that was still mid-conversation
+`ONNI:ASK`, an over-budget park, or — as this test shows — a child that was still mid-conversation
 with no work of its own yet done), and `recover()` treats every one of them identically as "done."
 
 ---
@@ -247,7 +247,7 @@ with no work of its own yet done), and `recover()` treats every one of them iden
   unconditionally, which only ever produces `'done'` or `'review'` — never anything reflecting
   "parked because it ran out of budget." `reportSettledChildToParent` is then called
   (`run.ts:1343`), and `childSettleReport` (`engine.ts:141-145`, `statusToReportStatus`) maps
-  cezar-status `done`/`review` straight to report-status `'done'`. `units-engine.test.ts:364-379`
+  onni-status `done`/`review` straight to report-status `'done'`. `units-engine.test.ts:364-379`
   establishes that an over-budget park is `status: 'waiting'` with `unit.overBudget: true`;
   `recover-unit.test.ts:136-167` establishes that `recover()`'s `waiting` handling turns *any*
   `waiting` run, unconditionally, into `status: 'done'` plus a `report.status: 'done'` sent
@@ -275,7 +275,7 @@ with no work of its own yet done), and `recover()` treats every one of them iden
   (`run.ts:1251-1266`), which explicitly calls it with the comment "the third terminal transition
   outside `dropActive`" — the `running`-branch sibling has no such call and no such comment.
 - Why it matters: a child that crashes before its agent CLI ever emits a first `session` event (the
-  realistic trigger for "no agent session to resume" on a run cezar itself just marked `running`)
+  realistic trigger for "no agent session to resume" on a run Onni Work itself just marked `running`)
   ends up permanently `status: 'failed'` with no pending report ever written to its parent. A parent
   parked on that child waits for a report that will never arrive — the exact failure mode Q7 exists
   to prevent ("a `waiting` parent with no `ActiveRun` is reachable by none of the live paths"). No
@@ -318,7 +318,7 @@ with no work of its own yet done), and `recover()` treats every one of them iden
 ### P1 — for F1: give restart recovery a way to tell "blocked" apart from "done", and stop settling `overBudget` runs as successes
 
 **Problem.** `recover()`'s `waiting` branch (`run.ts:1328-1344`) has one outcome for three distinct
-situations: a plain `CEZ:ASK` pause, an over-budget park, and a child that never did any work. Only
+situations: a plain `ONNI:ASK` pause, an over-budget park, and a child that never did any work. Only
 the first is actually "the turn was over and the ball was in the user's court," which is the
 branch's own justifying comment (`run.ts:1308-1309`).
 
@@ -332,7 +332,7 @@ if (run.status === 'waiting') {
     // while it was parked, so the cockpit's Guard inbox still surfaces it correctly.
     this.store.appendEvent(run.id, {
       type: 'lifecycle',
-      message: 'cezar restarted — still parked over budget, unchanged',
+      message: 'Onni Work restarted — still parked over budget, unchanged',
     });
     continue; // no settleSuccess, no reportSettledChildToParent — nothing to report, it never settled
   }
@@ -459,5 +459,5 @@ given in the task order and matched exactly at HEAD — no drift to reconcile.
 
 ---
 
-*Generated by a centurion under `.ai/cezar` on `cez/6f88c659`. Read-only audit; no source, test or
+*Generated by a centurion under `.ai/onni` on `onni/6f88c659`. Read-only audit; no source, test or
 other file was modified.*

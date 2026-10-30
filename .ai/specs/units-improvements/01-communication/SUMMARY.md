@@ -1,6 +1,6 @@
 # Units — communication & escalation audit: SUMMARY
 
-> Audit of how units communicate in cezar's mission feature (Caesar → Legate → Centurion, spec
+> Audit of how units communicate in Onni Work's mission feature (Caesar → Legate → Centurion, spec
 > `.ai/specs/2026-09-08-units-hierarchy.md`). Analysis only — nothing outside this directory was
 > modified. All citations verified at HEAD `df73cfa9` unless noted.
 >
@@ -13,7 +13,7 @@
 |---|---|---|
 | `01-downward-lateral-control.md` | downward envelope, lateral/scope, parent→child, `retry_limit` (Q1, Q3, Q5, Q6) | F-D1..F-D8, P-D1..P-D5 |
 | `02-upward-reporting-delivery.md` | upward reports, waiting-child deadlock, delivery ladder (Q2, Q7) | F-U1..F-U7, P-U1..P-U5 |
-| `03-escalation-ladder.md` | the `CEZ:ASK` bypass and the proposed ladder (Q4) | F-E1..F-E7, P-E1..P-E6 |
+| `03-escalation-ladder.md` | the `ONNI:ASK` bypass and the proposed ladder (Q4) | F-E1..F-E7, P-E1..P-E6 |
 
 ## Id mapping
 
@@ -57,7 +57,7 @@ the declaration offsets directly (above); `02` is correct, `03`'s F-E4 has the t
 `03`'s F-E4 conclusion — that the guarantee is expressed through different code shapes in the two
 sites and must be re-verified against both — still stands.
 
-**F2 — A child parked on `CEZ:ASK` is invisible to its parent and still consumes a slot.**
+**F2 — A child parked on `ONNI:ASK` is invisible to its parent and still consumes a slot.**
 Park at `run.ts:3035-3036` / `run.ts:3737-3738`; `TERMINAL_STATUSES` excludes `waiting`
 (`engine.ts:42`) so the report gate `run.ts:1762` returns early; `IN_FLIGHT_STATUSES` **includes**
 `waiting` (`engine.ts:37`) so the spawn cap at `run.ts:1627` still counts it.
@@ -65,7 +65,7 @@ Park at `run.ts:3035-3036` / `run.ts:3737-3738`; `TERMINAL_STATUSES` excludes `w
 (`MAX_CHILDREN_IN_FLIGHT = 4`, `engine.ts:29`), and the commander cannot tell which child is stuck,
 or that any is. **Answer to the task's question: a waiting child does NOT notify its parent.**
 
-**F3 — `CEZ:ASK` bypasses the tree entirely; every rank pages the human.**
+**F3 — `ONNI:ASK` bypasses the tree entirely; every rank pages the human.**
 Guard-inbox membership is `needsGuard: run.status === 'waiting'`
 (`packages/web/src/lib/missions.ts:106`) over a whole-tree walk (`missions.ts:242-252`). No code
 path reads `unit.parentRunId` when an ask fires — contrast `reportSettledChildToParent`, which does
@@ -92,7 +92,7 @@ found, so it appears to be the run's own spend. Either reading yields the same r
 **F5 — Worktree and branch isolation are unenforced; a child can write to the user's checkout and commit to a shared branch.** *(legate, empirical)*
 Demonstrated during this audit: centurion `1477f47a`, scoped to one file in its own worktree, instead
 wrote and committed into the user's **main checkout** on the shared branch `feat/units-mvp` (commit
-`9704bc31`), while its assigned branch `cez/1477f47a` stayed empty at the fork point. Nothing
+`9704bc31`), while its assigned branch `onni/1477f47a` stayed empty at the fork point. Nothing
 detected or prevented it; the run reported `done` and its report claimed the wrong branch. Nothing in
 `spawnChildren` (`run.ts:1607-1699`) constrains where a child writes — the worktree is a *starting*
 cwd, not a boundary.
@@ -102,7 +102,7 @@ the parent's accept/reject/merge protocol and can move a branch a human owns. Pe
 decision, commit `9704bc31` was left in place.
 
 **F6 — An in-flight child lost to a process restart reports nothing; the parent must discover the loss by hand.** *(legate, empirical)*
-The cezar process restarted mid-audit. The SUMMARY centurion vanished leaving no branch, no commit
+The Onni Work process restarted mid-audit. The SUMMARY centurion vanished leaving no branch, no commit
 and no report; `runs.json` shows only three children under this run. The legate found out only by
 searching every branch for the expected file. Ties directly to F7: `recover()` handles runs that
 *exist* at restart, but a spawn that never materialised leaves the parent monitoring a child that was
@@ -191,7 +191,7 @@ durability guarantee; the whole settle path is wrapped in a silent `catch` (`run
 `1823-1826`) whose premise holds only after the pending write at `run.ts:1775-1777`; and
 `autoContinues`/`monitoringWakeups` are in-memory only (`run.ts:264,276`), resetting on restart. No
 mid-flight progress channel exists at all — `grep parentRunId` returns only `run.ts`, `engine.ts` and
-their tests; a `CEZ:REPORT` is stored on the child's own record (`run.ts:1546-1554`) but nothing
+their tests; a `ONNI:REPORT` is stored on the child's own record (`run.ts:1546-1554`) but nothing
 delivers it until settle. The spec accepts that last one as scope.
 
 **Wake-nudge count — the task's second explicit question.** A parked commander receives
@@ -266,7 +266,7 @@ cascade (`run.ts:1837-1845`).
 report `done`; assert a non-unit `waiting` run still settles exactly as `recover-unit.test.ts:136-167`
 pins today.
 
-### P5 — The ladder proper: `CEZ:ESCALATE` / `CEZ:ANSWER`, one rank at a time
+### P5 — The ladder proper: `ONNI:ESCALATE` / `ONNI:ANSWER`, one rank at a time
 **Fixes F3, F15, F16 · Effort L · Risk Medium**
 New unit-only marker pair parsed by `units/markers.ts` through the existing shared `parseMarker`
 helper (`markers.ts:62-89`) — deliberately **not** an extension of `ask.ts`, which is shared non-unit
@@ -277,13 +277,13 @@ Routing: deliver one hop to `unit.parentRunId` through the **same three routes**
 `reportSettledChildToParent` already uses (`deliverMessage` → `enqueueMessage` → `deferMessage`),
 skipping a dead ancestor upward; a question reaches the human only when `irreversible || financial`
 is true at Caesar, or when the round cap trips, or when no live ancestor remains. Answers travel back
-down the same cascade, fired synchronously from the parent's own turn-end on a valid `CEZ:ANSWER`.
+down the same cascade, fired synchronously from the parent's own turn-end on a valid `ONNI:ANSWER`.
 Narrow the Guard filter (`missions.ts:106`) to exclude "waiting on a live ancestor" in the **same
 change**, or the ladder ships as a no-op that re-floods the inbox (F15).
 **Update `CENTURION_PROMPT`/`LEGATE_PROMPT` in the same commit** — without it no model ever emits the
 marker and the ladder is dead on the default path (F16).
 *Default path:* until the prompt lands, nothing emits it and behaviour is byte-for-byte unchanged;
-after it lands, `CEZ:ASK` still works from any rank and still reaches the human, so the escape hatch
+after it lands, `ONNI:ASK` still works from any rank and still reaches the human, so the escape hatch
 never closes.
 *Transitions:* every new edge is one of the eight wake sources enumerated in `03` §4.3 — all
 turn-end-synchronous, no new timer, webhook or process-exit callback. `escalated-waiting` exits on
@@ -320,9 +320,9 @@ a knob.
 *Tests:* identical scopes → one note, both spawn; segment-prefix overlap with an earlier in-flight
 sibling → note; disjoint scopes → no note (false-positive guard).
 
-### P8 — `CEZ:DIRECT`: message, re-scope or stop a running child
+### P8 — `ONNI:DIRECT`: message, re-scope or stop a running child
 **Fixes F9 (the intervention half) · Effort M · Risk Medium**
-`CEZ:DIRECT {"child":"<runId>","action":"message"|"rescope"|"stop","text":"…"}`, parsed in
+`ONNI:DIRECT {"child":"<runId>","action":"message"|"rescope"|"stop","text":"…"}`, parsed in
 `handleUnitMarkers` and acted on before the `ctx.done` return (`run.ts:1556`). Orthogonal to the
 existing precedence — it never sets `spawned`/`overBudget` so it cannot flip the parent's own park
 decision. `stop` reuses `cancel` (`run.ts:2246`); `message`/`rescope` reuse `sendMessage`
@@ -331,7 +331,7 @@ in `IN_FLIGHT_STATUSES`, protecting the review gate.
 *Default path:* inert until the prompts teach it, exactly like P5.
 *Transitions:* adds none — a third caller of two already-tested public methods.
 *Tests:* message delivered without disturbing the parent's park; `stop` cascades; a settled child is
-refused; a non-child run id is refused; `CEZ:DIRECT` + `CEZ:SPAWN` in one turn both take effect.
+refused; a non-child run id is refused; `ONNI:DIRECT` + `ONNI:SPAWN` in one turn both take effect.
 
 ### P9 — Lineage-tracked retries: actually enforce `retry_limit`
 **Fixes F13 · Effort M-L · Risk Medium**
@@ -351,7 +351,7 @@ unaffected.
 - **Surface dropped reports** (F14): return a `droppedCount` from `withPendingReport` and say
   "…and N earlier reports were dropped (cap: 20)" in `pendingReportsBlock`; note once per turn, using
   the existing budget-brake note-once pattern (`run.ts:1585-1591`). Extend `engine.test.ts:172-178`.
-- **A per-mission scope ledger** (F12): rewrite `.ai/cezar/runs/<missionId>/scopes.md` atomically on
+- **A per-mission scope ledger** (F12): rewrite `.ai/onni/runs/<missionId>/scopes.md` atomically on
   every spawn and settle; advisory, readable by any child's own tools. Written state, never required.
 - **Reconcile spawned-vs-recorded children** (F6): at `recover()`, compare the children a parent's
   record implies against the store, and deliver a synthetic `blocked` report for any that vanished.
@@ -372,7 +372,7 @@ unaffected.
 2. **P4 option (a) vs (b).** On restart with an unanswered question: leave the run at `waiting` (more
    honest, but it looks stuck until someone visits `/guard`), or settle it while reporting `blocked`
    (smaller change, but the process ends without the human ever answering)?
-3. **Should the engine refuse a non-Caesar `CEZ:ASK` once the ladder ships?** P5 makes `CEZ:ASK`
+3. **Should the engine refuse a non-Caesar `ONNI:ASK` once the ladder ships?** P5 makes `ONNI:ASK`
    Caesar-only by prompt convention, not enforcement — a centurion can still page the human directly.
    Keep that as a permanent escape hatch, or refuse it with a transcript note?
 4. **Escalation round cap.** Is 3 round-trips right, or should it scale with rank distance (a
@@ -383,5 +383,5 @@ unaffected.
    with "never trade a working default for a knob", or make it configurable for army-sized missions?
 7. **`rescope` as its own action?** In P8 it is `message` with a prefix; keep it labelled for
    transcript legibility, or drop the third enum value?
-8. **Should `retry_of` (P9) and `CEZ:DIRECT` (P8) ship with their prompt changes in the same PR**, so
+8. **Should `retry_of` (P9) and `ONNI:DIRECT` (P8) ship with their prompt changes in the same PR**, so
    they are load-bearing from day one, or land the engine work first and the prompts separately?

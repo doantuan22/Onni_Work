@@ -21,7 +21,7 @@ whatever branch was checked out.
   background, so this adds no default-on network traffic (§ Zero config). Every network call runs
   with `GIT_TERMINAL_PROMPT=0`, `credential.interactive=false` and a 60 s timeout. Under
   `ONNI_DRY_RUN=1`, fetch and push are skipped.
-- **Pull is fast-forward only.** A diverged branch is a 409 that says so. cezar never picks merge
+- **Pull is fast-forward only.** A diverged branch is a 409 that says so. Onni Work never picks merge
   or rebase for the user's own checkout. Sync = pull, then push (VS Code's Sync).
 - **One mutation per checkout** at a time (an in-process queue), so a double-clicked Sync cannot
   race its own pull.
@@ -37,7 +37,7 @@ whatever branch was checked out.
 repo-root lease is granted, it switches the checkout with `createOrSwitchBranch(name, base)`; the
 base comes from `chooseForkBase`, the same fetch-first choice a worktree uses. Doing it after the
 lease means a queued in-place run can never switch the branch under one that is still running.
-The name comes from the user, else the branch namer, else `cez/<id8>`. If the branch already
+The name comes from the user, else the branch namer, else `onni/<id8>`. If the branch already
 exists, the run switches to it. If the switch fails, the run fails before any agent starts.
 `baseBranch` is pinned to the post-switch HEAD, as for every in-place run.
 

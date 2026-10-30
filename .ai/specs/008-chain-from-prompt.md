@@ -17,7 +17,7 @@ lub poprawia jednym gestem i patrzy, jak chain jedzie przez ogniwa.
 - Operacje na planie: **usuń ogniwo (krzyżyk)** i **przeciągnij kolejność**.
   Koniec. Żadnej edycji promptów kroków w v1 (kto chce więcej — YAML).
 - Przycisk **„▶ Start"** pod planem odpala chain. Przycisk **„Zapisz jako
-  chain"** zapisuje YAML do `.ai/cezar/workflows/` (od tej pory jest w
+  chain"** zapisuje YAML do `.ai/onni/workflows/` (od tej pory jest w
   dropdownie jak każdy inny).
 - Stan biegnącego chaina widać tak jak dziś: steps-rail z badge'ami
   (pending → running → done), nic nowego do nauczenia.

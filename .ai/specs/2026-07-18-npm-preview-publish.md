@@ -1,4 +1,4 @@
-# npm preview publishing — snapshot releases from CI (`cezar-cli@<snapshot>`)
+# npm preview publishing — snapshot releases from CI (`onni-cli@<snapshot>`)
 
 Status: proposed · Date: 2026-07-18 · Issue: #482 · Relates: spec 001 (packaging/npx — decided the scoped-package + unscoped-alias split this spec finishes), spec 2026-07-16-server-installer (the `server-deploy` flow that consumes published versions)
 
@@ -9,10 +9,10 @@ Every green CI run publishes an installable npm snapshot of the CLI, so any PR, 
 
 | Event | Published version (example) | dist-tag | How users run it |
 |---|---|---|---|
-| PR #482 synced (same-repo, CI green) | `0.1.5-pr482.123` | `pr-482` | `npx cezar-cli@0.1.5-pr482.123` |
-| push to `develop` | `0.1.5-develop.124` | `develop` | `npx cezar-cli@develop` |
-| push to `main` | `0.1.5-main.125` | `main` | `npx cezar-cli@main` |
-| stable release (owner-driven, unchanged) | `0.1.5` | `latest` | `npx cezar-cli` |
+| PR #482 synced (same-repo, CI green) | `0.1.5-pr482.123` | `pr-482` | `npx onni-cli@0.1.5-pr482.123` |
+| push to `develop` | `0.1.5-develop.124` | `develop` | `npx onni-cli@develop` |
+| push to `main` | `0.1.5-main.125` | `main` | `npx onni-cli@main` |
+| stable release (owner-driven, unchanged) | `0.1.5` | `latest` | `npx onni-cli` |
 
 Publishing is gated on the full existing CI `verify` job (typecheck, unit suites, build,
 packaged-CLI E2E, pack check) — nothing publishes unless everything is green. Each PR
@@ -20,7 +20,7 @@ snapshot posts a sticky PR comment with the **exact version numbers** ready to c
 the comment is generated from the published manifests, so if the package or bin name ever
 changes, the comment stays correct automatically. Alongside, the real package moves to the
 open-mercato npm org: `@pat-lewczuk/cezar` → `@onni/work`, with the unscoped
-`cezar-cli` alias (the name users actually type) unchanged. An admin runbook lists exactly
+`onni-cli` alias (the name users actually type) unchanged. An admin runbook lists exactly
 what to configure on npmjs.com and GitHub (one secret: `NPM_TOKEN`).
 
 Precedent: `open-mercato/open-mercato`'s `npm-snapshot-preview.yml` — this spec adopts its
@@ -29,13 +29,13 @@ triggers automatically after CI instead of `workflow_dispatch`-only.
 
 ## Resolved defaults (Open Questions closed autonomously per issue #482 + brief, 2026-07-18)
 
-- **Q1 — does the npx command name change?** No. `npx cezar-cli` stays the user-facing
+- **Q1 — does the npx command name change?** No. `npx onni-cli` stays the user-facing
   entrypoint; only the scoped implementation package renames (`@pat-lewczuk/cezar` →
-  `@onni/work`). All `npx cezar-cli …` docs stay valid. The brief's "if the npx
+  `@onni/work`). All `npx onni-cli …` docs stay valid. The brief's "if the npx
   command name changes…" contingency is covered structurally: the PR comment renders the
   install line from the actually-published package name + version, never from a hardcoded string.
 - **Q2 — what does `main` publish?** A `main`-channel snapshot under the **`main` dist-tag**
-  (`npx cezar-cli@main` = current main head). `latest` is **never** moved by CI snapshot
+  (`npx onni-cli@main` = current main head). `latest` is **never** moved by CI snapshot
   jobs — auto-moving `latest` on every merge would make each merge a de-facto stable release
   and requires version-bump automation this spec does not introduce. Stable `latest`
   releases remain owner-driven (`npm publish` from a tagged checkout), unchanged. A tag-driven
@@ -49,9 +49,9 @@ triggers automatically after CI instead of `workflow_dispatch`-only.
   secrets; the job additionally guards on
   `github.event.pull_request.head.repo.full_name == github.repository` (defense in depth,
   mirroring open-mercato's `resolve-pr` check). Fork-PR previews are out of scope.
-- **Q5 — both packages or just the alias?** Both, in lockstep. `cezar-cli` is a bin-shim
+- **Q5 — both packages or just the alias?** Both, in lockstep. `onni-cli` is a bin-shim
   that depends on the scoped package, so a snapshot of only the alias would run *old* code.
-  Order: publish `@onni/work@<v>` first, then `cezar-cli@<v>` with its dependency
+  Order: publish `@onni/work@<v>` first, then `onni-cli@<v>` with its dependency
   **pinned exact** (`"@onni/work": "0.1.5-pr482.123"`). Stable releases keep the
   `^` range in the alias.
 - **Q6 — where does the publish job live?** In the existing `.github/workflows/ci.yml` as a
@@ -62,7 +62,7 @@ triggers automatically after CI instead of `workflow_dispatch`-only.
 ## Problem statement
 
 1. **No way to try a PR build.** Today the only installable artifact is whatever the owner
-   last `npm publish`ed by hand (`@pat-lewczuk/cezar@0.1.5` + `cezar-cli@0.1.5`). Reviewers
+   last `npm publish`ed by hand (`@pat-lewczuk/cezar@0.1.5` + `onni-cli@0.1.5`). Reviewers
    and QA cannot `npx` a PR's build; issue #482 asks for the open-mercato-style per-PR
    snapshot so "we can test it on the PR".
 2. **No preview channels.** `origin/develop` exists but CI doesn't even build it, and there
@@ -81,18 +81,18 @@ triggers automatically after CI instead of `workflow_dispatch`-only.
 ### Package naming and ownership
 
 - `package.json` `name`: `@pat-lewczuk/cezar` → **`@onni/work`** (version, bins
-  `cezar`/`cez`, `files`, `publishConfig.access: public` unchanged).
-- `alias-cezar/package.json`: dependency → `@onni/work`; `alias-cezar/bin.js`
-  import → `@onni/work/dist/index.js`. Bins `cezar-cli`/`cezar`/`cez` unchanged.
+  `onni`/`onni`, `files`, `publishConfig.access: public` unchanged).
+- `alias-onni/package.json`: dependency → `@onni/work`; `alias-onni/bin.js`
+  import → `@onni/work/dist/index.js`. Bins `onni-cli`/`onni`/`onni` unchanged.
 - **Migration path** (required by `BACKWARD_COMPATIBILITY.md` §6, which protects the
   package name): after the first successful `@onni/work` stable publish, the admin
   (a) publishes one final `@pat-lewczuk/cezar` patch whose `dist/index.js` re-exports from a
   new dependency on `@onni/work` (so pinned users keep working), and (b) runs
-  `npm deprecate @pat-lewczuk/cezar "moved to @onni/work — npx cezar-cli still works"`.
-  Existing `npx cezar-cli` users are untouched: the alias's next release simply depends on
+  `npm deprecate @pat-lewczuk/cezar "moved to @onni/work — npx onni-cli still works"`.
+  Existing `npx onni-cli` users are untouched: the alias's next release simply depends on
   the new scoped name. `BACKWARD_COMPATIBILITY.md` §6 is updated in the same PR to name
   `@onni/work` as the protected package name and record this migration.
-- `src/server-install/platforms/ubuntu-vps.ts:521` (`OFFICIAL_CLI_PKG = 'cezar-cli'`) and
+- `src/server-install/platforms/ubuntu-vps.ts:521` (`OFFICIAL_CLI_PKG = 'onni-cli'`) and
   `src/server/capabilities.ts` are **unchanged** — the user-facing name doesn't move.
 
 ### Snapshot channels and versions
@@ -116,7 +116,7 @@ with `dist/` + `web/dist` already built by `verify`'s recipe:
 1. `npm version --no-git-tag-version <version>` in the root package.
 2. `npm publish --tag <distTag> --provenance --access public` (prepublishOnly re-runs
    build + `check:pack`, keeping the tarball-integrity gate in the publish path).
-3. Stamp `alias-cezar/package.json` to the same `<version>` and pin the dependency to the
+3. Stamp `alias-onni/package.json` to the same `<version>` and pin the dependency to the
    exact scoped version; `npm publish` the alias with the same `--tag`.
 4. Emit a JSON result (`{ name, aliasName, version, distTag, npxLines }`) to
    `$GITHUB_OUTPUT` for the comment step. Supports `--dry-run` (used on PRs that edit the
@@ -161,7 +161,7 @@ false` (a cancelled half-publish would leave the scoped package without its alia
 If `NPM_TOKEN` is absent (e.g. a fresh fork of the whole repo), the job runs
 `--dry-run` and says so, instead of failing CI.
 
-**Sticky PR comment** (marker `<!-- cezar-npm-preview -->`, updated in place on every
+**Sticky PR comment** (marker `<!-- onni-npm-preview -->`, updated in place on every
 push so a PR accumulates one comment, not thirty), rendered entirely from the publish
 step's JSON output:
 
@@ -170,47 +170,47 @@ step's JSON output:
 
 Try this PR build (exact pinned version — copy-paste as-is):
 
-    npx cezar-cli@0.1.5-pr482.123              # cockpit at http://localhost:4321
-    npx cezar-cli@0.1.5-pr482.123 run "…"      # headless run
-    npx cezar-cli@0.1.5-pr482.123 server-deploy --platform ubuntu-vps   # roll a server to this build
+    npx onni-cli@0.1.5-pr482.123              # cockpit at http://localhost:4321
+    npx onni-cli@0.1.5-pr482.123 run "…"      # headless run
+    npx onni-cli@0.1.5-pr482.123 server-deploy --platform ubuntu-vps   # roll a server to this build
 
-Also tagged: `npm install -g cezar-cli@pr-482` (moving tag for this PR).
-Packages: `cezar-cli@0.1.5-pr482.123` → `@onni/work@0.1.5-pr482.123` (provenance attested).
+Also tagged: `npm install -g onni-cli@pr-482` (moving tag for this PR).
+Packages: `onni-cli@0.1.5-pr482.123` → `@onni/work@0.1.5-pr482.123` (provenance attested).
 ```
 
 **Dist-tag cleanup**: a small separate workflow on `pull_request: [closed]` best-effort
-runs `npm dist-tag rm {cezar-cli,@onni/work} pr-<N>`. Snapshot *versions* stay
+runs `npm dist-tag rm {onni-cli,@onni/work} pr-<N>`. Snapshot *versions* stay
 on the registry (npm allows unpublish only within 72 h and forbids it with dependents —
-we don't try); untagged prerelease versions are inert and never resolved by `npx cezar-cli`.
+we don't try); untagged prerelease versions are inert and never resolved by `npx onni-cli`.
 
 ### Docs and installer touchpoints (updated in the implementing PR)
 
 | File | Change |
 |---|---|
 | `package.json`, `package-lock.json` | `name` → `@onni/work` |
-| `alias-cezar/package.json`, `alias-cezar/bin.js` | dependency + import → `@onni/work` |
+| `alias-onni/package.json`, `alias-onni/bin.js` | dependency + import → `@onni/work` |
 | `src/index.ts:458-460` (`readOwnName`) | fallback name → `@onni/work`, so the npm-registry update check (#368) never queries the deprecated package |
 | `README.md:149` | `npx @pat-lewczuk/cezar` → `npx @onni/work` |
-| `README.md` (Quick start area) | new **Preview builds** subsection: `npx cezar-cli@develop`, `npx cezar-cli@main`, per-PR `pr-<N>` tags + where the PR comment appears |
-| `docs/server-install/README.md`, `ubuntu-vps.md`, `macosx-ngrok.md` | note that `server-deploy` accepts a pinned preview (`npx cezar-cli@<snapshot> server-deploy …`) for testing a PR build on a VPS |
+| `README.md` (Quick start area) | new **Preview builds** subsection: `npx onni-cli@develop`, `npx onni-cli@main`, per-PR `pr-<N>` tags + where the PR comment appears |
+| `docs/server-install/README.md`, `ubuntu-vps.md`, `macosx-ngrok.md` | note that `server-deploy` accepts a pinned preview (`npx onni-cli@<snapshot> server-deploy …`) for testing a PR build on a VPS |
 | `docs/publishing.md` (new) | the admin runbook below + how the snapshot pipeline works, for maintainers |
 | `BACKWARD_COMPATIBILITY.md` §1, §6 | new scoped name, alias unchanged, migration recorded |
 | `.ai/specs/001-packaging-npx.md` | untouched (historical); this spec supersedes its naming clause |
 
-All other `cezar-cli` references (`src/server-install/*`, `src/server/capabilities.ts`,
-`web/app/e2e/empty-states.e2e.ts`, README `npx cezar-cli` lines) are already correct.
+All other `onni-cli` references (`src/server-install/*`, `src/server/capabilities.ts`,
+`web/app/e2e/empty-states.e2e.ts`, README `npx onni-cli` lines) are already correct.
 
 ### Admin runbook — what the owner configures (one-time)
 
-**On npmjs.com** (as an owner of the `open-mercato` org and of `cezar-cli`):
+**On npmjs.com** (as an owner of the `open-mercato` org and of `onni-cli`):
 
 1. Verify the `open-mercato` org exists and your user is an **Owner**.
 2. Give the org control of the unscoped alias (unscoped packages attach to orgs via
-   teams): `npm access grant read-write open-mercato:developers cezar-cli` — run by the
-   current `cezar-cli` owner.
+   teams): `npm access grant read-write open-mercato:developers onni-cli` — run by the
+   current `onni-cli` owner.
 3. Create a **granular access token**: *Read and write*; **Packages and scopes** →
    select the `@open-mercato` scope (with "new packages" allowed — the first
-   `@onni/work` publish comes from CI) **and** the `cezar-cli` package;
+   `@onni/work` publish comes from CI) **and** the `onni-cli` package;
    expiry per your policy (set a calendar reminder; CI fails loudly with `E401/E404`
    when it lapses).
 4. For both packages, Settings → *Publishing access* → **"Require two-factor
@@ -231,7 +231,7 @@ All other `cezar-cli` references (`src/server-install/*`, `src/server/capabiliti
 **After the first stable `@onni/work` publish** (post-merge, manual):
 
 7. Publish the final `@pat-lewczuk/cezar` forwarding patch and run
-   `npm deprecate @pat-lewczuk/cezar "moved to @onni/work — npx cezar-cli still works"`.
+   `npm deprecate @pat-lewczuk/cezar "moved to @onni/work — npx onni-cli still works"`.
 
 The implementing PR's summary comment must repeat steps 1–6 so the admin can configure
 everything before merging (the first post-merge push to `main` is the pipeline's live test).
@@ -260,7 +260,7 @@ The Phase/Step numbering is the execution order for `om-auto-create-pr`
 
 **Phase 1 — Rename and rewire (no publishing yet).**
 1. Rename `package.json` `name` to `@onni/work`; regenerate `package-lock.json`;
-   update `alias-cezar/package.json` dependency and `alias-cezar/bin.js` import; the
+   update `alias-onni/package.json` dependency and `alias-onni/bin.js` import; the
    `readOwnName` fallback (`src/index.ts:458-460`); `README.md:149`. Tests: full suite
    (`test:package` proves the tarball still works), plus the update-check unit coverage
    picking up the new fallback.
@@ -286,8 +286,8 @@ The Phase/Step numbering is the execution order for `om-auto-create-pr`
 - Auto-moving `latest` / auto-version-bump releases from `main` (Q2) and a tag-driven
   `release.yml` — optional follow-up.
 - Fork-PR previews (Q4) and any `workflow_dispatch` republish path — add later if needed.
-- Renaming the `cezar-cli` command or bins (explicitly not happening, Q1).
+- Renaming the `onni-cli` command or bins (explicitly not happening, Q1).
 - Unpublishing/purging old snapshot versions (npm policy makes this a non-goal; dist-tag
   cleanup is the hygiene mechanism).
-- Monorepo/multi-package publishing (open-mercato's lockstep machinery) — cezar is two
+- Monorepo/multi-package publishing (open-mercato's lockstep machinery) — Onni Work is two
   manifests, handled directly.

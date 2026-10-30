@@ -233,11 +233,11 @@ describe('prRepoArgs (gh pr create target)', () => {
   it('opens the PR on the base repo with an owner-qualified head from the fork', async () => {
     const repo = await withUrls({
       origin: 'git@github.com:marta/onni.git',
-      upstream: 'https://github.com/open-mercato/cezar.git',
+      upstream: 'https://github.com/open-mercato/onni.git',
     });
     expect(await prRepoArgs(repo, 'upstream', 'origin', 'onni/ab12cd34')).toEqual([
       '--repo',
-      'github.com/open-mercato/cezar',
+      'github.com/open-mercato/onni',
       '--head',
       'marta:onni/ab12cd34',
     ]);
@@ -247,7 +247,7 @@ describe('prRepoArgs (gh pr create target)', () => {
     const repo = await withUrls({ origin: 'git@github.com:open-mercato/onni.git' });
     expect(await prRepoArgs(repo, 'origin', 'origin', 'onni/x')).toEqual([
       '--repo',
-      'github.com/open-mercato/cezar',
+      'github.com/open-mercato/onni',
       '--head',
       'onni/x',
     ]);

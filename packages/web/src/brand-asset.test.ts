@@ -19,8 +19,8 @@ function fills(svg: string): string[] {
 /**
  * The brand mark is one public file shared by the favicon (`index.html`), the sidebar
  * BrandTile (`/icon.svg`) and — through `packages/desktop`'s `npm run icon` — the desktop app's
- * icon set and splash. The canonical public URL is `/icon.svg`; `/open-mercato.svg` remains as
- * a compatibility alias on the server.
+ * icon set and splash. The canonical public URL is `/icon.svg`; `/onni.svg` is an alias on the
+ * server serving the same bytes.
  *
  * It is a flat VECTOR: a black rounded tile and a white geometric C drawn as polygons. It was a
  * 704px raster embedded in an SVG until the vector artwork arrived (2026-09-28); the raster

@@ -1,5 +1,5 @@
 name: implement-and-e2e
-description: Implement, unit-test, then prove it in a real browser (set up by cezar).
+description: Implement, unit-test, then prove it in a real browser (set up by onni).
 steps:
   - id: deps
     name: Install

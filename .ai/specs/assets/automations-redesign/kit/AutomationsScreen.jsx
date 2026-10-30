@@ -1,4 +1,4 @@
-const { Pill, StatusDot, Button, Icon, Segmented, Input, Textarea, Card, Chip, Kbd, Label, Switch, Select, BranchChip, DropdownMenu, CenteredState, TabBar, TabLink, Sheet } = window.CezarDesignSystem_3b4141;
+const { Pill, StatusDot, Button, Icon, Segmented, Input, Textarea, Card, Chip, Kbd, Label, Switch, Select, BranchChip, DropdownMenu, CenteredState, TabBar, TabLink, Sheet } = window.OnniDesignSystem_3b4141;
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const pad = (n) => String(n).padStart(2, '0');
 const hm = (h, m = 0) => pad(h) + ':' + pad(m);
@@ -204,7 +204,7 @@ function AutomationEditor({ a, onBack, onLog, onSave }) {
   const setS = (p) => setF(x => ({ ...x, sched:{ ...x.sched, ...p } }));
   const type = f.sched.type;
   const preview = nextRuns([{ ...f, enabled:true }], 5);
-  const cli = f.kind === 'github' ? `cez automation add --name "${f.name || 'untitled'}" --on ${f.event} --every ${f.every}m --workflow ${f.workflow} --runner ${f.runner} --prompt "…"` : `cez automation add --name "${f.name || 'untitled'}" --cron "${cronOf(f)}" --workflow ${f.workflow} --runner ${f.runner}${f.autonomous ? ' --autonomous' : ''} --budget ${f.budget}${f.dispatch ? ' --dispatch --max-children ' + f.maxChildren + (f.reviewChild ? ' --review' : '') : ''} --prompt "…"`;
+  const cli = f.kind === 'github' ? `onni automation add --name "${f.name || 'untitled'}" --on ${f.event} --every ${f.every}m --workflow ${f.workflow} --runner ${f.runner} --prompt "…"` : `onni automation add --name "${f.name || 'untitled'}" --cron "${cronOf(f)}" --workflow ${f.workflow} --runner ${f.runner}${f.autonomous ? ' --autonomous' : ''} --budget ${f.budget}${f.dispatch ? ' --dispatch --max-children ' + f.maxChildren + (f.reviewChild ? ' --review' : '') : ''} --prompt "…"`;
   const Section = ({ title, children }) => <Card style={{ padding:'0 24px', gap:0 }}><div style={{ padding:'16px 0 4px', font:'600 14px var(--sans)' }}>{title}</div><div style={{ display:'flex', flexDirection:'column', gap:14, padding:'10px 0 20px' }}>{children}</div></Card>;
   const TimeRow = () => <div style={{ display:'flex', alignItems:'center', gap:8, font:'400 13px var(--sans)', color:'var(--muted-foreground)' }}>at<Input value={pad(f.sched.hour ?? 4)} onChange={(e) => setS({ hour: Math.min(23, Number(e.target.value) || 0) })} style={{ width:56, textAlign:'center', fontFamily:'var(--mono)' }} />:<Input value={pad(f.sched.minute ?? 0)} onChange={(e) => setS({ minute: Math.min(59, Number(e.target.value) || 0) })} style={{ width:56, textAlign:'center', fontFamily:'var(--mono)' }} /><span style={{ fontFamily:'var(--mono)', fontSize:12 }}>Europe/Warsaw</span></div>;
   return (
@@ -246,8 +246,8 @@ function AutomationEditor({ a, onBack, onLog, onSave }) {
                 <Label style={{ font:'500 13px var(--sans)' }}>Autonomous <Switch checked={f.autonomous} onCheckedChange={(v) => set({ autonomous:v })} /></Label>
                 <span style={{ display:'inline-flex', alignItems:'center', gap:6, font:'400 13px var(--sans)', color:'var(--muted-foreground)' }}>budget per run<Input value={f.budget} onChange={(e) => set({ budget:e.target.value })} style={{ width:72, textAlign:'right', fontFamily:'var(--mono)' }} /></span>
               </div>
-              <p style={{ margin:0, font:'400 12px/1.5 var(--sans)', color:'var(--soft-foreground)' }}>Each run is an ordinary cezar task in its own worktree — it queues behind the parallel cap like anything else and never auto-merges.</p>
-              <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:10, borderTop:'1px solid var(--border)', paddingTop:12, font:'400 13px var(--sans)', color:'var(--muted-foreground)' }} title="Let this run start its own subtasks with cez task create — each in a worktree forked off its branch, reporting back into the parent session.">
+              <p style={{ margin:0, font:'400 12px/1.5 var(--sans)', color:'var(--soft-foreground)' }}>Each run is an ordinary onni task in its own worktree — it queues behind the parallel cap like anything else and never auto-merges.</p>
+              <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:10, borderTop:'1px solid var(--border)', paddingTop:12, font:'400 13px var(--sans)', color:'var(--muted-foreground)' }} title="Let this run start its own subtasks with onni task create — each in a worktree forked off its branch, reporting back into the parent session.">
                 <Label style={{ font:'500 13px var(--sans)', color:'var(--foreground)' }}><Icon name="git-fork" size={14} style={{ color: f.dispatch ? 'var(--violet)' : 'var(--soft-foreground)' }} />Dispatch<Switch checked={!!f.dispatch} onCheckedChange={(v) => set({ dispatch:v })} /></Label>
                 {f.dispatch ? <>
                   <span style={{ color:'var(--soft-foreground)' }}>·</span>
@@ -265,13 +265,13 @@ function AutomationEditor({ a, onBack, onLog, onSave }) {
           <div style={{ display:'flex', flexDirection:'column', gap:12, position:'sticky', top:76 }}>
             <Card flush style={{ padding:'12px 0 8px' }}>
               <div style={{ padding:'0 14px 8px', font:'600 11px var(--sans)', letterSpacing:'.05em', textTransform:'uppercase', color:'var(--soft-foreground)' }}>{f.kind === 'github' ? 'How it polls' : 'Next 5 runs'}</div>
-              {f.kind === 'github' ? <p style={{ margin:0, padding:'0 14px 6px', font:'400 12.5px/1.5 var(--sans)', color:'var(--muted-foreground)' }}>Checks GitHub every {f.every} min while cezar is open, through your <code style={{ fontSize:12 }}>gh</code>. No webhook or public URL required.</p> :
+              {f.kind === 'github' ? <p style={{ margin:0, padding:'0 14px 6px', font:'400 12.5px/1.5 var(--sans)', color:'var(--muted-foreground)' }}>Checks GitHub every {f.every} min while Onni Work is open, through your <code style={{ fontSize:12 }}>gh</code>. No webhook or public URL required.</p> :
                 preview.map((u, i) => <div key={i} style={{ display:'flex', gap:10, padding:'5px 14px', font:'400 13px var(--sans)' }}><span style={{ font:'500 12px var(--mono)', color:'var(--foreground)', fontVariantNumeric:'tabular-nums', width:82, whiteSpace:'nowrap', flexShrink:0 }}>{dayName(u.o.day)} {hm(Math.floor(u.o.min/60), u.o.min%60)}</span><span style={{ color:'var(--soft-foreground)', fontSize:11.5, whiteSpace:'nowrap' }}>{rel(u.t)}</span></div>)}
             </Card>
             <Card flush style={{ padding:'12px 14px' }}>
               <div style={{ display:'flex', alignItems:'center', marginBottom:8 }}><span style={{ font:'600 11px var(--sans)', letterSpacing:'.05em', textTransform:'uppercase', color:'var(--soft-foreground)' }}>Copy as CLI</span><Button variant="ghost" size="sm" style={{ marginLeft:'auto', height:24 }}><Icon name="copy" size={12} />Copy</Button></div>
               <pre style={{ margin:0, whiteSpace:'pre-wrap', wordBreak:'break-word', font:'400 11.5px/1.6 var(--mono)', color:'var(--muted-foreground)', background:'var(--card-2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px' }}>{cli}</pre>
-              <p style={{ margin:'8px 0 0', font:'400 11.5px/1.5 var(--sans)', color:'var(--soft-foreground)' }}>Same definition, saved to <code style={{ fontSize:11 }}>.ai/cezar/automations/</code> — commit it to share with the team.</p>
+              <p style={{ margin:'8px 0 0', font:'400 11.5px/1.5 var(--sans)', color:'var(--soft-foreground)' }}>Same definition, saved to <code style={{ fontSize:11 }}>.ai/onni/automations/</code> — commit it to share with the team.</p>
             </Card>
             {a && a.last ? <Card flush style={{ padding:'12px 14px' }}><div style={{ font:'600 11px var(--sans)', letterSpacing:'.05em', textTransform:'uppercase', color:'var(--soft-foreground)', marginBottom:8 }}>Last run</div><div style={{ display:'flex', alignItems:'center', gap:8, font:'400 13px var(--sans)' }}><StatusDot tone={a.last.tone} />{a.last.label}<span style={{ color:'var(--soft-foreground)', fontSize:11.5 }}>{a.last.age}</span><span style={{ marginLeft:'auto', font:'400 12px var(--mono)', color:'var(--muted-foreground)' }}>{a.last.cost}</span></div><div style={{ display:'flex', gap:6, marginTop:10 }}><Button variant="outline" size="sm"><Icon name="play" size={12} />Run now</Button><Button variant="ghost" size="sm" onClick={onLog}><Icon name="scroll-text" size={12} />View log</Button></div></Card> : null}
           </div>
@@ -290,7 +290,7 @@ function TemplatePalette({ onPick }) {
     <Card flush style={{ padding:'0 0 12px' }}>
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, padding:'10px 16px 0', borderBottom:'1px solid var(--border)' }}>
         <TabBar style={{ borderBottom:0, flexShrink:0 }}><TabLink active={tab === 'builtin'} onClick={() => setTab('builtin')}>Built-in</TabLink><TabLink active={tab === 'mine'} onClick={() => setTab('mine')}>From your other projects</TabLink></TabBar>
-        <span style={{ marginLeft:'auto', paddingBottom:8, font:'400 12px var(--sans)', color:'var(--soft-foreground)', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{tab === 'builtin' ? 'Ship with cezar' : 'Registered in ~/.cezar/config.json'}</span>
+        <span style={{ marginLeft:'auto', paddingBottom:8, font:'400 12px var(--sans)', color:'var(--soft-foreground)', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{tab === 'builtin' ? 'Ship with Onni Work' : 'Registered in ~/.onni/config.json'}</span>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:10, padding:'12px 16px 0' }}>
         {items.map((it, i) => <div key={i} style={{ border:'1px solid var(--border)', borderRadius:10, background:'var(--card-2)', padding:'10px 12px', display:'flex', flexDirection:'column', gap:6 }}>

@@ -6,7 +6,7 @@ How to review a diff in this repository. Applies to humans and to the `om-code-r
 
 1. **Correctness of the run lifecycle** — runs, steps, worktrees, sessions. A bug here loses user work.
 2. **Graceful degradation** — the README's core promise: no `gh` → works without PRs, no network → local skills still load, no git repo → tasks run in place, `ONNI_DRY_RUN=1` → everything works offline. A diff that turns a degradation path into an error is a blocker.
-3. **State-file compatibility** — `.ai/cezar/` files outlive the process and the version that wrote them (see `BACKWARD_COMPATIBILITY.md`).
+3. **State-file compatibility** — `.ai/onni/` files outlive the process and the version that wrote them (see `BACKWARD_COMPATIBILITY.md`).
 4. **Security of the local server** — it binds to `127.0.0.1`, but it executes agents with file access; treat every request body as hostile.
 5. **Simplicity** — "every module is meant to be read in one sitting." Push back on new dependencies or abstractions the change doesn't need; browser dependencies must justify their bundle and maintenance cost.
 
@@ -28,16 +28,16 @@ How to review a diff in this repository. Applies to humans and to the `om-code-r
 ### Graceful degradation
 
 - Missing `gh` / no remote / offline: GitHub reads return `{ available: false, reason }`, PR creation returns `{ ok: false, error }` — never a throw, never a 500 for an expected absence.
-- Missing or malformed `.ai/cezar/config.json` behaves exactly like the defaults and never blocks startup (`packages/work/src/config.ts`).
+- Missing or malformed `.ai/onni/config.json` behaves exactly like the defaults and never blocks startup (`packages/work/src/config.ts`).
 - git helpers in `packages/work/src/git-worktree.ts` never throw (except `createWorktree`); check the diff keeps that contract.
 - `ONNI_DRY_RUN=1` paths must still work after the change — that is the offline demo and the de-facto integration test.
 
 ### Security
 
-- No secrets in state files: nothing under `.ai/cezar/` (runs.json, NDJSON events, handoff.md, ui-state.json, config.json) may contain tokens or credentials. `GITHUB_TOKEN` stays in the environment; the launch key stays in the gitignored `launch-key` file and is only served same-origin.
+- No secrets in state files: nothing under `.ai/onni/` (runs.json, NDJSON events, handoff.md, ui-state.json, config.json) may contain tokens or credentials. `GITHUB_TOKEN` stays in the environment; the launch key stays in the gitignored `launch-key` file and is only served same-origin.
 - Server stays on `127.0.0.1`; CORS is for `/api/health` only (bookmarklet discovery, spec 011). Widening either is a blocker.
 - Path handling on user-supplied names: file-serving routes must sanitize (`basename()` as in `/api/runs/:id/images/:file`); workflow names are slugified before becoming filenames. Any user string that reaches a path or a shell needs the same treatment.
-- Spawned processes use `execFile`/`spawn` with argument arrays — never string-interpolated shell commands. Tool access for agents goes through a per-step allowlist (`allowedTools`), but the zero-config default includes unrestricted `Bash` (no `bashAllowlist`), and unapproved tools are denied without prompting (`--permission-mode dontAsk`; `ONNI_APPROVAL_GATE=1` selects `acceptEdits`, but cezar has no cockpit permission response channel) — treat a run as having full shell access in its worktree, not a sandboxed allowlist. Codex, OpenCode, and Cursor don't honor `allowedTools` at all (Codex: its own sandbox, approvals off, network on; OpenCode: everything auto-approved; Cursor: `--force`/`--trust` auto-approves tool use) (#430).
+- Spawned processes use `execFile`/`spawn` with argument arrays — never string-interpolated shell commands. Tool access for agents goes through a per-step allowlist (`allowedTools`), but the zero-config default includes unrestricted `Bash` (no `bashAllowlist`), and unapproved tools are denied without prompting (`--permission-mode dontAsk`; `ONNI_APPROVAL_GATE=1` selects `acceptEdits`, but Onni Work has no cockpit permission response channel) — treat a run as having full shell access in its worktree, not a sandboxed allowlist. Codex, OpenCode, and Cursor don't honor `allowedTools` at all (Codex: its own sandbox, approvals off, network on; OpenCode: everything auto-approved; Cursor: `--force`/`--trust` auto-approves tool use) (#430).
 - Writes that must not clobber use `wx` or tmp+rename; check new file writes follow one of those.
 
 ### State-file and API compatibility
@@ -49,13 +49,13 @@ How to review a diff in this repository. Applies to humans and to the `om-code-r
 ### Code quality
 
 - Comments cite the spec or issue that motivated the code (`spec 006`, `#348`); non-obvious behavior in the diff should too.
-- No new **server runtime** dependencies without strong justification — that dependency budget is hono, @hono/node-server, yaml, zod, smol-toml, ws and proper-lockfile, and nothing else. The list is exhaustive on purpose: adding to it is a review decision, so the commit that widens it updates this line and says why. (`ws` earned its place because Node ships a WebSocket *client* but no server and `@hono/node-server` provides none, so the `/api/ws` subscription bus had no in-tree option — spec `.ai/specs/2026-07-23-websocket-subscriptions.md`. `proper-lockfile` earned its place because reclaiming an abandoned automation lease needs a *synchronous, cross-platform* mutex and Node exposes no advisory-lock API — `flock` is Linux-only and cezar supports Windows and macOS, so the atomic-`mkdir` guard protocol had no in-tree equivalent — #998.) Browser packages are build-time dependencies and must remain locked, bundle-measured, and absent from the installed CLI's runtime dependency graph.
+- No new **server runtime** dependencies without strong justification — that dependency budget is hono, @hono/node-server, yaml, zod, smol-toml, ws and proper-lockfile, and nothing else. The list is exhaustive on purpose: adding to it is a review decision, so the commit that widens it updates this line and says why. (`ws` earned its place because Node ships a WebSocket *client* but no server and `@hono/node-server` provides none, so the `/api/ws` subscription bus had no in-tree option — spec `.ai/specs/2026-07-23-websocket-subscriptions.md`. `proper-lockfile` earned its place because reclaiming an abandoned automation lease needs a *synchronous, cross-platform* mutex and Node exposes no advisory-lock API — `flock` is Linux-only and Onni Work supports Windows and macOS, so the atomic-`mkdir` guard protocol had no in-tree equivalent — #998.) Browser packages are build-time dependencies and must remain locked, bundle-measured, and absent from the installed CLI's runtime dependency graph.
 - Web UI changes belong under `packages/web/` and follow the accepted React 19 + Vite + Tailwind v4 + shadcn/ui architecture. Keep `packages/work/web/dist` reproducible from source, preserve light/dark/system themes and mobile/accessibility behavior, and add unit/component tests for changed behavior. (The legacy vanilla UI was retired in R7; the React cockpit is the only UI, and `/new` is the React composer.)
 - User-facing errors are one human-readable line (the `createDraftPr` pattern), not stack traces.
 
 ## Severity guidance
 
-- **Blocker** (request changes): data loss or corruption in `.ai/cezar/`; a degradation path turned into a hard failure; unvalidated request body on a mutating route; secret written to disk; server exposed beyond localhost or CORS widened; path traversal; breaking a surface in `BACKWARD_COMPATIBILITY.md` without the required path; typecheck/build red.
+- **Blocker** (request changes): data loss or corruption in `.ai/onni/`; a degradation path turned into a hard failure; unvalidated request body on a mutating route; secret written to disk; server exposed beyond localhost or CORS widened; path traversal; breaking a surface in `BACKWARD_COMPATIBILITY.md` without the required path; typecheck/build red.
 - **Major** (request changes unless trivially fixed in-review): incorrect run/step state transitions; SSE replay duplication or event loss; unbounded input reaching files or processes; a schema field added as required when old files carry it as absent.
 - **Minor** (approve with comments): missing spec citation on non-obvious code; inconsistent error shape; naming/style drift; missed `wx`/tmp+rename on a low-stakes write.
 - **Nit**: wording, formatting, comment polish. Never blocks.

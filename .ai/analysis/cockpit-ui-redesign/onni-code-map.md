@@ -1,13 +1,13 @@
-# cezar web cockpit — deep code map
+# Onni Work web cockpit — deep code map
 
-Repo: the repo root (branch `main`). Frontend: `web/index.html` (110 ln), `web/app.js` (3755 ln, vanilla JS, zero deps, no build step), `web/style.css` (1862 ln). Server: `src/server/server.ts` (Hono, 859 ln), served at `127.0.0.1:<port>` (default **4321**; bookmarklets scan 4321–4330). Data dir: `<repo>/.ai/cezar/` (runs.json, `runs/<id>.ndjson`, `<id>.handoff.md`, `<id>-images/`, `todos.json`, `config.json`, `ui-state.json`, `workflows/*.yaml`, launch-key).
+Repo: the repo root (branch `main`). Frontend: `web/index.html` (110 ln), `web/app.js` (3755 ln, vanilla JS, zero deps, no build step), `web/style.css` (1862 ln). Server: `src/server/server.ts` (Hono, 859 ln), served at `127.0.0.1:<port>` (default **4321**; bookmarklets scan 4321–4330). Data dir: `<repo>/.ai/onni/` (runs.json, `runs/<id>.ndjson`, `<id>.handoff.md`, `<id>-images/`, `todos.json`, `config.json`, `ui-state.json`, `workflows/*.yaml`, launch-key).
 
 ---
 
 ## 1. UI inventory — every user-facing feature (must-keep list for redesign)
 
 ### 1.1 Layout skeleton
-- **Persistent left sidebar (318px fixed)**: brand row (open-mercato logo + "cezar" + repo chip), new-task composer, nav tabs, run list (with its own Active/Archived sub-tabs), footer (env chips + theme toggle).
+- **Persistent left sidebar (318px fixed)**: brand row (open-mercato logo + "onni" + repo chip), new-task composer, nav tabs, run list (with its own Active/Archived sub-tabs), footer (env chips + theme toggle).
 - **Main pane**: one `.view` section per tab: `#view-runs` (contains `#detail` AND the swap-in `#runs-table`), `#view-workflows`, `#view-inbox`, `#view-github`, `#view-repo`, `#view-skills`.
 - **`#plan-overlay`**: full-main-area overlay for the proposed chain (moved out of sidebar after 2026-07-11 feedback: "too cramped").
 - Narrow-screen media query exists (sidebar shrinks, splits stack) but no real mobile layout (open issue #354).
@@ -71,22 +71,22 @@ Proposed chain: task line, fallback note ("planner unavailable — single-step p
 `⚖ <title>` header, column per variant: letter, status pill, tokens/cost, `git diff --stat` `<pre>`, handoff Progress excerpt, `✔ Pick this one`. Below: per-variant collapsible full diffs. Pick → winner lands on review gate; losers cancelled/archived/worktrees removed.
 
 ### 1.9 Inbox (spec 007)
-Cards from `.ai/cezar/todos.json` (agent-appended follow-ups): summary, age, action, "source task" link (or "source task deleted"), PR link, suggested skill; buttons `▶ Run` (starts a task — one-step suggested-skill workflow or quick-task; entry then hidden but kept as audit trail) and `Dismiss` (delete). Live updates via fs.watch → SSE `todos`. Badge on nav tab. Issue #355 (closed): actionability.
+Cards from `.ai/onni/todos.json` (agent-appended follow-ups): summary, age, action, "source task" link (or "source task deleted"), PR link, suggested skill; buttons `▶ Run` (starts a task — one-step suggested-skill workflow or quick-task; entry then hidden but kept as audit trail) and `Dismiss` (delete). Live updates via fs.watch → SSE `todos`. Badge on nav tab. Issue #355 (closed): actionability.
 
 ### 1.10 GitHub tab
 - Split view: left list (Issues · N / Pull requests · N sub-tabs, count shows `30+` until the background full fetch of up to 1000 lands; "synced Xm ago" refresh button), right detail.
 - Rows: kind icon (issue green / PR accent), title, #number, author, age, "↗ run queued" flag. **Rows are draggable into the task box** (prefills the same prompt).
 - Detail: meta line (number, kind, author, age, comments, +adds −dels, "open on GitHub ↗"), title, label chips, checks badge (✓ passing / ✗ failing / ○ pending), markdown body, **"Hand this to the agent"** panel: workflow chip row (toggle; click again deselects), skill chips (filter input appears when >10; toggled chips never filtered out — issue #385 wants a searchable dropdown like the composer instead), `▶ Run agent on this issue/PR` + "✓ queued / View in Runs →".
-- Unavailable state: friendly card with reason + "⟳ Try again" (needs `gh` logged in + GitHub remote; "Everything else in cezar works without it").
+- Unavailable state: friendly card with reason + "⟳ Try again" (needs `gh` logged in + GitHub remote; "Everything else in Onni Work works without it").
 
 ### 1.11 Repo tab
 - Header: root · branch · remote (mono).
-- **Agent base branch picker** (`<select>` of local+origin branches, deduped, `cez/*` filtered) → PUT /api/config; hint text re: worktrees + PR target.
+- **Agent base branch picker** (`<select>` of local+origin branches, deduped, `onni/*` filtered) → PUT /api/config; hint text re: worktrees + PR target.
 - **Working tree**: changed-file rows (2-char status badge colored add/delete), "clean"; collapsible "Diff vs HEAD" (rendered diff, capped 400 kB).
 - **Recent commits** (20): rows expand inline to `git show` (message/stat `<pre>` + rendered patch, capped 200 kB) + "View on GitHub ↗" when remote is github. Issues #390 (git look-and-feel) and #360 target this pane.
 
 ### 1.12 Skills tab
-- Split view: left filterable list (name, source tag `cezar|ai|agents|global|team`, description), pinned bottom row "Run from GitHub (bookmarklets)". ⟳ Refresh → POST /api/skills/refresh (git-fetch team repos).
+- Split view: left filterable list (name, source tag `Onni Work|ai|agents|global|team`, description), pinned bottom row "Run from GitHub (bookmarklets)". ⟳ Refresh → POST /api/skills/refresh (git-fetch team repos).
 - Detail: name + source tag, path (+ team repo origin), description, "Used by" (workflows referencing the skill), full skill body `<pre>`.
 - **Bookmarklet panel** (spec 011): explanation, "One-click launch (auto-submit)" checkbox, generic launcher ("prefills the form — nothing starts by itself"), filterable per-skill `⚡ /skill-name` draggable `javascript:` links + Copy buttons; launch key lazy-fetched.
 - Issues: #377 (project skills first + bold, global after unbolded), #384 (list scroll loses selection), #380 (skills autocomplete in every prompt box).
@@ -101,7 +101,7 @@ Cards from `.ai/cezar/todos.json` (agent-appended follow-ups): summary, age, act
 ### 1.14 Chrome / global
 - **Repo chip** (top of sidebar): `repo / branch`, links to forge when the remote is browsable (#366); "no git — tasks run in place". (Issue #369: should live-update on branch switch.)
 - **Env chips** (footer): version chip (amber pulse + `⬆ x.y.z` when npm registry has newer, #368) + one LED chip per check (claude/codex/opencode/gh/git) with hints.
-- **Theme toggle**: mono text button "LIGHT ☼"/"DARK ☾", persists to localStorage `cez-theme`, pre-paint script prevents flash. Issue #378: it's visually cut in half in the footer.
+- **Theme toggle**: mono text button "LIGHT ☼"/"DARK ☾", persists to localStorage `onni-theme`, pre-paint script prevents flash. Issue #378: it's visually cut in half in the footer.
 - **Toast** (`#toast`, 4 s) and **lightbox** (click-anywhere-to-close image zoom).
 - SSE resilience: global stream re-syncs full run list on every (re)connect and on tab-visibility flip; per-run stream dedups replay by `seq`.
 
@@ -114,11 +114,11 @@ Static: `GET /`, `GET /new` (same SPA), `GET /app.js`, `GET /style.css`, `GET /o
 | Method & path | Purpose / request → response |
 |---|---|
 | `GET /api/health` | CORS `*` + OPTIONS preflight (bookmarklet port scan). → `{version, latestVersion?, repoRoot, repo:{root,branch,remote?}\|null, checks:[{name,available,version?,hint?}], defaultRunner}` |
-| `GET /api/launch-key` | `{key}` — bookmarklet auto-start secret (file `.ai/cezar/launch-key`) |
-| `GET /api/skills` | `Skill[]` `{name, description?, body, path, source:'ai'\|'cezar'\|'agents'\|'global'\|'team', team?}` |
+| `GET /api/launch-key` | `{key}` — bookmarklet auto-start secret (file `.ai/onni/launch-key`) |
+| `GET /api/skills` | `Skill[]` `{name, description?, body, path, source:'ai'\|'onni'\|'agents'\|'global'\|'team', team?}` |
 | `POST /api/skills/refresh` | clone/fetch team skills repos, → merged catalog |
-| `GET /api/ui-state` / `PUT /api/ui-state` | GUI prefs in `.ai/cezar/ui-state.json`; schema `{lastTask?:{source:'workflow'\|'skill',ref}, runsView?:'list'\|'table'}` `.passthrough()` — merged, unknown keys survive |
-| `GET /api/workflows` | `{workflows: WorkflowDef[]}` (built-ins + `.ai/cezar/workflows/*.yaml`) |
+| `GET /api/ui-state` / `PUT /api/ui-state` | GUI prefs in `.ai/onni/ui-state.json`; schema `{lastTask?:{source:'workflow'\|'skill',ref}, runsView?:'list'\|'table'}` `.passthrough()` — merged, unknown keys survive |
+| `GET /api/workflows` | `{workflows: WorkflowDef[]}` (built-ins + `.ai/onni/workflows/*.yaml`) |
 | `POST /api/workflows` | `{name, description?, steps?\|skills? (XOR), overwrite?}` → 201 `{path,name}`; 409 `{error, exists:true}` when file exists w/o overwrite |
 | `DELETE /api/workflows/:name` | file workflows only; path-traversal guarded |
 | `POST /api/workflows/parse` | `{yaml}` → normalized `{name, description?, steps}` (server owns YAML parsing; GUI stays dep-free) |
@@ -146,11 +146,11 @@ Static: `GET /`, `GET /new` (same SPA), `GET /app.js`, `GET /style.css`, `GET /o
 | `GET /api/events` | **SSE** global: `run` (summary updates), `run-deleted` `{id}`, `todos` (full array), `usage` (runId→{cpuPct,rssBytes,procCount} map, ~2 s while runs live, never persisted), `ping` 15 s |
 | `GET /api/github?refresh=1&limit=n` | via `gh` CLI, 60 s cache; → `{available, reason?, repo?, syncedAt?, issues:GithubItem[], prs:GithubItem[]}` |
 | `GET /api/repo` | `{info\|null, status[], log[], branches[], baseBranch}` |
-| `PUT /api/config` | `{baseBranch?:string\|null, defaultRunner?}` merged into raw `.ai/cezar/config.json` (user keys survive) |
+| `PUT /api/config` | `{baseBranch?:string\|null, defaultRunner?}` merged into raw `.ai/onni/config.json` (user keys survive) |
 | `GET /api/repo/diff` | working-tree diff vs HEAD (text, 400 kB cap) |
 | `GET /api/repo/commit/:sha` | `git show --stat --patch` text (200 kB cap; sha regex-validated) |
 
-Config file (`.ai/cezar/config.json`, zod, degrade-to-default): `skillsRepos` (default `open-mercato/skills`), `maxParallel` (default 2; non-git = 1), `defaultRunner` (claude), `plannerModel` (sonnet), `baseBranch?`.
+Config file (`.ai/onni/config.json`, zod, degrade-to-default): `skillsRepos` (default `open-mercato/skills`), `maxParallel` (default 2; non-git = 1), `defaultRunner` (claude), `plannerModel` (sonnet), `baseBranch?`.
 
 ---
 
@@ -173,7 +173,7 @@ type AgentEvent =
 ```
 `ContentBlock` (user → agent): `{type:'text',text}` | `{type:'image',source:{type:'base64',media_type,data}}` (Anthropic wire format verbatim).
 
-### 3.2 Persisted `RunEvent` (NDJSON lines, `.ai/cezar/runs/<id>.ndjson`)
+### 3.2 Persisted `RunEvent` (NDJSON lines, `.ai/onni/runs/<id>.ndjson`)
 `{ seq:number, ts:ISO, stepId?:string, type:string, ...fields }` — `type` mirrors AgentEvent **plus engine lifecycle types** appended by RunManager (src/workflows/run.ts):
 - `lifecycle` `{message}` — run started/cancelled/failed, "goal achieved — session closed", restart notes, variant pick/archive, review accepted.
 - `note` `{message}` — worktree ready/failed, `$ command` echoes, degradations.
@@ -191,7 +191,7 @@ RunRecord: id, title, workflow, task, model?, runner?('claude'|'codex'|'opencode
   status: 'queued'|'running'|'waiting'|'review'|'done'|'failed'|'cancelled',
   createdAt, startedAt?, finishedAt?, tokensUsed, costUsd?,
   pullRequestUrl? (regex-sniffed from transcript — "the janitor trick"),
-  worktreePath?, branch? ('cez/<id8>'), baseBranch?,
+  worktreePath?, branch? ('onni/<id8>'), baseBranch?,
   groupId?, variant?('A'|'B'|'C'), peakRssBytes?, peakProcCount?,
   archived, archivedAt?, currentStepId?, error?, steps: StepState[], workflowDef? (for post-restart re-queue #367)
 StepState: id, name, kind('agent'|'check'), status(+ 'pending'|'skipped'), iterations,
@@ -204,7 +204,7 @@ Store: atomic tmp+rename `runs.json` (debounced 300 ms), append-only NDJSON per 
 - **Codex** (`codex app-server`, JSON-RPC 2.0 JSONL over stdio; `initialize` → `thread/start`/`thread/resume` → `turn/start`/`turn/steer`/`turn/interrupt`; sandbox `workspace-write`, approvalPolicy `never`): `item/agentMessage/delta` → text; `item/started`/`item/completed` (non-message item types) → tool-call/tool-result; `thread/tokenUsage/updated` → token-usage; `turn/completed` → turn-end; thread id → session event. No tool allowlist (spec.allowedTools ignored); system prompt prepended to first user message.
 - **OpenCode** (`opencode serve --hostname 127.0.0.1 --port <random 40000–59999>`, bound URL read from stdout, HTTP + `/event` SSE; `POST /session`, `POST /session/:id/message`, `/abort`): `message.part.updated` text parts → per-part-cursor text deltas (assistant-role-filtered); tool parts → tool-call once + tool-result on completed/error; message info tokens/cost → token-usage/cost deltas; model as `provider/model`.
 - Session seam identical across backends: `AgentSession {result, pid, sendMessage, end, interrupt, open}`; `SessionOptions.autoEndAfterFirstTurn` (250 ms reopen window) distinguishes one-shot steps from interactive.
-- **CEZ:DONE** marker (handoff contract): a turn whose text ends with `CEZ:DONE` → manager strips it, closes session, marks done (frees the maxParallel slot; #347). Otherwise turn-end → status `waiting` (needs you).
+- **ONNI:DONE** marker (handoff contract): a turn whose text ends with `ONNI:DONE` → manager strips it, closes session, marks done (frees the maxParallel slot; #347). Otherwise turn-end → status `waiting` (needs you).
 
 ---
 
@@ -247,7 +247,7 @@ Store: atomic tmp+rename `runs.json` (debounced 300 ms), append-only NDJSON per 
 9. **#380 — skills autocomplete**: no `/skill` or @-mention autocomplete in any prompt textarea (composer, message bar, review notes).
 10. **#389 — task list management**: titles are truncated task text, not editable; wants auto-summary titles (editable) + git +/− stats in list and table. RunRecord has no `diffStat` summary field today.
 11. **#390 / #360 — git integration look**: Repo pane is plain rows + `<pre>` diffs; wants a proper git UI (screenshot-driven). #365 wants image previews inside diffs + open-in-system links. #359 PR checkout, #358 label filtering, #356 issues view — GitHub pane growth.
-12. **#369 — repo chip is boot-time-static** (health fetched once in `init()`); branch switches outside cezar never reflect.
+12. **#369 — repo chip is boot-time-static** (health fetched once in `init()`); branch switches outside Onni Work never reflect.
 13. **Inline-style sprawl**: ~40 `style="…"` attributes in app.js templates (spacing, font sizes) — fights any token-driven redesign.
 14. **#354 — no real mobile layout**; single breakpoint only.
 15. General architecture friction for a redesign: all views are innerHTML-string templates re-rendered wholesale with per-view scroll/focus hand-fixes; state is one global mutable object; pill/pills/chips/menus are three separate hand-rolled dropdown systems (`.pill-select`, `.chip-toggle` walls, native `<select>` in Repo).
@@ -257,6 +257,6 @@ Store: atomic tmp+rename `runs.json` (debounced 300 ms), append-only NDJSON per 
 ## 7. Key files
 - UI: `web/index.html`, `web/app.js`, `web/style.css`
 - Server: `src/server/server.ts`, `git.ts`, `github.ts`, `pr.ts`, `launch-key.ts`, `open-in-terminal.ts`
-- Engine: `src/workflows/run.ts` (RunManager: queue/slots, worktrees, review gate, CEZ:DONE, persistImage), `src/workflows/types.ts`, `src/runs/store.ts`
+- Engine: `src/workflows/run.ts` (RunManager: queue/slots, worktrees, review gate, ONNI:DONE, persistImage), `src/workflows/types.ts`, `src/runs/store.ts`
 - Backends: `src/core/agent-runner.ts` (the seam), `claude-cli-runner.ts`, `codex-app-server-runner.ts`, `opencode-server-runner.ts`, `backend-detect.ts`, `process-usage.ts`, `usage.ts`, `runner-factory.ts`, `ndjson.ts`
 - Aux: `src/planner.ts`, `src/todos.ts`, `src/handoff.ts`, `src/skills.ts`, `src/skills-remote.ts`, `src/config.ts`, `src/git-worktree.ts`, `src/index.ts` (CLI, port 4321)

@@ -4,7 +4,7 @@ Prepared using `om-ux-shape` (open-mercato/skills, commit `3fc5a1f`), in **Revie
 
 Project contract: the repository has neither `.uxproof/` nor `UX_REVIEW.md`, so `[PRODUCT]` tags refer to the cockpit code, specification and AGENTS.md. The author's judgments are marked `[ASSUMPTION]`.
 
-> **Revision 2 (October 7, 2026, evening).** The first version recommended removing the “after usage limit resets” option. That recommendation misunderstood the need: I assumed it was about completing a task after exhausting a limit. The actual goal is to **deliberately start a new task only in the next usage window**, even when the current window is not exhausted. A second mistake was assuming cezar could not know the reset time for an account below its limit. It can; the sources are described under “How cezar knows the reset time” below. This revision corrects both assumptions.
+> **Revision 2 (October 7, 2026, evening).** The first version recommended removing the “after usage limit resets” option. That recommendation misunderstood the need: I assumed it was about completing a task after exhausting a limit. The actual goal is to **deliberately start a new task only in the next usage window**, even when the current window is not exhausted. A second mistake was assuming Onni Work could not know the reset time for an account below its limit. It can; the sources are described under “How Onni Work knows the reset time” below. This revision corrects both assumptions.
 
 > **Update, October 8, 2026:** specification v4 applies. Claude and Codex reset sources were confirmed live (§12–§13 of the specification). Codex can return a single seven-day window without a secondary window; mockup scenario 05 covers that case. Earlier references to a required spike are historical. `Plan first` consumes tokens while writing the plan; scheduling defers execution of the approved plan. Title generation for deferred tasks also waits until the scheduled time.
 
@@ -12,16 +12,16 @@ Project contract: the repository has neither `.uxproof/` nor `UX_REVIEW.md`, so 
 
 Keep all three start options: **Now**, **Pick date & time**, **After usage limit resets**. The third lets users preserve the current usage window for their own work and allocate the task to the next window. It must show **the evidence behind its timing**: usage, reset time and observation age. Without those details, users cannot judge whether waiting is worthwhile. Version 1 of the mockup did not show them.
 
-### How cezar knows the reset time — evidence from local binaries
+### How Onni Work knows the reset time — evidence from local binaries
 
 | Backend | Source | Contents | Cost |
 |---|---|---|---|
-| Claude Code 2.1.291 | `rate_limit_event` in the `stream-json` stream cezar already reads (`claude-ui-mapper.ts` skips it in the `default` branch) | `status` (`allowed` / `allowed_warning` / `rejected`), `resetsAt` (Unix seconds), `rateLimitType` (`five_hour`, `seven_day`, …), `utilization`; also `unifiedWindows.five_hour/seven_day` with `utilization` and `resetsAt` (marked `@internal` in the schema) | No additional model call, if the event arrives during a task |
+| Claude Code 2.1.291 | `rate_limit_event` in the `stream-json` stream Onni Work already reads (`claude-ui-mapper.ts` skips it in the `default` branch) | `status` (`allowed` / `allowed_warning` / `rejected`), `resetsAt` (Unix seconds), `rateLimitType` (`five_hour`, `seven_day`, …), `utilization`; also `unifiedWindows.five_hour/seven_day` with `utilization` and `resetsAt` (marked `@internal` in the schema) | No additional model call, if the event arrives during a task |
 | Codex CLI 0.154.0 | App-server method `account/rateLimits/read` and notification `account/rateLimits/updated` | `primary` / `secondary`: `usedPercent`, `windowDurationMins`, `resetsAt` | No tokens; one short-lived app-server process on demand |
 
 `[PRODUCT]` — these shapes were read from schemas embedded in the installed binaries (`claude.exe`, `codex`), **not** from a live stream. At the time of this review, I found no recording of a real `rate_limit_event` on disk. That made live verification the highest-priority next test.
 
-Claude limitation: cezar cannot independently request limits without sending a model request, which would consume tokens and **open a new window**. It therefore knows only the state observed during the last task on that account. Terminal activity outside cezar is invisible to it.
+Claude limitation: Onni Work cannot independently request limits without sending a model request, which would consume tokens and **open a new window**. It therefore knows only the state observed during the last task on that account. Terminal activity outside Onni Work is invisible to it.
 
 ### ✅ What works
 
@@ -104,7 +104,7 @@ Cockpit and engine code were inspected. Usage-limit event schemas were read from
 | Reset known | Fresh observation, five-hour window active | Two-window panel, *Starts at 18:00 or later…*, *Updated 12 min ago…* | Schedule task |
 | Weekly used up | Weekly window is `rejected` | *Weekly limit is used up. The task starts after it resets on Mon, Oct 12, 09:00.* | Schedule task, select another account |
 | Window already over | Last `resetsAt` has passed | *The last limit window ended at 13:00, so this account’s limit has likely renewed. Start now, or pick a time.* Option disabled | Now, Pick date & time |
-| No data (Claude) | cezar has not observed the account's limits | *Cezar learns this account’s limits from its tasks. Run one task on it first, or pick a time.* Option disabled | Now, Pick date & time |
+| No data (Claude) | Onni Work has not observed the account's limits | *Onni Work learns this account’s limits from its tasks. Run one task on it first, or pick a time.* Option disabled | Now, Pick date & time |
 | Checking (Codex) | Read in progress | *Checking usage limits…* (skeleton) | Wait, select another option |
 | Check failed | Read failed | *Couldn’t check usage limits.* + `Retry` | Retry, Pick date & time |
 | Account changed | Different `RunnerPill` selection | Panel reloads for the new account; the previous result never overwrites the new one | As above |
@@ -122,13 +122,13 @@ Cockpit and engine code were inspected. Usage-limit event schemas were read from
 - `[ASSUMPTION]` Claude emits `rate_limit_event` with `resetsAt` even when `allowed` (spike).
 - `[ASSUMPTION]` `unifiedWindows` (`@internal`) may be absent; then show only the window described by public fields (`rateLimitType`, `resetsAt`, `utilization`), without a second row.
 - `[ASSUMPTION]` Codex `account/rateLimits/read` works without consuming tokens or opening a model session.
-- Usage snapshots belong to accounts, not projects: store them under `~/.cezar/` through `cezarHomeDir()`. They may be written but must never be required.
+- Usage snapshots belong to accounts, not projects: store them under `~/.onni/` through `onniHomeDir()`. They may be written but must never be required.
 
 ### ✅ Acceptance criteria
 
 - Given a fresh Claude snapshot (82% / reset 18:00), when I select *After usage limit resets*, I see both windows, *Starts at 18:00 or later…* and observation age; the pill shows `◷ After reset · 18:00`.
 - Given the last reset has passed, selecting this option shows it disabled with an explanation about the renewed limit; Now and date/time selection remain available.
-- Given no Claude account data, cezar makes no model request and disables the option with an explanation.
+- Given no Claude account data, Onni Work makes no model request and disables the option with an explanation.
 - Given an account change while the previous account's read is in progress, the previous result never appears in the panel.
 - Given a task scheduled after reset, when 18:00:30 passes and a slot is free, the task starts exactly once, even with the tab closed.
 - Given a past time, submission is disabled, the draft remains and the selection does not revert to Now.

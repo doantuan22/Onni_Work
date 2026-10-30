@@ -1,14 +1,14 @@
 # Automations — scheduled triggers, the redesigned surface, and creation from a prompt
 
 > Slug: `automations-redesign` · Status: **designed, awaiting implementation** · Source design:
-> `assets/automations-redesign/` (Claude Design export "cezar Automations", 2026-09-14).
+> `assets/automations-redesign/` (Claude Design export "Onni Work Automations", 2026-09-14).
 > Extends `2026-07-25-github-automations.md` (the shipped feature, amended by #801) and absorbs
 > the pending "automations from a prompt" patch (`2026-09-13-automations-from-prompt.md`), which
 > lands on top of this work as its last phase. Delivery: one PR to `main`.
 
 ## 📝 TLDR
 
-A user who wants cezar to do recurring work today can only react to GitHub events (PR opened,
+A user who wants Onni Work to do recurring work today can only react to GitHub events (PR opened,
 issue opened, label changed) through a plain list/editor/log that is off unless
 `ONNI_AUTOMATIONS=1`. The proposed behaviour adds a second trigger kind — **a schedule** (every
 day, weekdays, weekly on a day, every N hours, in the cockpit's local time zone) — turns the
@@ -17,8 +17,8 @@ this-week stats and next/last run, a Week and a Day calendar of upcoming runs, a
 rail, an editor that can start from a template (built-in, or one of your other projects'
 automations), previews the next five runs, carries per-automation dispatch settings and a
 "Copy as CLI" card, and an execution log that shows cost and dispatched child tasks. Every run
-stays an ordinary cezar task in its own worktree, queued behind the parallel cap, never
-auto-merged. The "create an automation from a prompt" patch (built-in skill, `cez automation`
+stays an ordinary onni task in its own worktree, queued behind the parallel cap, never
+auto-merged. The "create an automation from a prompt" patch (built-in skill, `onni automation`
 CLI, system-prompt part) lands last, re-pointed at the extended definition and given a flag
 form beside its JSON form.
 
@@ -26,8 +26,8 @@ form beside its JSON form.
 
 | # | Question | Decision |
 |---|---|---|
-| Q1 | CLI shape | **JSON + flag sugar.** `cez automation create --file|--json|stdin` stays the transport; `cez automation add --name … --cron|--on … --prompt …` builds the same body. "Copy as CLI" prints the flag form when the definition is expressible in flags, the JSON form otherwise. |
-| Q2 | Where definitions live | **Keep the gitignored store** (`.ai/cezar/automations.json`, revision-checked). The card's copy no longer promises a committable file. |
+| Q1 | CLI shape | **JSON + flag sugar.** `onni automation create --file|--json|stdin` stays the transport; `onni automation add --name … --cron|--on … --prompt …` builds the same body. "Copy as CLI" prints the flag form when the definition is expressible in flags, the JSON form otherwise. |
+| Q2 | Where definitions live | **Keep the gitignored store** (`.ai/onni/automations.json`, revision-checked). The card's copy no longer promises a committable file. |
 | Q3 | Budget per run | **Dropped.** No budget field in the editor, no budget in the list's "Runs as" cell. |
 | Q4 | Dispatch per automation | **Dispatch on/off + up to N subtasks → `dispatch.intent.maxSubtasks`; "review child" is a prompt-level instruction**, no contract change. |
 | Q5 | Delivery | **One spec, one PR.** Phases below structure the work and the review, not the PRs. |
@@ -41,7 +41,7 @@ form beside its JSON form.
 
 - **Recurring work has no trigger.** "Bump deps nightly", "sweep failed CI every weekday
   morning", "draft the changelog on Friday" are the automations people ask for first, and the
-  shipped spec lists time triggers as a non-goal. Users fall back to cron + `cezar run`, which
+  shipped spec lists time triggers as a non-goal. Users fall back to cron + `onni run`, which
   bypasses the cockpit's log, receipts, dedupe and review gate.
 - **The feature is invisible.** Since #801 it is off unless an operator sets a variable, so
   almost nobody has seen it, and a repo with no GitHub remote cannot use it at all even for work
@@ -74,7 +74,7 @@ form beside its JSON form.
    automations from the user's other registered projects through one read-only workspace route.
 6. **Prompt-driven creation last.** The pending patch's CLI, built-in skill and system-prompt
    part are applied and adapted: the schema reference names `kind`/`schedule`, the skill's
-   playbook knows both kinds, and `cez automation add` is added as flag sugar.
+   playbook knows both kinds, and `onni automation add` is added as flag sugar.
 
 Alternatives considered: a cron library (full cron expressions) — rejected, four bounded shapes
 cover the design, keep occurrence math testable without a dependency, and a cron string is still
@@ -147,10 +147,10 @@ existing modules or is UI composed from primitives.
    schedule differs).
 3. At due time for a schedule item, `ScheduleRunner.fire(definition, occurrence, now)` under
    the existing project lease. The occurrence's AGE decides the reason — the same rule whether
-   the timer fired on time, the laptop slept, or cezar just booted:
+   the timer fired on time, the laptop slept, or Onni Work just booted:
    - `now − occurrence ≤ 10 min` → `scheduled`;
    - `≤ 24 h` → `catch-up`, fired once for the LATEST missed occurrence only;
-   - older → not fired; log `skipped` "missed N occurrences while cezar was not running".
+   - older → not fired; log `skipped` "missed N occurrences while Onni Work was not running".
    Then reserve the receipt keyed `${automationId}:schedule:${occurrenceIso}` (a second process
    hits the receipt and logs `duplicate`), launch, log the reason with `runId`, and set
    `nextRunAt = nextOccurrence(schedule, max(occurrence, now), tz)`, `lastRunAt = occurrence`,
@@ -251,7 +251,7 @@ optional and absent on schedule rows.
 ### Run provenance (`RunRecord.automationTrigger`, new optional key)
 
 `RunRecord.automation` is **not** loosened: its `githubUrl` stays `z.string().url()` because
-`runs/store.ts:703` parses the WHOLE index with one `safeParse` — a downgraded cezar reading one
+`runs/store.ts:703` parses the WHOLE index with one `safeParse` — a downgraded Onni Work reading one
 record without `githubUrl` would drop every run and re-save an empty index. Schedule and manual
 launches instead carry a new optional key that an older schema strips silently:
 
@@ -318,10 +318,10 @@ spellings), behind the origin guard and the automations gate (now default-on).
 - Both new routes are added to `BACKWARD_COMPATIBILITY.md` §2 and to
   `bc-route-inventory.test.ts`, which fails on an undocumented route.
 
-### CLI (`cez automation`, from the patch, plus)
+### CLI (`onni automation`, from the patch, plus)
 
 ```
-cez automation add --name <name> (--cron "<M H * * *|M H * * 1-5|0 */N * * *|M H * * D>" | --on <event>[,<event>] --every <5m|1h|…>)
+onni automation add --name <name> (--cron "<M H * * *|M H * * 1-5|0 */N * * *|M H * * D>" | --on <event>[,<event>] --every <5m|1h|…>)
                    [--prompt "<text>" | --prompt-file <path>] [--workflow <name>] [--runner claude|codex|opencode]
                    [--model <model>] [--autonomous|--no-autonomous] [--dispatch [--max-subtasks N] [--review-child]]
                    [--label <l>]… [--author <a>]… [--enable]
@@ -436,7 +436,7 @@ soft ellipsis; empty: "Nothing scheduled — GitHub polls still run." 12.5px sof
   `padding 10px 0 20px`.
   1. **Template palette** (`TemplatePalette`, new only, open by default): `Card flush padding 0 0
      12px`; `TabBar` "Built-in" | "From your other projects" with a right caption 12px soft
-     ("Ship with cezar" | "Registered in ~/.cezar/config.json"); grid `repeat(auto-fill,
+     ("Ship with Onni Work" | "Registered in ~/.onni/config.json"); grid `repeat(auto-fill,
      minmax(240px,1fr))` gap 10 `padding 12px 16px 0`; card: `border 1px`, radius 10,
      `bg-card-2`, `padding 10px 12px`, column gap 6: icon (`github`/`clock-3` 13px soft) + name
      600 13px ellipsis + `BranchChip` project name (other-projects tab, right); `when` 11.5px
@@ -466,7 +466,7 @@ soft ellipsis; empty: "Nothing scheduled — GitHub polls still run." 12.5px sof
      `Chip chevron` runner · model · `base: <branch>` (read-only, from `/repo`) — these are the
      composer's `PickerPill`s restyled by the shared `Chip`, reusing `RUNNERS`, `modelsForRunner`
      and the workflow list; right: `Label` "Autonomous" + `Switch`. Note 12px/1.5 soft: "Each run
-     is an ordinary cezar task in its own worktree — it queues behind the parallel cap like
+     is an ordinary onni task in its own worktree — it queues behind the parallel cap like
      anything else and never auto-merges." Dispatch row (top border, `padding-top 12`, hidden
      when `capabilities.dispatch` is off): `git-fork` 14px (violet when on) "Dispatch" `Switch`;
      when on: `·` "up to `Select sm` (1,2,4,6,8) subtasks" `·` `Switch sm` "review child",
@@ -476,12 +476,12 @@ soft ellipsis; empty: "Nothing scheduled — GitHub polls still run." 12.5px sof
 - **Right column** (`position: sticky; top: 76`), gap 12:
   - `NextRunsPreview` `Card flush padding 12px 0 8px`: heading "NEXT 5 RUNS" | "HOW IT POLLS";
     schedule → five rows `padding 5px 14px`: `Thu 04:00` 500 12px mono width 82 + `in 18h` 11.5px
-    soft, computed live from the form; github → "Checks GitHub every N min while cezar is open,
+    soft, computed live from the form; github → "Checks GitHub every N min while Onni Work is open,
     through your `gh`. No webhook or public URL required." 12.5px/1.5 muted.
   - `CopyAsCliCard` `Card flush padding 12px 14px`: "COPY AS CLI" + ghost sm `copy` "Copy" (height
     24) → clipboard + toast; `pre` 11.5px/1.6 mono muted `bg-card-2` border radius 8 `padding 8px
-    10px` wrapping; caption 11.5px soft: "The same definition the cockpit saves — `cez automation
-    schema` prints its shape." Flag form when expressible (§ CLI), else `cez automation create
+    10px` wrapping; caption 11.5px soft: "The same definition the cockpit saves — `onni automation
+    schema` prints its shape." Flag form when expressible (§ CLI), else `onni automation create
     --json '…'`.
   - `LastRunCard` (edit, when `lastRun`): "LAST RUN" heading; `StatusDot` status age (11.5px soft)
     cost right (12px mono muted); buttons outline sm `play` "Run now", ghost sm `scroll-text`
@@ -549,8 +549,8 @@ Screen components (all under `routes/automations/`, one file each, props typed o
 | DST: a `daily 02:30` in a zone that skips 02:30 on spring-forward | `nextOccurrence` resolves the wall time through `zonedWallTimeToUtc`; a non-existent wall time maps to the next valid instant (03:30) once; a repeated wall time on fall-back fires once (the first instant). Tested with `Europe/Warsaw` and `America/New_York` fixtures. |
 | `hours` type across DST | Anchored at 00:00 wall time each day, so a 23- or 25-hour day simply has one fewer/more slot. |
 | Server zone changes between boots | `nextRunAt` is an instant; the next `schedule()` recomputes from the schedule, so the first run after the change lands on the new zone's wall time. Header shows the current zone. |
-| Cezar was down, or the laptop slept, for hours or days | The age rule (Lifecycle §3): one `catch-up` at most when the latest missed occurrence is < 24 h old, else `skipped` with the count; `nextRunAt` advances from `now`, so no burst either way. |
-| Two cezar processes on one project | Existing lease; the loser hits the receipt, logs `duplicate`, advances its own `nextRunAt` and does not count a failure. `setState` is read-modify-write, so neither process clobbers the other's state file. |
+| Onni Work was down, or the laptop slept, for hours or days | The age rule (Lifecycle §3): one `catch-up` at most when the latest missed occurrence is < 24 h old, else `skipped` with the count; `nextRunAt` advances from `now`, so no burst either way. |
+| Two Onni Work processes on one project | Existing lease; the loser hits the receipt, logs `duplicate`, advances its own `nextRunAt` and does not count a failure. `setState` is read-modify-write, so neither process clobbers the other's state file. |
 | Run queue at capacity | The run is created queued (existing scheduler); the log row is `launched` — queued is a run state, not a failure. |
 | Workflow/model/runner missing at fire time | `failed` row with the reason; after 3 consecutive launch failures the automation auto-pauses and the list shows it paused with the last failure. |
 | `task.dispatch` set but `capabilities.dispatch` off | Saved as given; at fire time the run launches WITHOUT dispatch and the log reason says "dispatch is off on this cockpit; ran as a plain task". Never a 409. |
@@ -558,7 +558,7 @@ Screen components (all under `routes/automations/`, one file each, props typed o
 | Edit changes the schedule while a run is queued | The queued run is unaffected; `nextRunAt` recomputes. |
 | Edit switches kind github → schedule | Refused with 409 "change the kind by creating a new automation" — receipts and cursors are kind-specific and a silent swap would orphan them. Duplicate + delete is the path. |
 | Old `automations.json` (no `kind`) | Parses as github; nothing rewritten until the next edit. |
-| Older cezar reads a run launched by a schedule | The run carries `automationTrigger`, an unknown key the older `runRecordSchema` strips; `automation` is absent, so the strict `githubUrl` never fails. `runs.json` stays fully readable on a downgrade. |
+| Older Onni Work reads a run launched by a schedule | The run carries `automationTrigger`, an unknown key the older `runRecordSchema` strips; `automation` is absent, so the strict `githubUrl` never fails. `runs.json` stays fully readable on a downgrade. |
 | `costMetrics` off | `costUsd`, `costUsd7d`, `stats.costUsd` absent; the strip and columns hide; the CLI's `list` prints `—`. |
 | Templates route: a registered project's store is corrupt or unreadable | Skipped with one server warning; the tab shows what could be read. |
 | Copy to clipboard unavailable (non-secure context) | Toast "Copy failed — select the text to copy it"; the `pre` is selectable. |
@@ -758,10 +758,10 @@ time in the server's zone like every other shape.
   elsewhere), an `error` row says the automation is still enabled with nothing left to fire; a
   revision conflict means the user changed it first and stays silent. Run now neither consumes
   nor pauses it.
-- **CLI**: `cez automation add --at "YYYY-MM-DD HH:MM"`; Copy as CLI prints `--at` for a `once`.
+- **CLI**: `onni automation add --at "YYYY-MM-DD HH:MM"`; Copy as CLI prints `--at` for a `once`.
 - **Cockpit**: a `Once` chip with a date picker (default: tomorrow), no cron row, a note when the
   time has passed; the preview shows the single run however far ahead it is.
-- **Compatibility**: additive for every existing file and client. A cezar older than this change
+- **Compatibility**: additive for every existing file and client. An Onni Work older than this change
   ignores a `once` definition as invalid (`loadDefinitions` per-entry salvage, one warning) and
   drops it from `automations.json` on its next definition write — the cost of downgrading across
   a new enum value; the other definitions are untouched.

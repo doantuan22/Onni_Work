@@ -52,7 +52,7 @@ have spent budget on it.
 `unit.pendingReports` (`packages/contract/src/units.ts:86-95`) accumulates on the **parent**
 only, flushed into the parent's own next prompt by `flushPendingReports`
 (`run.ts:1489-1496`) via `pendingReportsBlock` (`engine.ts:202-211`). None of that structured
-text is ever folded into a **new** child's envelope when the parent's next `CEZ:SPAWN` fires —
+text is ever folded into a **new** child's envelope when the parent's next `ONNI:SPAWN` fires —
 whether a second-wave child benefits from a first-wave sibling's findings depends entirely on
 the parent retyping them into a fresh `objective` string.
 
@@ -109,7 +109,7 @@ Every occurrence in the repository (grepped fresh, source only):
 ```
 packages/contract/src/units.ts:144   retry_limit: z.number().int().min(0).max(3).optional(),
 packages/work/src/units/engine.ts:98  if (child.retry_limit !== undefined) lines.push(`- Retry limit: ${child.retry_limit}`);
-packages/work/src/units/prompts.ts:46   CEZ:SPAWN {"children":[{...,"retry_limit":1}]}  (schema restated in prose)
+packages/work/src/units/prompts.ts:46   ONNI:SPAWN {"children":[{...,"retry_limit":1}]}  (schema restated in prose)
 packages/work/src/units/prompts.ts:57   - "retry_limit" — optional integer 0-3.
 packages/work/src/units/prompts.ts:103  ...respawn that piece once, within its retry_limit...
 packages/work/src/units/prompts.ts:132  ...respawn once, within retry_limit, on a transient failure...
@@ -140,8 +140,8 @@ The only two channels that reach a *specific* run mid-flight are `POST /runs/:id
 `run.ts:2582-2639`) and `POST /runs/:id/cancel` (`server.ts:3821`, via
 `cancel`/`cancelDescendants`, `run.ts:2246-2249`, `1837-1845`) — both are HTTP routes a human
 (or the cockpit) calls. `handleUnitMarkers` (`run.ts:1531-1567`) recognizes exactly two markers
-a unit run can itself emit — `CEZ:REPORT` and `CEZ:SPAWN` — plus the pre-existing `CEZ:ASK` /
-`CEZ:MONITORING` / `CEZ:DONE`. A caesar that spawns four legates and, turns later while
+a unit run can itself emit — `ONNI:REPORT` and `ONNI:SPAWN` — plus the pre-existing `ONNI:ASK` /
+`ONNI:MONITORING` / `ONNI:DONE`. A caesar that spawns four legates and, turns later while
 reviewing one report, notices a *different* legate heading somewhere wrong has no marker to say
 so — it can only wait for that legate to settle, right or wrong, and act on the finished report.
 
@@ -168,7 +168,7 @@ export function childTaskEnvelope(
   parent: { id: string; branch?: string; role: UnitRole; missionId: string },
   mission: { objective: string; rootBranch?: string },       // store.getRun(missionId)?.task, rootBranch only when it differs from parent.branch
   siblings: {
-    batch: Array<{ title: string; scope?: string }>;         // the OTHER entries of this same CEZ:SPAWN payload
+    batch: Array<{ title: string; scope?: string }>;         // the OTHER entries of this same ONNI:SPAWN payload
     learned: Array<{ title: string; result: string }>;       // ≤3, newest first, from unit.pendingReports + settled children's unit.report
   },
 ): string
@@ -225,7 +225,7 @@ rest of the run.
 
 **Concrete change**: on every `spawnChildren` call and every child settle
 (`reportSettledChildToParent`, `run.ts:1756-1826`), rewrite one plain-text ledger file at
-`.ai/cezar/runs/<missionId>/scopes.md` (same shared location every worktree can reach by a
+`.ai/onni/runs/<missionId>/scopes.md` (same shared location every worktree can reach by a
 relative path from the repo root — not inside any one child's own worktree checkout), one line
 per child: `- <childId> "<title>" (<status>): <scope | "not stated">`. Rewritten wholesale (tmp
 write + rename, the same atomicity `writeUnitPrompt` already uses at `prompts.ts:248-256`), not
@@ -235,11 +235,11 @@ route, no new port, no daemon.
 
 **Default-path impact**: written state, never required (AGENTS.md §Zero config: "new state may
 be written, never required"). A mission that never uses Units never creates the file; deleting
-`.ai/cezar/runs/` loses only a courtesy ledger, like every other file under that tree.
+`.ai/onni/runs/` loses only a courtesy ledger, like every other file under that tree.
 
 **Transitions out of new state**: none — the ledger has no lifecycle; it is rewritten wholesale
 on every spawn/settle for that `missionId`, read only by an agent's own tool calls, never by
-cezar itself.
+Onni Work itself.
 
 **Tests to pin**: a new case (in `engine.test.ts` or a sibling file) asserting the ledger's
 content after a spawn, after a settle, and that a second mission's ledger under a different
@@ -277,14 +277,14 @@ note; (c) disjoint scopes → no note (regression guard against false positives)
 cost). **Risk**: med — ship the check narrow (exact match + true path-segment prefix only) and
 treat it as a hint for the parent to read, not a gate.
 
-### P-D4 [rank 4] — `CEZ:DIRECT`: message, rescope or stop a running child
+### P-D4 [rank 4] — `ONNI:DIRECT`: message, rescope or stop a running child
 
 **Problem**: F-D8 — a parent can spawn and wait; it cannot reach a specific running child once
 spawned. The only existing stop lever, `POST /runs/:id/cancel` (`server.ts:3821`), is
 human/cockpit-only.
 
-**Marker**: `CEZ:DIRECT {"child":"<runId>","action":"message"|"rescope"|"stop","text":"…"}`,
-parsed the same way `CEZ:SPAWN`/`CEZ:REPORT` are (a twin of `SPAWN_MARKER_RE` in
+**Marker**: `ONNI:DIRECT {"child":"<runId>","action":"message"|"rescope"|"stop","text":"…"}`,
+parsed the same way `ONNI:SPAWN`/`ONNI:REPORT` are (a twin of `SPAWN_MARKER_RE` in
 `packages/work/src/units/markers.ts`).
 
 **Schema** (`packages/contract/src/units.ts`, alongside `unitSpawnSchema`):
@@ -302,15 +302,15 @@ a silently-dropped one is unsafe, not a statement to render as-is (the asymmetry
 
 **Turn-end site**: inside `handleUnitMarkers` (`run.ts:1531-1567`), called from both existing
 sites — `run.ts:2960` (`runContinuation`) and `run.ts:3688` (`runAgentStep`) — no third call
-site. Parsed and acted on right after the `CEZ:REPORT` block and **before** the
-`if (ctx.done) return` line (`run.ts:1556`): like `CEZ:REPORT`, unconditionally, on every turn.
+site. Parsed and acted on right after the `ONNI:REPORT` block and **before** the
+`if (ctx.done) return` line (`run.ts:1556`): like `ONNI:REPORT`, unconditionally, on every turn.
 
-**Precedence**: `CEZ:DIRECT` is orthogonal to the existing ladder
-(`CEZ:DONE > CEZ:SPAWN > CEZ:REPORT > CEZ:ASK > CEZ:MONITORING > plain end`) — it coexists with
+**Precedence**: `ONNI:DIRECT` is orthogonal to the existing ladder
+(`ONNI:DONE > ONNI:SPAWN > ONNI:REPORT > ONNI:ASK > ONNI:MONITORING > plain end`) — it coexists with
 any of them in the same turn text (a parent can direct a child, spawn a new one, and end on
-`CEZ:MONITORING`, all in one turn) because it never sets `spawned` or `overBudget`
+`ONNI:MONITORING`, all in one turn) because it never sets `spawned` or `overBudget`
 (`handleUnitMarkers`'s return shape, `run.ts:1535`) and so cannot itself flip the parent's own
-`monitoring`/nudge decision the way `CEZ:SPAWN` does (`run.ts:2972-3018`, `3699-3733`).
+`monitoring`/nudge decision the way `ONNI:SPAWN` does (`run.ts:2972-3018`, `3699-3733`).
 
 **Handling** (new private method `directChild`, parallel to `spawnChildren`):
 1. Resolve the target via `childrenOf(this.store.listRuns(), parentId)` (`engine.ts:49-51`); not
@@ -335,17 +335,17 @@ any of them in the same turn text (a parent can direct a child, spawn a new one,
    (fixed at spawn, `run.ts:1688`) are not mutable mid-session — a "rescope" is honestly a
    strongly-worded message asking the child to change what it touches next, running on the same
    unenforced trust `scope` itself already runs on (F-D6). A **hard** boundary change means
-   `'stop'` then a fresh `CEZ:SPAWN` forked off the parent's current branch tip; the stopped
-   child's branch and commits (`cez/<id8>`) are untouched on disk, exactly as an ordinary cancel
+   `'stop'` then a fresh `ONNI:SPAWN` forked off the parent's current branch tip; the stopped
+   child's branch and commits (`onni/<id8>`) are untouched on disk, exactly as an ordinary cancel
    already leaves them (`CHILD_BRANCH_RULE`, `prompts.ts:39-40`, already tells the parent this
    for a *rejected* report — the same rule now also covers a *stopped* one).
 
 Requires, as a **follow-up out of this task's write-scope**: prose in `prompts.ts` teaching
 Caesar/Legate the new marker, and an update to the spec's own §Markers precedence line.
 
-**Default-path impact**: no knob — parsed only when present, exactly like `CEZ:SPAWN`/
-`CEZ:REPORT` today. Until the `prompts.ts` follow-up ships, no role prompt mentions
-`CEZ:DIRECT`, so no agent emits it, and the default path — a parent that spawns, waits, and
+**Default-path impact**: no knob — parsed only when present, exactly like `ONNI:SPAWN`/
+`ONNI:REPORT` today. Until the `prompts.ts` follow-up ships, no role prompt mentions
+`ONNI:DIRECT`, so no agent emits it, and the default path — a parent that spawns, waits, and
 only ever acts on settled reports — is untouched byte-for-byte.
 
 **Transitions out of new state**: none added at all. `'stop'` reuses `cancel`'s existing
@@ -357,13 +357,13 @@ of its own.
 **Tests to pin**: (a) direct an in-flight child with `'message'` → delivered, parent's own park
 state unaffected; (b) `'stop'` on an in-flight child with its own grandchildren → cascade-cancels
 exactly as `cancel()` already does; (c) direct a settled child → refused, no `continueRun`
-fired; (d) direct a run id that is not this parent's child → refused; (e) `CEZ:DIRECT` and
-`CEZ:SPAWN` in the same turn text both take effect.
+fired; (d) direct a run id that is not this parent's child → refused; (e) `ONNI:DIRECT` and
+`ONNI:SPAWN` in the same turn text both take effect.
 
 **Effort**: M. **Risk**: med — the sharp edge is item 2 (settled children are refused, by
 design, to protect the review gate): a caesar wanting to correct *already-finished-but-wrong*
 work still has no marker for that. That gap is intentionally left to P-D5 (`retry_of`), not to
-`CEZ:DIRECT`.
+`ONNI:DIRECT`.
 
 ### P-D5 [rank 5] — lineage-tracked retries: enforce `retry_limit`
 
@@ -402,7 +402,7 @@ it is an opt-in reinforcement layered on top, inert until the `prompts.ts` follo
 Open questions).
 
 **Transitions out of new state**: `retryCount`/`retryLimit`/`retryOf` are plain data, read only
-at the instant of a future `CEZ:SPAWN` naming that lineage — no timer, no park, no wake source.
+at the instant of a future `ONNI:SPAWN` naming that lineage — no timer, no park, no wake source.
 The only "transition" is a future spawn refused or allowed-with-incremented-counter, which is
 itself the terminal answer.
 
@@ -425,7 +425,7 @@ by name for this exact field, plus the prompt follow-up needed to ever make it f
 2. **P-D3's overlap check** is proposed as note-only, never a refusal. Is there appetite for a
    hard refusal on the one case with no plausible legitimate reading — two children naming the
    *exact same* scope string — while keeping segment-prefix overlap advisory?
-3. **P-D4 refuses `CEZ:DIRECT` against an already-settled child** by design, to protect the
+3. **P-D4 refuses `ONNI:DIRECT` against an already-settled child** by design, to protect the
    review gate. Is a narrower, explicitly-labelled "reopen a settled child under supervision"
    action wanted later, or should that gap stay closed for the MVP and rely on P-D5 instead?
 4. **P-D5 is inert until `prompts.ts` teaches `retry_of`.** Should that prompt change ship in
@@ -434,7 +434,7 @@ by name for this exact field, plus the prompt follow-up needed to ever make it f
 
 ## Evidence
 
-- `git diff --stat` against the fork point (`cez/36533222`, which resolves to the same commit as
+- `git diff --stat` against the fork point (`onni/36533222`, which resolves to the same commit as
   `HEAD`, `df73cfa9` — this branch had no prior commits of its own): only this file.
 - `npx vitest run packages/work/src/units` — 3 test files, 62 tests, all passing, run read-only
   (no test file was modified).

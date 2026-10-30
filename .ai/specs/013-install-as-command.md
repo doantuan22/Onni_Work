@@ -1,45 +1,45 @@
-# 013 — `install-as-command`: global `cezar` from a local checkout (no publish)
+# 013 — `install-as-command`: global `onni` from a local checkout (no publish)
 
 Status: READY (spec complete, reviewed) · Wave: — · Depends on: 001 (packaging/`npx`)
 
 ## TLDR
 
-Add npm scripts that build the local checkout and put a global `cezar` / `cez` /
-`cezar-cli` command on the developer's PATH pointing at *this working tree* — the
-local-dev equivalent of `npx cezar-cli`, with no publish and no `npx` download.
+Add npm scripts that build the local checkout and put a global `onni` / `onni` /
+`onni-cli` command on the developer's PATH pointing at *this working tree* — the
+local-dev equivalent of `npx onni-cli`, with no publish and no `npx` download.
 Two flavors: **link** (default — live symlink, `npm run build` refreshes it) and
 **global snapshot** (self-contained copy that survives moving the checkout), plus
 a one-command **uninstall**. The README's local-setup story is rewritten so a
-fresh clone reaches a working global `cezar` end-to-end.
+fresh clone reaches a working global `onni` end-to-end.
 
 Decisions (resolved): install mechanism = **both** link + snapshot; command
-names = **`cezar` + `cez` + `cezar-cli`**; ship an **uninstall** script too.
+names = **`onni` + `onni-cli` + `onni-run`**; ship an **uninstall** script too.
 
 ## Problem Statement
 
-A contributor hacking on cezar can run it from the checkout with `npm run dev`
+A contributor hacking on Onni Work can run it from the checkout with `npm run dev`
 (Vite + `tsx src/index.ts` — the dev-server flavor, not the packed CLI) or
 `npm run dev:server`. Neither gives them the **real built CLI on their PATH**
 that they can invoke inside *any other repo on the machine* — which is exactly
-how end users experience cezar (`npx cezar-cli` in some unrelated project).
+how end users experience Onni Work (`npx onni-cli` in some unrelated project).
 
-Today the only way to get that is to publish to npm and `npx cezar-cli`, or hand-
+Today the only way to get that is to publish to npm and `npx onni-cli`, or hand-
 roll `npm link`. So contributors can't cheaply dogfood an unpublished change
 against their real repos, and the README's "Development" section stops at
 in-checkout scripts — it never shows the end-to-end path from `git clone` to a
-usable global `cezar`.
+usable global `onni`.
 
 ## Proposed Solution
 
 One pure planner module + one cross-platform orchestrator script, wired to three
 npm scripts, plus a rewritten README section.
 
-The key enabling change: **add `cezar-cli` to the main package's `bin` map**
-(`"cezar-cli": "dist/index.js"`). This is what lets a *single* `npm link` or
+The key enabling change: **add `onni-cli` to the main package's `bin` map**
+(`"onni-cli": "dist/index.js"`). This is what lets a *single* `npm link` or
 `npm install --global .` of the main package expose all three command names from
 the local build — no dependency on the published registry, identical behavior in
-both link and snapshot modes. The separate `alias-cezar/` package stays untouched;
-it continues to serve the *published* `npx cezar-cli` path. (Additive, non-breaking
+both link and snapshot modes. The separate `alias-onni/` package stays untouched;
+it continues to serve the *published* `npx onni-cli` path. (Additive, non-breaking
 — see Risks.)
 
 npm scripts:
@@ -51,14 +51,14 @@ npm scripts:
 | `uninstall-as-command` | `npm rm --global @onni/work` | Removes whichever flavor is installed (both register globally under the package name). Best-effort, idempotent. |
 
 Alternatives considered and rejected:
-- **Link/globally-install the `alias-cezar/` shim to get `cezar-cli`.** Its bin
+- **Link/globally-install the `alias-onni/` shim to get `onni-cli`.** Its bin
   `import()`s `@onni/work`; resolving that to the *local* build requires a
   3-step link chain (link mode) and is impossible without publishing in snapshot
-  mode (`npm i -g ./alias-cezar` pulls the dependency from the registry). The
+  mode (`npm i -g ./alias-onni` pulls the dependency from the registry). The
   additive-bin approach avoids all of it.
 - **Have the script mutate `package.json` to inject the bin only locally.** Dirty
   working tree, easy to commit by accident. Rejected.
-- **A dedicated `cezar install-as-command` CLI subcommand.** Wrong altitude —
+- **A dedicated `onni install-as-command` CLI subcommand.** Wrong altitude —
   this is a repo dev task (needs the checkout + build toolchain), not something a
   packaged end-user runs. Keep it an npm script.
 
@@ -82,8 +82,8 @@ surprise.
     link/install/rm), so the decision logic is testable without touching a real
     global prefix.
   - `globalShimPaths(prefix, platform)` → the expected shim file paths for **all
-    three** commands (`<prefix>/bin/{cezar,cez,cezar-cli}` on POSIX;
-    `<prefix>\{cezar,cez,cezar-cli}.cmd` on Windows) for the post-install
+    three** commands (`<prefix>/bin/{Onni Work,onni,onni-cli}` on POSIX;
+    `<prefix>\{Onni Work,onni,onni-cli}.cmd` on Windows) for the post-install
     verification + PATH hint. `prefix` is resolved at runtime via `npm prefix -g`
     (spawned by the orchestrator and passed in, so the module stays pure/testable).
 - **`scripts/install-as-command.mjs`** (new, self-contained orchestrator): parses
@@ -94,7 +94,7 @@ surprise.
   PATH hint. Uses the **same cross-platform spawn pattern as `scripts/dev.mjs` /
   `scripts/check-pack.mjs`** (`process.env.npm_execpath` + `process.execPath`, no
   `.cmd` shim assumptions). `uninstall` skips the build and needs no dist import.
-- **`package.json`**: add the `cezar-cli` bin entry; add the three `scripts`
+- **`package.json`**: add the `onni-cli` bin entry; add the three `scripts`
   entries above.
 
 What is reused vs new: reuses the existing `npm run build` pipeline verbatim (no
@@ -104,12 +104,12 @@ three script aliases + docs.
 
 ## Data Model
 
-None. No persisted state, no config keys, no `.ai/cezar/` changes.
+None. No persisted state, no config keys, no `.ai/onni/` changes.
 
 ## API / Contract Changes
 
-- **`package.json` `bin`** gains `cezar-cli` (additive). No entry removed or
-  repointed; `cezar` and `cez` stay `dist/index.js`.
+- **`package.json` `bin`** gains `onni-cli` (additive). No entry removed or
+  repointed; `onni`, `onni-cli` and `onni-run` stay `dist/index.js`.
 - **npm scripts** gain `install-as-command`, `install-as-command:global`,
   `uninstall-as-command` (additive).
 - No HTTP/SSE/CLI-command/flag/exit-code changes. No workflow/skill/config format
@@ -122,14 +122,14 @@ that reads top-to-bottom for a fresh clone:
 
 1. **Prerequisites** — Node 20+, git; (the agent-CLI prerequisites already
    documented in Quick start, linked not repeated).
-2. **Clone & install** — `git clone … && cd cezar && npm install`.
+2. **Clone & install** — `git clone … && cd Onni Work && npm install`.
 3. **Build** — `npm run build` (what it produces: `dist/`, `web/dist/`).
 4. **Install as a global command** —
    ```bash
    npm run install-as-command          # live link (default)
    #   or: npm run install-as-command:global   # self-contained snapshot
    ```
-   then `cd` into *any other repo* and run `cezar` (or `cez` / `cezar-cli`).
+   then `cd` into *any other repo* and run `onni` (or `onni` / `onni-cli`).
 5. **The change loop** — link mode: edit source → `npm run build` → the global
    command reflects it (no relink). Snapshot mode: re-run
    `install-as-command:global`.
@@ -152,10 +152,10 @@ development for a global command off your checkout, no publish needed").
 | Scenario | Behavior |
 | --- | --- |
 | Global prefix not user-writable (`EACCES`) | npm fails; script surfaces a clear message + the `npm config set prefix …` fix; non-zero exit. Never auto-sudo. |
-| npm global bin dir not on PATH | Command "installed" but `cezar` not found; script prints the resolved bin dir + a PATH-export hint after a successful link/install. |
-| Windows | Verification checks `cezar.cmd` (npm-generated shim); spawn pattern already `.cmd`-safe. |
+| npm global bin dir not on PATH | Command "installed" but `onni` not found; script prints the resolved bin dir + a PATH-export hint after a successful link/install. |
+| Windows | Verification checks `onni.cmd` (npm-generated shim); spawn pattern already `.cmd`-safe. |
 | `--no-build` with no `dist/` (link mode) | Fail fast: "no build found — run without `--no-build` first." |
-| Stale link after moving/deleting the checkout (link mode only) | Global `cezar` errors on the dangling target; fix = re-run `install-as-command` or `uninstall-as-command`. Snapshot mode is immune (documented as the trade-off). |
+| Stale link after moving/deleting the checkout (link mode only) | Global `onni` errors on the dangling target; fix = re-run `install-as-command` or `uninstall-as-command`. Snapshot mode is immune (documented as the trade-off). |
 | Collision with a published global `@onni/work` | link/global-install replaces it (npm's own behavior); `uninstall-as-command` removes ours; documented. |
 | Re-running install (already linked) | Idempotent — npm relinks; no error. |
 | `uninstall-as-command` when nothing is installed | Idempotent no-op success: `npm rm --global` of an absent package is treated as success; the script does not hard-fail. |
@@ -165,14 +165,14 @@ development for a global command off your checkout, no publish needed").
 - **Blast radius:** additive only — a new pure module, a new script, three npm
   script aliases, one added bin, and docs. No runtime code path of the shipped CLI
   changes.
-- **Public surface:** adding `cezar-cli` to the published package's `bin` means
-  `npm i -g @onni/work` would *also* expose `cezar-cli`. This is additive
-  and consistent with the README already advertising `cezar-cli`; per
+- **Public surface:** adding `onni-cli` to the published package's `bin` means
+  `npm i -g @onni/work` would *also* expose `onni-cli`. This is additive
+  and consistent with the README already advertising `onni-cli`; per
   `BACKWARD_COMPATIBILITY.md` adding a bin is non-breaking (only *removal* is).
   Flag it in the PR body regardless so the maintainer signs off.
-- **Test touchpoint:** `test/e2e/package-cli.test.ts` asserts the `cezar`/`cez`
+- **Test touchpoint:** `test/e2e/package-cli.test.ts` asserts the `onni`/`onni`
   bins by key (no exact-count assertion), so the addition is safe; extend it to
-  also assert `manifest.bin['cezar-cli'] === 'dist/index.js'`.
+  also assert `manifest.bin['onni-cli'] === 'dist/index.js'`.
 - **Rollback:** revert the PR — nothing installed on a user's machine is affected;
   a contributor who ran the script removes the global command with
   `npm run uninstall-as-command` (or `npm rm -g @onni/work`).
@@ -183,7 +183,7 @@ Each step leaves the app building and green.
 
 ### Phase 1 — Mechanism (script + wiring)
 
-- **1.1** Add `"cezar-cli": "dist/index.js"` to `package.json` `bin`. Extend
+- **1.1** Add `"onni-cli": "dist/index.js"` to `package.json` `bin`. Extend
   `test/e2e/package-cli.test.ts` to assert the new bin. (`npm run build`,
   `npm run test:package` green.)
 - **1.2** Add `src/install-as-command.ts` — pure `planInstall()` +
@@ -196,8 +196,8 @@ Each step leaves the app building and green.
   verify shim → print bin dir + PATH hint; cross-platform spawn per `dev.mjs`.
 - **1.4** Wire the three npm scripts (`install-as-command`,
   `install-as-command:global`, `uninstall-as-command`).
-- **1.5** Manual smoke on this machine: link → `cd` to another repo → `cezar
-  --help`, `cezar-cli --help`, `cez --help`; edit source → `npm run build` →
+- **1.5** Manual smoke on this machine: link → `cd` to another repo → `Onni Work
+  --help`, `onni-cli --help`, `onni --help`; edit source → `npm run build` →
   change reflected; `install-as-command:global` snapshot path; then
   `uninstall-as-command`. Record results in the PR.
 
@@ -210,7 +210,7 @@ Each step leaves the app building and green.
 
 ## Non-goals
 
-- No migration of `.cez/`/data, no config keys, no telemetry.
-- No change to the published `alias-cezar/` package or the `npx cezar-cli` path.
+- No migration of `.onni/`/data, no config keys, no telemetry.
+- No change to the published `alias-onni/` package or the `npx onni-cli` path.
 - No auto-sudo / no writing to root-owned prefixes.
 - Not a packaged end-user feature — this is a contributor/dev-loop tool.

@@ -28,7 +28,7 @@
 >   **Saved layouts (2026-10-19):** nothing is named behind the user's back — splitting a view tab
 >   (drag, ⌥-click, a file opened from the chat) edits the task's ONE working arrangement,
 >   `Custom`. "Save current view as layout…" names it, and the arrangement (views + widths, no
->   column state) is kept in `~/.cezar/ui-state.json` `savedLayouts`, offered in every task of
+>   column state) is kept in `~/.onni/ui-state.json` `savedLayouts`, offered in every task of
 >   every project. Opening one gives the task its own copy under that name.
 >   `/tasks/:id/commits/:sha` stays a standalone page; inside a column, Commits picks in place.
 > - **`ONNI_TERMINAL`** unset follows `localHandoff` (on locally, off hosted) — main has no sign-in.
@@ -36,7 +36,7 @@
 
 ## 3. Product principles and constraints
 
-1. **Cezar first.** Reuse current task components and UI primitives. Add the smallest visual layer
+1. **Onni Work first.** Reuse current task components and UI primitives. Add the smallest visual layer
    needed to support multiple views. Do not recreate the app shell or make a parallel design system.
 2. **The current task stays the task.** `/tasks/:id` remains the canonical task URL. It opens the
    workspace with Conversation selected initially. Existing `/changes`, `/files` and `/commits`
@@ -75,7 +75,7 @@ Do not implement placeholder Browser or Terminal panels that imply they work. If
 release milestone, keep them out of the selectable panel list or show an explicitly labeled,
 actionable unavailable state.
 
-Each visible column has a panel header using current Cezar components and visual conventions. The
+Each visible column has a panel header using current Onni Work components and visual conventions. The
 header identifies the view and provides relevant existing actions.
 
 > **OPEN DEVIATION — the header carries no view-specific actions.** As built it holds the view
@@ -90,7 +90,7 @@ header identifies the view and provides relevant existing actions.
 > sentence forbids) or hoisting state out of four components that own it. Which of the two §5.1
 > intends is a product call, so it is recorded here instead of being decided quietly.
 
-The header uses current Cezar components and visual conventions. The body reuses the existing
+The header uses current Onni Work components and visual conventions. The body reuses the existing
 component instead of copying its UI or data fetching logic.
 
 Embedding is one prop: each of `ThreadView`, `ChangesView`, `CommitsView` and `FilesView` takes
@@ -219,23 +219,23 @@ list as a shortcut.
 - On a narrow viewport (mobile/tablet), layouts may still contain several columns, but show one column at a time.
 - Compact **column tabs** labeled with view names switch between columns (e.g., "Czat", "Zmiany", "Pliki").
 - Do not squeeze columns side by side on phones.
-- Keep the existing Cezar sidebar's responsive behavior unchanged.
+- Keep the existing Onni Work sidebar's responsive behavior unchanged.
 
 ### 5.3 Persistence and URLs
 
 **Storage mechanism:**
-- Persist layouts **on the Cezar host that owns the task**, one file per run
-  (`.ai/cezar/layouts/<runId>.json`), behind `GET/PUT /api/v1/runs/:id/layouts`
-- Each host (local Cezar, VPS 1, VPS 2) keeps its own layouts independently
+- Persist layouts **on the Onni Work host that owns the task**, one file per run
+  (`.ai/onni/layouts/<runId>.json`), behind `GET/PUT /api/v1/runs/:id/layouts`
+- Each host (local Onni Work, VPS 1, VPS 2) keeps its own layouts independently
 - No synchronization between hosts required
 
 > **CORRECTION (2026-10-08).** An earlier revision of this section said "browser localStorage",
 > which was not what §5.3 asked for and was recorded here after the fact. Browser storage cannot
 > keep two of this section's own promises: "layouts are removed only when the task itself is
 > permanently deleted" (clearing site data removes them sooner), and a task being the same task
-> however you reach it (a second browser, profile or machine against the same cezar saw a
+> however you reach it (a second browser, profile or machine against the same Onni Work saw a
 > different workspace). Host-side storage keeps both, and keeps the per-host separation this
-> section asks for for free, since a local cezar and a VPS are different hosts holding different
+> section asks for for free, since a local Onni Work and a VPS are different hosts holding different
 > files. The browser keeps only the terminal drawer's own open/height preference, which is a
 > property of the screen rather than of the task.
 
@@ -309,19 +309,19 @@ list as a shortcut.
 ## 6. Terminal feature (implemented, Milestone 2)
 
 > **IMPLEMENTATION NOTE — the PTY is an optional dependency.** `@lydell/node-pty`, declared in
-> `optionalDependencies`. cezar ships zero native dependencies and zero install scripts, and its
+> `optionalDependencies`. Onni Work ships zero native dependencies and zero install scripts, and its
 > self-update path runs `npm install` on the user's machine WITHOUT `--ignore-scripts`
 > (`src/self-update/installer.ts`), so upstream `node-pty` — whose install script is
 > `node scripts/prebuild.js || node-gyp rebuild` — would compile there, on whatever Node they
 > have, across four platforms, and a failure would break the whole cockpit rather than one panel.
 > The fork declares no install script and ships prebuilt binaries for linux/win32/darwin on
-> x64+arm64. A platform with no binary reports the terminal unavailable WITH A REASON and cezar
+> x64+arm64. A platform with no binary reports the terminal unavailable WITH A REASON and Onni Work
 > boots normally.
 >
 > **IMPLEMENTATION NOTE — `ONNI_TERMINAL` is a tri-state.** Unset it follows the deployment mode:
 > on locally, off on a hosted cockpit, the same line `localHandoff` draws for every other
 > host-machine affordance. `=1` opts a hosted cockpit in; `=0` turns it off everywhere. Hosted is
-> opt-in because cezar has no authentication of its own, so a shell there is handed to whoever the
+> opt-in because Onni Work has no authentication of its own, so a shell there is handed to whoever the
 > reverse proxy admits — AGENTS.md's rule for a feature that widens exposure. Documented in
 > `.env.example` and `docs/reference.md`.
 >
@@ -361,7 +361,7 @@ Terminal is not just a panel around `openRunInCli`; it needs an interactive PTY 
 lifecycle. A future terminal spec must resolve:
 
 - PTY implementation/dependency and supported OSes.
-- A Cezar server restart stops all terminal sessions and child processes; the user starts them again manually after Cezar returns. Archiving a task also stops its terminal sessions and Cezar-started apps, while preserving layouts and Browser tabs. Permanently deleting a task removes its layouts and task-owned state.
+- An Onni Work server restart stops all terminal sessions and child processes; the user starts them again manually after Onni Work returns. Archiving a task also stops its terminal sessions and Onni Work-started apps, while preserving layouts and Browser tabs. Permanently deleting a task removes its layouts and task-owned state.
 - Multiple terminal tabs, shell selection, resize propagation, scrollback cap and copy/paste.
 
   > **IMPLEMENTATION NOTE (2026-10-08) — shell selection is an ALLOWLIST, discovered.** The `+`
@@ -388,10 +388,10 @@ lifecycle. A future terminal spec must resolve:
 - The bottom drawer starts hidden on a fresh task visit and is shown only after an explicit user action. After unarchiving, it is hidden and has no tabs; opening it later creates a new session. A page refresh restores whether it was open or closed. Opening a hidden drawer with existing tabs reconnects them; if it has no tabs, create a fresh terminal session. Its top edge can be dragged to change drawer height; save the preferred height per task and restore it when the task is reopened. It can contain several terminal tabs, like VS Code. Add a tab with a `+` button or a keyboard shortcut. A new tab starts as `Terminal 1`, `Terminal 2`, etc.; while a command runs, show that command as the tab name, and keep that name when it finishes until another command runs. Each tab is a separate PTY session in this task's worktree. The user can open and close terminal tabs independently using an X button or tab menu. Before closing a tab with a running process, show a warning with `Zamknij mimo to` and `Anuluj`. Confirming closes the terminal session and stops its process tree; canceling leaves it running. Closing the last terminal tab hides the drawer.
 - Terminal tabs belong to the task, not to a saved layout. Switching between saved layouts keeps
   the same terminal sessions available. Switching to another task hides this task's terminal but leaves its processes running. Returning to the task keeps it hidden with the same sessions. Refreshing or reconnecting the browser preserves processes, reattaches the tabs, and restores the
-  drawer's previous open/closed state. A Cezar server restart stops terminal sessions and child processes and removes the old terminal tabs;
-  the user starts commands again in fresh tabs after Cezar returns. Archiving a task stops terminal
-  sessions and Cezar-started apps, removes terminal tabs, and preserves layouts (including Browser
+  drawer's previous open/closed state. An Onni Work server restart stops terminal sessions and child processes and removes the old terminal tabs;
+  the user starts commands again in fresh tabs after Onni Work returns. Archiving a task stops terminal
+  sessions and Onni Work-started apps, removes terminal tabs, and preserves layouts (including Browser
   tabs) for unarchive. Deleting a task also removes its layouts and task-owned state.
-- Terminal input executes arbitrary shell commands on the cezar host. It must be explicitly
+- Terminal input executes arbitrary shell commands on the Onni Work host. It must be explicitly
   user-initiated and clearly identify host, project and worktree.
 

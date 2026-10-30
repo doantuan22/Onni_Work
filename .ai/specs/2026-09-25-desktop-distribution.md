@@ -1,4 +1,4 @@
-# Desktop distribution — where cezar desktop is published and how it updates
+# Desktop distribution — where Onni Work desktop is published and how it updates
 
 **Status:** design + workflow in place, no release cut yet. 2026-09-25. Companion to
 `2026-09-25-self-update-and-desktop.md` (the shell itself and the managed install).
@@ -9,19 +9,19 @@ The desktop shell (`packages/desktop`, Tauri 2) is published as **signed install
 Releases**, one release per shell version under a `desktop-v<version>` tag, built by
 `.github/workflows/desktop-release.yml`. Everything downstream — the landing page's Download
 button, a Homebrew cask, winget, the shell's own auto-update — is a pointer to that release
-page. The shell ships **rarely and on its own version** (`0.1.1` today, decoupled from cezar's
-`0.11.x`): it contains no cezar code, because the cockpit and server come from
-`~/.cezar/versions` and update from inside the cockpit.
+page. The shell ships **rarely and on its own version** (`0.1.1` today, decoupled from Onni Work's
+`0.11.x`): it contains no Onni Work code, because the cockpit and server come from
+`~/.onni/versions` and update from inside the cockpit.
 
 ## Two things update on two cadences
 
 | What | Contains | Updated by | How often |
 | --- | --- | --- | --- |
-| **cezar** (`@onni/work`) | server + cockpit | the cockpit's version chip → dialog, or `cezar update` (managed install, spec self-update) | every release / nightly |
-| **cezar desktop** (`packages/desktop`) | window, title bar, sidecar supervisor, splash, icon | Tauri's updater plugin polling `desktop-latest.json` on GitHub Releases | a few times a year |
+| **Onni Work** (`@onni/work`) | server + cockpit | the cockpit's version chip → dialog, or `onni update` (managed install, spec self-update) | every release / nightly |
+| **Onni Work desktop** (`packages/desktop`) | window, title bar, sidecar supervisor, splash, icon | Tauri's updater plugin polling `desktop-latest.json` on GitHub Releases | a few times a year |
 
 The shell must ship when: the shell changes (window, supervisor, splash), a Tauri/webview
-security fix lands, or the icon/name/signing identity changes. Never for a cezar release.
+security fix lands, or the icon/name/signing identity changes. Never for an Onni Work release.
 
 ## The release: GitHub Releases, tag `desktop-v<version>`
 
@@ -37,12 +37,12 @@ nothing), and:
 
    | Platform | Stable asset |
    | --- | --- |
-   | macOS (arm64) | `cezar-macos-aarch64.dmg` |
-   | macOS (x64) | `cezar-macos-x86_64.dmg` |
-   | Windows | `cezar-windows-x86_64-setup.exe` (NSIS) |
-   | Linux (any distribution) | `cezar-linux-x86_64.AppImage` |
-   | Debian, Ubuntu | `cezar-linux-x86_64.deb` |
-   | Arch Linux (Omarchy, Manjaro, EndeavourOS) | `cezar-linux-x86_64.pkg.tar.zst` — `sudo pacman -U <file>` |
+   | macOS (arm64) | `onni-macos-aarch64.dmg` |
+   | macOS (x64) | `onni-macos-x86_64.dmg` |
+   | Windows | `onni-windows-x86_64-setup.exe` (NSIS) |
+   | Linux (any distribution) | `onni-linux-x86_64.AppImage` |
+   | Debian, Ubuntu | `onni-linux-x86_64.deb` |
+   | Arch Linux (Omarchy, Manjaro, EndeavourOS) | `onni-linux-x86_64.pkg.tar.zst` — `sudo pacman -U <file>` |
 
    The Arch package is its own job (`arch`): it repackages the `.deb`'s binary with
    `packages/desktop/arch/PKGBUILD` inside an `archlinux` container, installs the result with
@@ -55,10 +55,10 @@ nothing), and:
    always resolves to the newest shell, so the landing page and package-manager manifests never
    change when a version ships. `desktop-latest` is a ROLLING release the publish job refreshes;
    GitHub's own `releases/latest/download/…` cannot be used, because the repo's "latest" release
-   is cezar's `v*` release, which carries no installers.
+   is Onni Work's `v*` release, which carries no installers.
 3. **publish** — renames tauri-action's `latest.json` to **`desktop-latest.json`** (the name
-   the shells poll; namespaced so a future cezar manifest on the same page cannot collide),
-   flips the draft to published with `--latest=false` (cezar's `v*` releases stay the repo's
+   the shells poll; namespaced so a future Onni Work manifest on the same page cannot collide),
+   flips the draft to published with `--latest=false` (Onni Work's `v*` releases stay the repo's
    "latest"), copies the stable-named installers and `desktop-latest.json` onto the rolling
    `desktop-latest` release (its assets and title change; its tag stays where the first
    release put it, because the workflow's token may not move a tag), and writes a summary with the stable links and loud warnings for anything unsigned.
@@ -74,7 +74,7 @@ a Download button (Gatekeeper reports them "damaged"; SmartScreen blocks them).
 
 | Secret | Used for |
 | --- | --- |
-| `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`) | updater artifacts + `desktop-latest.json`. Public key is in `tauri.conf.json` `plugins.updater.pubkey`. Generated with `npx tauri signer generate`; the private half lives in the maintainer's `~/.tauri/cezar-desktop.key` and in this secret — lose it and installed shells can never adopt another update. |
+| `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`) | updater artifacts + `desktop-latest.json`. Public key is in `tauri.conf.json` `plugins.updater.pubkey`. Generated with `npx tauri signer generate`; the private half lives in the maintainer's `~/.tauri/onni-desktop.key` and in this secret — lose it and installed shells can never adopt another update. |
 | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` | Developer ID Application certificate (base64 .p12) for code signing |
 | `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | notarization (app-specific password) |
 | Windows code signing | not wired yet — Azure Trusted Signing via `bundle.windows.signCommand` is the intended route; until then Windows builds are unsigned |
@@ -93,7 +93,7 @@ disabled in debug builds and by `ONNI_DESKTOP_NO_UPDATE=1`.
 ## Shipping a shell change — what the maintainer does, what the user sees
 
 Most "app" changes never touch the shell: the title strip, the update pill, the dialog and
-everything else painted by the cockpit ship with cezar itself through the channel updates.
+everything else painted by the cockpit ship with Onni Work itself through the channel updates.
 The shell must ship only for native things — the app menu, window behaviour, the splash, the
 injected fallbacks for legacy cockpits, OS-level features (native notifications need a Tauri
 plugin in the shell, one release, then every cockpit version can use them).
@@ -102,25 +102,25 @@ Maintainer, per shell release:
 
 1. Bump the shell version in all three manifests: `packages/desktop/package.json`,
    `packages/desktop/src-tauri/Cargo.toml`, `packages/desktop/src-tauri/tauri.conf.json`.
-   The shell is versioned on its own (`0.1.1` today), never in step with cezar.
+   The shell is versioned on its own (`0.1.1` today), never in step with Onni Work.
 2. `git tag desktop-v<version> && git push --tags`. `desktop-release.yml` builds, signs, uploads
    the installers under stable names and publishes `desktop-latest.json`. (Or run the
    workflow by hand: it reads the version from `tauri.conf.json`.)
 
 User: nothing. On the next launch the installed shell fetches `desktop-latest.json`, verifies
 the minisign signature against the compiled-in public key, downloads and installs the bundle
-in place (on macOS: the contents of `Cezar.app`), and the NEW shell runs on the launch after
+in place (on macOS: the contents of `Onni Work.app`), and the NEW shell runs on the launch after
 that. It never restarts under the user, so a running task is never interrupted by a shell
 update. A "Relaunch to update" prompt is a small later addition if the one-launch lag bothers.
 
 Until signing is set up, a shell update is manual: download the new `.dmg`, drag it over the
-old app. `~/.cezar` (versions, settings, window geometry) is untouched by that.
+old app. `~/.onni` (versions, settings, window geometry) is untouched by that.
 
 ## One-time setup checklist (before the first public shell release)
 
 | Step | Where | Why |
 | --- | --- | --- |
-| Back up `~/.tauri/cezar-desktop.key` (private half of the updater keypair, generated 2026-09-25, no password) | password manager / team vault | lose it and no installed shell can ever adopt another update; the public half is in `tauri.conf.json` |
+| Back up `~/.tauri/onni-desktop.key` (private half of the updater keypair, generated 2026-09-25, no password) | password manager / team vault | lose it and no installed shell can ever adopt another update; the public half is in `tauri.conf.json` |
 | Add `TAURI_SIGNING_PRIVATE_KEY` (the file's contents) as a repository secret | GitHub → Settings → Secrets | without it the workflow builds installers but no `desktop-latest.json`, so shells never see a new version |
 | Join the Apple Developer Program (99 USD/year), create a Developer ID Application certificate, export as base64 `.p12` | developer.apple.com | without it the build is signed AD-HOC (`signingIdentity: "-"`), which seals the bundle: a downloaded copy gets "could not verify" and Open Anyway in System Settings. A bundle that is not sealed at all is what macOS calls "damaged" — the first 0.1.1 build shipped that way. Notarization (no prompt at all) still needs the certificate |
 | Add `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific), `APPLE_TEAM_ID` | GitHub secrets | tauri-action signs and notarizes with these; all-or-nothing |
@@ -130,7 +130,7 @@ old app. `~/.cezar` (versions, settings, window geometry) is untouched by that.
 
 ## The Node.js prerequisite
 
-The shell runs cezar with the user's own Node, found in three passes (`check_node`): the PATH
+The shell runs Onni Work with the user's own Node, found in three passes (`check_node`): the PATH
 of an INTERACTIVE login shell (a login shell alone skips `~/.zshrc`, where nvm usually lives —
 the Intel report, 2026-10-12) — on Windows the registry's fresh PATH, since Explorer keeps the
 one from before Node was installed; that PATH resolved again (after "Try again"); then the
@@ -139,9 +139,9 @@ pnpm, Homebrew incl. keg-only `node@NN`, MacPorts, nix, snap; scoop, chocolatey,
 nvm-windows), each `node` asked directly, newest 20+ first. A folder found that way goes FIRST
 on every tool command's PATH, so npm and the sidecar run the same Node. Node 20+ is
 checked first; without it the shell installs its own (below), and only when THAT fails does
-the splash show "cezar could not set up Node.js" with the reason — the same failure page as
-every other: the error report card (#1406) and **Restart cezar**, which first installs a newer
-shell and a newer cezar on the channel when there is one, then relaunches the app. There is no
+the splash show "Onni Work could not set up Node.js" with the reason — the same failure page as
+every other: the error report card (#1406) and **Restart Onni Work**, which first installs a newer
+shell and a newer Onni Work on the channel when there is one, then relaunches the app. There is no
 "Download Node.js" button: the user is never asked to install anything. Nothing else runs
 until Node is there: no npm, no sidecar, no update check. `ONNI_DESKTOP_NODE=<path>` overrides
 which node the shell uses (also how the page is tested).
@@ -152,8 +152,8 @@ official release for the platform (`darwin-arm64`/`darwin-x64`/`linux-x64`/`linu
 `.tar.gz`, `win-x64`/`win-arm64` `.zip`) from nodejs.org — the newest LTS in `index.json` —
 with a progress bar on the splash (`node_runtime.rs`). The archive is hashed against the
 release's `SHASUMS256.txt` before it is unpacked; it is unpacked into a `.staging-*` folder under
-`~/.cezar/node/`, its `node` must RUN (a wrong architecture or libc fails here), and only then
-does it get its `.cezar-node.json` manifest and its rename to `~/.cezar/node/<version>/`. A
+`~/.onni/node/`, its `node` must RUN (a wrong architecture or libc fails here), and only then
+does it get its `.onni-node.json` manifest and its rename to `~/.onni/node/<version>/`. A
 folder without the manifest is never used, every failure removes its staging folder, and a
 checksum mismatch, being offline or a full disk lands on the "needs Node" page with the reason.
 Later launches find it as the fourth pass of `check_node` — after the user's own Node, always —
@@ -172,7 +172,7 @@ The mark lives in three places, on two cadences:
 
 | Where | Ships with | Command |
 | --- | --- | --- |
-| Cockpit brand tile + favicon (`packages/web/public/icon.svg`) | cezar (npm) — every channel update | replace the SVG |
+| Cockpit brand tile + favicon (`packages/web/public/icon.svg`) | Onni Work (npm) — every channel update | replace the SVG |
 | App icon set (`packages/desktop/src-tauri/icons/*`: `.icns`, `.ico`, PNGs) and the splash logo (`packages/desktop/ui/icon.svg`) | the shell — one shell release | `cd packages/desktop && npm run icon [-- path/to/new.svg]` |
 
 `npm run icon` wraps the SVG full-bleed (macOS masks its own squircle; a transparent corner or
@@ -187,23 +187,23 @@ version, so a bundle replaced in place at the same version keeps showing the old
 Dock, Launchpad and Spotlight however new the `.icns` inside it is (seen on 2026-09-27: new
 icon in the bundle, old icon in the Dock). A release always bumps, so users never hit it; a
 maintainer iterating locally at one version clears it with
-`lsregister -f /Applications/Cezar.app && killall Dock`.
+`lsregister -f /Applications/Onni Work.app && killall Dock`.
 
 ## Being an application — what makes it show up and launch like one
 
 The shell is a real native app the moment its release bundle is INSTALLED where the OS looks
-for apps; nothing in cezar has to change per platform. `npx tauri build` (release, in
+for apps; nothing in Onni Work has to change per platform. `npx tauri build` (release, in
 `packages/desktop`) produces the bundles; `desktop-release.yml` does the same in CI.
 
 | Platform | Bundle | Installed how | Then it is… |
 | --- | --- | --- | --- |
-| macOS | `Cezar.app` (+ `.dmg` to ship it) | drag into `/Applications` (the dmg's only step), or `brew install --cask` | in Launchpad, Spotlight, the Dock (right-click → Options → Keep in Dock), Cmd+Tab; icon, menu bar, About box from the bundle |
-| Windows | NSIS `cezar-…-setup.exe` (`.msi` optional) | run the installer, or `winget install` | Start menu entry, desktop shortcut, Apps & features (uninstall), taskbar pinning; needs WebView2, preinstalled on Windows 10/11 |
-| Linux | `.deb` (+ `.AppImage` portable) | `apt install ./cezar….deb` — installs `/usr/bin/cezar-desktop` and a `.desktop` entry | in the app launcher/menu with icon; the AppImage runs from anywhere but only appears in menus after `--appimage-integrate` or a Flatpak (later) |
+| macOS | `Onni Work.app` (+ `.dmg` to ship it) | drag into `/Applications` (the dmg's only step), or `brew install --cask` | in Launchpad, Spotlight, the Dock (right-click → Options → Keep in Dock), Cmd+Tab; icon, menu bar, About box from the bundle |
+| Windows | NSIS `onni-…-setup.exe` (`.msi` optional) | run the installer, or `winget install` | Start menu entry, desktop shortcut, Apps & features (uninstall), taskbar pinning; needs WebView2, preinstalled on Windows 10/11 |
+| Linux | `.deb` (+ `.AppImage` portable) | `apt install ./Onni Work….deb` — installs `/usr/bin/onni-desktop` and a `.desktop` entry | in the app launcher/menu with icon; the AppImage runs from anywhere but only appears in menus after `--appimage-integrate` or a Flatpak (later) |
 
 Launching from any of those is a plain double-click: the shell needs no terminal, no
 environment, no PATH — it resolves everything itself (login shell for `node` and the agent
-CLIs, `~/.cezar` for the managed cezar, first-launch install when none is there).
+CLIs, `~/.onni` for the managed Onni Work, first-launch install when none is there).
 
 Now shipped:
 
@@ -226,7 +226,7 @@ Worth adding once real users have it:
 
 - **Open at login** (`tauri-plugin-autostart`, a menu toggle) so the cockpit is up with the
   machine and tasks keep running under the Dock icon.
-- **Deep links** (`cezar://task/<id>`) so a notification or an external link opens the task in
+- **Deep links** (`onni://task/<id>`) so a notification or an external link opens the task in
   the app.
 
 A locally built bundle (no Developer ID) opens fine on the machine that built it — it carries no
@@ -254,30 +254,30 @@ admits the splash and the cockpit **on the port this shell spawned** and nothing
 
 1. **Landing page "Download"** — a static page (Cloudflare/GitHub Pages) with OS detection and
    the stable asset links; optionally reads the release JSON for the version. No backend.
-2. **Homebrew cask** in an `open-mercato/homebrew-tap`: `brew install --cask open-mercato/tap/cezar`,
+2. **Homebrew cask** in an `open-mercato/homebrew-tap`: `brew install --cask open-mercato/tap/Onni Work`,
    `url` = the stable dmg link, `sha256` from the `.sha256` asset, `livecheck` on GitHub Releases.
 3. **winget** manifest (community repo), automatable from the publish job.
 4. **Flathub** later; the AppImage covers Linux until then.
 
-## The shell ↔ cezar contract (a public surface)
+## The shell ↔ Onni Work contract (a public surface)
 
-Any shell version must run any cezar version, so these are frozen and listed in
+Any shell version must run any onni version, so these are frozen and listed in
 `BACKWARD_COMPATIBILITY.md`: the managed entry path
-`~/.cezar/versions/current/node_modules/@onni/work/dist/index.js`; the launch
+`~/.onni/versions/current/node_modules/@onni/work/dist/index.js`; the launch
 `serve --no-open --port <n>`; `ONNI_DESKTOP=1`, `ONNI_SUPERVISED=1`, `ONNI_SUPERVISOR_PID`;
 exit status **75** = "relaunch me"; `GET /api/v1/health` as the readiness probe. Changing any
-of them is the one case where the shell must ship BEFORE the cezar version that needs it.
+of them is the one case where the shell must ship BEFORE the onni version that needs it.
 
 ## What the shell does on its own (supervisor duties)
 
-- **First launch** with no managed install: installs the channel's newest cezar
-  (`npm install --prefix` into `~/.cezar/versions/<v>`, manifest, `current` link — the same
+- **First launch** with no managed install: installs the channel's newest Onni Work
+  (`npm install --prefix` into `~/.onni/versions/<v>`, manifest, `current` link — the same
   layout the cockpit's updater writes) with progress on the splash, then starts it. Node 20+
   is the one prerequisite; the failure page says so.
-- **App menu → "Update cezar to latest…"**: the same install, then a relaunch. This is what
+- **App menu → "Update Onni Work to latest…"**: the same install, then a relaunch. This is what
   makes a downgrade into a version that predates the cockpit's updater recoverable from the
   GUI — the shell never depends on the sidecar being able to update itself.
-- **App menu → Versions**: one check item per install under `~/.cezar/versions`, the active
+- **App menu → Versions**: one check item per install under `~/.onni/versions`, the active
   one checked; picking another flips `current` and relaunches. With "Update to latest" this is
   the complete recovery set: any installed version, including a local build, is one click away
   from any other, whatever the running cockpit knows.
@@ -286,7 +286,7 @@ of them is the one case where the shell must ship BEFORE the cezar version that 
   render, and when no `data-slot="desktop-titlebar"` appears it injects a draggable 28px strip
   (transparent, with the columns inset so they paint the band in their own live theme colours)
   and insets the app shell — so every version looks right under the shell, not only the ones
-  that know about it. The same path injects the "Update cezar" pill there, driven by the
+  that know about it. The same path injects the "Update Onni Work" pill there, driven by the
   shell's own `npm view` of the channel's dist-tag; a desktop-aware cockpit paints its own.
 - **Version chip** (legacy cockpits): beside the pill, always present, `v<running> ▾` — a click
   pops the Versions list up as a native menu at the pointer. A registry cockpit without the
@@ -294,9 +294,9 @@ of them is the one case where the shell must ship BEFORE the cezar version that 
   local builds included.
 - **Port**: 4321 first, the next few when busy, then any free port. It is the window's
   transport and nothing else — no browser tab, no menu item that names it.
-- The sidecar writes the `~/.cezar/bin` launchers on boot when they are missing, so a
-  machine that only ever installed the app still gets `cezar` in a terminal (PATH hook is
-  left to `cezar install`).
+- The sidecar writes the `~/.onni/bin` launchers on boot when they are missing, so a
+  machine that only ever installed the app still gets `onni` in a terminal (PATH hook is
+  left to `onni install`).
 
 ## Open items
 
@@ -310,6 +310,6 @@ of them is the one case where the shell must ship BEFORE the cezar version that 
   window itself — nobody has clicked through the installed app on Windows. Do that once,
   from the first release's installer, before the download link goes public.
 - Windows signing, Flathub, universal macOS binary (two dmgs today).
-- A `cezar desktop` version chip somewhere in the cockpit (the sidecar knows `ONNI_DESKTOP`,
+- A `onni desktop` version chip somewhere in the cockpit (the sidecar knows `ONNI_DESKTOP`,
   the shell version could ride along in an env var) so a bug report names both versions.
 - Windows/Linux title bar: native today; the macOS overlay treatment needs a custom bar there.

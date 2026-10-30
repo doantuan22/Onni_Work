@@ -1819,7 +1819,7 @@ export function createApp(deps: ServerDeps) {
   // The favicon packages/web/index.html points at (`/icon.svg`).
   app.get('/icon.svg', staticFile('icon.svg', 'image/svg+xml'));
   // Compatibility alias for the pre-rename public URL (BACKWARD_COMPATIBILITY.md §2).
-  app.get('/open-mercato.svg', staticFile('icon.svg', 'image/svg+xml'));
+  app.get('/onni.svg', staticFile('icon.svg', 'image/svg+xml'));
 
   // ---- meta ----------------------------------------------------------------
   // CORS — deliberately for /api/health ONLY (spec 011): the bookmarklets

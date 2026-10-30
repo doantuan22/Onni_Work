@@ -66,7 +66,7 @@ import type { ForgeComment } from './types.ts';
 
 describe('pickBranchPr — adopting the PR the agent opened', () => {
   const pr = (number: number, login?: string, state = 'OPEN') => ({
-    url: `https://github.com/open-mercato/cezar/pull/${number}`,
+    url: `https://github.com/open-mercato/onni/pull/${number}`,
     number,
     state,
     ...(login ? { headRepositoryOwner: { login } } : {}),
@@ -1124,7 +1124,7 @@ describe('fetchGithubComments timeline integration (#525)', () => {
       id: 5024963753,
       node_id: 'IC_kwDOShuET88AAAABK4LcqQ',
       url: 'https://api.github.com/repos/open-mercato/onni/issues/comments/5024963753',
-      html_url: 'https://github.com/open-mercato/cezar/issues/525#issuecomment-5024963753',
+      html_url: 'https://github.com/open-mercato/onni/issues/525#issuecomment-5024963753',
       issue_url: 'https://api.github.com/repos/open-mercato/onni/issues/525',
       created_at: '2026-07-20T17:07:49Z',
       updated_at: '2026-07-20T17:07:49Z',
@@ -1144,7 +1144,7 @@ describe('fetchGithubComments timeline integration (#525)', () => {
       createdAt: '2026-07-20T17:07:49Z',
       body: '## 📸 Evidence\n\nThe GitHub tab detail thread as it renders today.',
       kind: 'comment',
-      url: 'https://github.com/open-mercato/cezar/issues/525#issuecomment-5024963753',
+      url: 'https://github.com/open-mercato/onni/issues/525#issuecomment-5024963753',
     });
     // The timeline-only extras must not leak onto the wire type.
     expect(normalized).not.toHaveProperty('event');

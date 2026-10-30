@@ -6,7 +6,7 @@ Gate: resolved with the user, 2026-07-16 (Q1–Q4 below)
 
 ## TLDR
 
-cezar picks *which* agent runs; it cannot say *how* that agent behaves. Claude, Codex and OpenCode each read their own config files — `CLAUDE.md`, `.claude/settings.json`, `.mcp.json`, `AGENTS.md`, `config.toml`, `opencode.json` — and cezar is blind to every one: whatever MCP servers, hooks and permissions the underlying CLI happens to have are inherited invisibly. This spec adds a Settings surface that reads and writes those files **raw**, in their native format, with syntax highlighting, showing each scope's file beside the others and stating honestly which one the agent will obey. cezar never parses, merges or re-serializes a vendor schema — it is a file editor that knows where the files live and what the vendor documents about precedence, so it cannot drift when the formats change.
+Onni Work picks *which* agent runs; it cannot say *how* that agent behaves. Claude, Codex and OpenCode each read their own config files — `CLAUDE.md`, `.claude/settings.json`, `.mcp.json`, `AGENTS.md`, `config.toml`, `opencode.json` — and Onni Work is blind to every one: whatever MCP servers, hooks and permissions the underlying CLI happens to have are inherited invisibly. This spec adds a Settings surface that reads and writes those files **raw**, in their native format, with syntax highlighting, showing each scope's file beside the others and stating honestly which one the agent will obey. Onni Work never parses, merges or re-serializes a vendor schema — it is a file editor that knows where the files live and what the vendor documents about precedence, so it cannot drift when the formats change.
 
 ## Decisions
 
@@ -17,7 +17,7 @@ Taken with the user before drafting:
    files resolve from that project's `ProjectContext.root`; user-scope files remain machine-wide.
    The legacy unprefixed API remains the boot-project alias.
 2. **Not source-file routing.** No path-glob → runner mapping. The subject is only the agent's own config.
-3. **Raw file editor.** Real file bytes in a highlighted textarea. Validate on save, refuse to write a file that does not parse. cezar never re-serializes. *Amended 2026-10-26 (#1695): an explicit Save of an edited plain-JSON file re-indents it first — see Writes.*
+3. **Raw file editor.** Real file bytes in a highlighted textarea. Validate on save, refuse to write a file that does not parse. Onni Work never re-serializes. *Amended 2026-10-26 (#1695): an explicit Save of an edited plain-JSON file re-indents it first — see Writes.*
 4. **MCP is first-class** — the `mcp` placeholder (`registry.tsx:103-110`) ships.
 5. **Scopes shown together**, precedence explicit.
 6. **One PR**, phased into `om-auto-create-pr-loop`-sized steps.
@@ -25,17 +25,17 @@ Taken with the user before drafting:
 Resolved at the gate:
 
 - **Q1 — worktree reality → seed the `*.local` layer, label the rest honestly.** Tracked files are edited at the repo root and labelled "applies to runs once committed"; the gitignored personal layer is seeded into each run's worktree so one layer takes effect immediately. Rationale in §"The worktree problem".
-- **Q2 — hosted mode → the whole feature is read-only.** *Revised from the gate's "global scope only" after the security review (§"Why writes are a local-only capability").* Viewing every scope's file and precedence works everywhere; **no scope is writable when `capabilities.localHandoff` is false.** The original narrower gate left repo-local `.claude/settings.json` — which defines `hooks` (auto-firing shell commands that bypass cezar's `allowedTools`) — writable on an unauthenticated network endpoint, i.e. a persistent remote-code-execution primitive. Writing config is now a local-machine capability like open-in-*.
+- **Q2 — hosted mode → the whole feature is read-only.** *Revised from the gate's "global scope only" after the security review (§"Why writes are a local-only capability").* Viewing every scope's file and precedence works everywhere; **no scope is writable when `capabilities.localHandoff` is false.** The original narrower gate left repo-local `.claude/settings.json` — which defines `hooks` (auto-firing shell commands that bypass Onni Work's `allowedTools`) — writable on an unauthenticated network endpoint, i.e. a persistent remote-code-execution primitive. Writing config is now a local-machine capability like open-in-*.
 - **Q3 — new `agent-config` section + unhide `mcp`.**
 - **Q4 — offer create as an explicit action**, `mkdir -p` the parent on save; never write without a click.
 
 ## Problem Statement
 
-cezar's agent configuration stops at *capabilities it invented itself*: `defaultRunner`, `defaultModels`, `systemPrompt` (`src/config.ts:23-71`). Everything the vendors actually expose is invisible:
+Onni Work's agent configuration stops at *capabilities it invented itself*: `defaultRunner`, `defaultModels`, `systemPrompt` (`src/config.ts:23-71`). Everything the vendors actually expose is invisible:
 
-- **MCP is entirely unconfigurable and entirely unseen.** `AgentRunSpec` (`src/core/agent-runner.ts:23-54`) has no MCP field. Whatever servers the user's `claude`/`codex`/`opencode` happen to have configured are inherited implicitly. cezar's only acknowledgement of MCP is cosmetic — parsing the `mcp__server__tool` name convention for display (`src/core/tool-display.ts:152-156`) — plus a `hidden: true` placeholder that has been deferred twice (R6 → R7 → "post-program", `.ai/runs/2026-07-15-cockpit-ui-r7-retirement/HANDOFF.md:19`).
-- **The files are unreachable from the cockpit.** There is no `AGENTS.md`/`CLAUDE.md`/`settings.json` handling anywhere in `src/` — grep returns zero hits. To change how the agent behaves you leave cezar, find the repo in a terminal, and edit files by hand — in a product whose entire premise is that you do not have to.
-- **Precedence is genuinely hard to hold in your head, and cezar could hold it for you.** Three agents, three *different* precedence models (see §Research). Even an expert cannot answer "which settings file is actually in force right now" without re-reading three vendor docs.
+- **MCP is entirely unconfigurable and entirely unseen.** `AgentRunSpec` (`src/core/agent-runner.ts:23-54`) has no MCP field. Whatever servers the user's `claude`/`codex`/`opencode` happen to have configured are inherited implicitly. Onni Work's only acknowledgement of MCP is cosmetic — parsing the `mcp__server__tool` name convention for display (`src/core/tool-display.ts:152-156`) — plus a `hidden: true` placeholder that has been deferred twice (R6 → R7 → "post-program", `.ai/runs/2026-07-15-cockpit-ui-r7-retirement/HANDOFF.md:19`).
+- **The files are unreachable from the cockpit.** There is no `AGENTS.md`/`CLAUDE.md`/`settings.json` handling anywhere in `src/` — grep returns zero hits. To change how the agent behaves you leave Onni Work, find the repo in a terminal, and edit files by hand — in a product whose entire premise is that you do not have to.
+- **Precedence is genuinely hard to hold in your head, and Onni Work could hold it for you.** Three agents, three *different* precedence models (see §Research). Even an expert cannot answer "which settings file is actually in force right now" without re-reading three vendor docs.
 - **The worktree makes it worse, not better** (§"The worktree problem"): the file you edited in your checkout is frequently not the file your agent read.
 
 ## Research
@@ -137,29 +137,29 @@ Stated here so no UI string over-claims:
 
 Four pieces, one mechanism:
 
-1. **A catalog** (`src/agent-config/catalog.ts`) — a hardcoded table of the files above: id, runner, kind, scope, path, format, tracked-ness, and **the vendor's documented precedence sentence**. Hardcoding is the design: cezar's value here is knowing where the files are and what the docs say. An unknown file is not shown rather than guessed at, and the catalog is the only place vendor knowledge lives.
+1. **A catalog** (`src/agent-config/catalog.ts`) — a hardcoded table of the files above: id, runner, kind, scope, path, format, tracked-ness, and **the vendor's documented precedence sentence**. Hardcoding is the design: Onni Work's value here is knowing where the files are and what the docs say. An unknown file is not shown rather than guessed at, and the catalog is the only place vendor knowledge lives.
 2. **A reader/writer** (`src/agent-config/files.ts`) — addressed by catalog **id**, never by client-supplied path, so traversal is impossible by construction. Validates on save per format, refuses broken writes, and refuses stale writes via a content hash.
 3. **A code editor** (`web/app/src/components/code-editor.tsx`) — an overlay-on-`<textarea>` reusing the `highlighter.ts` singleton. No editor library.
 4. **Two Settings sections** — `agent-config` (the files, grouped by runner and kind, with a scope ladder) and `mcp` (the same editor, filtered to whichever file holds each runner's servers).
 
 Plus **worktree seeding** in `run.ts` so the personal layer actually reaches the agent.
 
-Alternatives rejected: **structured forms per agent** — couples cezar to five schemas across three vendors that change monthly; the raw editor cannot drift on schema by construction. **Computing an effective merged config for display** — cezar would have to reimplement five different merge algorithms and would be wrong the moment a vendor changed one; showing each file plus the vendor's own sentence is honest and stays true. **Monaco/CodeMirror** — the first heavyweight UI dep, for textareas that are a few hundred lines at most; the redesign's tech picks (`.ai/analysis/cockpit-ui-redesign/diff-highlight-tech.md`) deliberately avoided one.
+Alternatives rejected: **structured forms per agent** — couples Onni Work to five schemas across three vendors that change monthly; the raw editor cannot drift on schema by construction. **Computing an effective merged config for display** — Onni Work would have to reimplement five different merge algorithms and would be wrong the moment a vendor changed one; showing each file plus the vendor's own sentence is honest and stays true. **Monaco/CodeMirror** — the first heavyweight UI dep, for textareas that are a few hundred lines at most; the redesign's tech picks (`.ai/analysis/cockpit-ui-redesign/diff-highlight-tech.md`) deliberately avoided one.
 
 ## The worktree problem
 
 The feature's central design hazard, and the reason Q1 existed.
 
-A run's cwd is a **worktree**, not the repo root (`run.ts:745`, `state.cwd = wt.path`; worktrees at `.ai/cezar/worktrees/<runId>` on branch `cez/<id8>` off the base branch). So for a file edited in the cockpit:
+A run's cwd is a **worktree**, not the repo root (`run.ts:745`, `state.cwd = wt.path`; worktrees at `.ai/onni/worktrees/<runId>` on branch `onni/<id8>` off the base branch). So for a file edited in the cockpit:
 
 - **Tracked** (`.claude/settings.json`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `opencode.json`, `.codex/config.toml`) → the worktree holds *the base branch's committed copy*. An uncommitted edit never reaches a run.
 - **Gitignored** (`.claude/settings.local.json`, `CLAUDE.local.md`) → the file does not exist in the worktree **at all**. Anthropic documents this exact failure.
 
 So the naive build ships a settings page whose settings do nothing. The resolution (Q1c):
 
-**Tracked files** are edited at the repo root with an honest label: *"Runs read the committed copy — this edit applies after you commit it."* No magic. The file is the team's, versioned, and cezar has no business silently diverging a worktree from its branch.
+**Tracked files** are edited at the repo root with an honest label: *"Runs read the committed copy — this edit applies after you commit it."* No magic. The file is the team's, versioned, and Onni Work has no business silently diverging a worktree from its branch.
 
-**The personal layer is seeded.** At run start, after `createWorktree`, cezar copies the repo root's gitignored personal files into the worktree and registers them in the shared `.git/info/exclude`. Precedent is exact: `run.ts:910-923` already materializes team skills into `<cwd>/.claude/skills/<name>/` and leans on the same shared exclude "to keep them out of git (and out of autosave commits)". Seeding is safe *because* the layer is gitignored: it collides with nothing tracked, so there is no clobber decision to make.
+**The personal layer is seeded.** At run start, after `createWorktree`, Onni Work copies the repo root's gitignored personal files into the worktree and registers them in the shared `.git/info/exclude`. Precedent is exact: `run.ts:910-923` already materializes team skills into `<cwd>/.claude/skills/<name>/` and leans on the same shared exclude "to keep them out of git (and out of autosave commits)". Seeding is safe *because* the layer is gitignored: it collides with nothing tracked, so there is no clobber decision to make.
 
 Only Claude documents an untracked personal layer, so **seeding is Claude-only** (`.claude/settings.local.json`, `CLAUDE.local.md`). Codex and OpenCode get honest labels on their tracked files and nothing else. The UI states which files are seeded rather than implying uniformity.
 
@@ -169,7 +169,7 @@ The `info/exclude` step is not optional: if a user hand-created `settings.local.
 
 The gate's first answer to Q2 was "gate the global scope only" — keep repo files editable everywhere, make `~/**` read-only in hosted mode. The security review found that insufficient, and it was right.
 
-`.claude/settings.json` (and the seeded `.claude/settings.local.json`) define **`hooks`** — shell commands the Claude CLI runs on lifecycle and tool events. Hooks are **not** agent tool calls, so cezar's default-deny `--allowedTools` (`run.ts:636,1019`) does not gate them; `.mcp.json` and `[mcp_servers.*]` `command`s are the same class. The cockpit server has **no authentication** and its own code calls hosted mode the "deliberate network exposure" (`server.ts:1272`). Under the narrow gate, a network client could `PUT` a hook into repo-local settings and obtain persistent host-side shell execution that fires on every subsequent run — including runs it did not start — bypassing the allowlist, and actively propagated into worktrees by Phase 4 seeding. Calling that "the same risk class as the diffs agents already write" (as an earlier draft did) was wrong: a diff is inert until someone runs it; a hook fires automatically.
+`.claude/settings.json` (and the seeded `.claude/settings.local.json`) define **`hooks`** — shell commands the Claude CLI runs on lifecycle and tool events. Hooks are **not** agent tool calls, so Onni Work's default-deny `--allowedTools` (`run.ts:636,1019`) does not gate them; `.mcp.json` and `[mcp_servers.*]` `command`s are the same class. The cockpit server has **no authentication** and its own code calls hosted mode the "deliberate network exposure" (`server.ts:1272`). Under the narrow gate, a network client could `PUT` a hook into repo-local settings and obtain persistent host-side shell execution that fires on every subsequent run — including runs it did not start — bypassing the allowlist, and actively propagated into worktrees by Phase 4 seeding. Calling that "the same risk class as the diffs agents already write" (as an earlier draft did) was wrong: a diff is inert until someone runs it; a hook fires automatically.
 
 Distinguishing "code-executing" files from inert ones would mean understanding each vendor's schema — exactly the drift decision 3 forbids — and the inert files are a weak boundary anyway (a `CLAUDE.md` can *instruct* the agent to run things). So the boundary is coarse and by-mode, matching the open-in-* precedent that already 409s every local-machine affordance in hosted mode:
 
@@ -194,7 +194,7 @@ This costs a hosted user the ability to *edit* agent config from the browser. Th
 | Sections | `web/app/src/routes/settings/agent-config-section.tsx`, `mcp-section.tsx` (new) | The UI. |
 | Registry | `web/app/src/routes/settings/registry.tsx` (edit) | `agent-config` entry; unhide `mcp`. |
 
-**`src/paths.ts` is a coordination point, not a dependency.** The multi-project spec introduces it for `~/.cezar`; there is no shared home-path helper today (`skills-remote.ts:45-55` hardcodes `join(homedir(), '.cache', 'cez', …)` inline). Whichever spec lands first creates the file; the second imports it. Neither may block on the other — if `paths.ts` does not exist when this lands, this spec creates it with only the helpers it needs.
+**`src/paths.ts` is a coordination point, not a dependency.** The multi-project spec introduces it for `~/.onni`; there is no shared home-path helper today (`skills-remote.ts:45-55` hardcodes `join(homedir(), '.cache', 'onni', …)` inline). Whichever spec lands first creates the file; the second imports it. Neither may block on the other — if `paths.ts` does not exist when this lands, this spec creates it with only the helpers it needs.
 
 ### The catalog
 
@@ -289,8 +289,8 @@ Validation proves the file parses. It does **not** check the vendor's schema —
 
 ### Writes
 
-- **Never rewrite a file cezar merely opened.** No reformatting, no key reordering, no trailing-newline "fixes". A round-trip through the editor must be byte-identical unless the user typed. This is what makes a raw editor safe for a hand-tuned file full of comments.
-  - *Amendment 2026-10-26 (#1695), at the user's request:* when the user edits a `format: 'json'` file and clicks Save, the cockpit re-indents it before the PUT (`packages/web/src/lib/format-json.ts`). Whitespace only — strings, numbers and literals are copied verbatim, so values, key order and duplicate keys survive — and it keeps the file's indent unit and line endings. A file cezar merely opened is still never rewritten, the server still writes exactly what it receives, and JSONC, TOML, Markdown and invalid JSON are sent as typed (comments would not survive). Cost: a one-key edit to a hand-tuned file can produce a whitespace diff across the whole file.
+- **Never rewrite a file Onni Work merely opened.** No reformatting, no key reordering, no trailing-newline "fixes". A round-trip through the editor must be byte-identical unless the user typed. This is what makes a raw editor safe for a hand-tuned file full of comments.
+  - *Amendment 2026-10-26 (#1695), at the user's request:* when the user edits a `format: 'json'` file and clicks Save, the cockpit re-indents it before the PUT (`packages/web/src/lib/format-json.ts`). Whitespace only — strings, numbers and literals are copied verbatim, so values, key order and duplicate keys survive — and it keeps the file's indent unit and line endings. A file Onni Work merely opened is still never rewritten, the server still writes exactly what it receives, and JSONC, TOML, Markdown and invalid JSON are sent as typed (comments would not survive). Cost: a one-key edit to a hand-tuned file can produce a whitespace diff across the whole file.
 - **Atomic tmp+rename**, matching `store.ts:409-419`'s precedent.
 - **Write through symlinks, never replace them** — `~/.claude` pointing into a dotfiles repo is common. Resolve with `realpath` before the rename, or the rename silently replaces the link with a regular file and detaches the user's dotfiles.
 - **`mkdir -p` the parent only on an explicit save** (Q4).
@@ -313,7 +313,7 @@ Validation proves the file parses. It does **not** check the vendor's schema —
 
 Each kind renders a **scope ladder**: every scope in the vendor's load order, each row showing exists/absent, tracked/gitignored/global, and the seeded badge — with the vendor's `precedence` sentence above the ladder. Selecting a row opens it in the editor. On desktop the ladder sits left of the editor; on mobile it collapses above it.
 
-> **Deliberate deviation, flagged for review.** The ask was "global and local side by side". Claude's settings have *three* scopes and the cockpit is mobile-first (AGENTS.md), so three editor panes is a non-starter. The ladder shows every scope's state and which one wins *at once* — the comparison the ask is actually for — while exactly one file is editable at a time. Two live editors over files with five different merge models would also invite the reading that cezar merges them. It does not.
+> **Deliberate deviation, flagged for review.** The ask was "global and local side by side". Claude's settings have *three* scopes and the cockpit is mobile-first (AGENTS.md), so three editor panes is a non-starter. The ladder shows every scope's state and which one wins *at once* — the comparison the ask is actually for — while exactly one file is editable at a time. Two live editors over files with five different merge models would also invite the reading that Onni Work merges them. It does not.
 
 **Hosted mode renders the whole section read-only** (`editable:false`): the ladders and precedence sentences still show — understanding what is in force is the safe half — but every editor is read-only, Save/Create are hidden, and a banner states that agent config is edited from the machine that owns the checkout (§"Why writes are a local-only capability").
 
@@ -323,11 +323,11 @@ Per-file, below the ladder: the honest effect label — *"Runs read the committe
 
 Save / Revert, dirty state, inline parse errors from the 400, and a 409 that offers "reload from disk" (never a silent clobber). Absent files render greyed with **Create** → an empty editor whose first Save creates the file and its parent.
 
-**MCP** — the same editor, filtered to whichever file holds each runner's servers, since only Claude has a dedicated one: Claude → `.mcp.json`; Codex → `config.toml` (`[mcp_servers.*]`); OpenCode → `opencode.json` (`mcp` key). The section says so plainly rather than implying three parallel files, and states that editing Codex's or OpenCode's MCP means editing their main config — the same file Agent config opens, same version token. Claude's user/local scopes are listed read-only from `~/.claude.json` with "managed by `claude mcp add` — cezar does not edit Claude's state file".
+**MCP** — the same editor, filtered to whichever file holds each runner's servers, since only Claude has a dedicated one: Claude → `.mcp.json`; Codex → `config.toml` (`[mcp_servers.*]`); OpenCode → `opencode.json` (`mcp` key). The section says so plainly rather than implying three parallel files, and states that editing Codex's or OpenCode's MCP means editing their main config — the same file Agent config opens, same version token. Claude's user/local scopes are listed read-only from `~/.claude.json` with "managed by `claude mcp add` — Onni Work does not edit Claude's state file".
 
 ## Data Model
 
-**No new cezar state.** No `config.json` key, no `.ai/cezar/` file, no `ui-state.json` key. The files are the model and they are the *user's*. BACKWARD_COMPATIBILITY.md §3 is untouched; §2 gains routes additively.
+**No new Onni Work state.** No `config.json` key, no `.ai/onni/` file, no `ui-state.json` key. The files are the model and they are the *user's*. BACKWARD_COMPATIBILITY.md §3 is untouched; §2 gains routes additively.
 
 ## Edge Cases & Failure Scenarios
 
@@ -344,19 +344,19 @@ Save / Revert, dirty state, inline parse errors from the 400, and a 409 that off
 | `<repo>/AGENTS.md` | **One row, two runners** — not duplicated. Note that Claude ignores it (docs say so) and how to import it. |
 | Huge `~/.claude.json` | Read is capped; over cap → "too large to summarise", servers not listed. Never parsed for writing. |
 | Worktree disabled for a run | cwd is `repoRoot` (`run.ts:532-536`) — the edited files *are* what the agent reads, and seeding is a no-op. The label must reflect the run, not assume a worktree. |
-| Seeded file already exists in the worktree | Overwrite: it is gitignored and cezar-owned. Only the personal layer is ever seeded. |
+| Seeded file already exists in the worktree | Overwrite: it is gitignored and onni-owned. Only the personal layer is ever seeded. |
 | Hosted mode (`ONNI_REMOTE=1` / non-loopback) | Whole feature read-only: files and precedence shown, every `PUT` 409s, `userMcp` withheld. The one gate that closes the hooks RCE path (§"Why writes are a local-only capability"). |
 | A user genuinely tracked their `settings.local.json` | The seed path runs `git check-ignore` before seeding/excluding — a tracked file is neither force-excluded nor overwritten. The catalog's "gitignored" label is by convention and can be wrong for that user; the git check, not the label, guards the write. |
 | Concurrent runs seed the same personal layer | The `info/exclude` append is idempotent (skip if the line is already present) — parallel runs sharing the common-dir exclude can otherwise duplicate lines or race the read-modify-write. Duplicate ignore lines are harmless, but the append guards anyway. |
-| cezar's `allowedTools` vs the user's `permissions` | **Two different gates that both apply.** cezar passes `--allowedTools` default-deny (`run.ts:1019`, Claude only; codex/opencode ignore it per `codex-app-server-runner.ts:46`). Widening `permissions.allow` in settings cannot re-open what cezar's allowlist already denies. The Settings copy must say this or users will file "my permissions don't work" bugs. |
+| Onni Work's `allowedTools` vs the user's `permissions` | **Two different gates that both apply.** Onni Work passes `--allowedTools` default-deny (`run.ts:1019`, Claude only; codex/opencode ignore it per `codex-app-server-runner.ts:46`). Widening `permissions.allow` in settings cannot re-open what Onni Work's allowlist already denies. The Settings copy must say this or users will file "my permissions don't work" bugs. |
 
 ## Risks & Impact Review
 
-- **This is the first write outside `.ai/cezar/`, and some of what it writes executes code.** Every file cezar owns today is repo-local, gitignored, disposable. These are the user's — some tracked, some in `$HOME`, and some (`hooks`, MCP `command`) run shell commands *automatically*, outside cezar's `allowedTools`. On a local, loopback-bound cockpit this is no worse than the agent the user already runs. On a **hosted** cockpit it would be a network-reachable RCE primitive — which is why writes are gated entirely by mode, not by scope (§"Why writes are a local-only capability"). The earlier "same risk class as the diffs agents already write" framing was wrong and is corrected there: a diff is inert until run; a hook is not.
-- **Editing repo-tracked files dirties the working tree.** cezar writes into the user's checkout, which shows up in `GET /api/repo/changes`. Expected, but new: cezar has never modified tracked files outside a worktree before. Worth a review eye.
+- **This is the first write outside `.ai/onni/`, and some of what it writes executes code.** Every file Onni Work owns today is repo-local, gitignored, disposable. These are the user's — some tracked, some in `$HOME`, and some (`hooks`, MCP `command`) run shell commands *automatically*, outside Onni Work's `allowedTools`. On a local, loopback-bound cockpit this is no worse than the agent the user already runs. On a **hosted** cockpit it would be a network-reachable RCE primitive — which is why writes are gated entirely by mode, not by scope (§"Why writes are a local-only capability"). The earlier "same risk class as the diffs agents already write" framing was wrong and is corrected there: a diff is inert until run; a hook is not.
+- **Editing repo-tracked files dirties the working tree.** Onni Work writes into the user's checkout, which shows up in `GET /api/repo/changes`. Expected, but new: Onni Work has never modified tracked files outside a worktree before. Worth a review eye.
 - **Vendor drift is the standing risk, and decision 3 only half-covers it.** A raw editor cannot drift on *schema*; it can absolutely drift on *paths and precedence strings*. The catalog is a maintenance surface, and a stale precedence sentence is worse than none — it is a confident lie. Mitigation: every string carries `docsUrl`; the catalog is one file; §Research dates its claims.
 - **`smol-toml`** — one new runtime dep (§Validation).
-- **Zero-config principle** (multi-project spec appendix): this *edits* config, never requires it. cezar works with none of these files present, and the section is empty-but-honest on a fresh machine. Not a violation — stated so it does not read as one.
+- **Zero-config principle** (multi-project spec appendix): this *edits* config, never requires it. Onni Work works with none of these files present, and the section is empty-but-honest on a fresh machine. Not a violation — stated so it does not read as one.
 - **Blast radius is small.** Additive routes, a new section, one new `run.ts` hook that no-ops when the personal layer is absent. Every failure path collapses to today's behaviour.
 
 ## Phasing
@@ -398,4 +398,4 @@ One PR, five phases, each leaving the app working and independently reviewable. 
 - `.claude/rules/` and `~/.claude/rules/`, `.opencode/agents/` — directory trees with `paths:` frontmatter, a different UI problem.
 - Managed/enterprise scopes (`managed-settings.json`, managed `CLAUDE.md`).
 - Editing `~/.claude.json` (Claude's state file) — deliberately never.
-- Teaching `AgentRunSpec` about MCP so cezar could pass servers per run — a real capability, orthogonal to editing files.
+- Teaching `AgentRunSpec` about MCP so Onni Work could pass servers per run — a real capability, orthogonal to editing files.

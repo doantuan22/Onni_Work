@@ -1,10 +1,10 @@
-<html lang="en"><head><meta charset="utf-8"><title>cezar cockpit</title><style>/* Self-hosted variable woff2 (SIL OFL 1.1) — vendored from cezar packages/web/src/assets/fonts */
+<html lang="en"><head><meta charset="utf-8"><title>Onni Work cockpit</title><style>/* Self-hosted variable woff2 (SIL OFL 1.1) — vendored from Onni Work packages/web/src/assets/fonts */
 
 
 
 
 
-/* cezar cockpit color tokens — ported from packages/web/src/styles/index.css. Dark is default; `.light` on <html> flips. */
+/* Onni Work cockpit color tokens — ported from packages/web/src/styles/index.css. Dark is default; `.light` on <html> flips. */
 :root{
   color-scheme:dark;
   /* neutral ramp — elevation comes from surface steps, not shadows */
@@ -163,9 +163,9 @@
   --transition-fast:.15s; /* @kind other */
   --ease-default:ease; /* @kind other */
 }
-@keyframes cez-pulse{50%{opacity:.35}}
-@keyframes cez-shimmer{to{background-position:-200% 0}}
-@keyframes cez-spin{to{transform:rotate(360deg)}}
+@keyframes onni-pulse{50%{opacity:.35}}
+@keyframes onni-shimmer{to{background-position:-200% 0}}
+@keyframes onni-spin{to{transform:rotate(360deg)}}
 
 /* Base resets that the cockpit applies globally. */
 *{box-sizing:border-box;border-color:var(--border)}
@@ -179,8 +179,8 @@ a:hover{color:var(--foreground)}
 ::-webkit-scrollbar-thumb{background:var(--muted);border-radius:99px}
 ::-webkit-scrollbar-track{background:transparent}
 /* shimmer — running tool-card titles */
-.cez-shimmer{background:linear-gradient(90deg,var(--muted-foreground) 40%,var(--foreground) 50%,var(--muted-foreground) 60%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:cez-shimmer 1.8s linear infinite}
-@media (prefers-reduced-motion:reduce){.cez-shimmer{animation:none;background:none;color:var(--muted-foreground)}}
+.onni-shimmer{background:linear-gradient(90deg,var(--muted-foreground) 40%,var(--foreground) 50%,var(--muted-foreground) 60%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:onni-shimmer 1.8s linear infinite}
+@media (prefers-reduced-motion:reduce){.onni-shimmer{animation:none;background:none;color:var(--muted-foreground)}}
 
 </style>
 <style>html,body,#root{height:100%;overflow:hidden}.cz-row:hover{background:var(--muted)}.cz-row-pencil{opacity:0}.cz-row:hover .cz-row-pencil{opacity:1}@media (max-width:1280px){.cz-auto-wide{display:none}.cz-auto-status{display:none!important}}</style>
@@ -192,7 +192,7 @@ a:hover{color:var(--foreground)}
 <script type="text/babel" src="272bdb02-42a1-496a-bd5b-3eac5d6e4420.js"></script>
 <script type="text/babel" src="9101dc74-245b-473c-9107-7db000802d5c.js"></script>
 <script type="text/babel">
-const { CenteredState } = window.CezarDesignSystem_3b4141;
+const { CenteredState } = window.OnniDesignSystem_3b4141;
 function App() {
   const parse = () => (location.hash.replace('#','') || window.CZ_DEFAULT_ROUTE || 'tasks').split('/');
   const [route, setRoute] = React.useState(() => parse()[0]);
@@ -202,7 +202,7 @@ function App() {
   const go = (r, s, i) => { setRoute(r); if (r === 'automations') { setSub(s || null); if (i) setId(i); location.hash = [r, s, i].filter(Boolean).join('/'); } else { setSub(null); if (s) setId(s); location.hash = s ? r + '/' + s : r; } };
   React.useEffect(() => { const h = () => { const [r, s, i] = location.hash.replace('#','').split('/'); if (r) setRoute(r); if (r === 'automations') { setSub(s || null); if (i) setId(i); } else if (s) setId(s); }; addEventListener('hashchange', h); return () => removeEventListener('hashchange', h); }, []);
   const main = route === 'new' ? <NewTaskScreen go={go} /> : route === 'thread' ? <ThreadScreen id={id} go={go} /> : route === 'settings' ? <SettingsScreen /> : route === 'tasks' ? <TasksScreen go={go} view={view} setView={setView} /> : route === 'automations' ? <AutomationsScreen go={go} sub={sub} id={id} /> :
-    <CenteredState icon={{ inbox:'inbox', git:'git-branch', github:'github', skills:'sparkles', workflows:'workflow' }[route] || 'layers'} title={{ inbox:'Inbox', git:'Git', github:'GitHub', skills:'Skills', workflows:'Workflows' }[route] || route} subtitle="Not recreated in this kit — see the cezar repo for this view." />;
+    <CenteredState icon={{ inbox:'inbox', git:'git-branch', github:'github', skills:'sparkles', workflows:'workflow' }[route] || 'layers'} title={{ inbox:'Inbox', git:'Git', github:'GitHub', skills:'Skills', workflows:'Workflows' }[route] || route} subtitle="Not recreated in this kit — see the Onni Work repo for this view." />;
   return <div style={{ display:'flex', height:'100%', background:'var(--background)', color:'var(--foreground)' }}><Sidebar route={route} go={go} currentId={id} view={view} setView={setView} /><main style={{ flex:1, minWidth:0, overflowY:'auto', overscrollBehavior:'contain' }}>{main}</main></div>;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

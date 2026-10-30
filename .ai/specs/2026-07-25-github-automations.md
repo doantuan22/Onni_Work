@@ -2,7 +2,7 @@
 
 ## TLDR
 
-Add a project-scoped **Automations** page directly below GitHub in the sidebar. Users define bounded, polling-based GitHub triggers and pair them with the same prompt, workflow, skill, model, runner, worktree, and autonomy controls used by New task; matching issues or pull requests enqueue ordinary cezar tasks, while a durable execution log makes every decision debuggable.
+Add a project-scoped **Automations** page directly below GitHub in the sidebar. Users define bounded, polling-based GitHub triggers and pair them with the same prompt, workflow, skill, model, runner, worktree, and autonomy controls used by New task; matching issues or pull requests enqueue ordinary Onni Work tasks, while a durable execution log makes every decision debuggable.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -11,25 +11,25 @@ Add a project-scoped **Automations** page directly below GitHub in the sidebar. 
 | Q1 | Should the first release execute matches that predate automation creation, or establish a cursor and only process later events? | Enabling establishes a baseline and processes only later events; a separate “Test filter” preview never launches tasks. | Prevents a newly enabled rule from unexpectedly creating hundreds of runs. | ok |
 | Q2 | Should editing an enabled automation reconsider records already seen under the old filter? | No. Event receipts are immutable and edits only affect future polling observations. | Exactly-once intent is safer than retroactive reinterpretation; duplication can be explicit later. | ok |
 | Q3 | Should “new flag on issue” mean GitHub label added, label removed, or both? | Model two selectable event types, **issue label added** and **issue label removed**, with added selected by default. | This matches GitHub’s `labeled`/`unlabeled` action vocabulary and keeps intent explicit. | ok |
-| Q4 | Should the polling scheduler operate only while cezar is running, or require an external daemon? | Poll only while the existing cezar server is running. | A daemon would violate zero config and add a process users must manage. | ok |
+| Q4 | Should the polling scheduler operate only while Onni Work is running, or require an external daemon? | Poll only while the existing Onni Work server is running. | A daemon would violate zero config and add a process users must manage. | ok |
 | Q5 | Is this one cohesive feature or should trigger detection, task templates, and execution history ship as separate specs? | Keep one spec and phase delivery behind a disabled-by-default per-automation switch. | Detection, launch configuration, and audit history are one safe execution contract; none is useful or supportable alone. | ok |
 
 ## Problem Statement
 
-GitHub work currently reaches cezar only through manual hand-off. Teams need a local, zero-configuration way to turn new pull requests, new issues, and issue-label changes into normal cezar tasks without exposing a webhook receiver, scanning unbounded repositories, or hiding why an automation did or did not run.
+GitHub work currently reaches Onni Work only through manual hand-off. Teams need a local, zero-configuration way to turn new pull requests, new issues, and issue-label changes into normal Onni Work tasks without exposing a webhook receiver, scanning unbounded repositories, or hiding why an automation did or did not run.
 
 ## Proposed Solution
 
-Persist project-local automation definitions and execution records under `.ai/cezar/`. A demand-independent server scheduler polls GitHub at user-selected intervals, applies server-enforced author, assignee, label, relative-date, and result-limit filters, deduplicates event identities, and submits each accepted event through the existing run creation and scheduler path.
+Persist project-local automation definitions and execution records under `.ai/onni/`. A demand-independent server scheduler polls GitHub at user-selected intervals, applies server-enforced author, assignee, label, relative-date, and result-limit filters, deduplicates event identities, and submits each accepted event through the existing run creation and scheduler path.
 
 The cockpit gains a first-class `/p/:projectId/automations` surface immediately below GitHub. The GitHub tab shows a quiet “Set up automations” link when GitHub is available. An automation’s task template reuses the New task form and its validation rather than inventing a second workflow builder.
 
-Webhooks are deliberately excluded: cezar binds to loopback, has no account or hosted callback, and must not require router, tunnel, GitHub App, or repository configuration. GitHub recommends webhooks over polling for hosted integrations, so this local-only exception must compensate with serialized conditional requests, conservative intervals, strict result bounds, cursors, and rate-limit backoff. Authenticated conditional REST requests that return `304 Not Modified` do not consume the primary limit, while search has its own tighter bucket ([GitHub REST best practices](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api?apiVersion=2026-03-10), [rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)).
+Webhooks are deliberately excluded: Onni Work binds to loopback, has no account or hosted callback, and must not require router, tunnel, GitHub App, or repository configuration. GitHub recommends webhooks over polling for hosted integrations, so this local-only exception must compensate with serialized conditional requests, conservative intervals, strict result bounds, cursors, and rate-limit backoff. Authenticated conditional REST requests that return `304 Not Modified` do not consume the primary limit, while search has its own tighter bucket ([GitHub REST best practices](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api?apiVersion=2026-03-10), [rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api)).
 
 ## Goals
 
 - Let one project define multiple named GitHub automations with multiple trigger event types.
-- Poll only while cezar is running, without webhooks, another daemon, required config, or new credentials.
+- Poll only while Onni Work is running, without webhooks, another daemon, required config, or new credentials.
 - Bound every scan by time window, GitHub filters, pagination, and a hard per-poll result limit.
 - Configure the launched task with the same prompt, planned/free workflow, skills, runner, model, variants, worktree, follow-up, and autonomous controls as New task.
 - Enqueue matches through `RunManager.startRun`/`startGroup`, so normal scheduling, workspace concurrency, worktree isolation, persistence, and review behavior remain authoritative.
@@ -39,10 +39,10 @@ Webhooks are deliberately excluded: cezar binds to loopback, has no account or h
 ## Non-goals
 
 - GitHub webhooks, GitHub Apps, a public listener, tunnels, or cloud scheduling.
-- Running automations while the cezar server is stopped.
+- Running automations while the Onni Work server is stopped.
 - Generic cron/time triggers or non-GitHub forge automation.
 - Arbitrary shell commands in trigger filters or prompt interpolation.
-- Guaranteed distributed exactly-once execution across multiple cezar processes for the same project. A cross-process lease prevents normal duplication; receipts make recovery idempotent.
+- Guaranteed distributed exactly-once execution across multiple Onni Work processes for the same project. A cross-process lease prevents normal duplication; receipts make recovery idempotent.
 - Backfilling pre-existing matches on first enable.
 - Closing, labeling, commenting on, or otherwise mutating GitHub records as part of trigger evaluation.
 
@@ -67,7 +67,7 @@ The list page shows:
 - Name, enabled/paused state, trigger summary, interval, next check, and last result.
 - Counts for matches, launched tasks, skipped duplicates, and errors over the retained log.
 - `New automation`, `Run check now`, `Pause`, `Edit`, and `View log`.
-- An empty state explaining local polling: “Checks run while cezar is open. No webhook or public URL required.”
+- An empty state explaining local polling: “Checks run while Onni Work is open. No webhook or public URL required.”
 - A top-level status strip for GitHub availability, the scheduler lease, current rate-limit/backoff state, and the most recent successful project poll.
 
 Proposed list:
@@ -137,8 +137,8 @@ The poller depends on the forge/GitHub seam for identity and availability but is
 2. A workspace automation coordinator scans registered project roots for the optional automation definitions file only. Missing/gone/read-only roots degrade per registry rules; it never constructs a full `ProjectContext` merely to discover due work. Registry add/remove events refresh this bounded index.
 3. Lazily materialized `ProjectContext`s reuse the coordinator-owned store/scheduler handle; removing or disposing a context does not stop enabled background checks. If no enabled definition exists anywhere, the coordinator owns no timer and performs no GitHub call.
 4. The first enabled definition schedules the earliest due time; edits recompute one timer for the project.
-5. At due time, acquire `.ai/cezar/automation-poll.lock` using create-exclusive semantics with PID/start-time metadata and stale recovery.
-6. Re-read definitions under the lease, group due automations by compatible event family/query, and acquire the workspace GitHub request arbiter. The arbiter permits one active GitHub polling request chain per cezar process and applies token/user-scoped backoff shared by every project. A user-home cross-process quota lease serializes polling across cezar processes using the same `ONNI_HOME`/`gh` identity; when unavailable, conservative backoff prevents concurrent retries.
+5. At due time, acquire `.ai/onni/automation-poll.lock` using create-exclusive semantics with PID/start-time metadata and stale recovery.
+6. Re-read definitions under the lease, group due automations by compatible event family/query, and acquire the workspace GitHub request arbiter. The arbiter permits one active GitHub polling request chain per Onni Work process and applies token/user-scoped backoff shared by every project. A user-home cross-process quota lease serializes polling across Onni Work processes using the same `ONNI_HOME`/`gh` identity; when unavailable, conservative backoff prevents concurrent retries.
 7. Apply event reconstruction, filters, cursors, receipt deduplication, and caps.
 8. For each accepted event, durably reserve the receipt, launch the ordinary run, then finalize the receipt with `runId`. A startup repair reconciles `reserved` receipts: if their run exists, finalize; otherwise mark launch error and permit explicit retry.
 9. Persist cursor/ETag/backoff/log, publish one change event, release the lease, and schedule the next due time.
@@ -165,7 +165,7 @@ GitHub search syntax supports author, assignee, label, and date qualifiers and b
 
 - Use authenticated `gh api` only after the existing GitHub capability check succeeds.
 - Prefer list/timeline endpoints with `If-None-Match`; persist ETags per normalized request key. Do not use conditional caching where pagination/cursor semantics could skip a page.
-- Serialize requests per project and enforce one active polling project at a time per cezar process.
+- Serialize requests per project and enforce one active polling project at a time per Onni Work process.
 - Honor `Retry-After` and `X-RateLimit-Reset`; otherwise exponential backoff from one minute to six hours with jitter.
 - Search and core limits are recorded separately. Do not call `/rate_limit` every tick; use response headers.
 - A rate-limited automation does not advance its cursor and does not retry in a tight loop. The UI shows the exact next allowed check.
@@ -173,7 +173,7 @@ GitHub search syntax supports author, assignee, label, and date qualifiers and b
 
 ## Data Model and Persistence
 
-New state remains deletable/rebuildable and lives under `.ai/cezar/`; add every filename to `ensureDataGitignore`.
+New state remains deletable/rebuildable and lives under `.ai/onni/`; add every filename to `ensureDataGitignore`.
 
 ### `automations.json`
 
@@ -294,7 +294,7 @@ This field is optional in `RunRecord`, redacted/sanitized on writes, exposed add
 
 ## Security and Privacy
 
-- No listener beyond cezar’s existing loopback server; no webhook secret or inbound network path.
+- No listener beyond Onni Work’s existing loopback server; no webhook secret or inbound network path.
 - No new token store. Reuse the current `gh` authentication/GITHUB_TOKEN degradation behavior without exposing credentials in definitions, logs, tasks, or UI.
 - All `gh` invocations use fixed executable/argument arrays and validated values; never a shell-built query command.
 - GitHub author, title, label, and body are untrusted strings. Escape them in UI, bound lengths, strip control characters, and keep them out of system prompts and shell commands.
@@ -309,8 +309,8 @@ This field is optional in `RunRecord`, redacted/sanitized on writes, exposed add
 | `gh` missing, unauthenticated, no GitHub remote, or offline | Enabled automations remain persisted but paused by capability; no cursor advances; status explains the reason and next retry. Boot succeeds. |
 | API 403/429 | Honor headers/backoff, log one rate-limit row, show next retry, do not advance cursor. |
 | Search result exceeds cap | Stop at cap, log truncation and continuation cursor; never silently scan thousands. |
-| Cezar stopped through several intervals | On restart run one bounded catch-up from cursor within lookback, not one tick per missed interval. |
-| Two cezar processes open the same project | One cross-process lease polls; the other observes state and reschedules. Stale PID/start-time leases recover. |
+| Onni Work stopped through several intervals | On restart run one bounded catch-up from cursor within lookback, not one tick per missed interval. |
+| Two Onni Work processes open the same project | One cross-process lease polls; the other observes state and reschedules. Stale PID/start-time leases recover. |
 | Crash after receipt reservation before run creation | Startup reconciliation marks a visible recoverable error; no silent duplicate. |
 | Crash after run creation before receipt finalization | Reconcile by persisted automation receipt provenance on the run, then finalize without relaunch. |
 | Automation definition corrupt | Salvage other definitions, disable the bad entry, retain source file, show validation reason. |
@@ -323,7 +323,7 @@ This field is optional in `RunRecord`, redacted/sanitized on writes, exposed add
 
 - The protected `/api/github` response and existing GitHub routes remain unchanged.
 - `RunRecord.automation` is additive/optional; existing `runs.json` and clients parse unchanged.
-- New `.ai/cezar/` files follow existing optional, salvageable, atomic persistence rules and are added to `.ai/cezar/.gitignore` maintenance.
+- New `.ai/onni/` files follow existing optional, salvageable, atomic persistence rules and are added to `.ai/onni/.gitignore` maintenance.
 - Existing workflow YAML and `POST /api/runs` contracts are reused, not narrowed.
 - Removing/rolling back the feature means stopping schedulers and ignoring the new optional files/fields. Existing launched runs remain ordinary runs; deleting automation state is safe and rebuilds empty.
 - ~~No new `ONNI_*` variable is proposed. Enabling is stored per automation and user initiated; the zero-config default performs no GitHub polling until the first automation is explicitly enabled.~~ **Amended by #801 (2026-08-07):** per-automation `enabled` plus a zero-config default turned out not to be gating enough — the whole surface, including the sidebar entry, had to be hideable, and every project with a GitHub remote saw the tab. The feature is now opt-in behind `ONNI_AUTOMATIONS=1` (strict activation, off by default, surfaced as `capabilities.automations` on `/api/v1/health`): off, the nav item is absent everywhere, the `/automations*` routes answer `409`, and the workspace scheduler never starts. The per-automation `enabled` toggle and the no-backfill baseline described in this spec are unchanged and still apply once the flag is on. See `BACKWARD_COMPATIBILITY.md` §"GitHub automations — opt-in gating".
@@ -389,8 +389,8 @@ Add the real-browser journey, large-repository fixtures, disk/read-only degradat
 
 ## Alternatives Considered
 
-- **GitHub webhooks:** lower latency and GitHub’s preferred hosted pattern, but requires a reachable listener, repository configuration, secrets, and ongoing delivery management; incompatible with cezar’s local zero-config contract.
-- **GitHub Actions workflow dispatching cezar:** requires committed workflow/config and a remotely reachable or self-hosted runner; cezar would no longer be local-only.
-- **External cron/launchd/systemd job:** could poll while cezar is closed but adds platform-specific process/config management and competing state ownership.
+- **GitHub webhooks:** lower latency and GitHub’s preferred hosted pattern, but requires a reachable listener, repository configuration, secrets, and ongoing delivery management; incompatible with Onni Work’s local zero-config contract.
+- **GitHub Actions workflow dispatching Onni Work:** requires committed workflow/config and a remotely reachable or self-hosted runner; Onni Work would no longer be local-only.
+- **External cron/launchd/systemd job:** could poll while Onni Work is closed but adds platform-specific process/config management and competing state ownership.
 - **Pure GitHub Search polling:** simpler for created issues/PRs but cannot reliably reconstruct label transitions and has a tighter independent rate limit.
 - **One workflow file per automation:** portable, but cannot express trigger cursor/receipt/log state and would overload the protected workflow YAML contract. Automation task settings should reference/reuse workflow semantics without changing that format.

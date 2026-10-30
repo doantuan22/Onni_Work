@@ -4,7 +4,7 @@ Tracking issue: [#499](https://github.com/open-mercato/cezar/issues/499)
 
 ## TLDR
 
-The GitHub tab lists issues and PRs but hides the conversation: comment counts are hard-coded to `0` server-side, and the detail view renders only the opening body. This spec adds (1) real comment counts with a comment icon on every issue/PR row and in the detail meta line, and (2) the full comment thread in the detail view — each comment rendered through the app's existing Streamdown `Markdown` component, which already renders images (Streamdown 2.x defaults to allow-all via rehype-harden), so screenshots in comments show up the moment the thread exists. A user triaging an issue in Cezar gets the whole context without opening github.com.
+The GitHub tab lists issues and PRs but hides the conversation: comment counts are hard-coded to `0` server-side, and the detail view renders only the opening body. This spec adds (1) real comment counts with a comment icon on every issue/PR row and in the detail meta line, and (2) the full comment thread in the detail view — each comment rendered through the app's existing Streamdown `Markdown` component, which already renders images (Streamdown 2.x defaults to allow-all via rehype-harden), so screenshots in comments show up the moment the thread exists. A user triaging an issue in Onni Work gets the whole context without opening github.com.
 
 ## Resolved questions (autonomous defaults)
 
@@ -18,7 +18,7 @@ Authored unattended; each default is overridable before implementation starts �
 
 ## Problem Statement
 
-`fetchGithub` deliberately omits the `comments` field (`gh … --json comments` ships every comment body for every row) and builds each `ForgeItem` with `comments: 0` (`src/server/forge/github.ts` L139, L155). The wire type and the detail view already have the field and the `{item.comments} comments` meta line (`web/app/src/routes/github/github.tsx` `GithubDetail`), so with real data the count is always falsy and never rendered. The thread itself is fetched nowhere. Practical effect: the hand-to-agent flow (`githubTaskPrompt`) and human triage both operate on the opening post only — for mature issues the decisive context (maintainer answers, repro confirmations, screenshots) is invisible in Cezar.
+`fetchGithub` deliberately omits the `comments` field (`gh … --json comments` ships every comment body for every row) and builds each `ForgeItem` with `comments: 0` (`src/server/forge/github.ts` L139, L155). The wire type and the detail view already have the field and the `{item.comments} comments` meta line (`web/app/src/routes/github/github.tsx` `GithubDetail`), so with real data the count is always falsy and never rendered. The thread itself is fetched nowhere. Practical effect: the hand-to-agent flow (`githubTaskPrompt`) and human triage both operate on the opening post only — for mature issues the decisive context (maintainer answers, repro confirmations, screenshots) is invisible in Onni Work.
 
 Markdown and image rendering need no new engine: the shared `Markdown` wrapper (`web/app/src/routes/task-thread/markdown.tsx`) wraps Streamdown 2.5.0, whose bundled rehype-harden defaults allow all image/link origins — issue-body images render today, and thread comments get the same treatment for free once they flow through the same component. The missing piece is purely the data: counts and thread bodies never reach the frontend.
 
@@ -50,7 +50,7 @@ Zero-config check: no new config, no new env var, no new process. Network exposu
 
 ## Data Model
 
-No persistent state — in-memory caches only (rebuilt on restart, consistent with the existing list cache; nothing under `.ai/cezar/`).
+No persistent state — in-memory caches only (rebuilt on restart, consistent with the existing list cache; nothing under `.ai/onni/`).
 
 ```ts
 // src/server/forge/types.ts (additive)
@@ -152,7 +152,7 @@ query ($owner: String!, $name: String!, $endCursor: String) {
 
 ## Out of scope
 
-- Posting, editing, or reacting to comments from Cezar (read-only view).
+- Posting, editing, or reacting to comments from Onni Work (read-only view).
 - Inline diff-anchored PR review comments and review-thread resolution state (belongs in a future diff-view integration; the flat thread notes review summaries only).
 - Background polling/webhooks for live comment updates — the 60 s TTL + manual refresh matches the tab's existing sync model.
 - A `gh`-authenticated server-side image proxy for private-repo attachments (named follow-up; revisit if private-repo usage shows up).

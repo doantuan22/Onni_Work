@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>cezar — add project mockup</title>
+<title>Onni Work — add project mockup</title>
 <style>
   :root {
     --bg: #f7f7f8; --card: #ffffff; --fg: #18181b; --muted: #71717a; --soft: #52525b;
@@ -73,25 +73,25 @@
   <p class="caption">The folder-open button next to <b>New task</b> opens a two-option dropdown.
   “Open local folder” browses the server's home dir via <code>GET /api/fs/browse</code>;
   “Clone from GitHub” runs <code>gh repo clone</code> into the global checkout root
-  (<code>~/cezar/projects/&lt;name&gt;</code>) and is disabled with a reason when <code>gh</code> is unavailable.</p>
+  (<code>~/onni/projects/&lt;name&gt;</code>) and is disabled with a reason when <code>gh</code> is unavailable.</p>
 
   <div class="row">
     <!-- 1: the dropdown -->
     <div class="menu">
       <div class="item"><span class="ic">📁</span><div><div>Open local folder…</div><div class="d">Register a folder that's already on this machine</div></div></div>
-      <div class="item"><span class="ic">⧉</span><div><div>Clone from GitHub…</div><div class="d">Check out a repository into ~/cezar/projects</div></div></div>
+      <div class="item"><span class="ic">⧉</span><div><div>Clone from GitHub…</div><div class="d">Check out a repository into ~/onni/projects</div></div></div>
     </div>
 
     <!-- 2: folder browser -->
     <div class="dialog">
       <div class="dlg-head">
         <div class="t">Open local folder</div>
-        <div class="s">Pick the folder cezar should run in. Git repos are marked; any folder works.</div>
+        <div class="s">Pick the folder Onni Work should run in. Git repos are marked; any folder works.</div>
       </div>
       <div class="crumbbar">~ <span>/</span> <b>Projects</b></div>
       <div class="list">
         <div class="dir"><span>📁</span><span class="name">..</span></div>
-        <div class="dir"><span>📁</span><span class="name">cezar</span><span class="already">already added</span></div>
+        <div class="dir"><span>📁</span><span class="name">Onni Work</span><span class="already">already added</span></div>
         <div class="dir sel"><span>📁</span><span class="name">shop-frontend</span><span class="repo">git</span></div>
         <div class="dir"><span>📁</span><span class="name">open-mercato</span><span class="repo">git</span></div>
         <div class="dir"><span>📁</span><span class="name">notes</span></div>
@@ -118,7 +118,7 @@
         <label>Project name</label>
         <input value="shop-backend" />
       </div>
-      <div class="target">Will clone into <b>~/cezar/projects/shop-backend</b> — change the root in Global settings.</div>
+      <div class="target">Will clone into <b>~/onni/projects/shop-backend</b> — change the root in Global settings.</div>
       <div class="progress"><span class="spin"></span> Cloning… receiving objects 64%</div>
       <div class="ghnote">gh authenticated as <b>piotrkarwatka</b></div>
       <div class="dlg-foot">

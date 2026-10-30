@@ -30,7 +30,7 @@ claude                                       # the discovered account → ~/.cla
 CLAUDE_CONFIG_DIR=~/.claude-klaudiusz claude # a second login         → ~/.claude-klaudiusz
 ```
 
-cezar knew exactly one dir per agent, so a user with two accounts could not tell it which one a
+Onni Work knew exactly one dir per agent, so a user with two accounts could not tell it which one a
 project should run under — every task billed the personal subscription, and the Agent config pane
 only ever showed the personal account's files.
 
@@ -55,13 +55,13 @@ dirs), already covered by `AgentRunSpec.additionalDirectories`.
 ### The default profile is discovered, never stored
 
 `agentHomePaths()` already honours the vendors' own env vars, so it *is* the discovery of the
-default profile — setting `CLAUDE_CONFIG_DIR` on the cezar process moves the default rather than
-being ignored. An absent `agent-accounts.json` therefore behaves exactly as cezar always has, and
+default profile — setting `CLAUDE_CONFIG_DIR` on the Onni Work process moves the default rather than
+being ignored. An absent `agent-accounts.json` therefore behaves exactly as Onni Work always has, and
 `default` is a reserved id that is never written to the file.
 
 ### No globbing
 
-cezar does **not** scan for sibling dirs. On a real machine `~/.claude*` matches `~/.claude`,
+Onni Work does **not** scan for sibling dirs. On a real machine `~/.claude*` matches `~/.claude`,
 `~/.claude-klaudiusz`, `~/.claude.json` *and* `~/.claude.json.backup` — half of them files — and a
 directory's existence proves nothing about a login. The zero-config rule is "discover it, or
 default it", and the default IS discovered; an extra account is an act the user performed (they
@@ -72,15 +72,15 @@ first-run sequence.
 
 ### Storage: its own file, not `config.json` and not the repo
 
-`~/.cezar/agent-accounts.json` holds both the accounts and the per-project selections.
+`~/.onni/agent-accounts.json` holds both the accounts and the per-project selections.
 
 **Not the repo config.** A `configDir` is an absolute local path and an account id means nothing on
-a teammate's machine; every key in `<repo>/.ai/cezar/config.json` is a *team* decision (base
+a teammate's machine; every key in `<repo>/.ai/onni/config.json` is a *team* decision (base
 branch, review gate, default runner) whereas "which of my two logins" is personal — and committing
 it would publish that someone runs a second account on this repo.
 
 **Not `config.json` either, which is where this started.** Accounts and a per-project
-`agentProfile` first lived in the workspace config, relying on `.passthrough()` to survive a cezar
+`agentProfile` first lived in the workspace config, relying on `.passthrough()` to survive an Onni Work
 downgrade. Measured against this repo's own history, that held. It is still the wrong bet:
 
 - it depends on a modifier in **another version's** source, which this repo cannot promise;
@@ -99,7 +99,7 @@ rebuilt, and it means this file needs no cross-reference into `config.json`. An 
 deregistered project — resolves to nothing and is inert.
 
 Accounts written into `config.json` by the first cut are imported once, non-destructively:
-`config.json` keeps its keys, so an older cezar sharing the home reads what it always read, and
+`config.json` keeps its keys, so an older Onni Work sharing the home reads what it always read, and
 the import is idempotent because it only runs while `agent-accounts.json` is absent.
 
 **Extension point, deliberately not built:** a future per-repo "which agents may be used here"
@@ -138,7 +138,7 @@ This is what makes the per-task composer override safe.
 3. the project's stored selection;
 4. the discovered default.
 
-Read fresh every time: `~/.cezar/` is shared by every cezar process on the machine, so a cached
+Read fresh every time: `~/.onni/` is shared by every Onni Work process on the machine, so a cached
 snapshot is a staleness bug, and one small JSON read is free next to spawning a CLI.
 
 ### OpenCode is deferred
@@ -156,19 +156,19 @@ other XDG-aware tool the agent's own Bash calls touch.
 | `packages/work/src/core/agent-profiles.ts` | `PROFILE_ENV_VAR`, `profileEnv`, `looksLikeProfileDir` — the vendor knowledge, pure. Sibling of `agent-config/catalog.ts`, which owns config-FILE knowledge. |
 | `packages/work/src/core/shell-env.ts` | Rendering the variable into a shell command, per platform, refusing rather than guessing. |
 | `packages/work/src/workspace/agent-profiles.ts` | Resolution against the workspace config. |
-| `packages/work/src/workspace/agent-accounts.ts` | `~/.cezar/agent-accounts.json` — the store, its house rules, and the one-time import from `config.json`. `config.json`'s own schema is untouched by this feature. |
+| `packages/work/src/workspace/agent-accounts.ts` | `~/.onni/agent-accounts.json` — the store, its house rules, and the one-time import from `config.json`. `config.json`'s own schema is untouched by this feature. |
 | `packages/contract/src/agent-profiles.ts` | The wire shapes. |
 | `GET/POST /api/v1/workspace/agent-profiles`, `PATCH/DELETE …/:id` | Workspace-level, single-mount, `localHandoff`-gated. |
 | `PUT /api/v1/workspace/agent-profiles/selection` | Which account a project uses. On the accounts family, so `PATCH /api/v1/projects` and the project registry are untouched. |
 | `POST /api/v1/runs` | Gains `agentProfile` — the composer's per-task override. |
 | `POST /api/v1/runs/:id/continue` | Gains `agentProfile` too — the same override, after the task has started. Omitted means "keep the account this run is on", which is what an untouched Continue sends. A switch does NOT resume: the session id lives inside the previous account's config dir, so it starts a fresh session exactly as switching runner does. Persisted on the record before scheduling, next to the runner/model pair — and a runner switch that names no account CLEARS the previous one, since an account belongs to one agent. |
 | Settings → Agent accounts (global) | One TAB per agent: install state + version from `/api/v1/health`, then that agent's logins. Every agent gets a tab, including OpenCode — the tab is where "is it installed?" is answered. |
-| Settings → Agents (per project) | "Default agent" is ONE control, the same flat list the composer uses: `claude · Default`, `claude · Klaudiusz`, `codex`. The repo's default agent and its account are the same decision — "what does this repo run by default" — so splitting them meant reading two fields to learn one fact. Each row names the FOLDER it resolves to (the labels are cezar's invention; the folder is the account), and a folder that does not exist yet is called out, since a run under it fails on auth by design. An agent with a single login stays a single row, so a machine with no extra accounts sees the control it always saw — still titled "Default runner", since no account is in play. |
-| Settings → Agent accounts, "Defaults for new projects" | The same flat control, plus per-agent default models, answering "what does a project run when it has chosen nothing" — so a second login is set up ONCE instead of per checkout. On the accounts page rather than one of its own: it is the same subject, and a separate page would mean adding an account in one place and going elsewhere to say "use it". Above the per-agent tabs, because it is a cross-agent answer. Written to `~/.cezar/config.json` (`agentDefaults.runner`, `agentDefaults.models`) and `~/.cezar/agent-accounts.json` (`defaults`). |
+| Settings → Agents (per project) | "Default agent" is ONE control, the same flat list the composer uses: `claude · Default`, `claude · Klaudiusz`, `codex`. The repo's default agent and its account are the same decision — "what does this repo run by default" — so splitting them meant reading two fields to learn one fact. Each row names the FOLDER it resolves to (the labels are Onni Work's invention; the folder is the account), and a folder that does not exist yet is called out, since a run under it fails on auth by design. An agent with a single login stays a single row, so a machine with no extra accounts sees the control it always saw — still titled "Default runner", since no account is in play. |
+| Settings → Agent accounts, "Defaults for new projects" | The same flat control, plus per-agent default models, answering "what does a project run when it has chosen nothing" — so a second login is set up ONCE instead of per checkout. On the accounts page rather than one of its own: it is the same subject, and a separate page would mean adding an account in one place and going elsewhere to say "use it". Above the per-agent tabs, because it is a cross-agent answer. Written to `~/.onni/config.json` (`agentDefaults.runner`, `agentDefaults.models`) and `~/.onni/agent-accounts.json` (`defaults`). |
 | Defaults, never overrides | The resolution order is task override → repo choice → machine default → discovered. A repo that has chosen is NEVER moved by a later change to the machine default; the default only fills silence. That is the whole safety property: changing a global setting must not quietly re-point work someone already configured onto another subscription. Applied to the RAW config object before parsing, because `defaultRunner`'s `.default('claude')` materializes the key — after a parse there is no telling "chose claude" from "said nothing" — and `models` merges per RUNNER so pinning one repo's claude model cannot discard the machine's codex preset. |
 | The task header's agent badge | Reads `claude · Klaudiusz · opus` beside the bot icon, with the labelled breakdown still in its menu. Visible text rather than icon-only: #416 moved runner/model out of the loose dot-list to cut noise, and that holds — they are not separate chips — but an icon alone made "which agent, account and model produced this?" unanswerable without knowing to click, which is the one question the badge exists for. The account comes from the STEP that spawned (`steps[].profileId`), never the run's composer override or the project's current selection: the override is absent whenever the run simply followed the project, and the selection can have changed since — either would name an account the run may never have touched. A run from before accounts existed shows no account line rather than claiming the discovered one; a removed account is shown as `<id> (removed)`, because the id is the only remaining pointer to the folder its sessions live in. |
 | Signing a second account in | The account row carries **Connect** (hidden once that account is connected) and **Check again**. Connect posts `{provider, profileId}` to `POST /api/v1/providers/connect`, which renders `CLAUDE_CONFIG_DIR=… claude /login` for that account and fails closed rather than running the bare command. Without this the pane told the user three times to press Connect and offered none: the engine was complete and unreachable, and an added account had no in-product way to log in. Two rules the route now keeps for a NAMED account: it evicts that account's cached status first, so Connect after a terminal `/logout` cannot answer "already connected" out of the ten-minute window; and it refuses in hosted mode **before** resolving anything, so no host path is built and a wrong id is not an enumeration oracle for ids the hosted listing withholds. |
-| One click, two stores | That row writes `defaultRunner` to the repo's committable config and the account to `~/.cezar/agent-accounts.json`. The split is the point: the runner is a team decision, the account is personal and per-machine — committing it would publish which login someone works under. The copy says so, because every other field in that pane is shared. Picking an agent with one login writes NO selection: recording a choice the user was never offered would be state nobody asked for. |
+| One click, two stores | That row writes `defaultRunner` to the repo's committable config and the account to `~/.onni/agent-accounts.json`. The split is the point: the runner is a team decision, the account is personal and per-machine — committing it would publish which login someone works under. The copy says so, because every other field in that pane is shared. Picking an agent with one login writes NO selection: recording a choice the user was never offered would be state nobody asked for. |
 | The composer's runner pill | The per-task override is not a pill of its own; the runner pill lists every agent-and-login as one FLAT row — `claude · Default`, `claude · Klaudiusz`, `codex`. Every row is a concrete thing that can run this task, so what will happen is readable at a glance instead of assembled from a runner choice plus a nested account choice. An agent with a single login stays a single row, so a host with no extra accounts sees the list it always saw. The row the repo resolves to is the one selected until the user picks another; on a host with ONE runner the pill appears whenever a second login exists, because a single runner is not a choice but a second login is. |
 | The thread's Continue pill | The SAME control, on the same terms — a task that has started must be able to change login, not only agent. One difference, and it follows from `sessionId`/`profileId` being a pair: the row selected until the user picks another is the account the RUN is on (`steps[].profileId`), not the project's current selection, which may have moved since. Switching agent falls back to what the project resolves to for that agent, because the account belonged to the previous one. `useAgentAccounts` is where both surfaces read the logins and the selection, so the two pills cannot drift into looking alike and picking differently. |
 | Both | Hidden entirely when no extra account exists. |
@@ -219,7 +219,7 @@ The lifetime is **asymmetric**:
 - a **connected** answer stands for minutes — nothing is lost if it ages, because a credential that
   has really gone bad surfaces as a runtime auth failure, which is already latched and overrides the
   cache on the spot;
-- a **not-connected** answer is re-checked sooner, for display self-healing only: cezar cannot see
+- a **not-connected** answer is re-checked sooner, for display self-healing only: Onni Work cannot see
   `claude auth login` happen, so a card that says disconnected has to find out on its own. A minute,
   not seconds — every expiry now costs a background probe, and a polling cockpit would turn a
   five-second window into a spawn every five seconds, forever, on any machine where one provider is
@@ -234,11 +234,11 @@ is what taxed every other reader.
 
 Inverted: the gate re-probes before it refuses, and only a refusal that survives the fresh answer is
 returned. The cost lands where it belongs — the common path (connected, warm) pays nothing, and a
-spawn happens only when cezar is about to say no, which is rare and interactive. Two things it
+spawn happens only when Onni Work is about to say no, which is rare and interactive. Two things it
 deliberately does not do: re-probe a **disabled** provider (that is a settings fact, and re-reading
 it with a CLI spawn would learn nothing), and escape a **runtime auth latch** (`withRuntimeFailures`
 keeps forcing the row disconnected until the user acknowledges that exact incident, so a re-probe
-cannot talk cezar out of a rejection it actually observed).
+cannot talk Onni Work out of a rejection it actually observed).
 
 The gate judges the account the action runs on (#1428), so its refusal must too: a signed-out
 NAMED account answers `<Agent> account "<label>" is not signed in…` rather than the provider-level
@@ -254,7 +254,7 @@ most of them, since few people are signed into all three — putting the shell-o
 the page load. A peek blocks nothing; it fills in a dot on a page that offers Connect and a
 re-check right beside it.
 
-Anything cezar *can* observe invalidates explicitly rather than waiting for either window: opening a
+Anything Onni Work *can* observe invalidates explicitly rather than waiting for either window: opening a
 login, repointing or removing an account, and a runtime rejection.
 
 **Known coarseness:** the window still applies to the whole three-provider response, so one

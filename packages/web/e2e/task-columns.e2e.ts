@@ -63,7 +63,7 @@ const FIXTURE = [
     finishedAt: ago(26 * 60_000),
     branch: 'onni/fold-columns-fixture',
     diffStat: { adds: 128, dels: 14, files: 6 },
-    pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/743',
+    pullRequestUrl: 'https://github.com/open-mercato/onni/pull/743',
     tokensUsed: 128_400,
     inputTokens: 96_000,
     outputTokens: 32_400,

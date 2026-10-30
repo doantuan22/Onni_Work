@@ -5,7 +5,7 @@ Status: ZAIMPLEMENTOWANE 2026-07-10 · Fala: 3 · Zależy od: 005 (team skille),
 ## Cel
 
 Jesteś na PR/issue na GitHubie, klikasz zakładkę w pasku przeglądarki —
-cockpit cezara otwiera się **z już uruchomionym taskiem** na tym PR
+cockpit Onni Work otwiera się **z już uruchomionym taskiem** na tym PR
 (np. `om-auto-review-pr`), a Ty dalej oglądasz GitHuba. Zero przepisywania
 numerów PR, zero przełączania kontekstu.
 
@@ -14,7 +14,7 @@ numerów PR, zero przełączania kontekstu.
 - Na dole zakładki **Skills** sekcja „**Run from GitHub**": rządek przycisków
   do **przeciągnięcia na pasek zakładek** (+ „Copy" dla każdego), filtr po
   nazwie skilla — jak w janitorze:
-  - **Generic launcher** („cezar: this PR/issue") — otwiera cockpit z
+  - **Generic launcher** („Onni Work: this PR/issue") — otwiera cockpit z
     formularzem wypełnionym URL-em PR/issue; nic nie startuje samo.
   - **Per-skill** (jeden przycisk na skill) — otwiera cockpit i **od razu
     startuje** task z tym skillem i URL-em jako argumentem.
@@ -23,7 +23,7 @@ numerów PR, zero przełączania kontekstu.
 - Klik na stronie nie-GitHubowej → bookmarklet grzecznie mówi „open a GitHub
   PR or issue first" (alert) i nic nie robi.
 - Cockpit nie działa → przeglądarka pokaże błąd połączenia; sekcja
-  „How this works" mówi wprost: „cockpit musi działać (`npx cezar`)".
+  „How this works" mówi wprost: „cockpit musi działać (`npx onni`)".
 
 ## Fajniej niż janitor (nasze dwa ulepszenia)
 
@@ -36,7 +36,7 @@ numerów PR, zero przełączania kontekstu.
    właściwego.
 2. **Launch-key.** Auto-start z parametru GET to wektor drive-by (dowolna
    strona mogłaby nawigować na `localhost:4321/new?auto=1&task=…`, a agent
-   ma Basha). Serwer trzyma losowy `launchKey` w `.ai/cezar/launch-key`
+   ma Basha). Serwer trzyma losowy `launchKey` w `.ai/onni/launch-key`
    (generowany przy pierwszym starcie, gitignorowany); strona bookmarkletów
    wypieka go w `javascript:`-URL. `auto=1` jest honorowane **tylko** z
    poprawnym kluczem; bez klucza → formularz wypełniony, start ręczny.
@@ -55,7 +55,7 @@ numerów PR, zero przełączania kontekstu.
      z promptem = ref) i przejście do widoku taska;
    - po obsłużeniu wyczyść query string (`history.replaceState`).
 2. **`GET /api/launch-key`** — zwraca klucz (tylko localhost i tak jesteśmy);
-   GUI używa go do budowy bookmarkletów. Klucz w `.ai/cezar/launch-key`
+   GUI używa go do budowy bookmarkletów. Klucz w `.ai/onni/launch-key`
    (dopisany do generowanego `.gitignore`).
 3. **Generator bookmarkletów** (czysty JS w `web/app.js`, ~60 linii):
    szablon funkcji, która na stronie GitHuba: waliduje
@@ -83,7 +83,7 @@ numerów PR, zero przełączania kontekstu.
 
 - `src/server/server.ts`: `GET /new` → serwuj `index.html` (SPA obsłuży
   query); `GET /api/launch-key` → `{key}`; generowanie klucza przy starcie
-  (`randomUUID`, plik `.ai/cezar/launch-key`, `chmod 600` best-effort).
+  (`randomUUID`, plik `.ai/onni/launch-key`, `chmod 600` best-effort).
 - `web/app.js`: parser query przy `init()`, moduł `bookmarklets` (szablon,
   render sekcji w loadSkills), filtr.
 - `src/index.ts`: `ensureDataGitignore` + `launch-key` w ignorach.

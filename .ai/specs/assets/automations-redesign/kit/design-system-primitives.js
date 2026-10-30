@@ -1,8 +1,8 @@
-/* @ds-bundle: {"format":4,"namespace":"CezarDesignSystem_3b4141","components":[{"name":"Badge","sourcePath":"components/core/Badge.jsx"},{"name":"BranchChip","sourcePath":"components/core/BranchChip.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"CardHeader","sourcePath":"components/core/Card.jsx"},{"name":"CardTitle","sourcePath":"components/core/Card.jsx"},{"name":"CardDescription","sourcePath":"components/core/Card.jsx"},{"name":"CardContent","sourcePath":"components/core/Card.jsx"},{"name":"CardFooter","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"DiffStat","sourcePath":"components/core/DiffStat.jsx"},{"name":"Icon","sourcePath":"components/core/Icon.jsx"},{"name":"Kbd","sourcePath":"components/core/Kbd.jsx"},{"name":"Pill","sourcePath":"components/core/Pill.jsx"},{"name":"Separator","sourcePath":"components/core/Separator.jsx"},{"name":"Skeleton","sourcePath":"components/core/Skeleton.jsx"},{"name":"StatusDot","sourcePath":"components/core/StatusDot.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"Label","sourcePath":"components/forms/Label.jsx"},{"name":"Segmented","sourcePath":"components/forms/Segmented.jsx"},{"name":"Select","sourcePath":"components/forms/Select.jsx"},{"name":"Switch","sourcePath":"components/forms/Switch.jsx"},{"name":"TabLink","sourcePath":"components/forms/TabLink.jsx"},{"name":"TabBar","sourcePath":"components/forms/TabLink.jsx"},{"name":"Textarea","sourcePath":"components/forms/Textarea.jsx"},{"name":"BrandLockup","sourcePath":"components/navigation/BrandLockup.jsx"},{"name":"NavItem","sourcePath":"components/navigation/NavItem.jsx"},{"name":"NavHeading","sourcePath":"components/navigation/NavItem.jsx"},{"name":"TaskRow","sourcePath":"components/navigation/TaskRow.jsx"},{"name":"CommandPalette","sourcePath":"components/overlays/CommandPalette.jsx"},{"name":"Dialog","sourcePath":"components/overlays/Dialog.jsx"},{"name":"AlertDialog","sourcePath":"components/overlays/Dialog.jsx"},{"name":"DropdownMenu","sourcePath":"components/overlays/DropdownMenu.jsx"},{"name":"Popover","sourcePath":"components/overlays/DropdownMenu.jsx"},{"name":"Sheet","sourcePath":"components/overlays/Sheet.jsx"},{"name":"Toast","sourcePath":"components/overlays/Toast.jsx"},{"name":"Toaster","sourcePath":"components/overlays/Toast.jsx"},{"name":"Tooltip","sourcePath":"components/overlays/Tooltip.jsx"},{"name":"TwinkleBackdrop","sourcePath":"components/thread/CenteredState.jsx"},{"name":"CenteredState","sourcePath":"components/thread/CenteredState.jsx"},{"name":"Collapsible","sourcePath":"components/thread/Collapsible.jsx"},{"name":"Reasoning","sourcePath":"components/thread/Reasoning.jsx"},{"name":"WorkingIndicator","sourcePath":"components/thread/Reasoning.jsx"},{"name":"ToolCard","sourcePath":"components/thread/ToolCard.jsx"},{"name":"UserBubble","sourcePath":"components/thread/UserBubble.jsx"},{"name":"AssistantMessage","sourcePath":"components/thread/UserBubble.jsx"},{"name":"NoteLine","sourcePath":"components/thread/UserBubble.jsx"}],"sourceHashes":{"components/core/Badge.jsx":"c03b2e6cce18","components/core/BranchChip.jsx":"80670a9f6e24","components/core/Button.jsx":"a7b89513e1eb","components/core/Card.jsx":"79a709952032","components/core/Chip.jsx":"6a49ed8713c1","components/core/DiffStat.jsx":"0dc912bfe752","components/core/Icon.jsx":"daade8b88d52","components/core/Kbd.jsx":"01165c819f68","components/core/Pill.jsx":"8129231dcdfe","components/core/Separator.jsx":"ee2697c58c65","components/core/Skeleton.jsx":"10a5d604ece3","components/core/StatusDot.jsx":"db38f9fea540","components/core/cz.js":"13af33fcbdc6","components/forms/Input.jsx":"353a65bdde28","components/forms/Label.jsx":"2d26ec796d66","components/forms/Segmented.jsx":"3db2ded74c86","components/forms/Select.jsx":"85f71bfd655e","components/forms/Switch.jsx":"6c0d81dd8279","components/forms/TabLink.jsx":"3a3c489e4596","components/forms/Textarea.jsx":"45ac366875a1","components/navigation/BrandLockup.jsx":"415b8c830025","components/navigation/NavItem.jsx":"cd903beb169b","components/navigation/TaskRow.jsx":"de89b4ec55c1","components/overlays/CommandPalette.jsx":"7a4066a01ec3","components/overlays/Dialog.jsx":"dd6971205055","components/overlays/DropdownMenu.jsx":"7bbcd3df24d8","components/overlays/Sheet.jsx":"4548b8c64a77","components/overlays/Toast.jsx":"4d849e40aacc","components/overlays/Tooltip.jsx":"c44392cce1d6","components/thread/CenteredState.jsx":"6c261cdb3c23","components/thread/Collapsible.jsx":"bb4e267796ee","components/thread/Reasoning.jsx":"caeafc6e5eff","components/thread/ToolCard.jsx":"9aab0155b36b","components/thread/UserBubble.jsx":"b5be20afb2f2","ui_kits/cockpit/AutomationsScreen.jsx":"8c66533e5351","ui_kits/cockpit/NewTaskScreen.jsx":"15059dc96c7f","ui_kits/cockpit/SettingsScreen.jsx":"bf5e9c616d4d","ui_kits/cockpit/Shell.jsx":"c18763c5bbd4","ui_kits/cockpit/TasksScreen.jsx":"8401d5e34927","ui_kits/cockpit/ThreadScreen.jsx":"6670a5cf9730","ui_kits/cockpit/data.js":"b8ae77905617"},"inlinedExternals":[],"unexposedExports":[{"name":"css","sourcePath":"components/core/cz.js"},{"name":"cx","sourcePath":"components/core/cz.js"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OnniDesignSystem_3b4141","components":[{"name":"Badge","sourcePath":"components/core/Badge.jsx"},{"name":"BranchChip","sourcePath":"components/core/BranchChip.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"CardHeader","sourcePath":"components/core/Card.jsx"},{"name":"CardTitle","sourcePath":"components/core/Card.jsx"},{"name":"CardDescription","sourcePath":"components/core/Card.jsx"},{"name":"CardContent","sourcePath":"components/core/Card.jsx"},{"name":"CardFooter","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"DiffStat","sourcePath":"components/core/DiffStat.jsx"},{"name":"Icon","sourcePath":"components/core/Icon.jsx"},{"name":"Kbd","sourcePath":"components/core/Kbd.jsx"},{"name":"Pill","sourcePath":"components/core/Pill.jsx"},{"name":"Separator","sourcePath":"components/core/Separator.jsx"},{"name":"Skeleton","sourcePath":"components/core/Skeleton.jsx"},{"name":"StatusDot","sourcePath":"components/core/StatusDot.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"Label","sourcePath":"components/forms/Label.jsx"},{"name":"Segmented","sourcePath":"components/forms/Segmented.jsx"},{"name":"Select","sourcePath":"components/forms/Select.jsx"},{"name":"Switch","sourcePath":"components/forms/Switch.jsx"},{"name":"TabLink","sourcePath":"components/forms/TabLink.jsx"},{"name":"TabBar","sourcePath":"components/forms/TabLink.jsx"},{"name":"Textarea","sourcePath":"components/forms/Textarea.jsx"},{"name":"BrandLockup","sourcePath":"components/navigation/BrandLockup.jsx"},{"name":"NavItem","sourcePath":"components/navigation/NavItem.jsx"},{"name":"NavHeading","sourcePath":"components/navigation/NavItem.jsx"},{"name":"TaskRow","sourcePath":"components/navigation/TaskRow.jsx"},{"name":"CommandPalette","sourcePath":"components/overlays/CommandPalette.jsx"},{"name":"Dialog","sourcePath":"components/overlays/Dialog.jsx"},{"name":"AlertDialog","sourcePath":"components/overlays/Dialog.jsx"},{"name":"DropdownMenu","sourcePath":"components/overlays/DropdownMenu.jsx"},{"name":"Popover","sourcePath":"components/overlays/DropdownMenu.jsx"},{"name":"Sheet","sourcePath":"components/overlays/Sheet.jsx"},{"name":"Toast","sourcePath":"components/overlays/Toast.jsx"},{"name":"Toaster","sourcePath":"components/overlays/Toast.jsx"},{"name":"Tooltip","sourcePath":"components/overlays/Tooltip.jsx"},{"name":"TwinkleBackdrop","sourcePath":"components/thread/CenteredState.jsx"},{"name":"CenteredState","sourcePath":"components/thread/CenteredState.jsx"},{"name":"Collapsible","sourcePath":"components/thread/Collapsible.jsx"},{"name":"Reasoning","sourcePath":"components/thread/Reasoning.jsx"},{"name":"WorkingIndicator","sourcePath":"components/thread/Reasoning.jsx"},{"name":"ToolCard","sourcePath":"components/thread/ToolCard.jsx"},{"name":"UserBubble","sourcePath":"components/thread/UserBubble.jsx"},{"name":"AssistantMessage","sourcePath":"components/thread/UserBubble.jsx"},{"name":"NoteLine","sourcePath":"components/thread/UserBubble.jsx"}],"sourceHashes":{"components/core/Badge.jsx":"c03b2e6cce18","components/core/BranchChip.jsx":"80670a9f6e24","components/core/Button.jsx":"a7b89513e1eb","components/core/Card.jsx":"79a709952032","components/core/Chip.jsx":"6a49ed8713c1","components/core/DiffStat.jsx":"0dc912bfe752","components/core/Icon.jsx":"daade8b88d52","components/core/Kbd.jsx":"01165c819f68","components/core/Pill.jsx":"8129231dcdfe","components/core/Separator.jsx":"ee2697c58c65","components/core/Skeleton.jsx":"10a5d604ece3","components/core/StatusDot.jsx":"db38f9fea540","components/core/cz.js":"13af33fcbdc6","components/forms/Input.jsx":"353a65bdde28","components/forms/Label.jsx":"2d26ec796d66","components/forms/Segmented.jsx":"3db2ded74c86","components/forms/Select.jsx":"85f71bfd655e","components/forms/Switch.jsx":"6c0d81dd8279","components/forms/TabLink.jsx":"3a3c489e4596","components/forms/Textarea.jsx":"45ac366875a1","components/navigation/BrandLockup.jsx":"415b8c830025","components/navigation/NavItem.jsx":"cd903beb169b","components/navigation/TaskRow.jsx":"de89b4ec55c1","components/overlays/CommandPalette.jsx":"7a4066a01ec3","components/overlays/Dialog.jsx":"dd6971205055","components/overlays/DropdownMenu.jsx":"7bbcd3df24d8","components/overlays/Sheet.jsx":"4548b8c64a77","components/overlays/Toast.jsx":"4d849e40aacc","components/overlays/Tooltip.jsx":"c44392cce1d6","components/thread/CenteredState.jsx":"6c261cdb3c23","components/thread/Collapsible.jsx":"bb4e267796ee","components/thread/Reasoning.jsx":"caeafc6e5eff","components/thread/ToolCard.jsx":"9aab0155b36b","components/thread/UserBubble.jsx":"b5be20afb2f2","ui_kits/cockpit/AutomationsScreen.jsx":"8c66533e5351","ui_kits/cockpit/NewTaskScreen.jsx":"15059dc96c7f","ui_kits/cockpit/SettingsScreen.jsx":"bf5e9c616d4d","ui_kits/cockpit/Shell.jsx":"c18763c5bbd4","ui_kits/cockpit/TasksScreen.jsx":"8401d5e34927","ui_kits/cockpit/ThreadScreen.jsx":"6670a5cf9730","ui_kits/cockpit/data.js":"b8ae77905617"},"inlinedExternals":[],"unexposedExports":[{"name":"css","sourcePath":"components/core/cz.js"},{"name":"cx","sourcePath":"components/core/cz.js"}]} */
 
 (() => {
 
-const __ds_ns = (window.CezarDesignSystem_3b4141 = window.CezarDesignSystem_3b4141 || {});
+const __ds_ns = (window.OnniDesignSystem_3b4141 = window.OnniDesignSystem_3b4141 || {});
 
 const __ds_scope = {};
 
@@ -169,7 +169,7 @@ function Skeleton({
       height,
       borderRadius: radius,
       background: 'var(--accent)',
-      animation: 'cez-pulse 2s cubic-bezier(.4,0,.6,1) infinite',
+      animation: 'onni-pulse 2s cubic-bezier(.4,0,.6,1) infinite',
       ...style
     }
   });
@@ -179,7 +179,7 @@ Object.assign(__ds_scope, { Skeleton });
 
 // components/core/cz.js
 try { (() => {
-// shared helpers for cezar DS components — not a component (lowercase)
+// shared helpers for Onni Work DS components — not a component (lowercase)
 const injected = new Set();
 function css(id, text) {
   if (typeof document === 'undefined' || injected.has(id)) return;
@@ -357,7 +357,7 @@ Object.assign(__ds_scope, { Chip });
 try { (() => {
 __ds_scope.css('dot', `.cz-dot{display:inline-block;width:7px;height:7px;flex-shrink:0;border-radius:999px;background:var(--soft-foreground)}
 .cz-dot[data-tone=success]{background:var(--success)}.cz-dot[data-tone=pending]{background:var(--pending)}.cz-dot[data-tone=danger]{background:var(--danger)}.cz-dot[data-tone=violet]{background:var(--violet)}
-.cz-dot[data-pulse=true]{animation:cez-pulse 1.6s ease-in-out infinite}`);
+.cz-dot[data-pulse=true]{animation:onni-pulse 1.6s ease-in-out infinite}`);
 function StatusDot({
   tone = 'neutral',
   pulse = false,
@@ -685,7 +685,7 @@ function BrandLockup({
     style: {
       font: '600 15px/1 var(--sans)'
     }
-  }, 'cezar'), repo ? React.createElement('span', {
+  }, 'onni'), repo ? React.createElement('span', {
     'data-slot': 'repo-chip',
     style: {
       marginLeft: 'auto',
@@ -1199,7 +1199,7 @@ __ds_scope.css('centered', `.cz-cs{position:relative;isolation:isolate;display:f
 .cz-cs[data-tone=primary] .cz-cs-tile{border-color:color-mix(in srgb,var(--primary) 25%,transparent);background:color-mix(in srgb,var(--primary) 15%,transparent);color:var(--primary);box-shadow:none}
 .cz-cs[data-tone=danger] .cz-cs-tile{border-color:color-mix(in srgb,var(--danger) 20%,transparent);background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger);box-shadow:none}
 .cz-cs h1{margin:0;font:600 24px/1.2 var(--sans);text-wrap:balance;color:var(--foreground)}.cz-cs p{margin:0;font:400 14px/1.5 var(--sans);text-wrap:pretty;color:var(--muted-foreground)}.cz-cs-a{display:flex;align-items:center;justify-content:center;gap:12px;padding-top:8px}
-.cz-tw{pointer-events:none;position:absolute;inset:0;z-index:-1;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,black 25%,transparent 88%);mask-image:linear-gradient(to bottom,black 25%,transparent 88%)}.cz-tw i{position:absolute;border-radius:1px;animation:cez-pulse 3.5s ease-in-out infinite}`);
+.cz-tw{pointer-events:none;position:absolute;inset:0;z-index:-1;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,black 25%,transparent 88%);mask-image:linear-gradient(to bottom,black 25%,transparent 88%)}.cz-tw i{position:absolute;border-radius:1px;animation:onni-pulse 3.5s ease-in-out infinite}`);
 const TW = [[6, 14, 2, 'violet', .5], [11, 31, 3, 'violet', .45], [8, 52, 2, 'pending', .4], [15, 71, 2, 'violet', .5], [9, 86, 3, 'primary', .4], [22, 8, 2, 'pending', .4], [27, 24, 2, 'primary', .35], [20, 44, 3, 'violet', .35], [25, 62, 2, 'violet', .4], [30, 79, 2, 'primary', .35], [36, 12, 3, 'violet', .3], [42, 35, 2, 'pending', .28], [47, 58, 2, 'primary', .28], [52, 88, 2, 'violet', .25], [60, 29, 3, 'violet', .22]];
 function TwinkleBackdrop({
   style
@@ -1338,10 +1338,10 @@ function WorkingIndicator({
     size: 14,
     className: 'cz-spin',
     style: {
-      animation: 'cez-spin 1s linear infinite'
+      animation: 'onni-spin 1s linear infinite'
     }
   }), React.createElement('span', {
-    className: 'cez-shimmer'
+    className: 'onni-shimmer'
   }, label));
 }
 Object.assign(__ds_scope, { Reasoning, WorkingIndicator });
@@ -1356,7 +1356,7 @@ __ds_scope.css('tool', `.cz-tool{min-width:0;overflow:hidden;border-radius:var(-
 .cz-tool-r{margin-left:auto;display:flex;flex-shrink:0;align-items:center;gap:8px;padding-left:8px;font:400 12px var(--sans);color:var(--muted-foreground)}.cz-tool-exit{border-radius:999px;padding:1px 8px;font:600 10.5px/1.4 var(--mono)}.cz-tool-exit[data-ok=true]{background:color-mix(in srgb,var(--success) 10%,transparent);color:var(--success)}.cz-tool-exit[data-ok=false]{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger)}
 .cz-tool-b{border-top:1px solid var(--border);background:var(--card-2)}.cz-tool-out{margin:0;padding:12px 16px;overflow-x:auto;font:400 12px/1.7 var(--mono);white-space:pre;color:var(--muted-foreground)}.cz-tool-err{padding:12px 16px;font:400 12px/1.7 var(--mono);white-space:pre-wrap;color:var(--danger)}
 .cz-tool-diffp{border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);padding:6px 16px;font:400 11px var(--mono);color:var(--soft-foreground)}.cz-tool-diff{margin:0;padding:8px 0;overflow-x:auto;font:400 12px/1.7 var(--mono);white-space:pre}.cz-tool-diff span{display:block;padding:0 16px}.cz-tool-diff span[data-k=add]{background:var(--diff-add-bg)}.cz-tool-diff span[data-k=del]{background:var(--diff-del-bg);color:var(--muted-foreground)}.cz-tool-diff span[data-k=hunk]{color:var(--soft-foreground)}
-.cz-spin{animation:cez-spin 1s linear infinite;color:var(--soft-foreground)}`);
+.cz-spin{animation:onni-spin 1s linear infinite;color:var(--soft-foreground)}`);
 const ICONS = {
   read: 'file-text',
   edit: 'square-pen',
@@ -1408,7 +1408,7 @@ function ToolCard({
     size: 14,
     className: 'cz-tool-ic'
   }), React.createElement('span', {
-    className: __ds_scope.cx('cz-tool-verb', busy && 'cez-shimmer'),
+    className: __ds_scope.cx('cz-tool-verb', busy && 'onni-shimmer'),
     'data-declined': status === 'declined' ? 'true' : undefined
   }, verb), detail ? React.createElement('code', {
     className: 'cz-tool-det'
@@ -1534,7 +1534,7 @@ const {
   TabBar,
   TabLink,
   Sheet
-} = window.CezarDesignSystem_3b4141;
+} = window.OnniDesignSystem_3b4141;
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const pad = n => String(n).padStart(2, '0');
 const hm = (h, m = 0) => pad(h) + ':' + pad(m);

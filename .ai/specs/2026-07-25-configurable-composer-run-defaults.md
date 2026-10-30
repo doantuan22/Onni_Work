@@ -34,7 +34,7 @@ based on whichever task ran last.
    remembered explicit source exists.
 2. Worktree appears for any ordinary git-backed skill/workflow. Parallel
    variants show it on and disabled with a reason.
-3. `~/.cezar/config.json` gains optional workspace composer overrides.
+3. `~/.onni/config.json` gains optional workspace composer overrides.
 4. `ONNI_AUTONOMOUS_DEFAULT` and `ONNI_WORKTREE_DEFAULT` seed absent overrides.
 5. Global Resources Settings gains a **New task defaults** card with
    Inherit/On/Off choices.

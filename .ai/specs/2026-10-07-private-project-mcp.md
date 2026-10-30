@@ -3,18 +3,18 @@
 ## TLDR
 
 A user with a personal MCP server — one whose credentials belong to them, not the team — needs it
-in **one** project, **never committed**, and working on **every** agent cezar runs. None of the
-agents' own scopes gives all three at once inside cezar:
+in **one** project, **never committed**, and working on **every** agent Onni Work runs. None of the
+agents' own scopes gives all three at once inside Onni Work:
 
-| Option | One project | Never committed | Reaches cezar runs |
+| Option | One project | Never committed | Reaches Onni Work runs |
 |---|---|---|---|
 | Repo `.mcp.json` / `opencode.json` / `.codex/config.toml` | yes | **no** — it is the shared file | yes |
 | Uncommitted `.mcp.json` hidden by `.git/info/exclude` | yes | yes | **no** — a worktree is a fresh checkout; and impossible when `.mcp.json` is already committed |
-| `claude mcp add --scope local` (`~/.claude.json`, keyed by path) | yes | yes | **no** — runs execute in `.ai/cezar/worktrees/<runId>`, a different path; Claude only |
+| `claude mcp add --scope local` (`~/.claude.json`, keyed by path) | yes | yes | **no** — runs execute in `.ai/onni/worktrees/<runId>`, a different path; Claude only |
 | User scope (`~/.claude.json`, `~/.codex/config.toml`, …) | **no** | yes | yes |
 
-This spec adds one cezar-owned file, **`<repo>/.ai/cezar/mcp.local.json`**, in the `.mcp.json`
-shape. cezar reads it at every agent launch and injects the servers through each agent's own
+This spec adds one onni-owned file, **`<repo>/.ai/onni/mcp.local.json`**, in the `.mcp.json`
+shape. Onni Work reads it at every agent launch and injects the servers through each agent's own
 documented launch-time channel. Nothing is written into the worktree, so a committed `.mcp.json`
 is irrelevant and an agent cannot commit the file by accident.
 
@@ -34,9 +34,9 @@ is irrelevant and an agent cannot commit the file by accident.
 - Values are literal. Agent child envs are least-privilege (`agent-env.ts`, #427), so `${VAR}`
   expansion against the host env would mostly expand to nothing. Tokens go in the file itself,
   which is why it is private.
-- **Location**: cezar's data dir, beside `config.json`. It is per project by construction, it sits
-  outside every worktree, and deleting `.ai/cezar/` removes it along with all other project state.
-  `~/.cezar/projects/<id>/` was rejected: the project id is a registry slug, and the file would
+- **Location**: Onni Work's data dir, beside `config.json`. It is per project by construction, it sits
+  outside every worktree, and deleting `.ai/onni/` removes it along with all other project state.
+  `~/.onni/projects/<id>/` was rejected: the project id is a registry slug, and the file would
   then outlive the checkout it configures.
 - **Never committed**: `mcp.local.json` (and its atomic-write temp name) are in
   `DATA_GITIGNORE_ENTRIES`. A write through Settings re-runs `ensureDataGitignore` before the
@@ -59,7 +59,7 @@ given a stdio probe server that records its argv and env on start.
 
 The run manager loads the file **per launch**: the opening step, each workflow step, and every
 Continue / auto-resume. An edit therefore applies to the next session without a restart. Each
-launch that attaches servers records the note `private MCP servers from .ai/cezar/mcp.local.json: <names>`.
+launch that attaches servers records the note `private MCP servers from .ai/onni/mcp.local.json: <names>`.
 
 The planner and other one-shot helper calls do not receive private servers. They are not task sessions.
 
@@ -73,7 +73,7 @@ renaming the private entry avoids the question.
 
 ## Cockpit
 
-The file is the catalog entry `cezar.private.mcp` (`src/agent-config/catalog.ts`). It is listed in
+The file is the catalog entry `onni.private.mcp` (`src/agent-config/catalog.ts`). It is listed in
 the MCP group of every agent that can take it, and uses the existing raw editor, stale-write guard
 and hosted-mode write refusal (`PUT /agent-config/:id` 409s without `localHandoff`). That refusal
 matters here too: an MCP `command` is code execution. The listing carries `private: true` (contract

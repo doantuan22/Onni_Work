@@ -1,4 +1,4 @@
-# Paseo (github.com/getpaseo/paseo) — UI/UX research for cezar
+# Paseo (github.com/getpaseo/paseo) — UI/UX research for Onni Work
 
 Researched 2026-07-14 from a shallow clone of `getpaseo/paseo` @ main (v0.1.107, AGPL-3.0). All file paths below are repo-relative. (Clone was made in a temporary session directory; re-clone the repo to follow up.)
 
@@ -113,7 +113,7 @@ All labels in `src/i18n/resources/en.ts`; label logic in `composer/input/labels.
 - Server side (`server/voice-config.ts`) is clever: voice mode **injects a `<paseo_voice_mode>` system-prompt block** telling the agent "user cannot see chat; always use the `speak` tool; acknowledge before non-speak tools; give spoken progress updates", wraps user turns as `<spoken-input>` with an instruction to reply via speak-tool only, and exposes `speak` via an MCP stdio socket. Turn control in `server/session/voice/voice-turn-controller.ts`; TTS via OpenAI or local Kokoro.
 - Voice availability messaging is centralized (`resolveVoiceUnavailableMessage`, toast on tap when STT is unconfigured).
 
-**Labeling takeaway for cezar:** they never mix the two concepts — mic icon = "Dictation" (text ends up in the prompt box, user confirms), audio-lines icon = "Voice mode" (hands-free conversation). Both live in the prompt composer footer, tooltips carry the shortcut chord, and every state (idle/recording/processing/failed/muted) has explicit accessible labels.
+**Labeling takeaway for Onni Work:** they never mix the two concepts — mic icon = "Dictation" (text ends up in the prompt box, user confirms), audio-lines icon = "Voice mode" (hands-free conversation). Both live in the prompt composer footer, tooltips carry the shortcut chord, and every state (idle/recording/processing/failed/muted) has explicit accessible labels.
 
 ---
 
@@ -140,7 +140,7 @@ Highlights worth adopting verbatim:
 
 ---
 
-## 8. What cezar should copy
+## 8. What Onni Work should copy
 
 1. **Panel registry + typed tab-target union** (`panels/panel-registry.ts`, `workspace-tabs-store/state.ts`). Workspace = tabs of `agent | terminal | browser | file | draft | setup` panels, splittable on desktop, single-pane swipe deck on mobile. Cheapest path to "flexible canvas".
 2. **Tool-call display model computed in a shared protocol layer**, not in components — one `{displayName, summary, icon, openFilePath}` mapping reused by every client; collapsed chip → details sheet; tap a file-touching tool call to open the file.
@@ -151,14 +151,14 @@ Highlights worth adopting verbatim:
 7. **Git action policy object** (`git/policy.ts`): pure function state → `{primary, secondary, menu}` with self-explaining disabled reasons; promote "Archive workspace" post-merge.
 8. **Worktree-first workspace creation** with PR checkout in the ref picker, setup scripts, and branch auto-naming from the first prompt.
 9. **Attention model**: `deriveAgentStateBucket` (`protocol/src/agent-state-bucket.ts`) — permission > error > running > attention(finished) priority, driving sidebar status dots and push notifications. One canonical function, used everywhere.
-10. **Mobile-panels one-position state machine** (docs/mobile-panels.md) if cezar builds gesture drawers.
+10. **Mobile-panels one-position state machine** (docs/mobile-panels.md) if Onni Work builds gesture drawers.
 11. **docs/design.md as a genre**: an enforced, file-referenced design constitution; and per-feature architecture docs (mobile-panels, timeline-sync, floating-panels, hover).
 12. **QR-code pairing + E2EE relay** for remote/mobile access without port forwarding; multi-host URLs (`/h/[serverId]/…`).
 13. **Daemon-side STT with a local (sherpa-onnx Parakeet) fallback** — clients stay keyless and thin.
 
-## 9. What cezar should deliberately avoid
+## 9. What Onni Work should deliberately avoid
 
-1. **React Native everywhere for a web-first product.** Paseo pays constantly: dual stream strategies (FlatList vs react-virtual), xterm-in-a-WebView on native, `markdown-text.{android,ios,web}.tsx` triplets, `.native/.web` forks of audio/height-mirror/scrollbars, docs warning "Unistyles and Reanimated patching the same Fabric node has caused native crashes". If cezar is web/PWA-first, plain React + real DOM wins; only copy their *patterns*.
+1. **React Native everywhere for a web-first product.** Paseo pays constantly: dual stream strategies (FlatList vs react-virtual), xterm-in-a-WebView on native, `markdown-text.{android,ios,web}.tsx` triplets, `.native/.web` forks of audio/height-mirror/scrollbars, docs warning "Unistyles and Reanimated patching the same Fabric node has caused native crashes". If Onni Work is web/PWA-first, plain React + real DOM wins; only copy their *patterns*.
 2. **Monster components**: `message.tsx` 3228 LOC, `composer/index.tsx` 2193, `input.tsx` 2099, `new-workspace-screen.tsx` 2420, `git-diff-pane.tsx` ~2300. They compensate with extracted pure-logic `.ts` + tests, but don't start here.
 3. **No service worker / offline shell** — an orchestrator PWA should at least cache the shell and show cached last-known agent state; Paseo shows nothing without the socket.
 4. **Custom-building every primitive** (combobox, tooltip, context menu, floating panels have hundreds of LOC + math tests each) — a cost forced by RN; on the web use Radix/shadcn and spend the effort on the agent surfaces instead.

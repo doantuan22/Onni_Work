@@ -7,18 +7,18 @@ project defaults in `routes/new-task.tsx`.
 
 ## Problem
 
-cezar's default is branch per task: an isolated worktree, a diff to review, a PR to merge, and
+Onni Work's default is branch per task: an isolated worktree, a diff to review, a PR to merge, and
 agents never land. Some repositories are worked trunk-based instead — many small changes that
 should go straight to the base branch once they pass the repo's own checks: a knowledge base or
 docs repo fed by an agent, a config or data repo, a solo project. There the default gets in the
 way: a branch to review and merge per small change, no way to let agents land, parallel tasks
 that conflict on the same shared files, and a read-only question that still gets a worktree to
-clean up. cezar does not need to understand the content; the repo brings its own skills, schema
-and checks, cezar provides the lifecycle.
+clean up. Onni Work does not need to understand the content; the repo brings its own skills, schema
+and checks, Onni Work provides the lifecycle.
 
 ## Shape
 
-Every key lives in `.ai/cezar/config.json`, is optional, and absent means today's branch-per-task
+Every key lives in `.ai/onni/config.json`, is optional, and absent means today's branch-per-task
 behavior. **Settings → Tasks → Development model → Trunk-based** writes the preset
 `{ profile: 'trunk', taskWorkspace: 'in-place', landing: 'auto', reviewGate: false }`; every key
 stays adjustable on its own, and switching back to Branch per task clears them.
@@ -26,7 +26,7 @@ stays adjustable on its own, and switching back to Branch per task clears them.
 | Key | Effect |
 | --- | --- |
 | `taskWorkspace: 'in-place'` | A task that does not ask (`worktree` absent on `POST /runs`, automations, the CLI) runs in the repo checkout. Applied in `execute`, recorded as `worktree: false`. Never for variants, dispatch or a PR head. The composer sends `worktree: true` explicitly when the user wants isolation. |
-| `landing: 'auto'` | An in-place write run lands on `CEZ:DONE` (below). |
+| `landing: 'auto'` | An in-place write run lands on `ONNI:DONE` (below). |
 | `requiredChecks: string[]` | Shell commands run in the checkout after the rebase, before every push. |
 | `defaultSkill`, `askSkill` | The composer preselects them when nothing is picked. |
 | `teamSkills` (API) | `false` writes `skillsRepos: []`. |
@@ -41,7 +41,7 @@ them.
 
 ### Auto-land
 
-**When.** Only an autonomous task lands by itself. On `CEZ:DONE` both turn-end handlers call
+**When.** Only an autonomous task lands by itself. On `ONNI:DONE` both turn-end handlers call
 `landOnDone`: an autonomous run lands before its session closes; an interactive run with changes
 parks `waiting` instead, keeping its session and the working-tree lease, so the user reviews
 Changes, replies with corrections, and **Finish** lands it (2026-10-20, owner feedback: a summary
@@ -54,7 +54,7 @@ in-place write task in an auto-land project: the same land as Finish. Under its 
 PR** / **Create draft PR** (the agent moves the changes to a new branch, pushes, opens the PR and
 switches the checkout back) and, while the remote is ahead, **Update branch** (the agent rebases
 the checkout, keeping the changes). `GET /runs/:id/git/status` answers for such a task from the
-checkout against its upstream, leaving `.ai/cezar/` out.
+checkout against its upstream, leaving `.ai/onni/` out.
 
 Commit is `POST /runs/:id/land` (`manager.land`), one request whatever state the task is in: with
 the review park's session open it lands like Finish; with the session gone (review after an idle
@@ -66,11 +66,11 @@ toasts.
 Landing:
 
 1. The checkout must be on a branch, and on `baseBranch` when one is configured.
-2. Commit everything outside `.ai/cezar/` with a message written from the staged change itself
+2. Commit everything outside `.ai/onni/` with a message written from the staged change itself
    (`commit-message.ts`: the namer model reads the file list and diff, the latest request only as
    context; else `fallbackCommitMessage` from the file names). Never the run title — it names the
    first request and goes stale across follow-ups (the task's Changes view leaves
-   `.ai/cezar/` out the same way, so it shows exactly what will land). cezar's own state never lands —
+   `.ai/onni/` out the same way, so it shows exactly what will land). Onni Work's own state never lands —
    committing `config.json` would track it, and a tracked config cannot grant auto-land.
 3. With an upstream: fetch it, `git rebase @{u}`. A conflict aborts the rebase and names the files.
 4. Run `requiredChecks`.
@@ -81,7 +81,7 @@ Step 2 commits whatever is dirty in the checkout, including edits the user made 
 the task ran; in a trunk-based project agents are expected to be the only writers to the checkout.
 
 Without an upstream the local commit is the landing. A failure at any stage is sent into the
-open session ("fix this, then end with CEZ:DONE again") up to `MAX_LAND_ATTEMPTS` (3); after that
+open session ("fix this, then end with ONNI:DONE again") up to `MAX_LAND_ATTEMPTS` (3); after that
 the session closes and the run fails with the landing error. A run that settles with unlanded
 work and no approval (an idle close of the review park) rests at `review`; Finish there lands it,
 unless another task holds the checkout (it would commit that task's edits too). An approved
@@ -91,9 +91,9 @@ on the run as `landing` (`status`, `sha`, `pushed`, `files`, or `stage` + `error
 `ONNI_DRY_RUN=1` skips fetch and push.
 
 **Permission.** Pushing to the base branch is the owner's decision, so it is granted the way
-worktree scripts are: a git-tracked `.ai/cezar/config.json` cannot grant it (the run notes why,
+worktree scripts are: a git-tracked `.ai/onni/config.json` cannot grant it (the run notes why,
 and Settings shows `landingBlocked`). The agent is told in its system prompt that auto-land is
-granted and that cezar, not the agent, pushes — the Guard's written permission.
+granted and that Onni Work, not the agent, pushes — the Guard's written permission.
 
 ### Read-only (Ask) tasks
 

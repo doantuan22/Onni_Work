@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>cezar — Settings · Worktrees mockup</title>
+<title>Onni Work — Settings · Worktrees mockup</title>
 <style>
   :root {
     --bg: #f7f7f8; --card: #ffffff; --fg: #18181b; --muted: #71717a; --soft: #52525b;
@@ -96,7 +96,7 @@
 <body class="__THEME__">
   <div class="frame">
     <aside class="side">
-      <div class="brand"><span class="dot"></span> cezar</div>
+      <div class="brand"><span class="dot"></span> Onni Work</div>
       <div class="navlabel">Cockpit</div>
       <nav class="nav">
         <a href="#"><span class="ic">▦</span> Tasks</a>
@@ -131,7 +131,7 @@
       <!-- NEW knob: retention -->
       <section class="field">
         <h2>Keep last N worktrees</h2>
-        <p class="hint">Older <b>finished</b> worktrees are reclaimed to free disk once you exceed this count. Their <code>cez/…</code> branch is kept, so the work stays recoverable. Set <b>0</b> for unlimited (never auto-reclaim). Running, queued and in-review tasks are never touched.</p>
+        <p class="hint">Older <b>finished</b> worktrees are reclaimed to free disk once you exceed this count. Their <code>onni/…</code> branch is kept, so the work stays recoverable. Set <b>0</b> for unlimited (never auto-reclaim). Running, queued and in-review tasks are never touched.</p>
         <div class="control">
           <input class="num" value="10" />
           <span class="unit">worktrees</span>
@@ -143,7 +143,7 @@
       <!-- NEW panel: worktree management -->
       <section class="field">
         <h2>Worktrees</h2>
-        <p class="hint">Every task keeps its own checkout under <code>.ai/cezar/worktrees/</code>. Delete one to free disk immediately (its branch is kept), or reclaim everything past the limit at once.</p>
+        <p class="hint">Every task keeps its own checkout under <code>.ai/onni/worktrees/</code>. Delete one to free disk immediately (its branch is kept), or reclaim everything past the limit at once.</p>
         <div class="panel">
           <div class="panel-head">
             <span class="t">14 worktrees</span>
@@ -157,7 +157,7 @@
               <tr>
                 <td class="task">Add SSE reconnect backoff <span class="id">· 7f3a91c2</span></td>
                 <td><span class="badge b-review">review</span></td>
-                <td class="branch">cez/7f3a91c2</td>
+                <td class="branch">onni/7f3a91c2</td>
                 <td class="size">148 MB</td>
                 <td class="age">4m ago</td>
                 <td class="row-actions"><button class="btn sm danger">Delete</button></td>
@@ -165,7 +165,7 @@
               <tr>
                 <td class="task">Fix worktree prune on startup <span class="id">· a12bd004</span></td>
                 <td><span class="badge b-done">done</span></td>
-                <td class="branch">cez/a12bd004</td>
+                <td class="branch">onni/a12bd004</td>
                 <td class="size">151 MB</td>
                 <td class="age">22m ago</td>
                 <td class="row-actions"><button class="btn sm danger">Delete</button></td>
@@ -173,7 +173,7 @@
               <tr>
                 <td class="task">Codex runner token accounting <span class="id">· 55e0f7aa</span></td>
                 <td><span class="badge b-failed">failed</span></td>
-                <td class="branch">cez/55e0f7aa</td>
+                <td class="branch">onni/55e0f7aa</td>
                 <td class="size">149 MB</td>
                 <td class="age">1h ago</td>
                 <td class="row-actions"><button class="btn sm danger">Delete</button></td>
@@ -181,7 +181,7 @@
               <tr class="overlimit">
                 <td class="task">Redesign PR list columns <span class="id">· c8091b3d</span><span class="pill-reclaim">over limit</span></td>
                 <td><span class="badge b-done">done</span></td>
-                <td class="branch">cez/c8091b3d</td>
+                <td class="branch">onni/c8091b3d</td>
                 <td class="size">150 MB</td>
                 <td class="age">6h ago</td>
                 <td class="row-actions"><button class="btn sm danger">Delete</button></td>
@@ -189,7 +189,7 @@
               <tr class="overlimit">
                 <td class="task">Bump vite to 6 <span class="id">· 2b7ce510</span><span class="pill-reclaim">over limit</span></td>
                 <td><span class="badge b-cancelled">cancelled</span></td>
-                <td class="branch">cez/2b7ce510</td>
+                <td class="branch">onni/2b7ce510</td>
                 <td class="size">147 MB</td>
                 <td class="age">9h ago</td>
                 <td class="row-actions"><button class="btn sm danger">Delete</button></td>
@@ -197,7 +197,7 @@
               <tr class="recovered">
                 <td class="task">Old handoff CLI spike <span class="id">· 90fa1e77</span> <span class="kept">branch kept · recoverable</span></td>
                 <td><span class="badge b-done">done</span></td>
-                <td class="branch">cez/90fa1e77</td>
+                <td class="branch">onni/90fa1e77</td>
                 <td class="size">—</td>
                 <td class="age">2d ago</td>
                 <td class="row-actions"><button class="btn sm" disabled style="opacity:.5">Reclaimed</button></td>

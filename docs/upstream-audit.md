@@ -6,7 +6,7 @@
   cờ cấu hình, kết quả kiểm chứng và danh sách link còn lại (Deferred)
 - **Mục tiêu:** (A) tuân thủ MIT và ghi công đúng; (B) cắt mọi đường dẫn tới hạ tầng cezar để app không tự cập nhật về bản gốc, không gửi dữ liệu tới họ, không vô tình publish dưới tên package của họ.
 
-> Ràng buộc đang giữ nguyên: **chưa đổi tên nội bộ** (`cez`, `.ai/cezar`, `~/.cezar`, `ONNI_*`, scope `@open-mercato/*`). Việc rename là bước sau, nên báo cáo này **không** tính các import `@open-mercato/*` là link cần cắt ở Phase 2.
+> Ràng buộc tại thời điểm audit: **chưa đổi tên nội bộ** (`cez`, `.ai/cezar`, `~/.cezar`, `ONNI_*`, scope `@open-mercato/*`). Việc rename là bước sau (đã thực hiện ngày 2026-10-30), nên báo cáo này **không** tính các import `@open-mercato/*` là link cần cắt ở Phase 2.
 
 > **Cập nhật 2026-10-30:** đợt cleanup sau Phase 2 đã xoá thêm `docs/site`, `docs/upstream`,
 > `docs/brand`, `docs/screenshots`, `docs/adr`, `.ai/runs`, các workflow release/backport và

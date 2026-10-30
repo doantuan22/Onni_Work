@@ -1,6 +1,6 @@
 # Role design audit — responsibility model (Caesar / Legate / Centurion)
 
-Audited at HEAD `df73cfa9` (branch `cez/674dc2a6`, forked from `cez/d9628fff`). Every
+Audited at HEAD `df73cfa9` (branch `onni/674dc2a6`, forked from `onni/d9628fff`). Every
 citation below was read at that commit; line numbers are quoted from the file as I saw it,
 not copied from the task order.
 
@@ -19,16 +19,16 @@ Background: `.ai/specs/2026-09-08-units-hierarchy.md`.
   and at **line 39**:
   > "Sibling conflicts are yours to resolve. You handed out the scopes, so two children touching the same lines is your decision to settle — resolve it in your worktree and commit the merge. Never send a conflict back down to a child."
   and at **line 35**:
-  > "COMMIT your work before every CEZ:SPAWN. Anything you left uncommitted does not exist for your children, and they will either redo it or contradict it."
+  > "COMMIT your work before every ONNI:SPAWN. Anything you left uncommitted does not exist for your children, and they will either redo it or contradict it."
 
 - `GUARD_RULE` (declared 79-84) says, at **line 79** (first sentence):
-  > "Before ANY action that is irreversible, financial, or widens your scope, end the turn with CEZ:ASK and stop. That includes: pushing to a shared branch, **merging anything**, force-pushing, deleting a branch or a remote, publishing a package, spending money, touching production or any credential, rewriting history, and doing work outside the scope you were given."
+  > "Before ANY action that is irreversible, financial, or widens your scope, end the turn with ONNI:ASK and stop. That includes: pushing to a shared branch, **merging anything**, force-pushing, deleting a branch or a remote, publishing a package, spending money, touching production or any credential, rewriting history, and doing work outside the scope you were given."
 
   `GUARD_RULE` is interpolated into **both** `CAESAR_PROMPT` (at `${GUARD_RULE}`, line 111)
   and `LEGATE_PROMPT` (line 138) — the same prompts that also interpolate `CHILD_BRANCH_RULE`
   (line 107 and line 134 respectively). So a single assembled Caesar/Legate prompt contains,
   a few paragraphs apart, "merge the child's branch, one at a time" and "merging anything
-  requires CEZ:ASK and a full stop."
+  requires ONNI:ASK and a full stop."
 
 - `CAESAR_PROMPT` (86-115), **line 90**:
   > "You do not edit files yourself. **Not one.** If you find yourself opening an editor, you have taken a legate's job — decompose it and spawn instead."
@@ -57,7 +57,7 @@ Background: `.ai/specs/2026-09-08-units-hierarchy.md`.
 
 **GUARD_RULE loses this one, but only partially — it is over-broad, not wrong in spirit.**
 The whole point of `CHILD_BRANCH_RULE` (per its own doc-comment at prompts.ts:24-29) is that
-cezar's engine does nothing to reassemble a mission's work: a child's branch just sits there
+Onni Work's engine does nothing to reassemble a mission's work: a child's branch just sits there
 until a commander merges it into its own branch, in its own worktree, which the engine
 already forked from the parent's committed tip (`spawnChildren`, `run.ts:1688`, seeds
 `baseBranch: parent.branch`). That merge:
@@ -92,22 +92,22 @@ truthful claim, and it is the one the rest of both prompts already assumes.
 |---|---|---|---|
 | Writes the mission's task work (features/fixes/tests) | No — spawns Legates | No — spawns Centurions | Yes — directly, or via its own sub-agent "legionaries" |
 | Commits its own state (before each spawn) | Yes | Yes | Yes (as part of its own work) |
-| Merges an accepted child's branch into its own | Yes (`git merge --no-ff <legate branch>`, own worktree) | Yes (`git merge --no-ff <centurion branch>`, own worktree) | N/A — no children (CEZ:SPAWN refused, `engine.ts:21-25`) |
+| Merges an accepted child's branch into its own | Yes (`git merge --no-ff <legate branch>`, own worktree) | Yes (`git merge --no-ff <centurion branch>`, own worktree) | N/A — no children (ONNI:SPAWN refused, `engine.ts:21-25`) |
 | Resolves sibling-branch conflicts | Yes, in its own worktree | Yes, in its own worktree | N/A |
 | Merges to a shared/base/remote branch | Never | Never | Never |
-| Pushes to a shared branch, force-pushes, rewrites history | Never without CEZ:ASK | Never without CEZ:ASK | Never without CEZ:ASK |
+| Pushes to a shared branch, force-pushes, rewrites history | Never without ONNI:ASK | Never without ONNI:ASK | Never without ONNI:ASK |
 | May open a draft PR | Implied end-of-mission action; still never merges it | Same, if it is the mission root | Same, if it is the mission root (squad) |
-| May ask (CEZ:ASK) | Yes — real failures, contradictory reports, anything Guard-scoped | Yes — same, or carries the conflict up to Caesar instead of picking a winner (line 132) | Yes — same |
+| May ask (ONNI:ASK) | Yes — real failures, contradictory reports, anything Guard-scoped | Yes — same, or carries the conflict up to Caesar instead of picking a winner (line 132) | Yes — same |
 
 ### Exact replacement text
 
 **1. `GUARD_RULE` (prompts.ts:79-84) — replace the whole constant with:**
 
 ```
-const GUARD_RULE = `The Guard rule — this one is absolute. Before ANY action that is irreversible, financial, or widens your scope, end the turn with CEZ:ASK and stop. That includes: pushing to a shared branch, merging into the repository's base branch (main / master / develop) or into any branch that is not your own worktree's branch, force-pushing, deleting a branch or a remote, publishing a package, spending money, touching production or any credential, rewriting history, and doing work outside the scope you were given.
+const GUARD_RULE = `The Guard rule — this one is absolute. Before ANY action that is irreversible, financial, or widens your scope, end the turn with ONNI:ASK and stop. That includes: pushing to a shared branch, merging into the repository's base branch (main / master / develop) or into any branch that is not your own worktree's branch, force-pushing, deleting a branch or a remote, publishing a package, spending money, touching production or any credential, rewriting history, and doing work outside the scope you were given.
 
-- Merging an accepted child's branch into YOUR OWN worktree's branch is the one merge this rule does not cover. It never leaves your own worktree, it is as reversible as any other commit you make yourself, and it is the only mechanism this hierarchy has for turning your children's work into your own deliverable — see the branch rule below. Every other use of the word "merge" in this prompt means merging somewhere else, and that needs CEZ:ASK.
-- Ask with CEZ:ASK, not in prose: a single line CEZ:ASK {"questions":[{"header":"≤12 chars","question":"…?","options":[{"label":"…","description":"…"}]}]} — 1-4 questions, 2-4 options each. Then stop. Do not keep working past your own question, and do not answer it yourself.
+- Merging an accepted child's branch into YOUR OWN worktree's branch is the one merge this rule does not cover. It never leaves your own worktree, it is as reversible as any other commit you make yourself, and it is the only mechanism this hierarchy has for turning your children's work into your own deliverable — see the branch rule below. Every other use of the word "merge" in this prompt means merging somewhere else, and that needs ONNI:ASK.
+- Ask with ONNI:ASK, not in prose: a single line ONNI:ASK {"questions":[{"header":"≤12 chars","question":"…?","options":[{"label":"…","description":"…"}]}]} — 1-4 questions, 2-4 options each. Then stop. Do not keep working past your own question, and do not answer it yourself.
 - Never work around a blocked action. If a tool is denied, a command needs a permission you do not have, or a guard stops you, that is the answer — report it or ask. Do not find another route to the same effect.
 - Open pull requests as DRAFTS. Never merge to the base branch, and never push to it.
 - When in doubt about whether something is reversible, it is not. Ask.`;
@@ -176,7 +176,7 @@ Net effect: a Centurion two hops under an `army` Caesar sees only the Legate's p
 paraphrase of the user's actual ask. The user's original constraints (e.g. "never touch
 `packages/billing`", or "match the existing test style") are visible to the root run only —
 by the second hop they exist only if a Legate chose to restate them verbatim in the
-`objective` string it wrote for `CEZ:SPAWN`, which nothing enforces or checks.
+`objective` string it wrote for `ONNI:SPAWN`, which nothing enforces or checks.
 
 ### Where the mission brief should live, and why
 
@@ -267,7 +267,7 @@ correctly when `mission` is absent (root-run spawns before it has a missionId to
   — there is no fourth option where Caesar spawns Centurions directly. `squad` maps to a
   single root Centurion (`server.ts:3510`: `role = body.unit === 'army' ? 'caesar' :
   'centurion'`) whose "children" are its backend's own in-process sub-agents (legionaries),
-  never cezar runs; `army` is the full three-rung tree.
+  never Onni Work runs; `army` is the full three-rung tree.
 
 ### The analysis
 
@@ -319,7 +319,7 @@ Depth does not buy throughput at the default config — it buys latency and dilu
 - **F1 (critical)** — `GUARD_RULE` and `CHILD_BRANCH_RULE`, both embedded in `CAESAR_PROMPT`
   and `LEGATE_PROMPT`, give the same commander literally opposite instructions about merging:
   "merge its branch… one child at a time" (`prompts.ts:38`) vs. "merging anything" requires
-  `CEZ:ASK` and a full stop (`prompts.ts:79`). Because both instructions live in the same
+  `ONNI:ASK` and a full stop (`prompts.ts:79`). Because both instructions live in the same
   assembled system prompt for both commanding ranks, a model following the prompt literally
   cannot execute the mission's only aggregation step (accepting a child's work) without either
   ignoring the Guard rule or halting every mission at the first accepted child. The current
@@ -396,7 +396,7 @@ hop. Change: as specified in Q2 above — new optional `mission` parameter on
 read per spawn call. Default-path impact: every child's prompt grows by a few lines (the
 clipped root objective, constraints, and budget-remaining); no schema change, additive only —
 `unitSpawnSchema` (`packages/contract/src/units.ts`) is untouched, so this doesn't touch what
-a commander is allowed to *send* in `CEZ:SPAWN`, only what a child is told on the way in.
+a commander is allowed to *send* in `ONNI:SPAWN`, only what a child is told on the way in.
 Tests to pin: extend `engine.test.ts`'s `childTaskEnvelope` describe block
 (currently `engine.test.ts:75-92`) with cases for `mission` present/absent, truncation at the
 clip boundary, and constraints/budget rendering; add a `spawnChildren`-level test asserting
@@ -427,7 +427,7 @@ Effort: S. Risk: none.
 
 ## For the summary
 
-- **F1 (critical):** `GUARD_RULE` ("merging anything" needs CEZ:ASK, prompts.ts:79) directly
+- **F1 (critical):** `GUARD_RULE` ("merging anything" needs ONNI:ASK, prompts.ts:79) directly
   contradicts `CHILD_BRANCH_RULE`'s mandatory `git merge --no-ff` for commanders
   (prompts.ts:38) — both embedded in the same Caesar/Legate prompts; exact replacement text
   proposed.

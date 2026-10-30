@@ -20,7 +20,7 @@ u siebie" z wizji Piotra.
   - pole uwag + **„↩ Odeślij"** → uwagi lecą do tej samej sesji agenta
     (mechanizm 002), task wraca do `running`, po poprawkach znowu `review`.
 - Brak zmian w worktree → gate się nie pojawia (task normalnie `done`/`waiting`).
-- Brak `gh` → przycisk PR zastąpiony instrukcją `git merge cez/<id8>` do
+- Brak `gh` → przycisk PR zastąpiony instrukcją `git merge onni/<id8>` do
   skopiowania.
 
 ## Zakres
@@ -36,9 +36,9 @@ u siebie" z wizji Piotra.
    diff z kolorami (własny, ~40 linii JS: linie +/− kolorowane, nagłówki
    plików składane; ZERO bibliotek diff-viewerów).
 4. **„Draft PR"**: `POST /api/runs/:id/pr` →
-   - autosave-commit finalny, `git push -u origin cez/<id8>`,
+   - autosave-commit finalny, `git push -u origin onni/<id8>`,
    - `gh pr create --draft --title <run.title> --body <handoff-skrót +
-     stopka "made with cez">`,
+     stopka "made with onni">`,
    - URL z outputu → `run.pullRequestUrl` (spec 004), task → `done`.
    - błędy (brak remote'a, brak uprawnień) → czytelny toast + komenda ręczna.
 5. **„Odeślij"**: `POST /api/runs/:id/messages` (z 002) z prefiksem

@@ -1,6 +1,6 @@
 # Units improvements — SUMMARY
 
-> Synthesis of three independent audits of cezar's mission (units) feature —
+> Synthesis of three independent audits of Onni Work's mission (units) feature —
 > `01-communication/SUMMARY.md`, `02-roles/SUMMARY.md`, and the three files in
 > `03-lifecycle-cockpit/` (no SUMMARY.md there yet; a sibling is writing one). All source citations
 > in those five documents were re-read at HEAD `8ed75a05` in this worktree; a further batch was
@@ -40,7 +40,7 @@ a Legate's only tool for validating a Centurion's "done" is reading the diff its
 budget, because the report schema is free text past `status` (02-roles/SUMMARY.md F6). And — this is
 new, empirical, from this mission — the *engine itself* actively worked against the Legate doing its
 job: real spawn budget was refused while real dollars sat unspent (see D5 below), a spawn's own
-`CEZ:MONITORING` follow-through could get the whole turn refused as invalid JSON (D1-D4), and a
+`ONNI:MONITORING` follow-through could get the whole turn refused as invalid JSON (D1-D4), and a
 `waiting` legate that survives a restart can be silently declared "done" with nothing having
 happened (D6). **A Legate trying to act responsibly is fighting its own runtime as much as the
 mission.**
@@ -77,7 +77,7 @@ already-built behavior) or **redesign** (new mechanism / structural change).
 
 | # | Finding / proposal | Source(s) | Severity | Effort | Label |
 |---|---|---|---|---|---|
-| R1 | Marker-parsing spawn-refusal death spiral: the prompt orders `CEZ:SPAWN` then a separate `CEZ:MONITORING` line in the *same* turn (`prompts.ts:99,130`), but the parser's candidate regex (`markers.ts:35`) captures from the keyword to end-of-turn, swallowing the trailing marker (or an earlier prose mention) and refusing a by-the-book spawn as invalid JSON; the refusal never reaches the model, the run idles the full 15-minute `IDLE_TIMEOUT_MS`, and settles `done` with an empty branch | **NEW** (D1-D4, this mission) | **CRITICAL** | S | defect-fix |
+| R1 | Marker-parsing spawn-refusal death spiral: the prompt orders `ONNI:SPAWN` then a separate `ONNI:MONITORING` line in the *same* turn (`prompts.ts:99,130`), but the parser's candidate regex (`markers.ts:35`) captures from the keyword to end-of-turn, swallowing the trailing marker (or an earlier prose mention) and refusing a by-the-book spawn as invalid JSON; the refusal never reaches the model, the run idles the full 15-minute `IDLE_TIMEOUT_MS`, and settles `done` with an empty branch | **NEW** (D1-D4, this mission) | **CRITICAL** | S | defect-fix |
 | R2 | Worktree/branch isolation is unenforced — empirically breached: a Centurion committed into the user's own main checkout, on the shared branch `feat/units-mvp`, undetected | 01-communication/SUMMARY.md F5 (**= D7**) | **CRITICAL** | M | defect-fix |
 | R3 | A settled child's unspent budget reservation is never released back to its parent — independently found and evidenced with live dollar figures by three separate audits | 01-communication/SUMMARY.md F4 + 02-roles/SUMMARY.md F8 + 03-lifecycle-cockpit/budget-and-restart.md F3 | **CRITICAL/HIGH** | S | defect-fix |
 | R4 | `GUARD_RULE` and `CHILD_BRANCH_RULE` give commanders opposite orders about merging (mandate vs. absolute ban) in the same assembled prompt | 02-roles/SUMMARY.md F1 | **CRITICAL** | S | defect-fix |
@@ -87,8 +87,8 @@ already-built behavior) or **redesign** (new mechanism / structural change).
 | R8 | `scope`/`allowed_tools` are inert on 2 of 4 backends (codex, opencode) and nothing tells the user the brake is decorative there | 02-roles/SUMMARY.md F2 | **CRITICAL** | S (document) / M (make it a fact the ladder can reason about) | defect-fix / redesign |
 | R9 | Restart force-settles every `waiting` unit run to `done`, discarding `overBudget` and delivering a false "done" report | 01-communication/SUMMARY.md F7 + 03-lifecycle-cockpit/budget-and-restart.md F1 (**= D6**) | **HIGH** | S | defect-fix |
 | R10 | The autonomous nudge does not exist in `runAgentStep`, so every unit child's first turn can park with no nudge at all — fix already authored, unmerged (`b5f0b316`) | 01-communication/SUMMARY.md F1 | **HIGH** | S | defect-fix |
-| R11 | A child parked on `CEZ:ASK` is invisible to its parent yet still consumes a fan-out slot | 01-communication/SUMMARY.md F2 | **HIGH** | M | defect-fix |
-| R12 | `CEZ:ASK` bypasses the tree entirely — every rank pages the human at the same rate regardless of hierarchy depth | 01-communication/SUMMARY.md F3 | **HIGH** | L | redesign |
+| R11 | A child parked on `ONNI:ASK` is invisible to its parent yet still consumes a fan-out slot | 01-communication/SUMMARY.md F2 | **HIGH** | M | defect-fix |
+| R12 | `ONNI:ASK` bypasses the tree entirely — every rank pages the human at the same rate regardless of hierarchy depth | 01-communication/SUMMARY.md F3 | **HIGH** | L | redesign |
 | R13 | The downward envelope carries no mission context, no sibling visibility, no prior findings, and no way to intervene in a running child | 01-communication/SUMMARY.md F9, F10, F11, F17 + 02-roles/SUMMARY.md F4 | **HIGH** | S-M | defect-fix |
 | R14 | `success_criteria`/`required_evidence` are written into the envelope and never read back; a report is trusted on prose alone | 02-roles/SUMMARY.md F5, F6 | **HIGH** | M-L | redesign |
 | R15 | `retry_limit` is pure honor system — nothing counts actual respawns against it | 01-communication/SUMMARY.md F13 + 02-roles/SUMMARY.md F7 | **HIGH** | M-L (S for an honest interim fix) | redesign |
@@ -104,7 +104,7 @@ already-built behavior) or **redesign** (new mechanism / structural change).
 | R25 | The ladder ships no per-role defaults; a zero-config mission runs Caesar/Legate/Centurion on the same model | 02-roles/SUMMARY.md F9 | **MEDIUM** | S | redesign (real default-path change — needs sign-off, §e) |
 | R26 | The Legate rank buys latency and dilution, not concurrency, at default `maxParallel=2` | 02-roles/SUMMARY.md F10 | **MEDIUM** | — (policy question, §e) | — |
 | R27 | A zero-config mission (no `budgetUsd`) is not cost-safe: uncapped, up to 4-wide fan-out, three ranks deep, fully autonomous | 03-lifecycle-cockpit/budget-and-restart.md §2 | **MEDIUM** | M | redesign |
-| R28 | Hygiene cluster (each low severity, S effort, defect-fix): dropped reports past `MAX_PENDING_REPORTS` are silent (01-F14); a stale code comment names the wrong slot exemption (02-F14); no test round-trips the `CEZ:REPORT` example (02-F15); the Centurion prompt assumes it always has a commander (02-F16); Caesar's "spawned as part of a larger structure" branch is unreachable (02-F13); the channel has no failure signal anywhere (01-F18); the ~40-nudge monitoring-wake tail is a pure cost with no payoff whenever R10 is the actual cause (01, unnumbered); an on-disk mission ledger is not worth building — `runs.json` already serves the purpose (03-branches F6, recommend *against*) | 01-communication/SUMMARY.md F14, F18 + 02-roles/SUMMARY.md F13, F14, F15, F16 + 03-lifecycle-cockpit/branches-and-end-state.md F6 | **LOW** | S | defect-fix |
+| R28 | Hygiene cluster (each low severity, S effort, defect-fix): dropped reports past `MAX_PENDING_REPORTS` are silent (01-F14); a stale code comment names the wrong slot exemption (02-F14); no test round-trips the `ONNI:REPORT` example (02-F15); the Centurion prompt assumes it always has a commander (02-F16); Caesar's "spawned as part of a larger structure" branch is unreachable (02-F13); the channel has no failure signal anywhere (01-F18); the ~40-nudge monitoring-wake tail is a pure cost with no payoff whenever R10 is the actual cause (01, unnumbered); an on-disk mission ledger is not worth building — `runs.json` already serves the purpose (03-branches F6, recommend *against*) | 01-communication/SUMMARY.md F14, F18 + 02-roles/SUMMARY.md F13, F14, F15, F16 + 03-lifecycle-cockpit/branches-and-end-state.md F6 | **LOW** | S | defect-fix |
 
 **Notable duplicate worth flagging on its own:** the mid-flight budget top-up (part of R21) was
 proposed *twice*, independently, by the two centurions who wrote `budget-and-restart.md` and
@@ -125,7 +125,7 @@ R5, R11, R12, R16.
 
 **Roles, prompts and responsibility:**
 R4, R8, R13, R14, R15, R20, R22, R25, R26.
-*(R28's "Caesar-unreachable-branch", "commander wording", "no CEZ:REPORT round-trip test" items
+*(R28's "Caesar-unreachable-branch", "commander wording", "no ONNI:REPORT round-trip test" items
 also belong here.)*
 
 **Budget, lifecycle and cockpit:**
@@ -186,10 +186,10 @@ Deduplicated across all three audits' own lists (01-communication had 8, 02-role
    changes every `#autonomous` run in the repo, not just units. Land it on `main` first and rebase
    the units branch past it, or fold it into the units work directly?
 2. **Restart-recovery option for an unanswered question (01 Q2, feeds R9/R16).** On restart with an
-   open `CEZ:ASK`: leave the run at `waiting` (honest, but looks stuck until someone visits
+   open `ONNI:ASK`: leave the run at `waiting` (honest, but looks stuck until someone visits
    `/guard`), or settle it while reporting `blocked` (smaller change, but the question is never
    actually answered)?
-3. **Should the engine refuse a non-Caesar `CEZ:ASK` once an escalation ladder ships (01 Q3,
+3. **Should the engine refuse a non-Caesar `ONNI:ASK` once an escalation ladder ships (01 Q3,
    feeds R12)?** Keep it as a permanent escape hatch at every rank, or restrict it once R12 exists?
 4. **Escalation round cap (01 Q4, feeds R12).** Is 3 round-trips right, or should it scale with
    rank distance?
@@ -199,7 +199,7 @@ Deduplicated across all three audits' own lists (01-communication had 8, 02-role
    changes.
 6. **`MAX_PENDING_REPORTS = 20` (01 Q6).** Keep as a constant and just surface drops (part of R28),
    or make it configurable for army-sized missions?
-7. **`rescope` as its own `CEZ:DIRECT` action (01 Q7, only relevant once R11/R12 ship)?** Keep it a
+7. **`rescope` as its own `ONNI:DIRECT` action (01 Q7, only relevant once R11/R12 ship)?** Keep it a
    distinct enum value for transcript legibility, or fold it into `message`?
 8. **Ship engine work and prompt changes in the same PR (01 Q8), or land the engine first and the
    prompts separately?** Applies to R13, R15, R22 alike — each is inert until its prompt change
@@ -233,8 +233,8 @@ line was reopened, see "Citations opened at HEAD" below).
 
 | id | Summary | Existing finding? |
 |---|---|---|
-| D1 | `prompts.ts:99` (Caesar) and `:130` (Legate) order "after spawning, end your turn with a line containing exactly `CEZ:MONITORING`" — a *second* marker in the same turn as `CEZ:SPAWN`. The parser's candidate regex (`SPAWN_MARKER_CANDIDATE_RE`, `markers.ts:35`, `CEZ:SPAWN[ \t]+([\s\S]*)$`) captures from the keyword to end-of-turn, swallowing the trailing `CEZ:MONITORING` text; `JSON.parse` then fails on the extra trailing content, which is not a bracket-imbalance the repair helper (`closeUnbalancedJson`) can fix, so a by-the-book spawn is refused as `invalid-json`. | **NEW** |
-| D2 | The same non-global `.exec()` matches the **first** occurrence of the keyword in the turn text, not the trailing one. If the model's own prose earlier in the turn mentions "CEZ:SPAWN" (e.g. narrating its plan) before the real marker line, the candidate regex anchors there instead and captures prose, not JSON — same `invalid-json` refusal, for a different reason than D1. | **NEW** |
+| D1 | `prompts.ts:99` (Caesar) and `:130` (Legate) order "after spawning, end your turn with a line containing exactly `ONNI:MONITORING`" — a *second* marker in the same turn as `ONNI:SPAWN`. The parser's candidate regex (`SPAWN_MARKER_CANDIDATE_RE`, `markers.ts:35`, `ONNI:SPAWN[ \t]+([\s\S]*)$`) captures from the keyword to end-of-turn, swallowing the trailing `ONNI:MONITORING` text; `JSON.parse` then fails on the extra trailing content, which is not a bracket-imbalance the repair helper (`closeUnbalancedJson`) can fix, so a by-the-book spawn is refused as `invalid-json`. | **NEW** |
+| D2 | The same non-global `.exec()` matches the **first** occurrence of the keyword in the turn text, not the trailing one. If the model's own prose earlier in the turn mentions "ONNI:SPAWN" (e.g. narrating its plan) before the real marker line, the candidate regex anchors there instead and captures prose, not JSON — same `invalid-json` refusal, for a different reason than D1. | **NEW** |
 | D3 | The per-event marker strip (`stripUnitMarkers`, called at `run.ts:2928` inside `runContinuation`'s `onEvent`, and its `runAgentStep` twin at `run.ts:3654`) runs `parseSpawnMarker`/`parseReportMarker` against **one streaming text event's own chunk**, independently of the per-turn parse (`handleUnitMarkers` on the full accumulated `turnText`, called shortly after at `run.ts:2960-2964`). A chunk that happens to contain a complete, valid marker on its own is stripped from the transcript at persist time — even when the full-turn parse later refuses the same marker (as in D1/D2) — so the transcript loses the one piece of evidence of what the agent actually tried to do. | **NEW** |
 | D4 | The combination is silently fatal. The refusal note (`unitMarkerRejection`) is appended to the transcript only — nothing delivers it back into the model's own session, so no correction happens. Because the spawn never registers (`unitTurn.spawned` stays `false`), and because `runAgentStep`/`runContinuation`'s `monitoring` computation can also come up `false` in this state, the run parks at `waiting` and simply idles for the full `IDLE_TIMEOUT_MS = 15 * 60_000` (`run.ts:108`), at which point `armIdleTimer` (`run.ts:4256-4267`) closes the session outright. The run then settles `done` with an empty branch, and its parent receives that as a clean success report. **Observed twice this mission.** This is the same shape as R10 (nudge missing) and R9 (restart force-settles `waiting` as `done`) but is neither — it needs no restart and no nudge-cap exhaustion; the marker-refusal death spiral alone is sufficient. | **NEW** — related to, but distinct from, R9/R10/01-communication F1/F7 |
 | D5 | A settled child's unspent budget is never released — the refusal that stopped this very mission's fourth centurion from being spawned. | **= R3** (01-communication/SUMMARY.md F4) |
@@ -246,8 +246,8 @@ line was reopened, see "Citations opened at HEAD" below).
 ## Citations opened at HEAD `8ed75a05` while writing this document
 
 - `packages/work/src/units/prompts.ts:90-166` — full `CAESAR_PROMPT`/`LEGATE_PROMPT`/
-  `CENTURION_PROMPT` bodies, to confirm the exact `CEZ:MONITORING` instruction wording and line
-  numbers (`grep -n "CEZ:MONITORING" prompts.ts` → 99, 130, 154).
+  `CENTURION_PROMPT` bodies, to confirm the exact `ONNI:MONITORING` instruction wording and line
+  numbers (`grep -n "ONNI:MONITORING" prompts.ts` → 99, 130, 154).
 - `packages/work/src/units/markers.ts` — full file (134 lines): `SPAWN_MARKER_RE`/`REPORT_MARKER_RE`
   vs. the looser `SPAWN_MARKER_CANDIDATE_RE`/`REPORT_MARKER_CANDIDATE_RE` (line 35), `parseMarker`'s
   non-global `.exec()`, `stripSpawnMarker`/`stripReportMarker`.
@@ -261,10 +261,10 @@ line was reopened, see "Citations opened at HEAD" below).
   confirmed to have no autonomous-nudge branch at all (R10) and the same `monitoring` computation
   shape as `runContinuation`.
 - `packages/work/src/workflows/run.ts:4250-4275` — `armIdleTimer`/`clearIdleTimer`.
-- `git log --oneline -5` and `git merge-base HEAD cez/e44f25a3` — confirmed the fork point for this
+- `git log --oneline -5` and `git merge-base HEAD onni/e44f25a3` — confirmed the fork point for this
   file is `8ed75a05`, the same commit as HEAD at the start of this task.
 
 ---
 
-*Written by a centurion on `cez/9c64969f`, forked from `cez/e44f25a3`. Analysis and this one file
+*Written by a centurion on `onni/9c64969f`, forked from `onni/e44f25a3`. Analysis and this one file
 only — no other file in the repository was modified.*

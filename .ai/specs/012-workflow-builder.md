@@ -1,6 +1,6 @@
 # 012 — Workflow builder: zakładka Workflows w cockpicie
 
-Status: ZAIMPLEMENTOWANE 2026-07-11 · Fala: 4 · Zależy od: 005, 008 · Wzorzec: design "Cezar Cockpit v2" (claude.ai/design, projekt 30e9a8b9)
+Status: ZAIMPLEMENTOWANE 2026-07-11 · Fala: 4 · Zależy od: 005, 008 · Wzorzec: design "Onni Work Cockpit v2" (claude.ai/design, projekt 30e9a8b9)
 
 ## Cel
 
@@ -18,7 +18,7 @@ Workflow przestaje być plikiem YAML dla wtajemniczonych. Nowa zakładka
   canvasu) + podgląd **workflow.yaml** na żywo z przyciskiem Copy.
 - Nagłówek: pigułka z nazwą (edytowalna), licznik kroków, **Import** (wklej
   YAML), **Export** (pobierz plik), **Save** (zapis do
-  `.ai/cezar/workflows/<slug>.yaml`; istniejący plik → pytanie o nadpisanie).
+  `.ai/onni/workflows/<slug>.yaml`; istniejący plik → pytanie o nadpisanie).
 - Rząd chipów **edit:** — jeden klik ładuje istniejący workflow do edycji;
   **+ new** czyści canvas. Pierwsze wejście w zakładkę wczytuje pierwszy
   plikowy workflow repo.

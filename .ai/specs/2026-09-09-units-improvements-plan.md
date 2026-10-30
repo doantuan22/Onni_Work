@@ -30,7 +30,7 @@ the report actually reflect what happened.
 its parent (R3), gives an over-budget mission a path back to autonomous operation (R21), fixes the
 cockpit's budget double-count (R17), and teaches the Guard inbox to tell a genuine question apart
 from a budget halt or an exhausted wake cap (R5). It also builds the escalation ladder proper —
-`CEZ:ESCALATE`/`CEZ:ANSWER`, routed one rank at a time, reaching a human only when the question is
+`ONNI:ESCALATE`/`ONNI:ANSWER`, routed one rank at a time, reaching a human only when the question is
 irreversible or financial or the round cap trips (R12) — and the live "child is blocked" notice that
 tells a commander which of its children is stuck (R11). Depends on Mission 1 (shares
 `enforceUnitBudget`'s turn-end call site, and the ladder needs Mission 1's persisted `pendingAsk` to
@@ -69,7 +69,7 @@ shape.
 | D2 | Concurrency | A **mission-scoped** parallel limit: a new optional field on the mission record and composer (not the global `resources.maxParallel` knob, `config.ts:36`). Default equals today's global `maxParallel` (2), so a mission that never sets it is byte-for-byte unchanged. The composer pre-fills **4** for an `army` mission only. | Answers `00-SUMMARY.md` open question 9(c) without its stated blast radius — raising the *global* semaphore would widen concurrency for every project sharing it, not just missions that want it. |
 | D3 | Verification | A **Review Centurion** rank/step that re-reads a child's diff and evidence before the parent accepts — not engine-run `verify_commands`. Roughly doubles the cost of a reviewed piece of work; accepted as the price of not trusting a child's own honesty about its own work. Answers `00-SUMMARY.md` open question 11 with option (4) from `02-roles/SUMMARY.md` P9's own ranked list, not its top pick (1). | A dedicated, independent rank cannot be fooled the way a child re-running its own claimed command can; the audit itself ranked (4) "best independent verification" and only deprioritized it for cost, which this decision accepts paying. |
 | D4 | Ladder defaults (Caesar's recommendation, adopted) | Per-role model defaults (`02-roles/SUMMARY.md` P5) ship as **composer pre-fill only**, never as an engine default-path change. An API-started, zero-config mission still gets one model across all three ranks, exactly as today. | Shipping it as a real default changes what every existing zero-config mission does (`00-SUMMARY.md` open question 10's stated risk); pre-fill gets the UX benefit with zero blast radius on anything that doesn't go through the composer. |
-| D5 | The `CEZ:ASK` escape hatch (Caesar's recommendation, adopted) | Stays a **permanent** escape hatch at every rank, even after Mission 2 adds the `CEZ:ESCALATE`/`CEZ:ANSWER` ladder, Mission 3 adds `CEZ:DIRECT` and Mission 4 adds the Review Centurion. The engine never refuses a non-Caesar `CEZ:ASK`. Answers `00-SUMMARY.md` open question 3: no rank is ever refused a direct page to the human. | An escalation or verification mechanism that can itself get stuck must not be the only way out; `CEZ:ASK` is the one path that always reaches a human because it needs no other rank's cooperation. |
+| D5 | The `ONNI:ASK` escape hatch (Caesar's recommendation, adopted) | Stays a **permanent** escape hatch at every rank, even after Mission 2 adds the `ONNI:ESCALATE`/`ONNI:ANSWER` ladder, Mission 3 adds `ONNI:DIRECT` and Mission 4 adds the Review Centurion. The engine never refuses a non-Caesar `ONNI:ASK`. Answers `00-SUMMARY.md` open question 3: no rank is ever refused a direct page to the human. | An escalation or verification mechanism that can itself get stuck must not be the only way out; `ONNI:ASK` is the one path that always reaches a human because it needs no other rank's cooperation. |
 
 Two further scoping notes, not user decisions but load-bearing for what follows:
 
@@ -103,16 +103,16 @@ since they live in the same file already in scope.
 **1. Anchor marker parsing on the LAST keyword occurrence, tolerant of a trailing monitoring line.**
 *Source: `00-SUMMARY.md` R1 (= D1-D4, this mission's own empirical finding).*
 `SPAWN_MARKER_CANDIDATE_RE`/`REPORT_MARKER_CANDIDATE_RE` (`packages/work/src/units/markers.ts:35-36`,
-confirmed verbatim: `/CEZ:SPAWN[ \t]+([\s\S]*)$/` and its `REPORT` twin) are non-global regexes fed
+confirmed verbatim: `/ONNI:SPAWN[ \t]+([\s\S]*)$/` and its `REPORT` twin) are non-global regexes fed
 through `.exec()` inside `parseMarker` (`markers.ts:62`), which finds the **first** match in the
 turn and captures everything after it to end-of-text. Two failure shapes follow: (a) the prompt
-orders a trailing `CEZ:MONITORING` line in the *same* turn as `CEZ:SPAWN` (`prompts.ts:99` Caesar,
+orders a trailing `ONNI:MONITORING` line in the *same* turn as `ONNI:SPAWN` (`prompts.ts:99` Caesar,
 `:130` Legate — confirmed both still order this), so the by-the-book marker's own JSON gets the
 monitoring line appended to its tail and fails `JSON.parse`; (b) an earlier prose mention of the
 keyword (a model narrating its plan) anchors the candidate regex there instead of the real marker
 line. Fix: change `parseMarker`'s search to the **last** match (`[...text.matchAll(candidateRe)].at(-1)`
 in place of `.exec()`, candidate regexes made global — `g` flag), and, independently, strip a
-trailing `CEZ:MONITORING`/`CEZ:DONE` line from the captured JSON candidate before parse (mirroring
+trailing `ONNI:MONITORING`/`ONNI:DONE` line from the captured JSON candidate before parse (mirroring
 `closeUnbalancedJson`'s existing repair step at `markers.ts:74`) so a same-turn monitoring
 follow-through never gets swallowed into the payload even if the model puts the marker last anyway.
 
@@ -120,8 +120,8 @@ follow-through never gets swallowed into the payload even if the model puts the 
 *Source: `00-SUMMARY.md` D4 (partially — the refusal note itself already exists; only its delivery
 is missing).*
 `unitMarkerRejection` (`run.ts:164`) already builds refusal text; `handleUnitMarkers`
-(`run.ts:1531`) already calls `note(unitMarkerRejection(...), 'danger')` at both the `CEZ:REPORT`
-(`run.ts:1553`) and `CEZ:SPAWN` (`run.ts:1563`) sites — but `note` only calls
+(`run.ts:1531`) already calls `note(unitMarkerRejection(...), 'danger')` at both the `ONNI:REPORT`
+(`run.ts:1553`) and `ONNI:SPAWN` (`run.ts:1563`) sites — but `note` only calls
 `this.store.appendEvent`, a transcript write with no path back into the model. `handleUnitMarkers`
 already receives `ctx.state: ActiveRun` (`run.ts:1534`), the same shape `tryAutonomousNudge` (item
 3 below) uses to call `state.session?.sendMessage(...)`. Fix: on a rejection, in addition to the
@@ -145,7 +145,7 @@ today, autonomous or not.
 `c8dc7cef`, confirmed present in this worktree's git history, **not yet merged to `origin/main`**
 at `e8c95f3a`) introduces exactly the shared helper this fix needs — `tryAutonomousNudge(runId,
 state, stepId?)` — but ships it with **no unit exceptions at all**: its own doc comment says
-`CEZ:ASK` and `CEZ:MONITORING` "are OVERRIDDEN while budget remains (the nudge deliberately wins
+`ONNI:ASK` and `ONNI:MONITORING` "are OVERRIDDEN while budget remains (the nudge deliberately wins
 over both)". Merged as-is, that would **break the Guard invariant** this spec's Q4 promises ("an
 autonomous unit run never auto-continues past its own question") for every unit run, not just fix
 `runAgentStep`. Land `fix/autonomous-nudge-reachability` on `main` first (resolving `00-SUMMARY.md`
@@ -161,7 +161,7 @@ can drift from the shared helper.
 `recover()`'s `waiting` branch (`run.ts:1328-1344`, confirmed) calls `settleSuccess` unconditionally;
 `childSettleReport` (`engine.ts:157-189`, confirmed) then synthesizes a report via
 `statusToReportStatus(child.status)` (`engine.ts:141-146`) whenever the child never emitted its own
-`CEZ:REPORT` — and since `settleSuccess` resolves every autonomous run's terminal `RunRecord.status`
+`ONNI:REPORT` — and since `settleSuccess` resolves every autonomous run's terminal `RunRecord.status`
 to `'done'` (review is gated off by default, Mission 3 item 6), that synthesis always produces
 `report.status: 'done'`. Fix, using the *existing* `'blocked'` enum value already in
 `unitReportSchema` (`contract/src/units.ts:75-83` — `status: z.enum(['done','partial','failed','blocked'])`,
@@ -232,7 +232,7 @@ the one item with a real default-path change **outside the narrow unit scope**: 
 `fix/autonomous-nudge-reachability` changes every `#autonomous` run in the repo, unit or not — call
 this out explicitly in the PR, per `01-communication/SUMMARY.md` P1's own default-path note. Within
 units specifically, behavior for a unit run is unchanged in *intent* (nudge past a plain turn end,
-never past `CEZ:ASK`/over-budget/a spawn) — only newly *reachable* on the first turn, where today it
+never past `ONNI:ASK`/over-budget/a spawn) — only newly *reachable* on the first turn, where today it
 silently never fired. Item 4 (restart reports `blocked`): zero change for any run without `unit`, and
 zero change for a unit run with no `pendingAsk` set — the carve-out in `childSettleReport` is gated
 on the new field's presence, so an ordinary restart of a plain `waiting` unit child (no open
@@ -244,7 +244,7 @@ marker parser, which item 6 does not touch.
 ### State transitions and who fires them
 
 - **`pendingAsk` created** — the engine, at the same instant it calls `emitAskRequested` (both
-  turn-end sites), whenever a unit run's turn ends on a `CEZ:ASK`.
+  turn-end sites), whenever a unit run's turn ends on a `ONNI:ASK`.
 - **`pendingAsk` cleared** — three exits, mirroring `contract/src/units.ts`'s existing
   `pendingReports` lifecycle: (a) a human or a settled sibling's report answers it via
   `deliverMessage`'s success path (`run.ts:2594`); (b) the run settles through any *normal* path
@@ -263,8 +263,8 @@ marker parser, which item 6 does not touch.
 ### Tests to pin
 
 `packages/work/src/units/markers.test.ts` — a spawn immediately followed by a same-turn
-`CEZ:MONITORING` line parses the spawn correctly (regression for D1); a spawn preceded by prose
-mentioning "CEZ:SPAWN" earlier in the turn still anchors on the real, later marker (D2); the
+`ONNI:MONITORING` line parses the spawn correctly (regression for D1); a spawn preceded by prose
+mentioning "ONNI:SPAWN" earlier in the turn still anchors on the real, later marker (D2); the
 candidate-regex change does not change any currently-passing malformed/valid case.
 `packages/work/src/units/prompts.test.ts` — extend the existing `/never merge/i` (`:161`) and
 `toContain('git merge --no-ff')` (`:179`) assertions with one asserting the Guard names the
@@ -272,9 +272,9 @@ in-worktree exception (`toMatch(/does not cover/i)`); update the file-editing as
 (`:150-154`) to the narrower "does not write the mission's/task's work" claim.
 `packages/work/src/workflows/autonomous-nudge.test.ts` (carried over from
 `fix/autonomous-nudge-reachability`) — extend with a unit-run case proving `tryAutonomousNudge`
-still refuses to nudge past `CEZ:ASK`/over-budget/a spawn once the three exceptions move into the
+still refuses to nudge past `ONNI:ASK`/over-budget/a spawn once the three exceptions move into the
 shared helper. `packages/work/src/workflows/units-engine.test.ts` — extend `:474-522`'s
-`askOnContinue`-style helper (today only exercises `runContinuation`) to drive a `CEZ:ASK` through a
+`askOnContinue`-style helper (today only exercises `runContinuation`) to drive a `ONNI:ASK` through a
 child's **first** turn (`runAgentStep`), proving the Guard holds there too now that the nudge is
 reachable. `packages/work/src/workflows/recover-unit.test.ts` — a sibling to the existing
 `:136-167` fixture, seeding an unanswered `ask.requested` event and a `pendingAsk`, asserting the
@@ -300,12 +300,12 @@ blocks too tightly to parallelize blind):
 
 ### Acceptance criteria
 
-- A spawn followed by a same-turn `CEZ:MONITORING` line succeeds (no `invalid-json` refusal).
+- A spawn followed by a same-turn `ONNI:MONITORING` line succeeds (no `invalid-json` refusal).
 - A malformed marker triggers a re-prompt into the open session, visible as a new session message
   in the transcript, not just a `note` event.
 - A fresh unit child (first turn, `runAgentStep`) that ends its turn on a plain autonomous
-  continuation nudges instead of parking `waiting`; one that ends on `CEZ:ASK` still parks.
-- A restart during an unanswered unit `CEZ:ASK` reports `blocked` to the parent, not `done`; a
+  continuation nudges instead of parking `waiting`; one that ends on `ONNI:ASK` still parks.
+- A restart during an unanswered unit `ONNI:ASK` reports `blocked` to the parent, not `done`; a
   restart during an ordinary `waiting` unit run with no open question is unaffected.
 - `prompts.test.ts` and `markers.test.ts` pass in full; no existing passing test in either suite
   regresses.
@@ -403,14 +403,14 @@ Update `guard.tsx`'s `SUBTITLE` (confirmed present at `guard.tsx:83`) to stop ov
 unit run that stopped to ask" now that the inbox also carries budget-halt and wake-cap rows with a
 visible `guardReason` label distinguishing them.
 
-**5. The escalation ladder proper: `CEZ:ESCALATE` / `CEZ:ANSWER`, one rank at a time.**
+**5. The escalation ladder proper: `ONNI:ESCALATE` / `ONNI:ANSWER`, one rank at a time.**
 *Source: `01-communication/SUMMARY.md` P5 (fixes F3 = `00-SUMMARY.md` R12, plus F15/F16).*
 A new unit-only marker **pair**, parsed in `packages/work/src/units/markers.ts` through the same
 shared generic `parseMarker` helper (`markers.ts:62`, confirmed) the spawn and report markers already
 use — deliberately **not** an extension of `ask.ts`, which is shared non-unit infrastructure carrying
 no notion of rank. Schema in `packages/contract/src/units.ts`, `.strict()` like `unitSpawnSchema`:
 `{ requestId?: string, irreversible: boolean, financial: boolean, questions: askQuestion[1..4] }`;
-`CEZ:ANSWER` carries `{ requestId, answers }`. Both markers inherit Mission 1 item 1's
+`ONNI:ANSWER` carries `{ requestId, answers }`. Both markers inherit Mission 1 item 1's
 last-occurrence anchoring and trailing-marker tolerance for free — that is the main reason this item
 lands *after* Mission 1 rather than beside it.
 *Routing (the whole point of the item):* an escalation is delivered **one hop**, to
@@ -420,7 +420,7 @@ confirmed) — reuse that cascade, do not write a second one. A dead or settled 
 upward. A question reaches the **human** in exactly three cases, and no others: `irreversible ||
 financial` is true and the current holder is the Caesar/root; the round cap trips; or no live
 ancestor remains. Answers travel back **down** the same cascade, fired synchronously from the
-answering rank's own turn-end when it emits a valid `CEZ:ANSWER`.
+answering rank's own turn-end when it emits a valid `ONNI:ANSWER`.
 *Guard-filter change, mandatory in the same commit:* narrow `needsGuard` (`missions.ts:106`,
 confirmed) to exclude a run that is waiting on a **live ancestor** — otherwise the ladder ships as a
 no-op that re-floods the same inbox item 4 just taught to be precise (`01-communication/SUMMARY.md`
@@ -428,7 +428,7 @@ F15). Add `'escalated'` to item 4's `guardReason` union rather than a second fie
 *Prompt change, mandatory in the same commit:* teach `LEGATE_PROMPT` and `CENTURION_PROMPT` the
 marker pair (`prompts.ts`) — without it no model ever emits it and the ladder is dead on the default
 path (`01-communication/SUMMARY.md` F16, the audit's own "a replacement that ships OFF is not a
-replacement" standard). The plain `CEZ:ASK` wording **stays** in all three prompts per decision D5.
+replacement" standard). The plain `ONNI:ASK` wording **stays** in all three prompts per decision D5.
 *Round cap:* a `unit.escalationRounds` counter on the escalating run, incremented per hop, defaulting
 to **3** round-trips; on trip, the question goes straight to the human with a note naming the cap.
 The cap's *value* remains an open question (see Open questions remaining #1) — the *mechanism* is not
@@ -436,7 +436,7 @@ optional, since without it a two-rank disagreement can bounce indefinitely and n
 
 **6. A live "child is blocked" notice to the parent.**
 *Source: `01-communication/SUMMARY.md` P6 (fixes F2 = `00-SUMMARY.md` R11).*
-Today a child parked on `CEZ:ASK` is invisible to its commander *and* still eats a quarter of its
+Today a child parked on `ONNI:ASK` is invisible to its commander *and* still eats a quarter of its
 fan-out: `TERMINAL_STATUSES` excludes `waiting` (`engine.ts:42`, confirmed) so the report gate at
 `run.ts:1756` returns early and the parent is told nothing, while `IN_FLIGHT_STATUSES` *includes*
 `waiting` (`engine.ts:37`, confirmed) so the child still counts against `MAX_CHILDREN_IN_FLIGHT = 4`
@@ -490,9 +490,9 @@ currently-`false` value to `true` for a run that genuinely needs a human, never 
 Item 5 is the one item in this mission that changes an existing default path, and it does so in two
 steps that must ship together: until the prompt paragraph lands, no model emits the new markers and
 behaviour is byte-for-byte unchanged; after it lands, a question that previously always paged the
-human may instead stop one rank up. `CEZ:ASK` is untouched at every rank (decision D5), so the
+human may instead stop one rank up. `ONNI:ASK` is untouched at every rank (decision D5), so the
 escape hatch never closes and no question can become unreachable — the worst case of a ladder bug is
-a question that arrives via `CEZ:ASK` instead, which is exactly today's behaviour. Item 6 is strictly
+a question that arrives via `ONNI:ASK` instead, which is exactly today's behaviour. Item 6 is strictly
 additive: a new bounded array on a record that is absent today, appended on an edge existing code
 already computes, with no knob and no new wake source.
 
@@ -504,9 +504,9 @@ already computes, with no knob and no new wake source.
 - **`guardReason`** — purely derived, recomputed on every read, no stored state, no transition.
 - **`totalBudgetUsd`** — pure function of already-read data, same lifecycle as today, no transition.
 - **`escalated-waiting`** (item 5) — *entered* by the escalating run's own turn-end handler on a
-  valid `CEZ:ESCALATE`, which parks it exactly as `CEZ:ASK` parks a run today. *Exited* by exactly
+  valid `ONNI:ESCALATE`, which parks it exactly as `ONNI:ASK` parks a run today. *Exited* by exactly
   four firers, all of them synchronous with some turn end, none of them a new timer: (a) the
-  ancestor's turn-end delivering a valid `CEZ:ANSWER` back down the cascade; (b) the same run
+  ancestor's turn-end delivering a valid `ONNI:ANSWER` back down the cascade; (b) the same run
   re-escalating under the round cap (a fresh entry replaces the old, `requestId` preserved);
   (c) the round cap tripping, which converts the escalation into an ordinary human-facing ask and
   hands it to the Guard inbox with `guardReason: 'escalated'`; (d) the cancel cascade. A restart
@@ -533,17 +533,17 @@ caesar + $5 carved legate fixture; add a 3-level fully-carved chain case; add a 
 `unit.overBudget: true` asserting `guardReason === 'overBudget'`; add a
 `monitoringWakeCapReached: true` fixture asserting `needsGuard === true`.
 
-`packages/work/src/units/markers.test.ts` — round-trip the `CEZ:ESCALATE`/`CEZ:ANSWER` examples
+`packages/work/src/units/markers.test.ts` — round-trip the `ONNI:ESCALATE`/`ONNI:ANSWER` examples
 exactly as printed in the prompts (the round-trip test `02-roles/SUMMARY.md` F15 says is missing for
-`CEZ:REPORT` today, not repeated for a new marker); unknown keys rejected; a trailing
-`CEZ:MONITORING` line tolerated (Mission 1 item 1's guarantee, re-pinned for the new markers).
+`ONNI:REPORT` today, not repeated for a new marker); unknown keys rejected; a trailing
+`ONNI:MONITORING` line tolerated (Mission 1 item 1's guarantee, re-pinned for the new markers).
 `packages/work/src/units/engine.test.ts` — `withBlockedChild` bounds the array and is idempotent
 for the same `fromRunId`. `packages/work/src/workflows/units-engine.test.ts` — a centurion's
 escalation reaches its legate and does **not** appear in `/guard`; an `irreversible: true`
 escalation held by the Caesar reaches the human; a dead intermediate rank is skipped one hop
 further up; the round cap terminates and lands the question on the human with
 `guardReason: 'escalated'`; a restart with an open escalation re-delivers instead of settling; a
-plain `CEZ:ASK` from a centurion still reaches the human directly (decision D5's escape hatch,
+plain `ONNI:ASK` from a centurion still reaches the human directly (decision D5's escape hatch,
 pinned as a permanent guarantee); a monitoring parent receives the blocked-child notice
 immediately; a parent with a closed session gets a durable `blockedChildren` entry flushed into its
 next prompt; the entry clears on unblock; a settled parent is **not** resurrected by a notice.
@@ -577,14 +577,14 @@ next prompt; the entry clears on unblock; a settled parent is **not** resurrecte
 - `/guard` shows a distinct label for an over-budget row versus a genuine-ask row versus a
   wake-cap-exhausted row (currently invisible from `/guard`/`/missions` entirely).
 - `missions.test.ts` passes with the corrected `totalBudgetUsd` expectations.
-- A centurion emitting `CEZ:ESCALATE` with `irreversible: false, financial: false` parks, its legate
+- A centurion emitting `ONNI:ESCALATE` with `irreversible: false, financial: false` parks, its legate
   receives the question in its own session, and nothing appears in `/guard`; the legate's
-  `CEZ:ANSWER` unparks the centurion on the legate's own turn end.
+  `ONNI:ANSWER` unparks the centurion on the legate's own turn end.
 - The same escalation held by a Caesar with `irreversible: true` reaches the human, and so does one
   that has bounced past the round cap — labelled `escalated` in the Guard inbox.
-- A plain `CEZ:ASK` from any rank still reaches the human unchanged (decision D5), pinned by a test
+- A plain `ONNI:ASK` from any rank still reaches the human unchanged (decision D5), pinned by a test
   that would fail if the ladder ever swallowed it.
-- A commander with a child parked on `CEZ:ASK` can name that child from its own session, and a
+- A commander with a child parked on `ONNI:ASK` can name that child from its own session, and a
   parent whose session was closed when the child blocked sees the notice in its next prompt.
 
 ### Dependencies
@@ -633,17 +633,17 @@ export function childTaskEnvelope(
 (confirmed: `unit` param present, missionId read at the existing call), so populating `mission` costs
 one extra `this.store.getRun(unit.missionId)` per spawn call, sourced fresh from the store (not
 baked in at creation) so it survives a restart and degrades to "no mission brief" rather than
-throwing if the root record is gone. `siblings` is the *other* children in the same `CEZ:SPAWN`
+throwing if the root record is gone. `siblings` is the *other* children in the same `ONNI:SPAWN`
 batch (title + `scope`, never the child's own entry). `learned` is the ≤3 newest entries of the
 parent's own `unit.pendingReports` at spawn time — bounded the same way `MAX_PENDING_REPORTS`
 bounds reports, so this cannot grow unbounded on a long wave-after-wave mission. A Squad (lone
 centurion) never reaches `spawnChildren` (`CHILD_ROLE.centurion === undefined`, `engine.ts:21-25`),
 so this is a no-op there exactly as today.
 
-**2. `CEZ:DIRECT`: message, re-scope or stop a running child.**
+**2. `ONNI:DIRECT`: message, re-scope or stop a running child.**
 *Source: `01-communication/SUMMARY.md` P8 (fixes F9's intervention half).*
 New marker, parsed in `handleUnitMarkers` (`run.ts:1531`) before its `ctx.done` return:
-`CEZ:DIRECT {"child":"<runId>","action":"message"|"rescope"|"stop","text":"…"}`. Orthogonal to the
+`ONNI:DIRECT {"child":"<runId>","action":"message"|"rescope"|"stop","text":"…"}`. Orthogonal to the
 existing precedence order in the spec's Markers section — it never sets `spawned`/`overBudget`, so
 it cannot flip the parent's own park decision the way a spawn or budget breach does. `stop` calls
 the existing `cancelDescendants`/cancel path (`run.ts:1837-1845`, `:2247`); `message`/`rescope` call
@@ -734,10 +734,10 @@ the tightest of the three always wins.
 ### Files and functions touched
 
 `packages/work/src/units/engine.ts` (`childTaskEnvelope` only), `packages/work/src/workflows/run.ts`
-(`spawnChildren` `:1607-1699`, `handleUnitMarkers` for `CEZ:DIRECT`, `reportSettledChildToParent`
+(`spawnChildren` `:1607-1699`, `handleUnitMarkers` for `ONNI:DIRECT`, `reportSettledChildToParent`
 `:1756` for item 5's worktree check, `settleSuccess` `:4152-4176` for item 6, `pump()`/`capacity()`
 `:1090-1210` for item 8), `packages/work/src/units/prompts.ts` (`CAESAR_PROMPT` finishing section,
-new `CEZ:DIRECT`/`retry_of` documentation), `packages/contract/src/units.ts` (`unitSpawnSchema`
+new `ONNI:DIRECT`/`retry_of` documentation), `packages/contract/src/units.ts` (`unitSpawnSchema`
 child object — `retry_of`; `unitSchema` — `retryLimit`/`retryCount`/`retryOf`/`maxParallel`;
 `startMissionInputSchema` — `maxParallel`), `packages/work/src/runs/store.ts` (persistence parity
 for the new `unitSchema` fields), `packages/work/src/server/server.ts` (missions `GET`/cancel
@@ -748,7 +748,7 @@ shared grouping function extracted for the new `GET` route to reuse), `packages/
 ### Default-path statement
 
 Item 1 (envelope): every child's prompt grows by a few lines; no schema change, purely additive —
-`unitSpawnSchema` (what a commander may *send*) is untouched. Item 2 (`CEZ:DIRECT`): inert until the
+`unitSpawnSchema` (what a commander may *send*) is untouched. Item 2 (`ONNI:DIRECT`): inert until the
 prompt teaches it, exactly like `retry_of` — a mission that never emits the marker is byte-for-byte
 unchanged. Item 3 (`retry_of`): a parent that never names it behaves exactly as today; opt-in
 reinforcement only. Item 4 (scope overlap): runs on every spawn but only *acts* (appends a note) on
@@ -767,7 +767,7 @@ explicitly chose `army` in the composer — never for an API-started mission tha
 
 ### State transitions and who fires them
 
-- **`CEZ:DIRECT`'s three actions** — `stop` transitions the target child through the existing cancel
+- **`ONNI:DIRECT`'s three actions** — `stop` transitions the target child through the existing cancel
   cascade (terminal, fired by the parent's own turn-end marker handling); `message`/`rescope`
   deliver text into the child's open session without changing its status at all (fired the same
   way). None of the three touch the *parent's* own park decision.
@@ -793,10 +793,10 @@ explicitly chose `army` in the composer — never for an API-started mission tha
 `packages/work/src/units/engine.test.ts` — mission block present for a rank-2+ child, absent for a
 squad's lone centurion; sibling lines never include the child itself; the learned-reports block
 bounded at 3, newest-first; a two-wave spawn where wave 2's envelope contains wave 1's settled
-result. `packages/work/src/workflows/run.test.ts` (or `units-engine.test.ts`) — a `CEZ:DIRECT
+result. `packages/work/src/workflows/run.test.ts` (or `units-engine.test.ts`) — a `ONNI:DIRECT
 message` delivered without disturbing the parent's own park state; `stop` cascades exactly like
-`POST /runs/:id/cancel`; a settled child is refused; a non-child run id is refused; a `CEZ:DIRECT` in
-the same turn as `CEZ:SPAWN` — both take effect. `retry_of` naming an unrelated run is refused; a
+`POST /runs/:id/cancel`; a settled child is refused; a non-child run id is refused; a `ONNI:DIRECT` in
+the same turn as `ONNI:SPAWN` — both take effect. `retry_of` naming an unrelated run is refused; a
 retry chain exceeding the inherited limit is refused at the `(limit+1)`th with the count named in
 the note; an ordinary spawn naming no `retry_of` is unaffected. Scope-overlap: identical scopes →
 one note, both still spawn; segment-prefix overlap with an in-flight sibling → note;
@@ -818,7 +818,7 @@ global-only gating.
 Four centurions, mostly parallel after the Legate splits the shared `run.ts` sections by line range
 up front to avoid collision (per this plan's own opening note: disjoint functions, not files):
 - **Centurion A** — item 1 (`childTaskEnvelope`, isolated to `engine.ts`). ~$4.
-- **Centurion B** — items 2 and 3 together (`CEZ:DIRECT` + `retry_of`, both touch
+- **Centurion B** — items 2 and 3 together (`ONNI:DIRECT` + `retry_of`, both touch
   `handleUnitMarkers`/`spawnChildren` and the spawn schema — doing them separately would double the
   schema-touch conflict risk). ~$6.
 - **Centurion C** — items 4, 5 and 6 together (all three touch `spawnChildren`'s neighborhood or
@@ -835,7 +835,7 @@ up front to avoid collision (per this plan's own opening note: disjoint function
 
 - A rank-2+ child's envelope contains a `## Mission brief` naming the root objective, budget and
   remaining spend, and a `## Siblings spawned with you` block listing its co-spawned siblings' scope.
-- A commander can send `CEZ:DIRECT {"child":"...","action":"stop"}` and the named child cascades to
+- A commander can send `ONNI:DIRECT {"child":"...","action":"stop"}` and the named child cascades to
   `cancelled` exactly as `POST /runs/:id/cancel` would.
 - A fourth spawn naming `retry_of` a child whose chain already hit its inherited `retry_limit` is
   refused with the count in the refusal note.
@@ -880,7 +880,7 @@ option (4) of `02-roles/SUMMARY.md` P9's own ranked list (a dedicated review ran
 (engine-run `verify_commands`) that document's own text ranked first on trust grounds alone.*
 **Who spawns it.** The child's own parent (legate or Caesar), automatically, immediately after a
 centurion settles and *before* that settlement is delivered to the parent's own session as an
-acceptable report — i.e. inserted between a child's `CEZ:REPORT`/settle and
+acceptable report — i.e. inserted between a child's `ONNI:REPORT`/settle and
 `reportSettledChildToParent`'s delivery. Implemented as a new `unitRoleSchema` value,
 `'review-centurion'` (`contract/src/units.ts:31-33`, alongside `caesar`/`legate`/`centurion`), spawned
 via the same `spawnChildren` machinery Mission 3 already touches, with `CHILD_ROLE` (`engine.ts:21-25`)
@@ -890,7 +890,7 @@ mirroring today's `centurion → undefined` terminal entry).
 **What it reads.** The settled child's diff (`git diff <baseBranch>..HEAD` in the child's own
 worktree, still reachable via `worktreeOf`/`workingDirectoryOf`, `server.ts:4557-4563`, before
 retention reclaims it — coordinate with Mission 3 item 5's worktree-mismatch check, which reads the
-same data), the child's own `CEZ:REPORT` (`result`/`evidence`/`side_effects`/`errors`), and the
+same data), the child's own `ONNI:REPORT` (`result`/`evidence`/`side_effects`/`errors`), and the
 `success_criteria`/`required_evidence` strings from the *original* spawn payload (currently written
 into the envelope and never read back, `02-roles/SUMMARY.md` F5 — this is precisely where they
 finally get read).
@@ -1007,7 +1007,7 @@ report-derived fields parse; `unitReportSchema` staying non-`.strict()`
 carries these trust-bearing fields. A `run.ts` integration test (new, alongside
 `units-engine.test.ts`) — a plain centurion settling triggers exactly one review-centurion spawn,
 never two even if the settle path is re-entered; a `reject` verdict forces the delivered report to
-`status: 'blocked'` even when the child's own `CEZ:REPORT` claimed `done`; an `accept` verdict passes
+`status: 'blocked'` even when the child's own `ONNI:REPORT` claimed `done`; an `accept` verdict passes
 the child's own status through unchanged. Composer test (web) — the ladder form pre-fills the three
 models for a new `army` mission and leaves them editable; selecting a non-claude backend for a
 spawn-capable role shows the advisory-only warning.
@@ -1029,7 +1029,7 @@ spawn-capable role shows the advisory-only warning.
 - A settled centurion automatically triggers exactly one review-centurion spawn before its report
   reaches its own parent's session.
 - A review verdict of `reject` results in the parent seeing `status: 'blocked'` regardless of what
-  the reviewed child's own `CEZ:REPORT` claimed.
+  the reviewed child's own `ONNI:REPORT` claimed.
 - The delivered report for any settled centurion carries `commitSha` and `filesTouched` alongside
   the existing cost/`diffStat`.
 - `/missions/new` pre-fills the three-model ladder for an `army` mission; an API-started mission
@@ -1106,13 +1106,13 @@ resolved below rather than repeated as open.
    Mission 2, but it is worth ruling on before the ladder has real usage to calibrate against.
 2. **`MAX_PENDING_REPORTS = 20`.** Keep as a constant and just surface drops, or make it
    configurable for army-sized missions? Not touched by any mission above; genuinely open.
-3. **Should `rescope` be `CEZ:DIRECT`'s own distinct action value** (as this plan's Mission 3 item 2
+3. **Should `rescope` be `ONNI:DIRECT`'s own distinct action value** (as this plan's Mission 3 item 2
    specifies it), **or folded into `message` with a prefix?** This plan picked the distinct-value
    shape for transcript legibility, matching `01-communication/SUMMARY.md` P8's own choice, but the
    audit itself left this open (its own open question 7) and it is cheap enough to revisit during
    Mission 3's own implementation without replanning.
 4. **Ship each mission's engine work and its prompt changes in the same PR, or land the engine
-   first and the prompts separately?** Applies most to Mission 3 items 2-3 (`CEZ:DIRECT`,
+   first and the prompts separately?** Applies most to Mission 3 items 2-3 (`ONNI:DIRECT`,
    `retry_of`) — both are inert until their prompt teaches them, per this audit's own "a
    replacement that ships OFF is not a replacement" standard (`01-communication/SUMMARY.md` F16).
    This plan recommends the same-PR shape throughout (stated per-mission above) but the user has not

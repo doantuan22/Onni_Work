@@ -1,4 +1,4 @@
-# OpenAI Codex Desktop App — UI/UX Research (for cezar parity spec)
+# OpenAI Codex Desktop App — UI/UX Research (for Onni Work parity spec)
 
 Research date: 2026-07-14. Sources: OpenAI/ChatGPT Learn docs (learn.chatgpt.com), the official Codex changelog, openai/codex GitHub issues, hands-on reviews (Medium, Substack, Codex Knowledge Base, Unlock AI guide), reverse-engineering write-ups, and Claude Code desktop material as a secondary reference. Codex ships across four surfaces — CLI, IDE extension, cloud/web (chatgpt.com/codex), and the desktop app (macOS first, then Windows/Microsoft Store) — with shared sessions in `~/.codex/sessions/` and shared config in `~/.codex/config.toml`.
 
@@ -107,7 +107,7 @@ Sections (desktop app): **General** (Cmd+Enter requirement, prevent sleep while 
 
 ## 11. Visual design language, typography, spacing, animation
 
-- **OpenAI's design language**: quiet, monochrome-leaning, typography-led. Product UI is **sans-only** — Söhne (Klim) / OpenAI Sans (ABC Dinamo, 2025 rebrand), Inter fallback — at restrained weights (400 body, 500 nav/labels, 600 emphasis). **The serif (Signifier) is editorial/marketing display only** (openai.com, launch pages, chatgpt.com/codex landing) — it is *not* used for in-app headings. If cezar wants the "OpenAI feel": a literary serif for marketing/empty-state display moments at most; sans throughout the product.
+- **OpenAI's design language**: quiet, monochrome-leaning, typography-led. Product UI is **sans-only** — Söhne (Klim) / OpenAI Sans (ABC Dinamo, 2025 rebrand), Inter fallback — at restrained weights (400 body, 500 nav/labels, 600 emphasis). **The serif (Signifier) is editorial/marketing display only** (openai.com, launch pages, chatgpt.com/codex landing) — it is *not* used for in-app headings. If Onni Work wants the "OpenAI feel": a literary serif for marketing/empty-state display moments at most; sans throughout the product.
 - Visual posture: near-empty palette; hierarchy carried by type scale/weight/spacing rather than color; minimal borders, no gradients or ornamental illustration; **soft pill-shaped interactive elements** (pickers, mode chips); accent color used sparingly for interactive highlights; monospace reserved for code, commands, file paths, branch names, and diff stats.
 - **Density**: calm and roomy in the thread (chat-like), dense and information-rich in the review pane and task lists (repo, branch, diff stat, status per row). Sidebar is compact with small status glyphs per thread mode.
 - **Dark/light**: full parity, system-following, plus user theming (§9) with semantic diff colors that adapt per theme.
@@ -129,7 +129,7 @@ Sections (desktop app): **General** (Cmd+Enter requirement, prevent sleep while 
 - Diff viewer rebuilt for large-changeset performance; red/green scannable in seconds.
 - Routines (scheduled agents) ≈ Codex Automations.
 
-## 14. Actionable parity checklist for cezar (condensed)
+## 14. Actionable parity checklist for Onni Work (condensed)
 
 1. Sidebar: Projects → threads, with per-thread mode glyph (local/worktree/cloud) + status; pinned; filter/sort.
 2. Home/new-task = centered composer with project selector + permission picker (Full access / Ask before edits / Read only) + model+reasoning picker; ⌘N.

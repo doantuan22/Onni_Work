@@ -532,7 +532,7 @@ const MAX_TOOL_INPUT_HAYSTACK_CHARS = 8_192;
  *  which is a real and common state (no `gh`, no remote, a non-git root) — never an error. */
 export type RepoHandle = { owner: string; name: string };
 
-/** `https://github.com/open-mercato/cezar/pull/402` → `open-mercato/onni`, lowercased.
+/** `https://github.com/open-mercato/onni/pull/402` → `open-mercato/onni`, lowercased.
  *  Undefined for anything that is not a `<host>/<owner>/<repo>/<kind>/<n>` forge URL. */
 function refUrlRepo(url: string): string | undefined {
   const parts = url.split('/');

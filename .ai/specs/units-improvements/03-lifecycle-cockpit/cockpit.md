@@ -1,6 +1,6 @@
 # Mission Cockpit audit — lifecycle & Guard
 
-Read-only audit. HEAD at commit `076cead2785891af80b9ea7440bf3be973c0bbfe` (branch `cez/ff773c08`).
+Read-only audit. HEAD at commit `076cead2785891af80b9ea7440bf3be973c0bbfe` (branch `onni/ff773c08`).
 Every `file:line` below was read at this commit; line numbers are cited as of that HEAD, not the
 spec doc.
 
@@ -39,7 +39,7 @@ and `packages/work/src/workflows/run.ts:1701-1739` (`carveChildBudgets`, docstri
 child's ceiling out of what the parent has left"): when a parent has its own `budgetUsd`, every
 child it spawns is checked against, and subtracted from, **that same envelope**
 (`run.ts:1718-1730`). Only when the parent is uncapped (`budgetUsd === undefined`) does a child's
-`max_cost` NOT come out of anything (`run.ts:1710-1711`, "carves nothing… what every cezar run did
+`max_cost` NOT come out of anything (`run.ts:1710-1711`, "carves nothing… what every onni run did
 before this feature").
 
 So a child's `budgetUsd` is additional money on top of its parent's ceiling **only when the parent
@@ -98,10 +98,10 @@ whether that write actually means "a pending ask."
 
 | # | Site (`file:line`) | Trigger | Ask involved? | Verdict |
 |---|---|---|---|---|
-| W1 | `run.ts:3025` + `3035` (`runContinuation`, the autonomous/continuation turn-end handler) | `CEZ:ASK` marker parsed, `resolveAskTurn` returns `ask` truthy (`run.ts:2968-2971`) | Yes — `emitAskRequested(sink, ask)` fires on the same branch | **Correctly flagged.** This is the genuine case the spec names. |
+| W1 | `run.ts:3025` + `3035` (`runContinuation`, the autonomous/continuation turn-end handler) | `ONNI:ASK` marker parsed, `resolveAskTurn` returns `ask` truthy (`run.ts:2968-2971`) | Yes — `emitAskRequested(sink, ask)` fires on the same branch | **Correctly flagged.** This is the genuine case the spec names. |
 | W2 | `run.ts:3910` (`handleRunnerUiEvent`) | Native backend's own `ask.requested` UI event, arriving mid-turn, before turn-end (`run.ts:3900-3901`) | Yes, by construction (`event.type === 'ask.requested'`, `run.ts:3905`) | **Correctly flagged.** |
-| W3 | `run.ts:3035` reached via the `else` branch at `run.ts:3019-3039`, when `unitTurn.overBudget` is true (`run.ts:2979`, `3706` for the twin) | `enforceUnitBudget` (`run.ts:1578-1590`) sets `unit.overBudget = true` once `costUsd ≥ budgetUsd` — the Q6 budget brake, not a question | No — no `CEZ:ASK` text, `ask` is not required to be set | **Mislabelled.** The run is parked because it ran out of money, not because it asked anything. `run.unit.overBudget` is already on the wire (`packages/contract/src/units.ts:116`) but `missions.ts`/`guard.tsx` never read it (grep of `packages/web/src` for `overBudget`: zero hits outside this audit). |
-| W4 | `run.ts:3035`, reached when the autonomous nudge is exhausted: `(state.autoContinues ?? 0) < MAX_AUTO_CONTINUES` fails (`run.ts:3007`, cap = 40, `run.ts:313`) | The role kept ending turns with no `CEZ:SPAWN`/`CEZ:MONITORING`/`CEZ:ASK`/`CEZ:DONE` for 40 auto-continues in a row | No | **Mislabelled.** Nothing was asked; the automation's own retry budget ran out. |
+| W3 | `run.ts:3035` reached via the `else` branch at `run.ts:3019-3039`, when `unitTurn.overBudget` is true (`run.ts:2979`, `3706` for the twin) | `enforceUnitBudget` (`run.ts:1578-1590`) sets `unit.overBudget = true` once `costUsd ≥ budgetUsd` — the Q6 budget brake, not a question | No — no `ONNI:ASK` text, `ask` is not required to be set | **Mislabelled.** The run is parked because it ran out of money, not because it asked anything. `run.unit.overBudget` is already on the wire (`packages/contract/src/units.ts:116`) but `missions.ts`/`guard.tsx` never read it (grep of `packages/web/src` for `overBudget`: zero hits outside this audit). |
+| W4 | `run.ts:3035`, reached when the autonomous nudge is exhausted: `(state.autoContinues ?? 0) < MAX_AUTO_CONTINUES` fails (`run.ts:3007`, cap = 40, `run.ts:313`) | The role kept ending turns with no `ONNI:SPAWN`/`ONNI:MONITORING`/`ONNI:ASK`/`ONNI:DONE` for 40 auto-continues in a row | No | **Mislabelled.** Nothing was asked; the automation's own retry budget ran out. |
 | W5 | `run.ts:3737` (`runAgentStep`, the non-continuation turn-end handler used for a workflow's interactive step — first turn of a run, or a human's own follow-up message) | Plain turn end: session stays open, not `done`, `ask` false, `monitoring` false (`run.ts:3701-3707`, `3718-3719`) — this handler has **no** autonomous-nudge branch at all, unlike W3/W4's handler | No | **Mislabelled when the run has a `unit`.** Every unit root is started `autonomous: true` (`packages/work/src/server/server.ts:3529`, asserted for squads too by `packages/work/src/server/missions-api.test.ts:95`), but that flag only drives the *nudge* in `runContinuation`; `runAgentStep` has no such branch, so a unit run's very first turn (or a human's manual follow-up to it) parking here with no marker at all still sets `status: 'waiting'` and is indistinguishable from W1. |
 | W6 | *(absence, not a write)* — `armMonitoringWakeTimer` (`run.ts:4284-4328`), cap reached at `run.ts:4290-4300` and again at `run.ts:4312-4318` | The automatic monitoring wake-up cap (`MAX_AUTO_CONTINUES` = 40) is reached; `monitoringWakeCapReached: true` is persisted, but **`status` is left as `'running'`, `activity: 'monitoring'`** (no call to `updateRun(..., { status: 'waiting' })` on this path) | No | **Mislabelled the other way — a false negative.** `deriveAttention` (`packages/web/src/lib/attention.ts:116-121`) keeps this in the `running` bucket forever, so `needsGuard` (`missions.ts:106`) never becomes `true`. The run will never be nudged again by the engine, yet nothing in `/missions` or `/guard` says so. The information *does* exist and *is* rendered — but only if a human opens that exact run's own thread: `packages/web/src/routes/task-thread/run-header.tsx:811-818` (`MonitoringSchedule`) prints "Automatic checks paused — 40/40 reached" there, and nowhere else. |
 
@@ -117,7 +117,7 @@ card at all.
 
 **Verified by test:** `packages/web/src/lib/missions.test.ts:224-236`
 ("rolls a waiting descendant up to the mission") shows `needsGuard` is driven purely by
-`status === 'waiting'` with no reason attached — the fixture never sets a `CEZ:ASK`, just
+`status === 'waiting'` with no reason attached — the fixture never sets a `ONNI:ASK`, just
 `status: 'waiting'` directly, and the roll-up still flags it. `npx vitest run
 src/lib/missions.test.ts` (26 passed) confirms this is exactly how the shipped code behaves, not a
 misreading.
@@ -142,9 +142,9 @@ run that is permanently stuck (W6). `monitoringWakeCapReached` is already a cont
 |---|---|---|
 | **Mission cost against budget** | `MissionTree.totalCostUsd`/`totalBudgetUsd` (`missions.ts:74-79`) are computed but grepping every `.tsx` in `packages/web/src` for either name returns nothing outside `missions.test.ts`. `missions.tsx`'s `BudgetMeter` (`missions.tsx:303-333`) is per-node only — one bar per row, never an aggregate. A mission with 8 nodes has 8 separate meters and no total. (This also means F1's bug is currently invisible — nobody reads the wrong number yet.) | A mission-root summary line/chip in `missions.tsx`'s `MissionRows` header row or the mission-level card, once F1 is fixed. |
 | **Which child is blocked, and why** | `MissionNode` (`missions.ts:37-66`) carries only the boolean `needsGuard` — no reason, no ask text, no `overBudget`/`monitoringWakeCapReached` flag. `guard.tsx:54-77`'s row renders role chip, title, mission name, age and an "Open" button — nothing about *why* it's there (consistent with F2: it can't say why, because it doesn't know). | A short reason chip on the Guard row and the mission table row (`guard.tsx`, `missions.tsx:275-279`), sourced from `unit.overBudget` / an ask summary / `monitoringWakeCapReached` — all either already on the wire or cheap to add. |
-| **Branches left unmerged** | Spec §Q3: *"The parent merges the child branches it accepts (`git merge --no-ff cez/<id8>`) in its own worktree."* This is role-prompt / agent behaviour, not engine-tracked: grepped `packages/work/src` and `packages/web/src` for `merged` — the only hits are unrelated (usage-merging, git-status "unmerged path" parsing in `git-worktree.ts:362-369` for conflict detection, not merge-completion tracking). No `RunRecord`/`RunUnit` field records whether a child's branch actually landed in its parent's. | A "merged into parent" indicator per child row, computed by checking whether the child's branch tip is an ancestor of the parent's current branch (not currently done anywhere). |
+| **Branches left unmerged** | Spec §Q3: *"The parent merges the child branches it accepts (`git merge --no-ff onni/<id8>`) in its own worktree."* This is role-prompt / agent behaviour, not engine-tracked: grepped `packages/work/src` and `packages/web/src` for `merged` — the only hits are unrelated (usage-merging, git-status "unmerged path" parsing in `git-worktree.ts:362-369` for conflict detection, not merge-completion tracking). No `RunRecord`/`RunUnit` field records whether a child's branch actually landed in its parent's. | A "merged into parent" indicator per child row, computed by checking whether the child's branch tip is an ancestor of the parent's current branch (not currently done anywhere). |
 | **Stopping or re-budgeting a running mission** | `run-header.tsx:308-310`/`1008-1011` has a per-run **Cancel**, reachable only by opening that exact run's own thread — no mission-wide stop button exists in `missions.tsx` or `guard.tsx` (their rows only link to `/tasks/:id`, e.g. `missions.tsx:267-272`, `guard.tsx:72-74`). Re-budgeting: grepped `packages/web/src` for `budgetUsd` — it is only *read* (`missions.ts`, `missions.tsx`, `new-mission.tsx` at creation time) and *set once* at mission creation (`new-mission.tsx:135-148`); no mutation anywhere edits an existing run's `budgetUsd`, and `units-section.tsx` (Settings → Units) has no budget-related field at all (grepped for `budget`/`Budget`/`cap`/`Cap`: one unrelated hit at `units-section.tsx:37`, a comment). Backend-side, `carveChildBudgets`'s only knobs are at spawn time (`run.ts:1713-1739`); nothing re-opens a settled envelope. | A "Stop mission" action on the mission root row (cascading cancel, which the backend already implements per spec §Q6) and a budget-edit affordance, both in `missions.tsx`. |
-| **Any signal the mission has ended** | `MissionTree` (`missions.ts:68-84`) has no aggregate "settled"/"complete" field — only per-node `attention` (`missions.ts:44`). A caesar reaching `CEZ:DONE` shows as that one row's Pill turning green (`attention.ts:131-133`, label `"done"`), but `handleUnitMarkers` (`run.ts:1531-1567`) returns on `ctx.done` (`run.ts:1556`) with **no check against `inFlightChildren`** — nothing stops a commander from declaring done while children are still `running`/`waiting`. Rows default to expanded (`missions.tsx:227`) so a live child is visible today if the row is open, but nothing computed rolls "every node here is terminal" into one signal a human can scan for across missions. | A derived `tree.settled` (all nodes in `TERMINAL_STATUSES`, `engine.ts:42`) surfaced as a chip on the mission row, and ideally a guard against `CEZ:DONE` while children are still in flight. |
+| **Any signal the mission has ended** | `MissionTree` (`missions.ts:68-84`) has no aggregate "settled"/"complete" field — only per-node `attention` (`missions.ts:44`). A caesar reaching `ONNI:DONE` shows as that one row's Pill turning green (`attention.ts:131-133`, label `"done"`), but `handleUnitMarkers` (`run.ts:1531-1567`) returns on `ctx.done` (`run.ts:1556`) with **no check against `inFlightChildren`** — nothing stops a commander from declaring done while children are still `running`/`waiting`. Rows default to expanded (`missions.tsx:227`) so a live child is visible today if the row is open, but nothing computed rolls "every node here is terminal" into one signal a human can scan for across missions. | A derived `tree.settled` (all nodes in `TERMINAL_STATUSES`, `engine.ts:42`) surfaced as a chip on the mission row, and ideally a guard against `ONNI:DONE` while children are still in flight. |
 
 **F3 (severity: medium, scoping note for F1).** `totalBudgetUsd`/`totalCostUsd` are dead code
 today — zero consumers in `packages/web/src/**/*.tsx` (verified by grep). This is why F1 has no
@@ -152,7 +152,7 @@ current user-visible symptom; it becomes one the moment either field is wired in
 is exactly what the "mission cost against budget" gap above calls for.
 
 **F4 (severity: medium).** `guard.tsx:83-84`'s subtitle overpromises given F2 — *"the rows are the
-mission tree's `needsGuard` nodes, and the approval itself happens in the thread, on the `CEZ:ASK`
+mission tree's `needsGuard` nodes, and the approval itself happens in the thread, on the `ONNI:ASK`
 card"* (`guard.tsx:17-21`) is false for W3/W4/W5 rows, which have no ask card to approve.
 
 ## Proposals
@@ -196,7 +196,7 @@ card"* (`guard.tsx:17-21`) is false for W3/W4/W5 rows, which have no ask card to
 - *Transitions / who fires them:* none new — `guardReason` is derived, same lifecycle as
   `needsGuard`.
 - *Tests to pin:* extend `missions.test.ts` with a case where `unit.overBudget: true` and assert
-  `guardReason === 'overBudget'`; a plain `CEZ:ASK` case still resolves `'ask'`/default.
+  `guardReason === 'overBudget'`; a plain `ONNI:ASK` case still resolves `'ask'`/default.
 - *Effort:* S. *Risk:* low.
 
 **P3 — Flag the monitoring-wake-cap dead end.**

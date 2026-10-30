@@ -1,6 +1,6 @@
 # Units role design — audit summary (Caesar / Legate / Centurion)
 
-What was audited: whether each rank of cezar's mission feature has the **competence, the
+What was audited: whether each rank of Onni Work's mission feature has the **competence, the
 information and the responsibility** it needs to reach the *final goal of a mission*, not merely
 its own task order. Subject: `.ai/specs/2026-09-08-units-hierarchy.md` as implemented at
 **`df73cfa9`** (the fork point of this branch; every citation below was re-read against that
@@ -43,7 +43,7 @@ duplicates.
 - `packages/work/src/units/prompts.ts:38` — "For each child you accept, merge its branch into your
   own worktree: `git merge --no-ff <child branch>`."
 - `packages/work/src/units/prompts.ts:79` — "Before ANY action that is irreversible, financial, or
-  widens your scope, end the turn with CEZ:ASK and stop. That includes: pushing to a shared branch,
+  widens your scope, end the turn with ONNI:ASK and stop. That includes: pushing to a shared branch,
   **merging anything**, …"
 - Both constants are interpolated into the *same* assembled prompt for both commanding ranks:
   `CHILD_BRANCH_RULE` at `prompts.ts:107` (Caesar) and `:134` (Legate); `GUARD_RULE` at `:111` and
@@ -80,7 +80,7 @@ backends, and nothing tells the user that.
 
 - `prompts.ts:90` (Caesar) — "You do not edit files yourself. Not one."
 - `prompts.ts:121` (Legate) — the softer version of the same claim.
-- Contradicted two paragraphs later by `prompts.ts:35` ("COMMIT your work before every CEZ:SPAWN")
+- Contradicted two paragraphs later by `prompts.ts:35` ("COMMIT your work before every ONNI:SPAWN")
   and `:39` ("Sibling conflicts are yours to resolve … resolve it in your worktree and commit the
   merge"), which cannot be satisfied without editing conflicted files.
 
@@ -118,7 +118,7 @@ accountable to the goal.
   (`:184-186`); it has no notion of the order it is settling against.
 
 **Why it matters.** A child that ignores `required_evidence` entirely still produces a
-schema-valid `CEZ:REPORT` and settles normally. The parent's only check is an agent reading prose
+schema-valid `ONNI:REPORT` and settles normally. The parent's only check is an agent reading prose
 in its own context window.
 
 ### F6 — HIGH — `unitReportSchema` is free text except `status`
@@ -225,7 +225,7 @@ strictly load-bearing and must not be trimmed as generic advice.
 ### F13 — MEDIUM — Caesar's "spawned as part of a larger structure" branch is unreachable
 *Source: `03-prompt-noop-audit.md` F2.*
 
-- `prompts.ts:113` instructs a Caesar to emit `CEZ:REPORT` first "if you were spawned as part of a
+- `prompts.ts:113` instructs a Caesar to emit `ONNI:REPORT` first "if you were spawned as part of a
   larger structure." `CHILD_ROLE` (`engine.ts:21-25`) maps nothing to `caesar`, and the only
   `caesar` creation path is `POST /missions` (`server.ts:3501`, `:3510`), confirmed by
   `packages/work/src/server/missions-api.test.ts:102`
@@ -246,11 +246,11 @@ not be mistaken for exercised behaviour.
 **Why it matters.** Anyone sizing a fan-out from that comment under-estimates how many commanders
 can park for free.
 
-### F15 — LOW — no test round-trips the `CEZ:REPORT` example against `unitReportSchema`
+### F15 — LOW — no test round-trips the `ONNI:REPORT` example against `unitReportSchema`
 *Source: `03-prompt-noop-audit.md` F4.*
 
-- `prompts.test.ts:193-200` parses and schema-validates the `CEZ:SPAWN` example; there is no
-  equivalent for the `CEZ:REPORT` example at `prompts.ts:64`.
+- `prompts.test.ts:193-200` parses and schema-validates the `ONNI:SPAWN` example; there is no
+  equivalent for the `ONNI:REPORT` example at `prompts.ts:64`.
 
 **Why it matters.** A rename of a `unitReportSchema` key would not be caught the way a
 `unitSpawnSchema` rename would. Given F6's proposal to add trust-bearing report fields, this gap
@@ -290,10 +290,10 @@ purpose, since it is the sentence doing the real work once "merging anything" is
 **Concrete change.** Replace `GUARD_RULE` (`prompts.ts:79-84`) in full with:
 
 ```
-const GUARD_RULE = `The Guard rule — this one is absolute. Before ANY action that is irreversible, financial, or widens your scope, end the turn with CEZ:ASK and stop. That includes: pushing to a shared branch, merging into the repository's base branch (main / master / develop) or into any branch that is not your own worktree's branch, force-pushing, deleting a branch or a remote, publishing a package, spending money, touching production or any credential, rewriting history, and doing work outside the scope you were given.
+const GUARD_RULE = `The Guard rule — this one is absolute. Before ANY action that is irreversible, financial, or widens your scope, end the turn with ONNI:ASK and stop. That includes: pushing to a shared branch, merging into the repository's base branch (main / master / develop) or into any branch that is not your own worktree's branch, force-pushing, deleting a branch or a remote, publishing a package, spending money, touching production or any credential, rewriting history, and doing work outside the scope you were given.
 
-- Merging an accepted child's branch into YOUR OWN worktree's branch is the one merge this rule does not cover. It never leaves your own worktree, it is as reversible as any other commit you make yourself, and it is the only mechanism this hierarchy has for turning your children's work into your own deliverable — see the branch rule below. Every other use of the word "merge" in this prompt means merging somewhere else, and that needs CEZ:ASK.
-- Ask with CEZ:ASK, not in prose: a single line CEZ:ASK {"questions":[{"header":"≤12 chars","question":"…?","options":[{"label":"…","description":"…"}]}]} — 1-4 questions, 2-4 options each. Then stop. Do not keep working past your own question, and do not answer it yourself.
+- Merging an accepted child's branch into YOUR OWN worktree's branch is the one merge this rule does not cover. It never leaves your own worktree, it is as reversible as any other commit you make yourself, and it is the only mechanism this hierarchy has for turning your children's work into your own deliverable — see the branch rule below. Every other use of the word "merge" in this prompt means merging somewhere else, and that needs ONNI:ASK.
+- Ask with ONNI:ASK, not in prose: a single line ONNI:ASK {"questions":[{"header":"≤12 chars","question":"…?","options":[{"label":"…","description":"…"}]}]} — 1-4 questions, 2-4 options each. Then stop. Do not keep working past your own question, and do not answer it yourself.
 - Never work around a blocked action. If a tool is denied, a command needs a permission you do not have, or a guard stops you, that is the answer — report it or ask. Do not find another route to the same effect.
 - Open pull requests as DRAFTS. Never merge to the base branch, and never push to it.
 - When in doubt about whether something is reversible, it is not. Ask.`;
@@ -585,7 +585,7 @@ three trims, each exact and ready to paste:
 
 - `prompts.ts:31`: `Branches and merges — no code does this for you, so read it twice.` →
   `Branches and merges — no code does this for you.`
-- `prompts.ts:49`: → `- "children" — 1 to 4 entries per CEZ:SPAWN, and no more than 4 may be in flight under one parent at once; a spawn that would exceed either is refused.`
+- `prompts.ts:49`: → `- "children" — 1 to 4 entries per ONNI:SPAWN, and no more than 4 may be in flight under one parent at once; a spawn that would exceed either is refused.`
 - `prompts.ts:54`: → `- "max_cost" — optional, a positive number of dollars, carved out of your own remaining budget.`
 
 **Be honest about the payoff.** Composed sizes are `CAESAR_PROMPT` 7,950 chars, `LEGATE_PROMPT`
@@ -598,7 +598,7 @@ tokens.** **Effort: S. Risk: none** (no existing assertion checks these strings)
 
 - Reword `engine.ts:27-29` to name the unconditional unit-parent exemption (`run.ts:682-687`) and
   its test (`units-engine.test.ts:178`) instead of the bounded `maxMonitoringSessions` one.
-- Add a `prompts.test.ts` assertion mirroring `:193-200` that round-trips the `CEZ:REPORT` example
+- Add a `prompts.test.ts` assertion mirroring `:193-200` that round-trips the `ONNI:REPORT` example
   (`prompts.ts:64`) through `unitReportSchema`.
 
 **Effort: S. Risk: none.** F13 and F16 are recorded but **no change is proposed**: the dead Caesar
@@ -618,7 +618,7 @@ Self-contained; you do not need to open `01-responsibility-model.md` to act on t
   > branch>`. One child at a time, re-running the repository's checks after each merge."
 - `packages/work/src/units/prompts.ts:79` —
   > "Before ANY action that is irreversible, financial, or widens your scope, end the turn with
-  > CEZ:ASK and stop. That includes: pushing to a shared branch, **merging anything**, force-pushing,
+  > ONNI:ASK and stop. That includes: pushing to a shared branch, **merging anything**, force-pushing,
   > …"
 
 Both reach both commanding ranks in the *same assembled prompt*: `CHILD_BRANCH_RULE` at
@@ -631,7 +631,7 @@ Both reach both commanding ranks in the *same assembled prompt*: `CHILD_BRANCH_R
 Merging an accepted child's branch into the commander's own branch, in the commander's own
 worktree: never leaves that worktree; never touches a shared, base or remote branch; is exactly as
 reversible as any other commit the commander makes; and is **the only mechanism the hierarchy has**
-for turning children's work into one deliverable — nothing in cezar does it for you
+for turning children's work into one deliverable — nothing in Onni Work does it for you
 (`CHILD_BRANCH_RULE`'s own doc comment, `prompts.ts:24-29`; `spawnChildren` seeds
 `baseBranch: parent.branch` and stops there, `run.ts:1642-1690`). That is categorically different
 from the two things `GUARD_RULE` actually exists to stop, which its own closing bullet
@@ -659,13 +659,13 @@ are given in full, ready to paste.
 | Merges an accepted child's branch into its own | Yes, own worktree | Yes, own worktree | N/A — spawn refused (`engine.ts:21-25`) |
 | Resolves sibling-branch conflicts | Yes, own worktree | Yes, own worktree | N/A |
 | Merges to a shared/base/remote branch | Never | Never | Never |
-| Pushes, force-pushes, rewrites history | Never without CEZ:ASK | Never without CEZ:ASK | Never without CEZ:ASK |
+| Pushes, force-pushes, rewrites history | Never without ONNI:ASK | Never without ONNI:ASK | Never without ONNI:ASK |
 | Adjudicates contradictory child reports | Yes — resolves or asks the user | **No** — carries the conflict up with both sides quoted (`prompts.ts:132`) | N/A |
 
 **Note on this document's own provenance.** This audit's Legate followed exactly the resolution
 above: it merged each accepted Centurion branch into its own with `git merge --no-ff` without
-raising `CEZ:ASK`, treating `prompts.ts:83` as the operative sentence. The mission would have
-deadlocked under the literal reading of `prompts.ts:79`, since a `CEZ:ASK` reaches the human, not
+raising `ONNI:ASK`, treating `prompts.ts:83` as the operative sentence. The mission would have
+deadlocked under the literal reading of `prompts.ts:79`, since a `ONNI:ASK` reaches the human, not
 Caesar. That is F1 observed in production, not merely in review.
 
 ---
@@ -692,7 +692,7 @@ Caesar. That is F1 observed in production, not merely in review.
    roughly doubles the cost of every task order.
 
 4. **Is the `allowed_tools` gap (F2) a documentation fix or a backend-support decision?** As
-   shipped, cezar offers a scope brake that two of four backends silently ignore. Options: document
+   shipped, Onni Work offers a scope brake that two of four backends silently ignore. Options: document
    it loudly (P3, cheap, honest); restrict `army`/`squad` missions to backends that can enforce the
    brake; or accept it as-is and treat scope as advisory everywhere.
 
@@ -706,8 +706,8 @@ Caesar. That is F1 observed in production, not merely in review.
 
 ## Verification
 
-- Audited at `df73cfa9`; findings files produced on three Centurion branches (`cez/674dc2a6`,
-  `cez/49d757ef`, `cez/9be2e435`), each validated and merged into `cez/d9628fff` one at a time.
+- Audited at `df73cfa9`; findings files produced on three Centurion branches (`onni/674dc2a6`,
+  `onni/49d757ef`, `onni/9be2e435`), each validated and merged into `onni/d9628fff` one at a time.
 - Citations independently re-checked while writing this summary, beyond the Centurions' own
   verification: `config.ts:36`; `run.ts:678-690`; `prompts.test.ts:161`, `:179`, `:193-206`;
   `codex-app-server-runner.ts:56-58`; `opencode-server-runner.ts:46-47`;

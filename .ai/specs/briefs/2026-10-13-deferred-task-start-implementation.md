@@ -123,7 +123,7 @@ Four reviews of 712a3f1e (UX, lifecycle, security, conventions/default path) ret
 
 A follow-up review of the fixes found three further issues (stuck failed missing-run start, per-browser gate, preview probe per keystroke pause), fixed in f22e26d6.
 
-Verification at f22e26d6: typecheck clean; `npm test` 9783 passed, 4 skipped, 4 failed only in `create-project.test.ts` under `TMPDIR=/tmp` (19/19 pass with the default tmp); core 42/42; build + check:pack ok; package 17/17. Environment notes: npm 12 on PATH breaks `check:pack` JSON parsing and `~/.npmrc` `allow-scripts` breaks `test:package`; both pass with `/usr/bin/npm` 11 and a neutral user config. Not addressed: commit `acfc4470` (unrelated specs and a stray `cezar` gitlink) must be left out of any PR.
+Verification at f22e26d6: typecheck clean; `npm test` 9783 passed, 4 skipped, 4 failed only in `create-project.test.ts` under `TMPDIR=/tmp` (19/19 pass with the default tmp); core 42/42; build + check:pack ok; package 17/17. Environment notes: npm 12 on PATH breaks `check:pack` JSON parsing and `~/.npmrc` `allow-scripts` breaks `test:package`; both pass with `/usr/bin/npm` 11 and a neutral user config. Not addressed: commit `acfc4470` (unrelated specs and a stray `onni` gitlink) must be left out of any PR.
 
 ## Final review corrections (2026-10-14)
 
@@ -156,12 +156,12 @@ No fresh browser or real-provider validation was performed in this correction ro
 
 Final verification: the full Vitest invocation completed with **9784 passed, 4 skipped,
 12 failed** (591 files). All 12 failures were in nine existing suites testing paths outside
-Git repositories, while the inherited TMPDIR was inside the Cezar checkout. Re-running those
+Git repositories, while the inherited TMPDIR was inside the Onni Work checkout. Re-running those
 nine files with TMPDIR=/tmp passed **273/273** (48 + 225); no source changes were needed.
 This is a full run plus successful environment-corrected reruns, not a single all-green run.
 Commands used: env -u ONNI_API_URL -u ONNI_BIN ./node_modules/.bin/vitest run; then the same
 with TMPDIR=/tmp for health-forge, git-changes, projects-api, git-worktree, repo-files-api,
 e2e-setup-api, automations-api, attachments-api and server/git test files.
-Logs: /tmp/cez-final-all.log, /tmp/cez-final-env-check.log, /tmp/cez-final-env-rest.log.
+Logs: /tmp/onni-final-all.log, /tmp/onni-final-env-check.log, /tmp/onni-final-env-rest.log.
 Typecheck, build:web and check:pack passed; the pack contains 805 files and 105 cockpit assets.
 No publication or modifications to unrelated acfc4470 content.

@@ -6,7 +6,7 @@ The parallel-task ceiling is a single workspace-global number (`resources.maxPar
 ## Problem Statement
 Concurrency today is governed by exactly one knob. `WorkspaceSemaphore.maxParallel()` (`src/workspace/semaphore.ts:95`) returns the workspace-wide cap, and every `RunManager.pump()` (`src/workflows/run.ts:511`) starts queued runs only while `this.semaphore.busy() < maxParallel` — `busy()` (`semaphore.ts:88`) summing the held slots of every project's manager. That single number cannot express "this project is memory-heavy, run it one-at-a-time" and "that project is light, run four at once" at the same time.
 
-Concretely (the issue's example): the `mercato-development` project should run tasks strictly sequentially (max 1), because each worker's memory footprint is large enough that two concurrent runs risk OOM; the `cezar` project is light and should run up to 4 concurrently. With one global cap you must set the workspace to 1 (starving `cezar`) or to 4 (risking OOM on `mercato-development`). There is no safe single value.
+Concretely (the issue's example): the `mercato-development` project should run tasks strictly sequentially (max 1), because each worker's memory footprint is large enough that two concurrent runs risk OOM; the `onni` project is light and should run up to 4 concurrently. With one global cap you must set the workspace to 1 (starving `onni`) or to 4 (risking OOM on `mercato-development`). There is no safe single value.
 
 Evidence it matters: memory pressure is already a first-class concern in this codebase — there is a per-task memory guard (`enforceMemoryLimit`, the `onUsage` sampler at `run.ts:334`) and a workspace `memoryLimitMb`. Concurrency is the other half of the same host-protection story, and it is currently host-global only.
 
@@ -35,7 +35,7 @@ Three seams change; the shared-semaphore model and the #347 waiting-run exemptio
 maxParallel: z.number().int().min(1).max(16).optional().catch(undefined),
 ```
 
-`.optional().catch(undefined)` keeps house rules: a bad value degrades to "inherit" rather than a hard default, and `.passthrough()` at the entry level already preserves the key across older/newer cezar round-trips. No `resourcesSchema` change and no `schemaVersion` bump — an absent field is the pre-existing behaviour, so nothing to migrate.
+`.optional().catch(undefined)` keeps house rules: a bad value degrades to "inherit" rather than a hard default, and `.passthrough()` at the entry level already preserves the key across older/newer Onni Work round-trips. No `resourcesSchema` change and no `schemaVersion` bump — an absent field is the pre-existing behaviour, so nothing to migrate.
 
 **2. Semaphore snapshot + lookup (`src/workspace/semaphore.ts`).** `refresh()` (`semaphore.ts:111`) already re-reads the whole workspace config on boot and after every config PUT. Extend the cached snapshot to also carry a **root → per-project maxParallel** map built from `config.projects[]`, and add:
 
@@ -47,7 +47,7 @@ maxParallel: z.number().int().min(1).max(16).optional().catch(undefined),
 projectMaxParallel(repoRoot: string): number
 ```
 
-Keying is by **realpath-normalized root** — the registry stores normalized `root` (normalization is `registerProject`'s job, `projects.ts:124`), so the lookup normalizes the manager's `repoRoot` the same way before matching. A root with no registry entry (an ad-hoc `cezar run` outside the registry) has no per-project value and inherits the workspace cap.
+Keying is by **realpath-normalized root** — the registry stores normalized `root` (normalization is `registerProject`'s job, `projects.ts:124`), so the lookup normalizes the manager's `repoRoot` the same way before matching. A root with no registry entry (an ad-hoc `onni run` outside the registry) has no per-project value and inherits the workspace cap.
 
 **3. The pump gate (`src/workflows/run.ts`).** The manager already knows `this.repoRoot` (`run.ts:323`) and holds the shared `semaphore` (`:315`). The capacity check at `run.ts:519-520` gains one clause:
 
@@ -65,13 +65,13 @@ const capacity = () =>
 **Data flow:** settings write → project registry entry updated (`mergeWriteWorkspaceConfig`) → `semaphore.refresh()` re-reads config, rebuilds the root→limit map, and pumps every manager → the affected manager's next `pump()` sees the new `projectMax`. Identical to how a workspace-cap change already propagates (`semaphore.ts:104-118`), so raising a project's limit starts its queued runs with no restart, and lowering it simply stops starting new ones (running tasks are never killed — see Edge Cases).
 
 ## Data Model
-`~/.cezar/config.json`, one new optional key per registry entry (shown with an existing entry for context):
+`~/.onni/config.json`, one new optional key per registry entry (shown with an existing entry for context):
 
 ```jsonc
 {
   "resources": { "maxParallel": 4, "memoryLimitMb": null },   // workspace cap — unchanged
   "projects": [
-    { "id": "cezar", "root": "/home/u/cezar", "name": "cezar" },
+    { "id": "onni", "root": "/home/u/Onni Work", "name": "onni" },
     // no maxParallel → inherits workspace cap (4)
     { "id": "mercato-development", "root": "/home/u/mercato",
       "name": "mercato-development", "maxParallel": 1 }        // NEW: strictly sequential
@@ -116,7 +116,7 @@ Standard CRUD wiring (fetch registry, render rows, PUT on change) is not re-docu
 - **Performance:** `projectMaxParallel` answers from the in-memory snapshot; the root→limit map is rebuilt only inside `refresh()` (boot + config PUT), never per tick — the class's explicit no-per-tick-file-read invariant (`semaphore.ts:20-26`) is preserved.
 
 ## Phasing
-- **Phase 1 — Enforcement (config + semaphore + gate).** The per-project ceiling works when set directly in `~/.cezar/config.json`. Shippable and testable with no UI: an operator can hand-edit the file and restart, and per-project limits are honoured.
+- **Phase 1 — Enforcement (config + semaphore + gate).** The per-project ceiling works when set directly in `~/.onni/config.json`. Shippable and testable with no UI: an operator can hand-edit the file and restart, and per-project limits are honoured.
 - **Phase 2 — Live API wiring.** Setting the value through the project-registry route applies it without a restart via `semaphore.refresh()`.
 - **Phase 3 — Settings UI.** The per-project "Max parallel tasks" control in the projects section.
 
@@ -141,7 +141,7 @@ Every default below is the most reversible, lowest-blast-radius choice; a human 
 
 | # | Question | Resolved default | Rationale |
 |---|----------|------------------|-----------|
-| Q1 | Where does the per-project limit live — a new field on the workspace registry entry, or revive the legacy per-repo `maxParallel` in `src/config.ts`? | **New optional `maxParallel` on `workspaceProjectSchema`** (`~/.cezar/config.json`). | The 2026-07-20 migration deliberately moved resource governance to workspace scope and the semaphore already caches/refreshes that file; reviving the deprecated per-repo key would spread config across two files. Fully reversible — the field can be relocated later. |
+| Q1 | Where does the per-project limit live — a new field on the workspace registry entry, or revive the legacy per-repo `maxParallel` in `src/config.ts`? | **New optional `maxParallel` on `workspaceProjectSchema`** (`~/.onni/config.json`). | The 2026-07-20 migration deliberately moved resource governance to workspace scope and the semaphore already caches/refreshes that file; reviving the deprecated per-repo key would spread config across two files. Fully reversible — the field can be relocated later. |
 | Q2 | How do the per-project and workspace ceilings interact? | **Both must hold** — per-project is a local upper bound, workspace is the overall host ceiling; a run starts only if it is under both. | Minimal composition (one extra `&&`), matches the issue's intent, and preserves the host-protection guarantee of the workspace cap. |
 | Q3 | What happens when a project has no per-project value? | **Inherit the workspace `maxParallel`** — behaviour identical to today. | Backward-compatible; no `schemaVersion` bump and no config migration. |
 | Q4 | Should `memoryLimitMb` also become per-project in this work? | **No — defer.** Concurrency only; `memoryLimitMb` stays workspace-global. | Explicitly out of scope in the issue; smallest surface. Can be a follow-up spec if per-project concurrency proves insufficient. |

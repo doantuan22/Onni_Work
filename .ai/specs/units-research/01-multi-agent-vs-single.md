@@ -2,7 +2,7 @@
 
 Scope: published/preprint evidence 2023-2026 on multi-agent LLM systems vs a single
 strong agent, with focus on hierarchical (orchestrator-worker) designs and coding
-specifically, since that's cezar's use case. ~12 searches/fetches; not exhaustive.
+specifically, since that's Onni Work's use case. ~12 searches/fetches; not exhaustive.
 
 ## 1. Sources
 
@@ -73,7 +73,7 @@ context compression instead of a second agent for long-horizon work. [3]
 dispatch fully isolated "managed Devin" instances (own VM, own shell/tests,
 parallel), reading trajectories afterward to compile results - hierarchical
 fan-out with hard isolation and no shared-context mid-task editing, close to
-cezar's per-worktree design, not the tightly-coupled pattern (3) criticized. [4]
+Onni Work's per-worktree design, not the tightly-coupled pattern (3) criticized. [4]
 
 **F7.** Task *cohesion* determines outcome, not size: "Low-cohesion tasks: agents
 can partition work with minimal dependencies, enabling genuine parallelism...
@@ -104,24 +104,24 @@ delegation. It is evidence that more samples help, not that hierarchical
 delegation helps; citing it for orchestrator/worker design would be a category
 error. [5]
 
-## 3. What SUPPORTS cezar's hypothesis
+## 3. What SUPPORTS Onni Work's hypothesis
 
 - Anthropic's own production system beat single-agent by 90.2% with a frontier
-  orchestrator + cheaper subagents - structurally close to cezar's commander/
+  orchestrator + cheaper subagents - structurally close to Onni Work's commander/
   worker split. [F4]
 - Isolation (separate context, separate environment) is what both pro-multi-agent
   sources credit for making it work: Anthropic's parallel context windows,
-  Cognition's own isolated managed-Devin VMs. cezar's per-worktree isolation
+  Cognition's own isolated managed-Devin VMs. Onni Work's per-worktree isolation
   matches what both treat as necessary. [F4, F6]
 - Where subtasks are genuinely low-cohesion/independent, splitting work is a real,
   evidenced win, not just a hypothesis. [F4, F7]
 - A selectively-hierarchical orchestrator beat a static baseline by 28-42% cost -
-  hierarchy pays off when applied as a choice, which fits cezar being a per-task
+  hierarchy pays off when applied as a choice, which fits Onni Work being a per-task
   decision rather than a mandatory default. [F8]
 
 ## 4. What CONTRADICTS or BOUNDS it (blunt)
 
-- **cezar's core use case, coding, is the case the evidence is weakest on.** Every
+- **Onni Work's core use case, coding, is the case the evidence is weakest on.** Every
   source separating "wins" from "loses" puts parallelizable, low-coupling,
   breadth-first work on the winning side and sequential, high-coupling work - most
   real coding, especially shared interfaces/shared state - on the losing side.
@@ -130,7 +130,7 @@ error. [5]
   strong agent should do at least as well, for less.
 - **41-86.7% of real MAS traces fail, mostly from coordination/design failures**,
   not reasoning failures - exactly the risk surface a hierarchy/filesystem-channel
-  design adds. [F1, F2] This is the concrete list cezar's Guard/REVIEWER layer
+  design adds. [F1, F2] This is the concrete list Onni Work's Guard/REVIEWER layer
   needs to be built against.
 - **The token multiplier is ~15x vs a single chat-style agent**, and Anthropic
   states the economics only close for high-value tasks. [F3, F4] Nothing here
@@ -138,7 +138,7 @@ error. [5]
   token-equivalent sequential alternative, when parallelizable and high-value."
 - **The most coding-specific industry voice argues explicitly against
   multi-agent-by-default**, using a coding example structurally identical to
-  cezar's worker split: two agents on adjacent parts of one deliverable producing
+  Onni Work's worker split: two agents on adjacent parts of one deliverable producing
   inconsistent, unintegrated output. The filesystem channel mitigates but does not
   refute this - it doesn't eliminate MAST's "information withholding" / "ignored
   other agent's input" modes. [F2, F5]
@@ -172,7 +172,7 @@ error. [5]
   high-cohesion missions - "escalate to multi-agent" as a decision, not a
   default topology. [F7, F8]
 
-**Claims cezar must NOT make:**
+**Claims Onni Work must NOT make:**
 - "Hierarchical multi-agent is cheaper than a single strong agent," generally -
   default evidence is the opposite (15x tokens); it flips only for high-
   parallelism, high-value work. [F3, F4]
@@ -202,7 +202,7 @@ error. [5]
 - Gaps: no row-by-row SWE-bench leaderboard comparison pulled (only a survey's
   summary claim); HuggingGPT and AgentVerse (named in the brief) did not yield
   citable head-to-head numbers within budget and are omitted rather than
-  included on weak evidence; nothing here directly tests cezar's actual mechanism
+  included on weak evidence; nothing here directly tests Onni Work's actual mechanism
   (filesystem channel, escalation ladder, per-role budgets) - Sections 4-5's
-  application to cezar specifically is this analyst's inference from general MAS
-  findings, not a direct test of cezar's design.
+  application to Onni Work specifically is this analyst's inference from general MAS
+  findings, not a direct test of Onni Work's design.

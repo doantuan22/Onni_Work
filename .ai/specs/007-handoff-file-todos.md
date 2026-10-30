@@ -11,7 +11,7 @@ Status: ZAIMPLEMENTOWANE 2026-07-10 · Fala: 2 · Zależy od: 002 · Wzorzec: ja
 > znikają, endpointy `/api/todos` degradują się do `200 []` / `409`. Wpisy w `todos.json` nie są
 > kasowane — po powrocie flagi wracają w całości.
 >
-> **Część "per task `handoff.md`" (dziennik, karta „Notatki", heartbeaty, `CEZ:DONE`) zostaje bez
+> **Część "per task `handoff.md`" (dziennik, karta „Notatki", heartbeaty, `ONNI:DONE`) zostaje bez
 > zmian i działa zawsze** — #471 wprost ją zachowuje. Poprzedni krok w tę stronę: #444
 > (per-run `generateFollowups`), które ten issue zmienia z domyślnie-włączonego na globalnie
 > wyłączone.
@@ -34,7 +34,7 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
 
 ## Zakres
 
-1. **`handoff.md` per task**: `.ai/cezar/runs/<id>.handoff.md`
+1. **`handoff.md` per task**: `.ai/onni/runs/<id>.handoff.md`
    (poza worktree — przeżywa jego skasowanie):
    - seed szkieletu przy starcie taska: nagłówek (task, repo, branch),
      `## Goal` (prompt), `## Progress log`, `## Resume notes`; idempotentny
@@ -45,7 +45,7 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
    - heartbeat od Ceza po każdej turze: `- <ts> — turn complete — status=…
      ($koszt)` (plik aktualny nawet gdy agent zapomni — wzorzec janitora),
    - `GET /api/runs/:id/handoff` (markdown) + karta w GUI.
-2. **Globalny inbox**: `.ai/cezar/todos.json`:
+2. **Globalny inbox**: `.ai/onni/todos.json`:
    - format wpisu: `{ id, ts, taskId, summary, action?, prUrl?,
      suggestedSkill?, suggestedArgs?, suggestedPrompt?, runnable? }`;
      `runnable` jawnie zapisuje intencję, a stary wpis bez tego pola jest
@@ -60,11 +60,11 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
      task (`generateFollowups`, domyślnie ON; brak pola = ON, żeby stare runy
      i starsi klienci nie zmienili zachowania). Gdy run się wypisze, agent nie
      dostaje ani instrukcji follow-upów, ani użytecznego `ONNI_TODOS_FILE` —
-     dziennik `handoff.md` i marker `CEZ:DONE` działają bez zmian. Uwaga
+     dziennik `handoff.md` i marker `ONNI:DONE` działają bez zmian. Uwaga
      implementacyjna: runnery startują z `{ ...process.env, ...spec.env }`,
      więc przy wypisaniu `ONNI_TODOS_FILE` musi być **przesłonięty** pustą
-     wartością, a nie pominięty — inaczej zagnieżdżony cezar (agent odpalający
-     `cez serve`/testy) odziedziczy ścieżkę rodzica i dopisze do jego inboxa,
+     wartością, a nie pominięty — inaczej zagnieżdżony Onni Work (agent odpalający
+     `onni serve`/testy) odziedziczy ścieżkę rodzica i dopisze do jego inboxa,
    - zapis serwerowy pod lockiem (nasz store ma już atomic write; dodajemy
      `withLock` — 15-liniowy port z janitorowego `storage.ts`),
    - watch pliku (fs.watch + debounce) → SSE → licznik na zakładce,
@@ -107,8 +107,8 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
 - Ręcznie zepsuty JSON w todos.json nie wywala serwera (plik leczony:
   nieparsowalne wpisy pomijane, log ostrzeżenia).
 - (PR #444) Task z `generateFollowups: false` nie dopisuje nic do żadnego
-  inboxa — także wtedy, gdy proces cezara sam ma ustawione `ONNI_TODOS_FILE` —
-  a mimo to prowadzi `handoff.md` i kończy markerem `CEZ:DONE`. Task bez tego
+  inboxa — także wtedy, gdy proces Onni Work sam ma ustawione `ONNI_TODOS_FILE` —
+  a mimo to prowadzi `handoff.md` i kończy markerem `ONNI:DONE`. Task bez tego
   pola (stary run, stary klient) zachowuje się jak dotychczas.
 
 ## Aktualizacja 2026-07-17 (#374, follow-up do #355)

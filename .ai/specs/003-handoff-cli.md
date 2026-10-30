@@ -30,7 +30,7 @@ Zero konfiguracji, zero wyboru terminala — wykrywamy sami.
    - domyślna wiadomość `"Continue."` gdy user nic nie wpisał,
    - fallback: gdy `--resume` wysypie się (brak sesji na dysku) → czytelny
      event `note` + start świeżej sesji pod tym samym id (wzorzec ze starego
-     cezara).
+     Onni Work).
 2. **„Otwórz w terminalu"**: `POST /api/runs/:id/open-in-cli` →
    `openInTerminal(cwd, 'claude --resume <sessionId>')`. Port modułu janitora
    `openInTerminal.ts` niemal 1:1:

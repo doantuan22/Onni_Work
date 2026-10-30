@@ -1,7 +1,7 @@
 # Capability of cheap and local models for agentic coding (Sept 2026)
 
 Adversarial read on whether cheap/local models can safely sit at the bottom of a
-commander→manager→worker hierarchy in cezar. Numbers pulled from public
+commander→manager→worker hierarchy in Onni Work. Numbers pulled from public
 leaderboards and vendor pages; see confidence notes in §7 — several 2026-dated
 aggregator sites carry numbers I could not independently verify against a primary
 source.
@@ -73,20 +73,20 @@ number exists.
 - **Open agentic-coding-specific models exist and score respectably.** Qwen3-Coder (69.6% SB-V), GLM-4.6 (68.2%), Kimi K2 (65.8-71.2%) are all within ~10-15pt of frontier commander-tier scores from just 12-18 months prior, and were purpose-built for tool-calling/agentic use rather than adapted from a general chat model.
 - **Cost-per-successful-task, not cost-per-token, favors cheap tiers hard.** One source estimates DeepSeek-class pricing at ~$0.12-0.15 per successful run vs. ~$10 on a frontier premium tier for a comparable feature task — a 60-80x difference — meaning even a materially higher retry rate on cheap models can still net out cheaper in aggregate.
 - **Orchestrator/worker patterns are already validated in practice**, not just theory: one reported production pattern (frontier orchestrator delegating to a cheaper worker tier) hit 96% of solo-frontier quality at 46% of the price on a real benchmark (BrowseComp), and general guidance from cost-optimization write-ups claims 5-10x token-cost reduction "without meaningfully affecting output quality" *when the split matches task type* (planning/review on the expensive model, execution on the cheap one).
-- **Local free-to-run models cover a meaningful floor.** gpt-oss-20b (60.7% SB-V) fits in 16GB and gpt-oss-120b (62.4%) in ~80GB — both comfortably within a 32-128GB Mac — meaning a genuinely offline/zero-marginal-cost tier is not purely theoretical for cezar's target hardware.
-- **Bounded, mechanical, or narrow-domain tasks are exactly where the literature says small models don't lose much accuracy** — tests, docs, lint fixes, formatting, narrow classification/extraction — which maps directly onto the "implementer/researcher/first-pass reviewer" roles cezar proposes putting at the bottom of the hierarchy.
+- **Local free-to-run models cover a meaningful floor.** gpt-oss-20b (60.7% SB-V) fits in 16GB and gpt-oss-120b (62.4%) in ~80GB — both comfortably within a 32-128GB Mac — meaning a genuinely offline/zero-marginal-cost tier is not purely theoretical for Onni Work's target hardware.
+- **Bounded, mechanical, or narrow-domain tasks are exactly where the literature says small models don't lose much accuracy** — tests, docs, lint fixes, formatting, narrow classification/extraction — which maps directly onto the "implementer/researcher/first-pass reviewer" roles Onni Work proposes putting at the bottom of the hierarchy.
 
 ## 5. What CONTRADICTS or bounds the plan
 
 - **SWE-bench Verified is the easy benchmark; SWE-bench Pro is harder and cheap models fall further behind on it.** GPT-5-mini lands at only 45.7% on SB-Pro (vs. headline SB-V numbers in the 70s for comparable-cost Claude/DeepSeek models) — the "cheap tier is basically fine" story is benchmark-dependent, and Pro-style (real-world, less contaminated) evals show a wider gap than Verified does.
 - **Reliability compounds against long loops.** The 95%-per-step → 66%-over-8-steps math means that *even a nominally strong* cheap model becomes unreliable specifically on the kind of multi-step, multi-tool-call autonomous work that an "implementer" role implies once a task exceeds a handful of steps — this is a structural argument, not a one-off benchmark gap, and it gets worse as task length grows (which is exactly what METR's curve tracks for frontier models too, just starting from a lower baseline for cheap ones).
-- **Sub-7B / true "small" local models are not viable agentic workers at all** — one benchmark found a 3B model made zero tool-call attempts across 9 scenarios. If "local models" in the cezar plan means anything smaller than the ~20B-24B (gpt-oss-20b, Devstral) class, this is a hard floor, not a soft one.
+- **Sub-7B / true "small" local models are not viable agentic workers at all** — one benchmark found a 3B model made zero tool-call attempts across 9 scenarios. If "local models" in the Onni Work plan means anything smaller than the ~20B-24B (gpt-oss-20b, Devstral) class, this is a hard floor, not a soft one.
 - **Syntactic tool-call validity ≠ task success**, and the gap is large and mostly *undocumented per-model* — the clearest data point (Llama 3.3 70B: ~97% well-formed calls, ~58% task success) suggests structured-output failure rates alone understate how often a "successful-looking" cheap-model tool call still doesn't accomplish the task, which is a serious risk for any automated escalation logic that trusts a clean JSON response as a signal of correctness.
 - **The largest, best-scoring open models (Kimi K2, GLM-4.6, Qwen3-Coder-480B, DeepSeek-V3.2) are NOT locally runnable on the stated 32-128GB Mac hardware** — they require server-class GPU memory. The models that *are* locally runnable (gpt-oss-20b/120b, Devstral, Qwen3 dense ≤35B) score meaningfully lower (46-62% SB-V) than the open frontier, so "local" and "best cheap open model" are different tiers, not the same one — the plan needs to pick which one it means.
 - **Multi-file refactors and ambiguity resolution are repeatedly named as the specific failure mode across independent sources** (survey papers and practitioner write-ups alike) — this is precisely the kind of work a "manager" tier might be tempted to delegate downward once trust in a cheap worker builds up on easier tasks; the literature says don't.
 - **Confidence caveat itself is a bound**: several cost-per-task and 78%-solve-rate figures found in this research trace to SEO-style aggregator content around unverifiable 2026 model names (see §7) — if the actual gap is worse than these optimistic aggregator numbers suggest, the "cheap workers" case is weaker than §4 makes it look.
 
-## 6. Implications — routing recommendation for cezar
+## 6. Implications — routing recommendation for Onni Work
 
 Route by **task shape**, not by role label, and keep loop length short per delegated call:
 
@@ -100,7 +100,7 @@ Route by **task shape**, not by role label, and keep loop length short per deleg
 | Anything where a malformed/incorrect tool call would be expensive to undo (destructive file ops, deploys, migrations) | Frontier tier, or cheap tier gated behind mandatory dry-run/confirmation | Syntactic validity does not imply semantic correctness (58% vs 97% gap) |
 | Fully offline / zero-marginal-cost worker on a 32-128GB Mac | gpt-oss-20b (32GB+) or gpt-oss-120b (96-128GB) or Devstral (32GB+) | Only locally-runnable models with published SWE-bench Verified scores in the 46-62% band; treat as bottom tier, bounded-task only |
 
-Practical guardrail for cezar's escalation ladder: track **per-worker task success**, not just malformed-output rate, since the literature's biggest surprise is that clean tool calls can still fail the task; and cap autonomous loop depth for any sub-Haiku-tier model rather than trusting it to self-terminate correctly on long horizons.
+Practical guardrail for Onni Work's escalation ladder: track **per-worker task success**, not just malformed-output rate, since the literature's biggest surprise is that clean tool calls can still fail the task; and cap autonomous loop depth for any sub-Haiku-tier model rather than trusting it to self-terminate correctly on long horizons.
 
 ## 7. Confidence and gaps
 

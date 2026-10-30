@@ -8,8 +8,8 @@ Add read-only browsing and hand-to-agent for **Jira Cloud and Linear**, alongsid
 GitHub tab. A narrow `TrackerClient` / `TrackerDriver` seam handles discovery, scoped reads and
 explicit failure results. Credentials are entered in project Settings and stored privately per
 canonical repository. A user selects one
-Jira project or Linear team from a paginated picker; cezar stores the non-secret association in
-that repo's `.ai/cezar/tracker.json`. Jira and Linear implement the same provider seam; subsequent integrations reuse the same flow.
+Jira project or Linear team from a paginated picker; Onni Work stores the non-secret association in
+that repo's `.ai/onni/tracker.json`. Jira and Linear implement the same provider seam; subsequent integrations reuse the same flow.
 
 This is the current design contract, not evidence of a released feature. The design covers: one spec covering both providers, read-only vendor access, per-project credentials,
 API-discovered project/team selection and one non-GitHub tracker per repo. No OAuth, write-back
@@ -142,7 +142,7 @@ there is no automatic import into projects. GitHub authentication remains unchan
 
 ### Managed project credential storage
 
-Use `cezarHomeDir()/tracker-connections/<sha256(canonicalRoot)>.env`; `ONNI_HOME` applies.
+Use `onniHomeDir()/tracker-connections/<sha256(canonicalRoot)>.env`; `ONNI_HOME` applies.
 The interim choice is a managed dotenv representation for the agreed environment-file storage
 workflow, while keeping secrets outside repositories and out of the process environment. It is
 not a security improvement over private JSON and is not encryption. The tradeoff is explicit:
@@ -169,7 +169,7 @@ The digest detects accidental edits; it cannot authenticate a file against its o
 its contents. Never expose it through the API. Require a Zod-validated record after parsing. Every Settings replacement generates a new UUID,
 even for identical values, to invalidate associations, providers, cursors and cached responses.
 
-Write a header comment: "Managed by cezar. Rotate credentials in project Settings; do not edit
+Write a header comment: "Managed by Onni Work. Rotate credentials in project Settings; do not edit
 this file." Encode values as safely quoted dotenv literals and prove parser round trips for every
 accepted value; reject unrepresentable input before replacing the previous file. Parse with
 `dotenv.parse` only, never `config`, `source`, `eval`, or interpolation. The direct runtime dependency
@@ -204,8 +204,8 @@ No delayed migration writer exists to resurrect a deleted record. Report failed 
 action error; never claim the file was deleted when unlink failed.
 
 Unregistering a repository does not implicitly delete its credentials. To make retention visible,
-add local CLI commands `cez tracker-connections list` and `cez tracker-connections remove <id>`.
-They work without a running server or vendor call, through the same store and `cezarHomeDir()`.
+add local CLI commands `onni tracker-connections list` and `onni tracker-connections remove <id>`.
+They work without a running server or vendor call, through the same store and `onniHomeDir()`.
 List returns the opaque 64-hex filename ID, canonical root, provider and local record validity;
 never tokens, email, digest or raw record text. Corrupt records remain listed with unknown owner
 and an invalid status. Removal accepts only that 64-hex ID, never a path, and deletes only the
@@ -229,7 +229,7 @@ The implementation must declare these additions in `BACKWARD_COMPATIBILITY.md` i
 | --- | --- |
 | §1 CLI | `tracker-connections list` and `remove <id>`; document output, argument validation and failure exit behavior before release |
 | §2 HTTP / SSE | All tracker routes, project-list classification and the new workspace-only `tracker-changed` event defined below; no change to the boot-project event stream or global health shape |
-| §3 project state | `.ai/cezar/tracker.json`; register with `ensureDataGitignore`, preserve unknown association fields on round trip, reject invalid required identity before vendor access |
+| §3 project state | `.ai/onni/tracker.json`; register with `ensureDataGitignore`, preserve unknown association fields on round trip, reject invalid required identity before vendor access |
 | §9 per-user state | `tracker-connections/<hash>.env`, owned by its own store, respecting `ONNI_HOME`, private atomic writes and graceful boot degradation |
 
 **Explicit proposed §9 exception:** this credential record is validated as a complete unit rather
@@ -269,7 +269,7 @@ hard-coded. [GraphQL errors](https://linear.app/developers/graphql),
 Implementation must enumerate the read scopes required by the actual project/team, identity and
 issue queries in the setup documentation and verify minimal-scope fixtures. Do not add a `/myself`
 probe that requires extra permissions solely to detect a connection. Scope access and token expiry
-are diagnosed on the operation that needs them. No write scope is required by cezar.
+are diagnosed on the operation that needs them. No write scope is required by Onni Work.
 
 **Credential handling:** secrets must never enter read responses, logs, query-cache metadata or
 agent prompts or browsing/manual-handoff agent environments. The event-automation extension
@@ -342,7 +342,7 @@ page. Candidate queries search names/keys at the vendor and allow loading all pa
 cannot express a needed candidate filter, keep explicit continuation through the unfiltered
 pages and label any current-page filtering honestly; never present it as an exhaustive search.
 
-**Association storage:** `.ai/cezar/tracker.json` contains `TrackerAssociation`; absent or malformed
+**Association storage:** `.ai/onni/tracker.json` contains `TrackerAssociation`; absent or malformed
 means `null`. Use project `dataDir`, atomic tmp+rename and serialize local mutations. Register the
 file in `ensureDataGitignore` and its cross-check. A read-only filesystem does not block boot;
 a failed save/delete reports an action error and never claims success. Do not use workspace
@@ -527,7 +527,7 @@ secrets, per-vendor branches in shared browsing flows or forge-only capabilities
 
 The feature adds network access only after per-project credential setup and a user-requested
 read/connect action. No new `ONNI_*` switch is needed for this explicitly connected integration. Unlike GitHub's `gh`
-discovery, setup cannot be fully automatic, but the rest of cezar still requires no configuration.
+discovery, setup cannot be fully automatic, but the rest of Onni Work still requires no configuration.
 Automations' default-on behavior is not a precedent for unsolicited polling: its timer arms only
 for an automation the user enabled. The auto-refresh extension checks only while a list is observed; it introduces no unattended sync job.
 

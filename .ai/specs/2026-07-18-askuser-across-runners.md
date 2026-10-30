@@ -5,9 +5,9 @@
 When an agent needs the user to choose between options it currently falls back
 to prose ("`AskUserQuestion` isn't available in this session, so I'll ask
 directly…") — easy to miss, impossible to render as clickable choices. This spec
-adds a **backend-agnostic AskUser capability**: the agent emits a `CEZ:ASK`
-control marker (mirroring the existing `CEZ:DONE` / `CEZ:MONITORING` markers),
-cezar parks the run as `waiting`, the cockpit renders the question as clickable
+adds a **backend-agnostic AskUser capability**: the agent emits a `ONNI:ASK`
+control marker (mirroring the existing `ONNI:DONE` / `ONNI:MONITORING` markers),
+Onni Work parks the run as `waiting`, the cockpit renders the question as clickable
 option chips, and the user's pick (or a free-form reply) is delivered straight
 back to the live session through the reply seam that already exists. One
 mechanism, identical behavior on claude, codex and opencode.
@@ -25,9 +25,9 @@ mechanism, identical behavior on claude, codex and opencode.
   (verified against Claude Code v2.1.211 — this is the exact cause of the issue's
   screenshot). codex & opencode have only approve/deny gates (opencode's even
   renamed across versions), and MCP `elicitation` is disabled/unconfirmed in
-  both. → **DEFAULT: a cezar-owned `CEZ:ASK` marker as the single mechanism
+  both. → **DEFAULT: a onni-owned `ONNI:ASK` marker as the single mechanism
   across all three backends.** Uniform by construction (parsed post-mapper on
-  assembled turn text, exactly like `CEZ:DONE`), reliable, low blast radius.
+  assembled turn text, exactly like `ONNI:DONE`), reliable, low blast radius.
   A native `AskUserQuestion` control-protocol bridge for claude is documented as
   a **future enhancement**, not this spec.
 - **Q2 — Answer channel & free-text.** → **DEFAULT: clickable option chips AND
@@ -53,18 +53,18 @@ mechanism, identical behavior on claude, codex and opencode.
 ## Problem Statement
 
 Agents routinely hit a fork where a short human decision unblocks the best path
-(which of two designs, which file to touch, confirm a destructive step). Cezar
+(which of two designs, which file to touch, confirm a destructive step). Onni Work
 drives three backends and none gives a portable, renderable structured-question
 primitive:
 
 - **claude** — has the built-in `AskUserQuestion` tool (input
   `{questions:[{header,question,multiSelect,options:[{label,description}]}]}`,
-  1–4 questions, 2–4 options each, header ≤12 chars). But cezar runs claude
+  1–4 questions, 2–4 options each, header ≤12 chars). But Onni Work runs claude
   headless over `stream-json` with `--permission-mode dontAsk` and **no**
   permission-prompt tool. Per the shipped CLI (`isEnabled()` guards, v2.1.211),
   that combination means the tool is *not even offered to the model* → it reports
   "isn't available" and answers in prose (the issue screenshot). Enabling it
-  natively would require cezar to speak the `control_request`/`control_response`
+  natively would require Onni Work to speak the `control_request`/`control_response`
   `can_use_tool` protocol and inject the answer via `updatedInput.answers` — a
   claude-only, non-trivial addition.
 - **codex** (`codex app-server`) — *does* have a native ask, but it is the
@@ -82,26 +82,26 @@ experimental, version-fragile** protocols (claude's `control_request` framing,
 codex's `experimentalApi` JSON-RPC, opencode's HTTP/SSE) — each a separate,
 heavy, moving integration. A native-tool strategy means building and maintaining
 three of them; it is not the clean "works for codex, opencode, and claude" the
-issue asks for. What all three DO share, and cezar already relies on, is: (1) a
+issue asks for. What all three DO share, and Onni Work already relies on, is: (1) a
 **system-prompt channel** (`prependSystemPrompt` for codex/opencode; the system
-prompt for claude), (2) plain assistant **text output** scanned for cezar control
+prompt for claude), (2) plain assistant **text output** scanned for Onni Work control
 markers on the assembled turn text, and (3) a uniform **reply seam**
 (`sendMessage`) that resumes a `waiting` run. AskUser rides those three — exactly
-like `CEZ:DONE` / `CEZ:MONITORING` already do (`src/workflows/run.ts:43-64`,
+like `ONNI:DONE` / `ONNI:MONITORING` already do (`src/workflows/run.ts:43-64`,
 `src/handoff.ts:146-148`).
 
 ## Proposed Solution
 
-A cezar-owned marker protocol, uniform across backends:
+A onni-owned marker protocol, uniform across backends:
 
 1. **Instruct** — the run system prompt gains an AskUser block (in `src/handoff.ts`
-   next to the `CEZ:DONE` / `CEZ:MONITORING` instructions): *when you need the
+   next to the `ONNI:DONE` / `ONNI:MONITORING` instructions): *when you need the
    user to choose between concrete options, emit a single trailing line*
-   `CEZ:ASK <json>` *with this schema instead of asking in prose, then end your
+   `ONNI:ASK <json>` *with this schema instead of asking in prose, then end your
    turn.*
 2. **Detect** — the RunManager turn-end handler (`src/workflows/run.ts`, where
    `DONE_MARKER_RE` / `MONITORING_MARKER_RE` are already matched on accumulated
-   turn text) recognizes a trailing `CEZ:ASK <json>` marker, validates the
+   turn text) recognizes a trailing `ONNI:ASK <json>` marker, validates the
    payload with a zod schema, strips the marker line from the displayed
    transcript (like the existing markers), emits an `ask.requested` UiEvent into
    the sink, and parks the run `waiting` (the existing attention path).
@@ -120,8 +120,8 @@ A cezar-owned marker protocol, uniform across backends:
    answer text, same resolution rule, one routing decision in `useAskAnswer`
    (see the session-ends edge case below).
 
-Precedence on one turn: `CEZ:DONE` wins (goal done); else a valid `CEZ:ASK`
-(attention — the user is genuinely blocked); else `CEZ:MONITORING`
+Precedence on one turn: `ONNI:DONE` wins (goal done); else a valid `ONNI:ASK`
+(attention — the user is genuinely blocked); else `ONNI:MONITORING`
 (non-attention); else plain text → the existing `waiting`.
 
 Alternatives considered: (a) **native per-backend tools** — rejected: no
@@ -142,7 +142,7 @@ the existing sink, so no per-backend mapper work is required.
   options[2..4] of {label, description?}, multiSelect?}`; unique question texts,
   unique option labels per question). Shared by the server parser and the web.
 - **Marker + parser** — `src/workflows/run.ts`: add `ASK_MARKER_RE`
-  (`/CEZ:ASK[ \t]+(\{[\s\S]*\})\s*$/`) and a `parseAskMarker(text)` that returns
+  (`/ONNI:ASK[ \t]+(\{[\s\S]*\})\s*$/`) and a `parseAskMarker(text)` that returns
   `{ request, cleanedText }` or `null` (invalid JSON / schema → `null`, text left
   intact). Hooked into both turn-end sites (`~:789-836`, `~:1232-1277`) with the
   precedence above; on a valid ask it mints a `requestId`, calls
@@ -191,8 +191,8 @@ interface AskRequest { questions: AskQuestion[] }   // 1..4
   after closure; free-text continues through the normal composer.
 - **New UiEvent** (additive, SSE `ui-event` transport unchanged):
   `{ type: 'ask.requested', requestId: string, questions: AskQuestion[] }`.
-- **New system-prompt marker** (agent → cezar): a trailing line
-  `CEZ:ASK <compact-json AskRequest>`.
+- **New system-prompt marker** (agent → Onni Work): a trailing line
+  `ONNI:ASK <compact-json AskRequest>`.
 
 ## UI/UX
 
@@ -219,17 +219,17 @@ are real buttons (keyboard/enter, focus ring `--ring`), the card has
 
 ## Edge Cases & Failure Scenarios
 
-- **Malformed `CEZ:ASK` JSON / schema violation** (bad counts, non-unique labels)
+- **Malformed `ONNI:ASK` JSON / schema violation** (bad counts, non-unique labels)
   → parser returns `null`, the marker text is shown verbatim, run parks `waiting`
   as today (prose fallback intact), a non-fatal `session.error` note is emitted.
   The feature never makes the current behavior worse.
-- **Multiple `CEZ:ASK` markers in one turn** → the first valid one wins; extras
+- **Multiple `ONNI:ASK` markers in one turn** → the first valid one wins; extras
   are ignored (documented; agents are instructed to ask once).
 - **Agent ignores the marker and asks in prose** → unchanged: `waiting`, no card,
   composer works.
 - **User types instead of clicking** → normal message; card resolves.
-- **`CEZ:DONE` and `CEZ:ASK` both present** → `DONE` wins (no dangling card).
-- **Session ends while the ask is still unanswered** (idle timeout, a cezar restart,
+- **`ONNI:DONE` and `ONNI:ASK` both present** → `DONE` wins (no dangling card).
+- **Session ends while the ask is still unanswered** (idle timeout, an Onni Work restart,
   Finish, or a cancel) → the question outlives its session, so the card stays
   answerable: `useAskAnswer` (`ask-answer.ts`) routes the answer by run state —
   `POST /messages` while the engine still owns a session, `POST /continue` once it
@@ -249,7 +249,7 @@ are real buttons (keyboard/enter, focus ring `--ring`), the card has
 - **Reload / resume of a run parked on an ask** → the card is reconstructed from
   the persisted `ask.requested` (last one with no following user message);
   answering resolves it. Recovery re-opens the session (existing behavior).
-- **Marker collision with legitimate text** → same risk profile as `CEZ:DONE`:
+- **Marker collision with legitimate text** → same risk profile as `ONNI:DONE`:
   requires a trailing line + valid JSON payload; low likelihood.
 
 ## Risks & Impact Review
@@ -274,7 +274,7 @@ are real buttons (keyboard/enter, focus ring `--ring`), the card has
   chip-click answer formatting. Ships working on all three backends via the
   marker.
 - **Phase 2** — end-to-end cross-backend proof (drive each of the 3 mock runners
-  through a `CEZ:ASK` turn → assert `ask.requested` + `waiting`), graceful-
+  through a `ONNI:ASK` turn → assert `ask.requested` + `waiting`), graceful-
   degradation tests (malformed marker → plain text), a11y/interaction tests.
 - **Phase 3** — docs: `AGENT_PROTOCOL.md` (new event + marker + the future
   native-`AskUserQuestion` bridge note), `BACKWARD_COMPATIBILITY.md §7`,
@@ -297,8 +297,8 @@ are real buttons (keyboard/enter, focus ring `--ring`), the card has
 4. **Turn-end wiring + park.** Hook `parseAskMarker` into both turn-end sites with
    the `DONE > ASK > MONITORING > plain` precedence; on a valid ask, emit
    `ask.requested`, record `pendingAskId` on run state, park `waiting`; clear it
-   in the cancel/finish/sendMessage paths. Unit test (RunManager): a `CEZ:ASK`
-   turn → `ask.requested` emitted + status `waiting`; `CEZ:DONE`+`CEZ:ASK` → done.
+   in the cancel/finish/sendMessage paths. Unit test (RunManager): a `ONNI:ASK`
+   turn → `ask.requested` emitted + status `waiting`; `ONNI:DONE`+`ONNI:ASK` → done.
 5. **System-prompt instruction.** Add the AskUser block + schema summary in
    `src/handoff.ts`. Test: the assembled system prompt contains the instruction.
 6. **Thread reducer + AskCard.** Add the `ask.requested` case in
@@ -310,7 +310,7 @@ are real buttons (keyboard/enter, focus ring `--ring`), the card has
 ### Phase 2 — Cross-backend proof & degradation
 
 7. **End-to-end per backend.** Using the mock claude/codex/opencode runners, drive
-   a turn whose text ends with `CEZ:ASK <json>` and assert `ask.requested` +
+   a turn whose text ends with `ONNI:ASK <json>` and assert `ask.requested` +
    `waiting` for each — proving uniform behavior across all three.
 8. **Graceful degradation.** Tests: malformed marker → plain text + `waiting`, no
    card, non-fatal note; multiple markers → first wins.
@@ -327,8 +327,8 @@ are real buttons (keyboard/enter, focus ring `--ring`), the card has
   binary): 1–4 questions, each `{header ≤12 chars, question, options[2..4] of
   {label, description, preview?}, multiSelect}`; auto "Other" free-text; answered
   via the `control_request can_use_tool` → `updatedInput.answers` path;
-  **suppressed in headless stream-json without a permission-prompt tool.** Cezar's
-  `CEZ:ASK` schema is modeled on this so a native bridge can map 1:1 later.
+  **suppressed in headless stream-json without a permission-prompt tool.** Onni Work's
+  `ONNI:ASK` schema is modeled on this so a native bridge can map 1:1 later.
 - **Codex app-server**: native EXPERIMENTAL `item/tool/requestUserInput`
   (`{questions:[{id,header,question,isOther,isSecret,options?}]}`, answered
   `{answers:{qid:{answers:[...]}}}`) gated behind the `experimentalApi`
@@ -339,5 +339,5 @@ are real buttons (keyboard/enter, focus ring `--ring`), the card has
   renamed) over HTTP+SSE; MCP `elicitation` client capability commented out.
 - **MCP `elicitation`** (2025-06-18): `elicitation/create` + `requestedSchema` →
   `{action, content}` — codex supports it as an MCP host; opencode does not
-  advertise it. Divergent and version-fragile across the three. The `CEZ:ASK`
+  advertise it. Divergent and version-fragile across the three. The `ONNI:ASK`
   marker sidesteps all of it with one uniform, transport-independent path.

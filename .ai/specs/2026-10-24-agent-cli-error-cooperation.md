@@ -6,13 +6,13 @@
 
 ## TLDR
 
-Telemetry for service Cezar (2026-10-20 → 10-24, versions 0.16.0–0.17.0-nightly) has ~24 error
-groups whose text comes from an agent CLI or its vendor rather than from cezar's code. Most of them
+Telemetry for service Onni Work (2026-10-20 → 10-24, versions 0.16.0–0.17.0-nightly) has ~24 error
+groups whose text comes from an agent CLI or its vendor rather than from Onni Work's code. Most of them
 are real conditions on the user's side: the account is out of credit, the vendor is overloaded,
-the account isn't signed in. Cezar treats nearly all of them the same way. It fails the run with
+the account isn't signed in. Onni Work treats nearly all of them the same way. It fails the run with
 the vendor's text, offers only a generic Continue, and reports the failure as an `AgentError`.
 
-Sorting the groups into classes shows three gaps, all on cezar's side:
+Sorting the groups into classes shows three gaps, all on Onni Work's side:
 
 1. **No transient retry.** 529 overloaded, "no response from API", "model at capacity" and the
    OAuth refresh race all say "try again in a moment". None of them retries, and none is
@@ -21,7 +21,7 @@ Sorting the groups into classes shows three gaps, all on cezar's side:
    Cursor's "Authentication required" and OpenCode's "Invalid credential" do not match
    `isRuntimeProviderAuthFailure`. So the provider is never latched, no "needs authorization"
    card appears, and the next run is let through to fail the same way.
-3. **Probable cezar bugs.** Four groups are likely caused by cezar itself (§ Suspected cezar bugs):
+3. **Probable Onni Work bugs.** Four groups are likely caused by Onni Work itself (§ Suspected Onni Work bugs):
    - a Continue that switches runner keeps the previous runner's provider-qualified model pin and
      hands it to `claude --model` (8e1173b1);
    - the Accounts page offers **Connect** on a CLI that isn't installed (23976d8d, 77825860,
@@ -81,8 +81,8 @@ Sorting the groups into classes shows three gaps, all on cezar's side:
 
 ## Per-group analysis
 
-Classes: **T** transient/retryable, **A** auth/account, **Q** quota/billing, **C** config-by-cezar,
-**E** environment, **V** unsupported version, **X** cezar observability/UX bug.
+Classes: **T** transient/retryable, **A** auth/account, **Q** quota/billing, **C** config-by-Onni Work,
+**E** environment, **V** unsupported version, **X** Onni Work observability/UX bug.
 
 ### Transient
 
@@ -90,12 +90,12 @@ Classes: **T** transient/retryable, **A** auth/account, **Q** quota/billing, **C
 Claude Code has already retried internally before it gives up, so this is a sustained overload,
 not a single blip. *Today:* failed, generic Continue, `other`. *Should:* do one delayed automatic
 Continue, a few minutes out, via the auto-resume timer (Improvement 1). Classify it as `transient`.
-Send a `agent_transient_failure` event instead of an error report: there is nothing to fix in cezar.
+Send a `agent_transient_failure` event instead of an error report: there is nothing to fix in Onni Work.
 
 **9dd88886 — claude `No response from API (waited 3m)`** (1 user, macOS, `app.remote`, 5 running).
 Class **T/E**: a network path or proxy is holding the stream. *Today:* the same as above. *Should:*
 retry the same way. After a second consecutive hit, show a hint naming the CLI's own knobs
-(`API_TIMEOUT_MS`, `CLAUDE_STREAM_FIRST_BYTE_TIMEOUT_MS`), because cezar passes the user's env through.
+(`API_TIMEOUT_MS`, `CLAUDE_STREAM_FIRST_BYTE_TIMEOUT_MS`), because Onni Work passes the user's env through.
 No probe can catch this before launch.
 
 **a1c2fcc2 — codex `Selected model is at capacity. Please try a different model.`** Class **T**,
@@ -105,21 +105,21 @@ prefilled with the runner's default (`''` = auto), so the fix is one click (Impr
 
 **204c5e03 — claude `Failed to refresh OAuth token: another Claude Code process is refreshing it…`**
 (2 users, 0.16.1, Linux and Windows). Class **T**, and partly self-inflicted. At report time
-`runs.running` was 0, so the other process holding the refresh lock was not a cezar task session.
-It was the user's own interactive `claude`, or one of cezar's background Claude spawns:
+`runs.running` was 0, so the other process holding the refresh lock was not a onni task session.
+It was the user's own interactive `claude`, or one of Onni Work's background Claude spawns:
 `claude auth status` probes, `list_models` discovery (`claude-model-catalog.ts`) and the task
 namer. All of them share `~/.claude`'s credentials, and the refresh lock is per config dir.
 `isDefinitiveProviderAuthFailure` already excludes this variant on purpose, so it does not latch.
 That part is correct. *Should:* (a) auto-retry once after 30–60 s with jitter. (b) Before spawning
-a run, wait while a cezar-owned Claude probe or discovery for the **same config dir** is still in
+a run, wait while a onni-owned Claude probe or discovery for the **same config dir** is still in
 flight. That is a single in-process promise per profile dir and needs no lock file (Improvement 7).
-Cezar cannot see the user's own interactive processes, and the retry covers them.
+Onni Work cannot see the user's own interactive processes, and the retry covers them.
 
 ### Auth / account
 
 **bca23063 — claude `Not logged in · Please run /login`** (0.17.0-nightly, macOS app,
 `process.uptime_s` = 7, `runs.queued` = 1). Why didn't the probe catch it? Two reasons, both on
-cezar's side:
+Onni Work's side:
 1. **The run never passed the gate.** Seven seconds after boot, with a run queued, this is a run
    started by `recover()`/the queue pump, maybe a restart recovery or a queued run from before a
    restart. `providerActionError` lives only in the HTTP handlers (`server.ts` 4009/4818/4989/5144/…),
@@ -180,10 +180,10 @@ under `task_failed:<runner>:usage_limit`. (b) Show a card: "Cursor usage limit �
 ### Request / conversation shape
 
 **13023969 — claude `Request too large (max 32MB). Accumulated images and attachments…`** (1 user,
-Windows). Class **T-not / C-partial**. Can cezar prevent it? Mostly not, but it can recover from it.
-- Cezar sends each pasted image **once**, inline with the message it belongs to.
+Windows). Class **T-not / C-partial**. Can Onni Work prevent it? Mostly not, but it can recover from it.
+- Onni Work sends each pasted image **once**, inline with the message it belongs to.
   `continueRun`/`deliverMessage` pass only that turn's `opts.images`, and the queued stack folds
-  only its own messages. Cezar does not re-send attachments on Continue.
+  only its own messages. Onni Work does not re-send attachments on Continue.
 - What accumulates is Claude Code's own conversation history: every earlier pasted image, plus
   every screenshot a tool returned (Playwright, agent-browser). Claude Code re-sends that history on
   every request. A long Design-Mode or QA task hits 32 MB without the user pasting anything large.
@@ -195,7 +195,7 @@ as a count cap). This is S/M, and lower priority because pasted images are rarel
 
 **8e1173b1 — claude `There's an issue with the selected model (<path>)…`** (2 users, 6 occurrences;
 5 of them on 0.16.0 Linux, 19:22–19:51 on 10-21). The masked `<path>` means the model id contains
-`/`, so it is a provider-qualified id. **This is most likely a cezar bug (config-by-cezar)**:
+`/`, so it is a provider-qualified id. **This is most likely an Onni Work bug (config-by-Onni Work)**:
 - Claude's model map sets `allowExplicitProvider: true, wireProviderQualified: true` so that
   gateway ids work. As a result `modelConflictsWithRunner('openai/gpt-5.1', 'claude')` is
   **false**: OpenCode's preset list is empty (#794), and the `/^gpt[-.]/` native-prefix guard
@@ -208,7 +208,7 @@ as a count cap). This is S/M, and lower priority because pasted images are rarel
   *attributed to claude*, so the run's runner had already been flipped) between 19:17 and 19:26.
   They hit this group between 19:22 and 19:51, and OpenCode `Invalid credential` at 19:51. That is
   one person alternating between OpenCode and Claude on the same tasks.
-- The brief also asked about a stale catalog or workflow default. Neither fits. Cezar's Claude
+- The brief also asked about a stale catalog or workflow default. Neither fits. Onni Work's Claude
   defaults are tier aliases or `auto` (no `--model`), which never contain `/`. The step path
   already drops a task model on a step whose runner differs (`run.ts` ~6793). The new-task path
   has the same weakness as Continue, though: a `POST /runs` with `runner: claude, model:
@@ -222,14 +222,14 @@ gateway (`ANTHROPIC_BASE_URL`/`apiKeyHelper` present). Separately, the error car
 **eb4b12dc — claude `API Error: 400 [400]: {"error":{"type":…,"message":…,"param":null,"code":null}}`**
 (1 user, Windows app, 2 occurrences). The `param`/`code: null` envelope is **OpenAI-shaped**, so
 Claude Code is talking to an OpenAI-compatible gateway (`ANTHROPIC_BASE_URL` → LiteLLM/OpenRouter
-etc.). Class **E**, possibly **C** if the model was one cezar carried over (see 8e1173b1). The
+etc.). Class **E**, possibly **C** if the model was one Onni Work carried over (see 8e1173b1). The
 real cause is invisible because the scrubber masks every quoted string, keys included.
 *Should:* Improvement 9 (unwrap the envelope before masking). Then re-triage.
 
 **36b68a95 — codex `{"type":"error","status":400,"error":{"type":…,"message":…}}`** (2 users,
 Linux and Windows, 0.16.2). This is the Responses-API error envelope that Codex forwards verbatim
 as `turn.error.message`. The usual 400s are "model not supported with a ChatGPT account" and
-"unsupported parameter", both potentially **C** (a cezar-passed model or reasoning effort). The
+"unsupported parameter", both potentially **C** (a onni-passed model or reasoning effort). The
 group can't be diagnosed as reported. *Should:* Improvement 9: report and display
 `invalid_request_error: <message>`, the same treatment PR #1576 gives OpenCode's envelope. Then
 re-triage.
@@ -237,7 +237,7 @@ re-triage.
 ### Environment
 
 **9cdcedc3 — codex `ENOSPC: no space left on device, write`** (1 user, Windows, 318 runs, 3 running,
-`session.error` fatal). The wording is Node's, so the failed write was cezar's own: the event
+`session.error` fatal). The wording is Node's, so the failed write was Onni Work's own: the event
 NDJSON, the agent tmpdir, or a worktree file. It was minted by `UiEventSink.sessionEnded`, not by
 Codex. Class **E**. *Should:* show a disk-full card naming the data dir's free space and the
 cleanup actions that already exist (archive and delete old tasks, which remove worktrees and the
@@ -247,7 +247,7 @@ same message when free space is under ~500 MB (Improvement 10). Send it as a war
 ### Unsupported version
 
 **9f07e687 / a58394cc — OpenCode 2.x server API (HTTP 405)**. The attribution side (`codex:` /
-`claude:` prefixes on an OpenCode error) is handled by the other task (branch cez/7aed76ae).
+`claude:` prefixes on an OpenCode error) is handled by the other task (branch onni/7aed76ae).
 a58394cc is the pre-#1573 bare wording from 0.16.0. 9f07e687 is the named wording from 0.16.2.
 Class **V**. *Today:* the probe already parses OpenCode 2.x's `auth list` rows
 (`provider-auth.ts` ~283–310) and reports **connected**, so the gate lets the run through and it
@@ -265,7 +265,7 @@ Nothing more to do here. Merging #1576 is the action, and Improvement 9 generali
 
 **23976d8d (copilot) / 77825860 (codex) / d655679e (opencode)** — `POST /api/v1/providers/connect`
 → 409, from `/settings/global/accounts`, reported by the cockpit's toast handler. **This is a
-cezar UX bug (X).** `provider-settings.tsx` hides **Connect** on a `not-installed` row, but
+Onni Work UX bug (X).** `provider-settings.tsx` hides **Connect** on a `not-installed` row, but
 `accounts-section.tsx` renders it whenever `status !== 'connected'`, including `not-installed`.
 The server then answers the expected 409 with the install hint, and a danger toast reports it
 as an error. *Should:* Improvement 12. On a `not-installed` row, show "Not installed" with a
@@ -275,7 +275,7 @@ error report (`trackLoginNotOpened('not_installed')` already counts it as an eve
 
 ## Classification summary
 
-| Fingerprint | Backend | Class | Cezar bug? | Today | Should |
+| Fingerprint | Backend | Class | Onni Work bug? | Today | Should |
 | --- | --- | --- | --- | --- | --- |
 | 76aa46a9 | claude | T | no | fail, `other` | delayed auto-retry; transient kind; warning event |
 | 9dd88886 | claude | T/E | no | fail, `other` | auto-retry; timeout-knob hint on repeat |
@@ -288,16 +288,16 @@ error report (`trackLoginNotOpened('not_installed')` already counts it as an eve
 | c65a5ac5 | claude | A (vendor action) | no | fail, `other` | definitive-auth card with vendor action |
 | 7d0a1d6d | claude | Q (billing) | no | fail, `other` | `billing` kind; card; `ANTHROPIC_API_KEY` notice |
 | 5432183c | cursor (+gateway claude) | Q, no reset | no (telemetry grouping noise) | `usage_limit_unparsed` | not a parser gap; switch runner/account card |
-| 13023969 | claude | conversation size | no (cezar sends each image once) | fail | "Continue in a fresh session"; optional image downscale |
+| 13023969 | claude | conversation size | no (Onni Work sends each image once) | fail | "Continue in a fresh session"; optional image downscale |
 | 8e1173b1 | claude | C | **likely yes** (foreign pin survives runner switch) | fail | clear/reject foreign provider-qualified pin; "default model" action |
 | eb4b12dc | claude via gateway | E/C? | unknown, masked | fail | unwrap envelope, re-triage |
 | 36b68a95 | codex | C? | unknown, masked | fail | unwrap envelope, re-triage |
-| 9cdcedc3 | codex (cezar write) | E | no | fail | disk-full card; optional pre-worktree statfs |
+| 9cdcedc3 | codex (Onni Work write) | E | no | fail | disk-full card; optional pre-worktree statfs |
 | 9f07e687, a58394cc | opencode | V | attribution yes (other task); version gate missing | fail at `POST /session` | probe marks 2.x unsupported, gate refuses |
 | 919887a0 | opencode | X (masked) | fixed in open PR #1576 | — | merge #1576 |
 | 23976d8d, 77825860, d655679e | copilot/codex/opencode | X | **yes** (Connect on not-installed) | 409 toast + error report | install affordance; no report |
 
-## Suspected cezar bugs
+## Suspected Onni Work bugs
 
 1. **8e1173b1**: a provider-qualified model from another runner (in practice OpenCode's
    `provider/model`) survives a Continue-with-runner-switch to Claude and reaches `claude --model`.
@@ -315,7 +315,7 @@ error report (`trackLoginNotOpened('not_installed')` already counts it as an eve
    pre-launch version gate for OpenCode 2.x.
 
 Everything else (76aa46a9, 9dd88886, a1c2fcc2, 204c5e03, 75ae746c, c65a5ac5, 7d0a1d6d, 5432183c,
-13023969, 9cdcedc3, 1e673dee, e41761a1) originates in the vendor or the user's environment. Cezar's
+13023969, 9cdcedc3, 1e673dee, e41761a1) originates in the vendor or the user's environment. Onni Work's
 share is how it classifies and reports them and what actions it offers, not the cause.
 
 ## Improvements (prioritized, each independently shippable)
@@ -345,7 +345,7 @@ Sizes: S ≈ <150 lines incl. tests, M ≈ 150–400, L > 400.
    message instead of spawning), `server/server.ts` / `server/project-context.ts` (wire
    `providerActionError` in at each `RunManager` construction site; grep the type, AGENTS.md
    "construction sites"), plus a test that a queued run against a disconnected provider is
-   refused, not spawned. The test must cover the absent-gate (headless `cezar run`) case staying
+   refused, not spawned. The test must cover the absent-gate (headless `onni run`) case staying
    unchanged.
 4. **Actionable error cards with one-click fixes.** **M.** Files: new
    `packages/contract` shape for an `agent-error-hint` event (`kind`: `model_unavailable |
@@ -363,7 +363,7 @@ Sizes: S ≈ <150 lines incl. tests, M ≈ 150–400, L > 400.
    handoff file carry context; `ResumeFallback` already has the mechanics),
    `task-thread/thread-items.tsx` action. Optional follow-up: downscale pasted images above ~2 MB
    in the cockpit before upload.
-7. **Don't launch Claude while cezar's own Claude spawn holds the same config dir.** **S.** Files:
+7. **Don't launch Claude while Onni Work's own Claude spawn holds the same config dir.** **S.** Files:
    `core/provider-auth.ts` + `core/claude-model-catalog.ts` (register in-flight probe/discovery
    promises per config dir), `core/claude-cli-runner.ts` (await that promise, capped at ~15 s,
    before spawning). The retry from item 1 covers the user's own processes.
@@ -387,7 +387,7 @@ Sizes: S ≈ <150 lines incl. tests, M ≈ 150–400, L > 400.
     `hint: unsupportedServerMessage`, or a new `unsupported` state if the contract allows it;
     adding a state touches `packages/contract` and every switch over `ProviderConnectionState`),
     `server/provider-action-gate.ts` (refusal text = hint), runner picker greyed out in the
-    cockpit. Coordinate with the attribution task on cez/7aed76ae.
+    cockpit. Coordinate with the attribution task on onni/7aed76ae.
 12. **Accounts page: no Connect on a not-installed CLI.** **S.** Files:
     `packages/web/src/routes/settings/accounts-section.tsx` (mirror `provider-settings.tsx`:
     `not-installed` shows "Not installed" plus copy-install-command), and the cockpit's toast
@@ -396,7 +396,7 @@ Sizes: S ≈ <150 lines incl. tests, M ≈ 150–400, L > 400.
 13. **Telemetry hygiene.** **S.** Files: `runs/agent-error-telemetry.ts`. Report every class
     above that has a dedicated kind (auth latched, billing, quota-no-reset, transient scheduled,
     disk-full) as a `task_failed` label or a warning-class event, not an `AgentError`. Keep
-    `AgentError` for messages cezar doesn't recognize, which are exactly the ones worth a human
+    `AgentError` for messages Onni Work doesn't recognize, which are exactly the ones worth a human
     look. Stop attaching `code: usage_limit_unparsed` to "upgrade your plan" limits that by
     definition have no reset.
 

@@ -1,9 +1,9 @@
 # 03 — Branch model, end state, and the missions API
 
 Audit of **how a mission's git branches accumulate, how a mission ends, and what the missions
-API does and doesn't let an operator do** in cezar's units feature, against
-`.ai/specs/2026-09-08-units-hierarchy.md` and the code at HEAD `076cead2` (branch `cez/a51529ee`,
-forked from `cez/5a23b3d1`, which resolves to the same commit — no prior units-audit work is
+API does and doesn't let an operator do** in Onni Work's units feature, against
+`.ai/specs/2026-09-08-units-hierarchy.md` and the code at HEAD `076cead2` (branch `onni/a51529ee`,
+forked from `onni/5a23b3d1`, which resolves to the same commit — no prior units-audit work is
 ahead of this one). Every citation below was read at this HEAD in this worktree; line numbers are
 what I actually saw, not carried over from the task order (the order's own line-number hints —
 `spawnChildren ~1607`, `POST /missions ~3501`, `requireUnits ~3486` — all matched exactly, cited
@@ -24,7 +24,7 @@ Verified end-to-end, `spawnChildren` → `execute()` → `createWorktree`:
   ```
   ...(parent.branch ? { baseBranch: parent.branch } : {}),
   ```
-  `parent.branch` is the parent's OWN `cez/<id8>` branch name (a git ref), not a path into the
+  `parent.branch` is the parent's OWN `onni/<id8>` branch name (a git ref), not a path into the
   parent's worktree.
 - `execute()` (run.ts:3290-3346) is where that seed actually takes effect. At **run.ts:3317-3319**:
   a run that already has a recorded `baseBranch` keeps it (`base = recorded ?? repo.branch`) rather
@@ -38,16 +38,16 @@ Verified end-to-end, `spawnChildren` → `execute()` → `createWorktree`:
   uncommitted files"; a ref is the only thing `worktree add` can point at.
 
 **What happens to uncommitted parent work:** it is invisible to the child. If the parent has not
-committed at the moment `CEZ:SPAWN` runs, the child's fork point is the parent branch's last
+committed at the moment `ONNI:SPAWN` runs, the child's fork point is the parent branch's last
 commit, which may be behind what the parent's own worktree currently holds. Nothing in
 `spawnChildren` checks working-tree cleanliness before creating children — I read the whole
 function (run.ts:1607-1699) and the only git operation in it is the eventual `createWorktree` call
 inside `startRun`/`execute`; there is no `git status` check anywhere in the spawn path. The ONLY
 place this is enforced is prose, in the role prompts: `CHILD_BRANCH_RULE`
 (`packages/work/src/units/prompts.ts:31-41`), line 35: *"COMMIT your work before every
-CEZ:SPAWN. Anything you left uncommitted does not exist for your children, and they will either
+ONNI:SPAWN. Anything you left uncommitted does not exist for your children, and they will either
 redo it or contradict it."* This is exactly the situation the same file's own doc-comment
-(prompts.ts:24-29) predicts: *"Nothing in cezar merges a child branch back: that is the
+(prompts.ts:24-29) predicts: *"Nothing in Onni Work merges a child branch back: that is the
 commander's own work... which is precisely why the rule has to live in the prompt."* The same
 applies one level up, symmetrically: an uncommitted merge (or manual edit) the parent makes in
 response to a child's report is likewise invisible to any FURTHER child spawned before it's
@@ -95,7 +95,7 @@ opt-in preserves that.
 **How many.** One worktree per RUN, unconditionally, including every rank: caesar, legates,
 centurions, and the mission root itself if it's an ordinary (non-repo-root) checkout. An army with
 1 caesar → 3 legates → 3 centurions each is 1 + 3 + 9 = 13 worktrees live at peak, all under
-`.ai/cezar/worktrees/<runId>` (`WORKTREES_DIR`, git-worktree.ts:18). Nothing in `spawnChildren`
+`.ai/onni/worktrees/<runId>` (`WORKTREES_DIR`, git-worktree.ts:18). Nothing in `spawnChildren`
 caps this beyond `MAX_CHILDREN_IN_FLIGHT = 4` **per parent** (engine.ts:29) — the cap bounds
 fan-out at each node, not the tree's total worktree count.
 
@@ -163,7 +163,7 @@ Traced fully; nothing was found that does this automatically.
   <run.branch>` against `--base <run.baseBranch>` (falling back to the repo default when
   `baseBranch` is a bare commit sha, github.ts:2481-2482). For a mission root that is NOT itself a
   spawned child, `run.branch`/`run.baseBranch` are whatever the ordinary `execute()` worktree path
-  assigned it (run.ts:3290-3346) — the mission's own `cez/<rootid8>` branch against the
+  assigned it (run.ts:3290-3346) — the mission's own `onni/<rootid8>` branch against the
   project's configured base branch. That branch is exactly "the mission root's branch accumulates
   the result," per the spec's own Q3 language — but ONLY what the root itself committed or merged
   onto it; a child's work is only on that branch after the commander's manual `git merge --no-ff`
@@ -172,14 +172,14 @@ Traced fully; nothing was found that does this automatically.
   `CHILD_BRANCH_RULE:41`: *"Never merge into the repository's base branch... yourself, and never
   push to it. Your branch is where the mission's result accumulates; a human opens the pull
   request."* Caesar's own finishing instructions (`CAESAR_PROMPT`, prompts.ts:113) say to *write a
-  mission report and end with `CEZ:DONE`* — there is no instruction anywhere to call the PR route,
+  mission report and end with `ONNI:DONE`* — there is no instruction anywhere to call the PR route,
   consistent with the Guard rule's "never merge" bullet (`GUARD_RULE`, prompts.ts:83). So the
   intended end state (a human opens exactly one draft PR from the root's branch, after inspecting
   it) is a *convention told to the agent*, with **no code trace connecting "mission settled" to
   "a human was told to open a PR."**
 
 **Explicit recommendation:** the human operator opens the single draft PR, from the mission root's
-own branch (`cez/<rootid8>`) against the project's configured base branch, via the existing
+own branch (`onni/<rootid8>`) against the project's configured base branch, via the existing
 `POST /runs/:id/pr` — no new route is needed for the ACT of opening it. What's missing is the
 NUDGE: apply **P2** below (extend the `review` gate to the mission root's own terminal settle,
 root-only, still gated behind `reviewGateEnabled`) so a repository that has opted into review-then-PR
@@ -194,7 +194,7 @@ Commands run, verbatim:
 $ grep -n "requireUnits\|/missions\|/units\b\|units/prompts" packages/work/src/server/server.ts
 53:} from '../units/prompts.ts';
 3465:  const requireUnits = async (c: Context, next: Next) => {
-3484:  // the role prompts are per-repo files under that project's `.ai/cezar/units/`.
+3484:  // the role prompts are per-repo files under that project's `.ai/onni/units/`.
 3486:    .use('/missions', requireUnits)
 3487:    .use('/missions/*', requireUnits)
 3488:    .use('/units', requireUnits)
@@ -251,7 +251,7 @@ nothing else. `archiveFinished()` (`packages/work/src/runs/store.ts:977-990`) on
 in the exact file the tree view reads.
 
 **Concrete shape it would need, if built anyway** (for the sake of judging it, not recommending
-it): `.ai/cezar/missions/<missionId>.json` — `{ missionId, rootRunId, createdAt, tree: [{ runId,
+it): `.ai/onni/missions/<missionId>.json` — `{ missionId, rootRunId, createdAt, tree: [{ runId,
 role, parentRunId, branch, baseBranch, status, mergedAt? }], finalReport? }`. **Who would write
 it**: nothing today; it would need a NEW write site at every spawn (run.ts:1607-1699) and every
 settle (run.ts:1756+), duplicating exactly the data `runs.json` already persists at those same two
@@ -259,7 +259,7 @@ call sites via `store.updateRun`. That duplication is the whole argument against
 "find every construction site of a shared... object" warns about exactly this shape of bug — two
 write paths for the same fact (a run's mission membership, its status) will drift the first time
 one of the two call sites is touched and the other isn't. The only thing a separate ledger would
-buy over `runs.json` is a smaller, mission-scoped file to hand to something outside cezar's own
+buy over `runs.json` is a smaller, mission-scoped file to hand to something outside Onni Work's own
 store (e.g. embedding a manifest in the draft PR body) — and that need is better served by
 rendering the SAME derivation `missions.tsx` already does (`unit.missionId`/`parentRunId` grouping
 over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3**'s `GET
@@ -276,7 +276,7 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
   `packages/work/src/git-worktree.ts:211` (`git worktree add -b <branch> <path> <base>` — a ref,
   not a working-tree path). Enforcement is prose only:
   `packages/work/src/units/prompts.ts:35`.
-- Why it matters: a commander that forgets to commit before `CEZ:SPAWN` hands its children a
+- Why it matters: a commander that forgets to commit before `ONNI:SPAWN` hands its children a
   stale fork point with no refusal, no note, and no recovery — the children "will either redo it
   or contradict it" (prompts.ts:35's own words), and the commander has no code-level signal that
   this happened.
@@ -350,7 +350,7 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
 
 ### P1 — for F1: autosave the parent's worktree before seeding a child's fork point
 
-**Problem.** A commander that forgets to commit before `CEZ:SPAWN` hands its children a stale
+**Problem.** A commander that forgets to commit before `ONNI:SPAWN` hands its children a stale
 base with zero code-level signal.
 
 **Concrete change.** In `spawnChildren` (run.ts:1607), before creating any child, call the
@@ -503,7 +503,7 @@ confusion.)
 ## Claims verified by running a command
 
 - `git rev-parse HEAD` / `git branch --show-current` — confirmed HEAD `076cead2785891af80b9ea7440bf3be973c0bbfe`
-  on `cez/a51529ee`; `git rev-parse cez/5a23b3d1` resolves to the same commit (the fork point is
+  on `onni/a51529ee`; `git rev-parse onni/5a23b3d1` resolves to the same commit (the fork point is
   HEAD itself).
 - `grep -n "requireUnits\|/missions\|/units\b\|units/prompts" packages/work/src/server/server.ts`
   — full route inventory quoted in §5.

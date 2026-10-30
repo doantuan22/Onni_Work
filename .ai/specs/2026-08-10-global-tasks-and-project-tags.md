@@ -9,12 +9,12 @@ Every task surface in the cockpit is project-scoped by construction. `/p/:projec
 Two concrete gaps follow:
 
 1. **No cross-project view at all.** With eight registered projects, "which tasks need me right now?" is eight sidebar groups, each with its own attention badge. The badges are per project; nothing sums or lists them together.
-2. **No way to say which repos belong together.** Even if a cross-project list existed, a workspace is not a flat list of equals — some repos are one product, others are unrelated. cezar holds no fact that expresses that relationship, so any global list would be an undifferentiated pile.
+2. **No way to say which repos belong together.** Even if a cross-project list existed, a workspace is not a flat list of equals — some repos are one product, others are unrelated. Onni Work holds no fact that expresses that relationship, so any global list would be an undifferentiated pile.
 
 The two gaps are one feature: a global list is only useful if it can be sliced by the grouping the user actually thinks in, and a grouping is only useful if something reads it.
 
 ## Proposed Solution
-**Tags on the project registry entry.** One optional `tags: string[]` on `workspaceProjectSchema`, edited in **Settings → Projects** (a token field per row) and over ssh with `cezar projects tag <id> [<tag>…]`. Free-form, normalized on write (trimmed, deduped case-insensitively, sorted, bounded), and **omitted rather than `[]`** when a project has none — the same "absent = inherit/none" doctrine `maxParallel` follows.
+**Tags on the project registry entry.** One optional `tags: string[]` on `workspaceProjectSchema`, edited in **Settings → Projects** (a token field per row) and over ssh with `onni projects tag <id> [<tag>…]`. Free-form, normalized on write (trimmed, deduped case-insensitively, sorted, bounded), and **omitted rather than `[]`** when a project has none — the same "absent = inherit/none" doctrine `maxParallel` follows.
 
 **A global Tasks page at `/tasks`**, outside `/p/:projectId` for the same reason `/settings/global` is: "all projects" scoped to one project is a contradiction. It reads the existing workspace-level `GET /api/v1/workspace/runs-index` — one request for the whole registry — joins it to `GET /api/v1/projects` for names and tags, and renders a filterable table.
 
@@ -24,7 +24,7 @@ The two gaps are one feature: a global list is only useful if it can be sliced b
 
 **Alternatives considered and rejected:**
 
-- *Tag runs instead of projects.* Rejected: the useful relationship is between repositories and it is stable, while a per-run label would have to be applied by hand to every task forever. It also has no home — run records live in each repo's `.ai/cezar/runs.json`, so a cross-repo grouping stored there could never be edited in one place.
+- *Tag runs instead of projects.* Rejected: the useful relationship is between repositories and it is stable, while a per-run label would have to be applied by hand to every task forever. It also has no home — run records live in each repo's `.ai/onni/runs.json`, so a cross-repo grouping stored there could never be edited in one place.
 - *Fetch N per-project run lists on the global page.* Rejected: `GET /runs` answers full `RunRecord`s (`steps[]`, `workflowDef`), so a forty-project workspace would ship megabytes to paint a title and a dot. The slim index already exists for exactly this reason.
 - *Make tags a first-class concept the engine reads* (routing, shared queues, per-tag concurrency). Rejected as scope and as design: a tag is a **lens**. The moment it also grants or restricts something, removing one becomes dangerous, and the cheap "just tag it and see" gesture this feature depends on is gone.
 - *Put the global page under `/p/<boot>/tasks`.* Rejected: it would inherit a project scope it must not have, and its data (the workspace index) has no scoped spelling.
@@ -80,7 +80,7 @@ There is deliberately **no project facet**. Narrowing this page to one project i
 
 **There is no Branch column.** A cross-project list is read by title, and the width is worth more to the one column that has no fixed size than to a value most rows repeat. Branch stays SEARCHABLE though — pasting a branch name from a terminal to find the task that made it is a deliberate gesture, and the per-project table already makes exactly this exception: its Branch column is folded by default while `filterRuns` searches it anyway.
 
-**Cost, CPU and memory** are columns too, reading the same live/peak rule as the per-project table (`usageCells`, widened to a `Pick` like `runTitle` and `deriveAttention` before it): a live sample emphasized, a finished run's persisted peak dimmed and labelled, an honest em dash otherwise. The live sample rides the index ROW (`usage`, attached server-side exactly as `GET /runs` does) rather than the run event stream, because that stream is project-scoped and a page showing forty projects cannot open forty of them — and it can ride a workspace-level answer at all only because the sampler is process-wide: one cezar process runs every project's agents. Cost obeys the host's `ONNI_HIDE_COST` gate via `usageMetricVisibility`, since a cross-project view is not an exception to it.
+**Cost, CPU and memory** are columns too, reading the same live/peak rule as the per-project table (`usageCells`, widened to a `Pick` like `runTitle` and `deriveAttention` before it): a live sample emphasized, a finished run's persisted peak dimmed and labelled, an honest em dash otherwise. The live sample rides the index ROW (`usage`, attached server-side exactly as `GET /runs` does) rather than the run event stream, because that stream is project-scoped and a page showing forty projects cannot open forty of them — and it can ride a workspace-level answer at all only because the sampler is process-wide: one Onni Work process runs every project's agents. Cost obeys the host's `ONNI_HIDE_COST` gate via `usageMetricVisibility`, since a cross-project view is not an exception to it.
 
 **Archiving** is per row (`POST /p/<projectId>/runs/<id>/archive`, through an explicit-project client function for the same reason the links are explicit). Not the per-project table's count-gated "Archive finished" broom: a sweep that crossed repository boundaries would be one click firing N writes into N repos, and "finished" is a judgement each project's own page is better placed to make. The button only appears on a run that is genuinely finished (or already archived), so it never invites the question of whether it also cancels.
 
@@ -111,9 +111,9 @@ There is deliberately **no project facet**. Narrowing this page to one project i
 ## Backward compatibility
 Additive throughout, per BACKWARD_COMPATIBILITY.md §1, §2 and §9:
 
-- `tags?` is a new optional key on the projects GET shape and on `config.json`'s `projects[]`. An old consumer that ignores it sees no change; `.passthrough()` means an older cezar sharing the same `~/.cezar/config.json` round-trips it untouched.
+- `tags?` is a new optional key on the projects GET shape and on `config.json`'s `projects[]`. An old consumer that ignores it sees no change; `.passthrough()` means an older Onni Work sharing the same `~/.onni/config.json` round-trips it untouched.
 - `PATCH /api/v1/projects/:projectId` only widens: every previously-valid body stays valid and means the same thing.
 - `runIndexEntry` gains keys; the palette (its only prior consumer) ignores what it does not read.
 - `archiveProjectRun` is a new client function over the EXISTING `POST /p/:projectId/runs/:id/archive` route — no server route is added or changed.
 - `/tasks` was not a route (the flat `/tasks/:id` legacy redirect is unaffected — React Router ranks the static segment above the `*` that owns it).
-- `cezar projects tag` is a new subcommand; no existing spelling changes.
+- `onni projects tag` is a new subcommand; no existing spelling changes.

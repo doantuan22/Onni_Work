@@ -1,4 +1,4 @@
-# Publishable Cezar React components for composable embedding
+# Publishable Onni Work React components for composable embedding
 
 > Dependent follow-on to `.ai/specs/2026-07-23-independent-server-web-packages.md`.
 > The independent-server spec is the normative foundation for the API client, package layout,
@@ -9,16 +9,16 @@
 
 ## TLDR
 
-Cezar's cockpit is a private React SPA, not a component library. Even after the server, web
+Onni Work's cockpit is a private React SPA, not a component library. Even after the server, web
 application, HTTP contract, and API client were separated into
-`packages/{cezar,contract,api-client,web}`, another
-application still cannot install Cezar and compose its task list, task creator, live session,
+`packages/{Onni Work,contract,api-client,web}`, another
+application still cannot install Onni Work and compose its task list, task creator, live session,
 changes, repository, GitHub, workflow, skill, inbox, or settings surfaces.
 
 Add a fifth workspace, `packages/react`, published as
 `@onni/work-react`. It exports connected feature components backed by an explicit
-`CezarClient`, selected client-independent presentation components, an isolated
-`CezarProvider`, scoped compiled CSS, a router-neutral navigation contract, and an optional
+`OnniClient`, selected client-independent presentation components, an isolated
+`OnniProvider`, scoped compiled CSS, a router-neutral navigation contract, and an optional
 React Router adapter. The private `@onni/web` cockpit becomes the reference
 consumer of exactly those public exports.
 
@@ -57,7 +57,7 @@ the React integration layer. If the two documents appear to conflict:
 The React package inherits these decisions unchanged:
 
 1. **The root is private and packages live under `packages/*`.** The completed
-   `packages/{cezar,contract,api-client,web}` layout is extended additively with
+   `packages/{Onni Work,contract,api-client,web}` layout is extended additively with
    `packages/react`.
    The CLI remains inside `@onni/work`.
 2. **The API client is the only service-contract package imported by a UI.**
@@ -79,7 +79,7 @@ The React package inherits these decisions unchanged:
    the published CLI into a browser bundle.
 6. **Same-origin remains the zero-config default and base URL is configurable.** The bundled
    cockpit continues to use `''`; another application supplies the service authority through
-   `createCezarClient`.
+   `createOnniClient`.
 7. **Project scope is part of the client contract.** Connected components use the same
    `/api/v1` versus `/api/v1/p/:projectId` helpers and boot/default semantics rather than
    inventing a React-only route prefix.
@@ -125,19 +125,19 @@ dependency, as its own header already requires.
    creation, live sessions and review, task changes/files/commits, repository views, GitHub,
    workflows, skills, inbox, project settings, global settings, the shell, and a complete
    cockpit composition. It is not a task-session-only package.
-3. **Connected components are the primary API.** A consumer supplies one `CezarClient` to
-   `CezarProvider`; feature components fetch, subscribe, mutate, retry, and reconcile through
+3. **Connected components are the primary API.** A consumer supplies one `OnniClient` to
+   `OnniProvider`; feature components fetch, subscribe, mutate, retry, and reconcile through
    that provider. Selected presentation components such as `SessionTranscript` and `Diff`
    remain client-independent and accept typed props.
 4. **Core components are router-neutral.** They navigate through semantic
-   `CezarLocation` values and an injected navigation adapter. An optional `/router` entry point
+   `OnniLocation` values and an injected navigation adapter. An optional `/router` entry point
    integrates with React Router without creating or owning the host's `BrowserRouter`.
-5. **Cezar's visual design is the default, isolated beneath one root.** Consumers import a
+5. **Onni Work's visual design is the default, isolated beneath one root.** Consumers import a
    compiled stylesheet. All selectors, utilities, resets, typography, scroll behavior, and
-   appearance attributes are scoped beneath `.cezar-root`; documented `--cezar-*` custom
+   appearance attributes are scoped beneath `.onni-root`; documented `--onni-*` custom
    properties let the host retheme it.
 6. **The client and query runtime are explicit and instance-scoped.** There is no module-level
-   API client or cache. `CezarProvider` creates an isolated TanStack Query client by default and
+   API client or cache. `OnniProvider` creates an isolated TanStack Query client by default and
    accepts one when the host deliberately wants to supply it.
 7. **Customization is intentional rather than exhaustive.** Major components expose
    `className`, semantic callbacks, action interception where useful, and a small set of
@@ -205,17 +205,17 @@ fixes that the public package is meant to centralize.
 ## Goals
 
 - Another React application can install the public API-client and React packages and render any
-  major Cezar feature without importing from the repository or copying source.
+  major Onni Work feature without importing from the repository or copying source.
 - A consumer can arrange major features in its own layout and drive navigation without using
   React Router.
-- A consumer that wants the standard cockpit can mount one `CezarCockpit` and, optionally, the
+- A consumer that wants the standard cockpit can mount one `OnniCockpit` and, optionally, the
   React Router adapter beneath any base path.
 - Connected components share one explicit client, project scope, query runtime, live-event
   runtime, capability state, storage adapter, navigation adapter, and appearance boundary.
 - Presentational exports remain usable with supplied typed data and no service connection.
-- Cezar's default design renders correctly without the consumer installing or configuring
+- Onni Work's default design renders correctly without the consumer installing or configuring
   Tailwind.
-- Host styles and Cezar styles do not take over one another.
+- Host styles and Onni Work styles do not take over one another.
 - The reference cockpit consumes the public package so parity is architectural rather than
   documented intention.
 - Packed-package tests prove the public exports work outside the npm workspace.
@@ -229,13 +229,13 @@ fixes that the public package is meant to centralize.
   private route component.
 - No visual redesign of the cockpit.
 - No server wire, persistence, workflow, runner, or agent-protocol change solely for packaging.
-- No requirement that a host use Cezar's shell, routes, project switcher, query client, storage,
+- No requirement that a host use Onni Work's shell, routes, project switcher, query client, storage,
   theme, or notifications.
 - No first-release guarantee of server-side rendering. Package modules must be safe to import
   without touching browser globals, but interactive rendering remains a browser capability.
 - No promise that arbitrary private CSS selectors or DOM structure are stable. Public
   component props, callbacks, slots, semantic attributes, entry points, and documented
-  `--cezar-*` tokens are the contract.
+  `--onni-*` tokens are the contract.
 - No compatibility promise for React versions below 19 in the first release.
 
 ## Alternatives considered
@@ -284,8 +284,8 @@ The browser-safe transport and contract package defined by the independent-serve
 spec consumes and completes that package; it does not introduce another client package or
 contract source. It owns:
 
-- `createCezarClient`;
-- the stable `CezarClient` interface;
+- `createOnniClient`;
+- the stable `OnniClient` interface;
 - configurable base URL, headers, authentication, and transport injection;
 - workspace-level and project-scoped domain operations;
 - `ApiError`;
@@ -308,7 +308,7 @@ dependency. Browser transport constructors are resolved lazily or injected.
 
 The public React component package. It owns:
 
-- `CezarProvider` and its contexts;
+- `OnniProvider` and its contexts;
 - query hooks and cache-key definitions;
 - connected feature components;
 - selected presentation components;
@@ -317,7 +317,7 @@ The public React component package. It owns:
 - the optional React Router adapter;
 - appearance, storage, notification, and portal adapters;
 - scoped compiled CSS and packaged font assets;
-- the standard `CezarShell` and `CezarCockpit` compositions.
+- the standard `OnniShell` and `OnniCockpit` compositions.
 
 It may depend on browser UI libraries, but each feature entry point must remain independently
 tree-shakeable. It may not import any path owned by `packages/web`.
@@ -328,7 +328,7 @@ The private reference application. Its responsibilities shrink to:
 
 - create the service client for the bundled same-origin case;
 - select the standard storage, notifications, and browser-router adapters;
-- mount `CezarCockpit`;
+- mount `OnniCockpit`;
 - retain the static document and the pre-paint adapter that stamps the public provider boundary;
 - produce `packages/work/web/dist` for the server package.
 
@@ -397,7 +397,7 @@ The first public release exposes these stable entry points:
 
 | Entry point | Public exports |
 | --- | --- |
-| `@onni/work-react` | `CezarProvider`, provider props, adapters, public shared types |
+| `@onni/work-react` | `OnniProvider`, provider props, adapters, public shared types |
 | `@onni/work-react/tasks` | `TaskList`, `TaskOverview`, `NewTask` |
 | `@onni/work-react/session` | `TaskSession`, `SessionTranscript`, `RunHeader`, `ReviewControls` |
 | `@onni/work-react/git` | `TaskChanges`, `TaskFiles`, `TaskCommits`, `RepositoryView`, `Diff` |
@@ -406,8 +406,8 @@ The first public release exposes these stable entry points:
 | `@onni/work-react/skills` | `SkillsBrowser`, `SkillDetail` |
 | `@onni/work-react/inbox` | `Inbox` |
 | `@onni/work-react/settings` | `ProjectSettings`, `GlobalSettings` |
-| `@onni/work-react/shell` | `CezarShell`, `CezarCockpit` |
-| `@onni/work-react/router` | `CezarRouter`, React Router adapter helpers |
+| `@onni/work-react/shell` | `OnniShell`, `OnniCockpit` |
+| `@onni/work-react/router` | `OnniRouter`, React Router adapter helpers |
 | `@onni/work-react/styles.css` | compiled isolated theme, utilities, and component styles |
 
 The export map rejects private deep paths. Adding a file under `src/features` does not publish
@@ -419,13 +419,13 @@ coverage, and packed-consumer coverage.
 The core provider contract is:
 
 ```ts
-export interface CezarProviderProps {
-  client: CezarClient
+export interface OnniProviderProps {
+  client: OnniClient
   projectId?: string | null
   queryClient?: QueryClient
-  navigation?: CezarNavigationAdapter
-  storage?: CezarStorage
-  notifications?: CezarNotifications
+  navigation?: OnniNavigationAdapter
+  storage?: OnniStorage
+  notifications?: OnniNotifications
   theme?: 'light' | 'dark' | 'system'
   accent?: 'lime' | 'violet'
   density?: 'comfortable' | 'compact' | 'ultra'
@@ -447,10 +447,10 @@ The provider creates an isolated `QueryClient` when none is supplied. It creates
 module-global cache or transport. Cache keys include a stable client identity and project
 scope so two services or projects cannot collide inside a supplied cache.
 
-By default, the provider renders a `.cezar-root` element and a descendant portal container. It
+By default, the provider renders a `.onni-root` element and a descendant portal container. It
 owns the appearance attributes only for that subtree. `rootElement` is the explicit adoption
 path for a host whose mount element exists before React starts: the supplied element must be the
-container that already contains the provider output and must carry `.cezar-root`. While mounted,
+container that already contains the provider output and must carry `.onni-root`. While mounted,
 the provider applies the same appearance, `className`, and portal behavior to that element instead
 of nesting a second root. This lets the reference cockpit and another host pre-stamp appearance
 without requiring every embed to hand-author a wrapper. The element is supplied by the host;
@@ -461,8 +461,8 @@ package import and server rendering never query `document` to discover one.
 The stable construction surface supports remote, same-origin, test, and wrapped transports:
 
 ```ts
-const client = createCezarClient({
-  baseUrl: 'https://cezar.example.test',
+const client = createOnniClient({
+  baseUrl: 'https://Onni Work.example.test',
   auth: {
     getToken: () => session.accessToken,
   },
@@ -561,7 +561,7 @@ may land feature by feature while private.
 Core feature components do not import React Router. Navigation uses:
 
 ```ts
-export type CezarLocation =
+export type OnniLocation =
   | { area: 'tasks' }
   | { area: 'new-task'; template?: string }
   | {
@@ -580,9 +580,9 @@ export type CezarLocation =
       section?: string
     }
 
-export interface CezarNavigationAdapter {
-  href(target: CezarLocation): string | undefined
-  navigate(target: CezarLocation, options?: { replace?: boolean }): void
+export interface OnniNavigationAdapter {
+  href(target: OnniLocation): string | undefined
+  navigate(target: OnniLocation, options?: { replace?: boolean }): void
 }
 ```
 
@@ -598,29 +598,29 @@ the rest of the subtree.
 Without a router:
 
 ```tsx
-<CezarProvider client={client} projectId={projectId}>
-  <CezarCockpit
+<OnniProvider client={client} projectId={projectId}>
+  <OnniCockpit
     location={location}
     onNavigate={setLocation}
     onProjectChange={setProjectId}
   />
-</CezarProvider>
+</OnniProvider>
 ```
 
 With the optional adapter:
 
 ```tsx
-<CezarProvider client={client} projectId={projectId}>
-  <CezarRouter basePath="/automation/cezar">
-    <CezarCockpit onProjectChange={setProjectId} />
-  </CezarRouter>
-</CezarProvider>
+<OnniProvider client={client} projectId={projectId}>
+  <OnniRouter basePath="/automation/Onni Work">
+    <OnniCockpit onProjectChange={setProjectId} />
+  </OnniRouter>
+</OnniProvider>
 ```
 
-`CezarRouter` consumes an existing React Router context. It never creates `BrowserRouter` and
-therefore never owns browser history. It maps semantic locations onto Cezar's current
+`OnniRouter` consumes an existing React Router context. It never creates `BrowserRouter` and
+therefore never owns browser history. It maps semantic locations onto Onni Work's current
 project-aware route scheme beneath `basePath`, preserving deep links and query/hash state. As a
-descendant of `CezarProvider`, it supplies the navigation/location adapter for its subtree and
+descendant of `OnniProvider`, it supplies the navigation/location adapter for its subtree and
 overrides no client, project, cache, or appearance context.
 
 The private reference application supplies `basePath="/"` and retains all backward-compatible
@@ -636,35 +636,35 @@ Consumers import:
 import '@onni/work-react/styles.css'
 ```
 
-They do not install Tailwind, add Cezar source paths to a scanner, or copy a token file. The
+They do not install Tailwind, add Onni Work source paths to a scanner, or copy a token file. The
 published stylesheet contains the styles needed by every public entry point.
 
 The library stylesheet uses build-time selector and identifier transformations, not CSS `@scope`
 and not a Tailwind class-name prefix:
 
 1. Tailwind v4 is imported as its theme and utility layers without `preflight.css`.
-2. A small Cezar-owned base/reset layer is authored explicitly for `.cezar-root`, its descendants,
+2. A small Onni Work-owned base/reset layer is authored explicitly for `.onni-root`, its descendants,
    and their pseudo-elements. It never normalizes the host document.
 3. The same deterministic PostCSS AST pipeline rewrites every Tailwind-internal custom-property
-   identifier from `--tw-*` to the private `--cezar-tw-*` namespace. The rewrite covers
+   identifier from `--tw-*` to the private `--onni-tw-*` namespace. The rewrite covers
    `@property` parameters, declaration names, declaration values and `var()` fallbacks, keyframe
    bodies, feature-query parameters, and generated fallback layers; no emitted reference can keep
    the original name.
 4. A selector pass prefixes every ordinary emitted selector with
-   `.cezar-root`. Selectors already targeting the root are normalized rather than double-prefixed.
+   `.onni-root`. Selectors already targeting the root are normalized rather than double-prefixed.
    At-rules such as `@font-face` and `@keyframes` are preserved, and their public names use a
-   `cezar-` namespace.
+   `onni-` namespace.
 5. A post-build verifier parses selectors, declarations, and at-rules in the published CSS. It
    fails if an ordinary selector can match
-   outside `.cezar-root`, or if `html`, `body`, `:root`, an unscoped universal selector, or a
+   outside `.onni-root`, or if `html`, `body`, `:root`, an unscoped universal selector, or a
    document-level appearance/reset rule escapes the boundary. It also fails on any remaining
-   `--tw-*` identifier, any `@property` registration outside the `--cezar-*` namespace, or a
+   `--tw-*` identifier, any `@property` registration outside the `--onni-*` namespace, or a
    non-namespaced keyframe or font family.
 
 The root prefix intentionally contributes specificity, so an unrelated host `.flex` or `.grid`
-utility does not override Cezar's generated utility merely because the host stylesheet loaded
-later. A host can still override deliberately through the documented `--cezar-*` tokens, slots,
-or a selector that explicitly enters `.cezar-root`. Tailwind's `prefix(...)` mode is not used: it
+utility does not override Onni Work's generated utility merely because the host stylesheet loaded
+later. A host can still override deliberately through the documented `--onni-*` tokens, slots,
+or a selector that explicitly enters `.onni-root`. Tailwind's `prefix(...)` mode is not used: it
 would rename every private class without containing preflight or element selectors, while the
 selector pass provides the required containment and lets existing feature markup migrate without
 a class-string rewrite. CSS `@scope` is not used because the supported self-hosted browser range
@@ -673,40 +673,40 @@ cannot make it the sole isolation boundary.
 CSS custom-property registrations are document-global even when their declarations appear near a
 scoped rule. Renaming Tailwind's registrations and every reference is therefore mandatory rather
 than treating `@property` as selector-scoped. A host's own Tailwind build continues to use
-`--tw-*`, while Cezar uses only `--cezar-tw-*`; neither registration changes the other's syntax,
-inheritance, initial value, or computed styles. `--cezar-tw-*` is reserved for generated private
+`--tw-*`, while Onni Work uses only `--onni-tw-*`; neither registration changes the other's syntax,
+inheritance, initial value, or computed styles. `--onni-tw-*` is reserved for generated private
 implementation state and is not part of the documented theming or semver contract.
 
 All ordinary selectors, generated utility selectors, reset rules, typography, scrollbars, and
-animations are therefore scoped beneath `.cezar-root`. No selector targets the host's `html`,
+animations are therefore scoped beneath `.onni-root`. No selector targets the host's `html`,
 `body`, application root, or unscoped element tree.
 
-`@font-face` rules use Cezar-specific family names and packaged font assets. They do not change
+`@font-face` rules use Onni Work-specific family names and packaged font assets. They do not change
 the host's font-family.
 
 ### Appearance contract
 
-The provider boundary carries `data-cezar-theme`, `data-cezar-accent`,
-`data-cezar-density`, and `data-cezar-width`. The theme attribute contains the resolved `light` or
+The provider boundary carries `data-onni-theme`, `data-onni-accent`,
+`data-onni-density`, and `data-onni-width`. The theme attribute contains the resolved `light` or
 `dark` value when the input is `system`; system-theme observation and `color-scheme` updates touch
 only that boundary. Width defaults to `narrow` and changes the reading measure without taking over
 the host layout. Until persisted or controlled state supplies another value, the public defaults
 match the current cockpit: `dark`, `lime`, `comfortable`, and `narrow`.
 
-Documented custom properties use the `--cezar-*` namespace:
+Documented custom properties use the `--onni-*` namespace:
 
 ```css
-.host-cezar {
-  --cezar-primary: var(--host-brand);
-  --cezar-background: var(--host-surface);
-  --cezar-radius-md: 6px;
-  --cezar-measure: 960px;
+.host-Onni Work {
+  --onni-primary: var(--host-brand);
+  --onni-background: var(--host-surface);
+  --onni-radius-md: 6px;
+  --onni-measure: 960px;
 }
 ```
 
 The public token list covers color roles, typography families, radii, shadows, density, and the
-reading measure. The built-in `--cezar-measure` value is `820px` for `narrow`; the default
-`wide` mode is uncapped (`none`). Private intermediate tokens, including `--cezar-tw-*`, may
+reading measure. The built-in `--onni-measure` value is `820px` for `narrow`; the default
+`wide` mode is uncapped (`none`). Private intermediate tokens, including `--onni-tw-*`, may
 change without semver impact.
 
 ### Pre-paint root adoption
@@ -714,12 +714,12 @@ change without semver impact.
 The reference cockpit preserves its no-flash behavior through the same public boundary rather than
 through a document-level appearance implementation:
 
-1. Its static body declares `<div id="root" class="cezar-root"></div>` before the module script.
+1. Its static body declares `<div id="root" class="onni-root"></div>` before the module script.
 2. A small inline adapter runs after that element is parsed and before the React module. It reads
    the existing theme and appearance mirrors, resolves system theme, and stamps
-   `data-cezar-theme`, `data-cezar-accent`, `data-cezar-density`, `data-cezar-width`, and
+   `data-onni-theme`, `data-onni-accent`, `data-onni-density`, `data-onni-width`, and
    `color-scheme` on that element only. It never mutates `document.documentElement` or `body`.
-3. The React entry passes the same element as `rootElement`. `CezarProvider` adopts it and
+3. The React entry passes the same element as `rootElement`. `OnniProvider` adopts it and
    reconciles the stamped values with authoritative provider/server state once available.
 
 The inline code remains in private `packages/web` because it must execute before the published
@@ -727,25 +727,25 @@ bundle, but it is only a boot adapter for the public appearance contract. Its st
 normalization defaults, resolved values, attribute names, and color-scheme behavior have parity
 tests against the exported appearance helpers and provider behavior; it is not an alternative
 rendering or state implementation. An ordinary embed can use the provider-generated wrapper. A
-host that also needs appearance before React may predeclare and stamp its own `.cezar-root`, then
+host that also needs appearance before React may predeclare and stamp its own `.onni-root`, then
 pass it through `rootElement` using the same documented values.
 
 ### Portals
 
 Dialogs, sheets, popovers, command menus, tooltips, and toasts render into a provider-owned
-portal element beneath `.cezar-root`, not directly under `document.body`. This preserves theme
+portal element beneath `.onni-root`, not directly under `document.body`. This preserves theme
 and selector scope while retaining Radix focus trapping, Escape behavior, overlay interaction,
 and focus restoration.
 
 The provider may accept a deliberate portal-container override for a host with an established
-overlay layer. The target must still carry the Cezar root/theme boundary.
+overlay layer. The target must still carry the Onni Work root/theme boundary.
 
 ### Layout
 
 Feature components fill or size to their assigned container. They do not assume `100dvh`,
 disable document scrolling, or change safe-area ownership.
 
-`CezarCockpit` can fill its container and reproduce the standard desktop/mobile shell.
+`OnniCockpit` can fill its container and reproduce the standard desktop/mobile shell.
 Full-height behavior applies to that container only. Scroll ownership stays inside the relevant
 feature or shell region.
 
@@ -756,10 +756,10 @@ accessibility.
 ## Data flow and live behavior
 
 ```text
-host creates CezarClient
+host creates OnniClient
           |
           v
-    CezarProvider
+    OnniProvider
  client · project · query cache · adapters · live runtime
           |
           +--------------------+
@@ -783,7 +783,7 @@ One provider subtree gets one live runtime for its client instance:
 - cached data remains visible while disconnected;
 - reconnect and visibility restoration perform authoritative reconciliation.
 
-Multiple explicit `CezarProvider` instances are independent by design. A host that wants one
+Multiple explicit `OnniProvider` instances are independent by design. A host that wants one
 runtime supplies one provider around all composed features.
 
 Query keys include client identity, workspace/project scope, domain, and resource identity.
@@ -792,7 +792,7 @@ They never rely on the private SPA's current `'default'` convention alone.
 ## Storage, notifications, and browser capabilities
 
 Appearance mirrors, drafts, dismissed banners, list preferences, and other browser state go
-through a `CezarStorage` adapter. The default browser adapter uses namespaced keys derived from
+through a `OnniStorage` adapter. The default browser adapter uses namespaced keys derived from
 the client identity and project scope. A memory adapter is available for tests and ephemeral
 embeds.
 
@@ -809,7 +809,7 @@ in a non-DOM build must not throw.
   context, and parsed server error when available.
 - Connected components retain cached data during transient failures and show a local retry
   state rather than crashing the host tree.
-- `CezarProvider.onError` receives reportable failures after component-local handling.
+- `OnniProvider.onError` receives reportable failures after component-local handling.
 - A `401` also invokes `onAuthRequired`. The component package does not prescribe token storage
   or force the reference cockpit's login UI on an embed.
 - Authentication tokens are requested from the client auth adapter at request time and are
@@ -821,7 +821,7 @@ in a non-DOM build must not throw.
 - An unsupported or disconnected live channel degrades to cached HTTP data plus
   reconciliation; it does not make unrelated components unusable.
 - Component error boundaries isolate unexpected rendering errors at the major-feature boundary
-  in `CezarCockpit`. Individually embedded components may expose or include the same boundary
+  in `OnniCockpit`. Individually embedded components may expose or include the same boundary
   without swallowing programmer errors in callbacks.
 
 ## Package and build contract
@@ -855,13 +855,13 @@ importing tasks does not pull the markdown highlighter or workflow drag-and-drop
 The root workspace build order becomes:
 
 ```text
-contract -> api-client -> react -> cezar server -> web reference app -> package checks
+contract -> api-client -> react -> Onni Work server -> web reference app -> package checks
 ```
 
 The release publish order is:
 
 ```text
-contract -> api-client -> react -> cezar server/CLI -> alias package
+contract -> api-client -> react -> Onni Work server/CLI -> alias package
 ```
 
 `packages/web` stays private. Contract, API-client, React, server/CLI, and alias versions are
@@ -882,10 +882,10 @@ The supported React surface consists of:
 - component prop shapes, defaults, and documented behavior;
 - callback parameters and cancellation/interception semantics;
 - slot names and slot contracts;
-- `CezarLocation` variants and their field meanings;
+- `OnniLocation` variants and their field meanings;
 - provider, navigation, storage, notification, appearance, and portal adapter contracts;
 - documented semantic attributes; and
-- documented `--cezar-*` custom properties and their value semantics.
+- documented `--onni-*` custom properties and their value semantics.
 
 Removing or renaming one of those, narrowing an accepted value, adding a new required prop,
 changing callback timing or meaning incompatibly, raising the React peer floor, or removing a
@@ -935,7 +935,7 @@ surface or a compatibility promise.
 
 - Add `packages/react` as a private workspace.
 - Add provider, adapters, cache-key namespace, live runtime, public types, export map, build,
-  test, and scoped-style pipeline, including deterministic `--tw-*` to `--cezar-tw-*` rewriting
+  test, and scoped-style pipeline, including deterministic `--tw-*` to `--onni-tw-*` rewriting
   and at-rule verification.
 - Add dependency-direction checks that reject imports from `packages/web`.
 - Add cold-consumer fixtures while the package remains private in release metadata.
@@ -966,7 +966,7 @@ Each family:
 - Reduce `packages/web/src/app.tsx` to client/adapters/router creation and public composition.
 - Remove private feature implementations and alternate render paths.
 - Keep legacy URL redirects and bundled same-origin boot behavior. Move the existing pre-paint
-  script from document-level attributes to the predeclared `.cezar-root`, then have the public
+  script from document-level attributes to the predeclared `.onni-root`, then have the public
   provider adopt that element.
 - Run visual and E2E parity for every cockpit area.
 
@@ -984,12 +984,12 @@ Each family:
 
 ### Unit and type tests
 
-- A typed fake `CezarClient` drives every connected component without a server.
+- A typed fake `OnniClient` drives every connected component without a server.
 - Every feature covers loading, success, empty, unavailable, retry, auth-required, and mutation
   failure behavior applicable to it.
 - Public type tests compile documented examples and reject invalid identifiers, locations,
   slots, callbacks, and provider props.
-- Exhaustive switches cover `CezarLocation` and public discriminated unions.
+- Exhaustive switches cover `OnniLocation` and public discriminated unions.
 - Provider tests cover generated roots, adopted `rootElement` containers, portal placement, all
   four appearance dimensions, and cleanup without mutating the host document.
 - Import-boundary tests reject references from `packages/react` to `packages/web`, reject direct
@@ -1013,16 +1013,16 @@ Each family:
 - Build a host fixture with conflicting global element rules, its own independently compiled
   Tailwind stylesheet, Tailwind-like utility class names, light/dark styles, fonts, scrolling,
   and overlay z-index. Exercise at least one supported host Tailwind minor different from the one
-  used to build Cezar.
-- Assert the host remains unchanged and Cezar renders with its scoped defaults.
-- Parse the built stylesheet and reject selectors outside `.cezar-root`, forbidden document
-  selectors, unscoped resets, raw `--tw-*` identifiers, non-Cezar `@property` registrations, and
+  used to build Onni Work.
+- Assert the host remains unchanged and Onni Work renders with its scoped defaults.
+- Parse the built stylesheet and reject selectors outside `.onni-root`, forbidden document
+  selectors, unscoped resets, raw `--tw-*` identifiers, non-Onni Work `@property` registrations, and
   non-namespaced keyframes/font families.
-- Assert documented `--cezar-*` overrides retheme only the provider subtree.
+- Assert documented `--onni-*` overrides retheme only the provider subtree.
 - Render two differently themed providers on one page.
 - Render feature components in constrained panels and responsive containers.
 - Verify portal content remains inside the correct theme/root boundary.
-- In a real browser, compare host computed styles before and after loading Cezar CSS so
+- In a real browser, compare host computed styles before and after loading Onni Work CSS so
   document-global custom-property registration regressions fail even when selector checks pass.
 
 ### Packed-consumer tests
@@ -1045,7 +1045,7 @@ Each family:
 - Run the real-browser cockpit E2E suite across tasks, new task, session, git, GitHub, workflows,
   skills, inbox, settings, project switching, theme, mobile navigation, and live updates.
 - Verify the static root has its resolved theme, accent, density, width, and color scheme before
-  the React module executes, and that provider adoption does not insert a second `.cezar-root`.
+  the React module executes, and that provider adoption does not insert a second `.onni-root`.
 - Preserve current route behavior and visual baselines unless a separate approved spec changes
   them.
 
@@ -1086,15 +1086,15 @@ preventing two long-lived versions.
 ### CSS leakage or host overrides break embeds
 
 Mitigation: omit Tailwind preflight, author a root-scoped base layer, wrap emitted selectors in
-`.cezar-root` through PostCSS, rewrite Tailwind custom-property registrations and references into
-the private `--cezar-tw-*` namespace, namespace other tokens/at-rules, own portals beneath the root,
+`.onni-root` through PostCSS, rewrite Tailwind custom-property registrations and references into
+the private `--onni-tw-*` namespace, namespace other tokens/at-rules, own portals beneath the root,
 test hostile host CSS, and fail the build when a selector or global identifier escapes the
 published stylesheet contract.
 
 ### Bundle size grows when all features are available
 
 Mitigation: stable feature subpaths, side-effect discipline, route/feature lazy loading in
-`CezarCockpit`, and packed-consumer chunk assertions for known heavy libraries.
+`OnniCockpit`, and packed-consumer chunk assertions for known heavy libraries.
 
 ### Duplicate live connections or cache collisions
 
@@ -1113,14 +1113,14 @@ The work is complete when:
 1. `@onni/contract`, `@onni/api-client`, and
    `@onni/work-react` are public, installable npm packages with working packed-consumer
    fixtures and dependency ranges that resolve at the matching lockstep release.
-2. A separate React 19 application can create one client, mount `CezarProvider`, and independently
+2. A separate React 19 application can create one client, mount `OnniProvider`, and independently
    compose every major feature listed in this spec using only public imports.
-3. Beneath the same provider, the application can mount `CezarCockpit` in controlled mode
+3. Beneath the same provider, the application can mount `OnniCockpit` in controlled mode
    without React Router.
 4. A React Router host can mount the optional adapter beneath a non-root base path and deep-link
    to project, task, repository, GitHub, workflow, skill, inbox, and settings locations.
 5. Host document styles, typography, scrolling, theme, Tailwind custom properties, and portals
-   remain unchanged outside `.cezar-root`, including when the host uses a different Tailwind
+   remain unchanged outside `.onni-root`, including when the host uses a different Tailwind
    version.
 6. Two providers can render different services, projects, themes, accents, densities, and reading
    widths on one page without cache, connection, storage, credential, or CSS leakage.

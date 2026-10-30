@@ -4,7 +4,7 @@
 
 ## TLDR
 
-A subscription window that runs out kills the task, not the work: the agent was mid-way through something the user asked for, the account simply closed until a known instant. Cezar already receives that instant — Claude Code puts it in the failure verbatim — and then throws it away. This spec keeps it: a run that fails on a usage limit schedules its own continuation for the reset instant plus 30 seconds, says so in the thread, and can be switched off in one place. On by default.
+A subscription window that runs out kills the task, not the work: the agent was mid-way through something the user asked for, the account simply closed until a known instant. Onni Work already receives that instant — Claude Code puts it in the failure verbatim — and then throws it away. This spec keeps it: a run that fails on a usage limit schedules its own continuation for the reset instant plus 30 seconds, says so in the thread, and can be switched off in one place. On by default.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -14,12 +14,12 @@ A subscription window that runs out kills the task, not the work: the agent was 
 | Q2 | What if the provider names no reset instant? | Do nothing — the run stays `failed`. | A guessed window is a retry loop against a provider that is still refusing. "We don't know when" is an honest answer and leaves the pre-feature behavior (Continue) exactly intact. |
 | Q3 | How long after the reset? | +30 s. | Resuming AT the boundary races the provider's clock and its rounding, and one failed resume costs the whole window again. Thirty seconds is free next to five hours. |
 | Q4 | Safety bound? | 12 consecutive resumes without a human turn. | A resume can only fire after a real reset instant, so this is not a throttle — it is the backstop for a provider answering "limit reached, retry now" in a loop. Twelve sits through a couple of days of five-hour windows. |
-| Q5 | Per project or per machine? | Machine (`~/.cezar/config.json` `resources`). | The limit belongs to the account, not the repo — same reasoning that moved `maxParallel` there. |
+| Q5 | Per project or per machine? | Machine (`~/.onni/config.json` `resources`). | The limit belongs to the account, not the repo — same reasoning that moved `maxParallel` there. |
 | Q6 | What about a task the user has walked away from? | Archived tasks are never scheduled or re-armed, archiving retires a pending resume, and there is a per-task **Don't resume**. A deadline missed by more than 24 h expires instead of firing. | A window closes the whole ACCOUNT, so one limit can park several tasks at once and each gets its own promise. That is right for work in flight and wrong for work abandoned — reviving a task from another era is a surprise, not a service. The user needs the per-task off switch as much as the global one, and "I archived it" has to mean what it says. |
 
 ## Problem Statement
 
-Claude Code answers an exhausted window with an `is_error` result whose text is machine-readable: `Claude AI usage limit reached|<epoch seconds>`. Cezar surfaces that string as the run's `error`, marks the run `failed`, and stops. Every parked task then waits on a human to come back, notice, and press Continue — typically long after the window reopened. Overnight and weekend runs lose the entire remaining window.
+Claude Code answers an exhausted window with an `is_error` result whose text is machine-readable: `Claude AI usage limit reached|<epoch seconds>`. Onni Work surfaces that string as the run's `error`, marks the run `failed`, and stops. Every parked task then waits on a human to come back, notice, and press Continue — typically long after the window reopened. Overnight and weekend runs lose the entire remaining window.
 
 Nothing about the state is actually broken: the worktree, the branch, the handoff file and the agent session id are all intact, and `continueRun` already knows how to pick the work back up. The only missing piece is the alarm clock.
 
@@ -64,7 +64,7 @@ The run stays `failed` while it waits, deliberately: it IS failed, the Continue 
 - `cancelAutoResume(runId)` — the PUBLIC per-task off switch behind `DELETE /api/v1/runs/:id/auto-resume` and the archive route. Idempotent; leaves the workspace setting and every other task alone.
 - `reconcileAutoResumes()` — the self-healing sweep, run from `pump()` and once from `recover()`. Switching the setting off cancels armed timers and clears their deadlines; otherwise every `failed` record carrying an `autoResumeAt` this process is not currently holding gets armed from that record.
 
-The reconcile is a reconcile rather than a boot-time restore because **the deadline is durable state and the timer is not**: a restart, a rebuilt project context, a manager disposed mid-wait, or a refused continuation all leave a record promising a resume nothing is holding, and the cockpit renders that promise. Rebuilding from the record covers every one of those with one mechanism. A deadline that passed while cezar was down floors to zero and fires immediately — the window is open, which is the point. A record whose deadline is unreadable, or whose cap is spent, is retired instead of armed.
+The reconcile is a reconcile rather than a boot-time restore because **the deadline is durable state and the timer is not**: a restart, a rebuilt project context, a manager disposed mid-wait, or a refused continuation all leave a record promising a resume nothing is holding, and the cockpit renders that promise. Rebuilding from the record covers every one of those with one mechanism. A deadline that passed while Onni Work was down floors to zero and fires immediately — the window is open, which is the point. A record whose deadline is unreadable, or whose cap is spent, is retired instead of armed.
 
 ### The queue hold
 
@@ -106,7 +106,7 @@ Checks with `onFail` gain optional `StepState.retriesUsed` (nonnegative integer)
 
 Two scopes, because one limit parks several tasks and the user needs to answer for one without answering for all:
 
-- **Machine** — `resources.autoResumeOnUsageLimit: boolean` (default `true`) in `~/.cezar/config.json`, on the existing `GET/PUT /api/v1/workspace/config` contract, cached by `WorkspaceSemaphore` like every other resource key, so a change takes effect without a restart. No environment variable: one surface, and the setting is persistent.
+- **Machine** — `resources.autoResumeOnUsageLimit: boolean` (default `true`) in `~/.onni/config.json`, on the existing `GET/PUT /api/v1/workspace/config` contract, cached by `WorkspaceSemaphore` like every other resource key, so a change takes effect without a restart. No environment variable: one surface, and the setting is persistent.
 - **Task** — `DELETE /api/v1/runs/:id/auto-resume` (idempotent, `{cancelled: true}`, 404 for an unknown run), plus the same retirement riding `POST /runs/:id/archive`. Archiving is how a user resigns from a task, and a resigned task must never come back on its own.
 
 ## UI/UX

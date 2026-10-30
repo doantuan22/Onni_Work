@@ -1,6 +1,6 @@
 # Jira Cloud and Linear
 
-Cezar can browse a Jira Cloud project or a Linear team and hand a selected issue to an
+Onni Work can browse a Jira Cloud project or a Linear team and hand a selected issue to an
 agent. Each local project has one saved tracker connection. GitHub remains independent.
 Browsing performs no vendor writes. Enabled event automations can launch agent workflows as described below. The visible issue list checks its first page every 60 seconds; it stops when hidden or closed.
 
@@ -13,7 +13,7 @@ Save it, choose **Browse**, search for the project/team, then **Connect**. Disco
 paginated; **Load more** reaches later results. No server restart or environment editing
 is needed. Saving credentials is local; Browse/Connect verifies vendor access.
 
-Each cezar project has one credential connection and one selected tracker scope. Configuring
+Each Onni Work project has one credential connection and one selected tracker scope. Configuring
 project A does not configure project B. Replacement creates a new connection identity and
 requires selecting a scope again, even if the vendor IDs happen to match. Failed credential
 storage preserves the previous credentials. Failed scope selection preserves the previous
@@ -23,8 +23,8 @@ association, but an association tied to replaced credentials remains disabled un
 **Remove project credentials** deletes the local credential record and disables reads; it does
 not revoke the token at the vendor. The old scope metadata may remain stored, but Settings shows no connected tracker without matching credentials.
 Both actions work offline. Remove credentials before unregistering or moving a repository;
-otherwise its private credential file remains until explicitly removed. Use `cez tracker-connections list`
-to inventory retained records and `cez tracker-connections remove <id>` to delete a selected
+otherwise its private credential file remains until explicitly removed. Use `onni tracker-connections list`
+to inventory retained records and `onni tracker-connections remove <id>` to delete a selected
 64-hex record ID, including a record whose repository is gone. These local commands require no
 running server or vendor access and never print secrets. Credentials are not
 copied when a repository is copied or moved to a new path.
@@ -33,7 +33,7 @@ copied when a repository is copied or moved to a new path.
 
 Secrets are write-only through the API: read responses expose only connection ID/provider.
 They are stored as managed dotenv files in
-`~/.cezar/tracker-connections/<sha256(canonical-project-path)>.env` (or the selected
+`~/.onni/tracker-connections/<sha256(canonical-project-path)>.env` (or the selected
 `ONNI_HOME`), outside repositories by default, with directory mode `0700` and file mode `0600` on POSIX. A managed `.gitignore` excludes all files in the credential directory from ordinary Git staging,
 including when `ONNI_HOME` is inside a repository; it does not untrack files already committed or
 prevent forced staging. Storage uses atomic
@@ -86,7 +86,7 @@ save real credentials and never contacts vendors.
 
 Jira supports Cloud sites at `https://<site>.atlassian.net`, using account email plus
 a scoped or unscoped API token. Data Center/custom hosts and OAuth are outside this
-integration. Use the site URL, not the API gateway. Cezar discovers the cloud ID and
+integration. Use the site URL, not the API gateway. Onni Work discovers the cloud ID and
 tries the scoped-token gateway first, with one site-origin fallback on authorization
 failure. [Create, expire and revoke Atlassian tokens](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/).
 
@@ -156,10 +156,10 @@ a source link does not grant the agent access to omitted context.
 | Rate limited | Wait for the indicated cooldown before Retry. Refresh does not bypass vendor cooldown. |
 | Saved connection but no credentials | Configure project credentials and reconnect, or disconnect locally. |
 | Expired result page | Restart the search; cursors are bound to the source, scope, query and server process. |
-| Cannot save/disconnect scope | Restore write access to the project's `.ai/cezar` directory and retry. |
-| Cannot save/remove credentials | Restore owner-only write access to `ONNI_HOME/tracker-connections` (default `~/.cezar/tracker-connections`) and retry. |
+| Cannot save/disconnect scope | Restore write access to the project's `.ai/onni` directory and retry. |
+| Cannot save/remove credentials | Restore owner-only write access to `ONNI_HOME/tracker-connections` (default `~/.onni/tracker-connections`) and retry. |
 
-Deleting `.ai/cezar/tracker.json` removes only the non-secret connection. Ticket content
+Deleting `.ai/onni/tracker.json` removes only the non-secret connection. Ticket content
 is not mirrored there, and already-created run snapshots remain in run history.
 
 ## Adding another provider
@@ -184,7 +184,7 @@ is unchanged. It describes the first-page check, not necessarily the displayed p
 Errors keep the displayed rows and last successful timestamp. Retries back off up to five minutes
 and respect longer provider cooldowns. Timestamp/spinner animations respect reduced motion.
 
-Local mode uses Cezar's shared WebSocket for opaque version signals and project-scoped HTTP for
+Local mode uses Onni Work's shared WebSocket for opaque version signals and project-scoped HTTP for
 snapshots. Remote mode uses authenticated HTTP long reads, with existing SSE configuration
 reconciliation; it opens no browser WebSocket. No new configuration or credential access is needed.
 
@@ -249,9 +249,9 @@ from page one each time; a request that cannot complete within the hard deadline
 The CLI supports the same flow, for example:
 
 ```sh
-cez automation add --kind tracker --name 'Jira work' --on issue.status_changed --to-status '<status-id>' --every 30m --prompt 'Implement {{tracker.key}} and prepare a pull request.'
-cez automation check '<automation-id>'
-cez automation enable '<automation-id>'
+onni automation add --kind tracker --name 'Jira work' --on issue.status_changed --to-status '<status-id>' --every 30m --prompt 'Implement {{tracker.key}} and prepare a pull request.'
+onni automation check '<automation-id>'
+onni automation enable '<automation-id>'
 ```
 
 Use IDs from the project options picker/API, not display names. Copy as CLI preserves the exact
@@ -262,7 +262,7 @@ visible but must be configured with an explicit event before it runs.
 An automation launches an ordinary agent workflow. The agent can follow instructions to prepare
 a PR or update a vendor status; the scheduler itself does not guarantee these outcomes or merge
 PRs. Tracker automation agents receive the captured project's credentials; those are never
-substituted with credentials from a later connection. Cezar redacts known secrets from run output,
+substituted with credentials from a later connection. Onni Work redacts known secrets from run output,
 but does not sandbox a trusted agent against reading local files or sending network requests.
 
 Delivery receipts for tracker events are retained while the automation definition exists, including

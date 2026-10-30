@@ -1032,7 +1032,7 @@ describe('useMarkRunUnseen', () => {
 
     act(() => result.current.mutate('run-1'))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
-    const linked = { ...RUN, pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/776' }
+    const linked = { ...RUN, pullRequestUrl: 'https://github.com/open-mercato/onni/pull/776' }
     client.setQueryData(queryKeys.runs.detail('run-1'), linked)
     client.setQueryData(queryKeys.runs.list(), [linked])
 
@@ -1040,11 +1040,11 @@ describe('useMarkRunUnseen', () => {
     await act(async () => deferred.resolve(json({ ...RUN, seenAt: undefined })))
 
     const detail = client.getQueryData<typeof linked>(queryKeys.runs.detail('run-1'))
-    expect(detail?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/776')
+    expect(detail?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/776')
     // Absent, not blanked — `isUnread` keys on the field being missing.
     expect(detail && 'seenAt' in detail).toBe(false)
     const list = client.getQueryData<Array<typeof linked>>(queryKeys.runs.list())
-    expect(list?.[0]?.pullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/776')
+    expect(list?.[0]?.pullRequestUrl).toBe('https://github.com/open-mercato/onni/pull/776')
     expect(list?.[0] && 'seenAt' in list[0]).toBe(false)
   })
 

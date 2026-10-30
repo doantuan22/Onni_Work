@@ -446,7 +446,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       run('done', {
         branch: 'onni/r1',
         diffStat: { adds: 0, dels: 0, files: 0 },
-        pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
+        pullRequestUrl: 'https://github.com/open-mercato/onni/pull/1311',
       }),
     )
     const meta = document.querySelector('[data-slot="run-meta"]') as HTMLElement
@@ -492,7 +492,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       run('done', {
         worktreePath: '/tmp/wt/r1',
         branch: 'onni/r1',
-        pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
+        pullRequestUrl: 'https://github.com/open-mercato/onni/pull/1311',
       }),
     )
     const bar = document.querySelector('[data-slot="run-actions"]') as HTMLElement
@@ -523,7 +523,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       run('running', {
         worktreePath: '/tmp/wt/r1',
         branch: 'onni/r1',
-        pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
+        pullRequestUrl: 'https://github.com/open-mercato/onni/pull/1311',
       }),
     )
     const button = await waitFor(() => {
@@ -588,7 +588,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       run(status, {
         worktreePath: '/tmp/wt/r1',
         branch: 'onni/r1',
-        pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
+        pullRequestUrl: 'https://github.com/open-mercato/onni/pull/1311',
         ...extra,
       })
     const unpushed = (extra: Record<string, () => Response> = {}) =>
@@ -723,7 +723,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
         worktreePath: '/tmp/wt/r1',
         branch: 'onni/r1',
         baseBranch: 'origin/main',
-        ...(withPr ? { pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311' } : {}),
+        ...(withPr ? { pullRequestUrl: 'https://github.com/open-mercato/onni/pull/1311' } : {}),
       })
     const gitButton = () => document.querySelector('[data-slot="git-button"] button') as HTMLButtonElement | null
     /** One query client across rerenders, so only the run record changes between them. */
@@ -804,7 +804,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
                     run={run(status, {
                       worktreePath: '/tmp/wt/r1',
                       branch: 'onni/r1',
-                      pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
+                      pullRequestUrl: 'https://github.com/open-mercato/onni/pull/1311',
                     })}
                   />
                 }
@@ -898,7 +898,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       run('done', {
         worktreePath: '/tmp/wt/r1',
         branch: 'onni/r1',
-        pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1283',
+        pullRequestUrl: 'https://github.com/open-mercato/onni/pull/1283',
       }),
     )
     await waitFor(() => expect(document.querySelector('[data-slot="run-meta"] [data-slot="pr-chip"]')).not.toBeNull())
@@ -934,9 +934,9 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       run('done', {
         worktreePath: '/tmp/wt/r1',
         branch: 'onni/r1',
-        referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/534',
+        referencedPullRequestUrl: 'https://github.com/open-mercato/onni/pull/534',
         prRefs: [
-          { number: 534, url: 'https://github.com/open-mercato/cezar/pull/534', origin: 'legacy', at: '2026-07-14T12:00:00.000Z' },
+          { number: 534, url: 'https://github.com/open-mercato/onni/pull/534', origin: 'legacy', at: '2026-07-14T12:00:00.000Z' },
         ],
       }),
     )
@@ -1744,7 +1744,7 @@ describe('meta line, tabs, pill and resume hint', () => {
       automationRevision: 1,
       receiptId: 'r-1',
       event: 'issue.opened',
-      githubUrl: 'https://github.com/open-mercato/cezar/issues/801',
+      githubUrl: 'https://github.com/open-mercato/onni/issues/801',
     },
   })
 
@@ -1811,21 +1811,21 @@ describe('meta line, tabs, pill and resume hint', () => {
     {
       name: 'both',
       refs: {
-        referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/534',
-        referencedIssueUrl: 'https://github.com/open-mercato/cezar/issues/544',
+        referencedPullRequestUrl: 'https://github.com/open-mercato/onni/pull/534',
+        referencedIssueUrl: 'https://github.com/open-mercato/onni/issues/544',
       },
       pr: true,
       issue: true,
     },
     {
       name: 'PR only',
-      refs: { referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/534' },
+      refs: { referencedPullRequestUrl: 'https://github.com/open-mercato/onni/pull/534' },
       pr: true,
       issue: false,
     },
     {
       name: 'issue only',
-      refs: { referencedIssueUrl: 'https://github.com/open-mercato/cezar/issues/544' },
+      refs: { referencedIssueUrl: 'https://github.com/open-mercato/onni/issues/544' },
       pr: false,
       issue: true,
     },
@@ -1841,12 +1841,12 @@ describe('meta line, tabs, pill and resume hint', () => {
     expect(Boolean(prChip)).toBe(pr)
     expect(Boolean(issueChip)).toBe(issue)
     if (prChip) {
-      expect(prChip.getAttribute('href')).toBe('https://github.com/open-mercato/cezar/pull/534')
+      expect(prChip.getAttribute('href')).toBe('https://github.com/open-mercato/onni/pull/534')
       expect(prChip.textContent).toContain('#534')
       expect(branch?.nextElementSibling?.nextElementSibling).toBe(prChip.closest('[data-slot="run-pr-refs"]'))
     }
     if (issueChip) {
-      expect(issueChip.getAttribute('href')).toBe('https://github.com/open-mercato/cezar/issues/544')
+      expect(issueChip.getAttribute('href')).toBe('https://github.com/open-mercato/onni/issues/544')
       expect(issueChip.textContent).toContain('Issue #544')
     }
   })
@@ -1864,7 +1864,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     renderHeader(
       run('running', {
         branch: 'onni/r1',
-        referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/534',
+        referencedPullRequestUrl: 'https://github.com/open-mercato/onni/pull/534',
       }),
     )
 
@@ -1893,20 +1893,20 @@ describe('meta line, tabs, pill and resume hint', () => {
     renderHeader(
       run('done', {
         branch: 'onni/r1',
-        pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/5366',
-        referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/4326',
+        pullRequestUrl: 'https://github.com/open-mercato/onni/pull/5366',
+        referencedPullRequestUrl: 'https://github.com/open-mercato/onni/pull/4326',
         markerRefs: { pr: 5366 },
       }),
     )
     const meta = document.querySelector('[data-slot="run-meta"]') as HTMLElement
     // The strongest PR on the row, the rest behind a `+N` — the All tasks table's cell.
     const visible = [...meta.querySelectorAll('[data-slot="run-pr-refs"] > [data-slot="pr-chip"]')]
-    expect(visible.map((chip) => chip.getAttribute('href'))).toEqual(['https://github.com/open-mercato/cezar/pull/5366'])
+    expect(visible.map((chip) => chip.getAttribute('href'))).toEqual(['https://github.com/open-mercato/onni/pull/5366'])
     expect(meta.querySelector('[data-slot="reference-overflow"]')?.textContent).toBe('+1')
     const chips = await overflowChips()
     expect(chips.map((chip) => chip.getAttribute('href'))).toEqual([
-      'https://github.com/open-mercato/cezar/pull/5366',
-      'https://github.com/open-mercato/cezar/pull/4326',
+      'https://github.com/open-mercato/onni/pull/5366',
+      'https://github.com/open-mercato/onni/pull/4326',
     ])
   })
 
@@ -1918,14 +1918,14 @@ describe('meta line, tabs, pill and resume hint', () => {
       '/api/v1/projects': () =>
         jsonResponse({
           projects: [
-            { id: 'boot-id', name: 'onni', root: '/home/me/onni', repoUrl: 'https://github.com/open-mercato/cezar' },
+            { id: 'boot-id', name: 'onni', root: '/home/me/onni', repoUrl: 'https://github.com/open-mercato/onni' },
           ],
         }),
     })
     renderHeader(run('done', { branch: 'onni/r1', prNumber: 901, markerRefs: { pr: 901 } }))
     await waitFor(() => {
       const chip = document.querySelector('[data-slot="run-meta"] [data-slot="pr-chip"]')
-      expect(chip?.getAttribute('href')).toBe('https://github.com/open-mercato/cezar/pull/901')
+      expect(chip?.getAttribute('href')).toBe('https://github.com/open-mercato/onni/pull/901')
     })
   })
 
@@ -1953,7 +1953,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     renderHeader(
       run('done', {
         branch: 'onni/r1',
-        pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/5366',
+        pullRequestUrl: 'https://github.com/open-mercato/onni/pull/5366',
         prNumber: 901,
       }),
     )

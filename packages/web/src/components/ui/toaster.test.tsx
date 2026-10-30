@@ -139,11 +139,11 @@ describe('Toaster', () => {
       render(<Toaster />)
       act(() =>
         toast('First PR ready 🎉', {
-          action: { label: 'Star on GitHub', href: 'https://github.com/open-mercato/cezar' },
+          action: { label: 'Star on GitHub', href: 'https://github.com/open-mercato/onni' },
         }),
       )
       const link = screen.getByRole('link', { name: 'Star on GitHub' })
-      expect(link.getAttribute('href')).toBe('https://github.com/open-mercato/cezar')
+      expect(link.getAttribute('href')).toBe('https://github.com/open-mercato/onni')
       expect(link.getAttribute('target')).toBe('_blank')
       expect(link.getAttribute('rel')).toContain('noopener')
       expect(link.getAttribute('rel')).toContain('noreferrer')

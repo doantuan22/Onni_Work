@@ -52,7 +52,7 @@ credentials only into its own commands, so without the helper a task worktree's 
 organisation's SAML policy may reject.
 
 A failure cleans up the local folder only. If the GitHub repository was already created,
-the error says so; cezar never deletes remote repositories.
+the error says so; Onni Work never deletes remote repositories.
 
 **Name.** The name must be a valid GitHub repository name (`GITHUB_REPO_NAME_PATTERN` in
 `packages/contract`: letters, digits, `.`, `-`, `_`, at most 100 characters, not `.`/`..`) —

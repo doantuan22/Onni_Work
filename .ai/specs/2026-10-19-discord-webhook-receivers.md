@@ -27,20 +27,20 @@ URL validation and response diagnostics are selected by the stored format.
 ### 1. Contract
 
 - `packages/contract/src/webhooks.ts`: `format` includes `'discord.v1'`
-  (`'cezar.json.v1' | 'slack.v1' | 'discord.v1'`, default `cezar.json.v1`).
+  (`'onni.json.v1' | 'slack.v1' | 'discord.v1'`, default `onni.json.v1`).
 - Refinement for `discord.v1`: `https://` on `discord.com`, `discordapp.com`, `ptb.discord.com`
   or `canary.discord.com`; path exactly `/api/webhooks/<snowflake 17–20 digits>/<token [A-Za-z0-9_-]{60,80}>`
   (an optional `/api/v10/webhooks/…` version segment accepted); no port, no query, no fragment;
   `allowLocalNetwork === false`. Normalize to `https://discord.com/api/webhooks/<id>/<token>` on save.
-- A Discord URL with `format: 'cezar.json.v1'` is rejected with "Choose Discord as the destination
+- A Discord URL with `format: 'onni.json.v1'` is rejected with "Choose Discord as the destination
   type" — it could only ever answer `400`.
 - `BACKWARD_COMPATIBILITY.md` inventories the receiver formats.
 
 ### 2. Rendering (`webhooks/discord.ts`)
 
 `renderDiscordMessage(eventJson: string, ctx): string` maps the **already rendered, redacted,
-profile-filtered** cezar event body to a Discord execute-webhook body. Discord never sees a field
-the cezar payload for that profile does not carry.
+profile-filtered** Onni Work event body to a Discord execute-webhook body. Discord never sees a field
+the Onni Work payload for that profile does not carry.
 
 ```json
 { "content": "Needs your input · <title or task id8>",
@@ -50,7 +50,7 @@ the cezar payload for that profile does not carry.
                "fields": [{ "name": "Project", "value": "…", "inline": true },
                           { "name": "Status", "value": "running → waiting", "inline": true },
                           { "name": "Task", "value": "`a1b2c3d4`", "inline": true }],
-               "footer": { "text": "cezar" } }] }
+               "footer": { "text": "onni" } }] }
 ```
 
 - `allowed_mentions: { parse: [] }` always — a task title or error containing `@everyone`/`<@id>`
@@ -62,15 +62,15 @@ the cezar payload for that profile does not carry.
 - Limits enforced by the renderer: `content` ≤ 2000, title ≤ 256, description ≤ 4096, ≤ 25 fields,
   field value ≤ 1024, all embed text ≤ 6000; drop trailing questions first, then clip, then fall
   back to `content` only.
-- Labels reuse the UI wording; `webhook.test` → "cezar is connected to this channel" + receiver name.
+- Labels reuse the UI wording; `webhook.test` → "Onni Work is connected to this channel" + receiver name.
 
 ### 3. Send path
 
 - `format` snapshot on the delivery record (captured at admission); render with `renderDiscordMessage`
-  at send time; retained delivery storage keeps canonical cezar JSON; history exposes metadata only.
+  at send time; retained delivery storage keeps canonical Onni Work JSON; history exposes metadata only.
 - Headers: `content-type: application/json`, no `webhook-*` signature headers (the URL is the
   secret). DNS pinning, no redirects, 10 s timeouts, URL redaction follow the shared transport policy. Append `?wait=true` internally at send time so Discord confirms that the message was saved
-  before cezar records success (normally `200 OK`). The stored URL still has no query.
+  before Onni Work records success (normally `200 OK`). The stored URL still has no query.
   Discard the successful response body; never retain the returned message content.
 - Diagnostics: for the Discord hosts only, read ≤ 512 bytes of a JSON body and keep only
   `code` (integer) and `message` if it is one of Discord's fixed strings (`Unknown Webhook`,

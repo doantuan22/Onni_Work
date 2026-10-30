@@ -2,7 +2,7 @@
 
 ## 📝 TLDR
 
-Add an opt-in environment switch for deployments that embed cezar into services where model pricing and token consumption are irrelevant or misleading. When enabled, the cockpit hides both monetary cost and token-usage values from every user-facing surface while preserving telemetry collection and API compatibility.
+Add an opt-in environment switch for deployments that embed Onni Work into services where model pricing and token consumption are irrelevant or misleading. When enabled, the cockpit hides both monetary cost and token-usage values from every user-facing surface while preserving telemetry collection and API compatibility.
 
 The zero-config default remains unchanged: token metrics stay visible unless the server starts with `ONNI_HIDE_TOKEN_METRICS=1`. The server exposes the resolved presentation capability through `/api/health`; the browser consumes that one value everywhere it renders run metadata.
 
@@ -16,7 +16,7 @@ The zero-config default remains unchanged: token metrics stay visible unless the
 
 ## 📝 Problem Statement
 
-Mercato sandboxes and similar services can embed cezar while being agnostic to model prices. The current cockpit renders token counts and costs in task lists, task headers, and variant comparison, which presents implementation-detail accounting as product information. Issue #481 asks for one environment-controlled way to suppress those values everywhere in the app and explicitly extends the scope from cost to token usage.
+Mercato sandboxes and similar services can embed Onni Work while being agnostic to model prices. The current cockpit renders token counts and costs in task lists, task headers, and variant comparison, which presents implementation-detail accounting as product information. Issue #481 asks for one environment-controlled way to suppress those values everywhere in the app and explicitly extends the scope from cost to token usage.
 
 The display logic is currently distributed across four user-facing areas:
 
@@ -42,8 +42,8 @@ Every token/cost renderer consumes the same resolved browser value. When hidden,
 
 1. **Separate cost and token flags.** Rejected because the issue’s follow-up explicitly asks to hide both and no independent deployment need is known. It would double UI states and tests without delivering requested value.
 2. **Strip telemetry from API payloads.** Rejected because display policy is not data-retention policy. It would widen the change into event, persistence, and public-contract code and make diagnostics worse.
-3. **Read `import.meta.env` in the SPA.** Rejected because cezar ships one prebuilt static cockpit. Runtime deployment flags belong to the Node server and must be conveyed through an existing runtime boundary.
-4. **Introduce a new settings screen or persisted preference.** Rejected because the owner asked for a deployment-wide environment switch, and requiring authored state would violate cezar’s zero-config rule.
+3. **Read `import.meta.env` in the SPA.** Rejected because Onni Work ships one prebuilt static cockpit. Runtime deployment flags belong to the Node server and must be conveyed through an existing runtime boundary.
+4. **Introduce a new settings screen or persisted preference.** Rejected because the owner asked for a deployment-wide environment switch, and requiring authored state would violate Onni Work’s zero-config rule.
 
 ## 📝 Architecture
 
@@ -89,7 +89,7 @@ It returns `health?.capabilities.tokenMetrics !== false`. UI containers read `us
 
 Presentational components keep a default of `true` where needed so focused tests and reusable components retain current behavior unless they explicitly exercise the hidden state.
 
-This follows the useful part of Langfuse’s open-source trace UI: a centralized `showCostTokens` view preference is resolved once and propagated to all metric renderers, while the underlying observation data remains present. Cezar uses its deployment capability rather than a per-user preference because #481 is a server-owner policy. It deliberately skips Langfuse’s additional timeline/color-coding complexity because cezar has no equivalent dependent visualization.
+This follows the useful part of Langfuse’s open-source trace UI: a centralized `showCostTokens` view preference is resolved once and propagated to all metric renderers, while the underlying observation data remains present. Onni Work uses its deployment capability rather than a per-user preference because #481 is a server-owner policy. It deliberately skips Langfuse’s additional timeline/color-coding complexity because Onni Work has no equivalent dependent visualization.
 
 ## 📝 Data Model
 
@@ -153,10 +153,10 @@ Accessibility requirements:
 
 ## 📝 Edge Cases & Failure Scenarios
 
-- **Unknown or misspelled env value:** the flag stays off and metrics remain visible. Strict activation matches other cezar flags and avoids surprising deployments.
+- **Unknown or misspelled env value:** the flag stays off and metrics remain visible. Strict activation matches other Onni Work flags and avoids surprising deployments.
 - **Health request pending or failed:** metrics remain visible using the legacy default; the rest of the cockpit already owns health error behavior.
 - **Old health payload without `tokenMetrics`:** metrics remain visible.
-- **Changing the host environment after boot:** unsupported. Environment variables are boot-time deployment inputs; restart cezar after changing the flag. Per-request capability resolution is an implementation detail, not a live-reconfiguration contract.
+- **Changing the host environment after boot:** unsupported. Environment variables are boot-time deployment inputs; restart Onni Work after changing the flag. Per-request capability resolution is an implementation detail, not a live-reconfiguration contract.
 - **Queued task row:** removing metric columns must not break the queue-position `colSpan`.
 - **Zero or unknown telemetry:** existing omission/placeholder behavior applies only when metrics are enabled; disabled mode never renders metric-specific placeholders.
 - **Variant group with mixed telemetry:** all variants follow the deployment capability consistently.
@@ -181,7 +181,7 @@ Adding a `ONNI_*` variable requires `.env.example` in the same commit and the RE
 
 ### Rollback
 
-Unset `ONNI_HIDE_TOKEN_METRICS` and restart cezar to restore current display behavior. Reverting the implementation is safe because no data migration or persisted preference exists.
+Unset `ONNI_HIDE_TOKEN_METRICS` and restart Onni Work to restore current display behavior. Reverting the implementation is safe because no data migration or persisted preference exists.
 
 ## 📋 Phasing
 

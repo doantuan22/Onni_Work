@@ -178,7 +178,7 @@ Initial-prompt images (`taskImages`, already bounded at 4 by `startRunSchema`) a
 `task` it is deliberately **not** scrubbed — scrubbing it would corrupt the run
 (`store.ts:326-331` states the same rule for `task`). It is therefore never added to
 `redactPatch`'s field list. Attached images are written to the existing
-`.ai/cezar/runs/<id>-images/` directory with the `pasted` prefix, exactly like
+`.ai/onni/runs/<id>-images/` directory with the `pasted` prefix, exactly like
 live-session attachments (#357), and are removed with the run — no new cleanup path,
 no new `.gitignore` entry.
 
@@ -335,13 +335,13 @@ theming are mandatory per `AGENTS.md`.
 |---|---|
 | **Dequeue race** — the user submits at the instant `pump()` starts the run | The three-rung ladder covers all three states (queued → fold, starting → defer, open → deliver). `hydrateQueuedInput` and `execute()`'s spawn are entered in the same synchronous tick as the `pendingJobs.delete`, so no handler can observe a half-dequeued run. No window where a message is silently dropped. |
 | Edit/remove arrives after start | `409 run already started`; the cockpit refetches and re-renders read-only. Text already in flight is *not* auto-converted into a live message — silently turning an *edit* into a *new turn* would put words in the agent's context the user never approved. The error names the transition so the user can resend deliberately. |
-| **Concurrent editors** — two cockpit tabs, or cockpit + `curl` | Last-write-wins, no ETag or version precondition. Deliberate: cezar is a single-user local cockpit bound to `127.0.0.1`, both writers are the same person, and every write fans out over SSE within a frame so the losing tab re-renders the winning state immediately. Optimistic concurrency here would be a knob without a demonstrated need. |
+| **Concurrent editors** — two cockpit tabs, or cockpit + `curl` | Last-write-wins, no ETag or version precondition. Deliberate: Onni Work is a single-user local cockpit bound to `127.0.0.1`, both writers are the same person, and every write fans out over SSE within a frame so the losing tab re-renders the winning state immediately. Optimistic concurrency here would be a knob without a demonstrated need. |
 | Run cancelled while queued | `cancel()` (`run.ts:623-639`) splices the queue and drops `pendingJobs`; `queuedMessages` stays on the record as history and is deleted with the run. No orphan cleanup. |
 | Stacked message removed or its images replaced by an edit | The orphaned files under `<id>-images/` are deleted best-effort at the same time (tolerate failure — a leftover file is harmless and is removed with the run anyway). Never delete a file still referenced by another entry or by `taskImages`. |
 | Variant group created from a queued run | Variants are minted by `startVariants` at submit time (`run.ts:373-382`), before any stacking is possible, so there is nothing to copy. Each sibling then stacks independently. |
 | Server restart while queued | `recover()` (`run.ts:439-524`) rebuilds `input` from the record — and now through the same `hydrateQueuedInput`, so the stack survives a restart. This is a *fix* for an existing latent gap, not new risk. |
-| Image file unreadable at dequeue (user deleted `.ai/cezar/`) | Rehydration skips that image, emits a `note` event naming it, and the run starts with the text. Degrade, never fail the boot (`AGENTS.md`). |
-| Old `runs.json` with no `queuedMessages` | Field is optional; `undefined` reads as an empty stack. Old cezar reading a new `runs.json` ignores the unknown key — the schema is `z.object` on a record whose loader `safeParse`s per element, so the extra key is stripped, not fatal. |
+| Image file unreadable at dequeue (user deleted `.ai/onni/`) | Rehydration skips that image, emits a `note` event naming it, and the run starts with the text. Degrade, never fail the boot (`AGENTS.md`). |
+| Old `runs.json` with no `queuedMessages` | Field is optional; `undefined` reads as an empty stack. Old Onni Work reading a new `runs.json` ignores the unknown key — the schema is `z.object` on a record whose loader `safeParse`s per element, so the extra key is stripped, not fatal. |
 | Stack bound hit (20 messages / 8 images) | `400` with the bound named; the composer surfaces it inline. |
 | `text` is whitespace only | Rejected by the same refinement as `messageSchema`. |
 | Variant group (`groupId`) | Edits are **per run**. Editing variant A does not touch B/C. Called out in Future work. |
@@ -375,7 +375,7 @@ silent (a prompt amendment that stops reaching the agent).
 | **Phase 1 + 2** | Existing `runs.json` entries carrying `queuedMessages` are re-read by the reverted schema, which strips the unknown key on the next write. Runs parse and start on `task` alone. Amendments are lost — that is the data loss, and it is exactly what a user would expect from reverting the feature that created them. |
 | The `persistImage` seq change (Step 2) | The counter returns to `ActiveRun.imageSeq`, seeded at 0 for a session. Files written under the queued numbering already exist on disk, so a reverted run could re-issue a used suffix — the exclusive-create + retry from *Image sequencing* is what makes that a renamed file rather than an overwrite, and it is the reason that guard is specified rather than assumed. |
 
-No step requires a migration, a manual repair, or a "delete `.ai/cezar/`" instruction —
+No step requires a migration, a manual repair, or a "delete `.ai/onni/`" instruction —
 the constraint `BACKWARD_COMPATIBILITY.md` §3 names explicitly.
 
 ## Research — what comparable tools do
@@ -383,7 +383,7 @@ the constraint `BACKWARD_COMPATIBILITY.md` §3 names explicitly.
 - **CI/CD queues (GitHub Actions, Buildkite, Jenkins)** — a queued job's *parameters*
   are frozen at submit; the only lever is cancel + re-submit. That is precisely the
   behavior this issue complains about, and it is a consequence of those systems
-  distributing the job spec to workers at enqueue time. cezar's job spec never leaves
+  distributing the job spec to workers at enqueue time. Onni Work's job spec never leaves
   the process until `pump()` fires, so it can do better — this is the whole opportunity.
 - **Print spoolers / task managers (macOS Print Queue, `at`/`atq`)** — allow editing or
   deleting a pending job in place, and lock it the moment it starts. The status-gated
@@ -489,7 +489,7 @@ the constraint `BACKWARD_COMPATIBILITY.md` §3 names explicitly.
 10. **E2E** — extend `web/app/e2e/composer.e2e.ts`: with one run occupying the only
     slot, a second run is queued → stack a message, edit it, remove it, then let it
     start and assert the delivered prompt. The harness forces the queue by writing
-    `{"maxParallel": 1}` into the throwaway instance's `.ai/cezar/config.json` before
+    `{"maxParallel": 1}` into the throwaway instance's `.ai/onni/config.json` before
     boot (`.ai/scripts/test-env-up.sh`) — `config.json` is optional user-owned state
     with a working default, so a *test* pinning it does not make the feature
     configuration. The existing `"Session closed — Continue to reopen."` assertion at

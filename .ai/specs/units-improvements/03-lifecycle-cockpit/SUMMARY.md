@@ -1,6 +1,6 @@
 # Units lifecycle, budget and cockpit audit — SUMMARY
 
-> What was audited: cezar's mission (units) **lifecycle** end-to-end — how a mission's branches
+> What was audited: Onni Work's mission (units) **lifecycle** end-to-end — how a mission's branches
 > accumulate and end, how its budget brake and restart-recovery behave, and how the Mission Cockpit
 > (`/missions`, `/guard`) reflects both — against `.ai/specs/2026-09-08-units-hierarchy.md`. All
 > three source files were audited at HEAD `076cead2785891af80b9ea7440bf3be973c0bbfe`; this summary
@@ -86,7 +86,7 @@ worse consequence when that same mechanism runs during restart recovery against 
   always `false` per the point above, this settle always resolves to `done`.
   `units-engine.test.ts:364-379` establishes that an over-budget park is `status: 'waiting'` with
   `unit.overBudget: true`; `recover-unit.test.ts:129-167` establishes `recover()`'s `waiting`
-  handling turns *any* `waiting` run — a plain `CEZ:ASK`, an over-budget park, or a child that never
+  handling turns *any* `waiting` run — a plain `ONNI:ASK`, an over-budget park, or a child that never
   ran a single turn — into `status: 'done'` plus a synthesized `report.status: 'done'`, verified by
   the same test's own assertions.
 - Why it matters: this is the one signal the whole budget feature exists to surface (spec Q6: "a
@@ -101,7 +101,7 @@ worse consequence when that same mechanism runs during restart recovery against 
 ### F2 — CRITICAL — `needsGuard` conflates a genuine pending question with a budget halt and an exhausted retry cap
 
 - `needsGuard: run.status === 'waiting'` (`packages/web/src/lib/missions.ts:106`, verified exact
-  line and text). Enumerating every backend site that sets `status: 'waiting'`: a genuine `CEZ:ASK`
+  line and text). Enumerating every backend site that sets `status: 'waiting'`: a genuine `ONNI:ASK`
   (`run.ts:3025`/`3035` in `runContinuation`, and `run.ts:3910` in `handleRunnerUiEvent`, all
   verified) is correctly flagged; but so is an over-budget park (`enforceUnitBudget`,
   `run.ts:1578-1593`, gated the same way at `run.ts:3005`/`3706`, verified `!unitTurn.overBudget &&`
@@ -141,8 +141,8 @@ worse consequence when that same mechanism runs during restart recovery against 
   (`packages/work/src/git-worktree.ts:211`, verified: `git worktree add -b <branch> <path>
   <base>`) forks from that branch's last **commit**, not the parent's live working tree. Enforcement
   is prose only: `CHILD_BRANCH_RULE:35` (verified exact line and text), "COMMIT your work before
-  every CEZ:SPAWN. Anything you left uncommitted does not exist for your children."
-- Why it matters: a commander that forgets to commit before `CEZ:SPAWN` hands its children a stale
+  every ONNI:SPAWN. Anything you left uncommitted does not exist for your children."
+- Why it matters: a commander that forgets to commit before `ONNI:SPAWN` hands its children a stale
   fork point with no refusal, no note, and no recovery — they "will either redo it or contradict
   it," with no code-level signal that this happened. The same gap applies symmetrically one level
   up: an uncommitted parent merge in response to a child's report is invisible to any further child
@@ -175,7 +175,7 @@ worse consequence when that same mechanism runs during restart recovery against 
   checks paused — 40/40 reached") — nowhere else.
 - Why it matters: this is F2's mirror failure — a false negative rather than a false positive. A run
   whose automatic wake-ups have permanently stopped needs a human exactly as much as a genuine
-  `CEZ:ASK` does, but it is invisible from `/missions` and `/guard` both.
+  `ONNI:ASK` does, but it is invisible from `/missions` and `/guard` both.
 
 ### F7 — HIGH — one terminal-transition path never reports to the parent at all
 
@@ -355,11 +355,11 @@ since it is the whole safety argument for the change.
 ### P2 — Give restart recovery a way to tell "blocked" apart from "done" — fixes F1 (part)
 
 **Problem.** `recover()`'s `waiting` branch has one outcome for three distinct situations: a plain
-`CEZ:ASK` pause, an over-budget park, and a child that never did any work. Only the first is actually
+`ONNI:ASK` pause, an over-budget park, and a child that never did any work. Only the first is actually
 "the turn was over and the ball was in the user's court."
 
 **Concrete change.** In `recover()`'s `waiting` branch (`run.ts:1328-1344`), before calling
-`settleSuccess`, branch on `run.unit?.overBudget`: if `true`, append a lifecycle note ("cezar
+`settleSuccess`, branch on `run.unit?.overBudget`: if `true`, append a lifecycle note ("Onni Work
 restarted — still parked over budget, unchanged") and `continue` — no `settleSuccess`, no
 `reportSettledChildToParent`, since nothing actually settled. Leave the existing plain-`waiting`
 handling unchanged for every other case.
@@ -401,7 +401,7 @@ you"/"question" framing.
 on every read.
 
 **Tests to pin.** Extend `missions.test.ts` with a case where `unit.overBudget: true` asserting
-`guardReason === 'overBudget'`; a plain `CEZ:ASK` case still resolves `'ask'`/default.
+`guardReason === 'overBudget'`; a plain `ONNI:ASK` case still resolves `'ask'`/default.
 
 **Effort: S. Risk: low.**
 
@@ -457,7 +457,7 @@ under the new rule); (d) a 3-level fully-carved chain (root $20 → legate $5 �
 
 ### P6 — Autosave the parent's worktree before seeding a child's fork point — fixes F4
 
-**Problem.** A commander that forgets to commit before `CEZ:SPAWN` hands its children a stale base
+**Problem.** A commander that forgets to commit before `ONNI:SPAWN` hands its children a stale base
 with zero code-level signal.
 
 **Concrete change.** In `spawnChildren` (`run.ts:1607`), before creating any child, call the existing
