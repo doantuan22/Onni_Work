@@ -44,7 +44,7 @@ Lịch sử upstream (open-mercato/cezar) **không còn** trong repo này; muố
 ```
 D:\Multi Agent
 ├── packages/
-│   ├── Onni Work/            @onni/work        Service + CLI (toàn bộ engine)
+│   ├── work/            @onni/work        Service + CLI (toàn bộ engine)
 │   │   ├── src/          ~150 module nguồn + test cạnh file
 │   │   ├── test/         unit (node:test) + e2e package (pack/install tarball)
 │   │   └── web/dist/     cockpit đã build, CLI phục vụ tĩnh (gitignored)

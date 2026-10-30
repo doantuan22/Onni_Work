@@ -14,7 +14,7 @@ Stabilization agents can correctly declare `ONNI:MONITORING` while they wait for
 | Q2 | How should monitoring interact with task concurrency? | Allow `maxParallel` active slots plus `maxMonitoringSessions` exempt monitoring slots; overflow monitors stay alive but consume active capacity. | This bounds extra live processes without killing work or inventing a second queue. | ok |
 | Q3 | What is the zero-config default? | `maxMonitoringSessions: 2`, workspace-wide, editable under Settings → Resources. | Two matches the current `maxParallel` default, supports common review/CI workflows, and keeps host exposure bounded. | ok |
 | Q4 | Should the limit apply per project? | Workspace-wide only in this version. | Live agent processes consume host resources; the established workspace semaphore is the canonical host-governance boundary. | ok |
-| Q5 | Does durability survive an Onni Work/server restart? | No new cross-process session resurrection; recovery follows each backend's existing resume behavior. | The issue is premature in-process inactivity closure. Persisting or reattaching arbitrary live processes is a separate capability. | ok |
+| Q5 | Does durability survive an Onni Work server restart? | No new cross-process session resurrection; recovery follows each backend's existing resume behavior. | The issue is premature in-process inactivity closure. Persisting or reattaching arbitrary live processes is a separate capability. | ok |
 
 ## Problem Statement
 

@@ -399,10 +399,10 @@ difference until they add a second project.
 
 Every existing project route gains a scoped twin:
 `/api/p/:projectId/<existing path minus /api/>` — e.g.
-`POST /api/p/Onni Work/runs`, `GET /api/p/Onni Work/skills`,
-`GET /api/p/Onni Work/events` (SSE), `GET /api/p/Onni Work/runs/:id/events` (SSE),
-`GET/PUT /api/p/Onni Work/config`, `GET /api/p/Onni Work/github`,
-`GET /api/p/Onni Work/launch-key`, workflows, repo, todos, worktrees, groups —
+`POST /api/p/onni/runs`, `GET /api/p/onni/skills`,
+`GET /api/p/onni/events` (SSE), `GET /api/p/onni/runs/:id/events` (SSE),
+`GET/PUT /api/p/onni/config`, `GET /api/p/onni/github`,
+`GET /api/p/onni/launch-key`, workflows, repo, todos, worktrees, groups —
 the full table from `server.ts` unchanged in shape. Implementation registers
 each handler once against a context-resolver (`c.get('project')`), not two
 copies: unknown/missing `projectId` → 404 `{ error }`; a `missing`-status
@@ -462,7 +462,7 @@ live in `assets/2026-07-20-multi-project-workspace/`.
 ### URL scheme
 
 Every route from `routes.tsx` moves under a project prefix — `/p/:projectId/`
-(`/p/Onni Work/tasks/abc123`, `/p/Onni Work/github/prs/42`, `/p/Onni Work/settings/agents`)
+(`/p/onni/tasks/abc123`, `/p/onni/github/prs/42`, `/p/onni/settings/agents`)
 — via one pathless layout route supplying `ProjectScopeContext` (id + scoped
 API base). **Backward compatibility of URLs is two-layered:** legacy flat URLs
 (`/tasks/:id`, `/new?...`) redirect to `/p/<boot>/…` preserving params, and

@@ -126,9 +126,9 @@ Host-level record of the install: which platform, what each step created (so uni
   "primaryPort": 4321,
   "steps": {
     "deps":          { "status": "done",    "created": { "installed": ["gh"] } },
-    "nginx-proxy":   { "status": "done",    "created": { "vhost": "/etc/nginx/sites-available/Onni Work", "htpasswd": "/etc/Onni Work/htpasswd" } },
+    "nginx-proxy":   { "status": "done",    "created": { "vhost": "/etc/nginx/sites-available/onni", "htpasswd": "/etc/onni/htpasswd" } },
     "ssl":           { "status": "skipped", "created": null },
-    "autostart":     { "status": "done",    "created": { "unit": "Onni Work.service", "scope": "system" } },
+    "autostart":     { "status": "done",    "created": { "unit": "onni.service", "scope": "system" } },
     "identity":      { "status": "done",    "created": { "authUser": "ops" } }
   }
 }
@@ -246,7 +246,7 @@ domain no longer resumes/reinstalls the first.
   `onni-<slug>`, `htpasswd-<slug>`, unit `onni-<slug>.service`; nginx routes by
   `Host` header (each instance stamps its domain into `server_name` up front),
   and the identity probe sends the instance's `Host` so it verifies the right
-  vhost. `/etc/Onni Work` is shared; `rmdir` on uninstall only removes it when empty.
+  vhost. `/etc/onni` is shared; `rmdir` on uninstall only removes it when empty.
 - **Port** — a new named instance auto-picks the next free loopback port from
   4321; `--port` overrides.
 - **Scope** — `ubuntu-vps` only (shared nginx front). `macosx-ngrok` stays

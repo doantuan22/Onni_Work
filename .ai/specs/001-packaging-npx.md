@@ -32,7 +32,7 @@ npx onni                      # ...i tyle. Otwiera się przeglądarka.
    ```
    .ai/
      skills/                  # skille repo (bez zmian, konwencja wspólna)
-     Onni Work/
+     onni/
        workflows/*.yaml       # chainy użytkownika (commitowalne)
        skills/*.md            # skille tylko-onniowe (commitowalne)
        config.json            # OPCJONALNY (maxParallel, skillsRepos, model)

@@ -71,7 +71,7 @@ const capacity = () =>
 {
   "resources": { "maxParallel": 4, "memoryLimitMb": null },   // workspace cap — unchanged
   "projects": [
-    { "id": "onni", "root": "/home/u/Onni Work", "name": "onni" },
+    { "id": "onni", "root": "/home/u/onni", "name": "onni" },
     // no maxParallel → inherits workspace cap (4)
     { "id": "mercato-development", "root": "/home/u/mercato",
       "name": "mercato-development", "maxParallel": 1 }        // NEW: strictly sequential

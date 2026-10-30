@@ -611,7 +611,7 @@ With the optional adapter:
 
 ```tsx
 <OnniProvider client={client} projectId={projectId}>
-  <OnniRouter basePath="/automation/Onni Work">
+  <OnniRouter basePath="/automation/onni">
     <OnniCockpit onProjectChange={setProjectId} />
   </OnniRouter>
 </OnniProvider>

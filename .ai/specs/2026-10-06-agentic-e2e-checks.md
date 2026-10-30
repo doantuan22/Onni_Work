@@ -155,7 +155,7 @@ PR-review automations that run `gh pr checkout` themselves keep working byte-for
    `state`, parsed with a zod schema.
 2. `state !== 'open'` → no run; the receipt records `skipped: pr-not-open`.
 3. `head.repo.full_name !== repo` and `!allowForkHeads` → no run; receipt `skipped: fork-head`.
-4. `git fetch origin +refs/pull/{number}/head:refs/Onni Work/pr/{number}`. Use a namespaced ref, never a branch, so
+4. `git fetch origin +refs/pull/{number}/head:refs/onni/pr/{number}`. Use a namespaced ref, never a branch, so
    nothing appears in the user's branch list.
 5. Fetched sha differs from `head.sha` → proceed with the fetched sha and add a note event (the PR moved between
    poll and launch). The fetched sha is what is tested and what is recorded.
@@ -179,7 +179,7 @@ secrets"). Running untrusted heads in an Open Mercato sandbox is a follow-up, no
 request #N; publishing its changes is not supported yet' }`. Without this, a draft PR would be opened from the
 Onni Work branch into the default base and would contain the whole foreign PR.
 
-**Worktree cleanup.** `refs/Onni Work/pr/{number}` is deleted when the last run referencing it is deleted or its
+**Worktree cleanup.** `refs/onni/pr/{number}` is deleted when the last run referencing it is deleted or its
 worktree removed (`removeWorktree` path). A stale ref is harmless; leaking one per PR forever is not.
 
 ### Reporting back to the PR

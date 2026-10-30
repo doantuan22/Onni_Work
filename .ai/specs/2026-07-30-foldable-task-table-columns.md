@@ -230,7 +230,7 @@ Status and Task keep their current plain labels and expose no misleading button,
 - **Persistence failure or read-only home:** The optimistic change is reconciled back to server truth after a toast. Onni Work remains a working cockpit with the default layout.
 - **Rapid toggles:** Optimistic cache reads compose, serialized PUTs preserve click order, and only the newest response reconciles the cache.
 - **Navigation immediately after a toggle:** The PUT starts on the click and uses Fetch `keepalive`, so the small bounded preference payload may complete after the document begins unloading; there is no component-unmount-only flush that silently launches an ordinary abortable request too late.
-- **Two Onni Work/browser processes update near-simultaneously:** The existing file merge prevents unrelated top-level preferences from being lost. Same-map last-write-wins is acceptable for a personal presentation preference; each writer sends its complete cached map.
+- **Two Onni Work processes (two browser tabs) update near-simultaneously:** The existing file merge prevents unrelated top-level preferences from being lost. Same-map last-write-wins is acceptable for a personal presentation preference; each writer sends its complete cached map.
 - **Token metrics disabled:** Tokens and Cost are absent, not narrow folded stubs. Saved booleans are retained and take effect if the capability later becomes visible.
 - **Queued row:** The queue note keeps correct CPU/Mem span and remains readable at the minimum folded widths.
 - **All optional columns folded:** Status and Task still identify every row; each optional column remains recoverable from its ordered header icon.

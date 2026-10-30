@@ -368,7 +368,7 @@ What `checkout: "pr-head"` does at launch:
    launches nothing — the execution log says `skipped: pr-not-open`;
 2. a head from a **fork** launches nothing (`skipped: fork-head`) unless the
    automation sets `"allowForkHeads": true`;
-3. fetches the head into `refs/Onni Work/pr/<n>` — a ref, never a branch, so
+3. fetches the head into `refs/onni/pr/<n>` — a ref, never a branch, so
    nothing appears in your branch list — and forks the task's worktree from
    that commit. If the PR moved between the poll and the launch, the fetched
    commit is what is tested, and the run says so;
