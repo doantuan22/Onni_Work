@@ -9,7 +9,7 @@ function containsRunnerToken(text: string, runner: string): boolean {
 /** The `onni task` CLI is a thin client: what is pinned is the request it builds from flags and
  *  env, and how it answers a refusal — never the engine, which has its own tests. */
 describe('onni task', () => {
-  const env = { CEZ_API_URL: 'http://127.0.0.1:4321/', CEZ_PROJECT_ID: 'proj', CEZ_TASK_ID: 'run-1' };
+  const env = { ONNI_API_URL: 'http://127.0.0.1:4321/', ONNI_PROJECT_ID: 'proj', ONNI_TASK_ID: 'run-1' };
 
   const harness = (reply: { status: number; body: unknown }) => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -75,16 +75,16 @@ describe('onni task', () => {
 
   it('falls back to the unscoped API without a project id, and refuses without a server', async () => {
     const h = harness({ status: 200, body: { ok: true } });
-    await runTaskCommand(['report', '--status', 'done', '--result', 'r'], { CEZ_API_URL: 'http://127.0.0.1:1', CEZ_TASK_ID: 'r1' }, h.io);
+    await runTaskCommand(['report', '--status', 'done', '--result', 'r'], { ONNI_API_URL: 'http://127.0.0.1:1', ONNI_TASK_ID: 'r1' }, h.io);
     expect(h.calls[0]?.url).toBe('http://127.0.0.1:1/api/v1/runs/r1/report');
     const none = harness({ status: 200, body: {} });
-    expect(await runTaskCommand(['create', 'x'], { CEZ_TASK_ID: 'r1' }, none.io)).toBe(2);
-    expect(none.err[0]).toContain('CEZ_API_URL is not set');
+    expect(await runTaskCommand(['create', 'x'], { ONNI_TASK_ID: 'r1' }, none.io)).toBe(2);
+    expect(none.err[0]).toContain('ONNI_API_URL is not set');
     expect(none.err[0]).toContain('stop and report that dispatch is unavailable');
     expect(none.calls).toHaveLength(0);
     const shell = harness({ status: 200, body: {} });
     expect(await runTaskCommand(['tree', 'r1'], {}, shell.io)).toBe(2);
-    expect(shell.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 onni task tree <run id>');
+    expect(shell.err[0]).toContain('ONNI_API_URL=http://127.0.0.1:4321 onni task tree <run id>');
     expect(shell.err[0]).not.toContain('only works inside a task');
     expect(shell.calls).toHaveLength(0);
   });

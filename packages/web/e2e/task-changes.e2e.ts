@@ -115,7 +115,7 @@ beforeAll(async () => {
   writeFileSync(join(dataRoot, 'README.md'), '# changes-tab e2e fixture repo\n', 'utf8')
   git('add', '.')
   git('commit', '-qm', 'init')
-  // A github.com remote makes `resolveForge` return the GitHub driver; under CEZ_DRY_RUN its
+  // A github.com remote makes `resolveForge` return the GitHub driver; under ONNI_DRY_RUN its
   // detect() answers available without touching the network. Nothing ever pushes to it.
   git('remote', 'add', 'origin', 'git@github.com:acme/changes-e2e.git')
 
@@ -124,10 +124,10 @@ beforeAll(async () => {
   server = spawn(
     process.execPath,
     [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
-    // CEZ_REVIEW_GATE=1 because this spec is ABOUT the gate: it is opt-in (#489, default OFF),
+    // ONNI_REVIEW_GATE=1 because this spec is ABOUT the gate: it is opt-in (#489, default OFF),
     // so pinning it here is what makes the parked-at-review fixture reproducible instead of
     // depending on whatever the operator happens to export.
-    { env: fixtureServeEnv(dataRoot, { CEZ_REVIEW_GATE: '1' }), stdio: 'ignore' },
+    { env: fixtureServeEnv(dataRoot, { ONNI_REVIEW_GATE: '1' }), stdio: 'ignore' },
   )
   await waitForHealth(baseUrl)
   bootProject = await bootProjectId(baseUrl)

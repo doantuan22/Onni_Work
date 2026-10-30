@@ -104,9 +104,9 @@ export async function resolvePrHead(options: {
   }
   const ref = prHeadRef(number);
 
-  // `CEZ_DRY_RUN=1`: no `gh`, no fetch. The fixture PR is open, same-repo, and its head is the
+  // `ONNI_DRY_RUN=1`: no `gh`, no fetch. The fixture PR is open, same-repo, and its head is the
   // repository's current HEAD, pinned into the same namespaced ref a real fetch would write.
-  if ((options.env ?? process.env).CEZ_DRY_RUN === '1') {
+  if ((options.env ?? process.env).ONNI_DRY_RUN === '1') {
     const head = await exec('git', ['rev-parse', 'HEAD'], root);
     if (!head.ok) return unavailable('could not read the fixture head', head.stderr);
     const sha = head.stdout.trim();

@@ -93,7 +93,7 @@ describe('buildClaudeArgs approval gate', () => {
   });
 
   it('enables Claude approval prompts only when explicitly requested', () => {
-    const args = buildClaudeArgs(spec, { CEZ_APPROVAL_GATE: '1' });
+    const args = buildClaudeArgs(spec, { ONNI_APPROVAL_GATE: '1' });
     const idx = args.indexOf('--permission-mode');
     expect(args[idx + 1]).toBe('acceptEdits');
   });
@@ -354,9 +354,9 @@ describe('ClaudeCliRunner token usage', () => {
           userPrompt: 'fix the login redirect',
           cwd,
           env: {
-            CEZ_HANDOFF_FILE: '',
-            CEZ_MOCK_ARGS_FILE: '',
-            CEZ_TODOS_FILE: '',
+            ONNI_HANDOFF_FILE: '',
+            ONNI_MOCK_ARGS_FILE: '',
+            ONNI_TODOS_FILE: '',
           },
           sessionId: '5f701b42-382a-4a6e-b831-0ab9e56eff58',
         },
@@ -385,7 +385,7 @@ describe('ClaudeCliRunner private MCP (spec 2026-10-07-private-project-mcp)', ()
       await runner.run({
         userPrompt: 'do it',
         cwd,
-        env: { CEZ_HANDOFF_FILE: '', CEZ_MOCK_ARGS_FILE: argsFile, CEZ_TODOS_FILE: '' },
+        env: { ONNI_HANDOFF_FILE: '', ONNI_MOCK_ARGS_FILE: argsFile, ONNI_TODOS_FILE: '' },
         allowedTools: ['Read'],
         mcpServers: [{ name: 'tracker', transport: 'stdio', command: 'tracker-mcp', args: [], env: { TOKEN: 's3cret' }, headers: {} }],
       });

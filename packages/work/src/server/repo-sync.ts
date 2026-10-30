@@ -150,9 +150,9 @@ function serialized<T>(root: string, work: () => Promise<T>): Promise<T> {
   return next;
 }
 
-const dryRun = (): boolean => process.env.CEZ_DRY_RUN === '1';
+const dryRun = (): boolean => process.env.ONNI_DRY_RUN === '1';
 
-/** `git fetch --prune` from every remote. Skipped under `CEZ_DRY_RUN=1` (no network). */
+/** `git fetch --prune` from every remote. Skipped under `ONNI_DRY_RUN=1` (no network). */
 export function fetchRepo(root: string): Promise<SyncActionResult> {
   return serialized(root, async () => {
     if (dryRun()) return { ok: true, message: 'dry run — fetch skipped' };

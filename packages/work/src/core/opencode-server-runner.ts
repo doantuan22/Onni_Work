@@ -101,7 +101,7 @@ export class OpencodeServerRunner implements AgentRunner {
   private lastSession: OpencodeSession | null = null;
 
   constructor(opts: OpencodeRunnerOptions = {}) {
-    this.bin = opts.bin ?? process.env.CEZ_OPENCODE_BIN ?? 'opencode';
+    this.bin = opts.bin ?? process.env.ONNI_OPENCODE_BIN ?? 'opencode';
     this.timeoutMs = opts.timeoutMs ?? DEFAULT_RUN_TIMEOUT_MS;
   }
 
@@ -893,8 +893,8 @@ function textOf(content: ContentBlock[]): string {
 
 /**
  * The reply to one OpenCode permission prompt. Only this run's own state
- * outside the worktree is granted: its handoff file (`CEZ_HANDOFF_FILE`), the
- * files in its pasted-attachments folder (`runs/<CEZ_TASK_ID>-images/`), and
+ * outside the worktree is granted: its handoff file (`ONNI_HANDOFF_FILE`), the
+ * files in its pasted-attachments folder (`runs/<ONNI_TASK_ID>-images/`), and
  * its scratch directory when onni set `TMPDIR` to it (#785). A config rule
  * cannot do this — OpenCode matches rules against the whole parent directory
  * (`runs/*`), which would expose every other task's transcript. Paths are
@@ -907,8 +907,8 @@ export function opencodePermissionReply(
 ): 'once' | 'reject' {
   const permission = stringField(props, 'permission') ?? stringField(props, 'type');
   const filepath = isRecord(props.metadata) ? stringField(props.metadata, 'filepath') : undefined;
-  const handoffFile = env?.CEZ_HANDOFF_FILE;
-  const taskId = env?.CEZ_TASK_ID;
+  const handoffFile = env?.ONNI_HANDOFF_FILE;
+  const taskId = env?.ONNI_TASK_ID;
   if (permission !== 'external_directory' || !filepath || !handoffFile || !taskId) return 'reject';
   const target = canonicalPath(filepath);
   const handoff = canonicalPath(handoffFile);

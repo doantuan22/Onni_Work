@@ -25,13 +25,13 @@ describe('the worktrees API', () => {
   let onniHome: string;
   let store: RunStore;
   let app: Hono;
-  const savedHome = process.env.CEZ_HOME;
+  const savedHome = process.env.ONNI_HOME;
 
   beforeEach(async () => {
-    // `keep` now falls back to the workspace default, so pin CEZ_HOME at an
+    // `keep` now falls back to the workspace default, so pin ONNI_HOME at an
     // empty temp dir — the suite must never read the developer's real ~/.onni.
     onniHome = mkdtempSync(join(tmpdir(), 'onni-wtapi-home-'));
-    process.env.CEZ_HOME = onniHome;
+    process.env.ONNI_HOME = onniHome;
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-wtapi-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'base.txt'), 'base\n');
@@ -44,8 +44,8 @@ describe('the worktrees API', () => {
 
   afterEach(() => {
     store.flush();
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
     rmSync(repoRoot, { recursive: true, force: true });
     rmSync(onniHome, { recursive: true, force: true });
   });

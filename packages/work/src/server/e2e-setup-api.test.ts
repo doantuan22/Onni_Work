@@ -17,7 +17,7 @@ import { createApp } from './server.ts';
 
 vi.mock('../core/claude-bin.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../core/claude-bin.ts')>()),
-  resolveClaudeBin: () => process.env.CEZ_CLAUDE_BIN ?? 'claude',
+  resolveClaudeBin: () => process.env.ONNI_CLAUDE_BIN ?? 'claude',
 }));
 vi.mock('../core/junie-auth-probe.ts', () => ({
   probeJunieAuthentication: vi.fn(async () => ({ connected: false })),
@@ -33,8 +33,8 @@ describe('one-click e2e setup API (spec 2026-10-10-e2e-one-click-setup)', () => 
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-e2e-setup-'));
-    vi.stubEnv('CEZ_HOME', join(root, 'home'));
-    vi.stubEnv('CEZ_SINGLE_PROJECT', '0');
+    vi.stubEnv('ONNI_HOME', join(root, 'home'));
+    vi.stubEnv('ONNI_SINGLE_PROJECT', '0');
     mkdirSync(join(root, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(root, '.ai/onni'));
     secrets = new SecretStore(process.env, { keychain: async () => null });

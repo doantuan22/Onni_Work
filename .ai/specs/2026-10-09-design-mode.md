@@ -94,7 +94,7 @@ The proxy is the new exposure, so each property below is load-bearing and has a 
 | Hostile element data in a prompt | Every field is length-capped twice — in the picker and again in `parseDesignPick` — and the markup is fenced with a fence longer than any backtick run inside it. It is still text from an untrusted page; it is presented to the agent as data about an element, the same trust level as the diff the agent already reads. |
 | Network exposure | `127.0.0.1` only, opened only after a user switches Design Mode on. Off on a hosted cockpit, where a loopback mirror reaches nobody. |
 
-`CEZ_DESIGN_MODE=0` turns the feature off: the toggle disappears and the route answers 409.
+`ONNI_DESIGN_MODE=0` turns the feature off: the toggle disappears and the route answers 409.
 
 **Owner decision (2026-10-17).** Design Mode is available on a local cockpit with no setting, but
 the toggle starts OFF every time the Preview opens: nothing is mirrored until the user clicks it.
@@ -264,9 +264,9 @@ that needs no reporter. Back to a `pushState` entry on another path is still a l
   listener: injection, `Host` refusal, origin rewriting, redirects, WebSocket splice, 502, idle and
   LRU closing, every refused target.
 - `packages/work/src/server/design-proxy-api.test.ts` — route policy: 200 shape, 400, 409 for
-  `CEZ_DESIGN_MODE=0` and hosted mode.
+  `ONNI_DESIGN_MODE=0` and hosted mode.
 - `packages/work/src/server/capabilities.test.ts` — `designMode`: on locally, off with
-  `CEZ_DESIGN_MODE=0`, off on a hosted cockpit even with `=1`.
+  `ONNI_DESIGN_MODE=0`, off on a hosted cockpit even with `=1`.
 - `packages/web/src/routes/task-preview/design-picks.test.ts` — parsing hostile input, the message
   format, the size refusals.
 - `packages/web/src/routes/task-preview/browser-view-design.test.tsx` — the toggle, the mirror

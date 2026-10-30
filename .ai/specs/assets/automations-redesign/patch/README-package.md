@@ -94,15 +94,15 @@ npm test -- packages/work/src/automations packages/work/src/skills.test.ts \
 ```bash
 cd packages/work
 npx tsx src/index.ts automation schema | head          # drukuje referencję, bez serwera
-npx tsx src/index.ts automation list; echo "exit=$?"    # bez CEZ_API_URL → komunikat + exit 2
+npx tsx src/index.ts automation list; echo "exit=$?"    # bez ONNI_API_URL → komunikat + exit 2
 ```
 
 Pełny obieg na dry-run cockpicie (repo testowe musi mieć remote na github.com):
 
 ```bash
-CEZ_AUTOMATIONS=1 CEZ_DRY_RUN=1 npx tsx src/index.ts --no-open -p 4599 --repo /sciezka/do/repo &
-export CEZ_API_URL=http://127.0.0.1:4599 CEZ_PROJECT_ID=<id projektu z /api/v1/projects>
-curl -s $CEZ_API_URL/api/v1/p/$CEZ_PROJECT_ID/skills | grep -o '"name":"create-cezar-automation"[^}]*"source":"builtin"'
+ONNI_AUTOMATIONS=1 ONNI_DRY_RUN=1 npx tsx src/index.ts --no-open -p 4599 --repo /sciezka/do/repo &
+export ONNI_API_URL=http://127.0.0.1:4599 ONNI_PROJECT_ID=<id projektu z /api/v1/projects>
+curl -s $ONNI_API_URL/api/v1/p/$ONNI_PROJECT_ID/skills | grep -o '"name":"create-cezar-automation"[^}]*"source":"builtin"'
 cat > /tmp/def.json <<'EOF'
 { "name": "Review new PRs", "events": ["pull_request.opened"], "intervalSeconds": 600,
   "filters": {}, "task": { "prompt": "Review PR #{{github.number}} at {{github.url}}", "worktree": true, "autonomous": true } }
@@ -138,13 +138,13 @@ jednorazowego runu dostaje automatyzację GitHub. Dwie drogi wejścia, jeden mec
 Pod spodem: CLI `cez automation schema|create|update|check|list|show|enable|pause|delete`
 (`packages/work/src/automations/automation-cli.ts`) — cienki klient HTTP nad ISTNIEJĄCYMI
 trasami `/api/v1/p/:projectId/automations*`, adresowany tymi samymi zmiennymi co `cez task`
-(`CEZ_API_URL`, `CEZ_PROJECT_ID`, `CEZ_BIN`). Zero nowych tras, zero nowego stanu, zero nowych
+(`ONNI_API_URL`, `ONNI_PROJECT_ID`, `ONNI_BIN`). Zero nowych tras, zero nowego stanu, zero nowych
 flag.
 
 **Bramkowanie** (lekcja z dispatch, spec 2026-09-10 A2/A8): wszystko — prompt, skill, szablon —
-pojawia się tylko gdy `capabilities.automations` (`CEZ_AUTOMATIONS=1`) ORAZ cockpit jest
-osiągalny (`CEZ_API_URL`). Headless `cezar run` albo cockpit bez flagi: nic nie jest
-komponowane, nic nie jest listowane. CLI bez `CEZ_API_URL` kończy się kodem 2 z komunikatem
+pojawia się tylko gdy `capabilities.automations` (`ONNI_AUTOMATIONS=1`) ORAZ cockpit jest
+osiągalny (`ONNI_API_URL`). Headless `cezar run` albo cockpit bez flagi: nic nie jest
+komponowane, nic nie jest listowane. CLI bez `ONNI_API_URL` kończy się kodem 2 z komunikatem
 „stop and report, nie zastępuj cronem”; 409 z wyłączonej trasy jest przekazywane dosłownie
 z kodem 1.
 
@@ -169,12 +169,12 @@ z kodem 1.
   (`skills: ['create-cezar-automation']`); `AUTOMATIONS_TEMPLATE_IDS`;
   `availablePromptTemplates` przyjmuje `{ dispatch?, automations? }` i filtruje po obu bramkach
   (trzy composery już przekazują cały obiekt `capabilities`, więc nic więcej nie trzeba ruszać).
-- `README.md` (wiersz `CEZ_AUTOMATIONS=1` w tabeli env), `.env.example` (sekcja automations +
-  wzmianka o `cez automation` przy `CEZ_BIN`), `BACKWARD_COMPATIBILITY.md` (sekcja 1 — lista
+- `README.md` (wiersz `ONNI_AUTOMATIONS=1` w tabeli env), `.env.example` (sekcja automations +
+  wzmianka o `cez automation` przy `ONNI_BIN`), `BACKWARD_COMPATIBILITY.md` (sekcja 1 — lista
   komend CLI; sekcja „GitHub automations — opt-in gating” — nota o addytywnych zmianach).
 - Testy: `skills.test.ts` (nowy `describe` + import `beforeEach`),
   `workflows/system-prompt.test.ts` (import `AUTOMATIONS_PROMPT`, zapis/odtworzenie
-  `CEZ_AUTOMATIONS` w `savedEnv`, `delete process.env.CEZ_AUTOMATIONS` w `beforeAll`, dwa nowe
+  `ONNI_AUTOMATIONS` w `savedEnv`, `delete process.env.ONNI_AUTOMATIONS` w `beforeAll`, dwa nowe
   testy bramkowania), `web/src/lib/prompt-templates.test.ts` (rozszerzony `describe`
   `availablePromptTemplates`).
 

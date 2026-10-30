@@ -8,7 +8,7 @@ export default defineConfig({
     name: 'server',
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    // Pins CEZ_HOME to a per-worker sandbox so no case can write the developer's
+    // Pins ONNI_HOME to a per-worker sandbox so no case can write the developer's
     // real ~/.onni — see the file for the failure it prevents.
     setupFiles: ['./vitest.setup.ts'],
   },

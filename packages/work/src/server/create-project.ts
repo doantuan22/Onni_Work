@@ -111,7 +111,7 @@ export const spawnCommandRunner: CommandRunner = (cmd, args, opts) =>
   });
 
 /**
- * `CEZ_DRY_RUN=1` — real `git` (it is local and required anyway), fake `gh`.
+ * `ONNI_DRY_RUN=1` — real `git` (it is local and required anyway), fake `gh`.
  * The fake clone writes only inside the directory the caller created, as a real
  * (`git init`) repo: the `git config --local` that follows must find THIS repo,
  * never walk up past a bare `.git` folder into an enclosing one. `git push`
@@ -119,7 +119,7 @@ export const spawnCommandRunner: CommandRunner = (cmd, args, opts) =>
  */
 export const dryRunCommandRunner: CommandRunner = async (cmd, args, opts) => {
   if (cmd === 'git' && args[0] === 'push') {
-    opts.onLine?.(`(CEZ_DRY_RUN=1) git ${args.join(' ')}`);
+    opts.onLine?.(`(ONNI_DRY_RUN=1) git ${args.join(' ')}`);
     return { ok: true, stdout: '' };
   }
   if (cmd === 'git') {
@@ -129,12 +129,12 @@ export const dryRunCommandRunner: CommandRunner = async (cmd, args, opts) => {
       args[0] === 'commit' ? ['-c', 'user.name=onni dry run', '-c', 'user.email=dry-run@onni.invalid', ...args] : args;
     return spawnCommandRunner(cmd, withIdentity, opts);
   }
-  opts.onLine?.(`(CEZ_DRY_RUN=1) gh ${args.join(' ')}`);
+  opts.onLine?.(`(ONNI_DRY_RUN=1) gh ${args.join(' ')}`);
   if (args[0] === 'repo' && args[1] === 'clone') {
     const dir = args[3] ?? opts.cwd;
     const init = await spawnCommandRunner('git', ['init', '-b', INITIAL_BRANCH], { ...opts, cwd: dir });
     if (!init.ok) return init;
-    await writeFile(join(dir, 'README.md'), `# ${args[2] ?? 'repo'}\n\n(CEZ_DRY_RUN=1 fake template clone)\n`, 'utf8');
+    await writeFile(join(dir, 'README.md'), `# ${args[2] ?? 'repo'}\n\n(ONNI_DRY_RUN=1 fake template clone)\n`, 'utf8');
   }
   if (args[0] === 'api') return { ok: true, stdout: '1\n' };
   return { ok: true, stdout: '' };
@@ -239,7 +239,7 @@ export async function createProject(opts: CreateProjectOptions): Promise<CreateP
   const emit = (event: Omit<CheckoutProgressEvent, 'name' | 'checkoutId'>): void =>
     opts.onProgress({ ...event, name, ...(opts.checkoutId ? { checkoutId: opts.checkoutId } : {}) });
   const say = (line: string): void => emit({ phase: 'cloning', line });
-  const run = opts.run ?? (process.env.CEZ_DRY_RUN === '1' ? dryRunCommandRunner : spawnCommandRunner);
+  const run = opts.run ?? (process.env.ONNI_DRY_RUN === '1' ? dryRunCommandRunner : spawnCommandRunner);
   const exec = async (cmd: 'git' | 'gh', args: string[]): Promise<CommandResult> => {
     try {
       return await run(cmd, args, { cwd: target, onLine: say, signal: opts.signal });
@@ -332,12 +332,12 @@ export async function createProject(opts: CreateProjectOptions): Promise<CreateP
  *  the signed-in user first, then their organisations, each with its avatar
  *  (and an org's description) for the dialog's owner cards. */
 export async function listGithubOwners(run?: CommandRunner): Promise<GithubOwnersResponse> {
-  if (!run && process.env.CEZ_DRY_RUN === '1') {
+  if (!run && process.env.ONNI_DRY_RUN === '1') {
     return {
       available: true,
       owners: [
         { login: 'dry-run-user', personal: true },
-        { login: 'dry-run-org', personal: false, description: 'CEZ_DRY_RUN=1 fake organisation' },
+        { login: 'dry-run-org', personal: false, description: 'ONNI_DRY_RUN=1 fake organisation' },
       ],
     };
   }

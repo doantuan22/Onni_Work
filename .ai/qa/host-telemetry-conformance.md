@@ -70,7 +70,7 @@ Two readings worth naming, because they look surprising and are correct:
 sh .ai/scripts/host-telemetry-conformance.sh      # four cases, ~10 s warm, ~2 min on a cold image pull
 ```
 
-Override the image with `CEZ_CONFORMANCE_IMAGE=<image>` (default `node:22-bookworm-slim`). The script
+Override the image with `ONNI_CONFORMANCE_IMAGE=<image>` (default `node:22-bookworm-slim`). The script
 picks a CPU the local Docker daemon actually accepts for the cpuset case, and skips that case
 explicitly (never silently) when the daemon accepts none of this shell's cores.
 

@@ -13,7 +13,7 @@ let root: string;
 beforeEach(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'deferred-check-')));
   mkdirSync(join(root, 'codex'));
-  vi.stubEnv('CEZ_HOME', join(root, 'home')); vi.stubEnv('CODEX_HOME', join(root, 'codex')); vi.stubEnv('CEZ_DRY_RUN', '');
+  vi.stubEnv('ONNI_HOME', join(root, 'home')); vi.stubEnv('CODEX_HOME', join(root, 'codex')); vi.stubEnv('ONNI_DRY_RUN', '');
   probe.mockReset();
 });
 afterEach(() => { rmSync(root, { recursive: true, force: true }); vi.unstubAllEnvs(); });
@@ -48,7 +48,7 @@ it('still refuses a preview when the Codex check gets no answer', async () => {
   expect((await previewDeferredStart(root, { task, start }, true)).preview).toMatchObject({ available: false, reason: 'account-unverifiable' });
 });
 it('lets dry runs schedule Codex by date without a login probe', async () => {
-  vi.stubEnv('CEZ_DRY_RUN', '1');
+  vi.stubEnv('ONNI_DRY_RUN', '1');
   expect((await previewDeferredStart(root, { task, start }, true)).preview.available).toBe(true);
   expect(probe).not.toHaveBeenCalled();
 });

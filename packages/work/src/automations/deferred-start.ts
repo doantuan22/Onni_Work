@@ -175,7 +175,7 @@ export async function previewDeferredStart(root: string, input: DeferredPreviewI
     notBefore = new Date(instant).toISOString();
     for (const account of execution.binding.accounts) {
       // Dry runs mock the CLI; there is no login to read, so the profile location is the binding.
-      if (account.runner !== 'codex' || process.env.CEZ_DRY_RUN === '1') continue;
+      if (account.runner !== 'codex' || process.env.ONNI_DRY_RUN === '1') continue;
       // Previews re-run as the user types; the short cache keeps that to one app-server per window.
       // Launch revalidation always reads fresh.
       const live = await probeCodexIdentity({ id: account.id, provider: 'codex', label: account.id, path: account.path, configDir: account.path, isDefault: account.id === 'default' }, { force: false });

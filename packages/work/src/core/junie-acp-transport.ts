@@ -21,15 +21,15 @@ interface PendingRequest {
 
 export function resolveJunieExecutable(override?: string): string {
   if (override) return override;
-  if (process.env.CEZ_JUNIE_BIN) return process.env.CEZ_JUNIE_BIN;
-  // CEZ_DRY_RUN=1 swaps in the bundled mock so the cockpit / store / GUI can
+  if (process.env.ONNI_JUNIE_BIN) return process.env.ONNI_JUNIE_BIN;
+  // ONNI_DRY_RUN=1 swaps in the bundled mock so the cockpit / store / GUI can
   // be exercised without a logged-in junie or burning tokens — same posture
   // as claude/pi (#M5 review: the spec always claimed this, the wiring was
   // just missing).
-  return process.env.CEZ_DRY_RUN === '1' ? mockJuniePath() : 'junie';
+  return process.env.ONNI_DRY_RUN === '1' ? mockJuniePath() : 'junie';
 }
 
-/** Path to the bundled mock (`scripts/mock-junie-acp.mjs`), for CEZ_DRY_RUN=1. */
+/** Path to the bundled mock (`scripts/mock-junie-acp.mjs`), for ONNI_DRY_RUN=1. */
 function mockJuniePath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   // here = <pkg>/dist/core (built) or <pkg>/src/core (tsx dev).

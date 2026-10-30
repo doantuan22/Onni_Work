@@ -14,7 +14,7 @@ let checkout: string;
 let other: string;
 
 beforeEach(() => {
-  vi.stubEnv('CEZ_DRY_RUN', '');
+  vi.stubEnv('ONNI_DRY_RUN', '');
   dir = mkdtempSync(join(tmpdir(), 'onni-landing-'));
   remote = join(dir, 'remote.git');
   checkout = join(dir, 'checkout');

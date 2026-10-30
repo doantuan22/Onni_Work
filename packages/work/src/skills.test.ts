@@ -225,8 +225,8 @@ describe('parseFrontmatter', () => {
 describe('the built-in create-onni-automation skill', () => {
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
-    saved.CEZ_AUTOMATIONS = process.env.CEZ_AUTOMATIONS;
-    saved.CEZ_API_URL = process.env.CEZ_API_URL;
+    saved.ONNI_AUTOMATIONS = process.env.ONNI_AUTOMATIONS;
+    saved.ONNI_API_URL = process.env.ONNI_API_URL;
   });
   afterEach(() => {
     for (const [key, value] of Object.entries(saved)) {
@@ -246,18 +246,18 @@ describe('the built-in create-onni-automation skill', () => {
 
   it('is absent with automations opted out, and absent by default with no cockpit to reach', async () => {
     const repoRoot = await emptyRepo();
-    process.env.CEZ_AUTOMATIONS = '0';
-    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
+    process.env.ONNI_AUTOMATIONS = '0';
+    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
     expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-onni-automation')).toBe(false);
-    delete process.env.CEZ_AUTOMATIONS;
-    delete process.env.CEZ_API_URL;
+    delete process.env.ONNI_AUTOMATIONS;
+    delete process.env.ONNI_API_URL;
     expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-onni-automation')).toBe(false);
   });
 
   it('lists as a builtin, interactive skill when automations are on (the default) and reachable', async () => {
     const repoRoot = await emptyRepo();
-    delete process.env.CEZ_AUTOMATIONS;
-    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
+    delete process.env.ONNI_AUTOMATIONS;
+    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
     const skill = (await discoverSkills(repoRoot)).find((s) => s.name === 'create-onni-automation');
     expect(skill).toMatchObject({ source: 'builtin', interactive: true, path: 'builtin:create-onni-automation' });
     expect(skill?.body).toContain('onni automation');
@@ -265,8 +265,8 @@ describe('the built-in create-onni-automation skill', () => {
 
   it('is shadowed by a repo skill of the same name', async () => {
     const repoRoot = await emptyRepo();
-    process.env.CEZ_AUTOMATIONS = '1';
-    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
+    process.env.ONNI_AUTOMATIONS = '1';
+    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
     await mkdir(join(repoRoot, '.ai/skills'), { recursive: true });
     await writeFile(join(repoRoot, '.ai/skills/create-onni-automation.md'), '---\nname: create-onni-automation\n---\nHouse version');
     const matches = (await discoverSkills(repoRoot)).filter((s) => s.name === 'create-onni-automation');

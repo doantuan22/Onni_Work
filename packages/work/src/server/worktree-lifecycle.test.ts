@@ -23,7 +23,7 @@ describe('worktree lifecycle API', () => {
   let path: string;
   const script = (command: string): ScriptEntry => ({id: randomUUID(),command});
   beforeEach(async () => {
-    vi.stubEnv('CEZ_DRY_RUN', '0');
+    vi.stubEnv('ONNI_DRY_RUN', '0');
     root = realpathSync(mkdtempSync(join(tmpdir(), 'onni-lifecycle-api-')));
     execFileSync('git',['init','-q','-b','main'],{cwd:root});
     writeFileSync(join(root,'.gitignore'),'.ai/onni/\n');

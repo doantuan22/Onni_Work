@@ -672,17 +672,17 @@ describe('resolveBaseRef (real git)', () => {
     expect(tracked).toBe(upstreamTip);
   });
 
-  it('does not touch the network under CEZ_DRY_RUN=1', async () => {
+  it('does not touch the network under ONNI_DRY_RUN=1', async () => {
     const work = await repoWithOrigin();
     await advanceOrigin(work);
     const before = (await run('git', ['rev-parse', 'origin/develop'], { cwd: work })).stdout.trim();
-    const prev = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    const prev = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     try {
       expect(await resolveBaseRef(work, 'develop')).toBe('develop');
     } finally {
-      if (prev === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = prev;
+      if (prev === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = prev;
     }
     const after = (await run('git', ['rev-parse', 'origin/develop'], { cwd: work })).stdout.trim();
     expect(after).toBe(before);

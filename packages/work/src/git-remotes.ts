@@ -128,10 +128,10 @@ export async function resolveTaskRemotes(runGit: RemoteGitRunner): Promise<TaskR
 /**
  * The remote whose repo GitHub reports as `origin`'s fork parent. Name alone proves nothing:
  * `upstream` is the canonical repo on a contributor's fork but the vendored project on a
- * downstream fork — only the parent link tells them apart. Skipped under `CEZ_DRY_RUN=1`.
+ * downstream fork — only the parent link tells them apart. Skipped under `ONNI_DRY_RUN=1`.
  */
 async function forkParentRemote(urls: Map<string, string>, names: string[]): Promise<string | null> {
-  if (names.length < 2 || process.env.CEZ_DRY_RUN === '1') return null;
+  if (names.length < 2 || process.env.ONNI_DRY_RUN === '1') return null;
   const origin = parseRemote(urls.get('origin') ?? '');
   // Only GitHub (github.com or Enterprise) can answer; never spawn `gh` for GitLab & co.
   if (!origin || !isGithubHost(origin.host)) return null;

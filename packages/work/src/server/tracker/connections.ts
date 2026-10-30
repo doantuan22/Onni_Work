@@ -12,7 +12,7 @@ export class TrackerConnections {
   private readonly directory: string;
   private readonly demo: boolean;
   constructor(env: NodeJS.ProcessEnv = process.env) {
-    this.demo = env.CEZ_DRY_RUN === '1';
+    this.demo = env.ONNI_DRY_RUN === '1';
     this.directory = join(onniHomeDir(env), 'tracker-connections');
   }
   private id(root: string): string { return createHash('sha256').update(root).digest('hex'); }

@@ -30,14 +30,14 @@ function redeployCtx(over: { runner?: Runner; ui?: Ui; dryRun?: boolean } = {}):
 
 describe('macosx-ngrok', () => {
   let home: string;
-  const original = process.env.CEZ_HOME;
+  const original = process.env.ONNI_HOME;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-mac-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
   afterEach(() => {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
     rmSync(home, { recursive: true, force: true });
   });
 
@@ -58,7 +58,7 @@ describe('macosx-ngrok', () => {
   it('onni launchd plist has one PATH key and carries instance identity', () => {
     const plist = onniLaunchdPlist('/repo', 4321, ['/usr/bin/node', '/repo/dist/index.js'], 'install-a');
     expect(plist.match(/<key>PATH<\/key>/g)).toHaveLength(1);
-    expect(plist).toContain('<key>CEZ_INSTANCE_ID</key>');
+    expect(plist).toContain('<key>ONNI_INSTANCE_ID</key>');
     expect(plist).toContain('<string>install-a</string>');
   });
 
@@ -70,7 +70,7 @@ describe('macosx-ngrok', () => {
     expect(p).toContain('<string>--no-open</string>');
     expect(p).toContain('<string>4321</string>');
     expect(p).toContain('<string>/repo</string>');
-    expect(p).toContain('<key>CEZ_REMOTE</key>');
+    expect(p).toContain('<key>ONNI_REMOTE</key>');
     expect(p).toContain('<string>ai.onni.cockpit</string>');
   });
 
@@ -136,14 +136,14 @@ describe('macosx-ngrok', () => {
 
 describe('macosx-ngrok review fixes (PR #423)', () => {
   let home: string;
-  const original = process.env.CEZ_HOME;
+  const original = process.env.ONNI_HOME;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-mac-fix-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
   afterEach(() => {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
     rmSync(home, { recursive: true, force: true });
   });
 

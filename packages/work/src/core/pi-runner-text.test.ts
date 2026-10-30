@@ -27,7 +27,7 @@ describe('PiRunner whole-block v1 text', () => {
   let cwd: string;
   beforeEach(() => {
     cwd = mkdtempSync(join(tmpdir(), 'onni-pi-text-'));
-    vi.stubEnv('CEZ_REDACT_SECRETS', '1');
+    vi.stubEnv('ONNI_REDACT_SECRETS', '1');
   });
   afterEach(() => {
     vi.unstubAllEnvs();

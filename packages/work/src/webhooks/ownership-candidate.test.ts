@@ -11,7 +11,7 @@ import { WebhookScheduler } from './scheduler.ts';
 const cleanups: (() => Promise<unknown> | void)[] = [];
 afterEach(async () => { vi.restoreAllMocks(); syncBuiltinESMExports(); for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); vi.unstubAllEnvs(); });
 function fixture() {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = fs.mkdtempSync(join(fs.realpathSync(tmpdir()), 'webhook-candidate-'));
   cleanups.push(() => fs.rmSync(root, { recursive: true, force: true }));
   execFileSync('git', ['init', '-q'], { cwd: root });

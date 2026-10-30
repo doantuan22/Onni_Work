@@ -67,11 +67,11 @@ interface HealthBody {
 }
 
 describe('workspace projects API', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedFollowups = process.env.CEZ_FOLLOWUPS;
-  const savedSingleProject = process.env.CEZ_SINGLE_PROJECT;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedFollowups = process.env.ONNI_FOLLOWUPS;
+  const savedSingleProject = process.env.ONNI_SINGLE_PROJECT;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let home: string;
   let repoRoot: string;
   let otherRoot: string;
@@ -81,29 +81,29 @@ describe('workspace projects API', () => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-workspace-'));
     repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-boot-'));
     otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-other-'));
-    process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
+    process.env.ONNI_HOME = home; // paths.ts sends all workspace paths here
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    delete process.env.CEZ_REMOTE;
-    delete process.env.CEZ_FOLLOWUPS;
-    delete process.env.CEZ_SINGLE_PROJECT;
+    delete process.env.ONNI_REMOTE;
+    delete process.env.ONNI_FOLLOWUPS;
+    delete process.env.ONNI_SINGLE_PROJECT;
     // Deterministic on any machine: no network, no real agent CLIs.
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     clearProjectProbeCache();
   });
 
   afterEach(() => {
     store.flush();
     for (const dir of [home, repoRoot, otherRoot]) rmSync(dir, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
-    if (savedFollowups === undefined) delete process.env.CEZ_FOLLOWUPS;
-    else process.env.CEZ_FOLLOWUPS = savedFollowups;
-    if (savedSingleProject === undefined) delete process.env.CEZ_SINGLE_PROJECT;
-    else process.env.CEZ_SINGLE_PROJECT = savedSingleProject;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
+    if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
+    else process.env.ONNI_FOLLOWUPS = savedFollowups;
+    if (savedSingleProject === undefined) delete process.env.ONNI_SINGLE_PROJECT;
+    else process.env.ONNI_SINGLE_PROJECT = savedSingleProject;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   const makeApp = (over: Partial<ServerDeps> = {}) =>
@@ -195,7 +195,7 @@ describe('workspace projects API', () => {
     it('pins flagged reads to the boot project without pruning stored projects', async () => {
       const boot = await registerProject(repoRoot);
       const other = await registerProject(otherRoot);
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      process.env.ONNI_SINGLE_PROJECT = '1';
 
       const body = await getProjects({ bootProjectId: boot.id });
       expect(body.projects.map((project) => project.id)).toEqual([boot.id]);
@@ -402,7 +402,7 @@ describe('workspace projects API', () => {
         cloneCalls += 1;
         return { ok: false, error: 'must not run' };
       };
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      process.env.ONNI_SINGLE_PROJECT = '1';
 
       const res = await apiRequest(makeApp({ cloneRunner }), '/api/v1/projects/checkout', {
         method: 'POST',
@@ -419,7 +419,7 @@ describe('workspace projects API', () => {
     });
 
     it('refuses filesystem browsing with the stable error', async () => {
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      process.env.ONNI_SINGLE_PROJECT = '1';
       const res = await apiRequest(
         makeApp(),
         `/api/v1/fs/browse?path=${encodeURIComponent(otherRoot)}`,
@@ -452,7 +452,7 @@ describe('workspace projects API', () => {
       const bus = new WorkspaceEventBus();
       const seen: string[] = [];
       bus.on((event) => seen.push(event));
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      process.env.ONNI_SINGLE_PROJECT = '1';
 
       const { status, body } = await post({ root: otherRoot }, { workspaceEvents: bus });
 
@@ -543,7 +543,7 @@ describe('workspace projects API', () => {
       await mergeWriteWorkspaceConfig((config) => {
         config.browseRoot = checkoutRoot;
       });
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
       const refused = await post({ root: otherRoot });
       expect(refused.status).toBe(400);
       // The message must not name the root it is protecting (fs-browse's rule).
@@ -563,7 +563,7 @@ describe('workspace projects API', () => {
       await mergeWriteWorkspaceConfig((config) => {
         config.browseRoot = checkoutRoot;
       });
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
       const exists = await post({ root: otherRoot }); // real folder, outside
       const absent = await post({ root: join(otherRoot, 'nope') }); // never existed
       expect(exists.status).toBe(400);
@@ -585,7 +585,7 @@ describe('workspace projects API', () => {
       await mergeWriteWorkspaceConfig((config) => {
         config.browseRoot = checkoutRoot;
       });
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
       const typo = join(checkoutRoot, 'my-porject');
       const answer = await post({ root: typo });
       expect(answer.status).toBe(400);
@@ -603,7 +603,7 @@ describe('workspace projects API', () => {
       });
       const escape = join(checkoutRoot, 'escape');
       symlinkSync(otherRoot, escape);
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
       const answer = await post({ root: escape });
       expect(answer.status).toBe(400);
       expect(answer.body.error).toBe('folder is outside the browsable root');
@@ -631,7 +631,7 @@ describe('workspace projects API', () => {
     it('refuses removal in single-project mode before registry or context side effects', async () => {
       const other = await registerProject(otherRoot);
       const contexts = new ProjectContexts({ listProjects });
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      process.env.ONNI_SINGLE_PROJECT = '1';
 
       const { status, body } = await del(other.id, { contexts });
 
@@ -824,7 +824,7 @@ describe('workspace projects API', () => {
       const other = await registerProject(otherRoot);
       const before = readFileSync(workspaceConfigPath(), 'utf8');
       const { semaphore, refreshes } = countingSemaphore();
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      process.env.ONNI_SINGLE_PROJECT = '1';
 
       const { status, body } = await patch(other.id, { maxParallel: 1 }, { semaphore });
 
@@ -956,7 +956,7 @@ describe('workspace projects API', () => {
     it('pins flagged health listings to the explicit boot identity', async () => {
       const boot = await registerProject(repoRoot);
       await registerProject(otherRoot);
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      process.env.ONNI_SINGLE_PROJECT = '1';
 
       const body = await getHealth({ bootProjectId: boot.id });
       expect(body.projects).toEqual([{ id: boot.id, name: boot.name }]);
@@ -1030,10 +1030,10 @@ describe('workspace projects API', () => {
       expect(raw).not.toContain(otherRoot);
     });
 
-    it('hosted mode (CEZ_REMOTE=1): no absolute root at all — boot repo included (#431)', async () => {
+    it('hosted mode (ONNI_REMOTE=1): no absolute root at all — boot repo included (#431)', async () => {
       const boot = await registerProject(repoRoot);
       const other = await registerProject(otherRoot);
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
       const body = await getHealth();
       expect(body.repoRoot).toBe(basename(repoRoot)); // existing trim, untouched
       const raw = JSON.stringify(body);

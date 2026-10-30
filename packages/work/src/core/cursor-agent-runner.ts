@@ -103,7 +103,7 @@ export function buildCursorArgs(input: BuildCursorArgsInput): string[] {
   return args;
 }
 
-/** Path to the bundled mock (`scripts/mock-cursor-agent.mjs`), for CEZ_DRY_RUN=1 — shipped
+/** Path to the bundled mock (`scripts/mock-cursor-agent.mjs`), for ONNI_DRY_RUN=1 — shipped
  *  alongside `scripts/mock-claude.mjs` so packaged installs can dry-run Cursor too. */
 export function mockCursorAgentPath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -113,14 +113,14 @@ export function mockCursorAgentPath(): string {
 
 export { resolveCursorAgentBin };
 
-/** Like {@link resolveCursorAgentBin}, but under `CEZ_DRY_RUN=1` substitutes the bundled mock —
+/** Like {@link resolveCursorAgentBin}, but under `ONNI_DRY_RUN=1` substitutes the bundled mock —
  *  only for actually spawning a run turn. The mock does not implement `status`/`about`/`models`
  *  subcommands, so identity and model-discovery call sites use {@link resolveCursorAgentBin}
  *  directly and keep talking to the real binary (or failing closed) even under dry-run. */
 export function resolveCursorBin(optsBin?: string): string {
   if (optsBin) return optsBin;
-  if (process.env.CEZ_CURSOR_AGENT_BIN) return process.env.CEZ_CURSOR_AGENT_BIN;
-  if (process.env.CEZ_DRY_RUN === '1') return mockCursorAgentPath();
+  if (process.env.ONNI_CURSOR_AGENT_BIN) return process.env.ONNI_CURSOR_AGENT_BIN;
+  if (process.env.ONNI_DRY_RUN === '1') return mockCursorAgentPath();
   return resolveCursorAgentBin();
 }
 
@@ -128,7 +128,7 @@ function wrapSpawnError(err: unknown, bin: string): Error {
   const code = (err as NodeJS.ErrnoException | undefined)?.code;
   if (code === 'ENOENT') {
     return new Error(
-      `\`${bin}\` not found on PATH — install the Cursor CLI (curl https://cursor.com/install -fsS | bash) and run \`agent login\` (or set CEZ_CURSOR_AGENT_BIN)`,
+      `\`${bin}\` not found on PATH — install the Cursor CLI (curl https://cursor.com/install -fsS | bash) and run \`agent login\` (or set ONNI_CURSOR_AGENT_BIN)`,
     );
   }
   return err instanceof Error ? err : new Error(String(err));

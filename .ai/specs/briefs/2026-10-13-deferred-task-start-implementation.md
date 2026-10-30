@@ -159,7 +159,7 @@ Final verification: the full Vitest invocation completed with **9784 passed, 4 s
 Git repositories, while the inherited TMPDIR was inside the Cezar checkout. Re-running those
 nine files with TMPDIR=/tmp passed **273/273** (48 + 225); no source changes were needed.
 This is a full run plus successful environment-corrected reruns, not a single all-green run.
-Commands used: env -u CEZ_API_URL -u CEZ_BIN ./node_modules/.bin/vitest run; then the same
+Commands used: env -u ONNI_API_URL -u ONNI_BIN ./node_modules/.bin/vitest run; then the same
 with TMPDIR=/tmp for health-forge, git-changes, projects-api, git-worktree, repo-files-api,
 e2e-setup-api, automations-api, attachments-api and server/git test files.
 Logs: /tmp/cez-final-all.log, /tmp/cez-final-env-check.log, /tmp/cez-final-env-rest.log.

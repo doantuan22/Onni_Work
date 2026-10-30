@@ -112,7 +112,7 @@ export async function landInPlace(root: string, options: LandOptions): Promise<L
   // The commit AND the rebase that rewrites it need a committer; a machine with no identity gets onni's.
   const identity = (await gitHasIdentity(root)) ? [] : ['-c', 'user.name=onni', '-c', 'user.email=onni@local'];
   const upstream = await upstreamOf(root);
-  const dryRun = process.env.CEZ_DRY_RUN === '1';
+  const dryRun = process.env.ONNI_DRY_RUN === '1';
   if (!upstream) {
     // A local-only repository: the commit on the base branch IS the landing, so the checks gate
     // the commit itself — a failed check must not leave it behind for a retry to call "nothing".

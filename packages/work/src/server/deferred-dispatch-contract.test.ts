@@ -23,10 +23,10 @@ describe('deferred dispatch response contract', () => {
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-deferred-contract-'));
     mkdirSync(join(root, 'profile'));
-    vi.stubEnv('CEZ_HOME', join(root, 'home'));
+    vi.stubEnv('ONNI_HOME', join(root, 'home'));
     vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'profile'));
-    vi.stubEnv('CEZ_AUTOMATIONS', '1');
-    vi.stubEnv('CEZ_DRY_RUN', '1');
+    vi.stubEnv('ONNI_AUTOMATIONS', '1');
+    vi.stubEnv('ONNI_DRY_RUN', '1');
     store = RunStore.open(join(root, '.ai/onni'));
   });
   afterEach(() => {

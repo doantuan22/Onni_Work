@@ -96,13 +96,13 @@ progresses** — but through the namer, never through raw turn text.
 - **The switch (settings-based, env default, default ON):** new `config.json` key
   **`liveTitleUpdates: boolean`**, surfaced in Settings → Agents next to `plannerModel`/
   `namerModel`. When the key is absent, the default comes from the env:
-  **`CEZ_TITLE_UPDATES`** (`'0'` → off, anything else/unset → **ON**). Config wins over env;
+  **`ONNI_TITLE_UPDATES`** (`'0'` → off, anything else/unset → **ON**). Config wins over env;
   env wins over the built-in ON. Default-ON is an explicit owner decision recorded here — it
   deviates from the "cost widens ⇒ opt-in" house rule; the cost is bounded below.
 - **Cost bounding:** one cheap-model call per turn end, skipped when the toggle is off, when
-  a user rename exists, when the run is `CEZ_DRY_RUN`-mocked (canned answer), or when the
+  a user rename exists, when the run is `ONNI_DRY_RUN`-mocked (canned answer), or when the
   namer inputs haven't changed since the last call (no new turn text and unchanged diffStat).
-  Off (`liveTitleUpdates: false` / `CEZ_TITLE_UPDATES=0`) the title is set once at creation
+  Off (`liveTitleUpdates: false` / `ONNI_TITLE_UPDATES=0`) the title is set once at creation
   (Steps 0–2) and then only by the user.
 
 ### Step 4 — retire raw turn-text titles
@@ -116,14 +116,14 @@ turn-text `titleSummary` gets set — expected churn, update it in the same step
 
 ### Degradation (zero-config rules)
 
-No runner / `CEZ_DRY_RUN` mock / timeout / junk twice → the heuristic title simply stays; at
+No runner / `ONNI_DRY_RUN` mock / timeout / junk twice → the heuristic title simply stays; at
 most a `note` event. `scripts/mock-claude.mjs` gets a `[cez-namer]` branch next to the
 planner's returning canned JSON so tests are deterministic. Naming must never block task
 start, never park a run, never surface an error state.
 
 ### Rejected: in-band title markers
 
-Asking the main agent to emit a `CEZ_TITLE:` line contaminates every skill's prompt, is
+Asking the main agent to emit a `ONNI_TITLE:` line contaminates every skill's prompt, is
 unreliable across backends, arrives a full turn late — and no surveyed tool does it. Revisit
 only if cezar adopts ACP `session_info_update` natively.
 
@@ -140,7 +140,7 @@ only if cezar adopts ACP `session_info_update` natively.
 2. `task-refs.ts` + `RunRecord.prNumber/issueNumber` + number-prefixed heuristic title.
 3. `auto-name.ts` + mock branch + `startRun` wiring + `namerModel` config key.
 4. Live title updates: `recordTurnEnd` wiring + `liveTitleUpdates` config key +
-   `CEZ_TITLE_UPDATES` env default (ON) + the Settings → Agents toggle.
+   `ONNI_TITLE_UPDATES` env default (ON) + the Settings → Agents toggle.
 5. Remove raw turn-text derivation (`title-summary.ts` retired).
 6. Optional: "regenerate title" row action reusing the same call (Zed/opencode pattern).
 
@@ -148,7 +148,7 @@ only if cezar adopts ACP `session_info_update` natively.
 
 Unit: `task-refs` regex matrix; namer prompt builder; JSON schema + retry; cross-check matrix
 (LLM agrees / disagrees / hallucinates / regex-only); title post-validation; the live-updates
-switch matrix (config `liveTitleUpdates` wins over `CEZ_TITLE_UPDATES` wins over built-in ON;
+switch matrix (config `liveTitleUpdates` wins over `ONNI_TITLE_UPDATES` wins over built-in ON;
 `'0'` disables). Dry-run integration (pattern of `system-prompt.test.ts`): task `"437"` +
 skill → instant heuristic title, then async `titleSummary === "437: implementing cr fixes"`-
 shaped result + `prNumber` + an SSE `run` event; a later turn end refreshes the title through

@@ -21,11 +21,11 @@ describe('RunManager.startNow', () => {
   /** Accounts the stub participant reports as waiting out a usage-limit reset. */
   let heldAccounts: Set<string>;
   let semaphore: WorkspaceSemaphore;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-start-now-'));
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -46,8 +46,8 @@ describe('RunManager.startNow', () => {
   afterEach(() => {
     unregister();
     manager.dispose();
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });

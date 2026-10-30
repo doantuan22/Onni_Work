@@ -15,10 +15,10 @@ it.each(['0', '1'])('production single-project resolver rejects hidden webhook s
   const dir = mkdtempSync(join(tmpdir(), 'onni-single-webhooks-'));
   const root = join(dir, 'boot'), otherRoot = join(dir, 'hidden');
   for (const path of [root, otherRoot]) { mkdirSync(path); execFileSync('git', ['init', '-q'], { cwd: path }); }
-  vi.stubEnv('CEZ_HOME', join(dir, 'home'));
-  vi.stubEnv('CEZ_DRY_RUN', '1'); vi.stubEnv('CEZ_WEBHOOKS', '1');
-  vi.stubEnv('CEZ_SINGLE_PROJECT', '1'); vi.stubEnv('CEZ_REMOTE', remote);
-  vi.stubEnv('CEZ_AUTOMATIONS', '0'); vi.stubEnv('CEZ_SKILLS_AUTO_UPDATE', '0');
+  vi.stubEnv('ONNI_HOME', join(dir, 'home'));
+  vi.stubEnv('ONNI_DRY_RUN', '1'); vi.stubEnv('ONNI_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_SINGLE_PROJECT', '1'); vi.stubEnv('ONNI_REMOTE', remote);
+  vi.stubEnv('ONNI_AUTOMATIONS', '0'); vi.stubEnv('ONNI_SKILLS_AUTO_UPDATE', '0');
   const boot = await registerProject(root), hidden = await registerProject(otherRoot);
   const store = RunStore.open(join(root, '.ai/onni'));
   const webhooks = new WebhookCoordinator({ mode: () => remote === '1' ? 'hosted' : 'local', ports: () => [], projects: async () => [], dryRun: true });

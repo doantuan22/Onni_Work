@@ -7,21 +7,21 @@ import type { AgentHomePaths } from './agent-config/catalog.ts';
  * `%LOCALAPPDATA%` branch) — one rule, and it matches how the existing cache
  * path already behaves (`skills-remote.ts` hardcodes `~/.cache/onni`).
  *
- * `CEZ_HOME` overrides the base so tests (and containers) never touch a real
+ * `ONNI_HOME` overrides the base so tests (and containers) never touch a real
  * home dir. This is the first shared home-path helper in the repo; two other
  * 2026-07-16 specs (multi-project-switcher, agent-config-files) extend it —
  * first writer owns the file, later specs import it. Do not duplicate this
  * homedir logic elsewhere.
  */
 export function onniHomeDir(env: NodeJS.ProcessEnv = process.env): string {
-  // `|| undefined` so an EMPTY CEZ_HOME (e.g. `CEZ_HOME= onni …`) falls back
+  // `|| undefined` so an EMPTY ONNI_HOME (e.g. `ONNI_HOME= onni …`) falls back
   // to the default instead of yielding relative paths in the cwd.
-  return (env.CEZ_HOME || undefined) ?? join(homedir(), '.onni');
+  return (env.ONNI_HOME || undefined) ?? join(homedir(), '.onni');
 }
 
 /**
  * The last line of defence for the developer's own `~/.onni` while the suite
- * runs. Every workspace test pins `CEZ_HOME` to a temp dir, but the pin lives
+ * runs. Every workspace test pins `ONNI_HOME` to a temp dir, but the pin lives
  * in `process.env` — a single global for the whole worker. A test that ends
  * before its write does (a timeout is enough) has its `afterEach` drop the pin
  * while the write is still in flight, and the write then resolves the REAL
@@ -30,7 +30,7 @@ export function onniHomeDir(env: NodeJS.ProcessEnv = process.env): string {
  * So writers into the onni home ask here first: under vitest, a write whose
  * destination is the real `~/.onni` is always a leaked test, never intent —
  * fail it loudly instead of rewriting a file the suite does not own. Outside
- * vitest this is a no-op, and an explicitly pinned `CEZ_HOME` (the temp dir the
+ * vitest this is a no-op, and an explicitly pinned `ONNI_HOME` (the temp dir the
  * test meant to use) never matches the real home, so honest tests are unaffected.
  */
 export function assertOnniHomeWriteIsSandboxed(path: string, env: NodeJS.ProcessEnv = process.env): void {
@@ -38,7 +38,7 @@ export function assertOnniHomeWriteIsSandboxed(path: string, env: NodeJS.Process
   const realHome = join(homedir(), '.onni');
   if (path !== realHome && !path.startsWith(realHome + sep)) return;
   throw new Error(
-    `[onni] refusing to write ${path} from a test run — CEZ_HOME is not pinned to a sandbox. ` +
+    `[onni] refusing to write ${path} from a test run — ONNI_HOME is not pinned to a sandbox. ` +
       'Pin it (the vitest setup file does this by default) so the suite never touches the real onni home.',
   );
 }
@@ -89,7 +89,7 @@ export function serverStatePath(instance: string = DEFAULT_SERVER_INSTANCE): str
 /**
  * Per-user workspace config (spec 2026-07-20-multi-project-workspace): schema
  * version, global defaults, and the project registry — every repo onni has
- * been booted in. Lives directly under `onniHomeDir()`, so the `CEZ_HOME`
+ * been booted in. Lives directly under `onniHomeDir()`, so the `ONNI_HOME`
  * override applies (tests/containers never touch a real home dir).
  */
 export function workspaceConfigPath(env: NodeJS.ProcessEnv = process.env): string {

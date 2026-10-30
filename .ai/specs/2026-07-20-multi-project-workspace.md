@@ -126,7 +126,7 @@ is never served under another's scope. Everything else is closure plumbing.
   assets, everything else → shell); the package-relative resolution is
   `resolveWebDir()` (`server.ts:1663`, wired at `:380`). Neither needs a
   change — the shell is project-agnostic.
-- `src/paths.ts` — `cezarHomeDir()` / `CEZ_HOME` is the single home resolver;
+- `src/paths.ts` — `cezarHomeDir()` / `ONNI_HOME` is the single home resolver;
   this spec only adds path helpers to it.
 
 ### What is new
@@ -181,7 +181,7 @@ cezar serve (in /Users/x/proj-b)
 serves the folder, it just doesn't pollute the registry) when the resolved
 `repoRoot` is: inside any path matching `…/.ai/cezar/worktrees/…` (task
 worktrees and nested `cez` invocations — the same nesting reality the
-`CEZ_TODOS_FILE=''` guard in `run.ts:294-305` acknowledges), or the user's
+`ONNI_TODOS_FILE=''` guard in `run.ts:294-305` acknowledges), or the user's
 home directory itself. Headless `cezar run` applies the same guards.
 
 **Seed once** — boot registration is additionally suppressed once the registry
@@ -192,7 +192,7 @@ explicit gesture (`cezar projects add`, the cockpit's Add project dialog —
 both keep using the path-shape guard alone). An unregistered boot root is
 served exactly as a suppressed one is: `resolveBootProject` falls back to its
 would-be slug and `/p/<slug>/` binds to the boot context; only the registry
-file stays untouched. `CEZ_SINGLE_PROJECT=1` is exempt — there the launch
+file stays untouched. `ONNI_SINGLE_PROJECT=1` is exempt — there the launch
 context IS the project and its identity is read back out of the registry.
 
 Because that state is now ORDINARY rather than an edge case, two things follow
@@ -392,7 +392,7 @@ difference until they add a second project.
 | `POST /api/projects/checkout` | `{ url, name? } → { project }` \| `{ error }` | `gh repo clone <url> <projectsDir>/<name>`; zod-validates `url` as a GitHub repo URL/`owner/name`; 409 target dir exists; degrades to `{ error, reason }` when `gh` is unavailable (mirrors `github.ts` degradation). Long-running: answers when the clone finishes; the dialog shows progress from `checkout-progress` SSE events. |
 | `DELETE /api/projects/:projectId` | `{ ok: true }` | Unregisters only. 409 while the project has running tasks. Never deletes files. |
 | `GET /api/fs/browse?path=` | `{ path, parent, dirs: [{name, path, isRepo}] }` | Directories only, rooted at `browseRoot`; rejects paths escaping it (realpath check); dotfolders hidden by default, `showHidden=1` opts in. |
-| `GET/PUT /api/workspace/config` | global settings (`browseRoot`, `projectsDir`, `resources`) | Each root validates independently on PUT: expand `~`; require `browseRoot` to already be a directory, use `mkdir -p` for `projectsDir`, then probe writability (`access W_OK` + create/delete a probe file). On failure → 400 `{ error }` and no change. Defaults come from `CEZ_BROWSE_ROOT` (`~/`) and `CEZ_PROJECTS_DIR` (`~/cezar/projects`). |
+| `GET/PUT /api/workspace/config` | global settings (`browseRoot`, `projectsDir`, `resources`) | Each root validates independently on PUT: expand `~`; require `browseRoot` to already be a directory, use `mkdir -p` for `projectsDir`, then probe writability (`access W_OK` + create/delete a probe file). On failure → 400 `{ error }` and no change. Defaults come from `ONNI_BROWSE_ROOT` (`~/`) and `ONNI_PROJECTS_DIR` (`~/cezar/projects`). |
 | `GET/PUT /api/workspace/ui-state` | global GUI state | Same merge/cap semantics as the per-repo ui-state route. |
 
 ### Project-scoped (mirrored)
@@ -424,7 +424,7 @@ thing (see Project identity). `GET /api/health` keeps its current fields
 external tooling can enumerate the workspace without a breaking change.
 **`root` is deliberately absent from the health payload.** Health is the one
 CORS-open route, and `server.ts:462` already trims `repoRoot` to a basename
-under `CEZ_REMOTE` precisely so a cross-origin reader cannot learn the
+under `ONNI_REMOTE` precisely so a cross-origin reader cannot learn the
 developer's absolute path and username (#431). Shipping `projects[].root`
 there would reintroduce that leak once per registered project; `id` + `name`
 are all enumeration needs. Absolute roots stay on `GET /api/projects`, which
@@ -621,7 +621,7 @@ bookmarklets keep working via the redirect (boot project).
 | Migration crashes mid-run | `schemaVersion` unbumped → re-run next boot; steps idempotent. |
 | Older cezar run after the new one | Reads its per-repo files as always (they were left in place); ignores `~/.cezar/config.json` extras (`.passthrough()` both ways). |
 | Boot in a folder while home has 40 registered projects | Contexts are lazy; only the boot project (plus any the user touches) instantiates. Sidebar virtualizes/scrolls; collapsed groups cost one registry row. |
-| Hosted mode (`CEZ_REMOTE=1`) | Whole workspace is reachable through the one exposed cockpit — by design now (the operator's own projects). `fs/browse` is restricted to `browseRoot`; operators should set `CEZ_BROWSE_ROOT` narrowly when the default home root is too broad. `open-in-*` capability gating is unchanged. Documented in `.env.example`. |
+| Hosted mode (`ONNI_REMOTE=1`) | Whole workspace is reachable through the one exposed cockpit — by design now (the operator's own projects). `fs/browse` is restricted to `browseRoot`; operators should set `ONNI_BROWSE_ROOT` narrowly when the default home root is too broad. `open-in-*` capability gating is unchanged. Documented in `.env.example`. |
 
 ## Risks & Impact Review
 
@@ -664,7 +664,7 @@ bookmarklets keep working via the redirect (boot project).
   coexists with `config.json` in the same home. The topology *simplifies*: one
   autostart unit now serves every project of its unix user, so multi-repo
   hosts no longer need one unit per repo; domain-keyed instances that want
-  disjoint project sets run with distinct `CEZ_HOME` (existing, documented
+  disjoint project sets run with distinct `ONNI_HOME` (existing, documented
   mechanism — each home carries its own registry and global config). The
   `~/.cezar/instances/` live-instance dir from #406 is never created;
   `liveInstancesExist()` (`server-install/engine.ts:380`, module-private, called
@@ -707,7 +707,7 @@ Each phase ships independently and leaves the app fully working.
 - **Phase 4 — Add project GUI.** `fs/browse`, folder-browser dialog, `gh`
   checkout flow, `projectsDir` setting with writable validation.
 - **Phase 5 — Docs + server-install alignment.** BACKWARD_COMPATIBILITY,
-  AGENTS.md routing rows, README, `.env.example` (`CEZ_HOME` note, hosted
+  AGENTS.md routing rows, README, `.env.example` (`ONNI_HOME` note, hosted
   exposure), `cezar projects` CLI, uninstall live-check follow-up issue.
 
 ## Implementation Plan
@@ -717,7 +717,7 @@ Each phase ships independently and leaves the app fully working.
 1.1 `src/paths.ts`: add `workspaceConfigPath()`, `workspaceUiStatePath()`
     (under `cezarHomeDir()`); update the stale `:56-57` docstring that still
     points the "per-project registry" at `~/.cezar/instances/` (the abandoned
-    #406 design). *Test:* unit, `CEZ_HOME` override.
+    #406 design). *Test:* unit, `ONNI_HOME` override.
 1.2 `src/workspace/config.ts`: zod schema (all fields `.catch`/optional,
     `.passthrough()`), `loadWorkspaceConfig`, `mergeWriteWorkspaceConfig`
     (read-modify-write + tmp/rename `0600`). *Test:* round-trip, corrupt →
@@ -818,10 +818,10 @@ Each phase ships independently and leaves the app fully working.
 ### Phase 5 — Docs + alignment
 
 5.1 `AGENTS.md` routing rows (`src/workspace/`, project-scoped routes),
-    README multi-project section, `.env.example` prose (`CEZ_HOME`, hosted
+    README multi-project section, `.env.example` prose (`ONNI_HOME`, hosted
     exposure note).
 5.2 `cezar projects` CLI + server-install docs note (one unit serves the
-    user's workspace; `CEZ_HOME` for disjoint sets). *Test:* e2e package test
+    user's workspace; `ONNI_HOME` for disjoint sets). *Test:* e2e package test
     lists the registered project.
 5.3 Follow-up issue: retire `liveInstancesExist()`/`~/.cezar/instances/`
     remnants of #406.
@@ -831,6 +831,6 @@ Each phase ships independently and leaves the app fully working.
 `npm run typecheck && npm test && npm run test:unit && npm run build &&
 npm run test:package`; Phases 3-4 additionally `npm run test:e2e`
 (`TEST_E2E_STATUS=skipped` is not a pass). The e2e and `test:package`
-harnesses must pin `CEZ_HOME` to a temp dir from Phase 1 on — they boot the
+harnesses must pin `ONNI_HOME` to a temp dir from Phase 1 on — they boot the
 real CLI, which now writes migrations and registrations, and must never touch
 the developer's real `~/.cezar`.

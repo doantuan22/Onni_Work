@@ -7,7 +7,7 @@ Status: proposed · Date: 2026-07-18 · Issue: #489 · Relates: spec 009 (the di
 The diff-first review gate (spec 009) currently fires for **every** successful run whose
 worktree has changes — the task parks at `review` and waits for a human to press **✓ Accept**,
 **↩ Send back**, or **🚀 Draft PR**. Issue #489 makes that gate **opt-in**: off by default,
-turned on by an env var (`CEZ_REVIEW_GATE`) overridable by a Settings toggle (`reviewGate`), and
+turned on by an env var (`ONNI_REVIEW_GATE`) overridable by a Settings toggle (`reviewGate`), and
 **always skipped for autonomous runs** (the "autonomous" checkbox on task start) — even when the
 gate is on — because an autonomous task must land its changes with zero human intervention. When
 the gate does not apply, a successful run with changes settles straight to `done`; the diff stays
@@ -15,7 +15,7 @@ in the worktree exactly as it does today.
 
 ## Resolved defaults (Open Questions closed autonomously per owner direction 2026-07-18)
 
-- **Q1 — names?** Config key `reviewGate: boolean`; env `CEZ_REVIEW_GATE` (`'1'` → on; unset/`'0'`/anything-else → off). **Default OFF** — this is the deliberate inverse of `liveTitleUpdates` (which defaults ON via `!== '0'`).
+- **Q1 — names?** Config key `reviewGate: boolean`; env `ONNI_REVIEW_GATE` (`'1'` → on; unset/`'0'`/anything-else → off). **Default OFF** — this is the deliberate inverse of `liveTitleUpdates` (which defaults ON via `!== '0'`).
 - **Q2 — one spec or split?** One independently-deployable capability (make the gate optional, and auto-skip it when autonomous). Not split.
 - **Q3 — gate off + changes present → what status?** `done`. No new "apply"/commit step is introduced; the worktree diff is already on disk and simply stays there, unchanged from today's behavior. "Auto-applied with no user intervention" = the run finishes without parking at `review`.
 - **Q4 — Settings placement?** Settings → Agents, next to *Live title updates* (`agents-section.tsx`).
@@ -52,7 +52,7 @@ otherwise        → done
 
 - **`reviewGateEnabled(config, env)`** — a new resolver mirroring `liveTitleUpdatesEnabled`
   (`src/runs/auto-name.ts:42`), but defaulting **off**: `config.reviewGate` wins when set, else
-  `env.CEZ_REVIEW_GATE === '1'`, else `false`.
+  `env.ONNI_REVIEW_GATE === '1'`, else `false`.
 - **`autonomous` persisted on `RunRecord`** so `settleSuccess`, the group-pick winner-park, and
   `recover()` can read it (and `recover()` re-threads it into a recovered queued run's `input`).
 - The **Settings toggle** and **env** thread through exactly like `liveTitleUpdates`
@@ -84,7 +84,7 @@ What changes vs. what is reused:
 | Config PUT | `src/server/server.ts:1243,1272-1274` (`app.put('/api/config')` at `:1245`) | **add** `reviewGate: z.boolean().nullable().optional()` + write/clear |
 | Client types | `web/app/src/api/types.ts:580,596` | **add** `reviewGate` to GET + PUT config shapes |
 | Settings UI | `web/app/src/routes/settings/agents-section.tsx` (near `:200`) | **add** a *Review changes before finishing* Switch mirroring live-title-updates |
-| Env docs | `.env.example` (near `:52`), `README.md` (env table near `:343`) | document `CEZ_REVIEW_GATE` (default off) |
+| Env docs | `.env.example` (near `:52`), `README.md` (env table near `:343`) | document `ONNI_REVIEW_GATE` (default off) |
 
 Reused unchanged: the whole `web/app/src/routes/task-thread/review-panel.tsx` UI, `finish`/`continue`/`pr`
 endpoints (`server.ts:736/745/970`), `deriveAttention` (`web/app/src/lib/attention.ts:89`), the
@@ -169,7 +169,7 @@ on the Changes tab.
   under the same gate rule.
 - **`config.reviewGate` set to `false` explicitly vs. absent** → both resolve to off; PUT `null`
   clears the key so the env default governs again.
-- **Env `CEZ_REVIEW_GATE` malformed** (`'true'`, `'yes'`) → treated as off (only `'1'` enables);
+- **Env `ONNI_REVIEW_GATE` malformed** (`'true'`, `'yes'`) → treated as off (only `'1'` enables);
   documented in `.env.example`.
 
 ## Risks & Impact Review
@@ -200,14 +200,14 @@ Each phase leaves the app working and is independently shippable.
    persist it from `startRun`'s `store.createRun({...})` (`run.ts:257`) as
    `autonomous: input.autonomous === true`. Test: a created record round-trips `autonomous`.
 2. Add `reviewGateEnabled(config, env)` (new `src/runs/review-gate.ts`) with the default-off
-   precedence (`config.reviewGate` wins, else `env.CEZ_REVIEW_GATE === '1'`, else `false`). Unit test
+   precedence (`config.reviewGate` wins, else `env.ONNI_REVIEW_GATE === '1'`, else `false`). Unit test
    the matrix (config `true`/`false` wins / env `'1'` / env `'0'`/unset), mirroring
-   `src/runs/auto-name.test.ts:129-150` (save/restore `process.env.CEZ_REVIEW_GATE`).
+   `src/runs/auto-name.test.ts:129-150` (save/restore `process.env.ONNI_REVIEW_GATE`).
 3. Thread both into `settleSuccess(runId)` (`run.ts:1381`): `await loadConfig(this.repoRoot)` (the
    `maybeRefreshTitle` pattern at `run.ts:1346`), read the run's `autonomous`, and park at `review`
    only when `diff && reviewGateEnabled(config) && !run.autonomous`, else `done`. This also fixes the
    `waiting`-run restart path for free (`recover()` → `settleSuccess`, `run.ts:419`). Engine test
-   under `CEZ_DRY_RUN` (`run.test.ts`): autonomous+changes → `done`; gate-off+changes → `done`;
+   under `ONNI_DRY_RUN` (`run.test.ts`): autonomous+changes → `done`; gate-off+changes → `done`;
    gate-on+non-autonomous+changes → `review`.
 4. Re-thread `autonomous` through recovery: add `autonomous: run.autonomous` to the `input` that
    `recover()` rebuilds for a re-queued `queued` run (`run.ts:385-393`), so a recovered autonomous
@@ -230,7 +230,7 @@ Each phase leaves the app working and is independently shippable.
    `:42,:63-64,:133`): toggling PUTs `{ reviewGate: true }`.
 
 **Phase 3 — Docs.**
-9. Document `CEZ_REVIEW_GATE` (default off) in `.env.example` (near `:52`) and the `README.md` env
+9. Document `ONNI_REVIEW_GATE` (default off) in `.env.example` (near `:52`) and the `README.md` env
    table (near `:343`).
 
 ## Implementation Plan
@@ -239,16 +239,16 @@ The Phase/Step numbering above is the execution order for `om-auto-create-pr`
 (`Source doc:` = this file). Every step is independently testable and leaves the app green:
 
 - Steps 1–5 deliver the #489 fix behind the default-off resolver; even before the Settings UI
-  exists, `CEZ_REVIEW_GATE` + the autonomous skip work end-to-end (including recovery and group-pick).
+  exists, `ONNI_REVIEW_GATE` + the autonomous skip work end-to-end (including recovery and group-pick).
 - Steps 6–8 add the Settings override on top; the engine already reads `config.reviewGate`.
 - Step 9 is docs-only.
 
 ## Test Plan (consolidated)
 
 - **Unit:** `reviewGateEnabled` precedence matrix (`src/runs/review-gate.test.ts`, template
-  `src/runs/auto-name.test.ts:129-150`, save/restore `process.env.CEZ_REVIEW_GATE`); config schema
+  `src/runs/auto-name.test.ts:129-150`, save/restore `process.env.ONNI_REVIEW_GATE`); config schema
   parse (`src/config.test.ts`).
-- **Engine (`src/workflows/run.test.ts`, `CEZ_DRY_RUN=1`, `scripts/mock-claude.mjs`):** the four
+- **Engine (`src/workflows/run.test.ts`, `ONNI_DRY_RUN=1`, `scripts/mock-claude.mjs`):** the four
   `settleSuccess` outcomes (gate-off / autonomous / gate-on+manual / no-diff); a recovered `queued`
   autonomous run keeps autonomy and settles to `done` (H2); a `waiting` autonomous run recovered via
   `settleSuccess` → `done`.

@@ -297,7 +297,7 @@ for follow-ups.
   in the command to get the stricter CI defaults instead.
 - **The replay cache can be shared across tasks.** Every task starts in a
   fresh worktree, and `.e2e/cache/` is gitignored, so by default each task
-  re-records every `agent.act`. cezar hands each check `CEZ_SHARED_CACHE_DIR`
+  re-records every `agent.act`. cezar hands each check `ONNI_SHARED_CACHE_DIR`
   (`~/.cezar/cache/<project>`, one per project) — point the cache there:
 
   ```ts
@@ -305,7 +305,7 @@ for follow-ups.
   import { join } from 'node:path'
   cache: {
     mode: 'read-write',
-    dir: process.env.CEZ_SHARED_CACHE_DIR ? join(process.env.CEZ_SHARED_CACHE_DIR, 'e2e') : '.e2e/cache',
+    dir: process.env.ONNI_SHARED_CACHE_DIR ? join(process.env.ONNI_SHARED_CACHE_DIR, 'e2e') : '.e2e/cache',
   },
   ```
 
@@ -320,9 +320,9 @@ for follow-ups.
   reclaim with `rm -rf ~/.cezar/cache` (or one project's subdirectory), which
   only costs the next run its warm cache. Unregistering a project does not
   remove it.
-- **The check knows its run.** `CEZ_RUN_ID`, `CEZ_PROJECT_ID`, `CEZ_WORKTREE`,
-  `CEZ_BRANCH`, `CEZ_BASE`, `CEZ_STEP_ID` and `CEZ_ATTEMPT`, plus
-  `CEZ_GITHUB_REPO`/`CEZ_GITHUB_NUMBER`/`CEZ_GITHUB_EVENT` on a run a GitHub
+- **The check knows its run.** `ONNI_RUN_ID`, `ONNI_PROJECT_ID`, `ONNI_WORKTREE`,
+  `ONNI_BRANCH`, `ONNI_BASE`, `ONNI_STEP_ID` and `ONNI_ATTEMPT`, plus
+  `ONNI_GITHUB_REPO`/`ONNI_GITHUB_NUMBER`/`ONNI_GITHUB_EVENT` on a run a GitHub
   automation launched — see the [reference](reference.md#workflow-format).
 - **No timeout.** cezar does not bound a check step; e2e's own startup,
   test and exploration timeouts are what stop a hung app from holding the
@@ -351,7 +351,7 @@ automation whose worktree is the PR's head instead of the base branch:
       {
         "id": "e2e",
         "name": "Browser e2e on PR head",
-        "command": "npm ci --prefer-offline --no-audit >/dev/null\nnpx e2e run --reporter list,markdown --max-failures 3; code=$?\nif [ -f .e2e/summary.md ] && [ -n \"$CEZ_GITHUB_NUMBER\" ]; then\n  gh pr comment \"$CEZ_GITHUB_NUMBER\" --repo \"$CEZ_GITHUB_REPO\" --edit-last --create-if-none --body-file .e2e/summary.md\nfi\nexit $code"
+        "command": "npm ci --prefer-offline --no-audit >/dev/null\nnpx e2e run --reporter list,markdown --max-failures 3; code=$?\nif [ -f .e2e/summary.md ] && [ -n \"$ONNI_GITHUB_NUMBER\" ]; then\n  gh pr comment \"$ONNI_GITHUB_NUMBER\" --repo \"$ONNI_GITHUB_REPO\" --edit-last --create-if-none --body-file .e2e/summary.md\nfi\nexit $code"
       }
     ]
   }
@@ -375,7 +375,7 @@ What `checkout: "pr-head"` does at launch:
 4. a fetch or `gh` failure launches nothing (`failed: pr-head-unavailable`,
    with the reason); Retry in the execution log tries again.
 
-The check gets `CEZ_PR_HEAD_SHA`, `CEZ_PR_HEAD_REF` and `CEZ_PR_BASE_REF` on
+The check gets `ONNI_PR_HEAD_SHA`, `ONNI_PR_HEAD_REF` and `ONNI_PR_BASE_REF` on
 top of the usual run context, the PR shows as the task's referenced pull
 request, and diffs measure only what the run changed on top of the PR. The
 ref is deleted with the last run that needs it.

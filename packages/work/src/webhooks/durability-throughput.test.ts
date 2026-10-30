@@ -31,7 +31,7 @@ afterEach(async () => {
 });
 
 async function setup(extra: Partial<WebhookServiceOptions> = {}) {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-durability-')); roots.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
   const dataDir = join(root, '.ai/onni');

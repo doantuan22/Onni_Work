@@ -16,7 +16,7 @@ const claude = exe('claude');
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const cloneDir = join(dir, 'clones');
-const darwin = { platform: 'darwin' as const, hostEnv: { CEZ_DISCLAIM_EXEC: trampoline }, cloneDir };
+const darwin = { platform: 'darwin' as const, hostEnv: { ONNI_DISCLAIM_EXEC: trampoline }, cloneDir };
 
 describe('disclaimedCommand', () => {
   it('routes an agent through the desktop trampoline, resolved on the child PATH', () => {
@@ -28,7 +28,7 @@ describe('disclaimedCommand', () => {
   it('leaves the command alone outside the desktop app and off macOS', () => {
     expect(disclaimedCommand('claude', ['-p'], { PATH: dir }, { platform: 'darwin', hostEnv: {} })).toEqual(['claude', ['-p']]);
     expect(disclaimedCommand('claude', ['-p'], { PATH: dir }, { ...darwin, platform: 'linux' })).toEqual(['claude', ['-p']]);
-    expect(disclaimedCommand('claude', [], { PATH: dir }, { platform: 'darwin', hostEnv: { CEZ_DISCLAIM_EXEC: join(dir, 'gone') } }))
+    expect(disclaimedCommand('claude', [], { PATH: dir }, { platform: 'darwin', hostEnv: { ONNI_DISCLAIM_EXEC: join(dir, 'gone') } }))
       .toEqual(['claude', []]);
   });
 

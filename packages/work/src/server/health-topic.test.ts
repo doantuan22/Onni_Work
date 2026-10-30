@@ -39,17 +39,17 @@ function stubHub() {
 describe('health topic + cache (live-server path)', () => {
   let repoRoot: string;
   let store: RunStore;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedRemote = process.env.ONNI_REMOTE;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-health-topic-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     // Keeps the CLI/forge probes off the network so the payload is deterministic.
-    process.env.CEZ_DRY_RUN = '1';
-    // Health's `repoRoot` is trimmed in hosted mode, so an ambient CEZ_REMOTE on the dev box
+    process.env.ONNI_DRY_RUN = '1';
+    // Health's `repoRoot` is trimmed in hosted mode, so an ambient ONNI_REMOTE on the dev box
     // must not decide what these assertions see.
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_REMOTE;
     // The cache's whole policy is clock arithmetic — `Date.now() - healthCache.at` against the
     // TTL and the staleness ceiling — so the clock is the thing these cases need to steer, and
     // vitest's fake-timer API is how you steer it. `toFake: ['Date']` is deliberate and is the
@@ -67,10 +67,10 @@ describe('health topic + cache (live-server path)', () => {
     vi.useRealTimers();
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
     vi.restoreAllMocks();
   });
 

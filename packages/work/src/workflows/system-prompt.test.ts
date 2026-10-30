@@ -130,9 +130,9 @@ describe('skill-aware task naming (#432)', () => {
 });
 
 /**
- * End-to-end through the real engine with CEZ_DRY_RUN=1: the config default
+ * End-to-end through the real engine with ONNI_DRY_RUN=1: the config default
  * and the per-run override must reach the claude CLI's argv verbatim
- * (`--append-system-prompt`, captured via the mock's CEZ_MOCK_ARGS_FILE hook)
+ * (`--append-system-prompt`, captured via the mock's ONNI_MOCK_ARGS_FILE hook)
  * and be echoed on the RunRecord.
  */
 describe('systemPrompt end-to-end (dry run)', () => {
@@ -151,38 +151,38 @@ describe('systemPrompt end-to-end (dry run)', () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-sysprompt-'));
     argsFile = join(repoRoot, 'mock-args.ndjson');
     inheritedTodos = join(repoRoot, 'inherited-todos.json');
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    savedEnv.CEZ_MOCK_ARGS_FILE = process.env.CEZ_MOCK_ARGS_FILE;
-    savedEnv.CEZ_TODOS_FILE = process.env.CEZ_TODOS_FILE;
-    savedEnv.CEZ_FOLLOWUPS = process.env.CEZ_FOLLOWUPS;
-    savedEnv.CEZ_AUTONAME = process.env.CEZ_AUTONAME;
-    savedEnv.CEZ_DISPATCH = process.env.CEZ_DISPATCH;
-    savedEnv.CEZ_AUTOMATIONS = process.env.CEZ_AUTOMATIONS;
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    savedEnv.ONNI_MOCK_ARGS_FILE = process.env.ONNI_MOCK_ARGS_FILE;
+    savedEnv.ONNI_TODOS_FILE = process.env.ONNI_TODOS_FILE;
+    savedEnv.ONNI_FOLLOWUPS = process.env.ONNI_FOLLOWUPS;
+    savedEnv.ONNI_AUTONAME = process.env.ONNI_AUTONAME;
+    savedEnv.ONNI_DISPATCH = process.env.ONNI_DISPATCH;
+    savedEnv.ONNI_AUTOMATIONS = process.env.ONNI_AUTOMATIONS;
     // The dispatch and automations tests below set and clear this; restore whatever the outer process had.
-    savedEnv.CEZ_API_URL = process.env.CEZ_API_URL;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_API_URL = process.env.ONNI_API_URL;
+    process.env.ONNI_DRY_RUN = '1';
     // Dispatch is on by default (spec 2026-09-10-dispatch A2) and composes its own prompt part
     // ahead of everything asserted here. These goldens are about the BASE composition, so they
     // run with it off; the default-on part is pinned by its own test below.
-    process.env.CEZ_DISPATCH = '0';
+    process.env.ONNI_DISPATCH = '0';
     // GitHub automations are opt-in (#801) and compose their own prompt part when on AND
     // reachable (spec 2026-09-13-automations-from-prompt); the goldens run without it and the
     // part is pinned by its own tests below.
-    delete process.env.CEZ_AUTOMATIONS;
+    delete process.env.ONNI_AUTOMATIONS;
     // The global inbox is opt-in (#471). These assertions are about prompt composition and the
     // per-run opt-out, so they run on an inbox-enabled server; the gate itself is covered by
     // the suite below.
-    process.env.CEZ_FOLLOWUPS = '1';
+    process.env.ONNI_FOLLOWUPS = '1';
     // Dry-run skips naming by default (canned titles would clobber honest
     // heuristics in demos/e2e); '1' forces the mock path for these tests.
-    process.env.CEZ_AUTONAME = '1';
-    process.env.CEZ_MOCK_ARGS_FILE = argsFile;
+    process.env.ONNI_AUTONAME = '1';
+    process.env.ONNI_MOCK_ARGS_FILE = argsFile;
     // Simulate a nested onni (an agent running `onni serve` / the test suite):
-    // the parent process already carries CEZ_TODOS_FILE. Runners spawn with
+    // the parent process already carries ONNI_TODOS_FILE. Runners spawn with
     // `{ ...process.env, ...spec.env }`, so `agentEnv` must *shadow* this for
     // every run — never merely omit the key — or an opted-out agent writes
     // follow-ups into the parent's inbox. Asserted per test below.
-    process.env.CEZ_TODOS_FILE = inheritedTodos;
+    process.env.ONNI_TODOS_FILE = inheritedTodos;
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -265,31 +265,31 @@ describe('systemPrompt end-to-end (dry run)', () => {
   }
 
   it('dispatch on (the default): every task is taught the onni task CLI ahead of the base prompt', async () => {
-    delete process.env.CEZ_DISPATCH;
+    delete process.env.ONNI_DISPATCH;
     // The flag alone is not enough — the prompt needs the TRANSPORT the cockpit publishes (spec
     // 2026-09-10-dispatch A2). `serveCommand` sets this; these suites have no server.
-    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
+    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
     try {
       await runToEnd({ task: 'do the thing mock:done' });
     } finally {
-      process.env.CEZ_DISPATCH = '0';
-      delete process.env.CEZ_API_URL;
+      process.env.ONNI_DISPATCH = '0';
+      delete process.env.ONNI_API_URL;
     }
     const prompt = capturedSystemPrompt();
     expect(prompt).toContain('onni task create');
     expect(prompt).toContain(CONFIG_PROMPT);
   });
 
-  // The headless hole: `onni run` builds its own RunManager and never sets CEZ_API_URL/CEZ_BIN, so
+  // The headless hole: `onni run` builds its own RunManager and never sets ONNI_API_URL/ONNI_BIN, so
   // `onni task create` can only ever fail — and its refusal tells the agent to STOP and report
   // rather than do the work itself. A run that cannot dispatch must not be taught to (A2).
   it('dispatch on but unreachable (no cockpit, as in headless `onni run`): no task is taught the CLI', async () => {
-    delete process.env.CEZ_DISPATCH;
-    delete process.env.CEZ_API_URL;
+    delete process.env.ONNI_DISPATCH;
+    delete process.env.ONNI_API_URL;
     try {
       await runToEnd({ task: 'do the thing mock:done' });
     } finally {
-      process.env.CEZ_DISPATCH = '0';
+      process.env.ONNI_DISPATCH = '0';
     }
     const prompt = capturedSystemPrompt();
     expect(prompt).not.toContain('onni task create');
@@ -300,16 +300,16 @@ describe('systemPrompt end-to-end (dry run)', () => {
   // the part rides only when the flag is on AND the cockpit is reachable, at the same session
   // sites as the dispatch prompt — so a Continue keeps it too.
   it('automations on and reachable: every task is taught the onni automation CLI', async () => {
-    process.env.CEZ_AUTOMATIONS = '1';
-    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
+    process.env.ONNI_AUTOMATIONS = '1';
+    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
     try {
       await runToEnd({ task: 'do the thing mock:done' });
     } finally {
-      delete process.env.CEZ_AUTOMATIONS;
-      delete process.env.CEZ_API_URL;
+      delete process.env.ONNI_AUTOMATIONS;
+      delete process.env.ONNI_API_URL;
     }
     const prompt = capturedSystemPrompt();
-    expect(prompt).toContain('node "$CEZ_BIN" automation');
+    expect(prompt).toContain('node "$ONNI_BIN" automation');
     expect(prompt).toContain(CONFIG_PROMPT);
     // Dispatch is off in this suite, so the automations part is the only cockpit part composed —
     // ahead of the extra prompt, which may amend it.
@@ -317,17 +317,17 @@ describe('systemPrompt end-to-end (dry run)', () => {
   });
 
   it('automations on but unreachable (headless), or opted out: no task is taught the CLI', async () => {
-    delete process.env.CEZ_AUTOMATIONS;
-    delete process.env.CEZ_API_URL;
+    delete process.env.ONNI_AUTOMATIONS;
+    delete process.env.ONNI_API_URL;
     await runToEnd({ task: 'do the thing mock:done' });
     expect(capturedSystemPrompt()).not.toContain('onni automation');
-    process.env.CEZ_AUTOMATIONS = '0';
-    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
+    process.env.ONNI_AUTOMATIONS = '0';
+    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
     try {
       await runToEnd({ task: 'do the thing mock:done' });
     } finally {
-      delete process.env.CEZ_AUTOMATIONS;
-      delete process.env.CEZ_API_URL;
+      delete process.env.ONNI_AUTOMATIONS;
+      delete process.env.ONNI_API_URL;
     }
     expect(capturedSystemPrompt()).not.toContain('onni automation');
     // Two whole runs in one case: the default 5 s is one slow machine away from a timeout.
@@ -358,7 +358,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     expect(after?.prNumber).toBe(437);
   }, 30_000);
 
-  it('turn-end refresh skips under CEZ_DRY_RUN and when the toggle or ownership forbids it', async () => {
+  it('turn-end refresh skips under ONNI_DRY_RUN and when the toggle or ownership forbids it', async () => {
     type Seam = {
       maybeRefreshTitle(id: string, text: string): Promise<void>;
       lastNamerKey: Map<string, string>;
@@ -366,28 +366,28 @@ describe('systemPrompt end-to-end (dry run)', () => {
     const seam = manager as unknown as Seam;
     const record = manager.startRun(skillWorkflow, { task: '437' });
 
-    // Dry-run guard (without the CEZ_AUTONAME=1 force): no key is recorded,
+    // Dry-run guard (without the ONNI_AUTONAME=1 force): no key is recorded,
     // the namer is never consulted.
-    const forced = process.env.CEZ_AUTONAME;
-    delete process.env.CEZ_AUTONAME;
+    const forced = process.env.ONNI_AUTONAME;
+    delete process.env.ONNI_AUTONAME;
     await seam.maybeRefreshTitle(record.id, 'made real progress on the fix');
     expect(seam.lastNamerKey.has(record.id)).toBe(false);
-    process.env.CEZ_AUTONAME = forced;
+    process.env.ONNI_AUTONAME = forced;
 
     // Outside dry-run, a fast-failing fake binary guards against real spawns.
-    const savedDry = process.env.CEZ_DRY_RUN;
-    const savedBin = process.env.CEZ_CLAUDE_BIN;
-    const savedToggle = process.env.CEZ_TITLE_UPDATES;
-    delete process.env.CEZ_DRY_RUN;
-    process.env.CEZ_CLAUDE_BIN = '/nonexistent/onni-test-claude';
+    const savedDry = process.env.ONNI_DRY_RUN;
+    const savedBin = process.env.ONNI_CLAUDE_BIN;
+    const savedToggle = process.env.ONNI_TITLE_UPDATES;
+    delete process.env.ONNI_DRY_RUN;
+    process.env.ONNI_CLAUDE_BIN = '/nonexistent/onni-test-claude';
     try {
       // Env default OFF → skip before any runner call.
-      process.env.CEZ_TITLE_UPDATES = '0';
+      process.env.ONNI_TITLE_UPDATES = '0';
       await seam.maybeRefreshTitle(record.id, 'more progress');
       expect(seam.lastNamerKey.has(record.id)).toBe(false);
 
       // Toggle ON but the title is user-owned → skip.
-      process.env.CEZ_TITLE_UPDATES = '1';
+      process.env.ONNI_TITLE_UPDATES = '1';
       store.updateRun(record.id, { title: 'Mine', titleSummary: 'Mine', titleOrigin: 'user' });
       await seam.maybeRefreshTitle(record.id, 'even more progress');
       expect(seam.lastNamerKey.has(record.id)).toBe(false);
@@ -399,12 +399,12 @@ describe('systemPrompt end-to-end (dry run)', () => {
       await seam.maybeRefreshTitle(record.id, 'progress worth naming');
       expect(seam.lastNamerKey.get(record.id)).toContain('progress worth naming');
     } finally {
-      if (savedDry === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = savedDry;
-      if (savedBin === undefined) delete process.env.CEZ_CLAUDE_BIN;
-      else process.env.CEZ_CLAUDE_BIN = savedBin;
-      if (savedToggle === undefined) delete process.env.CEZ_TITLE_UPDATES;
-      else process.env.CEZ_TITLE_UPDATES = savedToggle;
+      if (savedDry === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = savedDry;
+      if (savedBin === undefined) delete process.env.ONNI_CLAUDE_BIN;
+      else process.env.ONNI_CLAUDE_BIN = savedBin;
+      if (savedToggle === undefined) delete process.env.ONNI_TITLE_UPDATES;
+      else process.env.ONNI_TITLE_UPDATES = savedToggle;
     }
   }, 30_000);
 
@@ -526,7 +526,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     rmSync(todosFile, { force: true });
     rmSync(inheritedTodos, { force: true });
     await runToEnd({ task: 'do the thing with follow-ups' });
-    expect(capturedSystemPrompt()).toContain('CEZ_TODOS_FILE');
+    expect(capturedSystemPrompt()).toContain('ONNI_TODOS_FILE');
     expect(existsSync(todosFile)).toBe(true);
     expect(existsSync(inheritedTodos)).toBe(false);
   }, 30_000);
@@ -539,9 +539,9 @@ describe('systemPrompt end-to-end (dry run)', () => {
     const record = store.getRun(id);
     expect(record?.generateFollowups).toBe(false);
     expect(capturedSystemPrompt()).toBe(composeSystemPrompt(CONFIG_PROMPT, HANDOFF_ONLY_INSTRUCTIONS));
-    expect(capturedSystemPrompt()).not.toContain('CEZ_TODOS_FILE');
+    expect(capturedSystemPrompt()).not.toContain('ONNI_TODOS_FILE');
     expect(existsSync(todosFile)).toBe(false);
-    // The opt-out must survive an inherited CEZ_TODOS_FILE (nested onni):
+    // The opt-out must survive an inherited ONNI_TODOS_FILE (nested onni):
     // omitting the key instead of shadowing it leaks into the parent's inbox.
     expect(existsSync(inheritedTodos)).toBe(false);
     expect(readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.handoff.md`), 'utf8')).toContain(
@@ -559,7 +559,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     expect(capturedSystemPrompt(1)).toBe(
       composeSystemPrompt(CONFIG_PROMPT, HANDOFF_ONLY_INSTRUCTIONS),
     );
-    expect(capturedSystemPrompt(1)).not.toContain('CEZ_TODOS_FILE');
+    expect(capturedSystemPrompt(1)).not.toContain('ONNI_TODOS_FILE');
     expect(existsSync(todosFile)).toBe(false);
     expect(existsSync(inheritedTodos)).toBe(false);
   }, 30_000);
@@ -586,17 +586,17 @@ describe('the global follow-up gate (dry run)', () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-followup-gate-'));
     argsFile = join(repoRoot, 'mock-args.ndjson');
     inheritedTodos = join(repoRoot, 'inherited-todos.json');
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    savedEnv.CEZ_MOCK_ARGS_FILE = process.env.CEZ_MOCK_ARGS_FILE;
-    savedEnv.CEZ_TODOS_FILE = process.env.CEZ_TODOS_FILE;
-    savedEnv.CEZ_FOLLOWUPS = process.env.CEZ_FOLLOWUPS;
-    savedEnv.CEZ_DISPATCH = process.env.CEZ_DISPATCH;
-    process.env.CEZ_DRY_RUN = '1';
-    process.env.CEZ_DISPATCH = '0'; // base composition only — see the first suite
-    process.env.CEZ_MOCK_ARGS_FILE = argsFile;
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    savedEnv.ONNI_MOCK_ARGS_FILE = process.env.ONNI_MOCK_ARGS_FILE;
+    savedEnv.ONNI_TODOS_FILE = process.env.ONNI_TODOS_FILE;
+    savedEnv.ONNI_FOLLOWUPS = process.env.ONNI_FOLLOWUPS;
+    savedEnv.ONNI_DISPATCH = process.env.ONNI_DISPATCH;
+    process.env.ONNI_DRY_RUN = '1';
+    process.env.ONNI_DISPATCH = '0'; // base composition only — see the first suite
+    process.env.ONNI_MOCK_ARGS_FILE = argsFile;
     // A parent onni's inbox, as in the suite above: the gate must not leak into it either.
-    process.env.CEZ_TODOS_FILE = inheritedTodos;
-    delete process.env.CEZ_FOLLOWUPS;
+    process.env.ONNI_TODOS_FILE = inheritedTodos;
+    delete process.env.ONNI_FOLLOWUPS;
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -650,29 +650,29 @@ describe('the global follow-up gate (dry run)', () => {
     return prompt.endsWith(suffix) ? prompt.slice(0, -suffix.length) : prompt;
   };
 
-  it('without CEZ_FOLLOWUPS the agent is never told about the inbox', async () => {
+  it('without ONNI_FOLLOWUPS the agent is never told about the inbox', async () => {
     const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
     rmSync(inheritedTodos, { force: true });
 
     // This case asserts the follow-up gate only; keep ambient cockpit flags from
     // adding the automation prompt when the suite runs inside onni.
-    const savedAutomations = process.env.CEZ_AUTOMATIONS;
-    const savedApiUrl = process.env.CEZ_API_URL;
-    delete process.env.CEZ_AUTOMATIONS;
-    delete process.env.CEZ_API_URL;
+    const savedAutomations = process.env.ONNI_AUTOMATIONS;
+    const savedApiUrl = process.env.ONNI_API_URL;
+    delete process.env.ONNI_AUTOMATIONS;
+    delete process.env.ONNI_API_URL;
     let id: string;
     try {
       id = await runToEnd({ task: 'do the thing mock:done' });
     } finally {
-      if (savedAutomations === undefined) delete process.env.CEZ_AUTOMATIONS;
-      else process.env.CEZ_AUTOMATIONS = savedAutomations;
-      if (savedApiUrl === undefined) delete process.env.CEZ_API_URL;
-      else process.env.CEZ_API_URL = savedApiUrl;
+      if (savedAutomations === undefined) delete process.env.ONNI_AUTOMATIONS;
+      else process.env.ONNI_AUTOMATIONS = savedAutomations;
+      if (savedApiUrl === undefined) delete process.env.ONNI_API_URL;
+      else process.env.ONNI_API_URL = savedApiUrl;
     }
 
     expect(capturedSystemPrompt()).toBe(composeSystemPrompt(CONFIG_PROMPT, HANDOFF_ONLY_INSTRUCTIONS));
-    expect(capturedSystemPrompt()).not.toContain('CEZ_TODOS_FILE');
+    expect(capturedSystemPrompt()).not.toContain('ONNI_TODOS_FILE');
     expect(existsSync(todosFile)).toBe(false);
     // …and nothing leaked into the parent onni's inbox either.
     expect(existsSync(inheritedTodos)).toBe(false);
@@ -682,7 +682,7 @@ describe('the global follow-up gate (dry run)', () => {
 
   it('keeps the per-task handoff journal — #471 turns off the inbox, not the notes', async () => {
     const id = await runToEnd({ task: 'do the thing mock:done' });
-    expect(capturedSystemPrompt()).toContain('CEZ_HANDOFF_FILE');
+    expect(capturedSystemPrompt()).toContain('ONNI_HANDOFF_FILE');
     expect(capturedSystemPrompt()).toContain('ONNI:DONE');
     // The still-working marker rides in the same handoff contract (#490).
     expect(capturedSystemPrompt()).toContain('ONNI:MONITORING');
@@ -699,7 +699,7 @@ describe('the global follow-up gate (dry run)', () => {
     const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
     const id = await runToEnd({ task: 'do the thing mock:done', generateFollowups: true });
-    expect(capturedSystemPrompt()).not.toContain('CEZ_TODOS_FILE');
+    expect(capturedSystemPrompt()).not.toContain('ONNI_TODOS_FILE');
     expect(existsSync(todosFile)).toBe(false);
     expect(store.getRun(id)?.generateFollowups).toBe(false);
   }, 30_000);
@@ -707,13 +707,13 @@ describe('the global follow-up gate (dry run)', () => {
   it('turning the flag on restores the inbox for a new run', async () => {
     const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
-    process.env.CEZ_FOLLOWUPS = '1';
+    process.env.ONNI_FOLLOWUPS = '1';
     try {
       await runToEnd({ task: 'do the thing with follow-ups mock:done' });
-      expect(capturedSystemPrompt()).toContain('CEZ_TODOS_FILE');
+      expect(capturedSystemPrompt()).toContain('ONNI_TODOS_FILE');
       expect(existsSync(todosFile)).toBe(true);
     } finally {
-      delete process.env.CEZ_FOLLOWUPS;
+      delete process.env.ONNI_FOLLOWUPS;
     }
   }, 30_000);
 });

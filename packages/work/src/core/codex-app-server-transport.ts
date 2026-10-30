@@ -18,7 +18,7 @@ interface PendingRequest {
 }
 
 export function resolveCodexExecutable(override?: string): string {
-  return override ?? process.env.CEZ_CODEX_BIN ?? 'codex';
+  return override ?? process.env.ONNI_CODEX_BIN ?? 'codex';
 }
 
 export function buildCodexAppServerEnv(extraEnv?: Record<string, string>): NodeJS.ProcessEnv {

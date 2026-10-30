@@ -28,7 +28,7 @@ describe('webhook route contract', () => {
     Object.defineProperty(process, 'platform', { value: platform });
     try {
       for (const flag of ['', '0', 'true', '1']) {
-        vi.stubEnv('CEZ_WEBHOOKS', flag);
+        vi.stubEnv('ONNI_WEBHOOKS', flag);
         for (const [method, path] of [
           ['GET', '/webhooks'], ['GET', '/webhooks/history'], ['GET', '/webhooks/events'],
           ['POST', '/webhooks'], ['PATCH', '/webhooks/receiver'], ['DELETE', '/webhooks/receiver'],
@@ -39,14 +39,14 @@ describe('webhook route contract', () => {
           const body = z.object({ error: z.string() }).strict().parse(await response.json());
           expect(body.error).toMatch(/unsupported.*platform/i);
           expect(body.error).toContain('Linux');
-          expect(body.error).not.toContain('CEZ_WEBHOOKS=1');
+          expect(body.error).not.toContain('ONNI_WEBHOOKS=1');
         }
       }
       expect(resolve).not.toHaveBeenCalled();
     } finally { Object.defineProperty(process, 'platform', original); }
   });
   it('projects bounded notice and delivery availability through both route aliases', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const { app } = setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const { app } = setup();
     const created = await app.request('/api/v1/webhooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ops', url: 'https://example.com/private?token=synthetic' }) });
     const { receiver } = webhookSecretResponseSchema.parse(await created.json());
     const tested = await app.request(`/api/v1/webhooks/${receiver.id}/test`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: 1, deliveryRevision: 1, operationId: 'projection' }) });
@@ -61,7 +61,7 @@ describe('webhook route contract', () => {
     expect(JSON.stringify(direct)).not.toContain('synthetic');
   });
   it('cannot read or mutate another project receiver even with a known identifier', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const alpha = setup(), beta = setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const alpha = setup(), beta = setup();
     const created = await alpha.app.request('/api/v1/webhooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Alpha only', url: 'https://example.com' }) });
     const { receiver } = webhookSecretResponseSchema.parse(await created.json());
     expect((await beta.app.request(`/api/v1/webhooks/${receiver.id}/deliveries`)).status).toBe(404);
@@ -72,12 +72,12 @@ describe('webhook route contract', () => {
   it('gates every registered route before storage and rejects strict mutation bodies', async () => {
     const { app, coordinator } = setup();
     expect((await app.request('/api/v1/webhooks')).status).toBe(409); expect(coordinator.count()).toBe(0);
-    vi.stubEnv('CEZ_WEBHOOKS', '1');
+    vi.stubEnv('ONNI_WEBHOOKS', '1');
     const response = await app.request('/api/v1/webhooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ops', url: 'https://example.com', projectId: 'foreign' }) });
     expect(response.status).toBe(400);
   });
   it.each(['/api/v1', '/api/v1/p/project', '/api/v1/p/default'])('accepts receiver parameters through %s', async prefix => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const { app } = setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const { app } = setup();
     const response = await app.request(`${prefix}/webhooks`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ops', url: 'https://example.com' }) });
     const { receiver } = webhookSecretResponseSchema.parse(await response.json());
     const test = await app.request(`${prefix}/webhooks/${receiver.id}/test`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: receiver.revision, deliveryRevision: receiver.deliveryRevision, operationId: 'alias-test' }) });
@@ -85,7 +85,7 @@ describe('webhook route contract', () => {
     expect((await app.request(`${prefix}/webhooks/${receiver.id}/deliveries`)).status).toBe(200);
   });
   it('returns exact schemas, one-time no-store secrets and revision conflicts', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const { app } = setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const { app } = setup();
     const response = await app.request('/api/v1/webhooks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ops', url: 'https://example.com/path?private=hidden' }) });
     expect(response.status).toBe(201); expect(response.headers.get('cache-control')).toContain('no-store');
     const created = webhookSecretResponseSchema.parse(await response.json());
@@ -98,7 +98,7 @@ describe('webhook route contract', () => {
 });
 
 it('reports a retained private URL incompatible with a format edit as a configuration conflict', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1'); const { app } = setup();
+  vi.stubEnv('ONNI_WEBHOOKS', '1'); const { app } = setup();
   const headers = { 'content-type': 'application/json' };
   const response = await app.request('/api/v1/webhooks', { method: 'POST', headers, body: JSON.stringify({ name: 'Custom', url: 'https://example.com/secret-path' }) });
   const { receiver } = webhookSecretResponseSchema.parse(await response.json());

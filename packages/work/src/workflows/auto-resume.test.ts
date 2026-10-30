@@ -74,11 +74,11 @@ describe('a run stopped by a usage limit resumes itself', () => {
   }
 
   beforeEach(async () => {
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    savedEnv.CEZ_MOCK_LIMIT_RESET_SECONDS = process.env.CEZ_MOCK_LIMIT_RESET_SECONDS;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    savedEnv.ONNI_MOCK_LIMIT_RESET_SECONDS = process.env.ONNI_MOCK_LIMIT_RESET_SECONDS;
+    process.env.ONNI_DRY_RUN = '1';
     // Far enough out that the schedule is unambiguous and the timer never fires mid-test.
-    process.env.CEZ_MOCK_LIMIT_RESET_SECONDS = '3600';
+    process.env.ONNI_MOCK_LIMIT_RESET_SECONDS = '3600';
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-auto-resume-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
@@ -248,10 +248,10 @@ describe('a run stopped by a usage limit resumes itself', () => {
 
   it('resumes the recorded account after the project selects another login', async () => {
     const sessions = mockRunnerSessions();
-    savedEnv.CEZ_HOME = process.env.CEZ_HOME;
-    process.env.CEZ_HOME = join(repoRoot, 'account-home');
-    const originalConfig = join(process.env.CEZ_HOME, 'original');
-    const nextConfig = join(process.env.CEZ_HOME, 'next');
+    savedEnv.ONNI_HOME = process.env.ONNI_HOME;
+    process.env.ONNI_HOME = join(repoRoot, 'account-home');
+    const originalConfig = join(process.env.ONNI_HOME, 'original');
+    const nextConfig = join(process.env.ONNI_HOME, 'next');
     for (const dir of [originalConfig, nextConfig]) {
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, 'settings.json'), '{}');

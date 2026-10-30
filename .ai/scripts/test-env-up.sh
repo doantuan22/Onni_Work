@@ -50,15 +50,15 @@ BUILD_ARTIFACTS="node_modules/zod/package.json packages/work/dist/index.js packa
 # changes what gets bundled without touching a single source file.
 BUILD_INPUT_PATHS="packages/contract/src packages/contract/package.json packages/work/src packages/work/package.json packages/work/tsconfig.json packages/api-client/src packages/api-client/package.json packages/web/src packages/web/index.html packages/web/vite.config.ts packages/web/package.json package.json package-lock.json"
 
-# CEZ_DRY_RUN=1 swaps the agent CLIs for the bundled mock, so booting needs no
+# ONNI_DRY_RUN=1 swaps the agent CLIs for the bundled mock, so booting needs no
 # `claude` login and reaches no network — the whole point for CI/e2e.
-export CEZ_DRY_RUN=1
+export ONNI_DRY_RUN=1
 
 # The real CLI writes workspace state at boot (~/.onni migrations + project
-# registration) — pin CEZ_HOME under .ai/qa so a test boot never touches the
+# registration) — pin ONNI_HOME under .ai/qa so a test boot never touches the
 # developer's real ~/.onni. Kept stable (not per-boot) so the reuse path
 # attaches to the same workspace the running instance was booted with.
-export CEZ_HOME="$QA_DIR/onni-home"
+export ONNI_HOME="$QA_DIR/onni-home"
 
 FORCE=0
 FORCE_REBUILD=0
@@ -166,7 +166,7 @@ try_reuse() {
   url=$(json_get "$ENV_DESCRIPTOR" baseUrl)
   started=$(json_get "$ENV_DESCRIPTOR" startedAt)
   requested_single_project=false
-  [ "${CEZ_SINGLE_PROJECT:-}" = 1 ] && requested_single_project=true
+  [ "${ONNI_SINGLE_PROJECT:-}" = 1 ] && requested_single_project=true
   [ "$(json_get "$ENV_DESCRIPTOR" environment.singleProject)" = "$requested_single_project" ] || return 1
   [ -n "$pid" ] && [ -n "$url" ] || return 1
   # A state file is a claim, not proof: the PID must still be alive…
@@ -358,7 +358,7 @@ start_app() {
   port_free "$PORT" || PORT=$(free_port)
   BASE_URL="http://127.0.0.1:$PORT"
 
-  log "starting onni on $BASE_URL (CEZ_DRY_RUN=1)"
+  log "starting onni on $BASE_URL (ONNI_DRY_RUN=1)"
   # --no-open: a test boot must never hijack the operator's browser.
   if command -v setsid >/dev/null 2>&1; then
     (cd "$REPO_ROOT" && exec setsid nohup node packages/work/dist/index.js --port "$PORT" --no-open --repo "$REPO_ROOT" \
@@ -405,7 +405,7 @@ NODE
 # ---- 7. descriptor write ----------------------------------------------------
 write_descriptor() {
   SINGLE_PROJECT=false
-  [ "${CEZ_SINGLE_PROJECT:-}" = 1 ] && SINGLE_PROJECT=true
+  [ "${ONNI_SINGLE_PROJECT:-}" = 1 ] && SINGLE_PROJECT=true
   node -e '
     const fs = require("fs");
     const [out, baseUrl, port, pid, cmd, bInstalled, bCmd, bVer, bLdLibraryPath, bArgs, bNotes, desc, singleProject, platform] = process.argv.slice(1);
@@ -437,10 +437,10 @@ write_descriptor() {
       testRunner: { name: "other", config: "packages/web/e2e/vitest.config.ts" },
       platform,
       startedAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
-      notes: "Booted from a production build after npm ci with CEZ_DRY_RUN=1, so workspace links/runtime dependencies are present, the agent CLIs are mocked, and no agent login/network is needed. No backing services. Stop with .ai/scripts/test-env-down.sh. App log: .ai/qa/test-env-app.log.",
+      notes: "Booted from a production build after npm ci with ONNI_DRY_RUN=1, so workspace links/runtime dependencies are present, the agent CLIs are mocked, and no agent login/network is needed. No backing services. Stop with .ai/scripts/test-env-down.sh. App log: .ai/qa/test-env-app.log.",
     }, null, 2) + "\n");
   ' "$ENV_DESCRIPTOR" "$BASE_URL" "$PORT" "$APP_PID" \
-    "CEZ_DRY_RUN=1 CEZ_HOME=.ai/qa/onni-home node packages/work/dist/index.js --port $PORT --no-open" \
+    "ONNI_DRY_RUN=1 ONNI_HOME=.ai/qa/onni-home node packages/work/dist/index.js --port $PORT --no-open" \
     "$BROWSER_INSTALLED" "$BROWSER_COMMAND" "$BROWSER_VERSION" "$BROWSER_ENV_LD_LIBRARY_PATH" "$BROWSER_ENV_AGENT_BROWSER_ARGS" "$BROWSER_NOTES" "$BROWSER_DESCRIPTOR" \
     "$SINGLE_PROJECT" "$(uname -s 2>/dev/null | grep -qi Linux && { grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null && echo wsl2 || echo linux; } || echo darwin)"
 }

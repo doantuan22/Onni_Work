@@ -9,7 +9,7 @@ import { AgentBrowser, onniCli, fixtureServeEnv, stopFixtureServer } from './age
 
 /**
  * The composer (R3 Step 2.1) end-to-end, against a LIVE dry-run session — not a replayed
- * fixture: a real `onni` (CEZ_DRY_RUN=1) on a real tmp git repo runs a real task through the
+ * fixture: a real `onni` (ONNI_DRY_RUN=1) on a real tmp git repo runs a real task through the
  * mock claude, whose reply carries no ONNI:DONE marker, so the run parks at `waiting` — the
  * exact state the composer exists for. What this spec proves is the full loop: type a reply
  * (with a `/` skill completion from this repo's own `.ai/skills`), send, and watch the

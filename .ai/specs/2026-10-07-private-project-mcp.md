@@ -86,7 +86,7 @@ project — added to every run at launch … Never committed." An absent file op
 - The file is readable by the agent process like any file under the repo. That is inherent: the
   agent is handed these servers anyway. It is not world-readable (`0600`), and it is never in argv.
 - Writing it is a local-machine capability, gated exactly like every other agent-config write.
-- Nothing new is exposed over the network, and no `CEZ_*` flag is added. The feature is inert until
+- Nothing new is exposed over the network, and no `ONNI_*` flag is added. The feature is inert until
   the user creates the file.
 
 ## Tests

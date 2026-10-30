@@ -17,7 +17,7 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
   let store: RunStore;
   let manager: RunManager;
   let currentId: string | undefined;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   const workflow: WorkflowDef = {
     name: 'implement-verify',
@@ -30,7 +30,7 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-1076-'));
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -43,8 +43,8 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
   afterEach(() => {
     if (currentId) manager.cancel(currentId);
     manager.dispose();
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 // The real resolver probes the host's PATH; `cursor-bin.test.ts` covers it.
 vi.mock('../core/cursor-bin.ts', () => ({
-  resolveCursorAgentBin: () => process.env.CEZ_CURSOR_AGENT_BIN || 'agent',
+  resolveCursorAgentBin: () => process.env.ONNI_CURSOR_AGENT_BIN || 'agent',
 }));
 
 import { RUNNER_IDS } from '../core/agent-runner.ts';
@@ -76,19 +76,19 @@ describe('resumeCommand — session id validation', () => {
     }
   });
 
-  it('honours CEZ_CURSOR_AGENT_BIN, matching the binary cursor-agent-runner.ts resolves', () => {
-    const previous = process.env.CEZ_CURSOR_AGENT_BIN;
-    process.env.CEZ_CURSOR_AGENT_BIN = '/opt/cursor/agent';
+  it('honours ONNI_CURSOR_AGENT_BIN, matching the binary cursor-agent-runner.ts resolves', () => {
+    const previous = process.env.ONNI_CURSOR_AGENT_BIN;
+    process.env.ONNI_CURSOR_AGENT_BIN = '/opt/cursor/agent';
     try {
       expect(resumeCommand('cursor', 'ses_01JABCDEF')).toBe('/opt/cursor/agent --resume ses_01JABCDEF');
     } finally {
-      if (previous === undefined) delete process.env.CEZ_CURSOR_AGENT_BIN;
-      else process.env.CEZ_CURSOR_AGENT_BIN = previous;
+      if (previous === undefined) delete process.env.ONNI_CURSOR_AGENT_BIN;
+      else process.env.ONNI_CURSOR_AGENT_BIN = previous;
     }
   });
 
   /**
-   * `CEZ_CURSOR_AGENT_BIN` is a real filesystem path, unlike the session id — it is not
+   * `ONNI_CURSOR_AGENT_BIN` is a real filesystem path, unlike the session id — it is not
    * VALIDATED into a fixed charset, it is QUOTED, so both the common Windows shape
    * (`C:\Program Files\...`) and a hostile one are covered by separate cases.
    */
@@ -115,26 +115,26 @@ describe('resumeCommand — session id validation', () => {
     });
 
     it('propagates the refusal through resumeCommand — no take-over, not a broken shell', () => {
-      const previous = process.env.CEZ_CURSOR_AGENT_BIN;
-      process.env.CEZ_CURSOR_AGENT_BIN = 'agent"; rm -rf ~ #';
+      const previous = process.env.ONNI_CURSOR_AGENT_BIN;
+      process.env.ONNI_CURSOR_AGENT_BIN = 'agent"; rm -rf ~ #';
       try {
         expect(resumeCommand('cursor', 'ses_01JABCDEF')).toBeNull();
       } finally {
-        if (previous === undefined) delete process.env.CEZ_CURSOR_AGENT_BIN;
-        else process.env.CEZ_CURSOR_AGENT_BIN = previous;
+        if (previous === undefined) delete process.env.ONNI_CURSOR_AGENT_BIN;
+        else process.env.ONNI_CURSOR_AGENT_BIN = previous;
       }
     });
 
     it('wraps a space-carrying override end to end — the practical Windows shape', () => {
-      const previous = process.env.CEZ_CURSOR_AGENT_BIN;
-      process.env.CEZ_CURSOR_AGENT_BIN = 'C:\\Program Files\\Cursor\\agent.exe';
+      const previous = process.env.ONNI_CURSOR_AGENT_BIN;
+      process.env.ONNI_CURSOR_AGENT_BIN = 'C:\\Program Files\\Cursor\\agent.exe';
       try {
         expect(resumeCommand('cursor', 'ses_01JABCDEF')).toBe(
           '"C:\\Program Files\\Cursor\\agent.exe" --resume ses_01JABCDEF',
         );
       } finally {
-        if (previous === undefined) delete process.env.CEZ_CURSOR_AGENT_BIN;
-        else process.env.CEZ_CURSOR_AGENT_BIN = previous;
+        if (previous === undefined) delete process.env.ONNI_CURSOR_AGENT_BIN;
+        else process.env.ONNI_CURSOR_AGENT_BIN = previous;
       }
     });
   });

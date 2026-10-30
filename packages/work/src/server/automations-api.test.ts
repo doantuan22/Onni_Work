@@ -16,13 +16,13 @@ describe('GitHub automation API', () => {
   let store: RunStore;
   // #801 turned the whole family into an opt-in capability. This suite is about what the routes
   // DO, so it opts in explicitly; what they answer while the flag is off is `automations-gate.test.ts`.
-  const savedAutomations = process.env.CEZ_AUTOMATIONS;
+  const savedAutomations = process.env.ONNI_AUTOMATIONS;
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-automation-api-'));
     home = mkdtempSync(join(tmpdir(), 'onni-automation-home-'));
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_AUTOMATIONS = '1';
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_AUTOMATIONS = '1';
     mkdirSync(join(root, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(root, '.ai/onni'));
   });
@@ -30,9 +30,9 @@ describe('GitHub automation API', () => {
     store.flush();
     rmSync(root, { recursive: true, force: true });
     rmSync(home, { recursive: true, force: true });
-    delete process.env.CEZ_HOME;
-    if (savedAutomations === undefined) delete process.env.CEZ_AUTOMATIONS;
-    else process.env.CEZ_AUTOMATIONS = savedAutomations;
+    delete process.env.ONNI_HOME;
+    if (savedAutomations === undefined) delete process.env.ONNI_AUTOMATIONS;
+    else process.env.ONNI_AUTOMATIONS = savedAutomations;
   });
 
   const input = {
@@ -218,13 +218,13 @@ describe('automation API — kinds, run, templates (spec 2026-09-14)', () => {
   let home: string;
   let store: RunStore;
   let manager: RunManager;
-  const savedAutomations = process.env.CEZ_AUTOMATIONS;
+  const savedAutomations = process.env.ONNI_AUTOMATIONS;
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-automation-kinds-'));
     home = mkdtempSync(join(tmpdir(), 'onni-automation-kinds-home-'));
-    process.env.CEZ_HOME = home;
-    delete process.env.CEZ_AUTOMATIONS;
+    process.env.ONNI_HOME = home;
+    delete process.env.ONNI_AUTOMATIONS;
     mkdirSync(join(root, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(root, '.ai/onni'));
     manager = {
@@ -236,9 +236,9 @@ describe('automation API — kinds, run, templates (spec 2026-09-14)', () => {
     store.flush();
     rmSync(root, { recursive: true, force: true });
     rmSync(home, { recursive: true, force: true });
-    delete process.env.CEZ_HOME;
-    if (savedAutomations === undefined) delete process.env.CEZ_AUTOMATIONS;
-    else process.env.CEZ_AUTOMATIONS = savedAutomations;
+    delete process.env.ONNI_HOME;
+    if (savedAutomations === undefined) delete process.env.ONNI_AUTOMATIONS;
+    else process.env.ONNI_AUTOMATIONS = savedAutomations;
   });
 
   const app = () => createApp({ repoRoot: root, store, manager, version: 'test' });
@@ -359,18 +359,18 @@ describe('automation API — kinds, run, templates (spec 2026-09-14)', () => {
     expect(res.status).toBe(200);
     const { templates } = (await res.json()) as any;
     expect(Array.isArray(templates)).toBe(true);
-    // The boot project is registered under CEZ_HOME; excluding it empties the palette.
+    // The boot project is registered under ONNI_HOME; excluding it empties the palette.
     const projects = (await (await apiRequest(server, '/api/v1/projects')).json()) as any;
     const mine = projects.projects.find((project: { root: string }) => project.root === root)?.id ?? projects.bootProject;
     const excluded = (await (await apiRequest(server, `/api/v1/workspace/automation-templates?exclude=${mine}`)).json()) as any;
     expect(excluded.templates.some((template: { project: { id: string } }) => template.project.id === mine)).toBe(false);
   });
 
-  it('is off only for CEZ_AUTOMATIONS=0', async () => {
-    process.env.CEZ_AUTOMATIONS = '0';
+  it('is off only for ONNI_AUTOMATIONS=0', async () => {
+    process.env.ONNI_AUTOMATIONS = '0';
     const off = await apiRequest(app(), '/api/v1/workspace/automation-templates');
     expect(off.status).toBe(409);
-    expect(((await off.json()) as any).error).toContain('CEZ_AUTOMATIONS=0');
+    expect(((await off.json()) as any).error).toContain('ONNI_AUTOMATIONS=0');
   });
 });
 

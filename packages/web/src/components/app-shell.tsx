@@ -76,10 +76,10 @@ export type AppShellProps = {
    *  passes the health payload's truth. */
   forgeAvailable?: boolean
   /** Inbox gating (#471): `false` drops the Inbox nav item and its badge — the global inbox is
-   *  opt-in via `CEZ_FOLLOWUPS=1`. Defaults to shown for the same reason as `forgeAvailable`. */
+   *  opt-in via `ONNI_FOLLOWUPS=1`. Defaults to shown for the same reason as `forgeAvailable`. */
   inboxAvailable?: boolean
   /** Automations gating (#801): `false` drops the Automations nav item — GitHub automations are
-   *  opt-in via `CEZ_AUTOMATIONS=1`. Defaults to shown for the same reason as `forgeAvailable`;
+   *  opt-in via `ONNI_AUTOMATIONS=1`. Defaults to shown for the same reason as `forgeAvailable`;
    *  the container passes the health payload's truth. */
   automationsAvailable?: boolean
   tracker?: TrackerKind

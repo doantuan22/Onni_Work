@@ -56,9 +56,9 @@ const HELP = `onni — local cockpit for AI agent tasks in your repo
 Usage:
   onni                     start the cockpit (server + GUI) for the current repo
   onni run "<task>"        run a task headless in the terminal
-  onni task <create|report|list>  dispatch or report from inside a running task (CEZ_DISPATCH=0 turns it off)
+  onni task <create|report|list>  dispatch or report from inside a running task (ONNI_DISPATCH=0 turns it off)
   onni automation <add|create|check|run|list|…>  create and manage automations (GitHub polls, schedules) on a running cockpit
-  onni runs list           list a running cockpit's tasks from a shell (CEZ_API_URL=http://127.0.0.1:4321)
+  onni runs list           list a running cockpit's tasks from a shell (ONNI_API_URL=http://127.0.0.1:4321)
   onni init                scaffold .ai/onni/ (example workflow + skill)
   onni projects            list the projects this cockpit serves
                             (also: projects add [<dir>] · projects remove <id>)
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
       // to that explicit identity. Mutations are left to their own guards.
       const projectArgs = positionals.slice(1);
       const isList = projectArgs.length === 0 || projectArgs[0] === 'list';
-      const bootProjectId = process.env.CEZ_SINGLE_PROJECT === '1' && isList
+      const bootProjectId = process.env.ONNI_SINGLE_PROJECT === '1' && isList
         ? await initWorkspace(repoRoot)
         : undefined;
       process.exitCode = await runProjectsCommand(projectArgs, { defaultRoot: repoRoot, bootProjectId });
@@ -296,7 +296,7 @@ async function serveCommand(
   const webhooks = webhooksEnabled() ? new WebhookCoordinator({
     mode: () => resolveCapabilities(process.env, bindHost).localHandoff ? 'local' : 'hosted',
     ports: () => [webhookPort, ...webhookServerInstances().map(instance => instance.state.primaryPort)],
-    projects: async () => listProjects(), dryRun: process.env.CEZ_DRY_RUN === '1',
+    projects: async () => listProjects(), dryRun: process.env.ONNI_DRY_RUN === '1',
     singleProject: resolveCapabilities(process.env, bindHost).singleProject,
   }) : undefined;
   if (webhooks) {
@@ -331,8 +331,8 @@ async function serveCommand(
   }
   // Where a dispatched agent's `onni task` CLI reaches this cockpit (spec 2026-09-10-dispatch).
   // Set before the first run can start, read by every manager's `agentEnv` while dispatch is on.
-  process.env.CEZ_API_URL = apiOrigin(bindHost, port);
-  process.env.CEZ_BIN = resolve(process.argv[1] ?? fileURLToPath(import.meta.url));
+  process.env.ONNI_API_URL = apiOrigin(bindHost, port);
+  process.env.ONNI_BIN = resolve(process.argv[1] ?? fileURLToPath(import.meta.url));
   httpServer = startServer({
     repoRoot,
     store,
@@ -359,17 +359,17 @@ async function serveCommand(
   if (port !== preferredPort) console.log(`  (port ${preferredPort} was busy — using ${port})`);
   console.log(`\n  cockpit → ${url}\n`);
 
-  // A supervisor that names itself (the desktop shell sets CEZ_SUPERVISOR_PID) may die without
+  // A supervisor that names itself (the desktop shell sets ONNI_SUPERVISOR_PID) may die without
   // a chance to kill us — a force-quit, a crash. Nobody would find a headless cockpit still
   // holding the port, so follow the parent down: `kill(pid, 0)` only probes for existence.
-  const supervisorPid = Number(process.env.CEZ_SUPERVISOR_PID);
+  const supervisorPid = Number(process.env.ONNI_SUPERVISOR_PID);
   if (Number.isInteger(supervisorPid) && supervisorPid > 0) {
     // Two independent signals, because either alone has a hole: `kill(pid, 0)` still succeeds
     // for an unreaped zombie or a reused pid, and the shell exec's us so our parent IS the
     // supervisor — when it dies we are re-parented to pid 1.
     //
     // Re-parenting only speaks when we HAD a parent to lose. A cockpit already at ppid 1 on
-    // boot — a detached launchd/systemd supervisor that still sets CEZ_SUPERVISOR_PID — would
+    // boot — a detached launchd/systemd supervisor that still sets ONNI_SUPERVISOR_PID — would
     // otherwise read its own starting state as "the supervisor is gone" on the first tick and
     // shut down two seconds after it came up. There, `kill(pid, 0)` is the only honest signal.
     const initialPpid = process.ppid;
@@ -663,7 +663,7 @@ async function serverCommand(
   }
 
   const runOpts = {
-    dryRun: process.env.CEZ_DRY_RUN === '1',
+    dryRun: process.env.ONNI_DRY_RUN === '1',
     assumeYes: flags.yes,
     reconfigure: new Set((flags.reconfigure ?? '').split(',').map((s) => s.trim()).filter(Boolean)),
     reinstall: Boolean(flags.reinstall),

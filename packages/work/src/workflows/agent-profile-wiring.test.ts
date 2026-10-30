@@ -16,7 +16,7 @@ import { RunManager } from './run.ts';
  * neither (the mock CLI does not echo its environment).
  */
 describe('RunManager agent-profile resolution', () => {
-  const savedHome = process.env.CEZ_HOME;
+  const savedHome = process.env.ONNI_HOME;
   let home: string;
   let repoRoot: string;
   let store: RunStore;
@@ -35,7 +35,7 @@ describe('RunManager agent-profile resolution', () => {
   beforeEach(async () => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profile-wiring-home-'));
     repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profile-wiring-repo-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     await registerProject(repoRoot);
@@ -44,8 +44,8 @@ describe('RunManager agent-profile resolution', () => {
   afterEach(() => {
     store.flush();
     for (const dir of [home, repoRoot]) rmSync(dir, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
   });
 
   const addAccount = async (id: string, provider: 'claude' | 'codex', dir: string) => {
@@ -101,14 +101,14 @@ describe('RunManager agent-profile resolution', () => {
     expect((await seam().agentEnvForStep(run.id, 'claude')).env.JIRA_API_TOKEN).toBeUndefined();
     store.updateRun(run.id, { automationTracker: { automationId: 'a', automationRevision: 1, receiptId: 'r', provider: 'jira', key: 'SAM-1', url: 'https://example.com' } });
     expect((await seam().agentEnvForStep(run.id, 'claude')).env.JIRA_API_TOKEN).toBeUndefined();
-    const previous = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    const previous = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     try {
       store.updateRun(run.id, { automationTracker: { ...store.getRun(run.id)!.automationTracker!, association: { kind: 'jira', source: { id: 'source', webUrl: 'https://example.com' }, externalId: 'SAM', externalName: 'Sam' } } });
       expect((await seam().agentEnvForStep(run.id, 'claude')).env.JIRA_API_TOKEN).toBeUndefined();
     } finally {
-      if (previous === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = previous;
+      if (previous === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = previous;
     }
   });
 
@@ -140,9 +140,9 @@ describe('RunManager agent-profile resolution', () => {
     // The base run env only: the handoff contract (spec 007) plus the task-scoped
     // temp directory (#785). No ACCOUNT variable, which is this test's subject.
     expect(Object.keys(env).sort()).toEqual([
-      'CEZ_HANDOFF_FILE',
-      'CEZ_TASK_ID',
-      'CEZ_TODOS_FILE',
+      'ONNI_HANDOFF_FILE',
+      'ONNI_TASK_ID',
+      'ONNI_TODOS_FILE',
       'TEMP',
       'TMP',
       'TMPDIR',
@@ -159,7 +159,7 @@ describe('RunManager agent-profile resolution', () => {
     expect(profileId).toBe('work');
     expect(env.CLAUDE_CONFIG_DIR).toBe(join(home, 'claude-klaudiusz'));
     // The handoff plumbing still rides along — the account is additive, not a replacement.
-    expect(env.CEZ_TASK_ID).toBe(run.id);
+    expect(env.ONNI_TASK_ID).toBe(run.id);
   });
 
   it('resolves each step of a MIXED-backend workflow against its own provider', async () => {

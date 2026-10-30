@@ -115,7 +115,7 @@ Notable fields (full doc-comments in the source):
 - `userPrompt` (required), `systemPrompt?`, `images?` (first-message content
   blocks — pasted screenshots), `cwd` (the run dir and the only writable root),
   `model?`, `timeoutMs?`, `env?` (merged over `process.env` — carries
-  `CEZ_HANDOFF_FILE` / `CEZ_TODOS_FILE` / `CEZ_TASK_ID`).
+  `ONNI_HANDOFF_FILE` / `ONNI_TODOS_FILE` / `ONNI_TASK_ID`).
 - `allowedTools?` / `bashAllowlist?` / `additionalDirectories?` — tool access.
   **Caveat (#430):** the zero-config default (`DEFAULT_ALLOWED_TOOLS`) includes
   unrestricted `Bash`, and Codex/OpenCode do not honor `allowedTools` at all.
@@ -460,8 +460,8 @@ To be first-class:
    type-exactness test guards drift).
 3. **Detection** — a `probePi()` in `backend-detect.ts` plus the `BackendCheck`
    name union; degrade gracefully when the CLI is absent (never fail boot). If it
-   needs a binary override, add `CEZ_PI_BIN` — and per AGENTS.md's zero-config
-   rule, document any new `CEZ_*` var in `.env.example` in the same commit.
+   needs a binary override, add `ONNI_PI_BIN` — and per AGENTS.md's zero-config
+   rule, document any new `ONNI_*` var in `.env.example` in the same commit.
 4. **Mapper** — `packages/work/src/core/<runner>-ui-mapper.ts` emitting the full
    v2 `UiEvent` stream **alongside** v1. Never throw on malformed input; explicit
    immutable state.
@@ -575,7 +575,7 @@ window can be weekly and secondary can be null: labels must use duration.
 `saveUsageWindows(binding, observation)` and `loadUsageWindows(binding)` in
 `workspace/usage-windows.ts` bind snapshots to provider, account id, resolved
 profile location and optional hashed identity. Writes use the workspace sandbox
-guard, a bounded cross-process lease and atomic 0600 replacement under CEZ_HOME.
+guard, a bounded cross-process lease and atomic 0600 replacement under ONNI_HOME.
 Corrupt/unwritable state degrades to no data with one redacted warning per file.
 Newer observations replace older windows; other windows and accounts survive.
 A verified identity change discards the old login's windows. Unidentified observations cannot overwrite identified snapshots or remove established holds, including when the profile location changes. Bind the exact same

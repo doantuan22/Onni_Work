@@ -154,7 +154,7 @@ The absolute instant is the source of truth (`<time dateTime>`), not a countdown
 
 ## Testability
 
-`scripts/mock-claude.mjs` grows `mock:limit`, emitting the real envelope with a reset `CEZ_MOCK_LIMIT_RESET_SECONDS` seconds out (default 60). The whole path — CLI wire shape → record `error` → parse → schedule → restart re-arm → resume — is exercised under `CEZ_DRY_RUN=1` with no login and no tokens, in `src/workflows/auto-resume.test.ts`, and is reachable by hand for QA the same way.
+`scripts/mock-claude.mjs` grows `mock:limit`, emitting the real envelope with a reset `ONNI_MOCK_LIMIT_RESET_SECONDS` seconds out (default 60). The whole path — CLI wire shape → record `error` → parse → schedule → restart re-arm → resume — is exercised under `ONNI_DRY_RUN=1` with no login and no tokens, in `src/workflows/auto-resume.test.ts`, and is reachable by hand for QA the same way.
 
 ## Addendum (2026-10-26): transient failures ride the same resume
 

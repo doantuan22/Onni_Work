@@ -6,7 +6,7 @@ import { AgentBrowser, bootProjectId, readTestEnv } from './agent-browser'
 /**
  * The GitHub tab (R6 Step 1.1) end-to-end against the shared dry-run environment.
  *
- * Reachability: under `CEZ_DRY_RUN=1` the forge driver reports AVAILABLE and `/api/v1/github`
+ * Reachability: under `ONNI_DRY_RUN=1` the forge driver reports AVAILABLE and `/api/v1/github`
  * serves the bundled mock issues/PRs — so the lists, the detail pane and the cmdk dropdowns
  * are honestly reachable here and are covered below. The forge-OFF branch (nav item hidden,
  * unavailable explainer) is NOT reachable in this env; it is asserted structurally in the
@@ -155,7 +155,7 @@ describe('the GitHub tab against the live dry-run server', () => {
 
   it('renders the activity thread: comments, a commit row with a CI glyph, and events', async () => {
     // The sibling spec (#499) called for thread e2e coverage and it never landed, so before #525
-    // this file had NO thread assertions at all. Under CEZ_DRY_RUN=1 the mock thread serves both
+    // this file had NO thread assertions at all. Under ONNI_DRY_RUN=1 the mock thread serves both
     // comments and timeline events, so the whole interleave is honestly reachable here.
     if (!forgeAvailable) return
     const gh = await api<GithubPayload>('/api/v1/github')

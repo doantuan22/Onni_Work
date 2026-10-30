@@ -35,7 +35,7 @@ pracę ("agent robi, ja dalej koduję u siebie").
    postęp agenta zawsze odzyskiwalny z historii. Commity autosave squashuje
    krok PR (009) — na razie zostają w branchu.
    *Aneks (2026-07-17, #471):* okresowy timer 90 s jest **opt-in** przez
-   `CEZ_AUTOSAVE=1` (domyślnie wyłączony — commity autosave w środku runa
+   `ONNI_AUTOSAVE=1` (domyślnie wyłączony — commity autosave w środku runa
    zaśmiecały historię PR-ów). Flushe na końcu tury i przed draft-PR zostają
    bez zmian, więc branch nadal kończy z pełnym stanem, a diff/review/PR
    działają jak dotąd.
@@ -108,7 +108,7 @@ For a Git repository, an isolated task now has a fail-closed contract:
 - The explicit `worktree: false` opt-out and non-Git degradation remain
   supported. Repository-root execution stays serialized by default for those
   intentional modes. Advanced users may set the exact opt-in
-  `CEZ_DISABLE_REPO_LOCK=1` to bypass that lease for any run executing in the
+  `ONNI_DISABLE_REPO_LOCK=1` to bypass that lease for any run executing in the
   repository root, including a resumed session whose worktree cannot be
   restored. This mode is intentionally unsafe: concurrent agents may overwrite
   each other's files or Git state. Isolated worktree runs are unaffected.
@@ -121,5 +121,5 @@ Hardening acceptance checks:
 - A forced worktree-creation error produces a failed run and executes no
   workflow command in the repository root.
 - Two explicit worktree opt-out runs still serialize repository-root access by
-  default; with `CEZ_DISABLE_REPO_LOCK=1`, two root runs may overlap and each
+  default; with `ONNI_DISABLE_REPO_LOCK=1`, two root runs may overlap and each
   emits a visible unsafe-mode note.

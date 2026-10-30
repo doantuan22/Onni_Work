@@ -21,10 +21,10 @@ describe('the config API', () => {
   let repoRoot: string;
   let homeRoot: string;
   const savedHome = process.env.HOME;
-  const savedCezHome = process.env.CEZ_HOME;
+  const savedCezHome = process.env.ONNI_HOME;
   const savedCodexHome = process.env.CODEX_HOME;
   const savedXdgConfigHome = process.env.XDG_CONFIG_HOME;
-  const savedModelsLocked = process.env.CEZ_AGENT_MODELS_LOCKED;
+  const savedModelsLocked = process.env.ONNI_AGENT_MODELS_LOCKED;
   let store: RunStore;
   let app: Hono;
 
@@ -32,10 +32,10 @@ describe('the config API', () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-configapi-'));
     homeRoot = mkdtempSync(join(tmpdir(), 'onni-configapi-home-'));
     process.env.HOME = homeRoot;
-    process.env.CEZ_HOME = join(homeRoot, '.onni');
+    process.env.ONNI_HOME = join(homeRoot, '.onni');
     process.env.CODEX_HOME = join(homeRoot, '.codex');
     process.env.XDG_CONFIG_HOME = join(homeRoot, '.config');
-    delete process.env.CEZ_AGENT_MODELS_LOCKED;
+    delete process.env.ONNI_AGENT_MODELS_LOCKED;
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     mkdirSync(join(homeRoot, '.onni'), { recursive: true });
     store = RunStore.open(join(repoRoot, '.ai/onni'));
@@ -49,14 +49,14 @@ describe('the config API', () => {
     rmSync(homeRoot, { recursive: true, force: true });
     if (savedHome === undefined) delete process.env.HOME;
     else process.env.HOME = savedHome;
-    if (savedCezHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedCezHome;
+    if (savedCezHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedCezHome;
     if (savedCodexHome === undefined) delete process.env.CODEX_HOME;
     else process.env.CODEX_HOME = savedCodexHome;
     if (savedXdgConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
     else process.env.XDG_CONFIG_HOME = savedXdgConfigHome;
-    if (savedModelsLocked === undefined) delete process.env.CEZ_AGENT_MODELS_LOCKED;
-    else process.env.CEZ_AGENT_MODELS_LOCKED = savedModelsLocked;
+    if (savedModelsLocked === undefined) delete process.env.ONNI_AGENT_MODELS_LOCKED;
+    else process.env.ONNI_AGENT_MODELS_LOCKED = savedModelsLocked;
   });
 
   const configPath = () => join(repoRoot, '.ai/onni', 'config.json');
@@ -115,7 +115,7 @@ describe('the config API', () => {
   });
 
   it('locks native defaults and rejects Onni model overrides', async () => {
-    process.env.CEZ_AGENT_MODELS_LOCKED = '1';
+    process.env.ONNI_AGENT_MODELS_LOCKED = '1';
     mkdirSync(join(homeRoot, '.codex'), { recursive: true });
     writeFileSync(join(homeRoot, '.codex', 'config.toml'), 'model = "gpt-5-codex"\n');
     writeFileSync(configPath(), JSON.stringify({ defaultModels: { codex: 'onni-codex' } }), 'utf8');
@@ -224,7 +224,7 @@ describe('the config API', () => {
   });
 
   it('the fixed-model policy refuses an auto override too (#906)', async () => {
-    process.env.CEZ_AGENT_MODELS_LOCKED = '1';
+    process.env.ONNI_AGENT_MODELS_LOCKED = '1';
     mkdirSync(join(homeRoot, '.claude'), { recursive: true });
     writeFileSync(join(homeRoot, '.claude', 'settings.json'), '{"model":"opus"}');
 
@@ -468,7 +468,7 @@ describe('reviewGate round-trip (optional review gate, #489)', () => {
   });
 
   it('GET exposes reviewGate; PUT true/false/null round-trips and clears the raw key', async () => {
-    // Default (no config key) is null — the CEZ_REVIEW_GATE env (OFF) decides.
+    // Default (no config key) is null — the ONNI_REVIEW_GATE env (OFF) decides.
     expect(((await (await apiRequest(app, '/api/v1/config')).json()) as Record<string, unknown>).reviewGate).toBeNull();
 
     const on = (await (await put({ reviewGate: true })).json()) as Record<string, unknown>;

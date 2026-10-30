@@ -517,12 +517,12 @@ describe('sanitizeAttachmentName (#929)', () => {
 });
 
 /**
- * End-to-end through the real engine with CEZ_DRY_RUN=1 (#357): a pasted
+ * End-to-end through the real engine with ONNI_DRY_RUN=1 (#357): a pasted
  * screenshot must land as a real file under `.ai/onni/runs/<id>-images/`
  * (named `pasted-<n>.<ext>`, never `screenshot-<n>.<ext>` — that prefix stays
  * reserved for the agent's own tool screenshots) and its absolute path must
  * reach the agent in the prompt/message text — verified via the mock's
- * CEZ_MOCK_STDIN_FILE hook, which captures the untruncated inbound text.
+ * ONNI_MOCK_STDIN_FILE hook, which captures the untruncated inbound text.
  */
 describe('pasted screenshots materialize to disk and reach the agent as file paths', () => {
   let repoRoot: string;
@@ -538,12 +538,12 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
     dataDir = join(repoRoot, '.ai/onni');
     argsFile = join(repoRoot, 'mock-args.ndjson');
     stdinFile = join(repoRoot, 'mock-stdin.ndjson');
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    savedEnv.CEZ_MOCK_ARGS_FILE = process.env.CEZ_MOCK_ARGS_FILE;
-    savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-    process.env.CEZ_DRY_RUN = '1';
-    process.env.CEZ_MOCK_ARGS_FILE = argsFile;
-    process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    savedEnv.ONNI_MOCK_ARGS_FILE = process.env.ONNI_MOCK_ARGS_FILE;
+    savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+    process.env.ONNI_DRY_RUN = '1';
+    process.env.ONNI_MOCK_ARGS_FILE = argsFile;
+    process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });

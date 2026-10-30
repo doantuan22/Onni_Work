@@ -231,9 +231,9 @@ describe('listGithubOwners', () => {
 });
 
 describe('POST /api/v1/projects/create', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedProjectsDir = process.env.CEZ_PROJECTS_DIR;
+  const savedHome = process.env.ONNI_HOME;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedProjectsDir = process.env.ONNI_PROJECTS_DIR;
   let home: string;
   let repoRoot: string;
   let checkoutRoot: string;
@@ -243,9 +243,9 @@ describe('POST /api/v1/projects/create', () => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-create-home-'));
     repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-create-boot-'));
     checkoutRoot = join(home, 'projects');
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_DRY_RUN = '1';
-    delete process.env.CEZ_PROJECTS_DIR;
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_DRY_RUN = '1';
+    delete process.env.ONNI_PROJECTS_DIR;
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     clearProjectProbeCache();
     await mergeWriteWorkspaceConfig((config) => {
@@ -257,9 +257,9 @@ describe('POST /api/v1/projects/create', () => {
     store.flush();
     for (const dir of [home, repoRoot]) rmSync(dir, { recursive: true, force: true });
     for (const [key, value] of [
-      ['CEZ_HOME', savedHome],
-      ['CEZ_DRY_RUN', savedDryRun],
-      ['CEZ_PROJECTS_DIR', savedProjectsDir],
+      ['ONNI_HOME', savedHome],
+      ['ONNI_DRY_RUN', savedDryRun],
+      ['ONNI_PROJECTS_DIR', savedProjectsDir],
     ] as const) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
@@ -278,7 +278,7 @@ describe('POST /api/v1/projects/create', () => {
     return { status: res.status, body: (await res.json()) as Partial<RegisterProjectResponse> & { error?: string } };
   };
 
-  it('creates a local project with real git under CEZ_DRY_RUN and registers it as local', async () => {
+  it('creates a local project with real git under ONNI_DRY_RUN and registers it as local', async () => {
     const bus = new WorkspaceEventBus();
     const seen: string[] = [];
     bus.on((event) => seen.push(event));

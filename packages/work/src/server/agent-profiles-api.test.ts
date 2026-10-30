@@ -18,7 +18,7 @@ import { createApp, type ServerDeps } from './server.ts';
 // discovery for real.
 vi.mock('../core/claude-bin.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../core/claude-bin.ts')>()),
-  resolveClaudeBin: () => process.env.CEZ_CLAUDE_BIN ?? 'claude',
+  resolveClaudeBin: () => process.env.ONNI_CLAUDE_BIN ?? 'claude',
 }));
 
 // Junie has no read-only auth-status command, so `ProviderAuthService` probes it through a real
@@ -39,11 +39,11 @@ vi.mock('../core/junie-auth-probe.ts', () => ({
  */
 describe('agent profiles API', () => {
   const saved = {
-    home: process.env.CEZ_HOME,
-    remote: process.env.CEZ_REMOTE,
-    remoteAgentAccounts: process.env.CEZ_REMOTE_AGENT_ACCOUNTS,
-    browseRoot: process.env.CEZ_BROWSE_ROOT,
-    dryRun: process.env.CEZ_DRY_RUN,
+    home: process.env.ONNI_HOME,
+    remote: process.env.ONNI_REMOTE,
+    remoteAgentAccounts: process.env.ONNI_REMOTE_AGENT_ACCOUNTS,
+    browseRoot: process.env.ONNI_BROWSE_ROOT,
+    dryRun: process.env.ONNI_DRY_RUN,
   };
   let home: string;
   let repoRoot: string;
@@ -52,12 +52,12 @@ describe('agent profiles API', () => {
   beforeEach(() => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profiles-home-'));
     repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profiles-repo-'));
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_BROWSE_ROOT = home;
-    delete process.env.CEZ_REMOTE;
-    delete process.env.CEZ_REMOTE_AGENT_ACCOUNTS;
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_BROWSE_ROOT = home;
+    delete process.env.ONNI_REMOTE;
+    delete process.env.ONNI_REMOTE_AGENT_ACCOUNTS;
     // Deterministic on any machine: no real agent CLIs are probed.
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     clearProjectProbeCache();
   });
@@ -67,11 +67,11 @@ describe('agent profiles API', () => {
     // Boot warming can still be writing into `home` as the test ends; retry instead of ENOTEMPTY.
     for (const dir of [home, repoRoot]) rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     for (const [key, value] of [
-      ['CEZ_HOME', saved.home],
-      ['CEZ_REMOTE', saved.remote],
-      ['CEZ_REMOTE_AGENT_ACCOUNTS', saved.remoteAgentAccounts],
-      ['CEZ_BROWSE_ROOT', saved.browseRoot],
-      ['CEZ_DRY_RUN', saved.dryRun],
+      ['ONNI_HOME', saved.home],
+      ['ONNI_REMOTE', saved.remote],
+      ['ONNI_REMOTE_AGENT_ACCOUNTS', saved.remoteAgentAccounts],
+      ['ONNI_BROWSE_ROOT', saved.browseRoot],
+      ['ONNI_DRY_RUN', saved.dryRun],
     ] as const) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
@@ -138,7 +138,7 @@ describe('agent profiles API', () => {
         provider: 'claude',
         configDir: claudeDir('claude-klaudiusz'),
       });
-      // Under CEZ_DRY_RUN the peek answers from its own short-circuit, so assert the SHAPE
+      // Under ONNI_DRY_RUN the peek answers from its own short-circuit, so assert the SHAPE
       // contract instead: whatever the listing carries, the dedicated route is what probes.
       const res = await apiRequest(
         makeApp(),
@@ -491,7 +491,7 @@ describe('agent profiles API', () => {
     // Dry-run short-circuits provider auth entirely, which would make "no spawns" true for the
     // wrong reason. These two cases need the real probe path, with an injected command runner.
     beforeEach(() => {
-      delete process.env.CEZ_DRY_RUN;
+      delete process.env.ONNI_DRY_RUN;
     });
 
     it('probes NOTHING while building the listing', async () => {
@@ -552,8 +552,8 @@ describe('agent profiles API', () => {
         configDir: claudeDir('claude-klaudiusz'),
       });
       if (remote) {
-        process.env.CEZ_REMOTE = '1';
-        process.env.CEZ_REMOTE_AGENT_ACCOUNTS = '1';
+        process.env.ONNI_REMOTE = '1';
+        process.env.ONNI_REMOTE_AGENT_ACCOUNTS = '1';
       }
       const spawns: string[] = [];
       const app = makeApp({
@@ -787,9 +787,9 @@ describe('agent profiles API', () => {
     });
   });
 
-  describe('hosted mode (CEZ_REMOTE)', () => {
+  describe('hosted mode (ONNI_REMOTE)', () => {
     beforeEach(() => {
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
     });
 
     it('withholds the listing — the absolute paths are the host disclosure', async () => {
@@ -819,7 +819,7 @@ describe('agent profiles API', () => {
     });
 
     it('allows account management when the authenticated deployment explicitly opts in', async () => {
-      process.env.CEZ_REMOTE_AGENT_ACCOUNTS = '1';
+      process.env.ONNI_REMOTE_AGENT_ACCOUNTS = '1';
       const { status, body } = await send('POST', '/api/v1/workspace/agent-profiles', {
         provider: 'claude', label: 'Work', configDir: claudeDir('claude-work'),
       });
@@ -852,7 +852,7 @@ describe('agent profiles API', () => {
     });
 
     it.each(['POST', 'PATCH'])('rejects live, dead and ancestor symlink escapes through %s', async (method) => {
-      process.env.CEZ_REMOTE_AGENT_ACCOUNTS = '1';
+      process.env.ONNI_REMOTE_AGENT_ACCOUNTS = '1';
       const created = await send('POST', '/api/v1/workspace/agent-profiles', {
         provider: 'claude', configDir: claudeDir('safe'),
       });
@@ -874,7 +874,7 @@ describe('agent profiles API', () => {
     });
 
     it('allows new remote folders and symlinks whose existing ancestor stays inside the root', async () => {
-      process.env.CEZ_REMOTE_AGENT_ACCOUNTS = '1';
+      process.env.ONNI_REMOTE_AGENT_ACCOUNTS = '1';
       const safe = claudeDir('safe-target');
       const link = join(home, 'safe-link');
       symlinkSync(safe, link, 'dir');
@@ -886,8 +886,8 @@ describe('agent profiles API', () => {
       }
     });
 
-    it('confines remotely supplied folders to CEZ_BROWSE_ROOT without probing outside paths', async () => {
-      process.env.CEZ_REMOTE_AGENT_ACCOUNTS = '1';
+    it('confines remotely supplied folders to ONNI_BROWSE_ROOT without probing outside paths', async () => {
+      process.env.ONNI_REMOTE_AGENT_ACCOUNTS = '1';
       const outside = join(realpathSync(tmpdir()), `outside-${Date.now()}`);
       mkdirSync(outside);
       try {
@@ -986,7 +986,7 @@ describe('agent profiles API', () => {
       // ten minutes. Without an eviction, Connect after a `claude /logout` opens nothing and says
       // "already connected" — and contradicts this module's own claim that opening a login is an
       // explicit invalidation point rather than something that waits out a window.
-      delete process.env.CEZ_DRY_RUN;
+      delete process.env.ONNI_DRY_RUN;
       let loggedIn = true;
       let spawns = 0;
       const providerAuth = new ProviderAuthService({
@@ -1032,7 +1032,7 @@ describe('agent profiles API', () => {
         provider: 'claude',
         configDir: claudeDir('claude-klaudiusz'),
       });
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
       for (const profileId of [created.profile.id, 'no-such-account']) {
         const res = await apiRequest(makeApp(), '/api/v1/providers/connect', {
           method: 'POST',
@@ -1043,7 +1043,7 @@ describe('agent profiles API', () => {
         const answer = (await res.json()) as { error: string; command?: string };
         // No host path, and the same words whether or not the id exists.
         expect(answer.command).toBeUndefined();
-        expect(answer.error).toContain('CEZ_REMOTE_AGENT_ACCOUNTS=1');
+        expect(answer.error).toContain('ONNI_REMOTE_AGENT_ACCOUNTS=1');
         expect(JSON.stringify(answer)).not.toContain(home);
       }
     });

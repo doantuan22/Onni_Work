@@ -39,18 +39,18 @@ describe('the workspace terminal routes', () => {
   let sessions: TerminalSessions;
   let ptys: FakePty[];
   let spawned: PtySpawnOptions[];
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedTerminal = process.env.CEZ_TERMINAL;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedTerminal = process.env.ONNI_TERMINAL;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-terminal-'));
     worktree = join(repoRoot, 'wt');
     mkdirSync(worktree, { recursive: true });
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    delete process.env.CEZ_REMOTE;
-    delete process.env.CEZ_TERMINAL;
-    process.env.CEZ_DRY_RUN = '1';
+    delete process.env.ONNI_REMOTE;
+    delete process.env.ONNI_TERMINAL;
+    process.env.ONNI_DRY_RUN = '1';
     ptys = [];
     spawned = [];
     const binding = async (): Promise<PtyBinding> => ({
@@ -72,9 +72,9 @@ describe('the workspace terminal routes', () => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
     for (const [key, saved] of [
-      ['CEZ_REMOTE', savedRemote],
-      ['CEZ_TERMINAL', savedTerminal],
-      ['CEZ_DRY_RUN', savedDryRun],
+      ['ONNI_REMOTE', savedRemote],
+      ['ONNI_TERMINAL', savedTerminal],
+      ['ONNI_DRY_RUN', savedDryRun],
     ] as const) {
       if (saved === undefined) delete process.env[key];
       else process.env[key] = saved;
@@ -117,11 +117,11 @@ describe('the workspace terminal routes', () => {
     });
 
     it('refuses on a hosted cockpit, with a reason rather than a code', async () => {
-      process.env.CEZ_REMOTE = '1';
+      process.env.ONNI_REMOTE = '1';
       const runId = seedRun();
       const state = await (await apiRequest(makeApp(), `/api/v1/runs/${runId}/terminal`)).json();
       expect(state).toMatchObject({ available: false, sessions: [] });
-      expect((state as { reason: string }).reason).toContain('CEZ_TERMINAL=1');
+      expect((state as { reason: string }).reason).toContain('ONNI_TERMINAL=1');
 
       const created = await apiRequest(makeApp(), `/api/v1/runs/${runId}/terminal`, {
         method: 'POST',
@@ -131,16 +131,16 @@ describe('the workspace terminal routes', () => {
       expect(created.status).toBe(409);
     });
 
-    it('opens on a hosted cockpit only when CEZ_TERMINAL=1 says so', async () => {
-      process.env.CEZ_REMOTE = '1';
-      process.env.CEZ_TERMINAL = '1';
+    it('opens on a hosted cockpit only when ONNI_TERMINAL=1 says so', async () => {
+      process.env.ONNI_REMOTE = '1';
+      process.env.ONNI_TERMINAL = '1';
       const runId = seedRun();
       const session = await openSession(runId);
       expect(session.cwd).toBe(worktree);
     });
 
-    it('CEZ_TERMINAL=0 turns it off locally too', async () => {
-      process.env.CEZ_TERMINAL = '0';
+    it('ONNI_TERMINAL=0 turns it off locally too', async () => {
+      process.env.ONNI_TERMINAL = '0';
       const runId = seedRun();
       const state = await (await apiRequest(makeApp(), `/api/v1/runs/${runId}/terminal`)).json();
       expect(state).toMatchObject({ available: false });
@@ -191,7 +191,7 @@ describe('the workspace terminal routes', () => {
     });
 
     it('refuses to store a command where the terminal is off', async () => {
-      process.env.CEZ_TERMINAL = '0';
+      process.env.ONNI_TERMINAL = '0';
       expect((await put({ scope: 'project', recipe: { services: ['npm run dev'] } })).status).toBe(409);
     });
   });

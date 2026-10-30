@@ -21,7 +21,7 @@ describe('the dispatch routes', () => {
   let calls: Array<{ kind: 'dispatch' | 'report'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
-  const savedFlag = process.env.CEZ_DISPATCH;
+  const savedFlag = process.env.ONNI_DISPATCH;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-dispatch-api-'));
@@ -29,7 +29,7 @@ describe('the dispatch routes', () => {
     calls = [];
     outcome = { id: 'child-1', branch: 'onni/child1' };
     reportOk = true;
-    process.env.CEZ_DISPATCH = '1';
+    process.env.ONNI_DISPATCH = '1';
     const manager = {
       dispatch: (runId: string, body: unknown) => {
         calls.push({ kind: 'dispatch', runId, body });
@@ -44,8 +44,8 @@ describe('the dispatch routes', () => {
   });
 
   afterEach(() => {
-    if (savedFlag === undefined) delete process.env.CEZ_DISPATCH;
-    else process.env.CEZ_DISPATCH = savedFlag;
+    if (savedFlag === undefined) delete process.env.ONNI_DISPATCH;
+    else process.env.ONNI_DISPATCH = savedFlag;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -83,13 +83,13 @@ describe('the dispatch routes', () => {
     expect((await apiRequest(app, '/api/v1/runs/plain/report', json(report))).status).toBe(404);
   });
 
-  it('answers 409 on both routes while CEZ_DISPATCH=0, before touching the manager', async () => {
-    process.env.CEZ_DISPATCH = '0';
+  it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
+    process.env.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
     for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r' }));
       expect(res.status).toBe(409);
-      expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(CEZ_DISPATCH=0\).*stop and report/);
+      expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);
     }
   });
 });

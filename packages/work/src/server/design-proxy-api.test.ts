@@ -22,7 +22,7 @@ describe('the design-proxy API', () => {
   let store: RunStore;
   let proxies: DesignProxies;
   let app: Hono;
-  const env = { remote: process.env.CEZ_REMOTE, design: process.env.CEZ_DESIGN_MODE };
+  const env = { remote: process.env.ONNI_REMOTE, design: process.env.ONNI_DESIGN_MODE };
 
   const post = (body: unknown) =>
     apiRequest(app, '/api/v1/preview/design-proxy', {
@@ -32,8 +32,8 @@ describe('the design-proxy API', () => {
     });
 
   beforeEach(() => {
-    delete process.env.CEZ_REMOTE;
-    delete process.env.CEZ_DESIGN_MODE;
+    delete process.env.ONNI_REMOTE;
+    delete process.env.ONNI_DESIGN_MODE;
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-design-api-'));
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(repoRoot, '.ai/onni'));
@@ -44,7 +44,7 @@ describe('the design-proxy API', () => {
     proxies.closeAll();
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    for (const [name, value] of [['CEZ_REMOTE', env.remote], ['CEZ_DESIGN_MODE', env.design]] as const) {
+    for (const [name, value] of [['ONNI_REMOTE', env.remote], ['ONNI_DESIGN_MODE', env.design]] as const) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;
     }
@@ -71,15 +71,15 @@ describe('the design-proxy API', () => {
     expect(proxies.size).toBe(0);
   });
 
-  it('answers 409 and opens nothing when CEZ_DESIGN_MODE=0', async () => {
-    process.env.CEZ_DESIGN_MODE = '0';
+  it('answers 409 and opens nothing when ONNI_DESIGN_MODE=0', async () => {
+    process.env.ONNI_DESIGN_MODE = '0';
     const res = await post({ target: 'http://localhost:5173', parentOrigin: 'http://localhost:4321' });
     expect(res.status).toBe(409);
     expect(proxies.size).toBe(0);
   });
 
   it('answers 409 on a hosted cockpit, where a loopback mirror reaches nobody', async () => {
-    process.env.CEZ_REMOTE = '1';
+    process.env.ONNI_REMOTE = '1';
     const res = await post({ target: 'http://localhost:5173', parentOrigin: 'http://localhost:4321' });
     expect(res.status).toBe(409);
     expect(proxies.size).toBe(0);

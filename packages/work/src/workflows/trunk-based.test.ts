@@ -36,8 +36,8 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-kb-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'daily.md'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });

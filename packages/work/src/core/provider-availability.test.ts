@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { applyProviderEnablement, isProviderUsable } from './provider-availability.ts';
 
 describe('provider availability', () => {
-  const savedModelsLocked = process.env.CEZ_AGENT_MODELS_LOCKED;
+  const savedModelsLocked = process.env.ONNI_AGENT_MODELS_LOCKED;
 
   afterEach(() => {
-    if (savedModelsLocked === undefined) delete process.env.CEZ_AGENT_MODELS_LOCKED;
-    else process.env.CEZ_AGENT_MODELS_LOCKED = savedModelsLocked;
+    if (savedModelsLocked === undefined) delete process.env.ONNI_AGENT_MODELS_LOCKED;
+    else process.env.ONNI_AGENT_MODELS_LOCKED = savedModelsLocked;
   });
 
   const response = {
@@ -36,7 +36,7 @@ describe('provider availability', () => {
   });
 
   it('ignores Onni provider-disable preferences under the explicit model lock', () => {
-    process.env.CEZ_AGENT_MODELS_LOCKED = '1';
+    process.env.ONNI_AGENT_MODELS_LOCKED = '1';
 
     expect(applyProviderEnablement(response, ['claude', 'codex', 'opencode', 'cursor'])).toEqual({
       providers: [

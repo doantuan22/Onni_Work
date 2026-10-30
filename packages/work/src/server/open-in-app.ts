@@ -12,7 +12,7 @@ import { isWsl, translateToWindowsPath } from './wsl.ts';
 /**
  * "Open in…" session takeover (#open-in): detect the editors / file managers / terminals on THIS
  * machine, and open a run's worktree in the one the user picks — the desktop-app equivalent of
- * the "cd <path>" hint. Local-only; the server gates these behind `localHandoff` (CEZ_REMOTE).
+ * the "cd <path>" hint. Local-only; the server gates these behind `localHandoff` (ONNI_REMOTE).
  *
  * Detection is best-effort and cross-platform: an editor counts as present if its CLI is on PATH
  * or (macOS) its .app bundle is installed. Finder/file-manager and Terminal are always offered.
@@ -141,12 +141,12 @@ const AGENT_CLIS: Array<{ runner: RunnerId; label: string; icon: string; bin: st
   // null back means "not found beyond PATH", which `onPath` already covers. Whatever it finds
   // must also reach the LAUNCH — see `withResolvedClaudeBin`.
   { runner: 'claude', label: 'Claude CLI', icon: 'claude', bin: 'claude', envBin: () => claudeShellCommand() ?? undefined },
-  { runner: 'codex', label: 'Codex CLI', icon: 'codex', bin: 'codex', envBin: () => process.env.CEZ_CODEX_BIN },
-  { runner: 'junie', label: 'Junie CLI', icon: 'junie', bin: 'junie', envBin: () => process.env.CEZ_JUNIE_BIN },
-  { runner: 'opencode', label: 'OpenCode', icon: 'opencode', bin: 'opencode', envBin: () => process.env.CEZ_OPENCODE_BIN },
-  { runner: 'cursor', label: 'Cursor Agent', icon: 'cursor', bin: 'agent', envBin: () => process.env.CEZ_CURSOR_AGENT_BIN },
-  { runner: 'pi', label: 'pi CLI', icon: 'pi', bin: 'pi', envBin: () => process.env.CEZ_PI_BIN },
-  { runner: 'copilot', label: 'Copilot CLI', icon: 'copilot', bin: 'copilot', envBin: () => process.env.CEZ_COPILOT_BIN },
+  { runner: 'codex', label: 'Codex CLI', icon: 'codex', bin: 'codex', envBin: () => process.env.ONNI_CODEX_BIN },
+  { runner: 'junie', label: 'Junie CLI', icon: 'junie', bin: 'junie', envBin: () => process.env.ONNI_JUNIE_BIN },
+  { runner: 'opencode', label: 'OpenCode', icon: 'opencode', bin: 'opencode', envBin: () => process.env.ONNI_OPENCODE_BIN },
+  { runner: 'cursor', label: 'Cursor Agent', icon: 'cursor', bin: 'agent', envBin: () => process.env.ONNI_CURSOR_AGENT_BIN },
+  { runner: 'pi', label: 'pi CLI', icon: 'pi', bin: 'pi', envBin: () => process.env.ONNI_PI_BIN },
+  { runner: 'copilot', label: 'Copilot CLI', icon: 'copilot', bin: 'copilot', envBin: () => process.env.ONNI_COPILOT_BIN },
 ];
 
 /**

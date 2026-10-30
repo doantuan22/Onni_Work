@@ -343,7 +343,7 @@ describe('sidebar wiring', () => {
     expect(screen.getByText('route content')).toBeTruthy()
   })
 
-  // CEZ_SINGLE_PROJECT pins this response to the boot row even when the saved registry has more.
+  // ONNI_SINGLE_PROJECT pins this response to the boot row even when the saved registry has more.
   // The shell must collapse from that ordinary one-row response, not grow a second capability
   // branch for navigation: flat nav, one quick-list, repo chip, no group headers.
   it('keeps the sidebar flat when single-project mode pins the registry to the boot project', async () => {

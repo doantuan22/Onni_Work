@@ -66,7 +66,7 @@ The GitHub driver calls the paginated pull-files endpoint via a fixed `gh api` a
 GET /api/github/prs/:number/changes?refresh=1
 ```
 
-The route validates a positive safe integer and exact refresh flag. Zod validates GitHub data and the response. `CEZ_DRY_RUN=1` supplies deterministic renamed, binary, truncated, and ordinary patches.
+The route validates a positive safe integer and exact refresh flag. Zod validates GitHub data and the response. `ONNI_DRY_RUN=1` supplies deterministic renamed, binary, truncated, and ordinary patches.
 
 Normalize each file into the conceptual shape already consumed by the diff facade:
 

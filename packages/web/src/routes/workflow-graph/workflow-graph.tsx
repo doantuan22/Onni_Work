@@ -1661,7 +1661,7 @@ function Inspector({
             <Textarea value={node.body ?? ''} rows={3} onChange={(e) => set({ body: e.target.value })} />
           </Field>
           <p className="text-[11px] text-muted-foreground">
-            Only runs when the server has <code>CEZ_WORKFLOW_WEBHOOKS=1</code>; otherwise it leaves by failed.
+            Only runs when the server has <code>ONNI_WORKFLOW_WEBHOOKS=1</code>; otherwise it leaves by failed.
           </p>
         </>
       )}

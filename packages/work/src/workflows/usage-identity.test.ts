@@ -23,9 +23,9 @@ const observation = (observedAt: number, blocked = true): UsageWindowsObservatio
 });
 beforeEach(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'usage-identity-')));
-  vi.stubEnv('CEZ_HOME', join(root, 'home'));
+  vi.stubEnv('ONNI_HOME', join(root, 'home'));
   vi.stubEnv('CODEX_HOME', join(root, 'profile'));
-  vi.stubEnv('CEZ_DRY_RUN', '1');
+  vi.stubEnv('ONNI_DRY_RUN', '1');
   mkdirSync(join(root, 'profile'));
   writeFileSync(join(root, 'profile', 'config.toml'), '');
   store = RunStore.open(join(root, 'state'));

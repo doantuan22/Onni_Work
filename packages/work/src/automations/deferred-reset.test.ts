@@ -65,7 +65,7 @@ it('applies newer holds to the confirmed step models, including overrides, but n
   const { deferredHoldUntil } = await import('./deferred-reset.ts');
   const { saveUsageWindows } = await import('../workspace/usage-windows.ts');
   const root = mkdtempSync(join(tmpdir(), 'deferred-hold-'));
-  vi.stubEnv('CEZ_HOME', root);
+  vi.stubEnv('ONNI_HOME', root);
   const now = Date.now();
   const definition = { createdAt: new Date(now - 1000).toISOString(), deferredStart: { reason: 'usage-reset', binding: {
     accounts: [{ runner: 'claude', id: 'default', path: '/synthetic-profile' }], models: [{ runner: 'claude', model: 'sonnet' }],
@@ -102,11 +102,11 @@ it.each([true, false])('retains a terminal Claude reset through the real manager
   const root = mkdtempSync(join(tmpdir(), 'terminal-preview-'));
   const profile = join(root, 'profile'); mkdirSync(profile);
   const calls = join(root, 'calls.ndjson');
-  vi.stubEnv('CEZ_HOME', join(root, 'home'));
+  vi.stubEnv('ONNI_HOME', join(root, 'home'));
   vi.stubEnv('CLAUDE_CONFIG_DIR', profile);
-  vi.stubEnv('CEZ_DRY_RUN', '1'); vi.stubEnv('CEZ_MOCK_PACE', '0');
-  vi.stubEnv('CEZ_CLAUDE_BIN', ''); vi.stubEnv('CEZ_MOCK_ARGS_FILE', calls);
-  vi.stubEnv('CEZ_MOCK_LIMIT_RESET_SECONDS', '3600');
+  vi.stubEnv('ONNI_DRY_RUN', '1'); vi.stubEnv('ONNI_MOCK_PACE', '0');
+  vi.stubEnv('ONNI_CLAUDE_BIN', ''); vi.stubEnv('ONNI_MOCK_ARGS_FILE', calls);
+  vi.stubEnv('ONNI_MOCK_LIMIT_RESET_SECONDS', '3600');
   let manager: InstanceType<typeof RunManager> | undefined;
   let store: ReturnType<typeof RunStore.open> | undefined;
   try {

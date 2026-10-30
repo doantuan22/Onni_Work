@@ -30,7 +30,7 @@ import { SettingsField } from './settings-field'
  * are the same components the registry table uses. Two pages disagreeing about what "Remove"
  * does is exactly the failure this page could otherwise introduce.
  *
- * Split in two halves, because `CEZ_SINGLE_PROJECT=1` treats them differently. DESCRIBING the
+ * Split in two halves, because `ONNI_SINGLE_PROJECT=1` treats them differently. DESCRIBING the
  * project (folder, registry facts) stays true in every mode. MANAGING the registry — the
  * concurrency ceiling, Remove — is what single-project mode takes away: `PATCH`/`DELETE
  * /api/v1/projects/:id` both answer 409 there (server.ts), and `visibleSettingsSections` already

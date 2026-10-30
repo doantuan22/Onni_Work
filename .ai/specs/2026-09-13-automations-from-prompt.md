@@ -1,7 +1,7 @@
 # Automations from a prompt — a task may create a GitHub automation
 
-> Slug: `automations-from-prompt` · Status: implemented · Gated by the existing `CEZ_AUTOMATIONS=1`
-> (→ `capabilities.automations`) plus the cockpit transport (`CEZ_API_URL`), exactly like dispatch.
+> Slug: `automations-from-prompt` · Status: implemented · Gated by the existing `ONNI_AUTOMATIONS=1`
+> (→ `capabilities.automations`) plus the cockpit transport (`ONNI_API_URL`), exactly like dispatch.
 > Extends: `2026-07-25-github-automations.md` (the feature), `2026-09-10-dispatch.md` (the mechanism).
 
 ## TLDR
@@ -20,7 +20,7 @@ the automation instead of doing the work once. Two ways in, one mechanism undern
 
 Underneath: a `cez automation` CLI (`packages/work/src/automations/automation-cli.ts`), a thin HTTP
 client over the existing `/api/v1/p/:projectId/automations*` routes, addressed by the same
-`CEZ_API_URL` / `CEZ_PROJECT_ID` / `CEZ_BIN` variables the dispatch CLI uses. No new routes, no new
+`ONNI_API_URL` / `ONNI_PROJECT_ID` / `ONNI_BIN` variables the dispatch CLI uses. No new routes, no new
 state, no new flag.
 
 ## Why this shape
@@ -52,8 +52,8 @@ state, no new flag.
 
 | # | Question | Applied default | Why |
 |---|---|---|---|
-| A1 | How a task creates an automation | `cez automation …` over the existing automations routes, through `node "$CEZ_BIN"`, with `CEZ_API_URL` and `CEZ_PROJECT_ID` from the agent's env. | Same transport and reasoning as dispatch A1; the routes already validate, baseline and log. |
-| A2 | Gating | `automationsReachable()` = `capabilities.automations && CEZ_API_URL`. Off or unreachable: no prompt part, no built-in skill, no template; the CLI without `CEZ_API_URL` exits 2 saying so; with the flag off the routes' 409 (naming `CEZ_AUTOMATIONS=1`) is relayed verbatim and exits 1. | Dispatch A2/A8. |
+| A1 | How a task creates an automation | `cez automation …` over the existing automations routes, through `node "$ONNI_BIN"`, with `ONNI_API_URL` and `ONNI_PROJECT_ID` from the agent's env. | Same transport and reasoning as dispatch A1; the routes already validate, baseline and log. |
+| A2 | Gating | `automationsReachable()` = `capabilities.automations && ONNI_API_URL`. Off or unreachable: no prompt part, no built-in skill, no template; the CLI without `ONNI_API_URL` exits 2 saying so; with the flag off the routes' 409 (naming `ONNI_AUTOMATIONS=1`) is relayed verbatim and exits 1. | Dispatch A2/A8. |
 | A3 | Enabled or paused on create | Paused unless `--enable`; the prompt says enable only when the user asked, and never without a preview. A definition copied from `show` carrying `enabled: true` is lifted into the route's `enable` flag rather than refused. | Automations Q1: no backfill, no surprise fan-out. |
 | A4 | How the skill ships | One built-in `Skill` with `source: 'builtin'`, `path: builtin:create-cezar-automation`, `interactive: true`; `discoverSkills` appends `builtinSkills()` last. Contract enum gains `'builtin'` (additive). | The user's repo is the source of truth; nothing to isolate in a worktree, and the agent may have to ask which label was meant. |
 | A5 | What the composer shows | The skill in the picker; a built-in template `create-automation` (Settings → Prompt templates, editable) assigned to the skill, hidden with `AUTOMATIONS_TEMPLATE_IDS` unless `capabilities.automations`. | Same gate as `DISPATCH_TEMPLATE_IDS`, same reason. |
@@ -66,7 +66,7 @@ state, no new flag.
 `cez automation schema` · `create [--file <def.json> | --json '<json>'] [--enable]` (stdin when
 neither) · `update <id> [--file | --json]` · `check <id> [--execute]` · `list` · `show <id>` ·
 `enable <id>` · `pause <id>` · `delete <id>`. Every mutating command prints the automation's cockpit
-page (`<CEZ_API_URL>/p/<project>/automations/<id>`). Exit 0 ok, 1 refused/failed, 2 usage or no
+page (`<ONNI_API_URL>/p/<project>/automations/<id>`). Exit 0 ok, 1 refused/failed, 2 usage or no
 cockpit. Routed in `index.ts` before the cockpit's own parser, like `cez task`.
 
 ## Prompt (`packages/work/src/automations/prompts.ts`)

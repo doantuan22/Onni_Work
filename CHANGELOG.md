@@ -6,14 +6,14 @@ provenance in `NOTICE`; cezar's own release notes are not copied into it.
 ## 2026-10-30 — Cleanup: no network in the shell, local build only
 
 - **Desktop engine.** The shell no longer downloads anything. It runs the engine named by
-  `CEZ_DESKTOP_ENTRY`, else the one `node packages/work/dist/index.js link --use` registered
+  `ONNI_DESKTOP_ENTRY`, else the one `node packages/work/dist/index.js link --use` registered
   under `~/.cezar/versions/current`; the Versions menu still switches between linked checkouts.
   The managed Node runtime (`node_runtime.rs`, `~/.cezar/node`) and the six crates that fetched
   and unpacked it (`reqwest`, `rustls`, `sha2`, `flate2`, `tar`, `zip`) are gone — Node 20+ must
   already be installed, and the failure page says so. With no built engine the page names
   `npm install`, `npm run build` and `link --use`, plus the two environment overrides. The
   splash's download progress bar went with the download.
-- **Dead flags and modules.** `CEZ_NO_BANNER` and `CEZ_DESKTOP_NO_UPDATE` had no reader left and
+- **Dead flags and modules.** `ONNI_NO_BANNER` and `ONNI_DESKTOP_NO_UPDATE` had no reader left and
   are deleted, with their test/e2e plumbing. `server/tracker/config.ts`, the `Kbd` primitive and
   the unused `Separator` wrapper are gone.
 - **History.** `.ai/runs/` (360 files of past run logs) is removed; `.ai/specs/`,
@@ -23,7 +23,7 @@ provenance in `NOTICE`; cezar's own release notes are not copied into it.
 
 Onni Work is now maintained as an independent project: every functional link to cezar's
 upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~/.cezar`,
-`CEZ_*`, the `@open-mercato/*` package scope) stay unchanged.
+`ONNI_*`, the `@open-mercato/*` package scope) stay unchanged.
 
 - **Attribution.** `Copyright (c) 2026 DOANTUANIT` added below the original cezar copyright in
   `LICENSE` and `packages/work/LICENSE`; new `NOTICE` records the derivation. Root `README.md`
@@ -35,7 +35,7 @@ upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~
 - **Updater.** The Tauri updater ships no endpoints and no public key. Every desktop update path
   (shell update, npm install/update-on-restart, first-run install, menu and IPC command) is
   compiled off. The CLI's `install`/`update`/`versions`/`use` and the self-update service are
-  gated by a new `CEZ_SELF_UPDATE` flag, off by default, and answer
+  gated by a new `ONNI_SELF_UPDATE` flag, off by default, and answer
   "không khả dụng trong Onni Work".
 - **Telemetry.** Removed outright: the service module, `/api/v1/telemetry/*` routes and contract
   schema, the cockpit's consent bar and Settings → Privacy section, and the desktop shell's

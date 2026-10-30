@@ -670,7 +670,7 @@ function WorkspaceView({
               tone="neutral"
               heading="h2"
               title="Terminal disabled"
-              subtitle="The terminal is off on this cockpit — it is off in hosted mode unless CEZ_TERMINAL=1."
+              subtitle="The terminal is off on this cockpit — it is off in hosted mode unless ONNI_TERMINAL=1."
             />
           )
         case 'browser':

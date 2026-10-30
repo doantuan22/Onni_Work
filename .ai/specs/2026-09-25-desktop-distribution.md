@@ -88,7 +88,7 @@ to anyone but maintainers.
 fetches `desktop-latest.json`, verifies the minisign signature against the embedded public key,
 and installs silently — the new shell takes over on the **next** launch. It never restarts under
 the user (only the cockpit's own updater does that, after asking), never blocks startup, and is
-disabled in debug builds and by `CEZ_DESKTOP_NO_UPDATE=1`.
+disabled in debug builds and by `ONNI_DESKTOP_NO_UPDATE=1`.
 
 ## Shipping a shell change — what the maintainer does, what the user sees
 
@@ -143,11 +143,11 @@ the splash show "cezar could not set up Node.js" with the reason — the same fa
 every other: the error report card (#1406) and **Restart cezar**, which first installs a newer
 shell and a newer cezar on the channel when there is one, then relaunches the app. There is no
 "Download Node.js" button: the user is never asked to install anything. Nothing else runs
-until Node is there: no npm, no sidecar, no update check. `CEZ_DESKTOP_NODE=<path>` overrides
+until Node is there: no npm, no sidecar, no update check. `ONNI_DESKTOP_NODE=<path>` overrides
 which node the shell uses (also how the page is tested).
 
 **The managed Node runtime (#1403, shell 0.1.5)** — so the app has NO prerequisite. When none
-of those passes finds Node 20+ (and `CEZ_DESKTOP_NODE` is unset), the shell downloads the
+of those passes finds Node 20+ (and `ONNI_DESKTOP_NODE` is unset), the shell downloads the
 official release for the platform (`darwin-arm64`/`darwin-x64`/`linux-x64`/`linux-arm64`
 `.tar.gz`, `win-x64`/`win-arm64` `.zip`) from nodejs.org — the newest LTS in `index.json` —
 with a progress bar on the splash (`node_runtime.rs`). The archive is hashed against the
@@ -219,7 +219,7 @@ Now shipped:
   because the shell has no SSE client and a cross-project count would need one.
 - **No browser affordance**: the app menu's "Open … in browser" item is gone, and the loopback
   server is the window's transport rather than a second product surface. Hosted mode
-  (`CEZ_REMOTE`) is deliberately untouched: it is a different deployment, not a browser tab of
+  (`ONNI_REMOTE`) is deliberately untouched: it is a different deployment, not a browser tab of
   this app.
 
 Worth adding once real users have it:
@@ -264,7 +264,7 @@ admits the splash and the cockpit **on the port this shell spawned** and nothing
 Any shell version must run any cezar version, so these are frozen and listed in
 `BACKWARD_COMPATIBILITY.md`: the managed entry path
 `~/.cezar/versions/current/node_modules/@onni/work/dist/index.js`; the launch
-`serve --no-open --port <n>`; `CEZ_DESKTOP=1`, `CEZ_SUPERVISED=1`, `CEZ_SUPERVISOR_PID`;
+`serve --no-open --port <n>`; `ONNI_DESKTOP=1`, `ONNI_SUPERVISED=1`, `ONNI_SUPERVISOR_PID`;
 exit status **75** = "relaunch me"; `GET /api/v1/health` as the readiness probe. Changing any
 of them is the one case where the shell must ship BEFORE the cezar version that needs it.
 
@@ -310,6 +310,6 @@ of them is the one case where the shell must ship BEFORE the cezar version that 
   window itself — nobody has clicked through the installed app on Windows. Do that once,
   from the first release's installer, before the download link goes public.
 - Windows signing, Flathub, universal macOS binary (two dmgs today).
-- A `cezar desktop` version chip somewhere in the cockpit (the sidecar knows `CEZ_DESKTOP`,
+- A `cezar desktop` version chip somewhere in the cockpit (the sidecar knows `ONNI_DESKTOP`,
   the shell version could ride along in an env var) so a bug report names both versions.
 - Windows/Linux title bar: native today; the macOS overlay treatment needs a custom bar there.

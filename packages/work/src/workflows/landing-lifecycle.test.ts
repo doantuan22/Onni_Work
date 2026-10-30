@@ -12,8 +12,8 @@ const workflow = { name: 'quick-task', source: 'built-in' as const, steps: [{ id
 const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 
 beforeEach(() => {
-  vi.stubEnv('CEZ_DRY_RUN', '1');
-  vi.stubEnv('CEZ_AUTO_NAMING', '0');
+  vi.stubEnv('ONNI_DRY_RUN', '1');
+  vi.stubEnv('ONNI_AUTO_NAMING', '0');
   root = mkdtempSync(join(tmpdir(), 'onni-landing-lifecycle-'));
   git('init', '-q', '-b', 'main');
   writeFileSync(join(root, 'a.txt'), 'base\n');

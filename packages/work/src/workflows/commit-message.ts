@@ -87,7 +87,7 @@ export async function generateCommitMessage(
         allowedTools: [],
         model: config.defaultRunner === 'claude' ? config.namerModel : undefined,
         timeoutMs: NAMER_TIMEOUT_MS,
-        env: { ...env, CEZ_MOCK_ARGS_FILE: '' },
+        env: { ...env, ONNI_MOCK_ARGS_FILE: '' },
       });
       const subject = cleanSubject(result.text);
       if (subject) return { subject };

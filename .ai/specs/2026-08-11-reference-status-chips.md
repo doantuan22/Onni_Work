@@ -347,7 +347,7 @@ written under a name nothing else uses.
 GitHub can push, but only to a public endpoint. A webhook needs inbound network, which is the one
 thing a local-first cockpit with no daemon, no port and no account cannot have without becoming a
 different product (see AGENTS.md § Zero config: prefer a proxy-free, daemon-free mechanism, and
-anything that widens exposure is opt-in behind a `CEZ_*` flag).
+anything that widens exposure is opt-in behind a `ONNI_*` flag).
 
 Nothing in `gh` subscribes either. `gh run watch` exists but watches ONE Actions run to completion
 and is itself a poll; there is no "tell me when these forty pull requests change". The documented

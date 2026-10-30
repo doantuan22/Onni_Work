@@ -14,19 +14,19 @@ import { runMigrations, WORKSPACE_MIGRATIONS, type WorkspaceMigration } from './
  * one warning, never throws).
  */
 describe('workspace migrations', () => {
-  const originalHome = process.env.CEZ_HOME;
+  const originalHome = process.env.ONNI_HOME;
   let home: string;
   let repoRoot: string;
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-migrations-home-'));
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-migrations-repo-'));
-    process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
+    process.env.ONNI_HOME = home; // paths.ts sends all workspace paths here
   });
 
   afterEach(() => {
-    if (originalHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = originalHome;
+    if (originalHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalHome;
     chmodSync(home, 0o700); // undo the unwritable-home test before cleanup
     rmSync(home, { recursive: true, force: true });
     rmSync(repoRoot, { recursive: true, force: true });

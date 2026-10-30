@@ -16,44 +16,44 @@ import {
 } from './paths.ts';
 
 describe('paths', () => {
-  const original = process.env.CEZ_HOME;
+  const original = process.env.ONNI_HOME;
   afterEach(() => {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
   });
 
   it('defaults onniHomeDir to ~/.onni', () => {
-    delete process.env.CEZ_HOME;
+    delete process.env.ONNI_HOME;
     expect(onniHomeDir()).toBe(join(homedir(), '.onni'));
   });
 
-  it('honors the CEZ_HOME override', () => {
-    process.env.CEZ_HOME = '/tmp/onni-home-test';
+  it('honors the ONNI_HOME override', () => {
+    process.env.ONNI_HOME = '/tmp/onni-home-test';
     expect(onniHomeDir()).toBe('/tmp/onni-home-test');
     expect(serverStatePath()).toBe('/tmp/onni-home-test/server.json');
     expect(serverLockPath()).toBe('/tmp/onni-home-test/server.install.lock');
   });
 
   it('the default instance keeps the legacy un-suffixed paths', () => {
-    process.env.CEZ_HOME = '/tmp/onni-home-test';
+    process.env.ONNI_HOME = '/tmp/onni-home-test';
     expect(serverStatePath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/onni-home-test/server.json');
     expect(serverLockPath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/onni-home-test/server.install.lock');
   });
 
   it('workspace config/ui-state live directly under the onni home', () => {
-    delete process.env.CEZ_HOME;
+    delete process.env.ONNI_HOME;
     expect(workspaceConfigPath()).toBe(join(homedir(), '.onni', 'config.json'));
     expect(workspaceUiStatePath()).toBe(join(homedir(), '.onni', 'ui-state.json'));
   });
 
-  it('workspace paths honor the CEZ_HOME override', () => {
-    process.env.CEZ_HOME = '/tmp/onni-home-test';
+  it('workspace paths honor the ONNI_HOME override', () => {
+    process.env.ONNI_HOME = '/tmp/onni-home-test';
     expect(workspaceConfigPath()).toBe('/tmp/onni-home-test/config.json');
     expect(workspaceUiStatePath()).toBe('/tmp/onni-home-test/ui-state.json');
   });
 
   it('a named instance lives under server-instances/, keyed by slug', () => {
-    process.env.CEZ_HOME = '/tmp/onni-home-test';
+    process.env.ONNI_HOME = '/tmp/onni-home-test';
     expect(serverInstancesDir()).toBe('/tmp/onni-home-test/server-instances');
     expect(serverStatePath('shop-example-com')).toBe('/tmp/onni-home-test/server-instances/shop-example-com.json');
     expect(serverLockPath('shop-example-com')).toBe(
@@ -98,15 +98,15 @@ describe('instanceSlug', () => {
   });
 });
 
-it('an EMPTY CEZ_HOME falls back to the default instead of a relative cwd path', () => {
-  const original = process.env.CEZ_HOME;
-  process.env.CEZ_HOME = '';
+it('an EMPTY ONNI_HOME falls back to the default instead of a relative cwd path', () => {
+  const original = process.env.ONNI_HOME;
+  process.env.ONNI_HOME = '';
   try {
     expect(onniHomeDir().startsWith('/')).toBe(true);
     expect(onniHomeDir().endsWith('/.onni')).toBe(true);
   } finally {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
   }
 });
 

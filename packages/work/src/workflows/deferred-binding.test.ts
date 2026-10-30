@@ -11,7 +11,7 @@ import { loadUsageWindows } from '../workspace/usage-windows.ts';
 let root: string, store: RunStore, manager: RunManager;
 beforeEach(async () => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'deferred-binding-')));
-  vi.stubEnv('CEZ_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'default'));
+  vi.stubEnv('ONNI_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'default'));
   for (const name of ['default', 'work']) { mkdirSync(join(root, name)); writeFileSync(join(root, name, 'settings.json'), '{}'); }
   await mergeWriteAgentAccounts(s => { s.accounts.push({ id: 'work', provider: 'claude', configDir: join(root, 'work'), label: 'Work', addedAt: '' }); });
   store = RunStore.open(join(root, 'state')); manager = new RunManager(store, root);

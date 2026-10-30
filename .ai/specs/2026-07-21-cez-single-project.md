@@ -1,8 +1,8 @@
-# CEZ_SINGLE_PROJECT mode
+# ONNI_SINGLE_PROJECT mode
 
 ## TLDR
 
-Add an opt-in `CEZ_SINGLE_PROJECT=1` boot mode that exposes only the launch project and refuses every add, checkout, browse, or remove path. The default multi-project workspace remains byte-for-byte compatible, while users who prefer one project per server regain a deliberately constrained cockpit without deleting registry state.
+Add an opt-in `ONNI_SINGLE_PROJECT=1` boot mode that exposes only the launch project and refuses every add, checkout, browse, or remove path. The default multi-project workspace remains byte-for-byte compatible, while users who prefer one project per server regain a deliberately constrained cockpit without deleting registry state.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -28,7 +28,7 @@ Alternatives rejected:
 
 ## Architecture
 
-`resolveCapabilities(process.env, bindHost)` remains the canonical env parser and gains `singleProject: env.CEZ_SINGLE_PROJECT === '1'`. The value is returned by `/api/health`, mirrored in the client type, and used as the single UI capability signal.
+`resolveCapabilities(process.env, bindHost)` remains the canonical env parser and gains `singleProject: env.ONNI_SINGLE_PROJECT === '1'`. The value is returned by `/api/health`, mirrored in the client type, and used as the single UI capability signal.
 
 The server already owns boot identity through `resolveBootProject()`. It passes the resolved boot project to the workspace read path when single-project mode is active; `listProjects()` accepts an optional boot-project selector and probes only that matching registry row. `registerProject()` and `shouldRegisterProject()` remain unchanged so launch registration still creates or refreshes the boot row. Stored extra rows are never mutated.
 
@@ -44,7 +44,7 @@ The cockpit derives `singleProject` once in `AppShellContainer` and passes it to
 
 ## Data Model
 
-No persisted schema changes. `~/.cezar/config.json` retains every existing project row byte-for-byte. `CEZ_SINGLE_PROJECT` is process input only and is never written to workspace or per-repository state.
+No persisted schema changes. `~/.cezar/config.json` retains every existing project row byte-for-byte. `ONNI_SINGLE_PROJECT` is process input only and is never written to workspace or per-repository state.
 
 The public health capability grows additively:
 
@@ -62,7 +62,7 @@ Default is `false`; only the exact string `"1"` enables it.
 
 With the flag unset, every existing route and payload remains unchanged.
 
-With `CEZ_SINGLE_PROJECT=1`:
+With `ONNI_SINGLE_PROJECT=1`:
 
 | Surface | Contract |
 |---|---|
@@ -78,7 +78,7 @@ All mutating routes keep their zod boundary validation convention. The capabilit
 CLI contract:
 
 - `cezar projects add …` and `cezar projects remove …` print a concise single-project refusal to stderr and return exit code `1`.
-- Usage text mentions that these mutations are unavailable under `CEZ_SINGLE_PROJECT=1`.
+- Usage text mentions that these mutations are unavailable under `ONNI_SINGLE_PROJECT=1`.
 - Boot registration still runs before serving, and listing presents the launch project only when the mode supplies boot identity.
 
 ## UI/UX
@@ -89,7 +89,7 @@ This mode intentionally removes choices instead of adding a settings control:
 - Global Settings has no Projects navigation item or route entry.
 - With the pinned one-row registry, the sidebar uses its existing flat single-project navigation and New Task omits its project picker.
 - Direct navigation to a hidden project renders the existing unknown-project state; direct mutation requests receive the server's `409` response.
-- No runtime toggle exists. Operators set the env flag before boot and restart, consistent with other `CEZ_*` capability flags.
+- No runtime toggle exists. Operators set the env flag before boot and restart, consistent with other `ONNI_*` capability flags.
 
 Accessibility is preserved because controls are not rendered rather than visually disabled. Existing keyboard order therefore closes over the remaining controls without dead focus targets.
 
@@ -102,7 +102,7 @@ Illustrative proposed-state mockup: [single-project shell](assets/cez-single-pro
 | Registry contains many projects before enabling the flag | Only the boot row is returned; no row is deleted or rewritten. |
 | Flag is later unset | All stored projects immediately reappear on the next boot/request. |
 | Boot row is absent because the home is read-only or registration degraded | Health and projects list degrade to the existing empty/default behavior; boot context still serves the launch directory. The mode never makes registry existence required. |
-| `CEZ_SINGLE_PROJECT` is `true`, `yes`, or any value other than `1` | Mode remains off. |
+| `ONNI_SINGLE_PROJECT` is `true`, `yes`, or any value other than `1` | Mode remains off. |
 | Checkout request arrives while mode is active | Refused before `gh`, network, progress events, or target-directory creation. |
 | Existing hidden project has running work in another process | Its stored row and files are untouched; this process does not instantiate or expose it. |
 | Deep link targets a hidden project | Existing route gate returns/renders unknown project; no special redirect leaks its identity. |
@@ -136,7 +136,7 @@ What cezar deliberately skips: per-project toggles, runtime switching, a second 
 
 ### Phase 1 — Capability and pinned reads
 
-1.1 Extend `src/server/capabilities.ts` and `web/app/src/api/types.ts` with `singleProject`; document strict `CEZ_SINGLE_PROJECT === '1'` resolution. Add flag-on, flag-off, and non-`1` unit cases in `src/server/capabilities.test.ts`; add `CEZ_SINGLE_PROJECT` to route-parity env save/restore. *Verification:* server/client API type exactness and capability tests pass.
+1.1 Extend `src/server/capabilities.ts` and `web/app/src/api/types.ts` with `singleProject`; document strict `ONNI_SINGLE_PROJECT === '1'` resolution. Add flag-on, flag-off, and non-`1` unit cases in `src/server/capabilities.test.ts`; add `ONNI_SINGLE_PROJECT` to route-parity env save/restore. *Verification:* server/client API type exactness and capability tests pass.
 
 1.2 Change `listProjects()` to accept an optional boot project id (or an equally explicit selector) and probe only the matching row. Thread the selector from `resolveBootProject()` into health and `GET /api/projects`; do not change registration functions. Add workspace tests proving pinned reads, no pruning, and successful boot registration. *Verification:* default calls list all rows; flagged server calls list one.
 
@@ -156,8 +156,8 @@ What cezar deliberately skips: per-project toggles, runtime switching, a second 
 
 ### Phase 4 — Compatibility docs and end-to-end verification
 
-4.1 Add `CEZ_SINGLE_PROJECT` to `.env.example` near the workspace registry notes and to the README env table. Add a dated `BACKWARD_COMPATIBILITY.md` entry in the #471 style: what intentionally narrows under the flag, what remains unchanged by default, and why no deprecation alias is needed. *Verification:* documentation names the exact strict value and non-destructive rollback.
+4.1 Add `ONNI_SINGLE_PROJECT` to `.env.example` near the workspace registry notes and to the README env table. Add a dated `BACKWARD_COMPATIBILITY.md` entry in the #471 style: what intentionally narrows under the flag, what remains unchanged by default, and why no deprecation alias is needed. *Verification:* documentation names the exact strict value and non-destructive rollback.
 
-4.2 Extend `web/app/e2e/project-groups.e2e.ts` and its workspace-registry seeding helper: boot with `CEZ_SINGLE_PROJECT=1` and two stored projects, then prove flat navigation, no Add project control, no Projects settings pane, and no project picker. Capture screenshots as QA evidence. *Verification:* `npm run test:e2e` reports `TEST_E2E_STATUS=passed`; skipped is recorded as not verified.
+4.2 Extend `web/app/e2e/project-groups.e2e.ts` and its workspace-registry seeding helper: boot with `ONNI_SINGLE_PROJECT=1` and two stored projects, then prove flat navigation, no Add project control, no Projects settings pane, and no project picker. Capture screenshots as QA evidence. *Verification:* `npm run test:e2e` reports `TEST_E2E_STATUS=passed`; skipped is recorded as not verified.
 
 4.3 Run the full repository gate in order: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, `npm run test:package`, followed by the UI smoke suite. Confirm `.env.example`, README, server and client capability types, and API behavior changed together. *Verification:* every command passes and default behavior remains covered.

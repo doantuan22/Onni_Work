@@ -277,7 +277,7 @@ describe('the General page', () => {
   })
 
   it('single-project mode keeps what describes the project and drops what manages the registry', async () => {
-    // `CEZ_SINGLE_PROJECT=1` makes PATCH and DELETE `/api/v1/projects/:id` answer 409 (server.ts)
+    // `ONNI_SINGLE_PROJECT=1` makes PATCH and DELETE `/api/v1/projects/:id` answer 409 (server.ts)
     // and drops the whole global Projects section from the nav registry. Offering the same two
     // controls here would be a knob whose every change is refused; what the project IS stays true.
     renderAt('/settings', { singleProject: true, registry: [project('boot')] })

@@ -132,8 +132,8 @@ describe('recover() and the dispatch field', () => {
    * report on the parent's own record.
    */
   it('reports a waiting child settled by recovery to its parent', async () => {
-    const flag = process.env.CEZ_DISPATCH;
-    process.env.CEZ_DISPATCH = '1';
+    const flag = process.env.ONNI_DISPATCH;
+    process.env.ONNI_DISPATCH = '1';
     try {
       const parent = store.createRun({ title: 'commander', workflow: 'quick-task', task: 'hold', steps: [] });
       store.updateRun(parent.id, { status: 'waiting', dispatch: { rootRunId: parent.id } });
@@ -159,8 +159,8 @@ describe('recover() and the dispatch field', () => {
       // No ONNI:REPORT was ever emitted, so the report is synthesised from what the run left.
       expect(pending[0]?.report.status).toBe('done');
     } finally {
-      if (flag === undefined) delete process.env.CEZ_DISPATCH;
-      else process.env.CEZ_DISPATCH = flag;
+      if (flag === undefined) delete process.env.ONNI_DISPATCH;
+      else process.env.ONNI_DISPATCH = flag;
     }
   });
 
@@ -171,8 +171,8 @@ describe('recover() and the dispatch field', () => {
    * `waiting` child with no open question still reports `done` exactly as before.
    */
   it('reports a child force-settled on an unanswered question as blocked, not done', async () => {
-    const flag = process.env.CEZ_DISPATCH;
-    process.env.CEZ_DISPATCH = '1';
+    const flag = process.env.ONNI_DISPATCH;
+    process.env.ONNI_DISPATCH = '1';
     try {
       const parent = store.createRun({ title: 'commander', workflow: 'quick-task', task: 'hold', steps: [] });
       store.updateRun(parent.id, { status: 'waiting', dispatch: { rootRunId: parent.id } });
@@ -202,14 +202,14 @@ describe('recover() and the dispatch field', () => {
       expect(pending[0]?.report.status).toBe('blocked');
       expect(pending[0]?.report.result).toContain('Delete the old migration?');
     } finally {
-      if (flag === undefined) delete process.env.CEZ_DISPATCH;
-      else process.env.CEZ_DISPATCH = flag;
+      if (flag === undefined) delete process.env.ONNI_DISPATCH;
+      else process.env.ONNI_DISPATCH = flag;
     }
   });
 
   it('does not report an idle-closed unanswered child until its question is retired', () => {
-    const flag = process.env.CEZ_DISPATCH;
-    process.env.CEZ_DISPATCH = '1';
+    const flag = process.env.ONNI_DISPATCH;
+    process.env.ONNI_DISPATCH = '1';
     const manager = new RunManager(store, repoRoot, { semaphore: frozen() });
     try {
       const parent = store.createRun({ title: 'commander', workflow: 'quick-task', task: 'hold', steps: [] });
@@ -245,8 +245,8 @@ describe('recover() and the dispatch field', () => {
       expect(store.getRun(parent.id)?.dispatch?.pendingReports?.[0]?.report.status).toBe('blocked');
     } finally {
       manager.dispose();
-      if (flag === undefined) delete process.env.CEZ_DISPATCH;
-      else process.env.CEZ_DISPATCH = flag;
+      if (flag === undefined) delete process.env.ONNI_DISPATCH;
+      else process.env.ONNI_DISPATCH = flag;
     }
   });
 

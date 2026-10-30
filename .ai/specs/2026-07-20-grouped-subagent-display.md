@@ -229,13 +229,13 @@ inside `codex-ui-mapper.ts` when codex grows parent attribution.
 `mock:md`): the reply replays a canned parallel-Task stream-json sequence —
 2–3 `Task` tool_uses, interleaved child items carrying `parent_tool_use_id`,
 then the tool_results — derived from the `subagent-task.ndjson` fixture. This
-makes the dock reachable in `CEZ_DRY_RUN=1` for unit-independent QA, the e2e
+makes the dock reachable in `ONNI_DRY_RUN=1` for unit-independent QA, the e2e
 smoke, and screenshots.
 
 ## Data Model
 
 None. No `RunRecord`/`StepState`/store change, no new event type, no new env var
-(pure display ⇒ no `CEZ_*` flag, `.env.example` untouched). The only new types
+(pure display ⇒ no `ONNI_*` flag, `.env.example` untouched). The only new types
 are the client-side `SubagentSummary` above.
 
 ## API Contracts

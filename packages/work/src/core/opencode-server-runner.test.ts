@@ -635,7 +635,7 @@ describe('#897 a turn that outlives its prompt POST', () => {
 describe('permission prompts outside the worktree (c3d30076 hung 21 h on one)', () => {
   const mockBin = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__', 'opencode', 'mock-opencode-serve.mjs');
   const runs = '/repo/.ai/onni/runs';
-  const env = { CEZ_HANDOFF_FILE: `${runs}/r1.handoff.md`, CEZ_TASK_ID: 'r1' };
+  const env = { ONNI_HANDOFF_FILE: `${runs}/r1.handoff.md`, ONNI_TASK_ID: 'r1' };
   const ask = (filepath: string, permission = 'external_directory') => ({
     id: 'per_1',
     permission,
@@ -674,7 +674,7 @@ describe('permission prompts outside the worktree (c3d30076 hung 21 h on one)', 
       mkdirSync(join(root, 'data', 'runs', 'r1-images'), { recursive: true });
       symlinkSync(join(root, 'data'), join(root, 'link'));
       symlinkSync('/etc', join(root, 'data', 'runs', 'r1-images', 'escape'));
-      const viaLink = { CEZ_HANDOFF_FILE: join(root, 'link', 'runs', 'r1.handoff.md'), CEZ_TASK_ID: 'r1' };
+      const viaLink = { ONNI_HANDOFF_FILE: join(root, 'link', 'runs', 'r1.handoff.md'), ONNI_TASK_ID: 'r1' };
       // OpenCode reports the real path; onni handed out the symlinked one.
       expect(opencodePermissionReply(ask(join(root, 'data', 'runs', 'r1.handoff.md')), viaLink)).toBe('once');
       expect(opencodePermissionReply(ask(join(root, 'data', 'runs', 'r1-images', 'a.png')), viaLink)).toBe('once');

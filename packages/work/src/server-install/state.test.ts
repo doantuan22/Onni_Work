@@ -28,15 +28,15 @@ function probeWithBound(...bound: number[]): PortProbe {
 
 describe('server state', () => {
   let home: string;
-  const original = process.env.CEZ_HOME;
+  const original = process.env.ONNI_HOME;
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-state-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
   afterEach(() => {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
     rmSync(home, { recursive: true, force: true });
   });
 

@@ -4,13 +4,13 @@
 
 Add an opt-in environment switch for deployments that embed cezar into services where model pricing and token consumption are irrelevant or misleading. When enabled, the cockpit hides both monetary cost and token-usage values from every user-facing surface while preserving telemetry collection and API compatibility.
 
-The zero-config default remains unchanged: token metrics stay visible unless the server starts with `CEZ_HIDE_TOKEN_METRICS=1`. The server exposes the resolved presentation capability through `/api/health`; the browser consumes that one value everywhere it renders run metadata.
+The zero-config default remains unchanged: token metrics stay visible unless the server starts with `ONNI_HIDE_TOKEN_METRICS=1`. The server exposes the resolved presentation capability through `/api/health`; the browser consumes that one value everywhere it renders run metadata.
 
 ## Resolved assumptions (autonomous defaults)
 
 | # | Applied default | Rationale |
 |---|---|---|
-| Q1 | Use one strict opt-in flag, `CEZ_HIDE_TOKEN_METRICS=1`, for both token counts and cost. | Issue #481 explicitly groups the two values as accounting metadata that embedded deployments do not want to display. One reversible presentation switch avoids a configuration matrix with no requested use case. |
+| Q1 | Use one strict opt-in flag, `ONNI_HIDE_TOKEN_METRICS=1`, for both token counts and cost. | Issue #481 explicitly groups the two values as accounting metadata that embedded deployments do not want to display. One reversible presentation switch avoids a configuration matrix with no requested use case. |
 | Q2 | Preserve token/cost telemetry in run records, events, and API responses; expose only a presentation capability. | This is the smallest additive contract. It does not rewrite persisted state, weaken diagnostics, or break API consumers. |
 | Q3 | Limit the behavior to the browser cockpit. | The issue asks to stop displaying values “everywhere in the app.” No CLI output problem is reported, and expanding the flag beyond the cockpit would create an unrelated compatibility surface. |
 
@@ -29,10 +29,10 @@ The backend must continue collecting this telemetry. Run scheduling, persisted `
 
 ## 📝 Proposed Solution
 
-Add `CEZ_HIDE_TOKEN_METRICS` as a boot-time, strict opt-in presentation flag:
+Add `ONNI_HIDE_TOKEN_METRICS` as a boot-time, strict opt-in presentation flag:
 
 - Undefined, empty, `0`, `true`, and every value other than the exact string `1` preserve today’s UI.
-- `CEZ_HIDE_TOKEN_METRICS=1` makes the server report `capabilities.tokenMetrics: false`.
+- `ONNI_HIDE_TOKEN_METRICS=1` makes the server report `capabilities.tokenMetrics: false`.
 - The default server response reports `capabilities.tokenMetrics: true`.
 - The cockpit treats a missing capability as visible. This keeps a newer web client fail-open for display when talking to an older server or reading a stale health snapshot.
 
@@ -69,7 +69,7 @@ Extend `Capabilities` in `packages/work/src/server/capabilities.ts` with:
 tokenMetrics: boolean
 ```
 
-`resolveCapabilities(env)` returns `tokenMetrics: env.CEZ_HIDE_TOKEN_METRICS !== '1'`. The function already centralizes strict environment interpretation for `CEZ_REMOTE`, `CEZ_FOLLOWUPS`, and `CEZ_SINGLE_PROJECT`, so no second env parser should be introduced.
+`resolveCapabilities(env)` returns `tokenMetrics: env.ONNI_HIDE_TOKEN_METRICS !== '1'`. The function already centralizes strict environment interpretation for `ONNI_REMOTE`, `ONNI_FOLLOWUPS`, and `ONNI_SINGLE_PROJECT`, so no second env parser should be introduced.
 
 The existing `healthSnapshot()` in `packages/work/src/server/server.ts` already publishes `capabilities` byte-identically through `/api/health`, `/api/v1/health`, and the local WebSocket `health` topic. No route, event topic, polling loop, or per-project endpoint is added.
 
@@ -115,7 +115,7 @@ The existing health response gains one field:
 }
 ```
 
-With `CEZ_HIDE_TOKEN_METRICS=1`, only `tokenMetrics` changes to `false`.
+With `ONNI_HIDE_TOKEN_METRICS=1`, only `tokenMetrics` changes to `false`.
 
 Contract rules:
 
@@ -177,11 +177,11 @@ Distributed renderers can drift as new UI is added. The implementation should ce
 
 ### Documentation
 
-Adding a `CEZ_*` variable requires `.env.example` in the same commit and the README environment table because the switch is user-facing. `BACKWARD_COMPATIBILITY.md` must include the new env contract and additive health field.
+Adding a `ONNI_*` variable requires `.env.example` in the same commit and the README environment table because the switch is user-facing. `BACKWARD_COMPATIBILITY.md` must include the new env contract and additive health field.
 
 ### Rollback
 
-Unset `CEZ_HIDE_TOKEN_METRICS` and restart cezar to restore current display behavior. Reverting the implementation is safe because no data migration or persisted preference exists.
+Unset `ONNI_HIDE_TOKEN_METRICS` and restart cezar to restore current display behavior. Reverting the implementation is safe because no data migration or persisted preference exists.
 
 ## 📋 Phasing
 
@@ -193,9 +193,9 @@ Ship the runtime capability contract and all cockpit renderer gates atomically. 
 
 ### Phase 1 — Complete token-metric presentation policy
 
-1. Extend `resolveCapabilities` and both server/client `Capabilities` types with `tokenMetrics`; add unit cases proving only `CEZ_HIDE_TOKEN_METRICS=1` disables it and update health fixtures/parity expectations. The application remains functional with metrics visible by default.
-2. Document `CEZ_HIDE_TOKEN_METRICS=1` in `.env.example`, the README environment table, and `BACKWARD_COMPATIBILITY.md`, explicitly stating that it changes presentation only. Run focused capability and health tests.
+1. Extend `resolveCapabilities` and both server/client `Capabilities` types with `tokenMetrics`; add unit cases proving only `ONNI_HIDE_TOKEN_METRICS=1` disables it and update health fixtures/parity expectations. The application remains functional with metrics visible by default.
+2. Document `ONNI_HIDE_TOKEN_METRICS=1` in `.env.example`, the README environment table, and `BACKWARD_COMPATIBILITY.md`, explicitly stating that it changes presentation only. Run focused capability and health tests.
 3. Add the shared `tokenMetricsVisible` resolver with legacy/missing-health tests. Wire the quick task list and task-thread header through it, adding assertions that tokens, cost, separators, and accessible text disappear only in disabled mode.
 4. Wire both tasks-overview layouts through the same resolver. Remove the table columns structurally, correct queue-row spans, and add enabled/disabled tests for cards, table headers, cells, and queued rows.
 5. Wire variant comparison through the same resolver and add tests for both modes, including variants whose usage/cost values are non-zero.
-6. Run the full repository validation gate and the UI smoke suite with `CEZ_HIDE_TOKEN_METRICS=1`, capturing the tasks overview and task header to confirm no user-facing token or cost text remains. Re-run without the flag to prove the zero-config default is unchanged.
+6. Run the full repository validation gate and the UI smoke suite with `ONNI_HIDE_TOKEN_METRICS=1`, capturing the tasks overview and task header to confirm no user-facing token or cost text remains. Re-run without the flag to prove the zero-config default is unchanged.

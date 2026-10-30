@@ -5,9 +5,9 @@ Status: ZAIMPLEMENTOWANE 2026-07-10 · Fala: 2 · Zależy od: 002 · Wzorzec: ja
 > **Aktualizacja 2026-07-17 (#471) — globalny inbox jest domyślnie WYŁĄCZONY.**
 > Agenty potrafiły zawiesić się na nieaktualnych, wcześniej zapisanych follow-upach, przez co
 > zachowanie skilli stawało się nieprzewidywalne. Cała część "globalny inbox `todos.json`" tego
-> speca jest teraz opt-in: włącza ją `CEZ_FOLLOWUPS=1` (capability `followups` w
+> speca jest teraz opt-in: włącza ją `ONNI_FOLLOWUPS=1` (capability `followups` w
 > `src/server/capabilities.ts` → `/api/health`). Wyłączona: agent dostaje
-> `HANDOFF_ONLY_INSTRUCTIONS` i puste `CEZ_TODOS_FILE`, zakładka Inbox i przełącznik w kompozytorze
+> `HANDOFF_ONLY_INSTRUCTIONS` i puste `ONNI_TODOS_FILE`, zakładka Inbox i przełącznik w kompozytorze
 > znikają, endpointy `/api/todos` degradują się do `200 []` / `409`. Wpisy w `todos.json` nie są
 > kasowane — po powrocie flagi wracają w całości.
 >
@@ -39,7 +39,7 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
    - seed szkieletu przy starcie taska: nagłówek (task, repo, branch),
      `## Goal` (prompt), `## Progress log`, `## Resume notes`; idempotentny
      (resume nie nadpisuje),
-   - agent dostaje ścieżkę przez env `CEZ_HANDOFF_FILE` + instrukcję w
+   - agent dostaje ścieżkę przez env `ONNI_HANDOFF_FILE` + instrukcję w
      `--append-system-prompt`: „czytaj na starcie, dopisuj wpis po każdym
      milestone (najnowsze na górze), przed pauzą uzupełnij Resume notes",
    - heartbeat od Ceza po każdej turze: `- <ts> — turn complete — status=…
@@ -50,7 +50,7 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
      suggestedSkill?, suggestedArgs?, suggestedPrompt?, runnable? }`;
      `runnable` jawnie zapisuje intencję, a stary wpis bez tego pola jest
      wykonywalny tylko wtedy, gdy ma `suggestedSkill` lub `suggestedPrompt`,
-   - agent dostaje env `CEZ_TODOS_FILE` + instrukcję: „po skończeniu dopisz
+   - agent dostaje env `ONNI_TODOS_FILE` + instrukcję: „po skończeniu dopisz
      wpis JSON do tablicy; nigdy nie modyfikuj istniejących"; ta instrukcja
      (`HANDOFF_INSTRUCTIONS`) jest jedynym producentem wpisów, więc opisuje
      też `runnable`: notatka do przeczytania albo robota dla człowieka
@@ -59,10 +59,10 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
    - **poprawka (PR #444)**: generowanie follow-upów jest przełącznikiem per
      task (`generateFollowups`, domyślnie ON; brak pola = ON, żeby stare runy
      i starsi klienci nie zmienili zachowania). Gdy run się wypisze, agent nie
-     dostaje ani instrukcji follow-upów, ani użytecznego `CEZ_TODOS_FILE` —
+     dostaje ani instrukcji follow-upów, ani użytecznego `ONNI_TODOS_FILE` —
      dziennik `handoff.md` i marker `CEZ:DONE` działają bez zmian. Uwaga
      implementacyjna: runnery startują z `{ ...process.env, ...spec.env }`,
-     więc przy wypisaniu `CEZ_TODOS_FILE` musi być **przesłonięty** pustą
+     więc przy wypisaniu `ONNI_TODOS_FILE` musi być **przesłonięty** pustą
      wartością, a nie pominięty — inaczej zagnieżdżony cezar (agent odpalający
      `cez serve`/testy) odziedziczy ścieżkę rodzica i dopisze do jego inboxa,
    - zapis serwerowy pod lockiem (nasz store ma już atomic write; dodajemy
@@ -107,7 +107,7 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
 - Ręcznie zepsuty JSON w todos.json nie wywala serwera (plik leczony:
   nieparsowalne wpisy pomijane, log ostrzeżenia).
 - (PR #444) Task z `generateFollowups: false` nie dopisuje nic do żadnego
-  inboxa — także wtedy, gdy proces cezara sam ma ustawione `CEZ_TODOS_FILE` —
+  inboxa — także wtedy, gdy proces cezara sam ma ustawione `ONNI_TODOS_FILE` —
   a mimo to prowadzi `handoff.md` i kończy markerem `CEZ:DONE`. Task bez tego
   pola (stary run, stary klient) zachowuje się jak dotychczas.
 

@@ -64,7 +64,7 @@ const RESUME_LOCK_RETRY_MS: readonly number[] = [250, 500, 1_000, 2_000, 4_000, 
  * agent runs autonomously via `sandbox: danger-full-access` +
  * `approvalPolicy: never`, matching onni's default auto permission mode
  * (spec 2026-07-17-permission-modes). Codex has no per-tool allowlist, so
- * `spec.allowedTools` is ignored. `CEZ_CODEX_NETWORK=0` retains the previous
+ * `spec.allowedTools` is ignored. `ONNI_CODEX_NETWORK=0` retains the previous
  * network-blocked `workspace-write` sandbox as an explicit restriction.
  */
 export class CodexAppServerRunner implements AgentRunner {
@@ -427,8 +427,8 @@ class CodexSession implements AgentSession {
       cwd: this.spec.cwd,
       // Full access is the `auto` preset shared by all backends. Besides avoiding prompts, this
       // keeps container installs working when bubblewrap cannot create a UID map (#563).
-      // CEZ_CODEX_NETWORK=0 remains the backwards-compatible explicit sandbox opt-out.
-      sandbox: process.env.CEZ_CODEX_NETWORK === '0' ? 'workspace-write' : 'danger-full-access',
+      // ONNI_CODEX_NETWORK=0 remains the backwards-compatible explicit sandbox opt-out.
+      sandbox: process.env.ONNI_CODEX_NETWORK === '0' ? 'workspace-write' : 'danger-full-access',
       approvalPolicy: 'never',
       // Private MCP servers (spec 2026-10-07-private-project-mcp) ride in as per-server dotted
       // config overrides, so the user's own [mcp_servers] table is extended, never replaced.
@@ -746,12 +746,12 @@ const REASONING_SUMMARIES = new Set(['auto', 'concise', 'detailed', 'none']);
  * The reasoning-summary override sent on `turn/start` (TurnStartParams.summary).
  * Defaults to `auto` so reasoning is visible out of the box — without it the
  * app-server runs with its own default (no summary) and the reasoning thread
- * stays empty even when the model reasons. `CEZ_CODEX_REASONING` overrides the
+ * stays empty even when the model reasons. `ONNI_CODEX_REASONING` overrides the
  * default (`auto`/`concise`/`detailed`, or `none` to opt out); an unrecognized
  * value falls back to `auto`.
  */
 export function reasoningSummary(env: NodeJS.ProcessEnv = process.env): string {
-  const raw = env.CEZ_CODEX_REASONING?.trim().toLowerCase();
+  const raw = env.ONNI_CODEX_REASONING?.trim().toLowerCase();
   if (!raw) return 'auto';
   return REASONING_SUMMARIES.has(raw) ? raw : 'auto';
 }

@@ -120,13 +120,13 @@ tool probes. Each provider always produces one row, in `claude`, `codex`, `openc
 
 The detector coalesces concurrent requests and caches the completed result for five seconds so
 multiple tabs do not fan out identical processes. An explicit refresh bypasses the completed
-cache while still joining an already-running probe. `CEZ_DRY_RUN=1` returns all four providers
+cache while still joining an already-running probe. `ONNI_DRY_RUN=1` returns all four providers
 as connected mock providers and invokes no real CLI, preserving offline runner selection.
 
-Existing binary overrides remain authoritative: `CEZ_CLAUDE_BIN`, `CEZ_CODEX_BIN`,
-`CEZ_OPENCODE_BIN`, and `CEZ_PI_BIN` select the executable used by both status and login commands. The executable
+Existing binary overrides remain authoritative: `ONNI_CLAUDE_BIN`, `ONNI_CODEX_BIN`,
+`ONNI_OPENCODE_BIN`, and `ONNI_PI_BIN` select the executable used by both status and login commands. The executable
 is shell-quoted before it is rendered into the terminal command; every argument comes from the
-closed server descriptor. The pi runner already documents `CEZ_PI_BIN` in `.env.example`; this
+closed server descriptor. The pi runner already documents `ONNI_PI_BIN` in `.env.example`; this
 integration reuses it and adds no new environment variable or configuration key.
 
 ## Runtime invalidation
@@ -209,7 +209,7 @@ The strict JSON body is validated with Zod (no extra keys):
 
 The validated provider id selects a server-owned descriptor; request text never becomes an
 executable or argument. The descriptor supplies fixed arguments, while the canonical executable
-or its existing `CEZ_*_BIN` override is shell-quoted before terminal handoff. The 200 response is
+or its existing `ONNI_*_BIN` override is shell-quoted before terminal handoff. The 200 response is
 one of:
 
 ```ts

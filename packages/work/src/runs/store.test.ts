@@ -598,7 +598,7 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
 
 describe('RunStore — secret redaction before persistence (#427)', () => {
   let dataDir: string;
-  const saved = { GITHUB_TOKEN: process.env.GITHUB_TOKEN, CEZ_REDACT_SECRETS: process.env.CEZ_REDACT_SECRETS };
+  const saved = { GITHUB_TOKEN: process.env.GITHUB_TOKEN, ONNI_REDACT_SECRETS: process.env.ONNI_REDACT_SECRETS };
   beforeEach(() => {
     dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
@@ -614,7 +614,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
 
   it('scrubs a host secret value from the NDJSON transcript', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.appendEvent(run.id, {
@@ -627,7 +627,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
   });
 
   it('scrubs a token shape even when it never lived in onni’s env', () => {
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.appendEvent(run.id, {
@@ -638,9 +638,9 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
     expect(raw).not.toMatch(/AKIA|sk-ant/);
   });
 
-  it('CEZ_REDACT_SECRETS=0 opts out (escape hatch)', () => {
+  it('ONNI_REDACT_SECRETS=0 opts out (escape hatch)', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    process.env.CEZ_REDACT_SECRETS = '0';
+    process.env.ONNI_REDACT_SECRETS = '0';
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.appendEvent(run.id, {
@@ -658,7 +658,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
    */
   it('scrubs a host secret from titleSummary and error before runs.json is written', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.updateRun(run.id, {
@@ -677,7 +677,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
   });
 
   it('scrubs a token shape from a user-supplied title too', () => {
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.updateRun(run.id, { title: 'rotate ghp_0123456789abcdefghijABCDEFGHIJ0123' });
@@ -685,7 +685,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
   });
 
   it('leaves ordinary record fields alone', () => {
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.updateRun(run.id, {
@@ -708,7 +708,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
    */
   it('scrubs a host secret from steps[].error before runs.json is written', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({
       title: 't',
@@ -733,7 +733,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
 
   it('leaves non-error step fields untouched (no over-redaction)', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({
       title: 't',
@@ -749,9 +749,9 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
     expect(step?.tokensUsed).toBe(42);
   });
 
-  it('CEZ_REDACT_SECRETS=0 opts steps[].error out too', () => {
+  it('ONNI_REDACT_SECRETS=0 opts steps[].error out too', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    process.env.CEZ_REDACT_SECRETS = '0';
+    process.env.ONNI_REDACT_SECRETS = '0';
     const store = RunStore.open(dataDir);
     const run = store.createRun({
       title: 't',
@@ -766,7 +766,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
   /** #456 review: `updateRun` scrubbed `title` but `createRun` stored it raw. */
   it('scrubs a host secret from the title at creation time', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({
       title: 'rotate gho_thisisarealsecrettoken123456',
@@ -786,15 +786,15 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
    *  so it stays verbatim by design. Pinning that decision. */
   it('leaves the task prompt unredacted (re-enqueue must replay it verbatim)', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'deploy the thing', steps: [] });
     expect(store.getRun(run.id)?.task).toBe('deploy the thing');
   });
 
-  it('CEZ_REDACT_SECRETS=0 opts runs.json out as well', () => {
+  it('ONNI_REDACT_SECRETS=0 opts runs.json out as well', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    process.env.CEZ_REDACT_SECRETS = '0';
+    process.env.ONNI_REDACT_SECRETS = '0';
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.updateRun(run.id, { titleSummary: 'gho_thisisarealsecrettoken123456' });
@@ -802,7 +802,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
   });
 
   it('does not disturb a PR URL (redaction leaves non-secrets intact)', () => {
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.appendEvent(run.id, {
@@ -1697,7 +1697,7 @@ describe('RunStore — queuedMessages (#472)', () => {
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
     delete process.env.GITHUB_TOKEN;
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
   });
 
   it('parses a runs.json written before the field existed', () => {
@@ -1740,7 +1740,7 @@ describe('RunStore — queuedMessages (#472)', () => {
    *  into `{{task}}` verbatim at dequeue, so redacting one would corrupt the run. */
   it('leaves a secret in a stacked message verbatim, exactly as it leaves `task`', () => {
     process.env.GITHUB_TOKEN = 'gho_thisisarealsecrettoken123456';
-    delete process.env.CEZ_REDACT_SECRETS;
+    delete process.env.ONNI_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'deploy', steps: [] });
     store.updateRun(run.id, {
@@ -2650,8 +2650,8 @@ describe('RunStore — pruning spares live runs (telemetry 73c6e796)', () => {
     expect(() => store.appendEvent(parent.id, { type: 'note', message: 'dispatched' })).not.toThrow();
   });
 
-  it('CEZ_RUNS_KEEP lowers how many settled runs the index keeps', () => {
-    process.env.CEZ_RUNS_KEEP = '5';
+  it('ONNI_RUNS_KEEP lowers how many settled runs the index keeps', () => {
+    process.env.ONNI_RUNS_KEEP = '5';
     try {
       const store = RunStore.open(dataDir);
       let clock = Date.parse('2026-01-01T00:00:00.000Z');
@@ -2663,7 +2663,7 @@ describe('RunStore — pruning spares live runs (telemetry 73c6e796)', () => {
       }
       expect(store.listRuns().length).toBe(5);
     } finally {
-      delete process.env.CEZ_RUNS_KEEP;
+      delete process.env.ONNI_RUNS_KEEP;
     }
   });
 });

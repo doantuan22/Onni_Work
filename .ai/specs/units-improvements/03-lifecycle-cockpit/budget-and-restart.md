@@ -78,8 +78,8 @@ text to match, not a behavior bug.
 
 ## 2 — Zero-config default mission (no `budgetUsd`): is it cost-safe?
 
-The whole units feature is opt-in behind `CEZ_UNITS=1` (spec Q1, `.ai/specs/2026-09-08-units-hierarchy.md:24`)
-— that is the one AGENTS.md-mandated "cost-widening feature behind a `CEZ_*` flag, off by default"
+The whole units feature is opt-in behind `ONNI_UNITS=1` (spec Q1, `.ai/specs/2026-09-08-units-hierarchy.md:24`)
+— that is the one AGENTS.md-mandated "cost-widening feature behind a `ONNI_*` flag, off by default"
 gate. **Inside that already-opted-in feature**, `budgetUsd` on `POST /api/v1/p/:projectId/missions`
 is itself optional (spec line 134: `{ objective, unit, budgetUsd?, ladder?, constraints? }`) and the
 server does not fill in a default: `server.ts:3530-3540` spreads `budgetUsd` into the new root's

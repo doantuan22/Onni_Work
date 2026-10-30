@@ -17,7 +17,7 @@ function containsRunnerToken(text: string, runner: string): boolean {
  *  shape, so they must name every command, every event and every key the storage schema accepts. */
 describe('the automations prompt part', () => {
   it('teaches the CLI through the cockpit’s own entrypoint, and the create → check → enable order', () => {
-    expect(AUTOMATIONS_PROMPT).toContain('node "$CEZ_BIN" automation');
+    expect(AUTOMATIONS_PROMPT).toContain('node "$ONNI_BIN" automation');
     for (const command of ['schema', 'create --file', '--enable', 'add --name', '--cron', 'check <id>', 'run <id>', 'list', 'show <id>', 'update <id>', 'enable <id>', 'pause <id>', 'delete <id>']) {
       expect(AUTOMATIONS_PROMPT).toContain(command);
     }
@@ -121,8 +121,8 @@ describe('the definition reference', () => {
 describe('the built-in skill body', () => {
   it('walks the create → preview → report path and embeds the reference', () => {
     expect(CREATE_AUTOMATION_SKILL_NAME).toBe('create-onni-automation');
-    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$CEZ_BIN" automation create --file');
-    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$CEZ_BIN" automation check <id>');
+    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$ONNI_BIN" automation create --file');
+    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$ONNI_BIN" automation check <id>');
     expect(CREATE_AUTOMATION_SKILL_BODY).toContain('onni automation update <id> --file');
     expect(CREATE_AUTOMATION_SKILL_BODY).toContain(AUTOMATION_SCHEMA_REFERENCE);
     expect(CREATE_AUTOMATION_SKILL_BODY).toMatch(/created PAUSED/);

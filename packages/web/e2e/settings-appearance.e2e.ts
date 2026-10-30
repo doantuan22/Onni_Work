@@ -20,7 +20,7 @@ const sessionId = `e2e-settings-${process.pid}`
 const DESKTOP = { width: 1440, height: 900 }
 
 // Appearance persists in the WORKSPACE ui-state since step 3.5. `.ai/scripts/test-env-up.sh`
-// pins `CEZ_HOME` under `.ai/qa/onni-home`, so that — not the developer's `~/.onni`, and not
+// pins `ONNI_HOME` under `.ai/qa/onni-home`, so that — not the developer's `~/.onni`, and not
 // the repo's `.ai/onni` — is the file this suite reads and restores.
 const onniHomeDir = resolve(import.meta.dirname, '../../../.ai/qa/onni-home')
 const uiStateFile = resolve(onniHomeDir, 'ui-state.json')

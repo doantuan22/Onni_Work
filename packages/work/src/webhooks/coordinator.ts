@@ -25,7 +25,7 @@ export class WebhookCoordinator {
   constructor(private readonly deps: Dependencies) {}
   count(): number { return this.services.size; }
   async get(projectId: string, root: string, pin = false): Promise<WebhookService> {
-    if (!webhooksEnabled()) throw new WebhookStateError(409, 'Enable webhook delivery with CEZ_WEBHOOKS=1 and restart onni');
+    if (!webhooksEnabled()) throw new WebhookStateError(409, 'Enable webhook delivery with ONNI_WEBHOOKS=1 and restart onni');
     if (this.stopped) throw new WebhookStateError(503, 'Webhook service is unavailable');
     let canonical: string;
     try { canonical = realpathSync(root); } catch { throw new WebhookStateError(503, 'Project root is unavailable'); }
@@ -47,9 +47,9 @@ export class WebhookCoordinator {
       if (retired) { await retired.dispose(); this.retiring.delete(canonical); }
       const remote = parseRemote((await getRepoInfo(canonical))?.remote ?? '');
       const service = await WebhookService.open({ root: canonical, dataDir: join(canonical, '.ai/onni'), projectId, mode: this.deps.mode(), serverPorts: this.deps.ports,
-        cockpitLink: (projectId, taskId) => hostedTaskLink(listServerInstances(), this.deps.mode(), this.deps.ports()[0], process.env.CEZ_INSTANCE_ID, projectId, taskId),
+        cockpitLink: (projectId, taskId) => hostedTaskLink(listServerInstances(), this.deps.mode(), this.deps.ports()[0], process.env.ONNI_INSTANCE_ID, projectId, taskId),
         scheduler: this.scheduler, dryRun: this.deps.dryRun, ...(remote?.host === 'github.com' ? { repository: `${remote.owner}/${remote.repo}` } : {}) });
-      if (!service) throw new WebhookStateError(409, 'Enable webhook delivery with CEZ_WEBHOOKS=1 and restart onni');
+      if (!service) throw new WebhookStateError(409, 'Enable webhook delivery with ONNI_WEBHOOKS=1 and restart onni');
       if (this.stopped) { await service.dispose(); throw new WebhookStateError(503, 'Webhook service is unavailable'); }
       if (existing) service.markCaptureGap();
       this.services.set(canonical, service);

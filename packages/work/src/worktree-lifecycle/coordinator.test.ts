@@ -62,7 +62,7 @@ async function settled(coordinator: WorktreeLifecycleCoordinator, id: string): P
   }, {timeout: 5000, interval: 25});
   return current!;
 }
-beforeEach(() => { vi.stubEnv('CEZ_DRY_RUN', '0'); });
+beforeEach(() => { vi.stubEnv('ONNI_DRY_RUN', '0'); });
 afterEach(async () => {
   for (const coordinator of coordinators.splice(0)) {
     coordinator.dispose();
@@ -340,7 +340,7 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
 
   it('dry run mocks scripts only: the worktree is real and delete-task really deletes', async () => {
     const p = await project(); await p.config([entry('exit 9')], [entry('exit 9')]);
-    vi.stubEnv('CEZ_DRY_RUN', '1');
+    vi.stubEnv('ONNI_DRY_RUN', '1');
     const prepared = await p.prepare();
     expect(prepared.ready).toBe(true); expect(existsSync(join(prepared.path, '.git'))).toBe(true);
     const deletion = await p.coordinator.startRemoval({requestId: randomUUID(), runId: p.id, intent: 'delete-task'});

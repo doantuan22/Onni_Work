@@ -322,7 +322,7 @@ Add synthetic long-run fixtures, instrumented reader assertions, E2E performance
 
 9. Add deterministic long-session fixture generation to the server/web test helpers and instrument the page reader so tests prove a tail request never scans unrelated earlier turns and context retention stays bounded.
 10. Add a `packages/web/e2e/` scenario proving first-page readiness independent of context completion, no historical request before upward reader intent, one-page-per-gesture top pagination with no observer cascade, current plan/agent docks, five-page query/DOM bounds, anchored prepends, live-tail updates, and old-history→latest navigation. Capture final implementation screenshots for the PR's QA evidence.
-11. Run the full validation gate in repository order: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, and `npm run test:package`, then `npm run test:e2e` for the real-browser flow. Confirm no runtime import from `packages/work` to the private API-client package and no new `CEZ_*` variable/config requirement.
+11. Run the full validation gate in repository order: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, and `npm run test:package`, then `npm run test:e2e` for the real-browser flow. Confirm no runtime import from `packages/work` to the private API-client package and no new `ONNI_*` variable/config requirement.
 
 ## Out of Scope
 

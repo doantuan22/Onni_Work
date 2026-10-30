@@ -68,16 +68,16 @@ describe.skipIf(process.platform === 'win32')('resolveClaudeBin', () => {
     expect(resolveClaudeBin({ PATH: pathDir }, home, 'darwin', candidates)).toBe(native);
   });
 
-  it('CEZ_CLAUDE_BIN wins over everything', () => {
+  it('ONNI_CLAUDE_BIN wins over everything', () => {
     writeExecutable(join(pathDir, 'claude'));
-    expect(resolveClaudeBin({ PATH: pathDir, CEZ_CLAUDE_BIN: '/opt/x/claude' }, home, 'darwin', candidates))
+    expect(resolveClaudeBin({ PATH: pathDir, ONNI_CLAUDE_BIN: '/opt/x/claude' }, home, 'darwin', candidates))
       .toBe('/opt/x/claude');
   });
 
-  it('treats an empty CEZ_CLAUDE_BIN as unset rather than as an empty binary name', () => {
+  it('treats an empty ONNI_CLAUDE_BIN as unset rather than as an empty binary name', () => {
     const native = join(home, '.local', 'bin', 'claude');
     writeExecutable(native);
-    expect(resolveClaudeBin({ PATH: pathDir, CEZ_CLAUDE_BIN: '' }, home, 'darwin', candidates)).toBe(native);
+    expect(resolveClaudeBin({ PATH: pathDir, ONNI_CLAUDE_BIN: '' }, home, 'darwin', candidates)).toBe(native);
   });
 
   it('ignores a non-executable file at a known location', () => {
@@ -201,12 +201,12 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
     }
   });
 
-  it('honours an executable CEZ_CLAUDE_BIN', () => {
+  it('honours an executable ONNI_CLAUDE_BIN', () => {
     const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       const bin = join(dir, 'claude');
       writeExecutable(bin);
-      expect(claudeShellCommand({ PATH: '', CEZ_CLAUDE_BIN: bin }, '/nonexistent-home', 'linux', NONE))
+      expect(claudeShellCommand({ PATH: '', ONNI_CLAUDE_BIN: bin }, '/nonexistent-home', 'linux', NONE))
         .toBe(bin);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -219,8 +219,8 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
    * path anyway, the entry would open a terminal on `command not found` — the #469 broken
    * affordance, newly introduced. An override nobody can execute must resolve to "no rewrite".
    */
-  it('is null for a CEZ_CLAUDE_BIN that does not exist, so the bare `claude` still wins', () => {
-    expect(claudeShellCommand({ PATH: '', CEZ_CLAUDE_BIN: '/nope/claude' }, '/nonexistent-home', 'linux', NONE))
+  it('is null for a ONNI_CLAUDE_BIN that does not exist, so the bare `claude` still wins', () => {
+    expect(claudeShellCommand({ PATH: '', ONNI_CLAUDE_BIN: '/nope/claude' }, '/nonexistent-home', 'linux', NONE))
       .toBeNull();
   });
 
@@ -230,23 +230,23 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
    * genuinely installed at a known off-PATH location — turning #469's broken menu entry into a
    * missing one, which is a different bug rather than a fix for it.
    */
-  it('falls through a bogus CEZ_CLAUDE_BIN to a real candidate instead of giving up', () => {
+  it('falls through a bogus ONNI_CLAUDE_BIN to a real candidate instead of giving up', () => {
     const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       const bin = join(dir, 'claude');
       writeExecutable(bin);
-      expect(claudeShellCommand({ PATH: '', CEZ_CLAUDE_BIN: '/nope/claude' }, '/nonexistent-home', 'linux', [bin]))
+      expect(claudeShellCommand({ PATH: '', ONNI_CLAUDE_BIN: '/nope/claude' }, '/nonexistent-home', 'linux', [bin]))
         .toBe(bin);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('ignores a CEZ_CLAUDE_BIN that points at a directory', () => {
+  it('ignores a ONNI_CLAUDE_BIN that points at a directory', () => {
     const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       mkdirSync(join(dir, 'claude'), { recursive: true });
-      expect(claudeShellCommand({ PATH: '', CEZ_CLAUDE_BIN: join(dir, 'claude') }, '/nonexistent-home', 'linux', NONE))
+      expect(claudeShellCommand({ PATH: '', ONNI_CLAUDE_BIN: join(dir, 'claude') }, '/nonexistent-home', 'linux', NONE))
         .toBeNull();
     } finally {
       rmSync(dir, { recursive: true, force: true });

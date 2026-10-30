@@ -30,11 +30,11 @@ function boot() {
 }
 beforeEach(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'deferred-child-')));
-  vi.stubEnv('CEZ_HOME', join(root, 'home'));
+  vi.stubEnv('ONNI_HOME', join(root, 'home'));
   vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'original'));
-  vi.stubEnv('CEZ_DRY_RUN', '1');
-  vi.stubEnv('CEZ_AUTONAME', '0');
-  vi.stubEnv('CEZ_DISPATCH', '1');
+  vi.stubEnv('ONNI_DRY_RUN', '1');
+  vi.stubEnv('ONNI_AUTONAME', '0');
+  vi.stubEnv('ONNI_DISPATCH', '1');
   mkdirSync(join(root, 'original'));
   mkdirSync(join(root, 'changed'));
   store = RunStore.open(join(root, 'state'), { keepLive: true });

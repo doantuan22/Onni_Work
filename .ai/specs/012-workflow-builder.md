@@ -62,7 +62,7 @@ serializuje się kompaktowo, wszystko bogatsze — pełną formą `steps:`.
 - Usuwanie plików workflow z GUI (pliki zamiast bazy — edytor/`rm`).
 - Warunki/rozgałęzienia — silnik dalej zna tylko sekwencję + `onFail`.
 
-## Kryteria akceptacji (zweryfikowane 2026-07-11, CEZ_DRY_RUN)
+## Kryteria akceptacji (zweryfikowane 2026-07-11, ONNI_DRY_RUN)
 
 - Drag skilla z palety → karta ląduje we wskazanej szczelinie; reorder przez
   drag; × usuwa; licznik i YAML aktualizują się na żywo.

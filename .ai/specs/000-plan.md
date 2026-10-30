@@ -27,7 +27,7 @@ Status: aktywny · Aktualizowany przy każdej zmianie zakresu
 
 Silnik: `ClaudeCliRunner` (stream-json), workflowy YAML (kroki agent/check +
 pętla `onFail`), store plikowy (index + NDJSON eventów), serwer Hono + SSE,
-GUI (Runs/Repo/Skills), CLI (`serve`/`run`/`init`), mock `CEZ_DRY_RUN=1`.
+GUI (Runs/Repo/Skills), CLI (`serve`/`run`/`init`), mock `ONNI_DRY_RUN=1`.
 
 ## Fale
 

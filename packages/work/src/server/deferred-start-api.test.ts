@@ -17,7 +17,7 @@ describe('deferred start API', () => {
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-deferred-api-'));
     mkdirSync(join(root, 'profile'));
-    vi.stubEnv('CEZ_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'profile')); vi.stubEnv('CEZ_AUTOMATIONS', '1');
+    vi.stubEnv('ONNI_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'profile')); vi.stubEnv('ONNI_AUTOMATIONS', '1');
     store = RunStore.open(join(root, '.ai/onni'));
   });
   afterEach(() => { vi.restoreAllMocks(); store.flush(); rmSync(root, { recursive: true, force: true }); vi.unstubAllEnvs(); });
@@ -53,7 +53,7 @@ describe('deferred start API', () => {
     expect(await describe({ ...body.task, runner: 'opencode', steps: [{ id: 'one', prompt: 'A', runner: 'claude' }], workflow: undefined })).toMatchObject({ usageReset: { available: true, provider: 'claude' } });
     vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'absent-claude'));
     expect(await describe(body.task)).toMatchObject({ usageReset: { available: false, reason: 'account-unverifiable' } });
-    vi.stubEnv('CEZ_AUTOMATIONS', '0');
+    vi.stubEnv('ONNI_AUTOMATIONS', '0');
     expect(await describe(body.task)).toMatchObject({ timeZone: expect.any(String), usageReset: { available: false, reason: 'automations-off' } });
     expect(usage).not.toHaveBeenCalled();
     expect(identity).not.toHaveBeenCalled();
@@ -73,7 +73,7 @@ describe('deferred start API', () => {
   });
   it('recovers a persisted creation while disabled without accepting new schedules', async () => {
     const { request, result } = await create();
-    vi.stubEnv('CEZ_AUTOMATIONS', '0');
+    vi.stubEnv('ONNI_AUTOMATIONS', '0');
     const api = app();
     const replay = await apiRequest(api, '/api/v1/deferred-start', json(request));
     expect(replay.status).toBe(201);
@@ -90,8 +90,8 @@ describe('deferred start API', () => {
   });
   it('schedules Pi through the API and executes its first step without a Claude profile', async () => {
     vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'absent-claude'));
-    vi.stubEnv('CEZ_DRY_RUN', '1');
-    vi.stubEnv('CEZ_AUTONAME', '0');
+    vi.stubEnv('ONNI_DRY_RUN', '1');
+    vi.stubEnv('ONNI_AUTONAME', '0');
     execFileSync('git', ['init', '-q', '-b', 'main', root]);
     execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@local', 'commit', '--allow-empty', '-qm', 'base'], { cwd: root });
     const manager = new RunManager(store, root);
@@ -123,7 +123,7 @@ describe('deferred start API', () => {
     expect(AutomationStore.open(join(root, '.ai/onni')).list()).toEqual([]);
   });
   it('guards both POSTs when automations are disabled', async () => {
-    vi.stubEnv('CEZ_AUTOMATIONS', '0');
+    vi.stubEnv('ONNI_AUTOMATIONS', '0');
     expect((await apiRequest(app(), '/api/v1/deferred-start/preview', json(body))).status).toBe(409);
     expect((await apiRequest(app(), '/api/v1/deferred-start', json({ ...body, previewRevision: 'r', idempotencyKey: randomUUID() }))).status).toBe(409);
     expect(store.listRuns()).toEqual([]);

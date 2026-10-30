@@ -14,21 +14,21 @@ import { apiRequest } from './loopback-request.testkit.ts';
  * chip. The contract under test is the route's, not the driver's: both lists are optional but at
  * least one must name something, each is strictly validated (positive integers, ≤100 — a 400,
  * never a throw), and the payload maps only the numbers the forge actually knew about. Driven
- * through `CEZ_DRY_RUN=1`, so no `gh` is touched; the gh-shelling and degrade paths are the
+ * through `ONNI_DRY_RUN=1`, so no `gh` is touched; the gh-shelling and degrade paths are the
  * driver's own tests.
  */
 describe('the github ref-status API', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  const prevDryRun = process.env.CEZ_DRY_RUN;
+  const prevDryRun = process.env.ONNI_DRY_RUN;
 
   beforeAll(() => {
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
   });
   afterAll(() => {
-    if (prevDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = prevDryRun;
+    if (prevDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = prevDryRun;
   });
 
   beforeEach(() => {

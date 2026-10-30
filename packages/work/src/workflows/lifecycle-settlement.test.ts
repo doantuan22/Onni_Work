@@ -24,12 +24,12 @@ let receiverId: string;
 
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), 'onni-lifecycle-settlement-'));
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
-  vi.stubEnv('CEZ_AUTO_NAMING', '0');
-  vi.stubEnv('CEZ_DRY_RUN', '0');
-  vi.stubEnv('CEZ_REVIEW_GATE', '0');
-  vi.stubEnv('CEZ_CLAUDE_BIN', join(import.meta.dirname, '../../scripts/mock-claude.mjs'));
-  vi.stubEnv('CEZ_CODEX_BIN', join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs'));
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_AUTO_NAMING', '0');
+  vi.stubEnv('ONNI_DRY_RUN', '0');
+  vi.stubEnv('ONNI_REVIEW_GATE', '0');
+  vi.stubEnv('ONNI_CLAUDE_BIN', join(import.meta.dirname, '../../scripts/mock-claude.mjs'));
+  vi.stubEnv('ONNI_CODEX_BIN', join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs'));
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
   writeFileSync(join(root, 'a.txt'), 'base\n');
   writeFileSync(join(root, '.gitignore'), '.ai/\n');

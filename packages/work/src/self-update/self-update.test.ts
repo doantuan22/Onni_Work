@@ -20,7 +20,7 @@ describe('managed layout', () => {
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-self-update-'));
-    env = { ...process.env, CEZ_HOME: home };
+    env = { ...process.env, ONNI_HOME: home };
   });
   afterEach(() => rmSync(home, { recursive: true, force: true }));
 
@@ -114,7 +114,7 @@ describe('managed layout', () => {
 describe('activeId without a symlink', () => {
   it('reads the text-file fallback, and answers null when nothing is there', () => {
     const home = mkdtempSync(join(tmpdir(), 'onni-active-'));
-    const env = { ...process.env, CEZ_HOME: home };
+    const env = { ...process.env, ONNI_HOME: home };
     try {
       expect(activeId(env)).toBeNull();
       mkdirSync(versionsDir(env), { recursive: true });

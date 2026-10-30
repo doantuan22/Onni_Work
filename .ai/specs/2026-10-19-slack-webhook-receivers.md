@@ -80,19 +80,19 @@ can never see a field the cezar payload for that profile would not carry.
 
 `packages/work/docs/webhooks.md`: the "Send to Slack" section (create an Incoming Webhook in
 Slack → paste URL → Test → Activate; what Minimal vs Standard shows in Slack; the URL is a secret).
-Feature flag: `CEZ_WEBHOOKS=1`, as documented in `.env.example`.
+Feature flag: `ONNI_WEBHOOKS=1`, as documented in `.env.example`.
 
 ## Validation
 
 Automated checks cover contract validation, renderer privacy/size/escaping, transport policy,
 provider diagnostics, revision changes and UI setup. The isolated browser command is
 `npx e2e run --config packages/web/e2e/chat-webhooks.config.ts`.
-`CEZ_DRY_RUN=1` substitutes synthetic HTTP success and sends no receiver traffic, including Test;
+`ONNI_DRY_RUN=1` substitutes synthetic HTTP success and sends no receiver traffic, including Test;
 it validates local flows, not provider delivery.
 
 Live provider acceptance requires explicit authorization: use a dedicated,
 user-provided Slack test-channel webhook and an isolated project containing no sensitive
-data. Start the test server with `CEZ_WEBHOOKS=1` and dry-run disabled (`CEZ_DRY_RUN` unset or
+data. Start the test server with `ONNI_WEBHOOKS=1` and dry-run disabled (`ONNI_DRY_RUN` unset or
 `0`). This mode makes real network requests; use only harmless, explicitly authorized tasks.
 Save → Test → Activate, then create fresh tasks that ask a benign question, finish a trivial
 local task, and produce a controlled benign failure. Respect the configured attention grace

@@ -49,7 +49,7 @@ export function secretNameIssue(name: string): string | null {
   if (!NAME_SHAPE.test(name)) {
     return 'a name is 1–128 characters: uppercase letters, digits and underscores, not starting with a digit';
   }
-  if (name.startsWith('CEZ_')) return 'CEZ_* names are reserved for onni';
+  if (name.startsWith('ONNI_')) return 'ONNI_* names are reserved for onni';
   if (name.startsWith('DYLD_')) return 'DYLD_* names change how programs load and are refused';
   if (REFUSED_NAMES.has(name)) return `${name} changes how the check's shell runs and is refused`;
   return null;

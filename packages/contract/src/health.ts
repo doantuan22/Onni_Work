@@ -45,13 +45,13 @@ export const capabilitiesSchema = z.object({
    * `true` means the task's Preview tab may offer Design Mode (spec
    * `.ai/specs/2026-10-09-design-mode.md`): click an element of the task's app and send a note
    * about it to the agent. It needs a second loopback listener that re-serves the app with a picker
-   * injected, so it exists only on a LOCAL cockpit, and `CEZ_DESIGN_MODE=0` turns it off there too.
+   * injected, so it exists only on a LOCAL cockpit, and `ONNI_DESIGN_MODE=0` turns it off there too.
    */
   designMode: z.boolean(),
   followups: z.boolean(),
   singleProject: z.boolean(),
   /**
-   * `true` means `CEZ_AUTOMATIONS=1` opted this server into GitHub automations (#801). Off — the
+   * `true` means `ONNI_AUTOMATIONS=1` opted this server into GitHub automations (#801). Off — the
    * default — the whole feature is absent: no `Automations` nav item anywhere it is rendered, the
    * `/api/v1/…/automations*` family answers `409`, and the workspace scheduler never polls GitHub.
    *
@@ -63,14 +63,14 @@ export const capabilitiesSchema = z.object({
   /** Present on unsupported server platforms, regardless of the opt-in flag. */
   webhooksUnavailableReason: z.literal('unsupported_platform').optional(),
   /**
-   * `true` means task dispatch is on — the default; `CEZ_DISPATCH=0` turns it off (spec
+   * `true` means task dispatch is on — the default; `ONNI_DISPATCH=0` turns it off (spec
    * `.ai/specs/2026-09-10-dispatch.md`): every task learns the `onni task` CLI in its system
    * prompt and the `/runs/:id/{dispatch,report}` routes answer. Off, those routes answer 409 and
    * no prompt mentions dispatching.
    */
   dispatch: z.boolean(),
   /**
-   * `false` means `CEZ_HIDE_TOKEN_METRICS=1` asks the browser to omit token counts and monetary
+   * `false` means `ONNI_HIDE_TOKEN_METRICS=1` asks the browser to omit token counts and monetary
    * cost (#481). The telemetry itself still rides in run/event payloads — this is presentation
    * only.
    *

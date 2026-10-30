@@ -107,7 +107,7 @@ describe('Continue posted while a settled continuation is still unwinding (telem
   });
 
   it('a Continue sent back during teardown supersedes a Finish accept from the same window', async () => {
-    vi.stubEnv('CEZ_REVIEW_GATE', '1');
+    vi.stubEnv('ONNI_REVIEW_GATE', '1');
     const runId = await terminalWorktreeRun();
     const worktreePath = store.getRun(runId)!.worktreePath!;
     writeFileSync(join(worktreePath, 'a.txt'), 'two\n');

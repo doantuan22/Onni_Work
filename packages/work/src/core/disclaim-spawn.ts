@@ -4,7 +4,7 @@
  * raises "Onni would like to access files in your Documents folder" — and an Allow there hands
  * every agent, forever, what one of them asked for.
  *
- * The desktop shell exports `CEZ_DISCLAIM_EXEC`: its own executable, which, run as
+ * The desktop shell exports `ONNI_DISCLAIM_EXEC`: its own executable, which, run as
  * `<exe> --onni-disclaim-exec <program> <args…>`, replaces itself (same pid, same stdio) with
  * `program` as its own responsible process. Agent backends are started through it, so the prompt
  * names the agent (`claude`, `codex`, …) and a grant covers that agent only. The cockpit server
@@ -45,7 +45,7 @@ export const DISCLAIM_EXEC_FLAG = '--onni-disclaim-exec';
 export interface DisclaimOptions {
   /** Defaults to `process.platform`. */
   platform?: NodeJS.Platform;
-  /** Where `CEZ_DISCLAIM_EXEC` is read from; defaults to `process.env`. */
+  /** Where `ONNI_DISCLAIM_EXEC` is read from; defaults to `process.env`. */
   hostEnv?: NodeJS.ProcessEnv;
   /** Where agent-named clones live; defaults to `~/.cache/onni/agent-exec`. */
   cloneDir?: string;
@@ -55,7 +55,7 @@ export interface DisclaimOptions {
 
 /** Whether `disclaimedCommand` reroutes at all: the desktop shell on macOS. */
 export function disclaimActive(opts: DisclaimOptions = {}): boolean {
-  const trampoline = (opts.hostEnv ?? process.env).CEZ_DISCLAIM_EXEC;
+  const trampoline = (opts.hostEnv ?? process.env).ONNI_DISCLAIM_EXEC;
   return (opts.platform ?? process.platform) === 'darwin' && !!trampoline && isExecutable(trampoline);
 }
 
@@ -67,7 +67,7 @@ export function disclaimedCommand(
   opts: DisclaimOptions = {},
 ): [string, string[]] {
   if (!disclaimActive(opts)) return spawnableCommand(program, args, { platform: opts.platform });
-  const trampoline = (opts.hostEnv ?? process.env).CEZ_DISCLAIM_EXEC!;
+  const trampoline = (opts.hostEnv ?? process.env).ONNI_DISCLAIM_EXEC!;
   const path = childEnv?.PATH ?? process.env.PATH;
   const resolved = resolveProgram(program, path);
   if (!resolved) return [program, [...args]];

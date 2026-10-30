@@ -67,7 +67,7 @@ describe('recent created GitHub items', () => {
     expect((await driver.recentCreated!('pr', '2026-09-11')).available).toBe(false);
   });
   it('provides recent dry-run entries without subprocesses', async () => {
-    vi.stubEnv('CEZ_DRY_RUN', '1');
+    vi.stubEnv('ONNI_DRY_RUN', '1');
     const driver = createGithubDriver('/repo', { owner: 'o', repo: 'r' });
     expect(driver.recentCreated).toBeTypeOf('function');
     const result = await driver.recentCreated!('pr', new Date().toISOString().slice(0, 10));

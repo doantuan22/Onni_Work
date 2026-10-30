@@ -11,7 +11,7 @@ function profile(mode = 'ok'): ResolvedAgentProfile {
   writeFileSync(join(path, 'config.toml'), mode);
   return { id: path, provider: 'codex', path, configDir: path, isDefault: false, label: 'test' };
 }
-beforeEach(() => { vi.stubEnv('CEZ_CODEX_BIN', bin); vi.stubEnv('CEZ_DRY_RUN', '0'); });
+beforeEach(() => { vi.stubEnv('ONNI_CODEX_BIN', bin); vi.stubEnv('ONNI_DRY_RUN', '0'); });
 afterEach(() => vi.unstubAllEnvs());
 it('makes only metadata calls, binds the profile, caches and coalesces concurrent previews', async () => {
   const p = profile();
@@ -43,9 +43,9 @@ it('bounds concurrency and hung subprocess lifetime', async () => {
 }, 10000);
 it('does not spawn for dry-run, unsupported providers or missing profiles', async () => {
   const p = profile();
-  vi.stubEnv('CEZ_DRY_RUN', '1');
+  vi.stubEnv('ONNI_DRY_RUN', '1');
   expect(await probeCodexUsageWindows(p)).toBeNull();
-  vi.stubEnv('CEZ_DRY_RUN', '0');
+  vi.stubEnv('ONNI_DRY_RUN', '0');
   expect(await probeCodexUsageWindows({ ...p, provider: 'claude' })).toBeNull();
   expect(await probeCodexUsageWindows({ ...p, path: join(p.path, 'absent') })).toBeNull();
   expect(codexIdentity({ type: 'apiKey', apiKey: 'secret' })).toBeNull();

@@ -16,7 +16,7 @@ async function api(path: string, body?: unknown, method = body === undefined ? '
 beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), 'onni-e2e-webhooks-')); execFileSync('git', ['init', '-q'], { cwd: root })
   const port = await availablePort(); url = `http://127.0.0.1:${port}`
-  server = spawn(process.execPath, [onniCli, 'serve', '--repo', root, '--port', String(port), '--no-open'], { env: fixtureServeEnv(root, { CEZ_WEBHOOKS: '1' }), stdio: 'ignore' })
+  server = spawn(process.execPath, [onniCli, 'serve', '--repo', root, '--port', String(port), '--no-open'], { env: fixtureServeEnv(root, { ONNI_WEBHOOKS: '1' }), stdio: 'ignore' })
   for (let i = 0; i < 80; i++) { try { if ((await api('/health')).ok) break } catch { /* boot */ } await new Promise(r => setTimeout(r, 250)) }
   project = await bootProjectId(url); browser = AgentBrowser.open(`e2e-webhooks-navigation-${process.pid}`); browser.setViewport(1440, 1000)
 }, 90000)

@@ -197,7 +197,7 @@ a new mechanism — it is finishing one that already shipped elsewhere.
 behaviour (silently parks `waiting` on an incomplete first turn) to match `runContinuation`'s
 documented promise (auto-nudge, capped at `MAX_AUTO_CONTINUES`). That is a real default-path change
 outside the units feature's own gate — call it out explicitly in the merge, per AGENTS.md's "diff the
-default path, not the feature." For a **unit** run, the shipped default (`CEZ_UNITS=1` + the Guard
+default path, not the feature." For a **unit** run, the shipped default (`ONNI_UNITS=1` + the Guard
 condition) is unchanged in intent, only reachable everywhere it should be.
 **Transitions:** none new — this closes a missing transition (`runAgentStep`'s first turn had *no*
 autonomous exit before; now it has the same one `runContinuation` already has).

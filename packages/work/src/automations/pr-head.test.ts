@@ -128,9 +128,9 @@ describe('resolvePrHead (spec 2026-10-06-agentic-e2e-checks Phase 3)', () => {
     expect(fetch.kind === 'failed' && fetch.reason).toContain('could not fetch refs/pull/42/head');
   });
 
-  it('makes no gh or fetch call under CEZ_DRY_RUN=1 and uses a fixture pull request', async () => {
+  it('makes no gh or fetch call under ONNI_DRY_RUN=1 and uses a fixture pull request', async () => {
     const { runner, calls } = fakeGithub(null, { ghFails: 'must not be called' });
-    const result = await resolvePrHead({ root: repo.root, repo: REPO, number: 42, allowForkHeads: false, run: runner, env: { CEZ_DRY_RUN: '1' } });
+    const result = await resolvePrHead({ root: repo.root, repo: REPO, number: 42, allowForkHeads: false, run: runner, env: { ONNI_DRY_RUN: '1' } });
     expect(result).toMatchObject({ kind: 'ok', head: { headSha: repo.base, ref: 'refs/onni/pr/42', untrusted: false } });
     expect(calls.some(([command, sub]) => command === 'gh' || sub === 'fetch')).toBe(false);
   });
@@ -200,7 +200,7 @@ describe('a pr-head automation launch', () => {
       steps: [{
         id: 'verify',
         name: 'Verify',
-        command: 'git rev-parse HEAD > ../verified-head.txt; echo "sha=$CEZ_PR_HEAD_SHA ref=$CEZ_PR_HEAD_REF base=$CEZ_PR_BASE_REF n=$CEZ_GITHUB_NUMBER key=$E2E_KEY" > ../verified-env.txt',
+        command: 'git rev-parse HEAD > ../verified-head.txt; echo "sha=$ONNI_PR_HEAD_SHA ref=$ONNI_PR_HEAD_REF base=$ONNI_PR_BASE_REF n=$ONNI_GITHUB_NUMBER key=$E2E_KEY" > ../verified-env.txt',
       }],
       checkout: 'pr-head',
       ...task,

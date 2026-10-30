@@ -93,15 +93,15 @@ describe('openInTerminal env (spec 2026-07-29-agent-profiles)', () => {
  */
 describe('openInTerminal on win32 (BatBadBut, alert #18)', () => {
   const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
-  const saved = process.env.CEZ_ALLOW_TEST_SPAWN;
+  const saved = process.env.ONNI_ALLOW_TEST_SPAWN;
   afterEach(() => {
     Object.defineProperty(process, 'platform', platform);
-    if (saved === undefined) delete process.env.CEZ_ALLOW_TEST_SPAWN;
-    else process.env.CEZ_ALLOW_TEST_SPAWN = saved;
+    if (saved === undefined) delete process.env.ONNI_ALLOW_TEST_SPAWN;
+    else process.env.ONNI_ALLOW_TEST_SPAWN = saved;
   });
   const onWindows = () => {
     Object.defineProperty(process, 'platform', { ...platform, value: 'win32' });
-    delete process.env.CEZ_ALLOW_TEST_SPAWN;
+    delete process.env.ONNI_ALLOW_TEST_SPAWN;
   };
 
   it.each([
@@ -128,26 +128,26 @@ describe('openInTerminal on win32 (BatBadBut, alert #18)', () => {
  * succeeding quietly.
  */
 describe('the spawn guard (#820)', () => {
-  const saved = process.env.CEZ_ALLOW_TEST_SPAWN;
+  const saved = process.env.ONNI_ALLOW_TEST_SPAWN;
   afterEach(() => {
-    if (saved === undefined) delete process.env.CEZ_ALLOW_TEST_SPAWN;
-    else process.env.CEZ_ALLOW_TEST_SPAWN = saved;
+    if (saved === undefined) delete process.env.ONNI_ALLOW_TEST_SPAWN;
+    else process.env.ONNI_ALLOW_TEST_SPAWN = saved;
   });
 
   it('refuses, naming the command and the seam to inject', () => {
-    delete process.env.CEZ_ALLOW_TEST_SPAWN;
+    delete process.env.ONNI_ALLOW_TEST_SPAWN;
     expect(() => refuseSpawnUnderTest('osascript', ['-e', 'tell application "Terminal"']))
       .toThrow(/refusing to spawn a launcher from a test: osascript -e tell application "Terminal"/)
     expect(() => refuseSpawnUnderTest('osascript', [])).toThrow(/ServerDeps\.openTerminal/);
   });
 
   it('lets a file that has mocked child_process through, explicitly', () => {
-    process.env.CEZ_ALLOW_TEST_SPAWN = '1';
+    process.env.ONNI_ALLOW_TEST_SPAWN = '1';
     expect(() => refuseSpawnUnderTest('osascript', ['-e', 'x'])).not.toThrow();
   });
 
   it('never fires outside a test run', () => {
-    delete process.env.CEZ_ALLOW_TEST_SPAWN;
+    delete process.env.ONNI_ALLOW_TEST_SPAWN;
     const vitest = process.env.VITEST;
     delete process.env.VITEST;
     try {
@@ -158,7 +158,7 @@ describe('the spawn guard (#820)', () => {
   });
 
   it('stops openInTerminal before it can reach the OS', async () => {
-    delete process.env.CEZ_ALLOW_TEST_SPAWN;
+    delete process.env.ONNI_ALLOW_TEST_SPAWN;
     // The exact call #820 reported: `openInApp('terminal', dir)` → `openInTerminal(dir, ':')`.
     await expect(openInTerminal('/tmp/some-account-folder', ':')).rejects.toThrow(/refusing to spawn/);
   });

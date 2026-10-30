@@ -44,8 +44,8 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-autonudge-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });

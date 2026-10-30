@@ -11,8 +11,8 @@ import { apiRequest } from './loopback-request.testkit.ts';
 import { createApp } from './server.ts';
 
 describe('workspace skills update API', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedAutoUpdate = process.env.CEZ_SKILLS_AUTO_UPDATE;
+  const savedHome = process.env.ONNI_HOME;
+  const savedAutoUpdate = process.env.ONNI_SKILLS_AUTO_UPDATE;
   let home: string;
   let repoRoot: string;
   let missingRoot: string;
@@ -22,7 +22,7 @@ describe('workspace skills update API', () => {
 
   beforeEach(async () => {
     home = mkdtempSync(join(tmpdir(), 'onni-skills-update-api-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-skills-update-repo-'));
     missingRoot = join(home, 'gone');
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
@@ -41,10 +41,10 @@ describe('workspace skills update API', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     store.flush();
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedAutoUpdate === undefined) delete process.env.CEZ_SKILLS_AUTO_UPDATE;
-    else process.env.CEZ_SKILLS_AUTO_UPDATE = savedAutoUpdate;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedAutoUpdate === undefined) delete process.env.ONNI_SKILLS_AUTO_UPDATE;
+    else process.env.ONNI_SKILLS_AUTO_UPDATE = savedAutoUpdate;
     rmSync(home, { recursive: true, force: true });
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -113,10 +113,10 @@ describe('workspace skills update API', () => {
   });
 
   it('reports inherited and explicit off without disabling manual apply', async () => {
-    process.env.CEZ_SKILLS_AUTO_UPDATE = '0';
+    process.env.ONNI_SKILLS_AUTO_UPDATE = '0';
     let response = await apiRequest(app, '/api/v1/workspace/skills-update/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projectId: 'repo' }) });
     expect(await response.json()).toMatchObject({ autoUpdateEnabled: false, inherited: true, status: 'unavailable' });
-    process.env.CEZ_SKILLS_AUTO_UPDATE = '1';
+    process.env.ONNI_SKILLS_AUTO_UPDATE = '1';
     await mergeWriteWorkspaceConfig((config) => { config.skillsAutoUpdate = false; });
     response = await apiRequest(app, '/api/v1/workspace/skills-update/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projectId: 'repo' }) });
     expect(await response.json()).toMatchObject({ autoUpdateEnabled: false, inherited: false });

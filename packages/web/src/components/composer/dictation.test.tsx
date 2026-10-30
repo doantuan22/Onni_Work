@@ -266,7 +266,7 @@ describe('the dictation overlay (paseo pattern)', () => {
   // A macOS shell without the microphone entitlement refuses every start.
   it('in a macOS app that predates the microphone entitlement the mic is disabled, never started', async () => {
     stubSpeech()
-    vi.stubGlobal('__CEZ_DESKTOP__', { platform: 'macos' })
+    vi.stubGlobal('__ONNI_DESKTOP__', { platform: 'macos' })
     vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
     renderComposer()
     const mic = screen.getByLabelText('Start dictation')
@@ -279,7 +279,7 @@ describe('the dictation overlay (paseo pattern)', () => {
 
   it('in a macOS app with the entitlement a refusal points at System Settings, not the browser', async () => {
     stubSpeech()
-    vi.stubGlobal('__CEZ_DESKTOP__', { platform: 'macos', microphone: true })
+    vi.stubGlobal('__ONNI_DESKTOP__', { platform: 'macos', microphone: true })
     renderComposer()
     act(() => startDictation().onerror!({ error: 'not-allowed' }))
     expect(await screen.findByText(/System Settings → Privacy & Security/)).toBeTruthy()

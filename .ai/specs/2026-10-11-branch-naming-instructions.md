@@ -32,7 +32,7 @@ task starts immediately and the wait begins together with the namer call, and a 
 alone takes more than five seconds (run 269606ac forked on `cez/` under a 5 s budget). `execute`
 therefore awaits the pending namer promise for `BRANCH_NAME_WAIT_MS` — the namer's own 20 s
 timeout plus 10 s — and only when instructions are set; the zero-config path keeps the instant
-fork. A timeout, a failed namer or `CEZ_AUTONAME=0` forks as
+fork. A timeout, a failed namer or `ONNI_AUTONAME=0` forks as
 `cez/<id8>` and keeps it: a branch is named once, at creation, so a push or PR never points at a
 name that later changed.
 

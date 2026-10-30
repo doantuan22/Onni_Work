@@ -20,7 +20,7 @@ describe('POST /api/v1/runs systemPrompt', () => {
   let store: RunStore;
   let app: Hono;
   let captured: StartRunInput | undefined;
-  const savedFollowups = process.env.CEZ_FOLLOWUPS;
+  const savedFollowups = process.env.ONNI_FOLLOWUPS;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-startrun-'));
@@ -28,7 +28,7 @@ describe('POST /api/v1/runs systemPrompt', () => {
     captured = undefined;
     // #471: these assertions are about systemPrompt, so pin the inbox on and
     // let the dedicated suite below own the gate's behavior.
-    process.env.CEZ_FOLLOWUPS = '1';
+    process.env.ONNI_FOLLOWUPS = '1';
     // The route hands the parsed input straight to the manager — a capturing
     // stub is all the harness needs (the patch-run.test.ts pattern).
     const manager = {
@@ -49,8 +49,8 @@ describe('POST /api/v1/runs systemPrompt', () => {
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedFollowups === undefined) delete process.env.CEZ_FOLLOWUPS;
-    else process.env.CEZ_FOLLOWUPS = savedFollowups;
+    if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
+    else process.env.ONNI_FOLLOWUPS = savedFollowups;
   });
 
   const post = (body: unknown) =>
@@ -134,14 +134,14 @@ describe('POST /api/v1/runs systemPrompt', () => {
  * The inbox capability is the ceiling on `generateFollowups` (#471): whatever a
  * client asks for, an inbox-less server pins it to false. That single decision
  * is what stops the agent being handed FOLLOWUP_INSTRUCTIONS and a usable
- * CEZ_TODOS_FILE downstream (`RunManager.agentEnv`).
+ * ONNI_TODOS_FILE downstream (`RunManager.agentEnv`).
  */
-describe('POST /api/v1/runs generateFollowups — the CEZ_FOLLOWUPS ceiling (#471)', () => {
+describe('POST /api/v1/runs generateFollowups — the ONNI_FOLLOWUPS ceiling (#471)', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
   let captured: StartRunInput | undefined;
-  const savedFollowups = process.env.CEZ_FOLLOWUPS;
+  const savedFollowups = process.env.ONNI_FOLLOWUPS;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-startrun-followups-'));
@@ -160,14 +160,14 @@ describe('POST /api/v1/runs generateFollowups — the CEZ_FOLLOWUPS ceiling (#47
       version: '0.0.0-test',
       providerAuth: connectedProviderAuth(),
     });
-    delete process.env.CEZ_FOLLOWUPS;
+    delete process.env.ONNI_FOLLOWUPS;
   });
 
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedFollowups === undefined) delete process.env.CEZ_FOLLOWUPS;
-    else process.env.CEZ_FOLLOWUPS = savedFollowups;
+    if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
+    else process.env.ONNI_FOLLOWUPS = savedFollowups;
   });
 
   const post = (body: unknown) =>
@@ -191,15 +191,15 @@ describe('POST /api/v1/runs generateFollowups — the CEZ_FOLLOWUPS ceiling (#47
     expect(captured?.generateFollowups).toBe(false);
   });
 
-  it('honours generateFollowups=true once CEZ_FOLLOWUPS=1', async () => {
-    process.env.CEZ_FOLLOWUPS = '1';
+  it('honours generateFollowups=true once ONNI_FOLLOWUPS=1', async () => {
+    process.env.ONNI_FOLLOWUPS = '1';
     const res = await post({ ...base, generateFollowups: true });
     expect(res.status).toBe(201);
     expect(captured?.generateFollowups).toBe(true);
   });
 
   it('still lets an enabled server opt a single run out', async () => {
-    process.env.CEZ_FOLLOWUPS = '1';
+    process.env.ONNI_FOLLOWUPS = '1';
     const res = await post({ ...base, generateFollowups: false });
     expect(res.status).toBe(201);
     expect(captured?.generateFollowups).toBe(false);

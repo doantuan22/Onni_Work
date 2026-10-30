@@ -49,7 +49,7 @@ function deliveryDue(delivery: DeliveryRecord, receiver: PrivateReceiver, now: n
     && (receiver.state !== 'suspended' || delivery.eventType === 'webhook.test'
       || !receiver.nextProbeAt || Date.parse(receiver.nextProbeAt) <= now);
 }
-export const webhooksEnabled = (env: NodeJS.ProcessEnv = process.env): boolean => env.CEZ_WEBHOOKS === '1';
+export const webhooksEnabled = (env: NodeJS.ProcessEnv = process.env): boolean => env.ONNI_WEBHOOKS === '1';
 
 /** Owns one canonical project only. Network waits never hold the mutation queue. */
 export class WebhookService extends EventEmitter {

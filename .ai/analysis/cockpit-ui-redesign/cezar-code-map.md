@@ -136,7 +136,7 @@ Static: `GET /`, `GET /new` (same SPA), `GET /app.js`, `GET /style.css`, `GET /o
 | `GET /api/runs/:id/handoff` | handoff.md as `text/markdown` ('' when not seeded) |
 | `GET /api/runs/:id/images/:file` | persisted agent screenshots (png/jpg/webp/gif), immutable cache headers, basename-pinned |
 | `GET /api/runs/:id/diff` | text; worktree vs baseBranch, or "(no worktree — ran in the repo working tree)" |
-| `POST /api/runs/:id/pr` | review gate → autosave commit → push → `gh pr create --draft` → 201 `{url,dryRun}`; run flips to done. Failures 409 `{error, manual:'git merge <branch>'}`. CEZ_DRY_RUN=1 fakes URL |
+| `POST /api/runs/:id/pr` | review gate → autosave commit → push → `gh pr create --draft` → 201 `{url,dryRun}`; run flips to done. Failures 409 `{error, manual:'git merge <branch>'}`. ONNI_DRY_RUN=1 fakes URL |
 | `POST /api/runs/:id/remove-worktree` | explicit cleanup → `{removed:true}` |
 | `DELETE /api/runs/:id` | run + ndjson + handoff + images + worktree/branch |
 | `GET /api/groups/:groupId` | variants compare data: per run `{id,variant,title,status,archived,tokensUsed,costUsd,diffStat,handoffExcerpt}` |
@@ -200,7 +200,7 @@ StepState: id, name, kind('agent'|'check'), status(+ 'pending'|'skipped'), itera
 Store: atomic tmp+rename `runs.json` (debounced 300 ms), append-only NDJSON per run (sync appendFileSync), EventEmitter bus (`run`, `event`, `deleted`) feeding the SSE endpoints. Prune: 300 active / 500 archived. On open without `keepLive`, live-looking runs are marked failed ("interrupted"); `review` survives restarts by design (pure data, no live process).
 
 ### 3.4 Backend → normalized mapping
-- **Claude** (`claude --input-format stream-json --output-format stream-json --verbose --permission-mode acceptEdits`, `--session-id`/`--resume`, `--append-system-prompt`, `--allowedTools` incl. `Bash(prefix:*)` narrowing, `--add-dir`): `assistant.content[]` text/tool_use → text/tool-call; `user.content[] tool_result` → tool-result + image events; `result` msg → fallback text, cost, turn-end; usage cost-weighted via `costWeightedTokens`. EOF-hang watchdog (SIGTERM 8 s → SIGKILL 4 s); 30-min default timeout (0 = interactive/off). CEZ_DRY_RUN=1 swaps in `scripts/mock-claude.mjs`.
+- **Claude** (`claude --input-format stream-json --output-format stream-json --verbose --permission-mode acceptEdits`, `--session-id`/`--resume`, `--append-system-prompt`, `--allowedTools` incl. `Bash(prefix:*)` narrowing, `--add-dir`): `assistant.content[]` text/tool_use → text/tool-call; `user.content[] tool_result` → tool-result + image events; `result` msg → fallback text, cost, turn-end; usage cost-weighted via `costWeightedTokens`. EOF-hang watchdog (SIGTERM 8 s → SIGKILL 4 s); 30-min default timeout (0 = interactive/off). ONNI_DRY_RUN=1 swaps in `scripts/mock-claude.mjs`.
 - **Codex** (`codex app-server`, JSON-RPC 2.0 JSONL over stdio; `initialize` → `thread/start`/`thread/resume` → `turn/start`/`turn/steer`/`turn/interrupt`; sandbox `workspace-write`, approvalPolicy `never`): `item/agentMessage/delta` → text; `item/started`/`item/completed` (non-message item types) → tool-call/tool-result; `thread/tokenUsage/updated` → token-usage; `turn/completed` → turn-end; thread id → session event. No tool allowlist (spec.allowedTools ignored); system prompt prepended to first user message.
 - **OpenCode** (`opencode serve --hostname 127.0.0.1 --port <random 40000–59999>`, bound URL read from stdout, HTTP + `/event` SSE; `POST /session`, `POST /session/:id/message`, `/abort`): `message.part.updated` text parts → per-part-cursor text deltas (assistant-role-filtered); tool parts → tool-call once + tool-result on completed/error; message info tokens/cost → token-usage/cost deltas; model as `provider/model`.
 - Session seam identical across backends: `AgentSession {result, pid, sendMessage, end, interrupt, open}`; `SessionOptions.autoEndAfterFirstTurn` (250 ms reopen window) distinguishes one-shot steps from interactive.
@@ -229,7 +229,7 @@ Store: atomic tmp+rename `runs.json` (debounced 300 ms), append-only NDJSON per 
 - **No origin remote**: repo chip stays plain text; draft-PR → `{ok:false, error:'no git remote — add one … or merge the branch locally'}` (409 + `manual: git merge <branch>` shown by the GUI).
 - **gh missing/logged-out/offline**: `fetchGithub` catches everything → `{available:false, reason}` (ENOENT → "gh CLI not found — install it and run `gh auth login`"); GitHub tab renders a hint card, never an error; env chip goes red with hint. Draft PR: ENOENT → "gh not found — install the GitHub CLI…", auth-looking stderr appends "(try `gh auth login`)". PR base: `origin/x` normalized, raw-sha base dropped (gh falls back to default branch). Open issue #372 asks to also *disable* the GitHub pane and gh-dependent features proactively.
 - **Terminal absent** (open-in-cli): 409 with the exact shell command; GUI copies it to clipboard.
-- **CEZ_DRY_RUN=1**: mock claude binary, mock GitHub catalog, fake PR URL — whole cockpit demoable offline/tokenless.
+- **ONNI_DRY_RUN=1**: mock claude binary, mock GitHub catalog, fake PR URL — whole cockpit demoable offline/tokenless.
 - Planner, todos watch, team-skills refresh, ui-state writes: all best-effort/fallback, never block.
 
 ---

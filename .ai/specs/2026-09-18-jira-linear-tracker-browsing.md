@@ -142,7 +142,7 @@ there is no automatic import into projects. GitHub authentication remains unchan
 
 ### Managed project credential storage
 
-Use `cezarHomeDir()/tracker-connections/<sha256(canonicalRoot)>.env`; `CEZ_HOME` applies.
+Use `cezarHomeDir()/tracker-connections/<sha256(canonicalRoot)>.env`; `ONNI_HOME` applies.
 The interim choice is a managed dotenv representation for the agreed environment-file storage
 workflow, while keeping secrets outside repositories and out of the process environment. It is
 not a security improvement over private JSON and is not encryption. The tradeoff is explicit:
@@ -230,7 +230,7 @@ The implementation must declare these additions in `BACKWARD_COMPATIBILITY.md` i
 | §1 CLI | `tracker-connections list` and `remove <id>`; document output, argument validation and failure exit behavior before release |
 | §2 HTTP / SSE | All tracker routes, project-list classification and the new workspace-only `tracker-changed` event defined below; no change to the boot-project event stream or global health shape |
 | §3 project state | `.ai/cezar/tracker.json`; register with `ensureDataGitignore`, preserve unknown association fields on round trip, reject invalid required identity before vendor access |
-| §9 per-user state | `tracker-connections/<hash>.env`, owned by its own store, respecting `CEZ_HOME`, private atomic writes and graceful boot degradation |
+| §9 per-user state | `tracker-connections/<hash>.env`, owned by its own store, respecting `ONNI_HOME`, private atomic writes and graceful boot degradation |
 
 **Explicit proposed §9 exception:** this credential record is validated as a complete unit rather
 than using `.passthrough()` and per-key salvage. Combining partial authentication fields can select
@@ -494,7 +494,7 @@ tokens through Settings and select the scope again; no server restart is require
 
 README, `.env.example` and setup help must explain that global Jira/Linear environment credentials
 are ignored. Existing associations require explicit per-project setup; no broad key is silently
-imported. Document private plaintext storage, CEZ_HOME, file permissions, deletion versus revocation,
+imported. Document private plaintext storage, ONNI_HOME, file permissions, deletion versus revocation,
 no write-back and the prompt snapshot persisted on launch. Unregistering a project does not delete
 its credential file. Troubleshooting covers missing credentials, invalid permissions, wrong site,
 unavailable discovery and rate limiting. Help remains readable without network access.
@@ -523,10 +523,10 @@ secrets, per-vendor branches in shared browsing flows or forge-only capabilities
 | Read-only/corrupt local state | Malformed state reads as null; failed mutation leaves prior state and reports error; no boot failure |
 | Exactly full final page | `truncated: false` if vendor says no continuation; do not infer more from length alone |
 | Query changed with outstanding request | Discard old result and reset cursor; no cross-project or cross-source cache reuse |
-| `CEZ_DRY_RUN=1` | Deterministic Jira/Linear fixtures; no vendor network access or real credential reads/writes/removal |
+| `ONNI_DRY_RUN=1` | Deterministic Jira/Linear fixtures; no vendor network access or real credential reads/writes/removal |
 
 The feature adds network access only after per-project credential setup and a user-requested
-read/connect action. No new `CEZ_*` switch is needed for this explicitly connected integration. Unlike GitHub's `gh`
+read/connect action. No new `ONNI_*` switch is needed for this explicitly connected integration. Unlike GitHub's `gh`
 discovery, setup cannot be fully automatic, but the rest of cezar still requires no configuration.
 Automations' default-on behavior is not a precedent for unsolicited polling: its timer arms only
 for an automation the user enabled. The auto-refresh extension checks only while a list is observed; it introduces no unattended sync job.

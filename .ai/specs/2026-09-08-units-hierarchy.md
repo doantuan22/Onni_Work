@@ -3,7 +3,7 @@
 > **Superseded (2026-09-10):** the missions/units feature was removed and replaced by task dispatch — see `2026-09-10-dispatch.md` and `units-research/00-verdict.md`. Kept for the record.
 
 
-> Slug: `units-hierarchy` · Status: implementing · Opt-in: `CEZ_UNITS=1` → `capabilities.units`
+> Slug: `units-hierarchy` · Status: implementing · Opt-in: `ONNI_UNITS=1` → `capabilities.units`
 
 ## TLDR
 
@@ -24,7 +24,7 @@ and **Settings → Units** for the prompts.
 
 | # | Question | Applied default | Why |
 |---|---|---|---|
-| Q1 | Gating | Opt-in `CEZ_UNITS=1`, `capabilities.units` in `/api/v1/health` (the `CEZ_AUTOMATIONS` pattern). Off: no `/units*`/`/missions*` routes, markers not parsed, role prompts not composed. | Widest cost-widening feature so far; AGENTS.md §Zero config. |
+| Q1 | Gating | Opt-in `ONNI_UNITS=1`, `capabilities.units` in `/api/v1/health` (the `ONNI_AUTOMATIONS` pattern). Off: no `/units*`/`/missions*` routes, markers not parsed, role prompts not composed. | Widest cost-widening feature so far; AGENTS.md §Zero config. |
 | Q2 | Which layers are real runs | Caesar, Legate, Centurion are runs. Legionaries = the centurion's native sub-agents (claude `Task`, added to its `allowedTools`). A centurion's `CEZ:SPAWN` is refused with a transcript note. Max **4 children in flight per parent**. | `maxParallel` defaults to 2 and only 2 monitors are slot-exempt; a four-layer tree of runs starves itself. |
 | Q3 | Worktrees | Each child gets **its own worktree as today, forked off the parent's branch**: at spawn the child record is seeded with `baseBranch: parent.branch`, which `execute()` already prefers over the configured base (run.ts ~2661). The parent **merges the child branches it accepts** (`git merge --no-ff cez/<id8>`) in its own worktree; role prompts require committing before spawning and owning sibling conflicts. The mission root's branch accumulates the result and is the one draft PR. | A shared tree needs a lease held across parks (#438), which would block a parent's own children; releasing on park re-derives that guarantee across ~9 resume paths. Own worktrees reuse only shipped mechanisms and keep each child's Changes tab and review gate honest. |
 | Q4 | Guard | Reuse `CEZ:ASK`. Role prompts require asking before irreversible actions. The autonomous nudge must **not** fire past an ask on a unit run (both turn-end sites). Guard inbox = unit runs at `waiting` with a pending ask. | No new marker, route, or record field; the resume path is plain `sendMessage`. |

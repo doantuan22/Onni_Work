@@ -99,7 +99,7 @@ Only the background coordinator may turn a successful detection into automatic a
 Add optional `skillsAutoUpdate?: boolean` to `~/.cezar/config.json` using the existing tolerant, `.passthrough()` workspace schema and merge writer. Effective value:
 
 1. explicit workspace setting;
-2. `CEZ_SKILLS_AUTO_UPDATE` (`0` disables, `1` enables; invalid/unset is ignored);
+2. `ONNI_SKILLS_AUTO_UPDATE` (`0` disables, `1` enables; invalid/unset is ignored);
 3. `true`.
 
 The API returns both the stored nullable value and effective value so the UI can say “On (default)” accurately. Add the env variable to `.env.example` and the README env table in the same change.
@@ -156,7 +156,7 @@ Add a global “Skills” settings section at `/settings/global/skills` with one
 
 **Update Open Mercato skills automatically** — “Checks installed Open Mercato skills in the background and applies available updates. Other skills and untracked folders are never changed.”
 
-The value reads from workspace config. When no override exists, show `On (default)` and a secondary line naming `CEZ_SKILLS_AUTO_UPDATE` when it supplied the default. Toggling writes an explicit boolean. Include “Use default” to clear the override. The control stays usable even when no installation exists; a quiet status says “No tracked Open Mercato installation found.”
+The value reads from workspace config. When no override exists, show `On (default)` and a secondary line naming `ONNI_SKILLS_AUTO_UPDATE` when it supplied the default. Toggling writes an explicit boolean. Include “Use default” to clear the override. The control stays usable even when no installation exists; a quiet status says “No tracked Open Mercato installation found.”
 
 ### Sidebar marker
 
@@ -199,7 +199,7 @@ Illustrative mockups:
 | Upstream output/lock schema changes | Treat unrecognized data as unavailable and preserve files; fixture tests pin accepted shapes. |
 | Read-only home/cache | Preference write returns existing route error; check/update degrades without changing boot behavior. |
 | Automatic update succeeds but upgrade notes remain | Clear “update available,” set process-local `needsUpgradeNotes`, retain the follow-up callout until server restart, and ask before starting an agent task; never claim to detect completion. |
-| `CEZ_DRY_RUN=1` | Use a deterministic mock state and never invoke `npx` or network, so UI/E2E tests stay offline. |
+| `ONNI_DRY_RUN=1` | Use a deterministic mock state and never invoke `npx` or network, so UI/E2E tests stay offline. |
 
 ## Risks & Impact Review
 
@@ -208,7 +208,7 @@ Illustrative mockups:
 - **Concurrent global writes:** multiple cezar processes share global skills. The cache lock and serialized scopes prevent overlapping updates.
 - **Network/cost default:** the requested default is enabled as an explicit documented exception to the repository's normal safe-default rule. All work happens after boot, with a long TTL, bounded retries, and an explicit env/Settings off switch.
 - **Post-update migrations:** updated playbooks may expect descriptor changes. Keeping `/om-apply-upgrade-notes` explicit avoids silently changing repositories while ensuring the user sees the required hand-off.
-- **Rollback:** turn off the setting or set `CEZ_SKILLS_AUTO_UPDATE=0`; the feature adds no required state. A bad upstream skill version is rolled back with the upstream CLI/manual reinstall mechanism, not by cezar maintaining a second package cache.
+- **Rollback:** turn off the setting or set `ONNI_SKILLS_AUTO_UPDATE=0`; the feature adds no required state. A bad upstream skill version is rolled back with the upstream CLI/manual reinstall mechanism, not by cezar maintaining a second package cache.
 - **Security:** browser input cannot select executable names/arguments. Child processes use fixed executables and argument arrays. Errors are bounded/redacted. Existing request-origin protection covers mutations.
 
 ## Phasing
@@ -219,12 +219,12 @@ Phase 1 establishes a read-only, fail-closed update detector and additive API. P
 
 ### Phase 1 — Provenance-aware detection
 
-1. Add `src/skills-update.ts` with tolerant project/global lock readers, canonical Open Mercato source matching, absolute-`npx` discovery, fixed-argument execution, output bounds/timeouts, in-process deduplication, cache lock, TTL, and `CEZ_DRY_RUN` behavior. Add focused unit tests for missing/corrupt/unknown locks, manual folders, mixed sources, project/global grouping, absent tools, offline failures, output redaction, timeouts, and concurrent calls.
+1. Add `src/skills-update.ts` with tolerant project/global lock readers, canonical Open Mercato source matching, absolute-`npx` discovery, fixed-argument execution, output bounds/timeouts, in-process deduplication, cache lock, TTL, and `ONNI_DRY_RUN` behavior. Add focused unit tests for missing/corrupt/unknown locks, manual folders, mixed sources, project/global grouping, absent tools, offline failures, output redaction, timeouts, and concurrent calls.
 2. Add the workspace-level GET/check routes in `src/server/server.ts`, wire one shared service into server lifecycle, and add API types/client/query hooks in `web/app/src/api/`. Extend server route/security tests to prove body validation, 404/409 project resolution, immediate cached reads, and that no route accepts executable inputs.
 
 ### Phase 2 — Preference and update execution
 
-3. Extend `src/workspace/config.ts` and the workspace config API with nullable stored/effective `skillsAutoUpdate`, preserving `.passthrough()`, per-key `.catch`, raw-key absence, atomic merging, and read-only degradation. Add `CEZ_SKILLS_AUTO_UPDATE` parsing in one pure helper plus tests for explicit > env > true precedence. Update `.env.example`, README, API types, and compatibility notes.
+3. Extend `src/workspace/config.ts` and the workspace config API with nullable stored/effective `skillsAutoUpdate`, preserving `.passthrough()`, per-key `.catch`, raw-key absence, atomic merging, and read-only degradation. Add `ONNI_SKILLS_AUTO_UPDATE` parsing in one pure helper plus tests for explicit > env > true precedence. Update `.env.example`, README, API types, and compatibility notes.
 4. Implement explicit-name project/global updates, per-scope outcomes, cross-process locking, post-success forced recheck, and catalog invalidation. Test argument arrays exactly, especially that unrelated/manual skills are excluded and `gh` is never probed. Add post-listen scheduling across the workspace registry, project-added/project-removed handling, one global owner, and prove failures do not reject startup. Update AGENTS.md and `BACKWARD_COMPATIBILITY.md` with the explicit default-on exception.
 5. Add apply route validation and mutation conflict behavior. Cover automatic-on, explicit-off, env-off, no-installation, partial success, stale lock, and dry-run paths in server/unit tests.
 

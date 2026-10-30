@@ -14,7 +14,7 @@ vi.mock('../runs/auto-name.ts', async (original) => ({
 let root: string, store: RunStore, manager: RunManager;
 beforeEach(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'deferred-naming-')));
-  vi.stubEnv('CEZ_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'default'));
+  vi.stubEnv('ONNI_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'default'));
   mkdirSync(join(root, 'default')); writeFileSync(join(root, 'default', 'settings.json'), '{}');
   store = RunStore.open(join(root, 'state')); manager = new RunManager(store, root);
   vi.mocked(generateRunName).mockClear();

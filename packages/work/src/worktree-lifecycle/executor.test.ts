@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { executeLifecycleCommand, probeLifecycleProcess, type LifecycleExecutorOutput } from './executor.ts';
 
 let cwd: string;
-beforeEach(async () => { cwd = await mkdtemp(join(tmpdir(), 'lifecycle-executor-')); vi.stubEnv('CEZ_DRY_RUN', '0'); });
+beforeEach(async () => { cwd = await mkdtemp(join(tmpdir(), 'lifecycle-executor-')); vi.stubEnv('ONNI_DRY_RUN', '0'); });
 afterEach(async () => { vi.unstubAllEnvs(); await rm(cwd, { recursive: true, force: true }); });
 describe('supervised lifecycle executor', () => {
   it('runs in the given cwd, closes stdin, and emits stdout/stderr', async () => {

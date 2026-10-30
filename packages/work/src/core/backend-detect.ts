@@ -41,11 +41,11 @@ export async function detectEnvironment(): Promise<BackendCheck[]> {
 }
 
 async function probeClaude(): Promise<BackendCheck> {
-  if (process.env.CEZ_DRY_RUN === '1') {
-    return { name: 'claude', available: true, version: 'mock (CEZ_DRY_RUN=1)' };
+  if (process.env.ONNI_DRY_RUN === '1') {
+    return { name: 'claude', available: true, version: 'mock (ONNI_DRY_RUN=1)' };
   }
   // Resolve the binary like every other claude call site (the runner, provider-auth,
-  // open-in-app): `CEZ_CLAUDE_BIN`, PATH, then the installers' known locations. Probing a
+  // open-in-app): `ONNI_CLAUDE_BIN`, PATH, then the installers' known locations. Probing a
   // bare `claude` reported "not installed" for a host whose only install is at a custom
   // path or in `~/.local/bin` off this process's PATH — which drops claude from the
   // composer and the installer's dependency step even though runs would have worked fine.
@@ -81,7 +81,7 @@ async function probeClaude(): Promise<BackendCheck> {
 }
 
 async function probeCodex(): Promise<BackendCheck> {
-  const bin = process.env.CEZ_CODEX_BIN ?? 'codex';
+  const bin = process.env.ONNI_CODEX_BIN ?? 'codex';
   try {
     const { stdout } = await exec(bin, ['--version'], { timeout: 10_000 });
     return {
@@ -100,7 +100,7 @@ async function probeCodex(): Promise<BackendCheck> {
 }
 
 async function probeOpencode(): Promise<BackendCheck> {
-  const bin = process.env.CEZ_OPENCODE_BIN ?? 'opencode';
+  const bin = process.env.ONNI_OPENCODE_BIN ?? 'opencode';
   try {
     const { stdout } = await exec(bin, ['--version'], { timeout: 10_000 });
     return {
@@ -119,8 +119,8 @@ async function probeOpencode(): Promise<BackendCheck> {
 }
 
 async function probeCursor(): Promise<BackendCheck> {
-  if (process.env.CEZ_DRY_RUN === '1') {
-    return { name: 'cursor', available: true, version: 'mock (CEZ_DRY_RUN=1)' };
+  if (process.env.ONNI_DRY_RUN === '1') {
+    return { name: 'cursor', available: true, version: 'mock (ONNI_DRY_RUN=1)' };
   }
   const bin = resolveCursorAgentBin();
   try {
@@ -130,7 +130,7 @@ async function probeCursor(): Promise<BackendCheck> {
       return {
         name: 'cursor',
         available: false,
-        hint: `\`${bin}\` resolves but doesn't look like the Cursor CLI (got: ${stdout.trim().slice(0, 80)}); install it (curl https://cursor.com/install -fsS | bash) or set CEZ_CURSOR_AGENT_BIN`,
+        hint: `\`${bin}\` resolves but doesn't look like the Cursor CLI (got: ${stdout.trim().slice(0, 80)}); install it (curl https://cursor.com/install -fsS | bash) or set ONNI_CURSOR_AGENT_BIN`,
       };
     }
     return {
@@ -150,10 +150,10 @@ async function probeCursor(): Promise<BackendCheck> {
 
 async function probePi(): Promise<BackendCheck> {
   // Dry-run stands the runner up on the shared mock, so report it present.
-  if (process.env.CEZ_DRY_RUN === '1') {
-    return { name: 'pi', available: true, version: 'mock (CEZ_DRY_RUN=1)' };
+  if (process.env.ONNI_DRY_RUN === '1') {
+    return { name: 'pi', available: true, version: 'mock (ONNI_DRY_RUN=1)' };
   }
-  const bin = process.env.CEZ_PI_BIN ?? 'pi';
+  const bin = process.env.ONNI_PI_BIN ?? 'pi';
   try {
     const { stdout } = await exec(bin, ['--version'], { timeout: 10_000 });
     return {
@@ -175,10 +175,10 @@ async function probePi(): Promise<BackendCheck> {
 
 async function probeJunie(): Promise<BackendCheck> {
   // Dry-run stands the runner up on the shared mock, so report it present.
-  if (process.env.CEZ_DRY_RUN === '1') {
-    return { name: 'junie', available: true, version: 'mock (CEZ_DRY_RUN=1)' };
+  if (process.env.ONNI_DRY_RUN === '1') {
+    return { name: 'junie', available: true, version: 'mock (ONNI_DRY_RUN=1)' };
   }
-  const bin = process.env.CEZ_JUNIE_BIN ?? 'junie';
+  const bin = process.env.ONNI_JUNIE_BIN ?? 'junie';
   try {
     const { stdout } = await exec(bin, ['--version'], { timeout: 10_000 });
     const version = stdout.trim();
@@ -206,10 +206,10 @@ async function probeJunie(): Promise<BackendCheck> {
 
 async function probeCopilot(): Promise<BackendCheck> {
   // Dry-run stands the runner up on the shared mock, so report it present.
-  if (process.env.CEZ_DRY_RUN === '1') {
-    return { name: 'copilot', available: true, version: 'mock (CEZ_DRY_RUN=1)' };
+  if (process.env.ONNI_DRY_RUN === '1') {
+    return { name: 'copilot', available: true, version: 'mock (ONNI_DRY_RUN=1)' };
   }
-  const bin = process.env.CEZ_COPILOT_BIN ?? 'copilot';
+  const bin = process.env.ONNI_COPILOT_BIN ?? 'copilot';
   try {
     // `--version` needs no login and no network — the auth state is the provider descriptor's
     // job (`provider-auth.ts`), never detection's (AGENT_PROTOCOL.md §9 step 3).

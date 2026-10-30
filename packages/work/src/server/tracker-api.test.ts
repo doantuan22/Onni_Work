@@ -21,9 +21,9 @@ describe('tracker API boundaries and isolation', () => {
   let store: RunStore;
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-tracker-api-'));
-    vi.stubEnv('CEZ_HOME', join(root, 'home'));
-    vi.stubEnv('CEZ_DRY_RUN', '1');
-    vi.stubEnv('CEZ_SINGLE_PROJECT', '0');
+    vi.stubEnv('ONNI_HOME', join(root, 'home'));
+    vi.stubEnv('ONNI_DRY_RUN', '1');
+    vi.stubEnv('ONNI_SINGLE_PROJECT', '0');
     mkdirSync(join(root, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(root, '.ai/onni'));
   });
@@ -58,7 +58,7 @@ describe('tracker API boundaries and isolation', () => {
 
   it.each([false, true])('classifies registered and single-project boot scopes (single=%s)', async single => {
     await registerProject(root);
-    vi.stubEnv('CEZ_SINGLE_PROJECT', single ? '1' : '0');
+    vi.stubEnv('ONNI_SINGLE_PROJECT', single ? '1' : '0');
     const instance = app();
     expect((await apiRequest(instance, '/api/v1/p/default/tracker/association', put(selection))).status).toBe(200);
     const projects = await (await apiRequest(instance, '/api/v1/projects')).json() as { projects: Array<{ tracker?: string; unregistered?: boolean }> };
@@ -70,7 +70,7 @@ describe('tracker API boundaries and isolation', () => {
   });
 
   it('ignores legacy server credentials and never probes vendors before project configuration', async () => {
-    vi.stubEnv('CEZ_DRY_RUN', '0');
+    vi.stubEnv('ONNI_DRY_RUN', '0');
     vi.stubEnv('JIRA_BASE_URL', 'https://acme.atlassian.net');
     vi.stubEnv('JIRA_EMAIL', 'test@example.com');
     vi.stubEnv('JIRA_API_TOKEN', 'test-token');
@@ -136,7 +136,7 @@ describe('tracker API boundaries and isolation', () => {
     await apiRequest(instance, '/api/v1/tracker/association', put({ ...selection, sourceId: 'wrong' }));
     expect(readFileSync(join(root, '.ai/onni/tracker.json'), 'utf8')).toBe(saved);
     expect(events).toHaveLength(1);
-    vi.stubEnv('CEZ_DRY_RUN', '0');
+    vi.stubEnv('ONNI_DRY_RUN', '0');
     vi.stubEnv('JIRA_API_TOKEN', '');
     const offline = app(bus);
     const fetcher = vi.fn(() => { throw new Error('network prohibited'); });
@@ -175,8 +175,8 @@ describe('tracker API boundaries and isolation', () => {
 
 it('keeps credential HTTP responses write-only and aliases connection routes to the boot project', async () => {
   const root = mkdtempSync(join(tmpdir(), 'tracker-credentials-api-'));
-  vi.stubEnv('CEZ_HOME', join(root, 'home'));
-  vi.stubEnv('CEZ_DRY_RUN', '0');
+  vi.stubEnv('ONNI_HOME', join(root, 'home'));
+  vi.stubEnv('ONNI_DRY_RUN', '0');
   mkdirSync(join(root, '.ai/onni'), { recursive: true });
   const store = RunStore.open(join(root, '.ai/onni'));
   const fetcher = vi.fn(() => { throw new Error('No vendor access during credential storage'); });

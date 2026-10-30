@@ -482,12 +482,12 @@ describe('mobile shell', () => {
  * The interesting half is not that a socket opens — it is that a server-side change reaches the
  * rendered UI with nobody reloading anything. The inbox is the one path this suite can drive for
  * free: `.ai/onni/todos.json` is a documented external contract (agents append to it via
- * `CEZ_TODOS_FILE`), the server watches the file and re-broadcasts the whole array on `todos`, and
+ * `ONNI_TODOS_FILE`), the server watches the file and re-broadcasts the whole array on `todos`, and
  * the nav badge renders whatever the todos query holds. So writing that file *is* a live event —
  * no fixture invented, nothing mocked.
  *
  * The `run` path is deliberately not asserted here: proving a live run's `run` events land would
- * need a run that actually executes, and CEZ_DRY_RUN's mock agent is not a fixture this step has.
+ * need a run that actually executes, and ONNI_DRY_RUN's mock agent is not a fixture this step has.
  * The jsdom tests cover those reducers against the exact payloads the server sends.
  */
 describe('global SSE stream', () => {
@@ -530,7 +530,7 @@ describe('global SSE stream', () => {
   it('live-updates the inbox badge from a server-side change, with no reload', ({ skip }) => {
     skip(
       !followupsAvailable,
-      'the shared environment has the opt-in inbox disabled; run CEZ_FOLLOWUPS=1 npm run test:e2e -- --force',
+      'the shared environment has the opt-in inbox disabled; run ONNI_FOLLOWUPS=1 npm run test:e2e -- --force',
     )
     writeTodos([])
     browser.goto(baseUrl + scoped('/'))

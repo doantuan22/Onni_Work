@@ -3,7 +3,7 @@
 //! macOS privacy (TCC) prompts name the RESPONSIBLE process, and everything the app starts —
 //! the cockpit server, the agents it runs, the tools they call — inherits the app as that
 //! process. So an agent listing `~/Documents` asked in Cezar's name, and one Allow granted every
-//! agent. cezar (`CEZ_DISCLAIM_EXEC`, set by `spawn_sidecar`) starts agents through this
+//! agent. cezar (`ONNI_DISCLAIM_EXEC`, set by `spawn_sidecar`) starts agents through this
 //! trampoline instead: `posix_spawn` with `POSIX_SPAWN_SETEXEC` replaces this process in place
 //! — same pid, same stdio, so cezar's process handle stays valid — and the disclaim attribute
 //! makes the new image its own responsible process. The prompt then names the agent.

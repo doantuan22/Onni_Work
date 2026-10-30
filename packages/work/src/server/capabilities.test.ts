@@ -150,16 +150,16 @@ describe('isLoopbackHost (our own bind host)', () => {
   });
 });
 
-describe('resolveCapabilities — terminal (CEZ_TERMINAL)', () => {
+describe('resolveCapabilities — terminal (ONNI_TERMINAL)', () => {
   it('follows localHandoff when unset: on locally, off when hosted', () => {
     expect(resolveCapabilities({}, '127.0.0.1').terminal).toBe(true);
-    expect(resolveCapabilities({ CEZ_REMOTE: '1' }, undefined).terminal).toBe(false);
+    expect(resolveCapabilities({ ONNI_REMOTE: '1' }, undefined).terminal).toBe(false);
     expect(resolveCapabilities({}, '0.0.0.0').terminal).toBe(false);
   });
 
   it('=1 opts a hosted cockpit in; =0 turns it off everywhere', () => {
-    expect(resolveCapabilities({ CEZ_REMOTE: '1', CEZ_TERMINAL: '1' }, '0.0.0.0').terminal).toBe(true);
-    expect(resolveCapabilities({ CEZ_TERMINAL: '0' }, '127.0.0.1').terminal).toBe(false);
+    expect(resolveCapabilities({ ONNI_REMOTE: '1', ONNI_TERMINAL: '1' }, '0.0.0.0').terminal).toBe(true);
+    expect(resolveCapabilities({ ONNI_TERMINAL: '0' }, '127.0.0.1').terminal).toBe(false);
   });
 });
 
@@ -172,8 +172,8 @@ describe('resolveCapabilities — localHandoff', () => {
     expect(resolveCapabilities({}, '127.0.0.1').localHandoff).toBe(true);
   });
 
-  it('is off when CEZ_REMOTE=1', () => {
-    expect(resolveCapabilities({ CEZ_REMOTE: '1' }, undefined).localHandoff).toBe(false);
+  it('is off when ONNI_REMOTE=1', () => {
+    expect(resolveCapabilities({ ONNI_REMOTE: '1' }, undefined).localHandoff).toBe(false);
   });
 
   it('is off for a non-loopback bind host', () => {
@@ -187,11 +187,11 @@ describe('agentAccountsEnabled', () => {
   });
 
   it('is off remotely unless the operator opts in with exact 1', () => {
-    expect(agentAccountsEnabled({ CEZ_REMOTE: '1' })).toBe(false);
+    expect(agentAccountsEnabled({ ONNI_REMOTE: '1' })).toBe(false);
     expect(agentAccountsEnabled({}, '0.0.0.0')).toBe(false);
-    expect(agentAccountsEnabled({ CEZ_REMOTE: '1', CEZ_REMOTE_AGENT_ACCOUNTS: 'true' })).toBe(false);
-    expect(agentAccountsEnabled({ CEZ_REMOTE: '1', CEZ_REMOTE_AGENT_ACCOUNTS: '1' })).toBe(true);
-    expect(agentAccountsEnabled({ CEZ_REMOTE_AGENT_ACCOUNTS: '1' }, '0.0.0.0')).toBe(true);
+    expect(agentAccountsEnabled({ ONNI_REMOTE: '1', ONNI_REMOTE_AGENT_ACCOUNTS: 'true' })).toBe(false);
+    expect(agentAccountsEnabled({ ONNI_REMOTE: '1', ONNI_REMOTE_AGENT_ACCOUNTS: '1' })).toBe(true);
+    expect(agentAccountsEnabled({ ONNI_REMOTE_AGENT_ACCOUNTS: '1' }, '0.0.0.0')).toBe(true);
   });
 });
 
@@ -201,13 +201,13 @@ describe('resolveCapabilities — designMode (spec 2026-10-09-design-mode)', () 
     expect(resolveCapabilities({}, '127.0.0.1').designMode).toBe(true);
   });
 
-  it('is off with CEZ_DESIGN_MODE=0', () => {
-    expect(resolveCapabilities({ CEZ_DESIGN_MODE: '0' }, undefined).designMode).toBe(false);
+  it('is off with ONNI_DESIGN_MODE=0', () => {
+    expect(resolveCapabilities({ ONNI_DESIGN_MODE: '0' }, undefined).designMode).toBe(false);
   });
 
-  it('is off on a hosted cockpit, even with CEZ_DESIGN_MODE=1 — a loopback mirror reaches nobody', () => {
-    expect(resolveCapabilities({ CEZ_REMOTE: '1', CEZ_DESIGN_MODE: '1' }, undefined).designMode).toBe(false);
-    expect(resolveCapabilities({ CEZ_DESIGN_MODE: '1' }, '0.0.0.0').designMode).toBe(false);
+  it('is off on a hosted cockpit, even with ONNI_DESIGN_MODE=1 — a loopback mirror reaches nobody', () => {
+    expect(resolveCapabilities({ ONNI_REMOTE: '1', ONNI_DESIGN_MODE: '1' }, undefined).designMode).toBe(false);
+    expect(resolveCapabilities({ ONNI_DESIGN_MODE: '1' }, '0.0.0.0').designMode).toBe(false);
   });
 });
 
@@ -216,19 +216,19 @@ describe('resolveCapabilities — followups (#471)', () => {
     expect(resolveCapabilities({}, undefined).followups).toBe(false);
   });
 
-  it('is on with CEZ_FOLLOWUPS=1', () => {
-    expect(resolveCapabilities({ CEZ_FOLLOWUPS: '1' }, undefined).followups).toBe(true);
+  it('is on with ONNI_FOLLOWUPS=1', () => {
+    expect(resolveCapabilities({ ONNI_FOLLOWUPS: '1' }, undefined).followups).toBe(true);
   });
 
   it.each(['0', 'true', 'yes', '', 'on'])(
-    'stays off for CEZ_FOLLOWUPS=%j — only an exact "1" opts in',
+    'stays off for ONNI_FOLLOWUPS=%j — only an exact "1" opts in',
     (value) => {
-      expect(resolveCapabilities({ CEZ_FOLLOWUPS: value }, undefined).followups).toBe(false);
+      expect(resolveCapabilities({ ONNI_FOLLOWUPS: value }, undefined).followups).toBe(false);
     },
   );
 
   it('is independent of the deployment mode', () => {
-    expect(resolveCapabilities({ CEZ_FOLLOWUPS: '1', CEZ_REMOTE: '1' }, '0.0.0.0')).toEqual({
+    expect(resolveCapabilities({ ONNI_FOLLOWUPS: '1', ONNI_REMOTE: '1' }, '0.0.0.0')).toEqual({
       localHandoff: false,
       terminal: false,
       designMode: false,
@@ -245,7 +245,7 @@ describe('resolveCapabilities — followups (#471)', () => {
 });
 
 it('keeps tracker readiness out of global health even with environment credentials or demo mode', () => {
-  for (const env of [{ LINEAR_API_KEY: 'dummy' }, { CEZ_DRY_RUN: '1' }]) {
+  for (const env of [{ LINEAR_API_KEY: 'dummy' }, { ONNI_DRY_RUN: '1' }]) {
     expect(resolveCapabilities(env)).not.toHaveProperty('trackerJira');
     expect(resolveCapabilities(env)).not.toHaveProperty('trackerLinear');
   }
@@ -256,14 +256,14 @@ describe('resolveCapabilities — singleProject', () => {
     expect(resolveCapabilities({}).singleProject).toBe(false);
   });
 
-  it('is on with CEZ_SINGLE_PROJECT=1', () => {
-    expect(resolveCapabilities({ CEZ_SINGLE_PROJECT: '1' }).singleProject).toBe(true);
+  it('is on with ONNI_SINGLE_PROJECT=1', () => {
+    expect(resolveCapabilities({ ONNI_SINGLE_PROJECT: '1' }).singleProject).toBe(true);
   });
 
   it.each(['0', 'true', 'yes', '', 'on'])(
-    'stays off for CEZ_SINGLE_PROJECT=%j — only an exact "1" opts in',
+    'stays off for ONNI_SINGLE_PROJECT=%j — only an exact "1" opts in',
     (value) => {
-      expect(resolveCapabilities({ CEZ_SINGLE_PROJECT: value }).singleProject).toBe(false);
+      expect(resolveCapabilities({ ONNI_SINGLE_PROJECT: value }).singleProject).toBe(false);
     },
   );
 });
@@ -273,14 +273,14 @@ describe('resolveCapabilities — automations (spec 2026-09-14, default-on)', ()
     expect(resolveCapabilities({}).automations).toBe(true);
   });
 
-  it('is off only for an exact CEZ_AUTOMATIONS=0', () => {
-    expect(resolveCapabilities({ CEZ_AUTOMATIONS: '0' }).automations).toBe(false);
+  it('is off only for an exact ONNI_AUTOMATIONS=0', () => {
+    expect(resolveCapabilities({ ONNI_AUTOMATIONS: '0' }).automations).toBe(false);
   });
 
   it.each(['1', 'true', 'yes', '', 'on', 'off', 'false'])(
-    'stays on for CEZ_AUTOMATIONS=%j — only an exact "0" opts out',
+    'stays on for ONNI_AUTOMATIONS=%j — only an exact "0" opts out',
     (value) => {
-      expect(resolveCapabilities({ CEZ_AUTOMATIONS: value }).automations).toBe(true);
+      expect(resolveCapabilities({ ONNI_AUTOMATIONS: value }).automations).toBe(true);
     },
   );
 
@@ -303,14 +303,14 @@ describe('resolveCapabilities — dispatch (spec 2026-09-10-dispatch)', () => {
     expect(resolveCapabilities({}).dispatch).toBe(true);
   });
 
-  it('is off with CEZ_DISPATCH=0', () => {
-    expect(resolveCapabilities({ CEZ_DISPATCH: '0' }).dispatch).toBe(false);
+  it('is off with ONNI_DISPATCH=0', () => {
+    expect(resolveCapabilities({ ONNI_DISPATCH: '0' }).dispatch).toBe(false);
   });
 
   it.each(['1', 'true', 'yes', '', 'on', 'off', 'false'])(
-    'stays on for CEZ_DISPATCH=%j — only an exact "0" turns it off',
+    'stays on for ONNI_DISPATCH=%j — only an exact "0" turns it off',
     (value) => {
-      expect(resolveCapabilities({ CEZ_DISPATCH: value }).dispatch).toBe(true);
+      expect(resolveCapabilities({ ONNI_DISPATCH: value }).dispatch).toBe(true);
     },
   );
 
@@ -336,11 +336,11 @@ describe('resolveCapabilities — usage presentation', () => {
   });
 
   it.each([
-    [{ CEZ_HIDE_TOKEN_METRICS: '1' }, false, false, false],
-    [{ CEZ_HIDE_TOKEN_USAGE: '1' }, false, false, true],
-    [{ CEZ_HIDE_COST: '1' }, false, true, false],
-    [{ CEZ_HIDE_TOKEN_USAGE: '1', CEZ_HIDE_COST: '1' }, false, false, false],
-    [{ CEZ_HIDE_TOKEN_METRICS: '1', CEZ_HIDE_TOKEN_USAGE: '0', CEZ_HIDE_COST: '0' }, false, false, false],
+    [{ ONNI_HIDE_TOKEN_METRICS: '1' }, false, false, false],
+    [{ ONNI_HIDE_TOKEN_USAGE: '1' }, false, false, true],
+    [{ ONNI_HIDE_COST: '1' }, false, true, false],
+    [{ ONNI_HIDE_TOKEN_USAGE: '1', ONNI_HIDE_COST: '1' }, false, false, false],
+    [{ ONNI_HIDE_TOKEN_METRICS: '1', ONNI_HIDE_TOKEN_USAGE: '0', ONNI_HIDE_COST: '0' }, false, false, false],
   ] as const)(
     'resolves strict visibility for %o',
     (env, tokenMetrics, tokenUsageMetrics, costMetrics) => {
@@ -349,18 +349,18 @@ describe('resolveCapabilities — usage presentation', () => {
   );
 
   it.each(['0', 'true', 'yes', '', 'on'])(
-    'stays visible for CEZ_HIDE_TOKEN_METRICS=%j — only an exact "1" opts out',
+    'stays visible for ONNI_HIDE_TOKEN_METRICS=%j — only an exact "1" opts out',
     (value) => {
       expect(resolveCapabilities({
-        CEZ_HIDE_TOKEN_METRICS: value,
-        CEZ_HIDE_TOKEN_USAGE: value,
-        CEZ_HIDE_COST: value,
+        ONNI_HIDE_TOKEN_METRICS: value,
+        ONNI_HIDE_TOKEN_USAGE: value,
+        ONNI_HIDE_COST: value,
       })).toMatchObject({ tokenMetrics: true, tokenUsageMetrics: true, costMetrics: true });
     },
   );
 
   it('does not change telemetry visibility when another deployment capability is enabled', () => {
-    expect(resolveCapabilities({ CEZ_REMOTE: '1', CEZ_FOLLOWUPS: '1' })).toMatchObject({
+    expect(resolveCapabilities({ ONNI_REMOTE: '1', ONNI_FOLLOWUPS: '1' })).toMatchObject({
       tokenMetrics: true,
       tokenUsageMetrics: true,
       costMetrics: true,
@@ -370,10 +370,10 @@ describe('resolveCapabilities — usage presentation', () => {
 
 describe('resolveCapabilities — lifecycle webhooks', () => {
   it.each([undefined, '', '0', 'true', 'yes'])('is off unless explicitly opted in (%s)', value => {
-    expect(resolveCapabilities({ CEZ_WEBHOOKS: value, CEZ_WORKFLOW_WEBHOOKS: '1' }).webhooks).toBe(false);
+    expect(resolveCapabilities({ ONNI_WEBHOOKS: value, ONNI_WORKFLOW_WEBHOOKS: '1' }).webhooks).toBe(false);
   });
   it('enables lifecycle delivery independently of workflow graph webhooks', () => {
-    expect(resolveCapabilities({ CEZ_WEBHOOKS: '1', CEZ_WORKFLOW_WEBHOOKS: '0' }).webhooks).toBe(true);
+    expect(resolveCapabilities({ ONNI_WEBHOOKS: '1', ONNI_WORKFLOW_WEBHOOKS: '0' }).webhooks).toBe(true);
   });
 });
 
@@ -384,7 +384,7 @@ describe('webhook platform availability', () => {
     try {
       const supported = ['linux', 'darwin', 'win32'].includes(platform);
       for (const flag of [undefined, '0', 'true', '1']) {
-        const capabilities = resolveCapabilities({ CEZ_WEBHOOKS: flag });
+        const capabilities = resolveCapabilities({ ONNI_WEBHOOKS: flag });
         expect(capabilitiesSchema.strict().parse(capabilities)).toEqual(capabilities);
         expect(capabilities.webhooks).toBe(supported && flag === '1');
         expect(capabilities).toEqual({

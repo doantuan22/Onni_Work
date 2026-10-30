@@ -284,7 +284,7 @@ Keyboard access, light/dark theming and mobile safe areas follow the existing ro
 | Only events were capped, comments complete | `truncated: true` — the flag means "not showing you everything", not "comments were cut". Existing copy at `github.tsx:661` already reads correctly. |
 | Issue (not PR) | No `committed`/`merged`/`head_ref_force_pushed` events exist; reviews call skipped as today. |
 | PR with commits but no comments | Renders — the empty guard counts both streams. |
-| `CEZ_DRY_RUN=1` | `mockGithubComments` serves fixture events including a mixed-state commit group. |
+| `ONNI_DRY_RUN=1` | `mockGithubComments` serves fixture events including a mixed-state commit group. |
 | No `gh` / no remote / offline | Unchanged: `{available: false, reason}` per the AGENTS.md GitHub rule. |
 
 ## Risks & Impact Review
@@ -297,9 +297,9 @@ Keyboard access, light/dark theming and mobile safe areas follow the existing ro
 
 **And the cause, not just the instance.** That route drifted out of the inventory because nothing checks. The repo has no `lint` script, no markdown linter and no link checker, so every claim in `BACKWARD_COMPATIBILITY.md` is unenforced prose — the next route will drift the same way. Phase 3 therefore adds a unit test asserting that every `/api/*` route registered in `server.ts` appears in the §2 inventory, which would have caught this omission when it happened and costs one test.
 
-**Rollback.** Revert the PR; the endpoint returns to comments-only and the client's `events ?? []` renders an empty event set. No data to migrate back, no state written, no user-authored file touched. There is **no runtime kill switch** — a `CEZ_*` flag is declined on merit (see §Zero config below), so rollback means a revert, not a toggle. (The timeline fallback path is a failure handler, not an operator control.)
+**Rollback.** Revert the PR; the endpoint returns to comments-only and the client's `events ?? []` renders an empty event set. No data to migrate back, no state written, no user-authored file touched. There is **no runtime kill switch** — a `ONNI_*` flag is declined on merit (see §Zero config below), so rollback means a revert, not a toggle. (The timeline fallback path is a failure handler, not an operator control.)
 
-**Zero config.** No new `CEZ_*` flag, no new setting, no `.env.example` delta — and the reasoning matters, because `AGENTS.md:14` is mandatory, not permissive: *"Features that widen exposure or cost (network, other processes) are opt-in behind a `CEZ_*` flag, off by default — the zero-config default is also the safe default."*
+**Zero config.** No new `ONNI_*` flag, no new setting, no `.env.example` delta — and the reasoning matters, because `AGENTS.md:14` is mandatory, not permissive: *"Features that widen exposure or cost (network, other processes) are opt-in behind a `ONNI_*` flag, off by default — the zero-config default is also the safe default."*
 
 The claim here is that **this work does not widen exposure**, so the rule's trigger never fires. Opening a thread already spawns `gh` and already talks to the GitHub API using the user's existing auth. Phase 1 is one call for one — `/timeline` replaces `/comments`. Phase 2 adds a rollup query to the *same* host, over the *same* credential, from the *same* binary, only when a thread with commits is opened. No new network destination, no new process class, no new permission, no new data leaving the machine. That is a cost *shift*, not a widened exposure — the same reason the existing `/pulls/{n}/reviews` call at `:458` never needed a flag.
 
@@ -336,13 +336,13 @@ Had this reached for a new host, a new credential, or background polling, the ru
 **Phase 3 — polish + hardening**
 
 13. `web/app/src/routes/github/github.tsx:112-120`: fix the refresh mutation to also invalidate open `queryKeys.githubComments` keys (`queries.ts:72`). Component test asserting both invalidations.
-14. `src/server/forge/github.ts`: extend `mockGithubComments` (`:478`) with fixture events — a mixed-state commit group, a label change, a cross-reference, a merge — so `CEZ_DRY_RUN=1` demos the feature offline. Fixture SHAs must be full 40-char (Q4).
+14. `src/server/forge/github.ts`: extend `mockGithubComments` (`:478`) with fixture events — a mixed-state commit group, a label change, a cross-reference, a merge — so `ONNI_DRY_RUN=1` demos the feature offline. Fixture SHAs must be full 40-char (Q4).
 15. `src/server/api-types.test.ts`: pin `GithubTimelineEvent` / `GithubCommentsData` type-exact with `satisfies Exact<>` alongside the existing `GithubItem`/`GithubData` pins (`:121-122`), closing the drift gap the sibling spec left open for `ForgeComment`.
 16. `src/server/github-comments-api.test.ts`: extend the dry-run route assertions (`:43`, `:55`) to cover `events[]` and the unchanged `comments[]` shape.
 17. `BACKWARD_COMPATIBILITY.md` §2: add **all three** currently-missing routes to the inventory (`:31`, under the §2 heading at `:17`) — `GET /api/github/comments/:kind/:number` (`server.ts:1433`), `GET /api/worktrees` (`:1220`) and `POST /api/worktrees/reclaim` (`:1243`) — and note `events?` as an additive field. Only the first is this spec's own doing; the other two are pre-existing drift that step 18's guard would otherwise fail on. Fixing them here is what makes the guard shippable in the same PR.
 18. `src/server/api-types.test.ts` (or a sibling): add the drift guard — a test asserting every `/api/*` route registered in `server.ts` appears in the §2 inventory. Sizing, so this is not underestimated: `server.ts` registers **54 handlers over 48 distinct `/api/*` paths** (54 `app.<method>` registrations — a naive grep finds 55, because the 55th is the `app.use('/api/health', …)` CORS middleware at `:431`, which is not a route), while §2 lists **30 distinct literal strings** (32 occurrences — `/api/runs/:id` is listed three times, once each for GET/PATCH/DELETE), three of which are brace-compressed groups — `/api/repo/{diff,changes}`, `/api/runs/:id/{cancel,…,git/push}` (11) and `/api/runs/:id/{handoff,…,events}` (6) — expanding to 19 sub-paths, one of which (`/api/runs/:id/events`) also appears standalone and dedupes away → 45 covered. The test therefore needs a small brace-expander, not a substring match, and must normalize path params. With step 17's three additions it goes green on the current tree. This is the guard that would have caught the comments-route omission when it happened.
 19. `web/app/e2e/github.e2e.ts`: add thread coverage — currently **none** exists (the sibling spec's step 9 called for it and it never landed). Assert a dry-run thread renders comments, a commit row, and a CI glyph.
-20. Full gate: `npm run typecheck && npm test && npm run test:unit && npm run build && npm run test:package`, plus `npm run test:e2e`; manual pass under `CEZ_DRY_RUN=1 npm run dev` with a screenshot for QA evidence.
+20. Full gate: `npm run typecheck && npm test && npm run test:unit && npm run build && npm run test:package`, plus `npm run test:e2e`; manual pass under `ONNI_DRY_RUN=1 npm run dev` with a screenshot for QA evidence.
 
 ## Out of scope
 

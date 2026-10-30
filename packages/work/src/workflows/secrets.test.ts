@@ -44,7 +44,7 @@ describe('project and workspace secrets in check steps', () => {
   let manager: RunManager;
   let secrets: SecretStore;
   let stdinLog: string;
-  /** Per test, so each case starts with no store of its own — `CEZ_HOME` is one sandbox for the
+  /** Per test, so each case starts with no store of its own — `ONNI_HOME` is one sandbox for the
    *  whole vitest worker, and a shared id would let one case read the previous one's file. */
   let project: string;
   let scope: { kind: 'project'; projectId: string; root: string };
@@ -55,10 +55,10 @@ describe('project and workspace secrets in check steps', () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-secrets-'));
     project = `secrets-${randomUUID()}`;
     scope = { kind: 'project', projectId: project, root: repoRoot };
-    for (const key of ['CEZ_DRY_RUN', 'CEZ_MOCK_STDIN_FILE']) savedEnv[key] = process.env[key];
-    process.env.CEZ_DRY_RUN = '1';
+    for (const key of ['ONNI_DRY_RUN', 'ONNI_MOCK_STDIN_FILE']) savedEnv[key] = process.env[key];
+    process.env.ONNI_DRY_RUN = '1';
     stdinLog = join(repoRoot, '.mock-stdin.ndjson');
-    process.env.CEZ_MOCK_STDIN_FILE = stdinLog;
+    process.env.ONNI_MOCK_STDIN_FILE = stdinLog;
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -219,9 +219,9 @@ describe('project and workspace secrets in check steps', () => {
   }, 40_000);
 
   it('without a secret store the check runs with the server env, unchanged', async () => {
-    process.env.CEZ_GUARD_PROBE_FOR_CHECKS = 'server-value';
+    process.env.ONNI_GUARD_PROBE_FOR_CHECKS = 'server-value';
     try {
-      const record = manager.startRun(checkOnly('echo "$CEZ_GUARD_PROBE_FOR_CHECKS"'), {
+      const record = manager.startRun(checkOnly('echo "$ONNI_GUARD_PROBE_FOR_CHECKS"'), {
         task: 'mock:done go',
         worktree: false,
       });
@@ -231,7 +231,7 @@ describe('project and workspace secrets in check steps', () => {
       // Nothing stored is the ordinary case: it degrades silently, with no note to explain.
       expect(notes(record.id).filter((note) => note.includes('secret'))).toEqual([]);
     } finally {
-      delete process.env.CEZ_GUARD_PROBE_FOR_CHECKS;
+      delete process.env.ONNI_GUARD_PROBE_FOR_CHECKS;
     }
   }, 30_000);
 
@@ -267,11 +267,11 @@ describe('run context for check steps', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-check-context-'));
-    for (const key of ['CEZ_DRY_RUN', 'CEZ_RUN_ID', 'CEZ_GITHUB_NUMBER', 'CEZ_PROJECT_ID']) savedEnv[key] = process.env[key];
-    process.env.CEZ_DRY_RUN = '1';
+    for (const key of ['ONNI_DRY_RUN', 'ONNI_RUN_ID', 'ONNI_GITHUB_NUMBER', 'ONNI_PROJECT_ID']) savedEnv[key] = process.env[key];
+    process.env.ONNI_DRY_RUN = '1';
     // What a onni started inside another onni task inherits: it must never leak through.
-    process.env.CEZ_RUN_ID = 'outer-task';
-    process.env.CEZ_GITHUB_NUMBER = '999';
+    process.env.ONNI_RUN_ID = 'outer-task';
+    process.env.ONNI_GITHUB_NUMBER = '999';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -302,7 +302,7 @@ describe('run context for check steps', () => {
         source: 'file',
         steps: [
           { id: 'implement', name: 'Implement', prompt: '{{task}}' },
-          { id: 'verify', name: 'Verify', command: 'env | grep "^CEZ_" | sort > "$CEZ_WORKTREE/../check-env.txt"' },
+          { id: 'verify', name: 'Verify', command: 'env | grep "^ONNI_" | sort > "$ONNI_WORKTREE/../check-env.txt"' },
         ],
       },
       { task: 'mock:done go' },
@@ -322,15 +322,15 @@ describe('run context for check steps', () => {
         .map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]),
     );
     expect(seen).toMatchObject({
-      CEZ_RUN_ID: record.id,
-      CEZ_PROJECT_ID: PROJECT,
-      CEZ_WORKTREE: finished.worktreePath,
-      CEZ_BRANCH: finished.branch,
-      CEZ_BASE: finished.baseBranch,
-      CEZ_STEP_ID: 'verify',
-      CEZ_ATTEMPT: '1',
+      ONNI_RUN_ID: record.id,
+      ONNI_PROJECT_ID: PROJECT,
+      ONNI_WORKTREE: finished.worktreePath,
+      ONNI_BRANCH: finished.branch,
+      ONNI_BASE: finished.baseBranch,
+      ONNI_STEP_ID: 'verify',
+      ONNI_ATTEMPT: '1',
     });
-    expect(seen.CEZ_SHARED_CACHE_DIR).toBe(join(process.env.CEZ_HOME!, 'cache', PROJECT));
+    expect(seen.ONNI_SHARED_CACHE_DIR).toBe(join(process.env.ONNI_HOME!, 'cache', PROJECT));
     // Absent, not empty — including the stale values this process inherited. Driven off
     // `CHECK_CONTEXT_VARS` rather than a second hand-written list, so a name added to the strip
     // list without a value cannot quietly stop being asserted here.
@@ -339,40 +339,40 @@ describe('run context for check steps', () => {
       if (expected.has(name)) continue;
       expect(seen).not.toHaveProperty(name);
     }
-    for (const name of ['CEZ_GITHUB_REPO', 'CEZ_GITHUB_NUMBER', 'CEZ_GITHUB_EVENT', 'CEZ_PR_HEAD_SHA', 'CEZ_PR_HEAD_REF', 'CEZ_PR_BASE_REF']) {
+    for (const name of ['ONNI_GITHUB_REPO', 'ONNI_GITHUB_NUMBER', 'ONNI_GITHUB_EVENT', 'ONNI_PR_HEAD_SHA', 'ONNI_PR_HEAD_REF', 'ONNI_PR_BASE_REF']) {
       expect(seen).not.toHaveProperty(name);
     }
   }, 40_000);
 
   /**
-   * `CEZ_PROJECT_ID` is the one context name that is also a documented CLI *input*
+   * `ONNI_PROJECT_ID` is the one context name that is also a documented CLI *input*
    * (BACKWARD_COMPATIBILITY.md §1 — it is how `onni task`/`onni automation` address a cockpit), so
    * the strip must not reach it on a run that cannot replace it. The headless `onni run` path
-   * builds its manager without a projectId; stripping there left `CEZ_API_URL` in place while
+   * builds its manager without a projectId; stripping there left `ONNI_API_URL` in place while
    * `onni task create` silently fell back to the cockpit's boot project.
    */
-  it('forwards an inherited CEZ_PROJECT_ID when the run has no project of its own', async () => {
-    process.env.CEZ_PROJECT_ID = 'operators-choice';
+  it('forwards an inherited ONNI_PROJECT_ID when the run has no project of its own', async () => {
+    process.env.ONNI_PROJECT_ID = 'operators-choice';
     const projectless = new RunManager(store, repoRoot);
     try {
       const record = store.createRun({ title: 't', workflow: 'w', task: 'x', steps: [{ id: 'verify', name: 'Verify', kind: 'check' }] });
       const env = await (projectless as unknown as {
         checkStepEnv(runId: string, state: { cwd: string }, step: { id: string }, emit: () => void): Promise<NodeJS.ProcessEnv>;
       }).checkStepEnv(record.id, { cwd: repoRoot }, { id: 'verify' }, () => undefined);
-      expect(env.CEZ_PROJECT_ID).toBe('operators-choice');
+      expect(env.ONNI_PROJECT_ID).toBe('operators-choice');
       // No project means no per-project cache, and the run's own ids still replace the inherited
       // ones — the forwarding is the single exception, not a hole in the strip.
-      expect(env).not.toHaveProperty('CEZ_SHARED_CACHE_DIR');
-      expect(env.CEZ_RUN_ID).toBe(record.id);
+      expect(env).not.toHaveProperty('ONNI_SHARED_CACHE_DIR');
+      expect(env.ONNI_RUN_ID).toBe(record.id);
     } finally {
       projectless.dispose();
     }
   });
 
-  it('replaces an inherited CEZ_PROJECT_ID when the run does have a project', async () => {
-    process.env.CEZ_PROJECT_ID = 'operators-choice';
+  it('replaces an inherited ONNI_PROJECT_ID when the run does have a project', async () => {
+    process.env.ONNI_PROJECT_ID = 'operators-choice';
     const record = store.createRun({ title: 't', workflow: 'w', task: 'x', steps: [{ id: 'verify', name: 'Verify', kind: 'check' }] });
-    expect((await contextOf(record.id, 'verify', repoRoot)).CEZ_PROJECT_ID).toBe(PROJECT);
+    expect((await contextOf(record.id, 'verify', repoRoot)).ONNI_PROJECT_ID).toBe(PROJECT);
   });
 
   /**
@@ -388,7 +388,7 @@ describe('run context for check steps', () => {
       const env = await (escaping as unknown as {
         checkStepEnv(runId: string, state: { cwd: string }, step: { id: string }, emit: () => void): Promise<NodeJS.ProcessEnv>;
       }).checkStepEnv(record.id, { cwd: repoRoot }, { id: 'verify' }, () => undefined);
-      expect(env).not.toHaveProperty('CEZ_SHARED_CACHE_DIR');
+      expect(env).not.toHaveProperty('ONNI_SHARED_CACHE_DIR');
     } finally {
       escaping.dispose();
     }
@@ -406,20 +406,20 @@ describe('run context for check steps', () => {
       },
     });
     const env = await contextOf(record.id, 'verify', repoRoot);
-    expect(env).toMatchObject({ CEZ_GITHUB_REPO: 'acme/shop', CEZ_GITHUB_NUMBER: '42', CEZ_GITHUB_EVENT: 'pull_request.opened' });
-    expect(env).not.toHaveProperty('CEZ_BRANCH');
+    expect(env).toMatchObject({ ONNI_GITHUB_REPO: 'acme/shop', ONNI_GITHUB_NUMBER: '42', ONNI_GITHUB_EVENT: 'pull_request.opened' });
+    expect(env).not.toHaveProperty('ONNI_BRANCH');
   });
 
   it('counts the attempt from the step\'s own iterations', async () => {
     const record = store.createRun({ title: 't', workflow: 'w', task: 'x', steps: [{ id: 'verify', name: 'Verify', kind: 'check' }] });
     store.updateStep(record.id, 'verify', { iterations: 3 });
-    expect((await contextOf(record.id, 'verify', repoRoot)).CEZ_ATTEMPT).toBe('3');
+    expect((await contextOf(record.id, 'verify', repoRoot)).ONNI_ATTEMPT).toBe('3');
   });
 
   it('shares one 0700 cache directory per project, and a different one per project', async () => {
     const record = store.createRun({ title: 't', workflow: 'w', task: 'x', steps: [{ id: 'verify', name: 'Verify', kind: 'check' }] });
-    const first = (await contextOf(record.id, 'verify', repoRoot)).CEZ_SHARED_CACHE_DIR!;
-    const second = (await contextOf(record.id, 'verify', repoRoot)).CEZ_SHARED_CACHE_DIR!;
+    const first = (await contextOf(record.id, 'verify', repoRoot)).ONNI_SHARED_CACHE_DIR!;
+    const second = (await contextOf(record.id, 'verify', repoRoot)).ONNI_SHARED_CACHE_DIR!;
     expect(second).toBe(first);
     expect(statSync(first).mode & 0o777).toBe(0o700);
     const other = new RunManager(store, repoRoot, { projectId: 'another-project' });
@@ -427,7 +427,7 @@ describe('run context for check steps', () => {
       const theirs = await (other as unknown as {
         checkStepEnv(runId: string, state: { cwd: string }, step: { id: string }, emit: () => void): Promise<NodeJS.ProcessEnv>;
       }).checkStepEnv(record.id, { cwd: repoRoot }, { id: 'verify' }, () => undefined);
-      expect(theirs.CEZ_SHARED_CACHE_DIR).not.toBe(first);
+      expect(theirs.ONNI_SHARED_CACHE_DIR).not.toBe(first);
     } finally {
       other.dispose();
     }

@@ -190,7 +190,7 @@ with `detail?: { body }`; `comments[]`/`events?` keep their exact shape and caps
   moves on.
 - **Very many open PRs:** the visible-window request is capped at `GH_CHECKS_MAX`; the client
   requests checks for the on-screen slice, so cost is O(visible), not O(all open).
-- **Dry run (`CEZ_DRY_RUN=1`):** `mockGithub()` already sets `checks` on mock PRs; the checks
+- **Dry run (`ONNI_DRY_RUN=1`):** `mockGithub()` already sets `checks` on mock PRs; the checks
   endpoint returns a matching mock map so the offline demo still shows glyphs.
 - **Cache staleness:** a PR whose checks changed within 60 s shows the cached glyph until the
   next window hydration or a manual refresh — acceptable (checks are advisory on the row; the
@@ -239,7 +239,7 @@ Phases 2 and 3 are tracked as follow-up issues, not part of this PR.
    a bounded batch) resolving `statusCheckRollup` per requested PR number, collapsed through the
    existing `rollupToChecks`, returned as `number → checks`; wrap in try/catch to degrade to `{}`
    (mirror `fetchCommentCounts`). Add `GH_CHECKS_MAX` cap and a short cache keyed by
-   `repoRoot` + sorted numbers. Add a `mockGithub`-consistent branch for `CEZ_DRY_RUN=1`. Unit
+   `repoRoot` + sorted numbers. Add a `mockGithub`-consistent branch for `ONNI_DRY_RUN=1`. Unit
    tests: happy path map, degrade-to-empty on failure, cap enforcement, dry-run map.
 3. `src/server/forge/types.ts` + `src/server/github.ts` (delegate re-export): add `GithubChecksData`
    and export `fetchCheckStates`.
@@ -262,7 +262,7 @@ Phases 2 and 3 are tracked as follow-up issues, not part of this PR.
    `FULL_LIMIT` invalidation). Component tests: single load renders rows without `30+`; checks glyph
    appears after the checks query resolves; hover triggers a thread prefetch; refresh re-runs the
    list.
-7. Dry-run + gate: verify end-to-end under `CEZ_DRY_RUN=1` (mock issues/PRs render, glyphs present,
+7. Dry-run + gate: verify end-to-end under `ONNI_DRY_RUN=1` (mock issues/PRs render, glyphs present,
    search immediate). Run the full validation gate:
    `npm run typecheck && npm test && npm run test:unit && npm run build && npm run test:package`.
    Capture a screenshot of the tab for QA evidence.

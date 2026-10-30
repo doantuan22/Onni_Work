@@ -23,10 +23,10 @@ export default {
         args: ['-c', 'npm run build:web && exec npm run dev:server -- --port "$PORT" --no-open'],
         env: {
           PORT: '{port}',
-          // Bundled mock agents: no CLI login, no network. CEZ_HOME keeps ~/.onni untouched.
-          CEZ_DRY_RUN: '1',
-          CEZ_SKILLS_AUTO_UPDATE: '0',
-          CEZ_HOME: resolve('.e2e/onni-home'),
+          // Bundled mock agents: no CLI login, no network. ONNI_HOME keeps ~/.onni untouched.
+          ONNI_DRY_RUN: '1',
+          ONNI_SKILLS_AUTO_UPDATE: '0',
+          ONNI_HOME: resolve('.e2e/onni-home'),
         },
         startupTimeout: 180_000,
         log: '.e2e/logs/app.log',

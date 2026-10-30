@@ -41,10 +41,10 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-dispatch-'));
-    for (const key of ['CEZ_DRY_RUN', 'CEZ_DISPATCH', 'CEZ_WEBHOOKS', 'CEZ_CODEX_BIN']) savedEnv[key] = process.env[key];
-    delete process.env.CEZ_WEBHOOKS;
-    process.env.CEZ_DRY_RUN = '1';
-    process.env.CEZ_DISPATCH = '1';
+    for (const key of ['ONNI_DRY_RUN', 'ONNI_DISPATCH', 'ONNI_WEBHOOKS', 'ONNI_CODEX_BIN']) savedEnv[key] = process.env[key];
+    delete process.env.ONNI_WEBHOOKS;
+    process.env.ONNI_DRY_RUN = '1';
+    process.env.ONNI_DISPATCH = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -208,8 +208,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     it('parks the dispatching task as a monitor when its turn ends, surrendering its slot', async () => {
       reboot({ maxParallel: 1, maxMonitoringSessions: 0 });
       const stdinFile = join(repoRoot, 'mock-stdin-dispatch.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
       // A two-second turn: long enough to dispatch from "inside" it.
       const parent = start('mock:pause plan the work', undefined, { autonomous: true });
       await waitFor(parent.id, () => stdin(stdinFile).includes('plan the work'));
@@ -328,8 +328,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const parent = store.createRun({ title: 'done', workflow: 'quick-task', task: 't', steps: [] });
       store.updateRun(parent.id, { status: 'done', dispatch: rootOf(parent.id) });
       expect(refusal(parent.id, order('late'))).toContain('already settled');
-      process.env.CEZ_DISPATCH = '0';
-      expect(refusal(parent.id, order('off'))).toContain('CEZ_DISPATCH=0');
+      process.env.ONNI_DISPATCH = '0';
+      expect(refusal(parent.id, order('off'))).toContain('ONNI_DISPATCH=0');
     });
   });
 
@@ -338,8 +338,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
   describe('reports', () => {
     it('does not report an idle-closed ask early, then reports exactly once after Continue settles it', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-ask-settle.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
 
       const parent = await parkedRoot();
       const child = start('mock:ask which library?', childOf(parent.id), { autonomous: true });
@@ -364,8 +364,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('reports an unanswered child exactly once when cancellation explicitly retires it', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-ask-cancel.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
 
       const parent = await parkedRoot();
       const child = start('mock:ask which library?', childOf(parent.id), { autonomous: true });
@@ -393,8 +393,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('records a child’s own report and delivers it into the parent’s open session at settle', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
 
       const parent = await parkedRoot();
       const child = start('mock:pause mock:done take the left flank', childOf(parent.id));
@@ -436,8 +436,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('persists a pending report for a parent with no session, and flushes it into its next prompt', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-flush.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
 
       // A parent that already FINISHED: no session, so the report can only be persisted.
       const parent = start('mock:done first pass');
@@ -476,8 +476,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
   describe('the tree directory', () => {
     it('wakes a parked parent when a file lands in its inbox', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-inbox.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
 
       const parent = await parkedRoot();
       // A child whose turn ends is the SIGNAL: it wrote into the root's inbox, then finished.
@@ -494,8 +494,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('hands a working task its own inbox at turn end instead of parking it', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-own-inbox.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
       const root = store.createRun({ title: 'root', workflow: 'quick-task', task: 'hold', steps: [] });
       store.updateRun(root.id, { status: 'waiting', dispatch: rootOf(root.id) });
       const child = start('mock:pause work on it', childOf(root.id), { autonomous: true });
@@ -515,8 +515,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     // human — and suppressed the ask card the normalization had just recovered.
     it('keeps a Guard question ahead of an inbox delivery when task references trail it', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-own-inbox-ask-refs.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
       const root = store.createRun({ title: 'root', workflow: 'quick-task', task: 'hold', steps: [] });
       store.updateRun(root.id, { status: 'waiting', dispatch: rootOf(root.id) });
       const child = start('mock:pause mock:ask-refs which library?', childOf(root.id), { autonomous: true });
@@ -531,8 +531,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('keeps an inbox delivery ahead of a monitoring park at turn end', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-own-inbox-monitoring.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
       const root = store.createRun({ title: 'root', workflow: 'quick-task', task: 'hold', steps: [] });
       store.updateRun(root.id, { status: 'waiting', dispatch: rootOf(root.id) });
       const child = start('mock:pause mock:monitoring keep watching', childOf(root.id), { autonomous: true });
@@ -553,8 +553,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('tells a parked parent, through its inbox, that a child is blocked on the Guard', async () => {
       const stdinFile = join(repoRoot, 'mock-stdin-blocked.ndjson');
-      savedEnv.CEZ_MOCK_STDIN_FILE = process.env.CEZ_MOCK_STDIN_FILE;
-      process.env.CEZ_MOCK_STDIN_FILE = stdinFile;
+      savedEnv.ONNI_MOCK_STDIN_FILE = process.env.ONNI_MOCK_STDIN_FILE;
+      process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
       const parent = await parkedRoot();
       const child = start('mock:ask which library?', childOf(parent.id), { autonomous: true });
       await waitFor(child.id, (r) => r?.status === 'waiting');
@@ -573,12 +573,12 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
   describe('pendingAsk', () => {
     it('native attention persists a snapshot without Guard routing or waking the parent', async () => {
       const parent = await parkedRoot();
-      delete process.env.CEZ_DRY_RUN;
-      process.env.CEZ_CODEX_BIN = join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs');
+      delete process.env.ONNI_DRY_RUN;
+      process.env.ONNI_CODEX_BIN = join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs');
       const child = start('mock:native-codex-ask choose a library', childOf(parent.id), { runner: 'codex' });
       await waitFor(child.id, (r) => r?.status === 'waiting');
       // Any later parent wake/continuation must still use the bundled dry-run runner.
-      process.env.CEZ_DRY_RUN = '1';
+      process.env.ONNI_DRY_RUN = '1';
       const parked = store.getRun(child.id);
       expect(parked?.attentionRequest?.questions.length).toBeGreaterThan(0);
       expect(parked?.dispatch?.pendingAsk).toBeUndefined();

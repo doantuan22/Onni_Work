@@ -17,7 +17,7 @@ import { connectedProviderAuth } from './provider-auth.testkit.ts';
  * still passes — and the ui-state passthrough policy.
  */
 describe('request validation bounds (#429)', () => {
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedRemote = process.env.ONNI_REMOTE;
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
@@ -27,7 +27,7 @@ describe('request validation bounds (#429)', () => {
   let retiredQuestionCount = 0;
 
   beforeEach(() => {
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_REMOTE;
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-reqval-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     captured = undefined;
@@ -62,8 +62,8 @@ describe('request validation bounds (#429)', () => {
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const postJson = (path: string, body: unknown) =>

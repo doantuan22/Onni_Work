@@ -16,8 +16,8 @@ describe('secrets API (spec 2026-10-10-project-secrets-vault-options)', () => {
   let secrets: SecretStore;
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-secrets-api-'));
-    vi.stubEnv('CEZ_HOME', join(root, 'home'));
-    vi.stubEnv('CEZ_SINGLE_PROJECT', '0');
+    vi.stubEnv('ONNI_HOME', join(root, 'home'));
+    vi.stubEnv('ONNI_SINGLE_PROJECT', '0');
     mkdirSync(join(root, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(root, '.ai/onni'));
     secrets = new SecretStore(process.env, { keychain: async () => null });
@@ -77,7 +77,7 @@ describe('secrets API (spec 2026-10-10-project-secrets-vault-options)', () => {
   it('refuses a bad name, value or audience with a 400 naming the reason', async () => {
     const { instance } = await app();
     for (const [name, reason] of [
-      ['CEZ_RUN_ID', 'reserved'],
+      ['ONNI_RUN_ID', 'reserved'],
       ['PATH', 'refused'],
       ['DYLD_INSERT_LIBRARIES', 'refused'],
       ['lower', 'uppercase'],

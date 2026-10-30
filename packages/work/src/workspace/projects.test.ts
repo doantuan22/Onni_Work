@@ -27,20 +27,20 @@ import {
  * write a byte inside the repo itself.
  */
 describe('workspace projects', () => {
-  const originalHome = process.env.CEZ_HOME;
+  const originalHome = process.env.ONNI_HOME;
   let home: string;
   let repos: string;
 
   beforeEach(() => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-workspace-'));
     repos = mkdtempSync(join(realpathSync(tmpdir()), 'onni-repos-'));
-    process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
+    process.env.ONNI_HOME = home; // paths.ts sends all workspace paths here
     clearProjectProbeCache();
   });
 
   afterEach(() => {
-    if (originalHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = originalHome;
+    if (originalHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalHome;
     rmSync(home, { recursive: true, force: true });
     rmSync(repos, { recursive: true, force: true });
   });
@@ -358,7 +358,7 @@ describe('workspace projects', () => {
 
   describe('shouldAutoRegisterProject (boot seeding)', () => {
     const env = (single?: boolean): NodeJS.ProcessEnv =>
-      single ? { CEZ_SINGLE_PROJECT: '1' } : {};
+      single ? { ONNI_SINGLE_PROJECT: '1' } : {};
 
     it('seeds the very first project', async () => {
       expect(await shouldAutoRegisterProject(makeRepo('first'), env())).toBe(true);

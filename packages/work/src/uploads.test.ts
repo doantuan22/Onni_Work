@@ -6,17 +6,17 @@ import { deleteUpload, readUpload, UPLOAD_TTL_MS, uploadsDir, writeUpload } from
 
 describe('staged uploads (telemetry 7054e5f2)', () => {
   let home: string;
-  const savedHome = process.env.CEZ_HOME;
+  const savedHome = process.env.ONNI_HOME;
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-uploads-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
 
   afterEach(() => {
     rmSync(home, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
   });
 
   const stage = (data = 'AAAA', name?: string) => {

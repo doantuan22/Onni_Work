@@ -21,17 +21,17 @@ import { DEFAULT_AGENT_ACCOUNT_ID, loadAgentAccounts } from './agent-accounts.ts
  * does not. They differ on purpose — see the assertions.
  */
 describe('agent profile resolution', () => {
-  const originalHome = process.env.CEZ_HOME;
+  const originalHome = process.env.ONNI_HOME;
   let home: string;
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-profiles-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
 
   afterEach(() => {
-    if (originalHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = originalHome;
+    if (originalHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalHome;
     rmSync(home, { recursive: true, force: true });
   });
 

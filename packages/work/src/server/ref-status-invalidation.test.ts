@@ -20,7 +20,7 @@ import { createApp } from './server.ts';
  * just watched this server merge. These tests pin the wiring; `forge/github.test.ts` pins what
  * `forgetRefStatus` and `refNumberFromUrl` actually do.
  *
- * Driven through `CEZ_DRY_RUN=1`, so no `gh` is touched: the assertion is that the routes CALL
+ * Driven through `ONNI_DRY_RUN=1`, so no `gh` is touched: the assertion is that the routes CALL
  * the invalidation with the right reference, which is the part that can silently not happen.
  */
 vi.mock('./github.ts', async (importActual) => {
@@ -32,14 +32,14 @@ describe('a reference onni changes itself is forgotten, not waited out', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  const previousDryRun = process.env.CEZ_DRY_RUN;
+  const previousDryRun = process.env.ONNI_DRY_RUN;
 
   beforeAll(() => {
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
   });
   afterAll(() => {
-    if (previousDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = previousDryRun;
+    if (previousDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = previousDryRun;
   });
 
   beforeEach(() => {

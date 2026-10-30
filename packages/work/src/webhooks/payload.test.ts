@@ -18,7 +18,7 @@ describe('outbound webhook payload minimization', () => {
     expect(payload.renderPayload(item, 'standard', [])).toContain('Private question');
   });
   it('redacts outbound source and body even when transcript redaction is off', () => {
-    vi.stubEnv('CEZ_REDACT_SECRETS', '0');
+    vi.stubEnv('ONNI_REDACT_SECRETS', '0');
     const item = source(); item.snapshot.title = 'confidential-secret-value';
     const redacted = payload.redactSource(item, ['confidential-secret-value']);
     expect(JSON.stringify(redacted)).not.toContain('confidential-secret-value');
@@ -26,7 +26,7 @@ describe('outbound webhook payload minimization', () => {
   });
   it.each(['environment', 'receiver'] as const)('redacts complete %s secrets before title/error bounds at capture and render', kind => {
     const secret = 'syntheticCredentialABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz';
-    vi.stubEnv('CEZ_REDACT_SECRETS', '0');
+    vi.stubEnv('ONNI_REDACT_SECRETS', '0');
     if (kind === 'environment') vi.stubEnv('TEST_WEBHOOK_SECRET', secret);
     const secrets = kind === 'receiver' ? [secret] : [];
     const item = source();

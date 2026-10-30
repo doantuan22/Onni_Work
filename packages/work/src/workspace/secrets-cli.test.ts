@@ -13,7 +13,7 @@ describe('onni secrets (spec 2026-10-10-project-secrets-vault-options)', () => {
   let store: SecretStore;
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-secrets-cli-'));
-    vi.stubEnv('CEZ_HOME', join(root, 'home'));
+    vi.stubEnv('ONNI_HOME', join(root, 'home'));
     lines = [];
     errors = [];
     store = new SecretStore(process.env, { keychain: async () => null });
@@ -63,7 +63,7 @@ describe('onni secrets (spec 2026-10-10-project-secrets-vault-options)', () => {
 
   it('refuses a reserved name, reports a missing name and an empty value', async () => {
     await registerProject(root);
-    expect(await cli(['set', 'CEZ_RUN_ID'], 'x')).toBe(1);
+    expect(await cli(['set', 'ONNI_RUN_ID'], 'x')).toBe(1);
     expect(errors.at(-1)).toContain('reserved');
     expect(await cli(['unset', 'MISSING'])).toBe(1);
     expect(errors.at(-1)).toContain('no secret named MISSING');

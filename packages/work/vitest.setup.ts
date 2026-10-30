@@ -36,7 +36,7 @@ if (insideGitWorkTree(realpathSync(tmpdir()))) {
 }
 
 // Nothing in this suite may write to the developer's own `~/.onni`. Most cases pin
-// `CEZ_HOME` themselves, but the pin is one global for the whole worker and their
+// `ONNI_HOME` themselves, but the pin is one global for the whole worker and their
 // `afterEach` deletes it — so a write that outlives its test (a timeout is enough)
 // used to resolve the real home and replace the project registry with the fixture's.
 //
@@ -65,14 +65,14 @@ process.env.GIT_CEILING_DIRECTORIES = [
 ].join(':')
 
 // The variables a cockpit sets for its own agents and check steps (.env.example). Run inside a
-// onni task, the suite would inherit them — and the engine forwards CEZ_API_URL/CEZ_BIN to every
+// onni task, the suite would inherit them — and the engine forwards ONNI_API_URL/ONNI_BIN to every
 // run it starts — so the env a case asserts would depend on where it ran. A case that needs one
 // sets it itself.
 for (const name of [
-  'CEZ_TASK_ID', 'CEZ_HANDOFF_FILE', 'CEZ_TODOS_FILE', 'CEZ_API_URL', 'CEZ_PROJECT_ID', 'CEZ_BIN',
-  'CEZ_TREE_DIR', 'CEZ_RUN_ID', 'CEZ_WORKTREE', 'CEZ_BRANCH', 'CEZ_BASE', 'CEZ_STEP_ID',
-  'CEZ_ATTEMPT', 'CEZ_SHARED_CACHE_DIR', 'CEZ_GITHUB_REPO', 'CEZ_GITHUB_NUMBER', 'CEZ_GITHUB_EVENT',
-  'CEZ_PR_HEAD_SHA', 'CEZ_PR_HEAD_REF', 'CEZ_PR_BASE_REF',
+  'ONNI_TASK_ID', 'ONNI_HANDOFF_FILE', 'ONNI_TODOS_FILE', 'ONNI_API_URL', 'ONNI_PROJECT_ID', 'ONNI_BIN',
+  'ONNI_TREE_DIR', 'ONNI_RUN_ID', 'ONNI_WORKTREE', 'ONNI_BRANCH', 'ONNI_BASE', 'ONNI_STEP_ID',
+  'ONNI_ATTEMPT', 'ONNI_SHARED_CACHE_DIR', 'ONNI_GITHUB_REPO', 'ONNI_GITHUB_NUMBER', 'ONNI_GITHUB_EVENT',
+  'ONNI_PR_HEAD_SHA', 'ONNI_PR_HEAD_REF', 'ONNI_PR_BASE_REF',
 ]) {
   delete process.env[name]
 }
@@ -86,13 +86,13 @@ delete process.env.GH_HOST
 // LLM task naming is on by default (`autoNamingActive`), so any case that starts a run on
 // a real backend spawned `claude -p "[onni-namer] Name this task."` on the developer's own
 // subscription — the same canned tasks, every run. Off for the whole suite; a test that
-// exercises the namer sets `CEZ_AUTONAME=1` itself (against mock-claude). Forced at load so
-// a shell's own value cannot leak in, and re-pinned around every case like `CEZ_HOME`, so a
+// exercises the namer sets `ONNI_AUTONAME=1` itself (against mock-claude). Forced at load so
+// a shell's own value cannot leak in, and re-pinned around every case like `ONNI_HOME`, so a
 // case that deletes it cannot hand the next case the default-on namer.
-process.env.CEZ_AUTONAME = '0'
+process.env.ONNI_AUTONAME = '0'
 
 const pinAutonameOff = (): void => {
-  if (process.env.CEZ_AUTONAME === undefined) process.env.CEZ_AUTONAME = '0'
+  if (process.env.ONNI_AUTONAME === undefined) process.env.ONNI_AUTONAME = '0'
 }
 
 beforeEach(pinAutonameOff)
@@ -100,12 +100,12 @@ afterEach(pinAutonameOff)
 
 // mock-claude's demo pacing was most of the suite's wall clock in CI. A case that needs a
 // turn held open says `mock:pause`/`mock:slow`, which never scale.
-if (process.env.CEZ_MOCK_PACE === undefined) process.env.CEZ_MOCK_PACE = '0'
+if (process.env.ONNI_MOCK_PACE === undefined) process.env.ONNI_MOCK_PACE = '0'
 
 const sandboxHome = mkdtempSync(join(realpathSync(tmpdir()), 'onni-vitest-home-'))
 
 const pinSandboxHome = (): void => {
-  if (!process.env.CEZ_HOME) process.env.CEZ_HOME = sandboxHome
+  if (!process.env.ONNI_HOME) process.env.ONNI_HOME = sandboxHome
 }
 
 pinSandboxHome()

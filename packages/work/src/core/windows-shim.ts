@@ -1,7 +1,7 @@
 /**
  * Node refuses to spawn a `.cmd`/`.bat` without a shell (EINVAL since 20.12, CVE-2024-27980), and
  * running one through `cmd.exe` would reopen the BatBadBut surface closed in #459. Yet `npm i -g`
- * on Windows installs every agent CLI as exactly such a shim, so a `CEZ_CODEX_BIN=…\codex.cmd`
+ * on Windows installs every agent CLI as exactly such a shim, so a `ONNI_CODEX_BIN=…\codex.cmd`
  * threw before the CLI ever ran (telemetry a330744e).
  *
  * An npm or pnpm shim only ever runs `node <script> %*` or a native `<bin>.exe %*`, so this reads

@@ -9,8 +9,8 @@ import { remainingBudgetUsd } from '../dispatch/engine.ts';
 
 it('retains the child reservation after preliminary zero and failure before final cost', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'onni-zero-incomplete-'));
-  vi.stubEnv('CEZ_HOME', join(dir, 'home'));
-  vi.stubEnv('CEZ_FOLLOWUPS', '0');
+  vi.stubEnv('ONNI_HOME', join(dir, 'home'));
+  vi.stubEnv('ONNI_FOLLOWUPS', '0');
   const store = RunStore.open(join(dir, '.ai/onni'));
   const bin = join(dir, 'stub.mjs');
   writeFileSync(bin, `#!/usr/bin/env node
@@ -28,7 +28,7 @@ setTimeout(()=>{res.writeHead(500);res.end('backend failed before final cost rep
 }});
 server.listen(0,'127.0.0.1',()=>console.log('http://127.0.0.1:'+server.address().port));
 `,{mode:0o700});
-  vi.stubEnv('CEZ_OPENCODE_BIN', bin);
+  vi.stubEnv('ONNI_OPENCODE_BIN', bin);
   const manager = new RunManager(store, dir, {
     semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1 } }),
   });

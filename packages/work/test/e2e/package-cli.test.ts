@@ -72,13 +72,13 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
       { cwd: fixtureRepo },
     );
 
-    // CEZ_HOME pins every workspace write (migrations, project registry,
+    // ONNI_HOME pins every workspace write (migrations, project registry,
     // server.json) to a temp dir — booting the real CLI must never touch the
     // developer's real ~/.onni.
     const onniHome = join(root, 'onni-home');
     const run = await execFile(process.execPath, [cliPath, 'run', 'mock:done', '--repo', fixtureRepo], {
       cwd: consumerDir,
-      env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: onniHome },
+      env: { ...process.env, ONNI_DRY_RUN: '1', ONNI_HOME: onniHome },
       timeout: 60_000,
       maxBuffer: 10 * 1024 * 1024,
     });
@@ -108,7 +108,7 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
     await assert.rejects(
       execFile(process.execPath, [cliPath, 'run', 'mock:done must stay blocked', '--repo', fixtureRepo], {
         cwd: consumerDir,
-        env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: onniHome },
+        env: { ...process.env, ONNI_DRY_RUN: '1', ONNI_HOME: onniHome },
         timeout: 60_000,
         maxBuffer: 10 * 1024 * 1024,
       }),
@@ -147,8 +147,8 @@ if (args.join(' ') === 'auth status --json') {
         cwd: consumerDir,
         env: {
           ...process.env,
-          CEZ_CLAUDE_BIN: claudeShim,
-          CEZ_HOME: onniHome,
+          ONNI_CLAUDE_BIN: claudeShim,
+          ONNI_HOME: onniHome,
         },
         timeout: 60_000,
         maxBuffer: 10 * 1024 * 1024,
@@ -176,19 +176,19 @@ if (args.join(' ') === 'auth status --json') {
     // running — the ssh-into-the-box view of Settings → Projects.
     const projects = await execFile(process.execPath, [cliPath, 'projects'], {
       cwd: consumerDir,
-      env: { ...process.env, CEZ_HOME: onniHome },
+      env: { ...process.env, ONNI_HOME: onniHome },
       timeout: 30_000,
       maxBuffer: 10 * 1024 * 1024,
     });
     assert.match(projects.stdout, /fixture-repo/);
     assert.match(projects.stdout, /1 project\(s\)/);
 
-    // server-install / server-uninstall dry-run round-trip. A separate CEZ_HOME
+    // server-install / server-uninstall dry-run round-trip. A separate ONNI_HOME
     // isolates ~/.onni/server.json from the project-registry fixture above;
-    // CEZ_DRY_RUN performs no real sudo.
+    // ONNI_DRY_RUN performs no real sudo.
     assert.match(help.stdout, /onni server-install/);
     const serverHome = join(root, 'server-home');
-    const serverEnv = { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: serverHome };
+    const serverEnv = { ...process.env, ONNI_DRY_RUN: '1', ONNI_HOME: serverHome };
     const serverExec = { cwd: consumerDir, env: serverEnv, timeout: 60_000, maxBuffer: 10 * 1024 * 1024 } as const;
 
     await execFile(

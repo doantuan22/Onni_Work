@@ -17,7 +17,7 @@ import * as ownership from './ownership.ts';
 const cleanups: (() => Promise<unknown> | void)[] = [];
 afterEach(async () => { vi.restoreAllMocks(); for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); vi.unstubAllEnvs(); });
 async function fixture() {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-followup-')); cleanups.push(() => rmSync(root, { recursive: true, force: true }));
   execFileSync('git', ['init', '-q'], { cwd: root });
   let now = Date.parse('2026-10-13T12:00:00Z');

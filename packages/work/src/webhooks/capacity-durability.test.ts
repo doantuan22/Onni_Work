@@ -18,7 +18,7 @@ afterEach(async () => {
   vi.restoreAllMocks(); vi.unstubAllEnvs();
 });
 async function fixture() {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-capacity-')); roots.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
   const dataDir = join(root, '.ai/onni'), directory = join(dataDir, 'webhooks');

@@ -31,7 +31,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 
 /**
  * Phase-1c nodes end to end (spec 2026-09-30-workflow-node-editor): nodes onni runs itself,
- * with a real RunManager, the bundled mock agent and `CEZ_DRY_RUN=1` GitHub fakes.
+ * with a real RunManager, the bundled mock agent and `ONNI_DRY_RUN=1` GitHub fakes.
  */
 describe('graph system nodes', () => {
   let repoRoot: string;
@@ -41,8 +41,8 @@ describe('graph system nodes', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-graph-sys-'));
-    savedDryRun = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedDryRun = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     // A real repo gets `.ai/onni/.gitignore` from `ensureDataGitignore`; this bare one must not
@@ -57,8 +57,8 @@ describe('graph system nodes', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     manager.dispose();
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -132,7 +132,7 @@ describe('graph system nodes', () => {
   }, 30_000);
 
   it('dispatched gate Finish reports success with webhooks unset', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', undefined);
+    vi.stubEnv('ONNI_WEBHOOKS', undefined);
     const id = manager.startRun(def(GATE), {
       task: 'x', worktree: false,
       dispatch: { rootRunId: 'root-test', parentRunId: 'root-test' },
@@ -251,7 +251,7 @@ describe('graph system nodes', () => {
     expect(stdout.trim()).toBe(`${readFileSync(join(repoRoot, 'sha.txt'), 'utf8').trim()} feat: add notes`);
   }, 30_000);
 
-  it('draft PR → PR comment → wait for CI, faked under CEZ_DRY_RUN', async () => {
+  it('draft PR → PR comment → wait for CI, faked under ONNI_DRY_RUN', async () => {
     const graph: WorkflowGraph = {
       nodes: [
         { id: 'start', type: 'start' },
@@ -564,7 +564,7 @@ describe('graph system nodes', () => {
     expect(readFileSync(join(wt, 'unmerged.txt'), 'utf8')).toContain('a.txt');
   }, 40_000);
 
-  it('push, PR update and issue comment run faked under CEZ_DRY_RUN', async () => {
+  it('push, PR update and issue comment run faked under ONNI_DRY_RUN', async () => {
     const graph: WorkflowGraph = {
       nodes: [
         { id: 'start', type: 'start' },
@@ -592,7 +592,7 @@ describe('graph system nodes', () => {
     expect(final.graphState?.outputs?.issue).toEqual({ issue: 7 });
   }, 40_000);
 
-  it('notify.webhook refuses without CEZ_WORKFLOW_WEBHOOKS=1, and runs (dry) with it', async () => {
+  it('notify.webhook refuses without ONNI_WORKFLOW_WEBHOOKS=1, and runs (dry) with it', async () => {
     const graph: WorkflowGraph = {
       nodes: [
         { id: 'start', type: 'start' },
@@ -606,17 +606,17 @@ describe('graph system nodes', () => {
         { from: 'hook.failed', to: 'off' },
       ],
     };
-    const saved = process.env.CEZ_WORKFLOW_WEBHOOKS;
+    const saved = process.env.ONNI_WORKFLOW_WEBHOOKS;
     try {
-      delete process.env.CEZ_WORKFLOW_WEBHOOKS;
+      delete process.env.ONNI_WORKFLOW_WEBHOOKS;
       await until(manager.startRun(def(graph), { task: 'x', worktree: false }).id, terminal);
       expect(readFileSync(join(repoRoot, 'hook.txt'), 'utf8').trim()).toBe('off');
-      process.env.CEZ_WORKFLOW_WEBHOOKS = '1';
+      process.env.ONNI_WORKFLOW_WEBHOOKS = '1';
       await until(manager.startRun(def(graph), { task: 'x', worktree: false }).id, terminal);
       expect(readFileSync(join(repoRoot, 'hook.txt'), 'utf8').trim()).toBe('sent');
     } finally {
-      if (saved === undefined) delete process.env.CEZ_WORKFLOW_WEBHOOKS;
-      else process.env.CEZ_WORKFLOW_WEBHOOKS = saved;
+      if (saved === undefined) delete process.env.ONNI_WORKFLOW_WEBHOOKS;
+      else process.env.ONNI_WORKFLOW_WEBHOOKS = saved;
     }
   }, 40_000);
 });

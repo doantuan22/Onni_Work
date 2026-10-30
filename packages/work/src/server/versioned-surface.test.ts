@@ -23,8 +23,8 @@ import { createApp } from './server.ts';
 const V1 = '/api/v1';
 
 describe('the versioned API surface', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let home: string;
   let repoRoot: string;
   let store: RunStore;
@@ -35,8 +35,8 @@ describe('the versioned API surface', () => {
   beforeEach(async () => {
     home = mkdtempSync(join(tmpdir(), 'onni-v1-home-'));
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-v1-boot-'));
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_DRY_RUN = '1';
     // `skillsRepos: []` keeps the workflow catalog hermetic — no background clone can warm a
     // cache between the legacy request and the versioned one.
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
@@ -59,10 +59,10 @@ describe('the versioned API surface', () => {
     store.flush();
     rmSync(home, { recursive: true, force: true });
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   const answer = async (path: string): Promise<{ status: number; body: string }> => {

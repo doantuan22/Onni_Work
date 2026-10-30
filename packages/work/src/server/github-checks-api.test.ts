@@ -12,7 +12,7 @@ import { apiRequest } from './loopback-request.testkit.ts';
 /**
  * `GET /api/v1/github/checks?prs=…` (#664). The contract under test: the `prs` list is zod-free but
  * strictly validated at the boundary (positive integers, non-empty, ≤100 — 400 on anything else,
- * never a throw), and — driven through `CEZ_DRY_RUN=1` so no `gh` is touched — a `GithubChecksData`
+ * never a throw), and — driven through `ONNI_DRY_RUN=1` so no `gh` is touched — a `GithubChecksData`
  * payload mapping each requested PR number to its glyph. The gh-shelling and degrade paths live in
  * the driver; here we prove the route wiring and the param gate.
  */
@@ -20,14 +20,14 @@ describe('the github checks API', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  const prevDryRun = process.env.CEZ_DRY_RUN;
+  const prevDryRun = process.env.ONNI_DRY_RUN;
 
   beforeAll(() => {
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
   });
   afterAll(() => {
-    if (prevDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = prevDryRun;
+    if (prevDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = prevDryRun;
   });
 
   beforeEach(() => {

@@ -676,7 +676,7 @@ export const continueResponseSchema = z.object({ continued: z.literal(true) });
 export type ContinueResponse = z.infer<typeof continueResponseSchema>;
 
 /**
- * `POST /runs/:id/pr` (201, spec 009) — the draft PR's URL; `dryRun` marks the CEZ_DRY_RUN fake
+ * `POST /runs/:id/pr` (201, spec 009) — the draft PR's URL; `dryRun` marks the ONNI_DRY_RUN fake
  * (no push, no gh). Failure is a 409 whose `ApiError` carries the `manual` merge command instead.
  *
  * `dryRun` is REQUIRED: `createDraftPr`'s success outcome always sets it (`forge/types.ts`), so

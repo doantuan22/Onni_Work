@@ -110,8 +110,8 @@ describe('tools menu', () => {
       const row = rows.find((r) => r.name === check.name)
       expect(row?.available).toBe(String(check.available))
       if (check.available) {
-        // The server's version string, verbatim (the shared env runs CEZ_DRY_RUN, so claude's
-        // may legitimately be "mock (CEZ_DRY_RUN=1)" — the point is fidelity, not the value).
+        // The server's version string, verbatim (the shared env runs ONNI_DRY_RUN, so claude's
+        // may legitimately be "mock (ONNI_DRY_RUN=1)" — the point is fidelity, not the value).
         expect(row?.version).toBe(check.version ?? 'not found')
         expect(row?.setupHref).toBeNull()
       } else {

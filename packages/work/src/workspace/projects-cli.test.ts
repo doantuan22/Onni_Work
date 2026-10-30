@@ -9,12 +9,12 @@ import { runProjectsCommand, type ProjectsCommandIo } from './projects-cli.ts';
 
 /**
  * `onni projects` (spec 2026-07-20-multi-project-workspace, step 5.2): the
- * offline registry CLI. Every test pins `CEZ_HOME` to a temp dir — these cases
+ * offline registry CLI. Every test pins `ONNI_HOME` to a temp dir — these cases
  * register and remove projects for real, and must never touch the developer's
  * own `~/.onni`.
  */
 describe('onni projects CLI', () => {
-  const originalHome = process.env.CEZ_HOME;
+  const originalHome = process.env.ONNI_HOME;
   let home: string;
   let repos: string;
   let io: ProjectsCommandIo & { out: string[]; err: string[] };
@@ -22,7 +22,7 @@ describe('onni projects CLI', () => {
   beforeEach(() => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-cli-'));
     repos = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-cli-repos-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
     clearProjectProbeCache();
     const out: string[] = [];
     const err: string[] = [];
@@ -30,8 +30,8 @@ describe('onni projects CLI', () => {
   });
 
   afterEach(() => {
-    if (originalHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = originalHome;
+    if (originalHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalHome;
     rmSync(home, { recursive: true, force: true });
     rmSync(repos, { recursive: true, force: true });
   });
@@ -167,7 +167,7 @@ describe('onni projects CLI', () => {
       expect(
         await runProjectsCommand(['add', join(repos, 'does-not-exist')], {
           defaultRoot: repos,
-          env: { CEZ_SINGLE_PROJECT: '1' },
+          env: { ONNI_SINGLE_PROJECT: '1' },
           io,
         }),
       ).toBe(1);
@@ -183,7 +183,7 @@ describe('onni projects CLI', () => {
         expect(
           await runProjectsCommand([subcommand], {
             defaultRoot: repos,
-            env: { CEZ_SINGLE_PROJECT: '1' },
+            env: { ONNI_SINGLE_PROJECT: '1' },
             io,
           }),
         ).toBe(1);
@@ -199,7 +199,7 @@ describe('onni projects CLI', () => {
         await runProjectsCommand(['list'], {
           defaultRoot: repos,
           bootProjectId: existing.id,
-          env: { CEZ_SINGLE_PROJECT: '1' },
+          env: { ONNI_SINGLE_PROJECT: '1' },
           io,
         }),
       ).toBe(0);
@@ -209,7 +209,7 @@ describe('onni projects CLI', () => {
       expect(
         await runProjectsCommand(['add', makeRepo('allowed')], {
           defaultRoot: repos,
-          env: { CEZ_SINGLE_PROJECT: 'true' },
+          env: { ONNI_SINGLE_PROJECT: 'true' },
           io,
         }),
       ).toBe(0);
@@ -222,7 +222,7 @@ describe('onni projects CLI', () => {
       expect(
         await runProjectsCommand(['list'], {
           defaultRoot: repos,
-          env: { CEZ_SINGLE_PROJECT: '1' },
+          env: { ONNI_SINGLE_PROJECT: '1' },
           io,
         }),
       ).toBe(0);
@@ -239,7 +239,7 @@ describe('onni projects CLI', () => {
 
   it('documents the single-project mutation restriction in usage output', async () => {
     expect(await run('frobnicate')).toBe(1);
-    expect(io.err.join('\n')).toContain('add/remove/tag are unavailable when CEZ_SINGLE_PROJECT=1');
+    expect(io.err.join('\n')).toContain('add/remove/tag are unavailable when ONNI_SINGLE_PROJECT=1');
   });
 
   /** The terminal twin of Settings -> Projects' Tags cell. */

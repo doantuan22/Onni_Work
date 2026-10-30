@@ -182,7 +182,7 @@ Visuals live beside this spec and are attached to its PR as evidence:
 | `assets/task-pr-reference-list/mockup-01-task-thread-header.png` (`.html`) | Proposed: primary + inline chips + `+N`, with the popover listing every PR, its state and its origin. |
 | `assets/task-pr-reference-list/mockup-02-sidebar-and-overview.png` (`.html`) | Proposed: the sidebar's count suffix and the overview Ref column's `+N`. |
 
-The current-state captures come from the repository's own shared test environment (`.ai/scripts/test-env-up.sh`, `CEZ_DRY_RUN=1`) seeded with a task that declared three PRs — the reported reproduction, rendered.
+The current-state captures come from the repository's own shared test environment (`.ai/scripts/test-env-up.sh`, `ONNI_DRY_RUN=1`) seeded with a task that declared three PRs — the reported reproduction, rendered.
 
 ## 📝 Edge Cases & Failure Scenarios
 
@@ -240,7 +240,7 @@ The current-state captures come from the repository's own shared test environmen
 
 **Phase 2 — state-aware priority and tinting**
 
-11. **Forge.** `fetchGithubPrStates(repoRoot, numbers, refresh?)` in `packages/work/src/server/forge/github.ts`: one aliased GraphQL query, 60 s cache, `CEZ_DRY_RUN` mock branch, `__clear…ForTests` hook — mirroring `fetchGithubChecks`. Reuses the cached `resolveRepoHandle`. Tests: state mapping (open/merged/closed), degradation to `{available:false}`.
+11. **Forge.** `fetchGithubPrStates(repoRoot, numbers, refresh?)` in `packages/work/src/server/forge/github.ts`: one aliased GraphQL query, 60 s cache, `ONNI_DRY_RUN` mock branch, `__clear…ForTests` hook — mirroring `fetchGithubChecks`. Reuses the cached `resolveRepoHandle`. Tests: state mapping (open/merged/closed), degradation to `{available:false}`.
 12. **Contract + route.** `prStatesDataSchema` in `packages/contract/src/github.ts`; the chained `.get('/github/pr-states', …)` link with the CSV validation and cap of the checks sibling; §2 inventory entry. Tests: `route-parity.test.ts`, the `/api/v1` surface suite `versioned-surface.test.ts`, `bc-route-inventory.test.ts`, 400 on a malformed list.
 13. **Client + query.** `getGithubPrStates` and `useGithubPrStates(numbers, enabled)` next to their checks counterparts.
 14. **Display rules.** `state`/`muted` props on `ReferenceChip`; ordering and primary demotion applied inside `taskPrRefs` from the hydrated map (never from the record, and never into `prNumber`). Tests: a closed primary hands the *rendered* slot to the next non-closed entry while `prNumber` and the task title are asserted unchanged; unknown state reproduces the Phase 1 order exactly.
@@ -267,7 +267,7 @@ shippable in CI:
   `prRefs`, renders identically, and gains a correctly-provenanced list on its first append; a
   hand-corrupted `prRefs` degrades to `[]` with the record intact.
 - **Contract** — `contract-parity.runs.test.ts` and a round-trip through `GET /api/runs/:id`.
-- **Phase 2 offline** — `CEZ_DRY_RUN` mock branch in the forge helper, plus an explicit test that
+- **Phase 2 offline** — `ONNI_DRY_RUN` mock branch in the forge helper, plus an explicit test that
   `{available:false}` reproduces the Phase 1 order and tint exactly.
 - **UI** — component tests for one chip (byte-identical markup and accessible name to today) and
   for three (three reachable links, three *distinct* accessible names, `+N` popover keyboard-

@@ -16,7 +16,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 
 /**
  * Graph workflows end to end (spec 2026-09-30-workflow-node-editor, phase 1): a real
- * RunManager, the bundled mock agent (`CEZ_DRY_RUN=1`), real check commands.
+ * RunManager, the bundled mock agent (`ONNI_DRY_RUN=1`), real check commands.
  */
 describe('graph workflows run through RunManager', () => {
   let repoRoot: string;
@@ -26,8 +26,8 @@ describe('graph workflows run through RunManager', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-graph-run-'));
-    savedDryRun = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedDryRun = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -38,8 +38,8 @@ describe('graph workflows run through RunManager', () => {
 
   afterEach(() => {
     manager.dispose();
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -159,7 +159,7 @@ describe('graph workflows run through RunManager', () => {
 
   it('nudges once for a missing verdict, and session.continue resumes the named node', async () => {
     const argsFile = join(repoRoot, 'mock-args.ndjson');
-    process.env.CEZ_MOCK_ARGS_FILE = argsFile;
+    process.env.ONNI_MOCK_ARGS_FILE = argsFile;
     try {
       // No `mock:verdict=` → the first turn has no marker; the nudge is answered with the first
       // listed verdict, `approve`… so to reach `fix` the order is swapped in this graph.
@@ -178,7 +178,7 @@ describe('graph workflows run through RunManager', () => {
       // One resume for the nudge (review's own session), one for fix (implement's session).
       expect(resumed).toEqual([byId.get('review')?.sessionId, byId.get('implement')?.sessionId]);
     } finally {
-      delete process.env.CEZ_MOCK_ARGS_FILE;
+      delete process.env.ONNI_MOCK_ARGS_FILE;
     }
   }, 30_000);
 
@@ -192,7 +192,7 @@ describe('graph workflows run through RunManager', () => {
     );
     const oldSession = first.steps.find((s) => s.id === 'work')?.sessionId;
     expect(oldSession).toBeDefined();
-    process.env.CEZ_MOCK_MISSING_SESSIONS = oldSession!;
+    process.env.ONNI_MOCK_MISSING_SESSIONS = oldSession!;
     try {
       expect(manager.continueRun(first.id, { text: 'keep going', runner: 'claude' })).toEqual({ ok: true });
       const deadline = Date.now() + 20_000;
@@ -213,15 +213,15 @@ describe('graph workflows run through RunManager', () => {
       // Verbatim: an id in the text would reach the thread as `[REDACTED]` (secret redaction).
       expect(events.some((e) => e.type === 'note' && e.message === MISSING_SESSION_NOTE)).toBe(true);
     } finally {
-      delete process.env.CEZ_MOCK_MISSING_SESSIONS;
+      delete process.env.ONNI_MOCK_MISSING_SESSIONS;
     }
   }, 30_000);
 
   it('session.continue on a pruned Claude session reruns the node in a fresh session', async () => {
     const argsFile = join(repoRoot, 'mock-args.ndjson');
-    process.env.CEZ_MOCK_ARGS_FILE = argsFile;
+    process.env.ONNI_MOCK_ARGS_FILE = argsFile;
     // Every resume answers "No conversation found", like a transcript past cleanupPeriodDays.
-    process.env.CEZ_MOCK_MISSING_SESSIONS = '*';
+    process.env.ONNI_MOCK_MISSING_SESSIONS = '*';
     try {
       const final = await settle(
         manager.startRun(def(REVIEW_FLOW('review it mock:verdict=changes')), { task: 'x', worktree: false }).id,
@@ -240,8 +240,8 @@ describe('graph workflows run through RunManager', () => {
       expect(fixEvents.filter((e) => e.type === 'error' || e.type === 'session.error')).toEqual([]);
       expect(fixEvents.some((e) => e.type === 'note' && String(e.message).includes('fresh session'))).toBe(true);
     } finally {
-      delete process.env.CEZ_MOCK_ARGS_FILE;
-      delete process.env.CEZ_MOCK_MISSING_SESSIONS;
+      delete process.env.ONNI_MOCK_ARGS_FILE;
+      delete process.env.ONNI_MOCK_MISSING_SESSIONS;
     }
   }, 30_000);
 

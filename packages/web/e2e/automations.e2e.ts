@@ -11,7 +11,7 @@ let baseUrl: string
 let bootProject: string
 const created: string[] = []
 /** `capabilities.automations` — on by default since spec 2026-09-14; the shared environment
- *  boots the default, so the opted-out case runs only when it was booted with CEZ_AUTOMATIONS=0. */
+ *  boots the default, so the opted-out case runs only when it was booted with ONNI_AUTOMATIONS=0. */
 let automationsAvailable = true
 
 type Automation = { id: string; name: string; enabled: boolean; kind: string; nextRunAt?: string }
@@ -53,21 +53,21 @@ afterAll(async () => {
 
 describe('Automations', () => {
   // The opted-out shape, asserted in a real browser: nothing about automations is reachable or
-  // advertised on a cockpit started with CEZ_AUTOMATIONS=0.
+  // advertised on a cockpit started with ONNI_AUTOMATIONS=0.
   it('is absent from the sidebar and refuses its API when opted out', async ({ skip }) => {
-    skip(automationsAvailable, 'the shared environment runs the default (on); boot with CEZ_AUTOMATIONS=0 to exercise this')
+    skip(automationsAvailable, 'the shared environment runs the default (on); boot with ONNI_AUTOMATIONS=0 to exercise this')
     browser.goto(`${baseUrl}/p/${bootProject}/`)
     browser.waitForFunction(`document.querySelector('[data-slot="sidebar"]') !== null`)
     expect(browser.text('[data-slot="sidebar"]')).not.toContain('Automations')
 
     browser.goto(`${baseUrl}/p/${bootProject}/automations`)
     browser.waitForFunction(`document.body.textContent.includes('Automations are off')`)
-    expect(browser.text('main')).toContain('CEZ_AUTOMATIONS=0')
+    expect(browser.text('main')).toContain('ONNI_AUTOMATIONS=0')
     browser.screenshot(`${artifactsDir}/automations-disabled.png`)
 
     const refused = await api('/automations')
     expect(refused.status).toBe(409)
-    expect(((await refused.json()) as { error: string }).error).toContain('CEZ_AUTOMATIONS')
+    expect(((await refused.json()) as { error: string }).error).toContain('ONNI_AUTOMATIONS')
   }, 60_000)
 
   it('is in the sidebar by default, with the empty state and the New automation button', async ({ skip }) => {

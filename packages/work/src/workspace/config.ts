@@ -167,7 +167,7 @@ const agentDefaultsSchema = z
   })
   .passthrough();
 
-const workspacePathSchema = (envName: 'CEZ_BROWSE_ROOT' | 'CEZ_PROJECTS_DIR', fallback: string) => {
+const workspacePathSchema = (envName: 'ONNI_BROWSE_ROOT' | 'ONNI_PROJECTS_DIR', fallback: string) => {
   const defaultValue = () => process.env[envName]?.trim() || fallback;
   return z.string().min(1).max(4096).default(defaultValue).catch(defaultValue);
 };
@@ -203,11 +203,11 @@ const workspaceConfigSchema = z
     schemaVersion: z.number().int().min(0).default(0).catch(0),
     /** Root exposed by the Add project folder browser. Environment supplies
      *  the zero-config default; an explicit workspace value wins thereafter. */
-    browseRoot: workspacePathSchema('CEZ_BROWSE_ROOT', '~/'),
+    browseRoot: workspacePathSchema('ONNI_BROWSE_ROOT', '~/'),
     /** Checkout root for GUI-cloned projects. Stored as written (a literal
      *  `~` is expanded by the checkout flow, not here); validated writable
      *  when *changed*, never at load. */
-    projectsDir: workspacePathSchema('CEZ_PROJECTS_DIR', '~/onni/projects'),
+    projectsDir: workspacePathSchema('ONNI_PROJECTS_DIR', '~/onni/projects'),
     /** Optional auto-update override. Absence inherits the environment/default
      *  and must stay absent on unrelated merge-writes. */
     skillsAutoUpdate: z.boolean().optional().catch(undefined),
@@ -267,8 +267,8 @@ export function effectiveSkillsAutoUpdate(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   if (config.skillsAutoUpdate !== undefined) return config.skillsAutoUpdate;
-  if (env.CEZ_SKILLS_AUTO_UPDATE === '0') return false;
-  if (env.CEZ_SKILLS_AUTO_UPDATE === '1') return true;
+  if (env.ONNI_SKILLS_AUTO_UPDATE === '0') return false;
+  if (env.ONNI_SKILLS_AUTO_UPDATE === '1') return true;
   return true;
 }
 
@@ -509,7 +509,7 @@ export function serializedByPath<T>(path: string, task: () => Promise<T>): Promi
  *
  * The path is resolved ONCE, before the `await`, and the same value feeds the
  * read and the write. Resolving it twice used to lose the whole registry:
- * `workspaceConfigPath()` re-reads `CEZ_HOME` on every call, so if the variable
+ * `workspaceConfigPath()` re-reads `ONNI_HOME` on every call, so if the variable
  * changed while the read was in flight — a test's `afterEach` dropping its pin
  * after a timeout is the way this happens in practice — the read came from one
  * home and the write landed in another, replacing that file's registry with a

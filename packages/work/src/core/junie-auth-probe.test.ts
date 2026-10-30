@@ -4,17 +4,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { probeJunieAuthentication } from './junie-auth-probe.ts';
 
 const mockBin = fileURLToPath(new URL('../../scripts/mock-junie-acp.mjs', import.meta.url));
-const previousAuthError = process.env.CEZ_MOCK_JUNIE_AUTH_ERROR;
+const previousAuthError = process.env.ONNI_MOCK_JUNIE_AUTH_ERROR;
 
 afterEach(() => {
   vi.restoreAllMocks();
-  if (previousAuthError === undefined) delete process.env.CEZ_MOCK_JUNIE_AUTH_ERROR;
-  else process.env.CEZ_MOCK_JUNIE_AUTH_ERROR = previousAuthError;
+  if (previousAuthError === undefined) delete process.env.ONNI_MOCK_JUNIE_AUTH_ERROR;
+  else process.env.ONNI_MOCK_JUNIE_AUTH_ERROR = previousAuthError;
 });
 
 describe('probeJunieAuthentication', () => {
   it('reports connected only after authenticated model discovery succeeds', async () => {
-    delete process.env.CEZ_MOCK_JUNIE_AUTH_ERROR;
+    delete process.env.ONNI_MOCK_JUNIE_AUTH_ERROR;
     await expect(probeJunieAuthentication({ bin: mockBin, cwd: process.cwd() }))
       .resolves.toEqual({ connected: true });
   }, 15_000);
@@ -27,13 +27,13 @@ describe('probeJunieAuthentication', () => {
   });
 
   it('surfaces ACP authentication errors while redacting credential-like values', async () => {
-    process.env.CEZ_MOCK_JUNIE_AUTH_ERROR = 'invalid token: bearer abc123';
+    process.env.ONNI_MOCK_JUNIE_AUTH_ERROR = 'invalid token: bearer abc123';
     await expect(probeJunieAuthentication({
       bin: mockBin,
       cwd: process.cwd(),
       spawn: (_bin, cwd) => spawn(process.execPath, [mockBin], {
         cwd,
-        env: { ...process.env, CEZ_MOCK_JUNIE_AUTH_ERROR: process.env.CEZ_MOCK_JUNIE_AUTH_ERROR },
+        env: { ...process.env, ONNI_MOCK_JUNIE_AUTH_ERROR: process.env.ONNI_MOCK_JUNIE_AUTH_ERROR },
       }) as ReturnType<typeof spawn> & import('node:child_process').ChildProcessWithoutNullStreams,
     }))
       .resolves.toEqual({

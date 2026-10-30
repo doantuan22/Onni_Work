@@ -311,7 +311,7 @@ export class WorktreeLifecycleCoordinator {
         await this.save(record, operation); // Failure here MUST prevent spawn.
         const result = await executeLifecycleCommand({command: rendered, cwd: context.worktree_path,
           ...(entry.timeoutSeconds ? {timeoutSeconds: entry.timeoutSeconds} : {}), signal: controller.signal,
-          dryRun: process.env.CEZ_DRY_RUN === '1',
+          dryRun: process.env.ONNI_DRY_RUN === '1',
           onStart: async identity => {
             const current = operation.executions.at(-1)!;
             current.process = identity; await this.save(record, operation);

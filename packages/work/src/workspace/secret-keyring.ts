@@ -21,17 +21,17 @@ export interface DataKeyring {
   set(key: Buffer): Promise<void>;
 }
 
-/** The keychain item's coordinates. One per machine, shared by every `CEZ_HOME`. */
+/** The keychain item's coordinates. One per machine, shared by every `ONNI_HOME`. */
 export const KEYCHAIN_SERVICE = 'onni';
 export const KEYCHAIN_ACCOUNT = 'secrets-data-key';
 
 /**
- * The OS keychain, or `null` when it is not to be used here: `CEZ_SECRETS_KEYCHAIN=0`, a test
+ * The OS keychain, or `null` when it is not to be used here: `ONNI_SECRETS_KEYCHAIN=0`, a test
  * run (a vitest worker must never write a developer's real keychain — tests inject a fake), a
  * missing native package, or no usable store on this machine.
  */
 export async function osKeychain(env: NodeJS.ProcessEnv = process.env): Promise<DataKeyring | null> {
-  if (env.CEZ_SECRETS_KEYCHAIN === '0' || env.VITEST) return null;
+  if (env.ONNI_SECRETS_KEYCHAIN === '0' || env.VITEST) return null;
   let keyring: typeof import('@napi-rs/keyring');
   try {
     keyring = await import('@napi-rs/keyring');

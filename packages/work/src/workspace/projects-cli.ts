@@ -17,7 +17,7 @@ import {
  *
  * It talks to `~/.onni/config.json` through `./projects.js` directly, NOT over
  * HTTP: the whole point is that it works with no server running, on a box where
- * the cockpit is behind an nginx login. `CEZ_HOME` therefore selects which
+ * the cockpit is behind an nginx login. `ONNI_HOME` therefore selects which
  * workspace it operates on, exactly as it does for `serve`.
  */
 
@@ -38,7 +38,7 @@ const USAGE = `usage:
   onni projects tag <id> [<tag>…]
                                set the grouping tags of a project (none clears them)
 
-  add/remove/tag are unavailable when CEZ_SINGLE_PROJECT=1`;
+  add/remove/tag are unavailable when ONNI_SINGLE_PROJECT=1`;
 
 const SINGLE_PROJECT_ADD_ERROR = 'single-project mode is enabled; adding projects is disabled';
 const SINGLE_PROJECT_REMOVE_ERROR = 'single-project mode is enabled; removing projects is disabled';
@@ -54,7 +54,7 @@ export async function runProjectsCommand(
   opts: { defaultRoot: string; bootProjectId?: string; env?: NodeJS.ProcessEnv; io?: ProjectsCommandIo },
 ): Promise<number> {
   const io = opts.io ?? defaultIo;
-  const singleProject = (opts.env ?? process.env).CEZ_SINGLE_PROJECT === '1';
+  const singleProject = (opts.env ?? process.env).ONNI_SINGLE_PROJECT === '1';
   const [sub = 'list', ...rest] = args;
   switch (sub) {
     case 'list':

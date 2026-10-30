@@ -14,10 +14,10 @@ describe('agentModelsLocked', () => {
   it('is off by default and only exact 1 enables it', () => {
     const home = mkdtempSync(join(tmpdir(), 'onni-model-policy-home-'));
     roots.push(home);
-    expect(agentModelsLocked(undefined, { CEZ_HOME: home })).toBe(false);
-    expect(agentModelsLocked(undefined, { CEZ_HOME: home, CEZ_AGENT_MODELS_LOCKED: '0' })).toBe(false);
-    expect(agentModelsLocked(undefined, { CEZ_HOME: home, CEZ_AGENT_MODELS_LOCKED: 'true' })).toBe(false);
-    expect(agentModelsLocked(undefined, { CEZ_HOME: home, CEZ_AGENT_MODELS_LOCKED: '1' })).toBe(true);
+    expect(agentModelsLocked(undefined, { ONNI_HOME: home })).toBe(false);
+    expect(agentModelsLocked(undefined, { ONNI_HOME: home, ONNI_AGENT_MODELS_LOCKED: '0' })).toBe(false);
+    expect(agentModelsLocked(undefined, { ONNI_HOME: home, ONNI_AGENT_MODELS_LOCKED: 'true' })).toBe(false);
+    expect(agentModelsLocked(undefined, { ONNI_HOME: home, ONNI_AGENT_MODELS_LOCKED: '1' })).toBe(true);
   });
 
   it('also accepts the optional repo config flag and degrades malformed files', () => {
@@ -27,13 +27,13 @@ describe('agentModelsLocked', () => {
     mkdirSync(join(repoRoot, '.ai', 'onni'), { recursive: true });
 
     writeFileSync(join(repoRoot, '.ai', 'onni', 'config.json'), '{"modelsLocked":true}\n');
-    expect(agentModelsLocked(repoRoot, { CEZ_HOME: home })).toBe(true);
+    expect(agentModelsLocked(repoRoot, { ONNI_HOME: home })).toBe(true);
 
     writeFileSync(join(repoRoot, '.ai', 'onni', 'config.json'), '{"modelsLocked":false}\n');
-    expect(agentModelsLocked(repoRoot, { CEZ_HOME: home })).toBe(false);
+    expect(agentModelsLocked(repoRoot, { ONNI_HOME: home })).toBe(false);
 
     writeFileSync(join(repoRoot, '.ai', 'onni', 'config.json'), '{broken');
-    expect(agentModelsLocked(repoRoot, { CEZ_HOME: home })).toBe(false);
+    expect(agentModelsLocked(repoRoot, { ONNI_HOME: home })).toBe(false);
   });
 
   it('accepts the global workspace flag for every repository', () => {
@@ -42,7 +42,7 @@ describe('agentModelsLocked', () => {
     roots.push(repoRoot, home);
     writeFileSync(join(home, 'config.json'), '{"modelsLocked":true}\n');
 
-    expect(agentModelsLocked(repoRoot, { CEZ_HOME: home })).toBe(true);
-    expect(agentModelsLocked(undefined, { CEZ_HOME: home })).toBe(true);
+    expect(agentModelsLocked(repoRoot, { ONNI_HOME: home })).toBe(true);
+    expect(agentModelsLocked(undefined, { ONNI_HOME: home })).toBe(true);
   });
 });

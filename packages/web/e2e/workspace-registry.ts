@@ -10,7 +10,7 @@ import { readTestEnv } from './agent-browser'
  *
  * Since the multi-project spec's Step 3.3 the cockpit renders the grouped multi-project sidebar
  * whenever the registry holds MORE THAN ONE project, and the flat one otherwise. The shared env
- * boots with `CEZ_HOME=.ai/qa/onni-home` (`.ai/scripts/test-env-up.sh`), which is a gitignored,
+ * boots with `ONNI_HOME=.ai/qa/onni-home` (`.ai/scripts/test-env-up.sh`), which is a gitignored,
  * mutable scratch home: whatever the operator last registered there decides which of the two
  * shells the specs meet. That is not a property any spec should inherit by accident — a QA
  * session that registered three projects to capture sidebar screenshots turned `smoke.e2e.ts`
@@ -26,7 +26,7 @@ import { readTestEnv } from './agent-browser'
  */
 
 const repoRoot = resolve(import.meta.dirname, '../../..')
-/** Mirrors `CEZ_HOME` in `.ai/scripts/test-env-up.sh` — change one, change the other. */
+/** Mirrors `ONNI_HOME` in `.ai/scripts/test-env-up.sh` — change one, change the other. */
 const sharedHome = resolve(repoRoot, '.ai/qa/onni-home')
 
 /** One registry entry, as `~/.onni/config.json` stores it (src/workspace/config.ts). */

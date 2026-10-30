@@ -15,7 +15,7 @@ vi.mock('../server/forge/github.ts', async original => ({
 }));
 
 it('delivers a durable failure through disk fallback after lazy context recovery rejects', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1'); vi.useFakeTimers({ toFake: ['Date'] });
+  vi.stubEnv('ONNI_WEBHOOKS', '1'); vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-20T10:00:00Z'));
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'review-context-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
@@ -49,7 +49,7 @@ it('delivers a durable failure through disk fallback after lazy context recovery
 });
 
 it('keeps a successfully recovered context attached until disposal, despite optional hook failures', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-20T10:00:00Z'));
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'context-success-'));
@@ -93,7 +93,7 @@ it('keeps a successfully recovered context attached until disposal, despite opti
 });
 
 it('fences delayed attachment, readiness and teardown against a newer context', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-20T10:00:00Z'));
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'context-identity-'));
@@ -144,7 +144,7 @@ it('fences delayed attachment, readiness and teardown against a newer context', 
 });
 
 it('keeps preparation and rollback inert with webhooks disabled', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '0');
+  vi.stubEnv('ONNI_WEBHOOKS', '0');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'context-disabled-'));
   const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [] });
   const contexts = new ProjectContexts({ listProjects: async () => [{ id: 'fixture', root, status: 'not-git' }] });

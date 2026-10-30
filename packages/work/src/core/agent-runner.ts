@@ -60,7 +60,7 @@ export interface AgentRunSpec {
   /** Extra directories the agent may read/write besides `cwd`. */
   additionalDirectories?: string[];
   /** Extra env vars for the agent process (merged over `process.env`) —
-   *  e.g. CEZ_HANDOFF_FILE / CEZ_TODOS_FILE / CEZ_TASK_ID (spec 007). */
+   *  e.g. ONNI_HANDOFF_FILE / ONNI_TODOS_FILE / ONNI_TASK_ID (spec 007). */
   env?: Record<string, string>;
   /** The project's private MCP servers (`.ai/onni/mcp.local.json`), injected at launch through
    *  each backend's own channel — never written into `cwd` (spec 2026-10-07-private-project-mcp). */

@@ -1,13 +1,13 @@
-// Real RunManager persistence boundary, in a disposable process and CEZ_HOME.
+// Real RunManager persistence boundary, in a disposable process and ONNI_HOME.
 import { join } from 'node:path';
 import { RunManager } from '../../workflows/run.ts';
 import { RunStore } from '../../runs/store.ts';
 import { AutomationStore } from '../store.ts';
 import { ScheduleRunner } from '../schedule-runner.ts';
 const [dir, boundary] = process.argv.slice(2);
-process.env.CEZ_HOME = join(dir, 'home');
-process.env.CEZ_DRY_RUN = '1';
-process.env.CEZ_AUTONAME = '0';
+process.env.ONNI_HOME = join(dir, 'home');
+process.env.ONNI_DRY_RUN = '1';
+process.env.ONNI_AUTONAME = '0';
 const store = AutomationStore.open(dir);
 const runs = RunStore.open(dir);
 const manager = new RunManager(runs, dir);

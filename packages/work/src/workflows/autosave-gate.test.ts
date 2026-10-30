@@ -26,7 +26,7 @@ interface TimerSeam {
 }
 
 /**
- * The periodic autosave timer is opt-in via CEZ_AUTOSAVE=1 (#471). armAutosave is
+ * The periodic autosave timer is opt-in via ONNI_AUTOSAVE=1 (#471). armAutosave is
  * driven directly (the recordTurnEnd precedent) because a live agent session is the
  * only other way to reach it. The turn-end/pre-PR flushes are a separate, ungated
  * call to autosaveCommit — proven env-independent below.
@@ -37,7 +37,7 @@ describe('periodic autosave gate (#471)', () => {
   let manager: TimerSeam;
   let worktreePath: string;
   let runId: string;
-  const savedEnv = process.env.CEZ_AUTOSAVE;
+  const savedEnv = process.env.ONNI_AUTOSAVE;
 
   beforeAll(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-autosave-gate-'));
@@ -58,28 +58,28 @@ describe('periodic autosave gate (#471)', () => {
   });
 
   afterEach(() => {
-    if (savedEnv === undefined) delete process.env.CEZ_AUTOSAVE;
-    else process.env.CEZ_AUTOSAVE = savedEnv;
+    if (savedEnv === undefined) delete process.env.ONNI_AUTOSAVE;
+    else process.env.ONNI_AUTOSAVE = savedEnv;
   });
 
   it('is off by default, on only for the exact value "1"', () => {
     expect(periodicAutosaveEnabled({})).toBe(false);
-    expect(periodicAutosaveEnabled({ CEZ_AUTOSAVE: '0' })).toBe(false);
-    expect(periodicAutosaveEnabled({ CEZ_AUTOSAVE: 'true' })).toBe(false);
-    expect(periodicAutosaveEnabled({ CEZ_AUTOSAVE: '1' })).toBe(true);
-    delete process.env.CEZ_AUTOSAVE;
+    expect(periodicAutosaveEnabled({ ONNI_AUTOSAVE: '0' })).toBe(false);
+    expect(periodicAutosaveEnabled({ ONNI_AUTOSAVE: 'true' })).toBe(false);
+    expect(periodicAutosaveEnabled({ ONNI_AUTOSAVE: '1' })).toBe(true);
+    delete process.env.ONNI_AUTOSAVE;
     expect(periodicAutosaveEnabled()).toBe(false); // defaults to process.env
   });
 
   it('does not arm the timer when the env is off (default)', () => {
-    delete process.env.CEZ_AUTOSAVE;
+    delete process.env.ONNI_AUTOSAVE;
     const state: TimerState = { cancelled: false, interrupt: () => undefined, cwd: worktreePath };
     manager.armAutosave(runId, state);
     expect(state.autosaveTimer).toBeUndefined();
   });
 
-  it('arms the timer when CEZ_AUTOSAVE=1, but never for a repo-root run', () => {
-    process.env.CEZ_AUTOSAVE = '1';
+  it('arms the timer when ONNI_AUTOSAVE=1, but never for a repo-root run', () => {
+    process.env.ONNI_AUTOSAVE = '1';
     const state: TimerState = { cancelled: false, interrupt: () => undefined, cwd: worktreePath };
     manager.active.set(runId, state);
     manager.armAutosave(runId, state);
@@ -99,7 +99,7 @@ describe('periodic autosave gate (#471)', () => {
   });
 
   it('the flush path (autosaveCommit) still commits with the env off', async () => {
-    delete process.env.CEZ_AUTOSAVE;
+    delete process.env.ONNI_AUTOSAVE;
     writeFileSync(join(worktreePath, 'work.txt'), 'progress\n');
     expect(await autosaveCommit(worktreePath, 'turn end')).toBe('committed');
     const { stdout } = await run('git', ['log', '-1', '--format=%s'], { cwd: worktreePath });
@@ -110,7 +110,7 @@ describe('periodic autosave gate (#471)', () => {
   });
 
   it('records the reason, so the gated timer is distinguishable in the log', async () => {
-    delete process.env.CEZ_AUTOSAVE;
+    delete process.env.ONNI_AUTOSAVE;
     for (const reason of ['periodic', 'turn end', 'run finalize', 'pre-PR'] as const) {
       writeFileSync(join(worktreePath, 'work.txt'), `progress ${reason}\n`);
       expect(await autosaveCommit(worktreePath, reason)).toBe('committed');

@@ -15,7 +15,7 @@
  * Windows) to a worktree's `packages/work`. Node runs the entry through its realpath, so the
  * checkout's own `node_modules` resolve, and every rebuild of that worktree is live on the next
  * restart. Anything that reads `current` — the desktop shell — runs it unchanged. Removing a
- * link removes the link, never the checkout. Everything is under `onniHomeDir()` so `CEZ_HOME`
+ * link removes the link, never the checkout. Everything is under `onniHomeDir()` so `ONNI_HOME`
  * keeps tests off the real home. Delete the whole directory and it is simply gone — state,
  * never configuration.
  */

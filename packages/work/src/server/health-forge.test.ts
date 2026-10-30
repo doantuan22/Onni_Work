@@ -39,56 +39,56 @@ interface HealthBody {
 describe('GET /api/v1/health — forge + capabilities', () => {
   let repoRoot: string;
   let store: RunStore;
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedFollowups = process.env.CEZ_FOLLOWUPS;
-  const savedSingleProject = process.env.CEZ_SINGLE_PROJECT;
-  const savedAutomations = process.env.CEZ_AUTOMATIONS;
-  const savedHideTokenMetrics = process.env.CEZ_HIDE_TOKEN_METRICS;
-  const savedHideTokenUsage = process.env.CEZ_HIDE_TOKEN_USAGE;
-  const savedHideCost = process.env.CEZ_HIDE_COST;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedInstanceId = process.env.CEZ_INSTANCE_ID;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedFollowups = process.env.ONNI_FOLLOWUPS;
+  const savedSingleProject = process.env.ONNI_SINGLE_PROJECT;
+  const savedAutomations = process.env.ONNI_AUTOMATIONS;
+  const savedHideTokenMetrics = process.env.ONNI_HIDE_TOKEN_METRICS;
+  const savedHideTokenUsage = process.env.ONNI_HIDE_TOKEN_USAGE;
+  const savedHideCost = process.env.ONNI_HIDE_COST;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedInstanceId = process.env.ONNI_INSTANCE_ID;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-health-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    delete process.env.CEZ_REMOTE;
-    // #471: the inbox is opt-in, so an ambient CEZ_FOLLOWUPS on the dev box
+    delete process.env.ONNI_REMOTE;
+    // #471: the inbox is opt-in, so an ambient ONNI_FOLLOWUPS on the dev box
     // must not decide what these assertions see.
-    delete process.env.CEZ_FOLLOWUPS;
-    delete process.env.CEZ_SINGLE_PROJECT;
+    delete process.env.ONNI_FOLLOWUPS;
+    delete process.env.ONNI_SINGLE_PROJECT;
     // Automations are default-on since spec 2026-09-14 (an exact `0` opts out); the same ambient-env hazard applies.
-    delete process.env.CEZ_AUTOMATIONS;
-    delete process.env.CEZ_HIDE_TOKEN_METRICS;
-    delete process.env.CEZ_HIDE_TOKEN_USAGE;
-    delete process.env.CEZ_HIDE_COST;
+    delete process.env.ONNI_AUTOMATIONS;
+    delete process.env.ONNI_HIDE_TOKEN_METRICS;
+    delete process.env.ONNI_HIDE_TOKEN_USAGE;
+    delete process.env.ONNI_HIDE_COST;
     // Dry-run keeps the forge probe (and the claude check) off the network,
     // so the assertions are deterministic on any machine.
-    process.env.CEZ_DRY_RUN = '1';
-    delete process.env.CEZ_INSTANCE_ID;
+    process.env.ONNI_DRY_RUN = '1';
+    delete process.env.ONNI_INSTANCE_ID;
   });
 
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
-    if (savedFollowups === undefined) delete process.env.CEZ_FOLLOWUPS;
-    else process.env.CEZ_FOLLOWUPS = savedFollowups;
-    if (savedSingleProject === undefined) delete process.env.CEZ_SINGLE_PROJECT;
-    else process.env.CEZ_SINGLE_PROJECT = savedSingleProject;
-    if (savedAutomations === undefined) delete process.env.CEZ_AUTOMATIONS;
-    else process.env.CEZ_AUTOMATIONS = savedAutomations;
-    if (savedHideTokenMetrics === undefined) delete process.env.CEZ_HIDE_TOKEN_METRICS;
-    else process.env.CEZ_HIDE_TOKEN_METRICS = savedHideTokenMetrics;
-    if (savedHideTokenUsage === undefined) delete process.env.CEZ_HIDE_TOKEN_USAGE;
-    else process.env.CEZ_HIDE_TOKEN_USAGE = savedHideTokenUsage;
-    if (savedHideCost === undefined) delete process.env.CEZ_HIDE_COST;
-    else process.env.CEZ_HIDE_COST = savedHideCost;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
-    if (savedInstanceId === undefined) delete process.env.CEZ_INSTANCE_ID;
-    else process.env.CEZ_INSTANCE_ID = savedInstanceId;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
+    if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
+    else process.env.ONNI_FOLLOWUPS = savedFollowups;
+    if (savedSingleProject === undefined) delete process.env.ONNI_SINGLE_PROJECT;
+    else process.env.ONNI_SINGLE_PROJECT = savedSingleProject;
+    if (savedAutomations === undefined) delete process.env.ONNI_AUTOMATIONS;
+    else process.env.ONNI_AUTOMATIONS = savedAutomations;
+    if (savedHideTokenMetrics === undefined) delete process.env.ONNI_HIDE_TOKEN_METRICS;
+    else process.env.ONNI_HIDE_TOKEN_METRICS = savedHideTokenMetrics;
+    if (savedHideTokenUsage === undefined) delete process.env.ONNI_HIDE_TOKEN_USAGE;
+    else process.env.ONNI_HIDE_TOKEN_USAGE = savedHideTokenUsage;
+    if (savedHideCost === undefined) delete process.env.ONNI_HIDE_COST;
+    else process.env.ONNI_HIDE_COST = savedHideCost;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
+    if (savedInstanceId === undefined) delete process.env.ONNI_INSTANCE_ID;
+    else process.env.ONNI_INSTANCE_ID = savedInstanceId;
   });
 
   const makeApp = (over: Partial<ServerDeps> = {}) =>
@@ -126,7 +126,7 @@ describe('GET /api/v1/health — forge + capabilities', () => {
   });
 
   it('includes the installed instance identity when the service supplies one', async () => {
-    process.env.CEZ_INSTANCE_ID = 'install-a';
+    process.env.ONNI_INSTANCE_ID = 'install-a';
     expect((await health()).instanceId).toBe('install-a');
   });
 
@@ -165,8 +165,8 @@ describe('GET /api/v1/health — forge + capabilities', () => {
     expect(body.forge).toBeNull();
   });
 
-  it('hosted mode via CEZ_REMOTE=1: localHandoff:false', async () => {
-    process.env.CEZ_REMOTE = '1';
+  it('hosted mode via ONNI_REMOTE=1: localHandoff:false', async () => {
+    process.env.ONNI_REMOTE = '1';
     const body = await health();
     expect(body.capabilities).toEqual({
       localHandoff: false,
@@ -184,7 +184,7 @@ describe('GET /api/v1/health — forge + capabilities', () => {
   });
 
   it('hosted mode trims repoRoot to a basename — no absolute path/username leak (#431)', async () => {
-    process.env.CEZ_REMOTE = '1';
+    process.env.ONNI_REMOTE = '1';
     const body = await health();
     // The absolute checkout path (with the developer's username) must not be exposed to a
     // site/host that reads the CORS-open health endpoint in hosted mode.
@@ -237,8 +237,8 @@ describe('GET /api/v1/health — forge + capabilities', () => {
     expect((await health()).capabilities.followups).toBe(false);
   });
 
-  it('reports followups:true with CEZ_FOLLOWUPS=1', async () => {
-    process.env.CEZ_FOLLOWUPS = '1';
+  it('reports followups:true with ONNI_FOLLOWUPS=1', async () => {
+    process.env.ONNI_FOLLOWUPS = '1';
     expect((await health()).capabilities).toEqual({
       localHandoff: true,
       terminal: true,
@@ -260,13 +260,13 @@ describe('GET /api/v1/health — forge + capabilities', () => {
     expect((await health()).capabilities.automations).toBe(true);
   });
 
-  it('reports automations:false with CEZ_AUTOMATIONS=0', async () => {
-    process.env.CEZ_AUTOMATIONS = '0';
+  it('reports automations:false with ONNI_AUTOMATIONS=0', async () => {
+    process.env.ONNI_AUTOMATIONS = '0';
     expect((await health()).capabilities.automations).toBe(false);
   });
 
-  it('reports the whole capability set with CEZ_AUTOMATIONS=1 (accepted, a no-op)', async () => {
-    process.env.CEZ_AUTOMATIONS = '1';
+  it('reports the whole capability set with ONNI_AUTOMATIONS=1 (accepted, a no-op)', async () => {
+    process.env.ONNI_AUTOMATIONS = '1';
     expect((await health()).capabilities).toEqual({
       localHandoff: true,
       terminal: true,
@@ -282,8 +282,8 @@ describe('GET /api/v1/health — forge + capabilities', () => {
     });
   });
 
-  it('reports tokenMetrics:false with CEZ_HIDE_TOKEN_METRICS=1', async () => {
-    process.env.CEZ_HIDE_TOKEN_METRICS = '1';
+  it('reports tokenMetrics:false with ONNI_HIDE_TOKEN_METRICS=1', async () => {
+    process.env.ONNI_HIDE_TOKEN_METRICS = '1';
     expect((await health()).capabilities).toEqual({
       localHandoff: true,
       terminal: true,
@@ -300,15 +300,15 @@ describe('GET /api/v1/health — forge + capabilities', () => {
   });
 
   it('reports independent token-only and cost-only presentation policies', async () => {
-    process.env.CEZ_HIDE_TOKEN_USAGE = '1';
+    process.env.ONNI_HIDE_TOKEN_USAGE = '1';
     expect((await health()).capabilities).toMatchObject({
       tokenMetrics: false,
       webhooks: false,
       tokenUsageMetrics: false,
       costMetrics: true,
     });
-    delete process.env.CEZ_HIDE_TOKEN_USAGE;
-    process.env.CEZ_HIDE_COST = '1';
+    delete process.env.ONNI_HIDE_TOKEN_USAGE;
+    process.env.ONNI_HIDE_COST = '1';
     expect((await health()).capabilities).toMatchObject({
       tokenMetrics: false,
       webhooks: false,
@@ -322,20 +322,20 @@ describe('POST /api/v1/runs/:id/open-in-cli — hosted-mode defense in depth', (
   let repoRoot: string;
   let store: RunStore;
   let runId: string;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedRemote = process.env.ONNI_REMOTE;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-handoff-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     runId = store.createRun({ title: 't', workflow: 'quick-task', task: 'do it', steps: [] }).id;
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_REMOTE;
   });
 
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const post = (over: Partial<ServerDeps> = {}) =>
@@ -345,8 +345,8 @@ describe('POST /api/v1/runs/:id/open-in-cli — hosted-mode defense in depth', (
       { method: 'POST' },
     );
 
-  it('409s with a human reason when CEZ_REMOTE=1 — before any session lookup', async () => {
-    process.env.CEZ_REMOTE = '1';
+  it('409s with a human reason when ONNI_REMOTE=1 — before any session lookup', async () => {
+    process.env.ONNI_REMOTE = '1';
     const res = await post();
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string };
@@ -367,7 +367,7 @@ describe('POST /api/v1/runs/:id/open-in-cli — hosted-mode defense in depth', (
   });
 
   it('unknown runs still 404 first', async () => {
-    process.env.CEZ_REMOTE = '1';
+    process.env.ONNI_REMOTE = '1';
     const app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test' });
     const res = await apiRequest(app, '/api/v1/runs/nope/open-in-cli', { method: 'POST' });
     expect(res.status).toBe(404);

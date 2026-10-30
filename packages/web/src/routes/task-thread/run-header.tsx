@@ -807,7 +807,7 @@ function MetaRow({
         <span
           key="automation"
           data-slot="automation-origin"
-          title="Automations are off on this server (CEZ_AUTOMATIONS)"
+          title="Automations are off on this server (ONNI_AUTOMATIONS)"
           className="rounded-sm border border-border bg-card px-1.5 py-px text-[11px] font-medium"
         >
           Automation

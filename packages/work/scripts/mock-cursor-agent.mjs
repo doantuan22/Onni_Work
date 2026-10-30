@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Mock `agent` binary for CEZ_DRY_RUN=1 — emits Cursor-shaped stream-json.
+// Mock `agent` binary for ONNI_DRY_RUN=1 — emits Cursor-shaped stream-json.
 
 import { appendFileSync } from 'node:fs';
 
-if (process.env.CEZ_MOCK_ARGS_FILE) {
+if (process.env.ONNI_MOCK_ARGS_FILE) {
   try {
-    appendFileSync(process.env.CEZ_MOCK_ARGS_FILE, `${JSON.stringify(process.argv.slice(2))}\n`);
+    appendFileSync(process.env.ONNI_MOCK_ARGS_FILE, `${JSON.stringify(process.argv.slice(2))}\n`);
   } catch {
     /* ignore */
   }

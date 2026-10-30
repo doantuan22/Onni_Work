@@ -22,14 +22,14 @@ export const TITLE_MAX = 40;
 
 /**
  * Master switch for ALL LLM naming (creation-time and live refresh):
- * `CEZ_AUTONAME=0` kills it outright; under `CEZ_DRY_RUN=1` naming is off by
+ * `ONNI_AUTONAME=0` kills it outright; under `ONNI_DRY_RUN=1` naming is off by
  * default too (the mock's canned title would REPLACE honest heuristic titles
- * in demos and e2e) unless `CEZ_AUTONAME=1` forces it — the hook the dry-run
+ * in demos and e2e) unless `ONNI_AUTONAME=1` forces it — the hook the dry-run
  * naming tests use.
  */
 export function autoNamingActive(env: NodeJS.ProcessEnv = process.env): boolean {
-  if (env.CEZ_AUTONAME === '0') return false;
-  if (env.CEZ_DRY_RUN === '1' && env.CEZ_AUTONAME !== '1') return false;
+  if (env.ONNI_AUTONAME === '0') return false;
+  if (env.ONNI_DRY_RUN === '1' && env.ONNI_AUTONAME !== '1') return false;
   return true;
 }
 
@@ -38,7 +38,7 @@ export function autoNamingActive(env: NodeJS.ProcessEnv = process.env): boolean 
  * default, deviating from the cost-opt-in house rule; cost is bounded by the
  * cheap `namerModel`, one call per turn end, and the skip conditions in
  * `RunManager.recordTurnEnd`). Precedence: `config.liveTitleUpdates` (the
- * Settings toggle) wins over the `CEZ_TITLE_UPDATES` env default (`'0'` = off)
+ * Settings toggle) wins over the `ONNI_TITLE_UPDATES` env default (`'0'` = off)
  * wins over the built-in ON.
  */
 export function liveTitleUpdatesEnabled(
@@ -46,7 +46,7 @@ export function liveTitleUpdatesEnabled(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   if (config.liveTitleUpdates !== undefined) return config.liveTitleUpdates;
-  return env.CEZ_TITLE_UPDATES !== '0';
+  return env.ONNI_TITLE_UPDATES !== '0';
 }
 
 export const NAMER_SYSTEM_PROMPT =
@@ -126,7 +126,7 @@ export function sanitizeBranchName(raw: string | undefined): string | undefined 
   return name && !name.startsWith('-') ? name : undefined;
 }
 
-/** The `[onni-namer]` marker lets the CEZ_DRY_RUN mock recognize a naming call. */
+/** The `[onni-namer]` marker lets the ONNI_DRY_RUN mock recognize a naming call. */
 export function buildNamerPrompt(ctx: NamerContext): string {
   const refs = advisoryRefs(ctx);
   const lines = [
@@ -221,9 +221,9 @@ export async function generateRunName(repoRoot: string, ctx: NamerContext, execu
         onUsageWindows: execution?.onUsageWindows,
         timeoutMs: NAMER_TIMEOUT_MS,
         // Shadow the argv-capture hook: dry-run tests capture the AGENT's argv
-        // through CEZ_MOCK_ARGS_FILE; the namer's bookkeeping call must not
+        // through ONNI_MOCK_ARGS_FILE; the namer's bookkeeping call must not
         // interleave lines into that file.
-        env: { ...profileEnv, CEZ_MOCK_ARGS_FILE: '' },
+        env: { ...profileEnv, ONNI_MOCK_ARGS_FILE: '' },
       });
       const composed = composeNameResult(result.text, ctx);
       if (composed) return composed;

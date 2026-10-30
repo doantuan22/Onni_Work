@@ -34,9 +34,9 @@ vi.mock('../core/junie-auth-probe.ts', () => ({
  * byte-identical shape (protected).
  */
 describe('GET /api/v1/workspace/events', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let home: string;
   let repoRoot: string;
   let otherRoot: string;
@@ -51,9 +51,9 @@ describe('GET /api/v1/workspace/events', () => {
     home = mkdtempSync(join(tmpdir(), 'onni-wsev-home-'));
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-wsev-boot-'));
     otherRoot = mkdtempSync(join(tmpdir(), 'onni-wsev-other-'));
-    process.env.CEZ_HOME = home;
-    delete process.env.CEZ_REMOTE;
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_HOME = home;
+    delete process.env.ONNI_REMOTE;
+    process.env.ONNI_DRY_RUN = '1';
     for (const root of [repoRoot, otherRoot]) {
       mkdirSync(join(root, '.ai/onni'), { recursive: true });
       writeFileSync(join(root, '.ai/onni', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
@@ -82,12 +82,12 @@ describe('GET /api/v1/workspace/events', () => {
     contexts.disposeAll();
     store.flush();
     for (const dir of [home, repoRoot, otherRoot]) rmSync(dir, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   /** Register the other project and build its context via a first API touch. */
@@ -328,7 +328,7 @@ describe('GET /api/v1/workspace/events', () => {
     await ws.readUntil('event: ping');
 
     try {
-      delete process.env.CEZ_DRY_RUN;
+      delete process.env.ONNI_DRY_RUN;
       const run = other.store.createRun({
         title: 'auth',
         workflow: 'quick-task',
@@ -357,7 +357,7 @@ describe('GET /api/v1/workspace/events', () => {
         authFailureId: 'auth-incident-1',
       }]);
     } finally {
-      process.env.CEZ_DRY_RUN = '1';
+      process.env.ONNI_DRY_RUN = '1';
     }
   });
 
@@ -392,13 +392,13 @@ describe('GET /api/v1/workspace/events', () => {
     });
 
     try {
-      delete process.env.CEZ_DRY_RUN;
+      delete process.env.ONNI_DRY_RUN;
       store.appendEvent(run.id, {
         type: 'error',
         message: 'Failed to authenticate. API Error: 401 OAuth access token has been revoked.',
       });
       await ws.readUntil('event: provider-status');
-      process.env.CEZ_DRY_RUN = '1';
+      process.env.ONNI_DRY_RUN = '1';
 
       const response = await apiRequest(app, '/api/v1/providers/claude/retry', {
         method: 'POST',
@@ -414,7 +414,7 @@ describe('GET /api/v1/workspace/events', () => {
         enabled: true,
       });
     } finally {
-      process.env.CEZ_DRY_RUN = '1';
+      process.env.ONNI_DRY_RUN = '1';
     }
   });
 

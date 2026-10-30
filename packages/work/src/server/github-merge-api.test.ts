@@ -13,15 +13,15 @@ describe('the GitHub merge API', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  const previousDryRun = process.env.CEZ_DRY_RUN;
+  const previousDryRun = process.env.ONNI_DRY_RUN;
 
   beforeAll(() => {
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
   });
 
   afterAll(() => {
-    if (previousDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = previousDryRun;
+    if (previousDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = previousDryRun;
   });
 
   beforeEach(() => {

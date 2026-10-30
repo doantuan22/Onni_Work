@@ -245,9 +245,9 @@ ${argXml}
     <string>${escapeXml(repoRoot)}</string>
     <key>EnvironmentVariables</key>
     <dict>
-      <key>CEZ_REMOTE</key>
+      <key>ONNI_REMOTE</key>
       <string>1</string>
-${instanceId ? `      <key>CEZ_INSTANCE_ID</key>\n      <string>${escapeXml(instanceId)}</string>\n` : ''}      <key>PATH</key>
+${instanceId ? `      <key>ONNI_INSTANCE_ID</key>\n      <string>${escapeXml(instanceId)}</string>\n` : ''}      <key>PATH</key>
       <string>${escapeXml(pathDirs.join(':'))}</string>
     </dict>
     <key>RunAtLoad</key>

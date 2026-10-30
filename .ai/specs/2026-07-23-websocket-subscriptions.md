@@ -233,7 +233,7 @@ A dropped connection must not leave a publisher running server-side or a stale s
   subscriber count, broadcast fan-out, unknown/malformed frames, the 403 pre-handshake rejection,
   the app-level heartbeat, reaping a client that stops answering the protocol ping
   (`autoPong: false`), and the double-`attach` throw. `verifyWsUpgrade` has its own unit table —
-  which controls `CEZ_REMOTE`, because the guard's whole Host half is skipped in hosted mode and
+  which controls `ONNI_REMOTE`, because the guard's whole Host half is skipped in hosted mode and
   an ambient var on the dev box must not decide what the table sees.
 - `src/server/health-topic.test.ts` covers the **live-server** path — the one `createApp` only
   builds when a `socketHub` is injected, which every other server suite leaves untaken: the boot

@@ -23,7 +23,7 @@ describe('a run stopped by a transient provider failure retries itself', () => {
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager | undefined;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   async function settle(runId: string): Promise<void> {
     await expect
@@ -40,7 +40,7 @@ describe('a run stopped by a transient provider failure retries itself', () => {
   }
 
   beforeEach(async () => {
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-transient-retry-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
@@ -56,8 +56,8 @@ describe('a run stopped by a transient provider failure retries itself', () => {
       manager.dispose();
       manager = undefined;
     }
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });

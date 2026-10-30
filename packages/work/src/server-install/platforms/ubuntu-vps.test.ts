@@ -108,14 +108,14 @@ describe('nginx configuration diagnostics', () => {
 
 describe('ubuntu-vps ssl step', () => {
   let home: string;
-  const original = process.env.CEZ_HOME;
+  const original = process.env.ONNI_HOME;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-ssl-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
   afterEach(() => {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
     rmSync(home, { recursive: true, force: true });
   });
 
@@ -469,9 +469,9 @@ describe('ubuntu-vps nginx-proxy identity (interactive, dry-run)', () => {
 });
 
 describe('systemdUnit', () => {
-  it('runs onni serve loopback with CEZ_REMOTE=1 and the port', () => {
+  it('runs onni serve loopback with ONNI_REMOTE=1 and the port', () => {
     const unit = systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/onni');
-    expect(unit).toContain('Environment=CEZ_REMOTE=1');
+    expect(unit).toContain('Environment=ONNI_REMOTE=1');
     expect(unit).toContain('ExecStart=/usr/local/bin/onni serve --no-open --port 4321');
     expect(unit).toContain('WorkingDirectory=/srv/app');
     expect(unit).toContain('WantedBy=default.target');
@@ -479,7 +479,7 @@ describe('systemdUnit', () => {
 
   it('passes the install identity to the service environment', () => {
     expect(systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/onni', undefined, 'install-a')).toContain(
-      'Environment=CEZ_INSTANCE_ID=install-a',
+      'Environment=ONNI_INSTANCE_ID=install-a',
     );
   });
   it('system scope pins User= and multi-user.target', () => {

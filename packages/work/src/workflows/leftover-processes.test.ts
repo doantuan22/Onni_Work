@@ -32,13 +32,13 @@ describe.runIf(process.platform === 'linux')('recover() reaps processes left by 
       }
     }
     spawned.length = 0;
-    delete process.env.CEZ_TASK_PROCESS_REAP;
+    delete process.env.ONNI_TASK_PROCESS_REAP;
     rmSync(dataRoot, { recursive: true, force: true });
   });
 
   const leave = async (taskId: string): Promise<void> => {
     spawned.push(taskId);
-    spawn('setsid', ['sleep', '100000'], { env: { ...process.env, CEZ_TASK_ID: taskId }, detached: true, stdio: 'ignore' }).unref();
+    spawn('setsid', ['sleep', '100000'], { env: { ...process.env, ONNI_TASK_ID: taskId }, detached: true, stdio: 'ignore' }).unref();
     await until(async () => await running(taskId));
   };
   const running = async (taskId: string): Promise<boolean> =>
@@ -85,8 +85,8 @@ describe.runIf(process.platform === 'linux')('recover() reaps processes left by 
     expect(await running(foreign)).toBe(true);
   });
 
-  it('reaps nothing with CEZ_TASK_PROCESS_REAP=0', async () => {
-    process.env.CEZ_TASK_PROCESS_REAP = '0';
+  it('reaps nothing with ONNI_TASK_PROCESS_REAP=0', async () => {
+    process.env.ONNI_TASK_PROCESS_REAP = '0';
     const settled = makeRun('done');
     await leave(settled);
 

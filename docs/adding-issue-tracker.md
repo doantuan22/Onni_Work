@@ -103,7 +103,7 @@ Reads begin only on user demand. Credentials stay on the server.
    Do not claim native tracker chips or synchronization from a prompt snapshot alone.
 10. **Update documentation.** Document credential fields and setup in `docs/issue-trackers.md` and the README.
     Do not introduce global token environment variables for a project-scoped connection. New or
-    changed `CEZ_*` variables must follow the root env-contract rule. No secrets in examples,
+    changed `ONNI_*` variables must follow the root env-contract rule. No secrets in examples,
     screenshots, plans or test recordings.
 
 ## Verification gate
@@ -138,7 +138,7 @@ TMPDIR=/tmp npm test
 TMPDIR=/tmp npm run build
 ```
 
-Use isolated `CEZ_HOME`, repositories and disposable ports for browser/live verification.
+Use isolated `ONNI_HOME`, repositories and disposable ports for browser/live verification.
 The main developer checkout and real user state are not test fixtures. Record commands,
 results and limitations. Respect the task's publication policy; verification is not
 permission to push, open a PR, upload evidence, or write to a vendor.

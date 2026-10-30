@@ -357,7 +357,7 @@ theming are mandatory per `AGENTS.md`.
   field, changing an SSE event name — and prescribes *"additive first"*. Everything here
   is on the additive side of that line: new routes, a new optional body field, new
   response fields, no SSE name change. §3 `runs.json` — new field optional, per the
-  explicit rule at `:40`. No `CEZ_*` var, so no `.env.example` change.
+  explicit rule at `:40`. No `ONNI_*` var, so no `.env.example` change.
 - **The one real hazard** is the dual-prompt hazard the current code already carries
   (`pendingJobs` vs the record). This spec removes it rather than adding to it; the
   regression to guard against is an edit that "works" in the UI but does not reach the
@@ -439,7 +439,7 @@ the constraint `BACKWARD_COMPATIBILITY.md` §3 names explicitly.
    (unreadable file → skipped + `note` event); call it from `pump()` before `execute()`,
    and route `recover()`'s rebuild through the same helper. Flush any `deferMessage`
    buffer when the session opens.
-   *Test* (`src/workflows/run.test.ts`, `CEZ_DRY_RUN=1`): a run with a stack delivers a
+   *Test* (`src/workflows/run.test.ts`, `ONNI_DRY_RUN=1`): a run with a stack delivers a
    `{{task}}` containing every message in order to the mock backend; an edit applied
    after enqueue but before dequeue is the version delivered; **hydration leaves
    `RunRecord.task` byte-identical and re-hydrating the same run twice yields the same

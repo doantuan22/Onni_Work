@@ -79,7 +79,7 @@ All references are to `main` @ `05471fd`.
 every path through `cezarHomeDir()`. Format is `NAME=value` lines; no interpolation, no `export`, no quotes
 processing beyond a single optional pair of surrounding quotes.
 
-**Names.** `^[A-Z_][A-Z0-9_]{0,127}$`. Refused: anything starting with `CEZ_`, and `PATH`, `HOME`, `SHELL`,
+**Names.** `^[A-Z_][A-Z0-9_]{0,127}$`. Refused: anything starting with `ONNI_`, and `PATH`, `HOME`, `SHELL`,
 `USER`, `TMPDIR`, `TEMP`, `TMP`, `NODE_OPTIONS`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `DYLD_*`, `BASH_ENV`, `ENV`.
 A refused name is a 400 with the reason, never a silent drop.
 
@@ -117,23 +117,23 @@ delete action. No reveal, no copy.
 
 | Variable | Value |
 | --- | --- |
-| `CEZ_RUN_ID` | the run id |
-| `CEZ_PROJECT_ID` | the project id |
-| `CEZ_WORKTREE` | absolute worktree path (equals `cwd`) |
-| `CEZ_BRANCH` | the run's branch |
-| `CEZ_BASE` | the recorded fork point (`run.baseBranch`) |
-| `CEZ_STEP_ID` | the check step's id |
-| `CEZ_ATTEMPT` | 1-based attempt number of this check within the run |
-| `CEZ_SHARED_CACHE_DIR` | `~/.cezar/cache/<projectId>`, created `0700` on first use |
-| `CEZ_GITHUB_REPO`, `CEZ_GITHUB_NUMBER`, `CEZ_GITHUB_EVENT` | from the automation provenance, GitHub runs only |
-| `CEZ_PR_HEAD_SHA`, `CEZ_PR_HEAD_REF`, `CEZ_PR_BASE_REF` | Phase 3 PR-head runs only |
+| `ONNI_RUN_ID` | the run id |
+| `ONNI_PROJECT_ID` | the project id |
+| `ONNI_WORKTREE` | absolute worktree path (equals `cwd`) |
+| `ONNI_BRANCH` | the run's branch |
+| `ONNI_BASE` | the recorded fork point (`run.baseBranch`) |
+| `ONNI_STEP_ID` | the check step's id |
+| `ONNI_ATTEMPT` | 1-based attempt number of this check within the run |
+| `ONNI_SHARED_CACHE_DIR` | `~/.cezar/cache/<projectId>`, created `0700` on first use |
+| `ONNI_GITHUB_REPO`, `ONNI_GITHUB_NUMBER`, `ONNI_GITHUB_EVENT` | from the automation provenance, GitHub runs only |
+| `ONNI_PR_HEAD_SHA`, `ONNI_PR_HEAD_REF`, `ONNI_PR_BASE_REF` | Phase 3 PR-head runs only |
 
-`CEZ_SHARED_CACHE_DIR` is the fix for the cold replay cache. The documented e2e config is
-`cache: { mode: 'read-write', dir: process.env.CEZ_SHARED_CACHE_DIR ? join(process.env.CEZ_SHARED_CACHE_DIR, 'e2e') : '.e2e/cache' }`.
+`ONNI_SHARED_CACHE_DIR` is the fix for the cold replay cache. The documented e2e config is
+`cache: { mode: 'read-write', dir: process.env.ONNI_SHARED_CACHE_DIR ? join(process.env.ONNI_SHARED_CACHE_DIR, 'e2e') : '.e2e/cache' }`.
 Parallel tasks on different branches can overwrite each other's recordings. The cost is a re-recording (model
 calls), not a wrong verdict, because e2e verifies the end state of every replay. Documented, not mitigated.
 
-These are cezar-set outputs, not user knobs, but they are `CEZ_*` names: list them in `docs/reference.md` and add
+These are cezar-set outputs, not user knobs, but they are `ONNI_*` names: list them in `docs/reference.md` and add
 a commented "set by cezar for check steps, do not set" block to `.env.example` in the same commit.
 
 ### Phase 3: pull-request head worktrees for automations
@@ -192,8 +192,8 @@ No engine code. The documented workflow posts a comment from the check itself:
   command: |
     npm ci --prefer-offline --no-audit >/dev/null
     npx e2e run --reporter list,markdown --max-failures 3; code=$?
-    if [ -f .e2e/summary.md ] && [ -n "$CEZ_GITHUB_NUMBER" ]; then
-      gh pr comment "$CEZ_GITHUB_NUMBER" --repo "$CEZ_GITHUB_REPO" --edit-last --create-if-none --body-file .e2e/summary.md
+    if [ -f .e2e/summary.md ] && [ -n "$ONNI_GITHUB_NUMBER" ]; then
+      gh pr comment "$ONNI_GITHUB_NUMBER" --repo "$ONNI_GITHUB_REPO" --edit-last --create-if-none --body-file .e2e/summary.md
     fi
     exit $code
 ```
@@ -205,12 +205,12 @@ docs show the two-call fallback.
 
 | Scenario | Before | After |
 | --- | --- | --- |
-| Workflow with checks, no `check-env` file | check gets `process.env` | same, plus `CEZ_*` context vars |
+| Workflow with checks, no `check-env` file | check gets `process.env` | same, plus `ONNI_*` context vars |
 | Failing check output in the retry prompt | raw | redacted with host and run secrets |
 | User who exported `ANTHROPIC_API_KEY` per the old docs | works, and leaks into agents | unchanged (no behavior removed); docs now steer to `check-env` |
 | `pull_request.opened` automation without `checkout` | worktree from base | unchanged |
 | `create-pr` on any existing run | works | unchanged; only `forkRef` runs get 409 |
-| `CEZ_DRY_RUN=1` | — | `check-env` resolves normally; Phase 3 makes no `gh`/`git fetch` calls and uses a fixture PR |
+| `ONNI_DRY_RUN=1` | — | `check-env` resolves normally; Phase 3 makes no `gh`/`git fetch` calls and uses a fixture PR |
 
 No timer, lock, cap or timeout is removed. The only behavior change on the zero-config path is the redaction of
 the retry prompt, which can only remove text.
@@ -232,7 +232,7 @@ A `pr-head` launch has exactly these outcomes, and each one ends somewhere:
 | Question | Answer |
 | --- | --- |
 | Why not a per-step `env:` in workflow YAML? | Workflow files are committed. Secrets would end up in the repo, or the YAML would need an interpolation language. A project store keeps values off disk in the repo and off the agent. |
-| Why not reuse `CEZ_ENV_PASSTHROUGH`? | It widens what agents receive. The goal is the opposite. |
+| Why not reuse `ONNI_ENV_PASSTHROUGH`? | It widens what agents receive. The goal is the opposite. |
 | Why not put model keys into Agent accounts? | Accounts select how a coding agent authenticates. A check's credential belongs to the project, not to the agent backend, and must never reach the agent. |
 | Should cezar set `E2E_TELEMETRY_FLEET` by default? | No. That is a vendor-specific default in the engine. Documented in `docs/e2e-verification.md`; users can put it in `check-env`. |
 | Does a checks-only workflow work? | Must be verified by a test (below). The PR verification workflow has no agent step. If the engine requires one, fixing that is in scope for Phase 3. |
@@ -244,7 +244,7 @@ Prove-red rule applies: for each fix test, `git stash push -- <source files>`, c
 **Phase 1**
 
 - `check-env.test.ts`: `0600` file and `0700` dir, refused names (each class), atomic write under concurrent
-  writers, `GET` returns names only, `O_NOFOLLOW` refuses a symlinked file, sandbox guard trips outside `CEZ_HOME`.
+  writers, `GET` returns names only, `O_NOFOLLOW` refuses a symlinked file, sandbox guard trips outside `ONNI_HOME`.
 - `check-env-injection.test.ts`: a check step sees `FOO` from `check-env`; the claude, codex and opencode
   `buildChildEnv` results for the same run do not contain it. Regression pin: with `ANTHROPIC_API_KEY` only in
   `check-env`, the claude agent env has no `ANTHROPIC_API_KEY`.
@@ -256,7 +256,7 @@ Prove-red rule applies: for each fix test, `git stash push -- <source files>`, c
 
 - Every variable in the table is present with the right value on a worktree run; GitHub-only and PR-only
   variables are absent elsewhere (absent, not empty).
-- `CEZ_SHARED_CACHE_DIR` is created `0700` and is the same path for two runs of one project, different across
+- `ONNI_SHARED_CACHE_DIR` is created `0700` and is the same path for two runs of one project, different across
   projects.
 
 **Phase 3**
@@ -271,7 +271,7 @@ Prove-red rule applies: for each fix test, `git stash push -- <source files>`, c
 - `POST /runs/:id/pr` on a `forkRef` run → 409; on a normal run → unchanged (guard).
 - Checks-only workflow reaches the review gate with a correct status.
 - Existing `pull_request.opened` automation without `checkout` forks from base (guard, passes on `main`).
-- `CEZ_DRY_RUN=1` → no network, fixture PR used.
+- `ONNI_DRY_RUN=1` → no network, fixture PR used.
 - `contract-parity` tests updated for `untrustedHead` and the new routes.
 
 ## Docs (same PR as the code that needs them)
@@ -279,13 +279,13 @@ Prove-red rule applies: for each fix test, `git stash push -- <source files>`, c
 - `docs/e2e-verification.md`:
   - Replace "export the model credential before starting cezar" with `cez check-env set`, and state why: a
     prefix-matched key reaches agents and switches Claude Code or Codex to API billing.
-  - Add `CEZ_SHARED_CACHE_DIR` to the `e2e.config.ts` snippet.
+  - Add `ONNI_SHARED_CACHE_DIR` to the `e2e.config.ts` snippet.
   - Add a "Verify a pull request" section with `checkout: 'pr-head'` and the comment-posting check.
   - Add an "On every PR, in CI" section pointing to GitHub Actions with `@e2e-dev/github`, with secrets in
     repository secrets and fork PRs excluded.
   - State that check tools must use API keys or service-account keys, not subscription logins.
 - `docs/reference.md`: env table for check steps, `cez check-env`, the two automation fields.
-- `.env.example`: the commented `CEZ_*` check-context block.
+- `.env.example`: the commented `ONNI_*` check-context block.
 - `CHANGELOG.md`: one entry per phase.
 
 ## Rollout

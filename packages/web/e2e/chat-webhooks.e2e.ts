@@ -1,7 +1,7 @@
 import { test } from '@e2e-dev/web'
 import { expect } from 'e2e'
 
-// These are deliberately fictional credentials. The fixture forces CEZ_DRY_RUN=1,
+// These are deliberately fictional credentials. The fixture forces ONNI_DRY_RUN=1,
 // so no webhook request can reach Slack, Discord, or any external destination.
 const destinations = [
   { name: 'Slack', format: 'slack.v1', url: 'https://hooks.slack.com/services/T1/B1/test' },

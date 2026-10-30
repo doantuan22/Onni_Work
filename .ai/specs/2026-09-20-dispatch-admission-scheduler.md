@@ -204,7 +204,7 @@ section are updated.
   browser and the CLI show the same number after the query refetch.
 - **No new task-table surface.** A capped child is an ordinary `queued` row and already shows its
   queue position; there is no held chip, no Release action and no stale-state cleanup.
-- States: `null` → field empty, behavior unchanged; `CEZ_DISPATCH=0` → no child is ever created,
+- States: `null` → field empty, behavior unchanged; `ONNI_DISPATCH=0` → no child is ever created,
   the field is simply inert (the section may keep rendering it as today).
 
 ## 📝 Edge Cases & Failure Scenarios
@@ -224,7 +224,7 @@ section are updated.
 | Cross-project | `dispatchBusy()` sums every manager, so the ceiling is workspace-wide like `maxParallel`. |
 | Restart | The key persists in `~/.cezar/config.json`; queued children resume through the normal `recover()` path with no special handling. |
 | Cancel/delete a queued dispatch child | Unchanged; the next startable run takes the freed position. |
-| `CEZ_DISPATCH=0` | No children exist; the key is inert. |
+| `ONNI_DISPATCH=0` | No children exist; the key is inert. |
 | Remote mode | Applies everywhere — there is no browser-bound state to lose. |
 
 ## 📝 Risks & Impact Review
@@ -367,7 +367,7 @@ claim below is also verifiable in the source files named inline):
   `workflows/recover-dispatch.test.ts` + `workspace/semaphore.test.ts` (32).
 
 > Harness note for the implementation PR: this cockpit exports
-> `CEZ_AGENT_MODELS_LOCKED=1`, which makes `startRun()` drop the model
+> `ONNI_AGENT_MODELS_LOCKED=1`, which makes `startRun()` drop the model
 > (`run.ts:1152-1154`) and turns `dispatch-engine.test.ts`'s intent/model assertion red even on a
-> clean tree. Run the dispatch suite with `env -u CEZ_AGENT_MODELS_LOCKED` so the baseline is
+> clean tree. Run the dispatch suite with `env -u ONNI_AGENT_MODELS_LOCKED` so the baseline is
 > reproducible; the three counts above were produced that way.

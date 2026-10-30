@@ -143,8 +143,8 @@ describe('RunManager repository-root isolation', { timeout: 20_000 }, () => {
   });
 
   it('allows explicitly unsafe root runs to overlap when the repository lock is disabled', async () => {
-    const previous = process.env.CEZ_DISABLE_REPO_LOCK;
-    process.env.CEZ_DISABLE_REPO_LOCK = '1';
+    const previous = process.env.ONNI_DISABLE_REPO_LOCK;
+    process.env.ONNI_DISABLE_REPO_LOCK = '1';
     try {
       const root = fixtureRepo();
       const store = RunStore.open(join(root, '.ai/onni'));
@@ -178,8 +178,8 @@ describe('RunManager repository-root isolation', { timeout: 20_000 }, () => {
         expect(notes.some((event) => String(event.message).includes('exclusive access'))).toBe(false);
       }
     } finally {
-      if (previous === undefined) delete process.env.CEZ_DISABLE_REPO_LOCK;
-      else process.env.CEZ_DISABLE_REPO_LOCK = previous;
+      if (previous === undefined) delete process.env.ONNI_DISABLE_REPO_LOCK;
+      else process.env.ONNI_DISABLE_REPO_LOCK = previous;
     }
   });
 });

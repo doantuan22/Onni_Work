@@ -13,7 +13,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
  * `autosaveCommit` must never capture a half-resolved merge (#471). The incident
  * behind that issue was an autosave committing conflict markers, and the flushes
  * that produce most autosave commits are deliberately ungated — so the guard,
- * not the `CEZ_AUTOSAVE` gate, is what actually prevents a recurrence.
+ * not the `ONNI_AUTOSAVE` gate, is what actually prevents a recurrence.
  */
 describe('autosave conflict guard (#471 follow-up)', () => {
   let repo: string;

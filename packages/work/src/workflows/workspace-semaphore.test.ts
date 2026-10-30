@@ -16,7 +16,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
  * caps concurrent runs at the global `resources.maxParallel`, replacing the
  * old per-repo count. Three contracts, each against real managers on real
  * fixture repos (run.test.ts conventions — check-step slot holders, and the
- * CEZ_DRY_RUN mock agent where a live session is needed):
+ * ONNI_DRY_RUN mock agent where a live session is needed):
  *
  *  1. two managers, cap 2 → a third run queues ACROSS projects;
  *  2. the #347 exemption survives the move: a `waiting` run holds no slot,
@@ -86,8 +86,8 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
   }
 
   beforeEach(() => {
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
   });
 
   it('exempts only the configured number of durable monitoring sessions', () => {
@@ -127,8 +127,8 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
     for (const manager of managers.splice(0)) manager.dispose();
     stores.length = 0;
     for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-    if (savedEnv.CEZ_DRY_RUN === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedEnv.CEZ_DRY_RUN;
+    if (savedEnv.ONNI_DRY_RUN === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedEnv.ONNI_DRY_RUN;
   });
 
   it('caps concurrent runs across two projects: with cap 2, the third run queues', async () => {

@@ -27,7 +27,7 @@ function initRepo(dir: string): void {
 }
 
 describe('POST /api/v1/groups/:groupId/pick — review gate', () => {
-  const savedGate = process.env.CEZ_REVIEW_GATE;
+  const savedGate = process.env.ONNI_REVIEW_GATE;
   let repoRoot: string;
   let worktree: string;
   let store: RunStore;
@@ -55,8 +55,8 @@ describe('POST /api/v1/groups/:groupId/pick — review gate', () => {
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedGate === undefined) delete process.env.CEZ_REVIEW_GATE;
-    else process.env.CEZ_REVIEW_GATE = savedGate;
+    if (savedGate === undefined) delete process.env.ONNI_REVIEW_GATE;
+    else process.env.ONNI_REVIEW_GATE = savedGate;
   });
 
   /** A finished (`done`) group winner whose worktree holds a real diff vs base. */
@@ -82,7 +82,7 @@ describe('POST /api/v1/groups/:groupId/pick — review gate', () => {
     });
 
   it('gate off (default): a changed winner stays done', async () => {
-    delete process.env.CEZ_REVIEW_GATE;
+    delete process.env.ONNI_REVIEW_GATE;
     const winner = winnerRun();
     const res = await pick(winner.id);
     expect(res.status).toBe(200);
@@ -90,14 +90,14 @@ describe('POST /api/v1/groups/:groupId/pick — review gate', () => {
   });
 
   it('gate on + non-autonomous: the changed winner flips to review', async () => {
-    process.env.CEZ_REVIEW_GATE = '1';
+    process.env.ONNI_REVIEW_GATE = '1';
     const winner = winnerRun();
     await pick(winner.id);
     expect(store.getRun(winner.id)?.status).toBe('review');
   });
 
   it('gate on + autonomous: the winner stays done (autonomous wins)', async () => {
-    process.env.CEZ_REVIEW_GATE = '1';
+    process.env.ONNI_REVIEW_GATE = '1';
     const winner = winnerRun(true);
     await pick(winner.id);
     expect(store.getRun(winner.id)?.status).toBe('done');

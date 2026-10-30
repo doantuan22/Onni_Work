@@ -46,7 +46,7 @@ export function readTestEnv(): EnvDescriptor {
 /**
  * The environment for a spec-owned `onni serve` over a throwaway `dataRoot`.
  *
- * `CEZ_DRY_RUN` is why these boots need no network and no agent login. `CEZ_HOME` is why they
+ * `ONNI_DRY_RUN` is why these boots need no network and no agent login. `ONNI_HOME` is why they
  * are *isolated*: since the multi-project workspace landed, booting in an unregistered folder
  * APPENDS it to `~/.onni/config.json`, so an unpinned fixture server would (a) litter the
  * developer's real registry with a dead `/tmp/onni-e2e-…` entry per run and (b) make every
@@ -64,16 +64,16 @@ export function fixtureServeEnv(
   return {
     ...process.env,
     // One line on purpose: the `fixture-serve-must-pin-onni-home` design guardian reads these
-    // two together, and a CEZ_DRY_RUN without CEZ_HOME beside it is exactly the mistake it
+    // two together, and a ONNI_DRY_RUN without ONNI_HOME beside it is exactly the mistake it
     // exists to catch.
-    CEZ_DRY_RUN: '1', CEZ_HOME: resolve(dataRoot, '.onni-home'),
+    ONNI_DRY_RUN: '1', ONNI_HOME: resolve(dataRoot, '.onni-home'),
     // A fixture repo must hold exactly the skills the fixture wrote. Open Mercato skill updates
     // are default-on (AGENTS.md § Zero config), so a boot inside the six-hour window installs the
     // whole `om-*` collection INTO the fixture and every "these are the project skills"
     // assertion starts depending on the machine's cache and network. The shared test env
     // (`skills-update.e2e.ts` attaches to it) is where that behaviour is exercised on purpose;
     // `extra` can still turn it back on for a spec that wants it.
-    CEZ_SKILLS_AUTO_UPDATE: '0',
+    ONNI_SKILLS_AUTO_UPDATE: '0',
     ...extra,
   }
 }

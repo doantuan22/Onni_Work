@@ -36,7 +36,7 @@ export const workspaceConfigResponseSchema = z.object({
   browseRoot: z.string(),
   /** Checkout root for GUI-cloned projects — stored as written (`~` kept). */
   projectsDir: z.string(),
-  /** Stored override; `null` means inherit `CEZ_SKILLS_AUTO_UPDATE`, then true. */
+  /** Stored override; `null` means inherit `ONNI_SKILLS_AUTO_UPDATE`, then true. */
   skillsAutoUpdate: z.boolean().nullable(),
   effectiveSkillsAutoUpdate: z.boolean(),
   /** Skills repos added in Global settings; every project loads them as team skills. */
@@ -47,7 +47,7 @@ export const workspaceConfigResponseSchema = z.object({
   composerDefaults: z.object({
     autonomous: z.boolean().nullable(),
     worktree: z.boolean().nullable(),
-    /** `'source-dependent'` when no `CEZ_AUTONOMOUS_DEFAULT` pins it either way. */
+    /** `'source-dependent'` when no `ONNI_AUTONOMOUS_DEFAULT` pins it either way. */
     inheritedAutonomous: z.union([z.boolean(), z.literal('source-dependent')]),
     inheritedWorktree: z.boolean(),
   }),
@@ -441,9 +441,9 @@ export const configResponseSchema = z.object({
   /** Keep the last N finished worktrees on disk (#483); 0 = unlimited. Older ones are reclaimed
    *  (directory only — branch kept, so work is recoverable). */
   worktreeRetention: z.number(),
-  /** Live title updates: null = no config key, the `CEZ_TITLE_UPDATES` env default (ON) decides. */
+  /** Live title updates: null = no config key, the `ONNI_TITLE_UPDATES` env default (ON) decides. */
   liveTitleUpdates: z.boolean().nullable(),
-  /** Optional review gate (#489): null = no config key, the `CEZ_REVIEW_GATE` env default (OFF)
+  /** Optional review gate (#489): null = no config key, the `ONNI_REVIEW_GATE` env default (OFF)
    *  decides. */
   reviewGate: z.boolean().nullable(),
   /** Trunk-based projects (spec 2026-10-20-trunk-based-projects); null = the key is unset
@@ -671,7 +671,7 @@ export const openTargetSchema = z.object({
 });
 export type OpenTarget = z.infer<typeof openTargetSchema>;
 
-/** `GET /api/v1/open-targets` — the detected local apps; empty in hosted mode (CEZ_REMOTE). */
+/** `GET /api/v1/open-targets` — the detected local apps; empty in hosted mode (ONNI_REMOTE). */
 export const openTargetsResponseSchema = z.object({
   targets: z.array(openTargetSchema),
 });

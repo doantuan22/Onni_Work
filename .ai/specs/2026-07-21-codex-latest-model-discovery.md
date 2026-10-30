@@ -72,7 +72,7 @@ Expose the result from a workspace-level read-only endpoint. The cockpit fetches
 
 Create `src/core/runner-model-catalog.ts` as the backend-neutral service boundary and `src/core/codex-model-catalog.ts` as the Codex adapter. Do not leak generated Codex protocol types beyond the adapter.
 
-The Codex adapter must reuse shared app-server process primitives extracted from `src/core/codex-app-server-runner.ts` where practical: executable selection (`CEZ_CODEX_BIN` then `codex`), `buildChildEnv`, newline-delimited JSON parsing, initialize parameters, request correlation, and bounded shutdown. Discovery must not start a thread or turn and must not mutate Codex configuration.
+The Codex adapter must reuse shared app-server process primitives extracted from `src/core/codex-app-server-runner.ts` where practical: executable selection (`ONNI_CODEX_BIN` then `codex`), `buildChildEnv`, newline-delimited JSON parsing, initialize parameters, request correlation, and bounded shutdown. Discovery must not start a thread or turn and must not mutate Codex configuration.
 
 Flow:
 
@@ -188,7 +188,7 @@ Evidence and illustrative proposed state:
 - **Pagination loop or excessive catalog:** stop at the cap, discard the incomplete refresh, and retain last-known-good data.
 - **Model rollout changes between requests:** the next TTL refresh replaces the list atomically. A selected ID that disappears stays as custom/legacy until changed.
 - **Duplicate/blank IDs:** discard blank IDs and retain the first duplicate.
-- **Custom `CEZ_CODEX_BIN`:** use the same resolved binary as run execution so discovery and actual execution cannot disagree by construction.
+- **Custom `ONNI_CODEX_BIN`:** use the same resolved binary as run execution so discovery and actual execution cannot disagree by construction.
 - **Multiple projects or browser clients:** share the host service, cache, and in-flight refresh without per-project processes.
 - **Process shutdown during discovery:** abort the child and do not write cache state.
 

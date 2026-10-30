@@ -11,7 +11,7 @@ import { createApp, startServer, type ServerDeps } from './server.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 
 /**
- * Automations are on by default and `CEZ_AUTOMATIONS=0` opts out (spec 2026-09-14, which flipped
+ * Automations are on by default and `ONNI_AUTOMATIONS=0` opts out (spec 2026-09-14, which flipped
  * the #801 opt-in). Opted out, every route of the family answers `409` naming the flag — defense
  * in depth behind the cockpit's nav gate, so a bookmarked deep link or a script cannot drive a
  * feature the operator switched off.
@@ -38,9 +38,9 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
   let dataDir: string;
   let store: RunStore;
   let automationId: string;
-  const savedAutomations = process.env.CEZ_AUTOMATIONS;
-  const savedFollowups = process.env.CEZ_FOLLOWUPS;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedAutomations = process.env.ONNI_AUTOMATIONS;
+  const savedFollowups = process.env.ONNI_FOLLOWUPS;
+  const savedRemote = process.env.ONNI_REMOTE;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-automations-gate-'));
@@ -51,20 +51,20 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
     // must never destroy it.
     const seed = AutomationStore.open(dataDir);
     automationId = seed.create(DEFINITION).id;
-    delete process.env.CEZ_AUTOMATIONS;
-    delete process.env.CEZ_FOLLOWUPS;
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_AUTOMATIONS;
+    delete process.env.ONNI_FOLLOWUPS;
+    delete process.env.ONNI_REMOTE;
   });
 
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedAutomations === undefined) delete process.env.CEZ_AUTOMATIONS;
-    else process.env.CEZ_AUTOMATIONS = savedAutomations;
-    if (savedFollowups === undefined) delete process.env.CEZ_FOLLOWUPS;
-    else process.env.CEZ_FOLLOWUPS = savedFollowups;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedAutomations === undefined) delete process.env.ONNI_AUTOMATIONS;
+    else process.env.ONNI_AUTOMATIONS = savedAutomations;
+    if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
+    else process.env.ONNI_FOLLOWUPS = savedFollowups;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const app = (over: Partial<ServerDeps> = {}) =>
@@ -76,9 +76,9 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
     body: JSON.stringify(body),
   });
 
-  describe('off (CEZ_AUTOMATIONS=0)', () => {
+  describe('off (ONNI_AUTOMATIONS=0)', () => {
     beforeEach(() => {
-      process.env.CEZ_AUTOMATIONS = '0';
+      process.env.ONNI_AUTOMATIONS = '0';
     });
     /** Every route of the feature, in the spelling BACKWARD_COMPATIBILITY.md §2 inventories. */
     const routes = (id: string): Array<[label: string, path: string, init?: RequestInit]> => [
@@ -101,7 +101,7 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
         const [, path, init] = routes(automationId).find(([name]) => name === label)!;
         const res = await apiRequest(app(), path, init);
         expect(res.status).toBe(409);
-        expect(((await res.json()) as { error: string }).error).toContain('CEZ_AUTOMATIONS');
+        expect(((await res.json()) as { error: string }).error).toContain('ONNI_AUTOMATIONS');
       },
     );
 
@@ -120,13 +120,13 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
     it('gates the project-scoped mirror too, not just the boot alias', async () => {
       const res = await apiRequest(app(), '/api/v1/p/default/automations');
       expect(res.status).toBe(409);
-      expect(((await res.json()) as { error: string }).error).toContain('CEZ_AUTOMATIONS');
+      expect(((await res.json()) as { error: string }).error).toContain('ONNI_AUTOMATIONS');
     });
 
     it('hides definitions without destroying them — flipping the flag brings them back', async () => {
       await apiRequest(app(), '/api/v1/automations');
       await apiRequest(app(), `/api/v1/automations/${automationId}`, { method: 'DELETE' });
-      delete process.env.CEZ_AUTOMATIONS;
+      delete process.env.ONNI_AUTOMATIONS;
       const res = await apiRequest(app(), '/api/v1/automations');
       expect(res.status).toBe(200);
       const body = (await res.json()) as { automations: Array<{ id: string; name: string }> };
@@ -174,25 +174,25 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
    *
    * Asserted at `startServer`, because that is where the scheduler is wired — `createApp` never
    * constructs one. The server binds an ephemeral loopback port and is closed immediately; nothing
-   * here talks to the network (`CEZ_DRY_RUN=1`) or to a real agent CLI.
+   * here talks to the network (`ONNI_DRY_RUN=1`) or to a real agent CLI.
    */
   describe('background scheduler', () => {
-    const savedHome = process.env.CEZ_HOME;
-    const savedDryRun = process.env.CEZ_DRY_RUN;
+    const savedHome = process.env.ONNI_HOME;
+    const savedDryRun = process.env.ONNI_DRY_RUN;
     let home: string;
 
     beforeEach(() => {
       home = mkdtempSync(join(tmpdir(), 'onni-automations-gate-home-'));
-      process.env.CEZ_HOME = home;
-      process.env.CEZ_DRY_RUN = '1';
+      process.env.ONNI_HOME = home;
+      process.env.ONNI_DRY_RUN = '1';
     });
 
     afterEach(() => {
       rmSync(home, { recursive: true, force: true });
-      if (savedHome === undefined) delete process.env.CEZ_HOME;
-      else process.env.CEZ_HOME = savedHome;
-      if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = savedDryRun;
+      if (savedHome === undefined) delete process.env.ONNI_HOME;
+      else process.env.ONNI_HOME = savedHome;
+      if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = savedDryRun;
       vi.restoreAllMocks();
     });
 
@@ -219,17 +219,17 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
         // the default-on branch additionally waits for scheduler.start(), while the opt-out
         // branch must settle without ever starting it.
         await listed;
-        if (process.env.CEZ_AUTOMATIONS !== '0') {
+        if (process.env.ONNI_AUTOMATIONS !== '0') {
           await vi.waitFor(() => expect(started).toHaveBeenCalledTimes(1), { timeout: 4000, interval: 10 });
         }
       } finally {
         server.close();
       }
-      expect(started).toHaveBeenCalledTimes(process.env.CEZ_AUTOMATIONS === '0' ? 0 : 1);
+      expect(started).toHaveBeenCalledTimes(process.env.ONNI_AUTOMATIONS === '0' ? 0 : 1);
     };
 
     it('never starts polling while opted out', async () => {
-      process.env.CEZ_AUTOMATIONS = '0';
+      process.env.ONNI_AUTOMATIONS = '0';
       await boot();
     });
 
@@ -248,25 +248,25 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
    * carrying exactly that shape: an enabled poll that has never succeeded.
    */
   describe('default-on re-baseline (boot path)', () => {
-    const savedHome = process.env.CEZ_HOME;
-    const savedDryRun = process.env.CEZ_DRY_RUN;
+    const savedHome = process.env.ONNI_HOME;
+    const savedDryRun = process.env.ONNI_DRY_RUN;
     let home: string;
     let staleId: string;
 
     beforeEach(() => {
       home = mkdtempSync(join(tmpdir(), 'onni-automations-gate-rebaseline-home-'));
-      process.env.CEZ_HOME = home;
-      process.env.CEZ_DRY_RUN = '1';
+      process.env.ONNI_HOME = home;
+      process.env.ONNI_DRY_RUN = '1';
       const seed = AutomationStore.open(dataDir);
       staleId = seed.create({ ...DEFINITION, name: 'Stale poll', enabled: true }).id;
     });
 
     afterEach(() => {
       rmSync(home, { recursive: true, force: true });
-      if (savedHome === undefined) delete process.env.CEZ_HOME;
-      else process.env.CEZ_HOME = savedHome;
-      if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = savedDryRun;
+      if (savedHome === undefined) delete process.env.ONNI_HOME;
+      else process.env.ONNI_HOME = savedHome;
+      if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = savedDryRun;
       vi.restoreAllMocks();
     });
 

@@ -326,7 +326,7 @@ subtracted" sentence is rewritten in the same commit. Error/stale behavior uncha
   derivable and labelled.
 - **Cost, stated honestly.** Two windows: (a) local desktop shell open ⇒ the sampler runs for the
   session (1 tick/2 s); (b) below `md` ⇒ only while the card is on screen (v1 behavior). The
-  widget adds a re-armed timeout per frame, not an interval. No `CEZ_*` flag is required (same
+  widget adds a re-armed timeout per frame, not an interval. No `ONNI_*` flag is required (same
   process, loopback, existing topic); pausing the root subscription on `document.hidden` is an
   optional decision, not a requirement.
 - **Compatibility.** Additive contract fields + docs on the existing §2 bullet; no route/topic

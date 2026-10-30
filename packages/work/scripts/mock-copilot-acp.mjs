@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * An offline stand-in for `copilot --acp`, so `CEZ_DRY_RUN=1` never reaches GitHub — the same role
+ * An offline stand-in for `copilot --acp`, so `ONNI_DRY_RUN=1` never reaches GitHub — the same role
  * `mock-claude.mjs` and `mock-pi-rpc.mjs` play for their runners.
  *
  * It speaks the frames the real CLI speaks, taken from the same source as the golden fixtures
@@ -24,12 +24,12 @@ const update = (sessionId, body) => send({ jsonrpc: '2.0', method: 'session/upda
 
 let turn = 0;
 let cancelled = false;
-/** Set by CEZ_MOCK_COPILOT_UNAUTHENTICATED=1, so the auth path is testable offline. */
-const unauthenticated = process.env.CEZ_MOCK_COPILOT_UNAUTHENTICATED === '1';
-/** Set by CEZ_MOCK_COPILOT_ASK_PERMISSION=1: the real CLI should never ask under
+/** Set by ONNI_MOCK_COPILOT_UNAUTHENTICATED=1, so the auth path is testable offline. */
+const unauthenticated = process.env.ONNI_MOCK_COPILOT_UNAUTHENTICATED === '1';
+/** Set by ONNI_MOCK_COPILOT_ASK_PERMISSION=1: the real CLI should never ask under
  *  `--allow-all-tools`, but "should never" is exactly the assumption that strands a run, so the
  *  auto-answer path needs to be exercisable. */
-const askPermission = process.env.CEZ_MOCK_COPILOT_ASK_PERMISSION === '1';
+const askPermission = process.env.ONNI_MOCK_COPILOT_ASK_PERMISSION === '1';
 /** Inbound requests onni answers, keyed by the id this mock sent them under. */
 const pendingRequests = new Map();
 let nextRequestId = 1000;
@@ -37,8 +37,8 @@ let nextRequestId = 1000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // So the runner test can assert the exact flags the runner spawned with, without a real CLI.
-if (process.env.CEZ_MOCK_COPILOT_ARGS_FILE) {
-  writeFileSync(process.env.CEZ_MOCK_COPILOT_ARGS_FILE, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd() }));
+if (process.env.ONNI_MOCK_COPILOT_ARGS_FILE) {
+  writeFileSync(process.env.ONNI_MOCK_COPILOT_ARGS_FILE, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd() }));
 }
 
 /**
@@ -66,7 +66,7 @@ async function handle(frame) {
         promptCapabilities: { image: true, audio: false, embeddedContext: true },
         sessionCapabilities: { close: {}, list: {} },
       },
-      agentInfo: { name: 'Copilot', title: 'Copilot', version: 'mock (CEZ_DRY_RUN=1)' },
+      agentInfo: { name: 'Copilot', title: 'Copilot', version: 'mock (ONNI_DRY_RUN=1)' },
       authMethods: [{ id: 'copilot-login', name: 'Log in with Copilot CLI', description: 'Run `copilot login` in the terminal' }],
     });
     return;
@@ -97,9 +97,9 @@ async function handle(frame) {
 
   if (method === 'session/prompt') {
     // The CLI quitting cleanly with a prompt unanswered (telemetry 2e3b122d).
-    if (process.env.CEZ_MOCK_COPILOT_EXIT_MID_TURN === '1') process.exit(0);
+    if (process.env.ONNI_MOCK_COPILOT_EXIT_MID_TURN === '1') process.exit(0);
     // A turn that never ends on its own: only stdin EOF (exit 0) or a signal stops it.
-    if (process.env.CEZ_MOCK_COPILOT_PROMPT_HANGS === '1') return;
+    if (process.env.ONNI_MOCK_COPILOT_PROMPT_HANGS === '1') return;
     turn += 1;
     cancelled = false;
     const sessionId = params?.sessionId ?? SESSION_ID;
@@ -168,7 +168,7 @@ async function handle(frame) {
     });
     update(sessionId, {
       sessionUpdate: 'agent_message_chunk',
-      content: { type: 'text', text: `[CEZ_DRY_RUN] Copilot mock answering turn ${turn}: ${text.slice(0, 120)}` },
+      content: { type: 'text', text: `[ONNI_DRY_RUN] Copilot mock answering turn ${turn}: ${text.slice(0, 120)}` },
     });
     update(sessionId, { sessionUpdate: 'usage_update', used: 120 * turn, size: 128000 });
     answer(id, {

@@ -99,7 +99,7 @@ describe('cursorLaunch', () => {
   write('v1/cursor-agent', '#!/usr/bin/env bash\nexec -a "$0" "$NODE_BIN" --use-system-ca "$SCRIPT_DIR/index.js" "$@"\n');
   symlinkSync(join(dir, 'v1', 'cursor-agent'), join(dir, 'bin', 'agent'));
   write('trampoline', '');
-  const desktop = { platform: 'darwin' as const, hostEnv: { CEZ_DISCLAIM_EXEC: join(dir, 'trampoline') } };
+  const desktop = { platform: 'darwin' as const, hostEnv: { ONNI_DISCLAIM_EXEC: join(dir, 'trampoline') } };
   const env = { PATH: join(dir, 'bin'), NODE_COMPILE_CACHE: '/cache' };
 
   it("starts the launcher's own node in the desktop app, as the launcher would", () => {

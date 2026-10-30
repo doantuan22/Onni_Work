@@ -149,8 +149,8 @@
             <div class="editor-gutter">42<br />43<br />44<br />45<br />46<br />47<br />48<br />49<br />50<br />51<br />52<br />53<br />54<br />55<br />56</div>
 <pre class="editor-pre" aria-hidden="true"><span class="k">export</span> <span class="k">function</span> <span class="f">resolveCapabilities</span><span class="p">(</span><span class="v">env</span><span class="p">:</span> <span class="f">NodeJS</span><span class="p">.</span><span class="f">ProcessEnv</span><span class="p">,</span> <span class="v">bindHost</span><span class="p">?:</span> <span class="k">string</span><span class="p">):</span> <span class="f">Capabilities</span> <span class="p">{</span>
   <span class="k">return</span> <span class="p">{</span>
-    <span class="k">localHandoff</span><span class="p">:</span> <span class="v">env</span><span class="p">.</span><span class="v">CEZ_REMOTE</span> <span class="p">!==</span> <span class="s">'1'</span> <span class="p">&amp;&amp;</span> <span class="f">isLoopbackHost</span><span class="p">(</span><span class="v">bindHost</span><span class="p">),</span>
-    <span class="k">fileEdit</span><span class="p">:</span> <span class="v">env</span><span class="p">.</span><span class="v">CEZ_REMOTE</span> <span class="p">!==</span> <span class="s">'1'</span> <span class="p">&amp;&amp;</span> <span class="f">isLoopbackHost</span><span class="p">(</span><span class="v">bindHost</span><span class="p">)</span> <span class="p">&amp;&amp;</span> <span class="v">env</span><span class="p">.</span><span class="v">CEZ_NO_FILE_EDIT</span> <span class="p">!==</span> <span class="s">'1'</span><span class="p">,</span>
+    <span class="k">localHandoff</span><span class="p">:</span> <span class="v">env</span><span class="p">.</span><span class="v">ONNI_REMOTE</span> <span class="p">!==</span> <span class="s">'1'</span> <span class="p">&amp;&amp;</span> <span class="f">isLoopbackHost</span><span class="p">(</span><span class="v">bindHost</span><span class="p">),</span>
+    <span class="k">fileEdit</span><span class="p">:</span> <span class="v">env</span><span class="p">.</span><span class="v">ONNI_REMOTE</span> <span class="p">!==</span> <span class="s">'1'</span> <span class="p">&amp;&amp;</span> <span class="f">isLoopbackHost</span><span class="p">(</span><span class="v">bindHost</span><span class="p">)</span> <span class="p">&amp;&amp;</span> <span class="v">env</span><span class="p">.</span><span class="v">ONNI_NO_FILE_EDIT</span> <span class="p">!==</span> <span class="s">'1'</span><span class="p">,</span>
     <span class="c">// Deliberately not re-derived here: RunManager enforces the same predicate,</span>
     <span class="c">// and two spellings of "is the inbox on" would eventually disagree.</span>
     <span class="k">followups</span><span class="p">:</span> <span class="f">followupsEnabled</span><span class="p">(</span><span class="v">env</span><span class="p">),</span>
@@ -164,8 +164,8 @@
 <span class="p">}</span></pre>
 <textarea class="editor-ta" spellcheck="false">export function resolveCapabilities(env: NodeJS.ProcessEnv, bindHost?: string): Capabilities {
   return {
-    localHandoff: env.CEZ_REMOTE !== '1' &amp;&amp; isLoopbackHost(bindHost),
-    fileEdit: env.CEZ_REMOTE !== '1' &amp;&amp; isLoopbackHost(bindHost) &amp;&amp; env.CEZ_NO_FILE_EDIT !== '1',
+    localHandoff: env.ONNI_REMOTE !== '1' &amp;&amp; isLoopbackHost(bindHost),
+    fileEdit: env.ONNI_REMOTE !== '1' &amp;&amp; isLoopbackHost(bindHost) &amp;&amp; env.ONNI_NO_FILE_EDIT !== '1',
     // Deliberately not re-derived here: RunManager enforces the same predicate,
     // and two spellings of "is the inbox on" would eventually disagree.
     followups: followupsEnabled(env),

@@ -11,14 +11,14 @@ import './styles/index.css'
  * page and owns `/api/v1/*` under the same authority. The two overrides exist for the case this
  * whole split was for, a cockpit talking to a service somewhere else:
  *
- * - `VITE_CEZ_API_BASE` bakes it in at build time, for a bundle shipped separately.
+ * - `VITE_ONNI_API_BASE` bakes it in at build time, for a bundle shipped separately.
  * - `<meta name="onni-api-base" content="…">` sets it at RUN time, so an operator can point a
  *   deployed bundle at a different service without rebuilding it. It wins, because the HTML is
  *   served per deployment while the bundle is baked once.
  */
 function resolveApiBase(): string {
   const meta = document.querySelector('meta[name="onni-api-base"]')?.getAttribute('content')
-  return meta?.trim() || import.meta.env.VITE_CEZ_API_BASE || ''
+  return meta?.trim() || import.meta.env.VITE_ONNI_API_BASE || ''
 }
 
 setApiBaseUrl(resolveApiBase())

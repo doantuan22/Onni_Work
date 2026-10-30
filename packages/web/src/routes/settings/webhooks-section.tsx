@@ -157,7 +157,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
         <p className="mt-1 text-[13px] text-muted-foreground">{unsupportedPlatform
           ? 'Delivery needs an OS-verified process identity to keep a single sender. Linux, macOS and Windows provide one; this platform does not.'
           : 'Send task updates to Slack, Discord or your own endpoint when a task needs you, is ready for review or finishes.'}</p></div>
-      {!unsupportedPlatform && <p className="text-[13px]">Start onni with <code>CEZ_WEBHOOKS=1</code>, then reload this page. If someone else runs this server, ask them to turn webhooks on.</p>}
+      {!unsupportedPlatform && <p className="text-[13px]">Start onni with <code>ONNI_WEBHOOKS=1</code>, then reload this page. If someone else runs this server, ask them to turn webhooks on.</p>}
       <a className="w-fit text-[13px] underline underline-offset-2 hover:text-foreground" href={guide.href} target="_blank" rel="noreferrer">{guide.note}</a>
     </section>
   </div>

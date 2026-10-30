@@ -1413,7 +1413,7 @@ describe('submit', () => {
 
   it('does not overwrite the remembered preference it never offered', async () => {
     // The user last chose "on". With the inbox off there is no toggle, so persisting the
-    // forced `false` would silently flip their choice for when CEZ_FOLLOWUPS comes back.
+    // forced `false` would silently flip their choice for when ONNI_FOLLOWUPS comes back.
     serve({ health: inboxOffHealth, uiState: { lastGenerateFollowups: true } })
     renderNewTask()
     await pillReady()
@@ -2524,7 +2524,7 @@ describe('lost schedule response recovery', () => {
       if (String(input).endsWith('/deferred-start')) {
         if (!loseResponse && disabledReplay) {
           disabledReplay = false
-          return new Response(JSON.stringify({ error: 'Automations are off — this cockpit was started with CEZ_AUTOMATIONS=0' }), { status: 409 })
+          return new Response(JSON.stringify({ error: 'Automations are off — this cockpit was started with ONNI_AUTOMATIONS=0' }), { status: 409 })
         }
         const body = JSON.parse(String(init?.body))
         accepted.set(body.idempotencyKey, body)
@@ -2590,7 +2590,7 @@ describe('lost schedule response recovery', () => {
 it.each([
   [400, 'Choose a future date and time in the server time zone.'],
   [409, 'Settings or reset time changed. Check the preview again.'],
-  [409, 'Automations are off — this cockpit was started with CEZ_AUTOMATIONS=0'],
+  [409, 'Automations are off — this cockpit was started with ONNI_AUTOMATIONS=0'],
 ])('preserves deferred intent after definite %s rejection: %s', async (status, error) => {
   serve({ health: { ...HEALTH, capabilities: { ...HEALTH.capabilities, automations: true } },
     deferredPreview: async () => new Response(JSON.stringify({ available: true, notBefore: '2099-01-01T09:00:00Z', timeZone: 'UTC', previewRevision: 'r1' }), { status: 200 }),

@@ -27,12 +27,12 @@ export type NavItem = {
    *  forge remote (`forge` non-null, #1412) — see `visibleNavItems`. */
   forge?: boolean
   /** Inbox-gated (#471): the item exists only while `/api/health` reports
-   *  `capabilities.followups` — the global inbox is opt-in via `CEZ_FOLLOWUPS=1`.
+   *  `capabilities.followups` — the global inbox is opt-in via `ONNI_FOLLOWUPS=1`.
    *  See `visibleNavItems`. */
   inbox?: boolean
   /** Automations-gated: the item exists only while `/api/health` reports
    *  `capabilities.automations` — on by default since spec 2026-09-14-automations-redesign,
-   *  off for `CEZ_AUTOMATIONS=0`. It no longer carries the forge gate: a scheduled automation
+   *  off for `ONNI_AUTOMATIONS=0`. It no longer carries the forge gate: a scheduled automation
    *  needs no GitHub remote, so a repo without one still gets the page (with the poll kind
    *  disabled there). See `visibleNavItems`. */
   automations?: boolean
@@ -63,7 +63,7 @@ export type NavAvailability = {
   forge?: boolean
   /** `capabilities.followups` — the opt-in global inbox (#471). */
   inbox?: boolean
-  /** `capabilities.automations` — automations, default-on (spec 2026-09-14), `CEZ_AUTOMATIONS=0` off. */
+  /** `capabilities.automations` — automations, default-on (spec 2026-09-14), `ONNI_AUTOMATIONS=0` off. */
   automations?: boolean
   /** Saved local association; its kind supplies the provider label. */
   tracker?: TrackerKind
@@ -73,7 +73,7 @@ export type NavAvailability = {
  * The nav items a surface should actually render: a gated item drops out — nav item AND tab —
  * unless the health payload says its feature is there. The forge-gated GitHub item needs the
  * forge driver (spec §"GitHub tab (forge tab)"); the Inbox item needs `capabilities.followups`,
- * which is off unless `CEZ_FOLLOWUPS=1` (#471); the Automations item needs
+ * which is off unless `ONNI_FOLLOWUPS=1` (#471); the Automations item needs
  * `capabilities.automations` alone (spec 2026-09-14: on by default, and a schedule needs no
  * forge — the page itself disables the poll kind when there is no GitHub remote).
  *

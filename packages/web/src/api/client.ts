@@ -1816,7 +1816,7 @@ export async function openRunInCli(id: string): Promise<OpenInCliResponse> {
 }
 
 /** The local editors / file-manager / terminal this machine can open a worktree in (#open-in).
- *  Empty in hosted mode (CEZ_REMOTE). */
+ *  Empty in hosted mode (ONNI_REMOTE). */
 export async function getOpenTargets(opts?: ReadOptions): Promise<OpenTargetsResponse> {
   return unwrap(
     await onni.api.v1.p[':projectId']['open-targets'].$get(

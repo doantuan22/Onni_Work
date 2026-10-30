@@ -14,7 +14,7 @@ type WebhookEnv = { Variables: { project: ProjectContext; webhookService: Webhoo
 export function createWebhookRoutes(resolve: (context: ProjectContext) => Promise<WebhookService>) {
   const gate: MiddlewareHandler<WebhookEnv> = async (c, next) => {
     if (!webhookPlatformSupported()) return c.json({ error: WEBHOOK_UNSUPPORTED_PLATFORM_MESSAGE }, 409);
-    if (process.env.CEZ_WEBHOOKS !== '1') return c.json({ error: 'Enable webhook delivery with CEZ_WEBHOOKS=1 and restart onni' }, 409);
+    if (process.env.ONNI_WEBHOOKS !== '1') return c.json({ error: 'Enable webhook delivery with ONNI_WEBHOOKS=1 and restart onni' }, 409);
     if (!c.get('webhookService')) c.set('webhookService', await resolve(c.get('project')));
     c.header('Cache-Control', 'no-store');
     await next();

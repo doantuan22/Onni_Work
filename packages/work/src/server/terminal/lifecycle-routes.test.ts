@@ -32,7 +32,7 @@ class FakePty implements PtyProcess {
 }
 
 describe('terminals stop on every archive / worktree-removal path', () => {
-  const saved = { home: process.env.CEZ_HOME, remote: process.env.CEZ_REMOTE, dry: process.env.CEZ_DRY_RUN };
+  const saved = { home: process.env.ONNI_HOME, remote: process.env.ONNI_REMOTE, dry: process.env.ONNI_DRY_RUN };
   let home: string;
   let repoRoot: string;
   let otherRoot: string;
@@ -47,9 +47,9 @@ describe('terminals stop on every archive / worktree-removal path', () => {
     otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-term-other-'));
     worktree = join(repoRoot, 'wt');
     mkdirSync(worktree, { recursive: true });
-    process.env.CEZ_HOME = home;
-    delete process.env.CEZ_REMOTE;
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_HOME = home;
+    delete process.env.ONNI_REMOTE;
+    process.env.ONNI_DRY_RUN = '1';
     clearProjectProbeCache();
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     ptys = [];
@@ -64,7 +64,7 @@ describe('terminals stop on every archive / worktree-removal path', () => {
     sessions.dispose();
     store.flush();
     await removeTempDir(home, repoRoot, otherRoot);
-    for (const [key, value] of [['CEZ_HOME', saved.home], ['CEZ_REMOTE', saved.remote], ['CEZ_DRY_RUN', saved.dry]] as const) {
+    for (const [key, value] of [['ONNI_HOME', saved.home], ['ONNI_REMOTE', saved.remote], ['ONNI_DRY_RUN', saved.dry]] as const) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }

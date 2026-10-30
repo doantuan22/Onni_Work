@@ -44,7 +44,7 @@ export function AutomationsRoute({ mode = 'list' }: { mode?: 'list' | 'new' | 'e
           icon={<ZapIcon />}
           tone="neutral"
           title="Automations are off"
-          subtitle="This cockpit was started with CEZ_AUTOMATIONS=0. Unset it and restart the service to turn automations on."
+          subtitle="This cockpit was started with ONNI_AUTOMATIONS=0. Unset it and restart the service to turn automations on."
           heading="h2"
         />
       </div>

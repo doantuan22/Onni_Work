@@ -34,8 +34,8 @@ copied when a repository is copied or moved to a new path.
 Secrets are write-only through the API: read responses expose only connection ID/provider.
 They are stored as managed dotenv files in
 `~/.cezar/tracker-connections/<sha256(canonical-project-path)>.env` (or the selected
-`CEZ_HOME`), outside repositories by default, with directory mode `0700` and file mode `0600` on POSIX. A managed `.gitignore` excludes all files in the credential directory from ordinary Git staging,
-including when `CEZ_HOME` is inside a repository; it does not untrack files already committed or
+`ONNI_HOME`), outside repositories by default, with directory mode `0700` and file mode `0600` on POSIX. A managed `.gitignore` excludes all files in the credential directory from ordinary Git staging,
+including when `ONNI_HOME` is inside a repository; it does not untrack files already committed or
 prevent forced staging. Storage uses atomic
 replacement, no backups, and a hash of the canonical repository path. Repository state keeps
 only a non-secret connection ID and scope identity. Form secrets are cleared after save,
@@ -79,7 +79,7 @@ project where it was explicitly configured. Separate narrowly scoped tokens are 
 environment or a repository `.env` are not read by this integration. These names are used only
 inside the managed per-project credential file. Existing saved scopes stay visible, but reads fail closed until you configure
 credentials and reconnect in that project's Settings. There is no silent migration or fallback
-to a global key. `CEZ_DRY_RUN=1` remains an explicitly selected credential-free demo; it cannot
+to a global key. `ONNI_DRY_RUN=1` remains an explicitly selected credential-free demo; it cannot
 save real credentials and never contacts vendors.
 
 ## Credentials and read permissions
@@ -157,7 +157,7 @@ a source link does not grant the agent access to omitted context.
 | Saved connection but no credentials | Configure project credentials and reconnect, or disconnect locally. |
 | Expired result page | Restart the search; cursors are bound to the source, scope, query and server process. |
 | Cannot save/disconnect scope | Restore write access to the project's `.ai/cezar` directory and retry. |
-| Cannot save/remove credentials | Restore owner-only write access to `CEZ_HOME/tracker-connections` (default `~/.cezar/tracker-connections`) and retry. |
+| Cannot save/remove credentials | Restore owner-only write access to `ONNI_HOME/tracker-connections` (default `~/.cezar/tracker-connections`) and retry. |
 
 Deleting `.ai/cezar/tracker.json` removes only the non-secret connection. Ticket content
 is not mirrored there, and already-created run snapshots remain in run history.

@@ -808,7 +808,7 @@ const sslStep: InstallStep = {
 };
 
 /**
- * systemd unit that runs onni loopback-bound with CEZ_REMOTE=1.
+ * systemd unit that runs onni loopback-bound with ONNI_REMOTE=1.
  *
  * `execStart` must be an ABSOLUTE command — systemd resolves the ExecStart
  * executable against its OWN compiled-in PATH (/usr/local/bin:/usr/bin:…), NOT
@@ -848,8 +848,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 ${userLine}WorkingDirectory=${repoRoot}
-Environment=CEZ_REMOTE=1
-${instanceId ? `Environment=CEZ_INSTANCE_ID=${sysd(instanceId)}\n` : ''}Environment=PATH=${sysd(pathDirs.join(':'))}
+Environment=ONNI_REMOTE=1
+${instanceId ? `Environment=ONNI_INSTANCE_ID=${sysd(instanceId)}\n` : ''}Environment=PATH=${sysd(pathDirs.join(':'))}
 ExecStart=${sysd(execStart)} serve --no-open --port ${port}${sysd(bind)}
 Restart=on-failure
 RestartSec=5

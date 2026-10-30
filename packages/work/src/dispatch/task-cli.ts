@@ -3,8 +3,8 @@
  * (spec `.ai/specs/2026-09-10-dispatch.md`).
  *
  * It is a thin HTTP client over the dispatch family, addressed by three variables the engine puts
- * in every agent's environment while dispatch is on (the default; `CEZ_DISPATCH=0` turns it off): `CEZ_API_URL` (the cockpit), `CEZ_PROJECT_ID`
- * (which project the run belongs to) and `CEZ_TASK_ID` (the run itself). A human at a shell can
+ * in every agent's environment while dispatch is on (the default; `ONNI_DISPATCH=0` turns it off): `ONNI_API_URL` (the cockpit), `ONNI_PROJECT_ID`
+ * (which project the run belongs to) and `ONNI_TASK_ID` (the run itself). A human at a shell can
  * set the same three and use it too. No server, no dispatch: the command says so (`cockpit-address.ts`,
  * worded for whoever is asking) and exits 2.
  */
@@ -13,9 +13,9 @@ import { missingCockpitMessage } from '../cockpit-address.ts';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
 
 export interface TaskCliEnv {
-  CEZ_API_URL?: string;
-  CEZ_PROJECT_ID?: string;
-  CEZ_TASK_ID?: string;
+  ONNI_API_URL?: string;
+  ONNI_PROJECT_ID?: string;
+  ONNI_TASK_ID?: string;
 }
 
 export interface TaskCliIo {
@@ -24,7 +24,7 @@ export interface TaskCliIo {
   error: (line: string) => void;
 }
 
-const USAGE = `onni task — dispatch onni tasks from inside a task (on by default; CEZ_DISPATCH=0 on the cockpit turns it off)
+const USAGE = `onni task — dispatch onni tasks from inside a task (on by default; ONNI_DISPATCH=0 on the cockpit turns it off)
 
   onni task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch|run>]
                   [--scope "…"] [--budget <usd>] [--success "…"] [--evidence "…"] [--tools A,B]
@@ -36,9 +36,9 @@ const USAGE = `onni task — dispatch onni tasks from inside a task (on by defau
   onni task tree <run id>              the tree rooted at (or containing) another run`;
 
 function base(env: TaskCliEnv): { url: string; scope: string } | null {
-  const url = env.CEZ_API_URL?.replace(/\/+$/, '');
+  const url = env.ONNI_API_URL?.replace(/\/+$/, '');
   if (!url) return null;
-  const scope = env.CEZ_PROJECT_ID ? `${url}/api/v1/p/${encodeURIComponent(env.CEZ_PROJECT_ID)}` : `${url}/api/v1`;
+  const scope = env.ONNI_PROJECT_ID ? `${url}/api/v1/p/${encodeURIComponent(env.ONNI_PROJECT_ID)}` : `${url}/api/v1`;
   return { url, scope };
 }
 
@@ -74,7 +74,7 @@ export async function runTaskCommand(
     io.error(missingCockpitMessage({
       command: 'onni task',
       example: 'onni task tree <run id>',
-      insideTask: 'this command only works inside a task run by a cockpit with dispatch on (it is on by default; CEZ_DISPATCH=0 turns it off). Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is unavailable.',
+      insideTask: 'this command only works inside a task run by a cockpit with dispatch on (it is on by default; ONNI_DISPATCH=0 turns it off). Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is unavailable.',
     }, env));
     return 2;
   }
@@ -106,7 +106,7 @@ export async function runTaskCommand(
         });
         const objective = positionals.join(' ').trim();
         if (!objective) throw new Error('an objective is required: onni task create "<objective>"');
-        if (!env.CEZ_TASK_ID) throw new Error('CEZ_TASK_ID is not set — only a running task can dispatch');
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can dispatch');
         const body = {
           objective,
           ...(values.title ? { title: values.title } : {}),
@@ -121,7 +121,7 @@ export async function runTaskCommand(
           ...(values.model ? { model: values.model } : {}),
           ...(values['retry-limit'] !== undefined ? { retry_limit: number(values['retry-limit'], 'retry-limit') } : {}),
         };
-        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.CEZ_TASK_ID)}/dispatch`, {
+        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/dispatch`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(body),
@@ -149,7 +149,7 @@ export async function runTaskCommand(
           },
         });
         if (!values.status || !values.result) throw new Error('--status and --result are required');
-        if (!env.CEZ_TASK_ID) throw new Error('CEZ_TASK_ID is not set — only a running task can report');
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can report');
         const body = {
           status: values.status,
           result: values.result,
@@ -161,7 +161,7 @@ export async function runTaskCommand(
           ...(values.confidence !== undefined ? { confidence: number(values.confidence, 'confidence') } : {}),
           ...(values.next ? { recommended_next_action: values.next } : {}),
         };
-        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.CEZ_TASK_ID)}/report`, {
+        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/report`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(body),
@@ -172,8 +172,8 @@ export async function runTaskCommand(
       }
       case 'list':
       case 'tree': {
-        const anchor = command === 'tree' ? rest[0] : env.CEZ_TASK_ID;
-        if (!anchor) throw new Error(command === 'tree' ? 'a run id is required' : 'CEZ_TASK_ID is not set');
+        const anchor = command === 'tree' ? rest[0] : env.ONNI_TASK_ID;
+        if (!anchor) throw new Error(command === 'tree' ? 'a run id is required' : 'ONNI_TASK_ID is not set');
         const response = await io.fetch(`${api.scope}/runs`);
         if (!response.ok) throw new Error(`could not list runs — ${await readError(response)}`);
         const runs = (await response.json()) as Array<{

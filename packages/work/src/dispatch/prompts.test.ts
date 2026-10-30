@@ -16,7 +16,7 @@ describe('the dispatch prompt', () => {
     expect(DISPATCH_PROMPT).toContain('onni task create');
     // The first live run found an older `onni` on the agents' PATH: the prompt must route through
     // the cockpit's own entrypoint.
-    expect(DISPATCH_PROMPT).toContain('node "$CEZ_BIN" task');
+    expect(DISPATCH_PROMPT).toContain('node "$ONNI_BIN" task');
     expect(DISPATCH_PROMPT).toContain('onni task report');
     expect(DISPATCH_PROMPT).toContain('--verdict');
     expect(DISPATCH_PROMPT).toContain('--suggestions');
@@ -61,7 +61,7 @@ describe('the dispatch prompt', () => {
     expect(DISPATCH_PROMPT).toContain('ONNI:MONITORING');
     expect(DISPATCH_PROMPT).toContain('brief.md');
     expect(DISPATCH_PROMPT).toContain('inbox/root/');
-    expect(DISPATCH_PROMPT).toContain('CEZ_TREE_DIR');
+    expect(DISPATCH_PROMPT).toContain('ONNI_TREE_DIR');
   });
 
   it('composes the review addendum only for a review task', () => {

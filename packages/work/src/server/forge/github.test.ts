@@ -509,7 +509,7 @@ const ghByCwd = () =>
 
 describe('fetchGithub per-project list-cache isolation (step 2.6)', () => {
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', ''); // dry-run would short-circuit the cache path we're testing
+    vi.stubEnv('ONNI_DRY_RUN', ''); // dry-run would short-circuit the cache path we're testing
     execFileMock.mockReset();
     ghByCwd();
   });
@@ -540,7 +540,7 @@ describe('fetchGithub per-project list-cache isolation (step 2.6)', () => {
 
 describe('fetchGithubComments per-project cache isolation (step 2.6)', () => {
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', '');
+    vi.stubEnv('ONNI_DRY_RUN', '');
     execFileMock.mockReset();
     ghByCwd();
     __clearCommentsCacheForTests();
@@ -583,7 +583,7 @@ describe('detectGithubCached', () => {
     });
 
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', ''); // dry-run would short-circuit the cache path we're testing
+    vi.stubEnv('ONNI_DRY_RUN', ''); // dry-run would short-circuit the cache path we're testing
     vi.useFakeTimers();
     vi.setSystemTime(0);
     execFileMock.mockReset();
@@ -1063,7 +1063,7 @@ describe('fetchGithubComments timeline integration (#525)', () => {
   const commented = (id: number) => ({ event: 'commented', ...comment(id) });
 
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', '');
+    vi.stubEnv('ONNI_DRY_RUN', '');
     execFileMock.mockReset();
     __clearCommentsCacheForTests();
     __clearRepoHandleCacheForTests();
@@ -1564,7 +1564,7 @@ describe('fetchPrChecks (#664)', () => {
  *  the rollup field and that PR rows come back with `checks: null` (hydrated lazily elsewhere). */
 describe('fetchGithub omits statusCheckRollup from the list call (#664)', () => {
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', ''); // dry-run would short-circuit the gh path we are asserting on
+    vi.stubEnv('ONNI_DRY_RUN', ''); // dry-run would short-circuit the gh path we are asserting on
     execFileMock.mockReset();
   });
   afterEach(() => {
@@ -1690,7 +1690,7 @@ describe('searchGithubItems (#730)', () => {
   });
 
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', '');
+    vi.stubEnv('ONNI_DRY_RUN', '');
     execFileMock.mockReset();
     __clearRepoHandleCacheForTests();
   });
@@ -1922,8 +1922,8 @@ describe('searchGithubItems (#730)', () => {
     expect(search?.[search.indexOf('--limit') + 1]).toBe(String(GH_SEARCH_MAX));
   });
 
-  it('honours `limit` and flags `truncated` in CEZ_DRY_RUN too, on the live rule (#838)', async () => {
-    vi.stubEnv('CEZ_DRY_RUN', '1');
+  it('honours `limit` and flags `truncated` in ONNI_DRY_RUN too, on the live rule (#838)', async () => {
+    vi.stubEnv('ONNI_DRY_RUN', '1');
 
     // '1' appears in every fixture issue number (142 / 139 / 135), so the cap has something to bite
     // on. Before #838 the dry-run branch returned ahead of `capped` and shipped all three unflagged
@@ -2793,7 +2793,7 @@ describe('fetchRefStatuses', () => {
  *  an in-payload degrade when `gh` is missing. Driven through `execFileMock` so no `gh` runs. */
 describe('fetchGithubRefStatus', () => {
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', ''); // dry-run would short-circuit the gh path under test
+    vi.stubEnv('ONNI_DRY_RUN', ''); // dry-run would short-circuit the gh path under test
     execFileMock.mockReset();
     __clearRefStatusCacheForTests();
     __clearRepoHandleCacheForTests();
@@ -3278,7 +3278,7 @@ describe('fetchPrMergeState and an unreadable statusCheckRollup (#969)', () => {
   }
 
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', ''); // dry-run short-circuits the whole gh path under test
+    vi.stubEnv('ONNI_DRY_RUN', ''); // dry-run short-circuits the whole gh path under test
     execFileMock.mockReset();
     __clearMergeStateCacheForTests();
   });
@@ -3438,7 +3438,7 @@ describe('GH_HOST pinning (GitHub Enterprise)', () => {
       { env?: Record<string, string> };
 
   beforeEach(() => {
-    vi.stubEnv('CEZ_DRY_RUN', '');
+    vi.stubEnv('ONNI_DRY_RUN', '');
     execFileMock.mockReset();
   });
   afterEach(() => vi.unstubAllEnvs());

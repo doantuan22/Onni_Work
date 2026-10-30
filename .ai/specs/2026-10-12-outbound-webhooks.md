@@ -41,8 +41,8 @@ from chat and no guarantee that a phone displays them.
 Notifications do not provide an external job portal, assignee routing, dispatch-tree completion,
 or automatic ticket closure. They contain no tracking pixels or read receipts.
 
-The graph-workflow `notify.webhook` node is separately enabled by `CEZ_WORKFLOW_WEBHOOKS=1`.
-It sends when a workflow reaches that node. Lifecycle subscriptions use `CEZ_WEBHOOKS` and
+The graph-workflow `notify.webhook` node is separately enabled by `ONNI_WORKFLOW_WEBHOOKS=1`.
+It sends when a workflow reaches that node. Lifecycle subscriptions use `ONNI_WEBHOOKS` and
 send independently of workflow structure, with signing, durable delivery and receiver history.
 The two mechanisms share no receiver configuration, delivery IDs, retries or deduplication.
 A workflow using both can produce two independent notifications.
@@ -78,7 +78,7 @@ by this feature. Project-qualified URLs alone are not authorization; deployment 
 must cover canonical routes, boot aliases and event streams alike. No new authorization scheme
 is implied or introduced by this specification.
 
-Agents receive `CEZ_API_URL` through dispatch and can call the local API without an Origin header.
+Agents receive `ONNI_API_URL` through dispatch and can call the local API without an Origin header.
 They can create, activate, edit and rotate receivers and read accessible project secrets. Existing
 Bash already permits outbound traffic; the added risk is persistence across later tasks under a
 cezar signing key. Activation and banner acknowledgement are consent UX, not proof of a human.
@@ -654,11 +654,11 @@ succeeds for `webhooks/endpoints.json` and that no webhook path is already track
 Failure makes only webhooks unavailable; never silently write secrets or automatically untrack
 user files. Test boot, added projects, pre-existing contexts and failed ignore writes.
 Explicit export/worktree/copy helpers also exclude the subtree; gitignore is not a secret boundary.
-Use sandboxed project dataDirs and CEZ_HOME in tests; no global webhook secret cache.
+Use sandboxed project dataDirs and ONNI_HOME in tests; no global webhook secret cache.
 One-time create/rotate responses send `Cache-Control: no-store`. URLs are write-only, masked on
 reads; no payload/secret enters global SSE, prompts or copied task state. The outbox is a second
 plaintext copy of Standard data: private permissions, bounded size and post-admission compaction
-are mandatory, and outbound redaction ignores `CEZ_REDACT_SECRETS=0`.
+are mandatory, and outbound redaction ignores `ONNI_REDACT_SECRETS=0`.
 
 A read-only project dataDir, malformed state or unsupported lock disables only this project's
 webhooks with a reason and one warning. Other projects, boot and tasks continue. A bounded health
@@ -682,14 +682,14 @@ run-index parses by file identity/size/timestamps; never reuse an index whose me
 read. Cancellation batches history and registry writes while retaining per-admission durable state
 and recoverable history-pending markers.
 
-Only exact `CEZ_WEBHOOKS=1` enables services in this process; unset/0/other values are off.
+Only exact `ONNI_WEBHOOKS=1` enables services in this process; unset/0/other values are off.
 This gate does not activate or subscribe any project. Disabled processes neither capture nor
 send; another enabled owning process serving the same project can still send. Pause that project's
 receivers to stop its delivery. Re-enabling may resume its own retained pending work under normal
 expiry/freshness/consent checks, but does not synthesize events for the disabled interval.
 There is no inheritance from another project.
 
-`CEZ_DRY_RUN=1`: no DNS or HTTP, synthetic test/delivery success visibly marked `dry-run`.
+`ONNI_DRY_RUN=1`: no DNS or HTTP, synthetic test/delivery success visibly marked `dry-run`.
 A dry-run process uses an isolated dry-run queue namespace and does not consume real pending work
 or activate real definitions. A dry-run test cannot qualify a live endpoint for activation.
 
@@ -762,7 +762,7 @@ access policy to the boot aliases; aliases are not an escape from deployment res
 `capabilities.webhooks` is a required boolean in `packages/contract/src/health.ts`, populated at
 every health construction site. It is only the process feature gate. An unsupported platform also
 sets `capabilities.webhooksUnavailableReason: 'unsupported_platform'`. Routes are always registered;
-with the flag off, reads, mutations and SSE return 409 `{error}` naming `CEZ_WEBHOOKS=1` (an
+with the flag off, reads, mutations and SSE return 409 `{error}` naming `ONNI_WEBHOOKS=1` (an
 unsupported platform names the platform first), before creating the service or reading its secrets. Project existence/access validation still applies. Project-specific
 `webhookHealth` (`disabled | ready | degraded | unavailable`, with safe reason) belongs to the
 project receiver-list response. Global health carries no endpoint counts, errors or project
@@ -821,7 +821,7 @@ show test success with the current state and no recovery claim. Refresh through 
 SSE. This adds disclosure, not another consent gate or a change to automatic recovery.
 
 Use existing toast components, scoped to the owning project for activation, disabled state, test result and queue drops.
-With `CEZ_WEBHOOKS=1`, the project-scoped toast observer holds one extra EventSource for as long as a project is on
+With `ONNI_WEBHOOKS=1`, the project-scoped toast observer holds one extra EventSource for as long as a project is on
 screen. It counts toward the browser's six-connections-per-origin limit alongside the global stream, which is
 acceptable for an opt-in feature. Do not add a second one per panel.
 Activity records a bounded, redacted reason and source. UI filters apply only to the loaded range;
@@ -840,7 +840,7 @@ focus and light/dark/system support are acceptance requirements.
 
 Always show the section. When disabled, the heading is **“Webhooks are off”** and the
 explanation describes Slack, Discord and custom endpoint notifications. Show how to start the
-server with `CEZ_WEBHOOKS=1`, reload the page and open the receiver guide. An unsupported
+server with `ONNI_WEBHOOKS=1`, reload the page and open the receiver guide. An unsupported
 platform shows its process-identity limitation. There is no nonfunctional one-click toggle.
 
 The receiver form keeps event selection, task scope and grace, with less-used choices in Advanced. Private URL
@@ -861,7 +861,7 @@ After removal/re-add show Paused with the project-removal reason and a Resume ac
 
 The compatibility inventory covers:
 
-- BC §1: `CEZ_WEBHOOKS` default off, documented in `.env.example` and README; no new required config.
+- BC §1: `ONNI_WEBHOOKS` default off, documented in `.env.example` and README; no new required config.
 - BC §2: every route and alias above, invalidation payload, required `capabilities.webhooks`,
   project `webhookHealth` and all Zod request/response schemas, with two-way parity/typed bodies.
 - BC §3: private `webhooks/*` formats, identity/outbox/cursor/lock recovery; optional
@@ -918,7 +918,7 @@ Tests live beside their owning modules. Required coverage:
    Scheduled body retries/probes/Retry now/Replay are superseded after cancellation, changed deadline
    or restart without a live timer; immutable bytes never change. Prune payload/history, restart after
    40 offline days, then clear a missed schedule: current episode identity and dedupe survive.
-   Guard tests with `CEZ_WEBHOOKS` unset pin default auto-resume, review gate and status
+   Guard tests with `ONNI_WEBHOOKS` unset pin default auto-resume, review gate and status
    transitions unchanged.
 4. Crash before admission rename, after rename/before cursor, before first outbox cursor and after
    send/before result; all recipients retain IDs/body bytes; no partial target list.
@@ -933,7 +933,7 @@ Tests live beside their owning modules. Required coverage:
    Inject append after compaction snapshot/during fsync/before rename and immediately after switch;
    every accepted source remains admissible once by stable ID. Repeated contention defers on a timer;
    test descriptor failure and crashes between replacement, directory sync and cursor reset.
-6. Two processes open the same project (even from different CEZ_HOME registries), contend,
+6. Two processes open the same project (even from different ONNI_HOME registries), contend,
    PID reuse, verified owner exit or a live stalled owner, unsupported identity and retained mode policy;
    no stale claim can overwrite a new state/configuration/key revision; a name-only revision
    preserves result authority without bypassing an earlier fence. Lock/queue failure never breaks boot.
@@ -961,7 +961,7 @@ Tests live beside their owning modules. Required coverage:
     BC inventory, project health and project-only SSE contracts;
     outbox records never reach transcript SSE, continuation or auth context readers.
 14. Dry-run has no DNS/network/real-queue effect; read-only project dataDir shows one warning and recoverable
-    unavailable state; settings flow e2e (add → test → activate → delivery) in sandboxed project dataDir (and CEZ_HOME for existing registry fixtures).
+    unavailable state; settings flow e2e (add → test → activate → delivery) in sandboxed project dataDir (and ONNI_HOME for existing registry fixtures).
 
 15. Isolation: A/B deliberately reuse endpoint/delivery/task/operation IDs; list, edit, test,
     replay, rotation, deletion, counts and SSE in A never read/mutate/emit B. Boot/default aliases

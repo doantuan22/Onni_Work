@@ -22,7 +22,7 @@ import { WorkspaceEventBus, createApp } from './server.ts';
 // discovery for real.
 vi.mock('../core/claude-bin.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../core/claude-bin.ts')>()),
-  resolveClaudeBin: () => process.env.CEZ_CLAUDE_BIN ?? 'claude',
+  resolveClaudeBin: () => process.env.ONNI_CLAUDE_BIN ?? 'claude',
 }));
 
 // Junie has no read-only auth-status command, so `ProviderAuthService` probes it through a real
@@ -102,27 +102,27 @@ const memoryWorkspaceConfig = (disabledProviders: ProviderId[] = []) => {
 describe('workspace provider API', () => {
   let root: string;
   let store: RunStore;
-  const savedModelsLocked = process.env.CEZ_AGENT_MODELS_LOCKED;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedModelsLocked = process.env.ONNI_AGENT_MODELS_LOCKED;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedRemote = process.env.ONNI_REMOTE;
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-providers-api-'));
     store = RunStore.open(join(root, '.ai/onni'));
-    delete process.env.CEZ_AGENT_MODELS_LOCKED;
-    delete process.env.CEZ_DRY_RUN;
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_AGENT_MODELS_LOCKED;
+    delete process.env.ONNI_DRY_RUN;
+    delete process.env.ONNI_REMOTE;
   });
 
   afterEach(() => {
     store.flush();
     rmSync(root, { recursive: true, force: true });
-    if (savedModelsLocked === undefined) delete process.env.CEZ_AGENT_MODELS_LOCKED;
-    else process.env.CEZ_AGENT_MODELS_LOCKED = savedModelsLocked;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedModelsLocked === undefined) delete process.env.ONNI_AGENT_MODELS_LOCKED;
+    else process.env.ONNI_AGENT_MODELS_LOCKED = savedModelsLocked;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const service = (
@@ -218,7 +218,7 @@ describe('workspace provider API', () => {
   });
 
   it('GET /api/v1/providers/status skips probes and provider preferences under the explicit model lock', async () => {
-    process.env.CEZ_AGENT_MODELS_LOCKED = '1';
+    process.env.ONNI_AGENT_MODELS_LOCKED = '1';
     const runCommand = vi.fn<RunProviderCommand>();
     const workspaceConfig = memoryWorkspaceConfig(['claude', 'codex', 'opencode', 'cursor', 'pi', 'copilot']);
     const response = await apiRequest(app({

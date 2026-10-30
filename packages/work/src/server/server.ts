@@ -366,13 +366,13 @@ export interface ServerDeps {
    *  the app (tests, future CLI hooks). */
   workspaceEvents?: WorkspaceEventBus;
   /** How `POST /api/projects/checkout` (step 4.3) actually clones. Defaults to
-   *  `gh repo clone` (or the `CEZ_DRY_RUN=1` fake) — injected by tests so the
+   *  `gh repo clone` (or the `ONNI_DRY_RUN=1` fake) — injected by tests so the
    *  route's guards, cleanup and error surfacing are exercised for real
    *  against real temp dirs, without a network or a `gh` binary. */
   cloneRunner?: CloneRunner;
   /** How `POST /api/projects/create` and `GET /api/projects/github-owners`
    *  run `git`/`gh` (spec 2026-09-29-create-new-project). Defaults to real
-   *  commands (or the `CEZ_DRY_RUN=1` fake); injected by tests. */
+   *  commands (or the `ONNI_DRY_RUN=1` fake); injected by tests. */
   projectCommandRunner?: CommandRunner;
   /** Host-wide model discovery service. Tests inject a deterministic adapter. */
   modelCatalog?: RunnerModelCatalog;
@@ -495,7 +495,7 @@ const selectAgentProfileSchema = z.object({
 
 /** The hosted-mode refusal, worded like the agent-config one it mirrors. */
 const hostedProfileRefusal = {
-  error: 'agent accounts are disabled in hosted mode; set CEZ_REMOTE_AGENT_ACCOUNTS=1 only behind an authenticated perimeter',
+  error: 'agent accounts are disabled in hosted mode; set ONNI_REMOTE_AGENT_ACCOUNTS=1 only behind an authenticated perimeter',
 };
 
 const hostedProfileOpenRefusal = {
@@ -654,14 +654,14 @@ export function projectRouteManifest(app: Hono): ProjectRouteInfo[] {
 }
 
 /** 409 body for the inbox mutators while the follow-up inbox is off (#471). */
-const FOLLOWUPS_OFF = 'the follow-up inbox is disabled — set CEZ_FOLLOWUPS=1 to enable it';
+const FOLLOWUPS_OFF = 'the follow-up inbox is disabled — set ONNI_FOLLOWUPS=1 to enable it';
 
 /** 409 body for every automations route while GitHub automations are off (#801). */
-const AUTOMATIONS_OFF = 'Automations are off — this cockpit was started with CEZ_AUTOMATIONS=0';
+const AUTOMATIONS_OFF = 'Automations are off — this cockpit was started with ONNI_AUTOMATIONS=0';
 
 /** 409 body for every dispatch route while task dispatch is off (spec 2026-09-10-dispatch). */
 const DISPATCH_OFF =
-  'dispatch is disabled on this cockpit (CEZ_DISPATCH=0) — the operator turned it off. Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is disabled.';
+  'dispatch is disabled on this cockpit (ONNI_DISPATCH=0) — the operator turned it off. Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is disabled.';
 
 // ---- variant-compare response shapes (spec 010) ----------------------------
 // Named and exported so `api-types.test.ts` can drift-guard the cockpit's
@@ -1495,7 +1495,7 @@ export function createApp(deps: ServerDeps) {
     }
   };
   // Hosted-mode gate (spec §"Deployment modes") — read per request so
-  // CEZ_REMOTE flips take effect live (and tests can toggle it).
+  // ONNI_REMOTE flips take effect live (and tests can toggle it).
   const trackers = createTrackerService();
   const trackerWatches = new TrackerWatches(trackers, deps.socketHub);
   const capabilities = () => resolveCapabilities(process.env, bindHost);
@@ -1547,7 +1547,7 @@ export function createApp(deps: ServerDeps) {
     mode: () => capabilities().localHandoff ? 'local' : 'hosted',
     ports: () => [deps.webhookPort ?? 4321, ...listServerInstances().map(instance => instance.state.primaryPort)],
     projects: async () => listProjects(capabilities().singleProject ? { projectId: await resolveBootProject() } : undefined),
-    dryRun: process.env.CEZ_DRY_RUN === '1',
+    dryRun: process.env.ONNI_DRY_RUN === '1',
   }) : undefined);
   const offWebhookPrepare = contexts.onBeforeRecover(async context => {
     await webhooks?.attach(context, context.id, false);
@@ -1616,7 +1616,7 @@ export function createApp(deps: ServerDeps) {
   //   1. Host allowlist (loopback deployments only) — a request whose Host is
   //      not a loopback name did not really originate from this machine. A
   //      rebound `evil.com` still sends `Host: evil.com`, so this kills DNS
-  //      rebinding for reads AND writes. Skipped in hosted mode (CEZ_REMOTE /
+  //      rebinding for reads AND writes. Skipped in hosted mode (ONNI_REMOTE /
   //      non-loopback bind), where the reverse proxy forwards the real public
   //      Host and TLS+auth own the perimeter.
   //      The match runs through `isLoopbackHostHeader`, whose 127.0.0.0/8 test
@@ -1863,7 +1863,7 @@ export function createApp(deps: ServerDeps) {
       // checkout path and username (#431). Local mode keeps the full path (the
       // protected bookmarklet shape); hosted/remote mode trims it to a basename.
       // NB this narrows the VALUE of a field named in BACKWARD_COMPATIBILITY.md
-      // §2: the field is always present and a string, but under CEZ_REMOTE it is
+      // §2: the field is always present and a string, but under ONNI_REMOTE it is
       // no longer an absolute path. Deliberate — a hosted cockpit's paths are on
       // a machine the reader does not have anyway. See §2's `repoRoot` note.
       repoRoot: caps.localHandoff ? bootRoot : basename(bootRoot),
@@ -1883,7 +1883,7 @@ export function createApp(deps: ServerDeps) {
       // unreadable workspace degrades to `projects: []`.
       projects: workspace.projects,
       bootProject: workspace.bootProject,
-      ...(process.env.CEZ_INSTANCE_ID ? { instanceId: process.env.CEZ_INSTANCE_ID } : {}),
+      ...(process.env.ONNI_INSTANCE_ID ? { instanceId: process.env.ONNI_INSTANCE_ID } : {}),
       ...diskHealth(bootRoot),
     };
   };
@@ -2298,7 +2298,7 @@ export function createApp(deps: ServerDeps) {
   // `PATCH /api/v1/projects/:projectId` instead.
   //
   // Remote access is explicitly opt-in: a profile points an agent at a directory on the host, and
-  // the listing echoes absolute paths carrying the username. `CEZ_REMOTE_AGENT_ACCOUNTS=1` says
+  // the listing echoes absolute paths carrying the username. `ONNI_REMOTE_AGENT_ACCOUNTS=1` says
   // the operator has placed the remote cockpit behind an authenticated perimeter. Desktop-open
   // actions remain local-only regardless of that flag.
 
@@ -3410,14 +3410,14 @@ export function createApp(deps: ServerDeps) {
       autonomous: config.composerDefaults.autonomous ?? null,
       worktree: config.composerDefaults.worktree ?? null,
       inheritedAutonomous:
-        process.env.CEZ_AUTONOMOUS_DEFAULT === '0'
+        process.env.ONNI_AUTONOMOUS_DEFAULT === '0'
           ? false
-          : process.env.CEZ_AUTONOMOUS_DEFAULT === '1'
+          : process.env.ONNI_AUTONOMOUS_DEFAULT === '1'
             ? true
             : 'source-dependent',
       inheritedWorktree: effectiveComposerDefault(
         undefined,
-        process.env.CEZ_WORKTREE_DEFAULT,
+        process.env.ONNI_WORKTREE_DEFAULT,
         true,
       ),
     },
@@ -3899,7 +3899,7 @@ export function createApp(deps: ServerDeps) {
   const manualChecks = new Map<string, ManualCheck>();
 
   /**
-   * The automations gate (#801): with `CEZ_AUTOMATIONS` unset, every route of the feature
+   * The automations gate (#801): with `ONNI_AUTOMATIONS` unset, every route of the feature
    * answers 409 before touching a store, a lease or GitHub.
    *
    * Written as MIDDLEWARE rather than a line in each handler so the family cannot drift: a route
@@ -4515,7 +4515,7 @@ export function createApp(deps: ServerDeps) {
 
   /**
    * The dispatch gate (spec `.ai/specs/2026-09-10-dispatch.md`) — the automations gate, one flag
-   * over: with `CEZ_DISPATCH=0`, both routes answer 409 before touching the manager.
+   * over: with `ONNI_DISPATCH=0`, both routes answer 409 before touching the manager.
    *
    * Middleware on EXPLICIT paths, never `use('*')`, for the reason `requireAutomations` spells
    * out above: this family is mounted with `.route('/', …)` alongside a dozen unrelated sub-apps,
@@ -4528,7 +4528,7 @@ export function createApp(deps: ServerDeps) {
 
   // ---- chained family: dispatch (project-scoped) ----
   // A task dispatching other tasks (spec 2026-09-10-dispatch). Both routes are what the `onni task`
-  // CLI calls from inside a running agent, with CEZ_API_URL / CEZ_PROJECT_ID / CEZ_TASK_ID from
+  // CLI calls from inside a running agent, with ONNI_API_URL / ONNI_PROJECT_ID / ONNI_TASK_ID from
   // its environment; nothing stops a human or a script from calling them too.
   const dispatchRoutes = new Hono<ProjectApiEnv>()
     .use('/runs/:id/dispatch', requireDispatch)
@@ -4730,7 +4730,7 @@ export function createApp(deps: ServerDeps) {
         // for follow-ups on a server that has them off gets a plain `false`
         // rather than an error — the run is still perfectly valid without them.
         // One decision here feeds the run record, the system prompt and
-        // CEZ_TODOS_FILE alike (RunManager.agentEnv).
+        // ONNI_TODOS_FILE alike (RunManager.agentEnv).
         generateFollowups: capabilities().followups ? parsed.data.generateFollowups : false,
         ...(parsed.data.dispatch && capabilities().dispatch ? { dispatchIntent: parsed.data.dispatch } : {}),
       };
@@ -5052,7 +5052,7 @@ export function createApp(deps: ServerDeps) {
         return c.json(
           {
             error:
-              'local handoff is disabled — this cockpit runs in hosted mode (CEZ_REMOTE); resume the session from a machine that has the checkout',
+              'local handoff is disabled — this cockpit runs in hosted mode (ONNI_REMOTE); resume the session from a machine that has the checkout',
           },
           409,
         );
@@ -5096,7 +5096,7 @@ export function createApp(deps: ServerDeps) {
       if (!capabilities().localHandoff) {
         return c.json(
           {
-            error: 'local handoff is disabled — this cockpit runs in hosted mode (CEZ_REMOTE)',
+            error: 'local handoff is disabled — this cockpit runs in hosted mode (ONNI_REMOTE)',
           },
           409,
         );
@@ -5482,7 +5482,7 @@ export function createApp(deps: ServerDeps) {
     // Draft PR from the review gate (spec 009): final autosave → push →
     // `gh pr create --draft`; on success the run completes as done with the PR
     // badge. Failures come back as 409 with a `manual` merge command the GUI
-    // shows next to the toast. CEZ_DRY_RUN=1 fakes the URL (no push, no gh).
+    // shows next to the toast. ONNI_DRY_RUN=1 fakes the URL (no push, no gh).
     .post('/runs/:id/pr', jsonZodValidator(createPrSchema, { absent: ({}) }), async (c) => {
       const { root: repoRoot, dataDir, store, manager } = c.get('project');
       const draft = c.req.valid('json').draft ?? true;
@@ -5882,7 +5882,7 @@ export function createApp(deps: ServerDeps) {
       const { root } = c.get('project');
       if (!capabilities().localHandoff) {
         return c.json(
-          { error: 'local handoff is disabled — this cockpit runs in hosted mode (CEZ_REMOTE)' },
+          { error: 'local handoff is disabled — this cockpit runs in hosted mode (ONNI_REMOTE)' },
           409,
         );
       }
@@ -7066,10 +7066,10 @@ export function createApp(deps: ServerDeps) {
       worktreeRetention: config.worktreeRetention,
       ...(lifecycle.configured ? { worktreeLifecycle: lifecycle.config, worktreeLifecycleRevision: lifecycle.revision! } : {}),
       // Live title updates (task auto-naming spec): tri-state — null means "no
-      // config key, the CEZ_TITLE_UPDATES env default (ON) decides".
+      // config key, the ONNI_TITLE_UPDATES env default (ON) decides".
       liveTitleUpdates: config.liveTitleUpdates ?? null,
       // Optional review gate (#489): tri-state — null means "no config key, the
-      // CEZ_REVIEW_GATE env default (OFF) decides".
+      // ONNI_REVIEW_GATE env default (OFF) decides".
       reviewGate: config.reviewGate ?? null,
       profile: config.profile ?? null,
       taskWorkspace: config.taskWorkspace ?? null,
@@ -7263,7 +7263,7 @@ export function createApp(deps: ServerDeps) {
       if (def.tracked === 'outside-repo' && !capabilities().localHandoff) {
         return c.json(
           {
-            error: 'this file lives in your home directory and is not served in hosted mode (CEZ_REMOTE)',
+            error: 'this file lives in your home directory and is not served in hosted mode (ONNI_REMOTE)',
           },
           409,
         );
@@ -7281,7 +7281,7 @@ export function createApp(deps: ServerDeps) {
         return c.json(
           {
             error:
-              'editing agent config is disabled in hosted mode (CEZ_REMOTE) — edit it from the machine that owns the checkout',
+              'editing agent config is disabled in hosted mode (ONNI_REMOTE) — edit it from the machine that owns the checkout',
           },
           409,
         );
@@ -7320,7 +7320,7 @@ export function createApp(deps: ServerDeps) {
   const terminalPolicyRefusal = (caps: ReturnType<typeof capabilities>): string | null =>
     caps.terminal
       ? null
-      : 'the terminal is disabled on this cockpit — it is off in hosted mode unless CEZ_TERMINAL=1';
+      : 'the terminal is disabled on this cockpit — it is off in hosted mode unless ONNI_TERMINAL=1';
 
   /** The topic a client subscribes to for "there is new output". Derived, never stored, so the
    *  session id stays the only identity. */
@@ -7419,7 +7419,7 @@ export function createApp(deps: ServerDeps) {
       async (c) => {
         const session = terminalFor(c.req.valid('param'));
         if (!session) return c.json({ error: 'terminal session not found' }, 404);
-        // Policy is re-checked on the READ too, not only on create and write: `CEZ_TERMINAL` is
+        // Policy is re-checked on the READ too, not only on create and write: `ONNI_TERMINAL` is
         // read live, so turning it off must stop a session's output being served from under a
         // cockpit that is no longer allowed one — a shell's scrollback is the content this flag
         // exists to withhold.
@@ -7842,7 +7842,7 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
   // SECURITY: default to loopback. This server executes agents locally and its endpoints are
   // same-origin-trusted (only /api/health is CORS-open); binding to a non-loopback host would
   // expose an agent-executing box to the network. `bindHost` exists only for a deliberate
-  // hosted/VPS deployment (which also flips CEZ_REMOTE to gate the local-handoff endpoints) —
+  // hosted/VPS deployment (which also flips ONNI_REMOTE to gate the local-handoff endpoints) —
   // src/index.ts never passes it, so the loopback guarantee holds for the normal CLI.
   const server = serve({
     fetch: app.fetch,

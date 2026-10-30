@@ -448,7 +448,7 @@ mode does (§6).
   (#807), and the mapping for that path is recorded beside the fixtures. The `AgentSession` contract stays the same.
 - **Exit codes** (child death outside a prompt): 41 → `provider-auth-required`; 52 / 55 → `error` with a cezar-authored
   hint ("Gemini config invalid" / "workspace not trusted"); others → `error`.
-- **Detection and auth:** `probeGemini()` in `backend-detect.ts` (`gemini --version`, `CEZ_GEMINI_BIN`). The
+- **Detection and auth:** `probeGemini()` in `backend-detect.ts` (`gemini --version`, `ONNI_GEMINI_BIN`). The
   `provider-auth.ts` descriptor reads the environment, because Gemini has no `status` subcommand:
   - `GEMINI_API_KEY` / `GOOGLE_API_KEY`, or a Vertex project → `connected`;
   - otherwise `unknown`, with the hint *"Gemini CLI needs an API key (aistudio.google.com), Vertex AI, or a
@@ -461,8 +461,8 @@ mode does (§6).
   (`agent-env.ts:256-266`), keyed on the backend's own variable (the #850 direction).
 - **Everything else from §9:**
   - `'gemini'` in `RUNNER_IDS` (one line after Phase 0) and the factory case;
-  - `CEZ_GEMINI_BIN` in `.env.example` and `docs/reference.md`;
-  - `scripts/mock-gemini-acp.mjs` for `CEZ_DRY_RUN=1`;
+  - `ONNI_GEMINI_BIN` in `.env.example` and `docs/reference.md`;
+  - `scripts/mock-gemini-acp.mjs` for `ONNI_DRY_RUN=1`;
   - fixtures under `__fixtures__/gemini/` citing `docs/cli/acp-mode.md` and the version;
   - the `BACKENDS` row in `ui-parity.test.ts`;
   - `model-settings/gemini.ts` (reads `model.name` from `~/.gemini/settings.json` / project `.gemini/settings.json`,
@@ -480,14 +480,14 @@ mode does (§6).
   from the permission mode and run spec. It uses the shared ACP layer above. The Copilot dialect decides where usage
   comes from (Step 3.1: `usage_update`, the prompt result's `_meta`, or none). If Copilot reports no usage at all,
   `usage.updated` degrades per capability with a documented substitute, and this is recorded in `AGENT_PROTOCOL.md` §4.
-- **Detection and auth:** `probeCopilot()` (`copilot --version`, `CEZ_COPILOT_BIN`). The `provider-auth.ts` descriptor
+- **Detection and auth:** `probeCopilot()` (`copilot --version`, `ONNI_COPILOT_BIN`). The `provider-auth.ts` descriptor
   reports `connected` when a token (`COPILOT_GITHUB_TOKEN` / `GH_TOKEN` / `GITHUB_TOKEN`) is present or the CLI's
   stored login is detected; the login command is `copilot login`. An ACP auth error on `session/new` becomes
   `provider-auth-required`.
 - **Credentials:** `BACKEND_ALLOW_PREFIXES.copilot = ['COPILOT_']`. The `gh` names are already forwarded to every
   backend (`GH_ALLOW_NAMES`, `agent-env.ts:237-243`), so nothing else is widened.
 - **Everything else from §9**, as in Phase 2:
-  - `'copilot'` in `RUNNER_IDS`, the factory case, `CEZ_COPILOT_BIN`;
+  - `'copilot'` in `RUNNER_IDS`, the factory case, `ONNI_COPILOT_BIN`;
   - `scripts/mock-copilot-acp.mjs`;
   - fixtures citing agentclientprotocol.com and GitHub's ACP-server reference;
   - the parity row;
@@ -566,7 +566,7 @@ Text-only (U10). The deltas:
 | ACP child (either runner) dies mid-turn | Pending prompt rejects → `turn.completed{error}` + `error`; the next message respawns and `session/load`s if supported, otherwise a fresh session with a `note`. |
 | ACP permission request arrives despite the `auto` start mode | Auto-answered `allow_always`, plus a `note`; never parks. |
 | Malformed or unknown frames (either runner) | Skipped; unknown `session/update` kinds yield no events (mapper robustness contract). |
-| `CEZ_DRY_RUN=1` | Bundled mocks; no network, no login. |
+| `ONNI_DRY_RUN=1` | Bundled mocks; no network, no login. |
 
 ## 📝 Risks & Impact Review
 
@@ -671,7 +671,7 @@ Every Step leaves `npm run typecheck && npm test && npm run test:unit` green. Ev
    `scripts/mock-gemini-acp.mjs`; runner tests on the mock. Permission handling: `auto` start mode; a test that an
    inbound `session/request_permission` is answered `allow_always` with a `note` and the turn continues.
 5. `'gemini'` in `RUNNER_IDS`; factory; `probeGemini`; provider-auth descriptor with the API-key hint;
-   `BACKEND_ALLOW_PREFIXES` + Vertex toggle; `CEZ_GEMINI_BIN` in `.env.example` + `docs/reference.md`.
+   `BACKEND_ALLOW_PREFIXES` + Vertex toggle; `ONNI_GEMINI_BIN` in `.env.example` + `docs/reference.md`.
 6. Model settings, `BACKEND_MODEL_MAP`, presets, catalog entry, `resumeCommand`, open-in-app, `PROFILE_ENV_VAR = null`;
    `ui-parity.test.ts` `BACKENDS` row; `AGENT_PROTOCOL.md` §4 gains an ACP column.
 7. Model discovery decision (§ API Contracts): `gemini` stays out of `modelDiscoveryRunnerSchema`. Web unit test
@@ -690,5 +690,5 @@ Every Step leaves `npm run typecheck && npm test && npm run test:unit` green. Ev
    `--allow-all-tools` + the shared auto-answer.
 4. Model discovery decision (§ API Contracts): `copilot` stays out of `modelDiscoveryRunnerSchema`; the same web
    unit test as Phase 2 Step 7 pins `runnerDiscoversModels('copilot') === false` and the free-text + presets picker.
-5. `'copilot'` in `RUNNER_IDS` and the rest of §9 (detection, auth, env, `CEZ_COPILOT_BIN`, presets, catalog,
+5. `'copilot'` in `RUNNER_IDS` and the rest of §9 (detection, auth, env, `ONNI_COPILOT_BIN`, presets, catalog,
    resume, open-in-app, `PROFILE_ENV_VAR = null`, parity row, cockpit rows, dry-run e2e, opt-in real smoke).

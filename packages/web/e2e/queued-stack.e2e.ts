@@ -12,7 +12,7 @@ import { AgentBrowser, onniCli, stopFixtureServer } from './agent-browser'
  * dry-run onni — the one state the cockpit used to forbid editing in.
  *
  * The queue is forced with `{"resources":{"maxParallel":1}}` in the throwaway
- * workspace's `CEZ_HOME/config.json`, and the slot is held by a `mock:slow` run
+ * workspace's `ONNI_HOME/config.json`, and the slot is held by a `mock:slow` run
  * (~25 s turn). That
  * matters: a `waiting` run does NOT hold a slot (#347), so parking the first run would
  * free the queue immediately and there would be nothing queued to test.
@@ -108,7 +108,7 @@ beforeAll(async () => {
   git('commit', '-qm', 'init')
 
   // One workspace-wide agent slot, so the second run demonstrably waits in the queue.
-  // CEZ_HOME keeps this test isolated from the developer's real workspace config.
+  // ONNI_HOME keeps this test isolated from the developer's real workspace config.
   const onniHome = join(dataRoot, '.onni-home')
   mkdirSync(onniHome, { recursive: true })
   writeFileSync(
@@ -122,7 +122,7 @@ beforeAll(async () => {
   server = spawn(
     process.execPath,
     [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
-    { env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: onniHome }, stdio: 'ignore' },
+    { env: { ...process.env, ONNI_DRY_RUN: '1', ONNI_HOME: onniHome }, stdio: 'ignore' },
   )
   await waitForHealth(baseUrl)
 

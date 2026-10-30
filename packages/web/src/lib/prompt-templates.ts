@@ -103,7 +103,7 @@ export const DEFAULT_PROMPT_TEMPLATES: readonly PromptTemplate[] = [
 /**
  * Templates that only make sense when the server can dispatch (`capabilities.dispatch`): the
  * built-in "Review open PRs" tells the agent to run `onni task create`, and on a cockpit started
- * with `CEZ_DISPATCH=0` that call is refused. Offering the template there sends an autonomous
+ * with `ONNI_DISPATCH=0` that call is refused. Offering the template there sends an autonomous
  * run into a refusal it then works around at full cost — the live-session failure behind this
  * gate. Hidden from the composers while the capability is off or still unknown; Settings keeps
  * listing it so the text stays editable.
@@ -115,7 +115,7 @@ export const DISPATCH_TEMPLATE_IDS: ReadonlySet<string> = new Set(['review-open-
  * Templates that only make sense when the server runs GitHub automations
  * (`capabilities.automations`, spec 2026-09-13-automations-from-prompt): the built-in "Create an
  * automation" briefs the agent for the `create-onni-automation` skill, which the server only
- * lists — and whose `onni automation` CLI only answers — with `CEZ_AUTOMATIONS=1`. Same gate, same
+ * lists — and whose `onni automation` CLI only answers — with `ONNI_AUTOMATIONS=1`. Same gate, same
  * reasoning as `DISPATCH_TEMPLATE_IDS`; Settings keeps listing it so the text stays editable.
  */
 export const AUTOMATIONS_TEMPLATE_IDS: ReadonlySet<string> = new Set(['create-automation'])

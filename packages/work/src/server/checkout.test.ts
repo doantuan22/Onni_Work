@@ -212,19 +212,19 @@ describe('checkout — the cleanup guard', () => {
 });
 
 describe('checkoutRepo — clone, failure cleanup, existing target', () => {
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let root: string;
 
   beforeEach(() => {
     root = mkdtempSync(join(realpathSync(tmpdir()), 'onni-checkout-'));
-    // The `run: undefined` tests exercise the CEZ_DRY_RUN fake clone; without
+    // The `run: undefined` tests exercise the ONNI_DRY_RUN fake clone; without
     // this the default runner shells out to a real `gh repo clone`.
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
   });
   afterEach(() => {
     rmSync(root, { recursive: true, force: true });
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   const events: unknown[] = [];
@@ -250,7 +250,7 @@ describe('checkoutRepo — clone, failure cleanup, existing target', () => {
     };
   };
 
-  it('the CEZ_DRY_RUN fake clone lands a repo at <projectsDir>/<repo> and reports done', async () => {
+  it('the ONNI_DRY_RUN fake clone lands a repo at <projectsDir>/<repo> and reports done', async () => {
     const result = await run({ run: undefined, checkoutId: 'co-1' });
     expect(result).toMatchObject({
       ok: true,
@@ -345,10 +345,10 @@ describe('checkoutRepo — clone, failure cleanup, existing target', () => {
 });
 
 describe('POST /api/v1/projects/checkout', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedProjectsDir = process.env.CEZ_PROJECTS_DIR;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedHome = process.env.ONNI_HOME;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedProjectsDir = process.env.ONNI_PROJECTS_DIR;
+  const savedRemote = process.env.ONNI_REMOTE;
   let home: string;
   let repoRoot: string;
   let checkoutRoot: string;
@@ -358,10 +358,10 @@ describe('POST /api/v1/projects/checkout', () => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-checkout-home-'));
     repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-checkout-boot-'));
     checkoutRoot = join(home, 'onni', 'projects');
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_DRY_RUN = '1';
-    delete process.env.CEZ_PROJECTS_DIR;
-    delete process.env.CEZ_REMOTE;
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_DRY_RUN = '1';
+    delete process.env.ONNI_PROJECTS_DIR;
+    delete process.env.ONNI_REMOTE;
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     clearProjectProbeCache();
   });
@@ -369,14 +369,14 @@ describe('POST /api/v1/projects/checkout', () => {
   afterEach(() => {
     store.flush();
     for (const dir of [home, repoRoot]) rmSync(dir, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
-    if (savedProjectsDir === undefined) delete process.env.CEZ_PROJECTS_DIR;
-    else process.env.CEZ_PROJECTS_DIR = savedProjectsDir;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
+    if (savedProjectsDir === undefined) delete process.env.ONNI_PROJECTS_DIR;
+    else process.env.ONNI_PROJECTS_DIR = savedProjectsDir;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const makeApp = (over: Partial<ServerDeps> = {}) =>
@@ -446,9 +446,9 @@ describe('POST /api/v1/projects/checkout', () => {
     expect((await listProjectsViaApi()).projects.map((p) => p.id)).toContain(body.project?.id);
   });
 
-  it('uses CEZ_PROJECTS_DIR as the zero-config checkout root and creates it recursively', async () => {
+  it('uses ONNI_PROJECTS_DIR as the zero-config checkout root and creates it recursively', async () => {
     const fromEnv = join(home, 'deep', 'environment', 'checkouts');
-    process.env.CEZ_PROJECTS_DIR = fromEnv;
+    process.env.ONNI_PROJECTS_DIR = fromEnv;
     const { status, body } = await post({ url: 'open-mercato/onni' });
     expect(status).toBe(200);
     expect(body.project?.root).toBe(join(fromEnv, 'onni'));

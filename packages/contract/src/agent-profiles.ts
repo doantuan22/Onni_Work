@@ -109,7 +109,7 @@ export type AgentAccountSelection = z.infer<typeof agentAccountSelectionSchema>;
 /**
  * `GET /api/v1/workspace/agent-profiles` — every account, discovered defaults first.
  *
- * `editable` is false in hosted mode (`CEZ_REMOTE`) unless the operator explicitly enables remote
+ * `editable` is false in hosted mode (`ONNI_REMOTE`) unless the operator explicitly enables remote
  * account management: defining a profile points an agent at a local directory, and the listing
  * echoes absolute paths carrying the username.
  */

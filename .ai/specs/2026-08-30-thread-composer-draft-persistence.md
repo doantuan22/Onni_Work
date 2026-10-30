@@ -308,7 +308,7 @@ text is there, the caret at the end, the thumbnails intact.
   inputs and the routes stop being called. Leftover `drafts/` directories are inert — no migration,
   no schema version, nothing to undo. Deleting `.ai/cezar/drafts/` at any time is safe, which is
   the zero-config contract ("delete any of it and cezar rebuilds what it needs").
-- **Zero config.** No new config key, no new `CEZ_*` env var, no setting. The feature is on, or it
+- **Zero config.** No new config key, no new `ONNI_*` env var, no setting. The feature is on, or it
   degrades quietly to today's behavior.
 
 ## 📋 Phasing

@@ -97,7 +97,7 @@ export const serverStateSchema = z
     bindHost: z.string().optional().catch(undefined),
     /** Flips true only when every required step is `done`. */
     installed: z.boolean().default(false).catch(false),
-    /** True when this record was written by a CEZ_DRY_RUN preview — a real
+    /** True when this record was written by a ONNI_DRY_RUN preview — a real
      * install/uninstall treats it as no record at all (self-healing). */
     dryRun: z.boolean().optional().catch(undefined),
     /** ISO stamp set by the caller (Date.now is unavailable in some contexts). */
@@ -188,7 +188,7 @@ export interface CommandResult {
 /**
  * Command execution seam. The engine supplies a real implementation; tests
  * inject a fake so `sudoStep` / `verifyCommand` are exercised without touching
- * the host. In `CEZ_DRY_RUN`, side-effecting runs are short-circuited by the
+ * the host. In `ONNI_DRY_RUN`, side-effecting runs are short-circuited by the
  * step helpers, not the runner.
  */
 export interface Runner {
@@ -221,7 +221,7 @@ export interface InstallContext {
   instance: string;
   /** Atomically persist `state` to this instance's `~/.onni` record. */
   save(): Promise<void>;
-  /** CEZ_DRY_RUN — no real sudo, package installs, or network. */
+  /** ONNI_DRY_RUN — no real sudo, package installs, or network. */
   dryRun: boolean;
   /** `--yes`: auto-accept safe defaults; never invents a sudo password. */
   assumeYes: boolean;

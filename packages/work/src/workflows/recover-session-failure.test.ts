@@ -16,13 +16,13 @@ const MOCK_CODEX = join(HERE, '..', 'core', '__fixtures__', 'codex', 'mock-codex
 describe('recover() contains backend session failures (#562)', () => {
   let repoRoot: string;
   let store: RunStore;
-  const savedBin = process.env.CEZ_CODEX_BIN;
-  const savedPassthrough = process.env.CEZ_ENV_PASSTHROUGH;
+  const savedBin = process.env.ONNI_CODEX_BIN;
+  const savedPassthrough = process.env.ONNI_ENV_PASSTHROUGH;
   const savedReject = process.env.MOCK_CODEX_REJECT_RESUME;
 
   beforeEach(async () => {
-    process.env.CEZ_CODEX_BIN = MOCK_CODEX;
-    process.env.CEZ_ENV_PASSTHROUGH = 'MOCK_CODEX_REJECT_RESUME';
+    process.env.ONNI_CODEX_BIN = MOCK_CODEX;
+    process.env.ONNI_ENV_PASSTHROUGH = 'MOCK_CODEX_REJECT_RESUME';
     process.env.MOCK_CODEX_REJECT_RESUME = '1';
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-session-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
@@ -33,10 +33,10 @@ describe('recover() contains backend session failures (#562)', () => {
   });
 
   afterEach(() => {
-    if (savedBin === undefined) delete process.env.CEZ_CODEX_BIN;
-    else process.env.CEZ_CODEX_BIN = savedBin;
-    if (savedPassthrough === undefined) delete process.env.CEZ_ENV_PASSTHROUGH;
-    else process.env.CEZ_ENV_PASSTHROUGH = savedPassthrough;
+    if (savedBin === undefined) delete process.env.ONNI_CODEX_BIN;
+    else process.env.ONNI_CODEX_BIN = savedBin;
+    if (savedPassthrough === undefined) delete process.env.ONNI_ENV_PASSTHROUGH;
+    else process.env.ONNI_ENV_PASSTHROUGH = savedPassthrough;
     if (savedReject === undefined) delete process.env.MOCK_CODEX_REJECT_RESUME;
     else process.env.MOCK_CODEX_REJECT_RESUME = savedReject;
     store.flush();

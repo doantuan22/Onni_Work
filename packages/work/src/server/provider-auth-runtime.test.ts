@@ -20,7 +20,7 @@ import {
 // discovery for real.
 vi.mock('../core/claude-bin.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../core/claude-bin.ts')>()),
-  resolveClaudeBin: () => process.env.CEZ_CLAUDE_BIN ?? 'claude',
+  resolveClaudeBin: () => process.env.ONNI_CLAUDE_BIN ?? 'claude',
 }));
 
 // Junie has no read-only auth-status command, so `ProviderAuthService` probes it through a real
@@ -78,12 +78,12 @@ describe('watchProviderRuntimeAuthFailures', () => {
   let store: RunStore;
   let providerAuth: ProviderAuthService;
   const unwatchers: Array<() => void> = [];
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-provider-auth-runtime-'));
     store = RunStore.open(join(root, '.ai/onni'));
-    delete process.env.CEZ_DRY_RUN;
+    delete process.env.ONNI_DRY_RUN;
     const runCommand = vi.fn<RunProviderCommand>(async (executable) => ({
       stdout: CONNECTED_OUTPUT[providerForExecutable(executable)],
       stderr: '',
@@ -100,8 +100,8 @@ describe('watchProviderRuntimeAuthFailures', () => {
     for (const unwatch of unwatchers.splice(0)) unwatch();
     store.flush();
     rmSync(root, { recursive: true, force: true });
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   const watch = () => {

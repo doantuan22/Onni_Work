@@ -2,7 +2,7 @@
  * `onni runs …` — read a running cockpit's tasks from a shell (#1080).
  *
  * A thin, read-only HTTP client over `GET /api/v1/runs`, addressed like `onni task` and
- * `onni automation`: `CEZ_API_URL` (the cockpit) and optionally `CEZ_PROJECT_ID` (which project;
+ * `onni automation`: `ONNI_API_URL` (the cockpit) and optionally `ONNI_PROJECT_ID` (which project;
  * without it the cockpit answers for the project it was started in). No server: the command says
  * so and exits 2 — the address is never guessed, see `cockpit-address.ts`.
  *
@@ -20,9 +20,9 @@ import { runRecordSchema, runStatusSchema, type RunStatus } from '@onni/contract
 import { missingCockpitMessage } from '../cockpit-address.ts';
 
 export interface RunsCliEnv {
-  CEZ_API_URL?: string;
-  CEZ_PROJECT_ID?: string;
-  CEZ_TASK_ID?: string;
+  ONNI_API_URL?: string;
+  ONNI_PROJECT_ID?: string;
+  ONNI_TASK_ID?: string;
 }
 
 export interface RunsCliIo {
@@ -38,7 +38,7 @@ export interface RunsCliIo {
  *  (#1133 review) — a plain, generous bound for a call to a cockpit on the same machine. */
 const RUNS_REQUEST_TIMEOUT_MS = 10_000;
 
-const USAGE = `onni runs — read the tasks of a running cockpit from a shell (CEZ_API_URL, optional CEZ_PROJECT_ID)
+const USAGE = `onni runs — read the tasks of a running cockpit from a shell (ONNI_API_URL, optional ONNI_PROJECT_ID)
 
   onni runs list [--status <status>[,<status>]] [--all] [--json]
                     this project's tasks, newest first: id, status, cost, title and branch;
@@ -68,9 +68,9 @@ const listedRunSchema = runRecordSchema
   .extend({ status: z.string() });
 
 function base(env: RunsCliEnv): string | null {
-  const url = env.CEZ_API_URL?.replace(/\/+$/, '');
+  const url = env.ONNI_API_URL?.replace(/\/+$/, '');
   if (!url) return null;
-  return env.CEZ_PROJECT_ID ? `${url}/api/v1/p/${encodeURIComponent(env.CEZ_PROJECT_ID)}` : `${url}/api/v1`;
+  return env.ONNI_PROJECT_ID ? `${url}/api/v1/p/${encodeURIComponent(env.ONNI_PROJECT_ID)}` : `${url}/api/v1`;
 }
 
 async function readError(response: Response): Promise<string> {

@@ -11,12 +11,12 @@ import { createApp } from './server.ts';
 describe('the GitHub PR changes API', () => {
   let repoRoot: string;
   let store: RunStore;
-  const previous = process.env.CEZ_DRY_RUN;
+  const previous = process.env.ONNI_DRY_RUN;
 
-  beforeAll(() => { process.env.CEZ_DRY_RUN = '1'; });
+  beforeAll(() => { process.env.ONNI_DRY_RUN = '1'; });
   afterAll(() => {
-    if (previous === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = previous;
+    if (previous === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = previous;
   });
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-pr-changes-'));

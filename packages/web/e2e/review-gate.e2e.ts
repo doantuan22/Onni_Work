@@ -16,7 +16,7 @@ import { AgentBrowser, onniCli, fixtureServeEnv, stopFixtureServer } from './age
  * transcript grows with the `Review feedback:` bubble), lets the run gate again, and accepts
  * — run done, celebration fired, banner gone.
  *
- * Draft PR success/409 stays in the component tests: even under CEZ_DRY_RUN the endpoint's
+ * Draft PR success/409 stays in the component tests: even under ONNI_DRY_RUN the endpoint's
  * failure modes are gh-dependent, and the semantics are fully pinned there.
  */
 
@@ -79,10 +79,10 @@ beforeAll(async () => {
   server = spawn(
     process.execPath,
     [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
-    // CEZ_REVIEW_GATE=1 because this spec is ABOUT the gate: it is opt-in (#489, default OFF),
+    // ONNI_REVIEW_GATE=1 because this spec is ABOUT the gate: it is opt-in (#489, default OFF),
     // so pinning it here is what makes the parked-at-review fixture reproducible instead of
     // depending on whatever the operator happens to export.
-    { env: fixtureServeEnv(dataRoot, { CEZ_REVIEW_GATE: '1' }), stdio: 'ignore' },
+    { env: fixtureServeEnv(dataRoot, { ONNI_REVIEW_GATE: '1' }), stdio: 'ignore' },
   )
   await waitForHealth(baseUrl)
 

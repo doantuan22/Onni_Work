@@ -68,7 +68,7 @@ One label lives outside this taxonomy: `do-not-close`, applied by humans to issu
 
 The one hard rule of this process: **a PR carrying `needs-qa` must not merge until it also carries `qa-approved`, even when every other check is green.** `om-merge-buddy` classifies such a PR as blocked; `om-approve-merge-pr` refuses to merge it.
 
-- Apply `needs-qa` to cockpit UI changes, new features, and other user-facing behavior that needs manual exercise (a `CEZ_DRY_RUN=1` session covers most cockpit flows without a real `claude` login).
+- Apply `needs-qa` to cockpit UI changes, new features, and other user-facing behavior that needs manual exercise (a `ONNI_DRY_RUN=1` session covers most cockpit flows without a real `claude` login).
 - `skip-qa` is the explicit opt-out for docs-only, dependency-only, CI-only, and similarly low-risk non-user-facing changes. Never combine it with `needs-qa`.
 - `qa-failed`, `do-not-merge`, and `blocked` are hard blocks regardless of every other signal. An active `qa` pipeline label means a tester is on the PR right now — never merge under an active tester.
 - The gate is satisfied when a QA reviewer tests the PR and applies `qa-approved`.

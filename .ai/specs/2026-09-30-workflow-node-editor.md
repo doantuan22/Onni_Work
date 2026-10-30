@@ -136,7 +136,7 @@ validator and editor: `{ type, category, configSchema (zod), ports, outputs }`.
 - Loop counters are per loop node and never reset within a run (D18).
 - Every waiting node has a bounded exit: `wait-ci` requires a timeout (uses the monitoring wake
   timer); `gate.human` / `ask-user` park the run as `waiting` exactly like today's asks.
-- `CEZ_DRY_RUN=1`: GitHub nodes fake their results (PR URL as today, CI = green).
+- `ONNI_DRY_RUN=1`: GitHub nodes fake their results (PR URL as today, CI = green).
 - Git/GitHub nodes run cezar's own code (not an agent) and degrade like `server/github.ts`:
   no `gh` → the node emits `failed` with a one-line reason, never throws.
 
@@ -192,7 +192,7 @@ validator and editor: `{ type, category, configSchema (zod), ports, outputs }`.
      the header; a reply starting with "approve" approves, anything else rejects and becomes
      `comment`. Only a USER-authored message answers a wait. `dispatch` awaits its child via
      `reportSettledChildToParent` (a cancelled child takes `failed`). GitHub nodes reuse
-     `createDraftPr` / `fetchGithubChecks` and a new `commentOnPr`; under `CEZ_DRY_RUN` the PR is
+     `createDraftPr` / `fetchGithubChecks` and a new `commentOnPr`; under `ONNI_DRY_RUN` the PR is
      faked and CI reports green. System nodes ride the run rail as `check`-kind rows
      (`graphRailSteps`).
 2. **Editor (done, 2026-09-30)** at `/p/:projectId/workflows-new[/:name]`, beside the shipped
@@ -250,7 +250,7 @@ validator and editor: `{ type, category, configSchema (zod), ports, outputs }`.
 - **More git / GitHub nodes (2026-10-01).** `git.push`, `git.sync-base` (merge the freshest
   base; a conflict is left in progress and the node leaves by `conflict` for an agent to
   resolve), `github.pr-update` (ready, labels, reviewers), `github.issue-comment` (the task's
-  issue by default), and `notify.webhook` behind `CEZ_WORKFLOW_WEBHOOKS=1` (off: the node leaves
+  issue by default), and `notify.webhook` behind `ONNI_WORKFLOW_WEBHOOKS=1` (off: the node leaves
   by `failed` with a note). **Not built, on purpose:** tracker write nodes (comment, transition) —
   `docs/adding-issue-tracker.md` names vendor writes a separate design change for the connection
   model. Automations already launch any catalog workflow (graphs and built-in templates

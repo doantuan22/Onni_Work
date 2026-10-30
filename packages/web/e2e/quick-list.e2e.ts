@@ -192,7 +192,7 @@ beforeAll(async () => {
   const port = await freePort()
   baseUrl = `http://localhost:${port}`
   server = spawn(process.execPath, [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'], {
-    // Dry-run + a pinned CEZ_HOME, exactly as the shared test env does — see `fixtureServeEnv`.
+    // Dry-run + a pinned ONNI_HOME, exactly as the shared test env does — see `fixtureServeEnv`.
     // Nothing in this spec starts a run, but the boot probes the backends.
     env: fixtureServeEnv(dataRoot),
     stdio: 'ignore',

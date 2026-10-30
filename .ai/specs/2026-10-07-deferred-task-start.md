@@ -25,7 +25,7 @@ A deferred task makes **no model call before its start time**: no title generati
 
 The server and computer must be running at the start time; the browser tab may be closed. Late starts follow the existing automation age rule: up to 24 h late, the task starts once as a catch-up. Later than that, it does not start by itself and is shown as missed.
 
-There is no new configuration, daemon or `CEZ_*` variable. With `CEZ_AUTOMATIONS=0`, both deferred options are disabled with an explanation, and **Now** works as before. A deferred choice never becomes the default for the next task.
+There is no new configuration, daemon or `ONNI_*` variable. With `ONNI_AUTOMATIONS=0`, both deferred options are disabled with an explanation, and **Now** works as before. A deferred choice never becomes the default for the next task.
 
 The selected time is a **not-before time**, not a reservation of future allowance. Other tasks or activity outside cezar may use that allowance first; ordinary account holds and capacity limits still apply. Scheduling must preserve the chosen workflow, account, model, autonomy setting and review gates, rather than implicitly making the task autonomous.
 
@@ -158,7 +158,7 @@ Required states:
 | Codex read failure | Show a clear error with **Retry** or date & time. |
 | Workflow uses more than one account | “This workflow uses more than one account. Pick a time instead.” |
 | Backend without reset data | “Usage reset information is not available for this backend yet. Pick a time instead.” |
-| Automations disabled (`CEZ_AUTOMATIONS=0`) | “Later starts are turned off on this cockpit.” Only **Now** is available. |
+| Automations disabled (`ONNI_AUTOMATIONS=0`) | “Later starts are turned off on this cockpit.” Only **Now** is available. |
 | Attachments present | Both deferred options disabled, with the attachment message above. |
 | Account on hold and Now selected | Show the real reset-related waiting reason. |
 | Linked todo | Both deferred options disabled: “Tasks started from a todo can only start now.” |
@@ -250,7 +250,7 @@ Every shape is a Zod schema in `packages/contract` with an inferred type. Projec
 - [ ] Reset-derived instants remain not-before bounds across DST and server-zone changes; previews consistently label the server time zone.
 - [ ] Scheduling preserves autonomy, questions and review gates and does not append the generic automation instruction to decide without asking.
 - [ ] A prompt containing `{{…}}` text launches verbatim.
-- [ ] Deferred options are disabled, with their messages, when attachments are present, the task comes from a linked todo, or `CEZ_AUTOMATIONS=0`.
+- [ ] Deferred options are disabled, with their messages, when attachments are present, the task comes from a linked todo, or `ONNI_AUTOMATIONS=0`.
 - [ ] Works for ordinary submission, approved-plan execution and ×3 variants; does not leak into Continue or auto-resume.
 - [ ] A Claude `allowed` event with a future reset and a verifiable account binding enables reset mode before exhaustion; missing or expired data triggers no model call.
 - [ ] Codex covers checking, success, timeout/error, retry and a single weekly window without secondary data.

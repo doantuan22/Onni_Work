@@ -12,7 +12,7 @@ const observation = (time = 1) => normalizeCodexUsageWindows({ rateLimits: {
 afterEach(() => vi.unstubAllEnvs());
 
 it('writes account-bound 0600 snapshots and merges concurrent accounts', async () => {
-  vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
+  vi.stubEnv('ONNI_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
   expect(await Promise.all([
     saveUsageWindows(binding, observation()),
     saveUsageWindows({ ...binding, accountId: 'personal' }, observation()),
@@ -20,12 +20,12 @@ it('writes account-bound 0600 snapshots and merges concurrent accounts', async (
   expect(loadUsageWindows(binding)?.windows).toHaveLength(1);
   expect(loadUsageWindows({ ...binding, accountId: 'personal' })?.windows).toHaveLength(1);
   expect(loadUsageWindows({ ...binding, profilePath: '/other' })).toBeNull();
-  const file = join(process.env.CEZ_HOME!, 'usage-windows.json');
+  const file = join(process.env.ONNI_HOME!, 'usage-windows.json');
   expect(statSync(file).mode & 0o777).toBe(0o600);
   expect(readFileSync(file, 'utf8')).not.toContain('credentials');
 });
 it('merges partial updates, clears explicit null, ignores older windows and invalidates identity', async () => {
-  vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
+  vi.stubEnv('ONNI_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
   await saveUsageWindows(binding, observation(10));
   await saveUsageWindows(binding, normalizeCodexUsageWindows({ rateLimits: { secondary: { resetsAt: 200000 } } }, 'codex-read', 20));
   expect(loadUsageWindows(binding)?.windows).toHaveLength(2);
@@ -47,7 +47,7 @@ it('keeps observed blocking windows until reset without an arbitrary observation
 });
 it('corrupt and unwritable stores degrade with one redacted warning', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'usage-store-'));
-  vi.stubEnv('CEZ_HOME', dir);
+  vi.stubEnv('ONNI_HOME', dir);
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
   writeFileSync(join(dir, 'usage-windows.json'), 'not JSON');
   expect(loadUsageWindows(binding)).toBeNull();
@@ -55,19 +55,19 @@ it('corrupt and unwritable stores degrade with one redacted warning', async () =
   expect(warning).toHaveBeenCalledTimes(1);
   const blocked = join(dir, 'file');
   writeFileSync(blocked, 'not a directory');
-  vi.stubEnv('CEZ_HOME', blocked);
+  vi.stubEnv('ONNI_HOME', blocked);
   expect(await saveUsageWindows(binding, observation())).toBe(false);
   expect(warning).toHaveBeenCalledTimes(2);
   warning.mockRestore();
 });
 
 it('the existing sandbox guard rejects real-home writes before filesystem I/O', async () => {
-  vi.stubEnv('CEZ_HOME', join(homedir(), '.onni'));
+  vi.stubEnv('ONNI_HOME', join(homedir(), '.onni'));
   await expect(saveUsageWindows(binding, observation())).rejects.toThrow('refusing to write');
 });
 
 it.each(['/resolved/profile', '/changed/profile'])('unidentified observations cannot erase identified state at %s', async (profilePath) => {
-  vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
+  vi.stubEnv('ONNI_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
   const identified = { ...binding, identity: 'a'.repeat(64) };
   await saveUsageWindows(identified, observation(10));
   await saveUsageWindows({ ...binding, profilePath }, observation(20));
@@ -75,7 +75,7 @@ it.each(['/resolved/profile', '/changed/profile'])('unidentified observations ca
   expect(loadUsageWindows({ ...binding, profilePath })).toBeNull();
 });
 it('a verified new login replaces the old identity without merging its windows', async () => {
-  vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
+  vi.stubEnv('ONNI_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
   const first = { ...binding, identity: 'a'.repeat(64) };
   const second = { ...binding, identity: 'b'.repeat(64) };
   await saveUsageWindows(first, observation(10));
@@ -85,7 +85,7 @@ it('a verified new login replaces the old identity without merging its windows',
 });
 
 it.each([9, 11])('preserves current location when an old session reports at %s', async time => {
-  vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
+  vi.stubEnv('ONNI_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
   const current = { ...binding, identity: 'a'.repeat(64) };
   const old = { ...current, profilePath: '/old/profile', identity: 'b'.repeat(64) };
   expect(await saveUsageWindows(current, observation(10))).toBe(true);
@@ -103,7 +103,7 @@ it('unknown resets and expired blocks do not become permanent ordinary holds', (
 });
 it('retains the snapshot store bound across profile locations', async () => {
   const home = mkdtempSync(join(tmpdir(), 'usage-store-'));
-  vi.stubEnv('CEZ_HOME', home);
+  vi.stubEnv('ONNI_HOME', home);
   writeFileSync(join(home, 'usage-windows.json'), JSON.stringify(Array.from({ length: 1024 }, (_, i) => ({
     ...observation(), binding: { ...binding, profilePath: `/profile/${i}` },
   }))));
@@ -113,7 +113,7 @@ it('retains the snapshot store bound across profile locations', async () => {
 });
 
 it.each([9, 11])('preserves Claude location while an old session reports at %s', async time => {
-  vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
+  vi.stubEnv('ONNI_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
   const current = { provider: 'claude' as const, accountId: 'work', profilePath: '/new/profile' };
   const old = { ...current, profilePath: '/old/profile' };
   const observed = (observedAt: number) => normalizeClaudeUsageWindows({ type: 'rate_limit_event', rate_limit_info: {
@@ -125,7 +125,7 @@ it.each([9, 11])('preserves Claude location while an old session reports at %s',
   expect(loadUsageWindows(old)?.observedAt).toBe(time);
 });
 it('checks every retained location before admitting unidentified account data', async () => {
-  vi.stubEnv('CEZ_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
+  vi.stubEnv('ONNI_HOME', mkdtempSync(join(tmpdir(), 'usage-store-')));
   await saveUsageWindows(binding, observation(10));
   const identified = { ...binding, profilePath: '/identified', identity: 'a'.repeat(64) };
   await saveUsageWindows(identified, observation(20));

@@ -159,7 +159,7 @@ export function createLaunchScript(
  * survive as a passing test, and the fix is always the same one line — inject the launcher seam
  * (`openTerminal` / `openFile` / `openApp` on `ServerDeps`) instead of reaching the real one.
  *
- * `CEZ_ALLOW_TEST_SPAWN=1` is the deliberate exception, for a file that has replaced
+ * `ONNI_ALLOW_TEST_SPAWN=1` is the deliberate exception, for a file that has replaced
  * `node:child_process` with a mock: nothing reaches a real process there, and asserting the argv a
  * launcher WOULD pass is exactly how the Windows launcher-safety cases (#469, BatBadBut) are
  * pinned. Set it around those tests, never process-wide.
@@ -168,7 +168,7 @@ export function createLaunchScript(
  * could drift.
  */
 export function refuseSpawnUnderTest(bin: string, args: readonly string[]): void {
-  if (!process.env.VITEST || process.env.CEZ_ALLOW_TEST_SPAWN === '1') return;
+  if (!process.env.VITEST || process.env.ONNI_ALLOW_TEST_SPAWN === '1') return;
   throw new Error(
     `refusing to spawn a launcher from a test: ${[bin, ...args].join(' ')}\n` +
       'Inject the launcher (ServerDeps.openTerminal / openFile / openApp) instead of calling the real one.',

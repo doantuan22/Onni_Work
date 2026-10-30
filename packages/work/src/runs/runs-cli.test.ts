@@ -6,7 +6,7 @@ import { runRunsCommand, type RunsCliIo } from './runs-cli.ts';
 /** `onni runs` is a thin read-only client: what is pinned is the URL it builds, the filtering and
  *  the printed rows — never the route, which has its own tests. */
 describe('onni runs', () => {
-  const env = { CEZ_API_URL: 'http://127.0.0.1:4321/', CEZ_PROJECT_ID: 'proj' };
+  const env = { ONNI_API_URL: 'http://127.0.0.1:4321/', ONNI_PROJECT_ID: 'proj' };
 
   const run = (id: string, overrides: Record<string, unknown> = {}) => ({
     id,
@@ -54,7 +54,7 @@ describe('onni runs', () => {
 
   it('--all includes archived tasks, --status filters, and the unscoped API is used without a project', async () => {
     const h = harness({ status: 200, body: runs });
-    expect(await runRunsCommand(['list', '--all', '--status', 'done'], { CEZ_API_URL: 'http://127.0.0.1:1' }, h.io)).toBe(0);
+    expect(await runRunsCommand(['list', '--all', '--status', 'done'], { ONNI_API_URL: 'http://127.0.0.1:1' }, h.io)).toBe(0);
     expect(h.calls).toEqual(['http://127.0.0.1:1/api/v1/runs']);
     expect(h.out).toEqual([
       'cccccccc  done  task cccccccc-3  (archived)',
@@ -93,7 +93,7 @@ describe('onni runs', () => {
   it('without an address it explains how to set one and never guesses a cockpit', async () => {
     const h = harness({ status: 200, body: runs });
     expect(await runRunsCommand(['list'], {}, h.io)).toBe(2);
-    expect(h.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 onni runs list');
+    expect(h.err[0]).toContain('ONNI_API_URL=http://127.0.0.1:4321 onni runs list');
     expect(h.calls).toHaveLength(0);
   });
 
@@ -188,7 +188,7 @@ describe('onni runs — request timeout', () => {
     });
     const out: string[] = [];
     const err: string[] = [];
-    const code = await runRunsCommand(['list'], { CEZ_API_URL: base }, io(out, err));
+    const code = await runRunsCommand(['list'], { ONNI_API_URL: base }, io(out, err));
     expect(code).toBe(1);
     expect(err).toEqual(['onni runs: the cockpit did not answer within 50ms']);
   });
@@ -201,7 +201,7 @@ describe('onni runs — request timeout', () => {
     });
     const out: string[] = [];
     const err: string[] = [];
-    const code = await runRunsCommand(['list'], { CEZ_API_URL: base }, io(out, err));
+    const code = await runRunsCommand(['list'], { ONNI_API_URL: base }, io(out, err));
     expect(code).toBe(1);
     expect(err).toEqual(['onni runs: the cockpit did not answer within 50ms']);
   });

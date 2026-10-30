@@ -110,7 +110,7 @@ export function ProjectLocationNav() {
  * instead of the checkout. The server refuses them too (400) — this filter is so the menu never
  * offers a pick that can only fail.
  *
- * Renders nothing when there is nothing to offer: hosted mode (`CEZ_REMOTE`) answers with an
+ * Renders nothing when there is nothing to offer: hosted mode (`ONNI_REMOTE`) answers with an
  * empty target list, and a menu whose every item is missing is worse than no menu.
  */
 function OpenWithMenu({ root }: { root: string }) {

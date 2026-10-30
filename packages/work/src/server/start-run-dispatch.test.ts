@@ -21,14 +21,14 @@ describe('POST /runs and the dispatch intent', () => {
   let store: RunStore;
   let app: Hono;
   let inputs: StartRunInput[];
-  const savedFlag = process.env.CEZ_DISPATCH;
+  const savedFlag = process.env.ONNI_DISPATCH;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-startrun-dispatch-'));
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     inputs = [];
-    delete process.env.CEZ_DISPATCH;
+    delete process.env.ONNI_DISPATCH;
     const manager = {
       startRun: (_workflow: WorkflowDef, input: StartRunInput) => {
         inputs.push(input);
@@ -39,8 +39,8 @@ describe('POST /runs and the dispatch intent', () => {
   });
 
   afterEach(() => {
-    if (savedFlag === undefined) delete process.env.CEZ_DISPATCH;
-    else process.env.CEZ_DISPATCH = savedFlag;
+    if (savedFlag === undefined) delete process.env.ONNI_DISPATCH;
+    else process.env.ONNI_DISPATCH = savedFlag;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -61,8 +61,8 @@ describe('POST /runs and the dispatch intent', () => {
     expect(inputs[1]?.dispatchIntent).toBeUndefined();
   });
 
-  it('drops the intent — still starting the run — while CEZ_DISPATCH=0', async () => {
-    process.env.CEZ_DISPATCH = '0';
+  it('drops the intent — still starting the run — while ONNI_DISPATCH=0', async () => {
+    process.env.ONNI_DISPATCH = '0';
     const res = await post({ steps: [{ id: 'work', prompt: '{{task}}' }], task: 'split this', dispatch: { maxSubtasks: 3 } });
     expect(res.status).toBe(201);
     expect(inputs[0]?.dispatchIntent).toBeUndefined();

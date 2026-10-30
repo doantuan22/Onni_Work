@@ -17,7 +17,7 @@ on top of content the user never saw. Every saved edit is recorded
 twice — a metadata `file-edited` run event for visibility, and a bounded
 byte-exact snapshot for recovery — so a human mutation of a live agent worktree
 is both auditable and restorable. Writing is a **local-machine capability**: every write refuses under
-hosted mode (`CEZ_REMOTE`), enforced server-side. The editor is the `CodeEditor`
+hosted mode (`ONNI_REMOTE`), enforced server-side. The editor is the `CodeEditor`
 component from #404 / PR #418 — no new dependency, no Monaco — highlighting the
 open file through the same `langForPath()` + Shiki pipeline the preview already
 uses, with a **debounced** editor-side tokenizer, because the preview's hook
@@ -37,7 +37,7 @@ commenting on #530.
 | Q2 | Version token: content hash, or `mtime`+`size`? | **Content hash** (sha-256 of the bytes). | `mtime` granularity loses sub-second edits and is not portable across filesystems; a hash cannot produce a false "unchanged". |
 | Q3 | Allow editing while the run is `running`? | **Yes**, with the stale-base guard plus the divergence watch and the edit event below. | Blocking breaks the main use case — watching an agent work and correcting one value. |
 | Q4 | Auto-commit a manual edit? | **No.** But the saved bytes are kept as an edit snapshot (§Audit & recovery), which is what actually makes it recoverable. | Auto-committing surprises users and pollutes the branch — **but see §Alternative considered: reuse `autosaveCommit()`, which weakens that reasoning substantially.** This is the answer most worth a human overriding, because taking it the other way deletes the largest subsystem in Phase 1. |
-| Q5 | Gate behind a new `CEZ_*` flag? | **No new flag to enable it; one to disable it.** `CEZ_NO_FILE_EDIT=1` refuses all writes. | AGENTS.md § Zero config forbids knobs users must set to get working behavior — it does not forbid an operator kill switch for a write primitive. Off-by-default would be the knob; on-with-an-off-switch is not. |
+| Q5 | Gate behind a new `ONNI_*` flag? | **No new flag to enable it; one to disable it.** `ONNI_NO_FILE_EDIT=1` refuses all writes. | AGENTS.md § Zero config forbids knobs users must set to get working behavior — it does not forbid an operator kill switch for a write primitive. Off-by-default would be the knob; on-with-an-off-switch is not. |
 | Q6 | Reuse the `localHandoff` capability, or add one? | **Add `fileEdit`**, sharing the same predicate. | Conflating two capabilities means a change to one silently changes the other. |
 | Q7 | Extend to the repo-level `/api/repo/*` surfaces? | **No — out of scope.** | The repo checkout is the user's real working tree, with no worktree isolation to fall back on. Separate capability, separate spec. |
 | Q8 | Put the saved content in the run event, or in a side file? | **Side file** (`runs/<id>-edits/`, content-addressed), with the event carrying metadata only. Bounded: 20 snapshots / 5 MB per run. | Audit and recovery have opposite requirements. The event path redacts every event type by default, so content in the event cannot be the exact-bytes recovery record; and it is sync-appended and replayed to every SSE client, so embedding up to 512 KB per save is a real cost on the run's hot path. Splitting them is the only option that keeps both properties honest (§Audit & recovery). |
@@ -348,7 +348,7 @@ saves of identical content deduplicate for free.
 No `content`. Two independent reasons, either of which is sufficient:
 
 - **Redaction would corrupt it.** `RunStore.appendEvent` redacts every event
-  type, on by default (`store.ts:457`, opt-out `CEZ_REDACT_SECRETS=0` at
+  type, on by default (`store.ts:457`, opt-out `ONNI_REDACT_SECRETS=0` at
   `:555`), replacing any host env value ≥ 12 chars
   whose name matches `SECRET_NAME_RE` plus token-shaped literals
   (`src/core/secret-redaction.ts:55`; `TOKEN_PATTERNS` at `:57-70`). Editing a `.env.example`, a fixture, or
@@ -386,7 +386,7 @@ existing artifact is a flat sibling (`runs/<id>.ndjson`,
   /api/runs/:id/edits/:hash` is exactly that pair. The "user-authored" half of
   the argument above answers *why the bytes are not redacted*; it does not
   answer *who may read them back*. Therefore **the snapshot read route is gated
-  on the same `fileEdit` predicate as the write** — `409` under `CEZ_REMOTE=1`,
+  on the same `fileEdit` predicate as the write** — `409` under `ONNI_REMOTE=1`,
   a non-loopback bind, or the kill switch. Without this, flipping a cockpit to
   hosted mode leaves every snapshot written before the flip network-readable,
   and §Audit itself concedes snapshots can outlive the worktree they came from.
@@ -395,10 +395,10 @@ existing artifact is a flat sibling (`runs/<id>.ndjson`,
 - **One case where that argument does not hold, stated rather than glossed:**
   when the worktree is reclaimed under retention (#483, §Edge Cases), the
   snapshot **outlives its source** and becomes the only persistent unredacted
-  copy — inside `.ai/cezar/`, which is what `CEZ_REDACT_SECRETS` exists to keep
+  copy — inside `.ai/cezar/`, which is what `ONNI_REDACT_SECRETS` exists to keep
   clean. Accepted, because a redacted snapshot is not a recovery record at all
   (that is the whole point of the split), and because reclamation already
-  destroys the worktree the user would restore into. `CEZ_REDACT_SECRETS=0`
+  destroys the worktree the user would restore into. `ONNI_REDACT_SECRETS=0`
   semantics are unaffected either way. If this trade is judged wrong, the
   resolution is to evict snapshots on reclamation, not to redact them.
 - **Retention:** keep at most the 20 most recent snapshots per run and 5 MB
@@ -498,9 +498,9 @@ The first browser-reachable write into a checkout an agent subsequently
 executes. That deserves stating plainly.
 
 1. **Local-only by default.** The server binds `127.0.0.1` (AGENTS.md § HTTP
-   server). Hosted deployments set `CEZ_REMOTE=1` or bind a non-loopback host.
+   server). Hosted deployments set `ONNI_REMOTE=1` or bind a non-loopback host.
 2. **Hosted mode refuses every write**, from the same predicate as
-   `localHandoff` (`CEZ_REMOTE !== '1' && isLoopbackHost(bindHost)`,
+   `localHandoff` (`ONNI_REMOTE !== '1' && isLoopbackHost(bindHost)`,
    `src/server/capabilities.ts:44`). Rationale, inherited from PR #418: a
    network-reachable write primitive into a checkout the agent then executes is
    an RCE, not a convenience. Reads stay open; writes do not.
@@ -548,7 +548,7 @@ executes. That deserves stating plainly.
      addressed; rejecting absent-`Origin` would break scripted clients while
      stopping no browser attack. **Reject only a present-and-foreign `Origin`.**
    - **`Host` is checked only when hosted mode is off.** A `Host` allowlist
-     pinned to loopback is incoherent under `CEZ_REMOTE=1`, where a non-loopback
+     pinned to loopback is incoherent under `ONNI_REMOTE=1`, where a non-loopback
      `Host` is the entire point (`capabilities.ts:28-33`). Gate the `Host` half
      on the same `isLoopbackHost(bindHost)` predicate the capabilities already
      compute — no new configuration surface, so AGENTS.md § Zero config holds.
@@ -583,9 +583,9 @@ executes. That deserves stating plainly.
    resolution is to make **#467 a hard sequencing blocker** — Phase 1 waits —
    rather than to ship a thinner control. Both paths are acceptable; shipping
    "server-wide middleware" with the above left unstated is not.
-6. **Kill switch.** `CEZ_NO_FILE_EDIT=1` refuses all writes with `409`, so an
+6. **Kill switch.** `ONNI_NO_FILE_EDIT=1` refuses all writes with `409`, so an
    operator can disable the primitive without a release (Q5). Update
-   `.env.example` in the same commit — AGENTS.md makes an undocumented `CEZ_*`
+   `.env.example` in the same commit — AGENTS.md makes an undocumented `ONNI_*`
    var a bug.
 
 Background: #430 (agent tool access is not default-deny).
@@ -652,8 +652,8 @@ must not ship it optional.
 | `400` | `{ error }` | Body fails `safeParse`. |
 | `404` | `{ error: 'not found' }` | No such run. |
 | `409` | `{ error: NO_WORKTREE }` | Run has no worktree — matches the `GET`. |
-| `409` | `{ error: 'file editing is disabled — this cockpit runs in hosted mode (CEZ_REMOTE)' }` | Hosted mode. Wording follows `server.ts:898`/`:928`. |
-| `409` | `{ error: 'file editing is disabled (CEZ_NO_FILE_EDIT)' }` | Kill switch. |
+| `409` | `{ error: 'file editing is disabled — this cockpit runs in hosted mode (ONNI_REMOTE)' }` | Hosted mode. Wording follows `server.ts:898`/`:928`. |
+| `409` | `{ error: 'file editing is disabled (ONNI_NO_FILE_EDIT)' }` | Kill switch. |
 | `409` | `{ error }` from `readWorktreePath`, or the directory / binary / non-UTF-8 / over-cap refusals | Target cannot be edited. |
 | `409` | `{ error: 'file changed on disk since it was opened — reload to see the current content' }` | `baseHash` mismatch. |
 | `413` | `{ error }` | Body over the cap. |
@@ -673,7 +673,7 @@ stripped**, validated `^[0-9a-f]{64}$` before it touches the filesystem; the pat
 | `200` | the snapshot bytes, `content-type: text/plain; charset=utf-8`, `nosniff` | Found. Snapshots are UTF-8 by construction — the `PUT` refuses anything else. |
 | `400` | `{ error }` | `:hash` is not 64 hex chars. |
 | `404` | `{ error: 'not found' }` | No such run, or the snapshot was evicted by retention. |
-| `409` | `{ error: 'file editing is disabled — this cockpit runs in hosted mode (CEZ_REMOTE)' }` | Hosted mode, non-loopback bind, or kill switch. |
+| `409` | `{ error: 'file editing is disabled — this cockpit runs in hosted mode (ONNI_REMOTE)' }` | Hosted mode, non-loopback bind, or kill switch. |
 
 **This route is gated on the same `fileEdit` predicate as the `PUT`**, not left
 open like the rest of the read surface. The store it serves is deliberately
@@ -1037,9 +1037,9 @@ it carries its own tests.
 - §7 — untouched. `file-edited` is a run event, not an `AgentEvent`/`UiEvent`,
   so the backend-parity requirement does not apply.
 - Document the route and the fields in `BACKWARD_COMPATIBILITY.md` §2, the
-  event and the snapshot directory in §3, and `CEZ_NO_FILE_EDIT` in
+  event and the snapshot directory in §3, and `ONNI_NO_FILE_EDIT` in
   `.env.example` plus the README env table (`README.md:360-376`) — AGENTS.md
-  `:18` makes an undocumented `CEZ_*` var a bug. The HTTP route listing lives
+  `:18` makes an undocumented `ONNI_*` var a bug. The HTTP route listing lives
   in `BACKWARD_COMPATIBILITY.md:21-32`, not AGENTS.md.
 
 **Rollback story.** Tracked files: `git checkout -- <path>`, and the run's diff
@@ -1113,8 +1113,8 @@ phase completion.
    the worktree.
 2. **`fileEdit` capability + kill switch.** Extend `Capabilities` and
    `resolveCapabilities()` (`src/server/capabilities.ts`); add
-   `CEZ_NO_FILE_EDIT` and update `.env.example`. *Tests:* true by default; false
-   under `CEZ_REMOTE=1`, a non-loopback bind, and the kill switch.
+   `ONNI_NO_FILE_EDIT` and update `.env.example`. *Tests:* true by default; false
+   under `ONNI_REMOTE=1`, a non-loopback bind, and the kill switch.
 3. **`src/server/worktree-write.ts`.** `writeWorktreeFile()`: resolve via
    `readWorktreePath()`; reject directory / binary / non-UTF-8 / over-cap /
    missing; compare `baseHash`; re-hash from the open descriptor
@@ -1139,7 +1139,7 @@ phase completion.
    404, `worktreeOf` → 409, hosted-mode and kill-switch → 409, body cap → 413,
    zod `safeParse` → 400, delegate, map to the status table. *Tests:* every row.
 5. **Security guards, in the same commit as step 4.** (a) A `409` under
-   `CEZ_REMOTE=1` for an *otherwise perfectly valid* request — written so it
+   `ONNI_REMOTE=1` for an *otherwise perfectly valid* request — written so it
    cannot pass for the wrong reason. (b) The `Origin`/`Host` allowlist as
    **server-wide middleware** (§Security 5), tested against a rebinding-shaped
    request (a valid `Origin` with a foreign `Host`) and asserted to cover a
@@ -1150,7 +1150,7 @@ phase completion.
    `Origin` with `access-control-allow-origin: *`** (`BACKWARD_COMPATIBILITY.md:34`
    lists narrowing it as breaking); **a request with no `Origin` header is
    allowed** (scripted `localhost:4321` clients, `:19`); and **the `Host` half
-   is skipped under `CEZ_REMOTE=1`**. If any of the three is judged wrong,
+   is skipped under `ONNI_REMOTE=1`**. If any of the three is judged wrong,
    §Security 5's fallback applies: make #467 a hard sequencing blocker instead
    of shipping a thinner control. One more test: **`GET …/edits/:hash` is
    covered by the middleware** despite being a `GET` (§Security 5) — assert a
@@ -1167,7 +1167,7 @@ phase completion.
    **Gate the read route on the same `fileEdit` predicate as the `PUT`**
    (§Audit & recovery, §API Contracts) — the store is unredacted by design, and
    serving it back over the network is the half that makes that a problem.
-   *Tests:* the read route `409`s under `CEZ_REMOTE=1` and the kill switch;
+   *Tests:* the read route `409`s under `ONNI_REMOTE=1` and the kill switch;
    event carries no `content`; snapshot bytes are byte-identical to
    the request body **including when the content contains a host-secret-shaped
    string**; identical re-saves reuse one snapshot; eviction drops the oldest
@@ -1225,9 +1225,9 @@ phase completion.
    fields + the `?meta=1` query param — §2 is where the route listing lives, `:21-32`) and §3 (the
    `file-edited` event and the `runs/<id>-edits/` snapshot directory);
    `.env.example` and the README env table (`README.md:360-376`) for
-   `CEZ_NO_FILE_EDIT` (AGENTS.md `:18` makes an undocumented `CEZ_*` var a bug).
+   `ONNI_NO_FILE_EDIT` (AGENTS.md `:18` makes an undocumented `ONNI_*` var a bug).
 10. **E2E.** `web/app/e2e/`: browse → edit → save → the change appears in `GET
-    /api/runs/:id/changes`, under `CEZ_DRY_RUN=1`.
+    /api/runs/:id/changes`, under `ONNI_DRY_RUN=1`.
 
 ### Phase 2 — divergence awareness
 

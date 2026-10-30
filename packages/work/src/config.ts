@@ -64,11 +64,11 @@ const configSchema = z.object({
    *  alias that answers strict JSON; naming is fire-and-forget and never blocks. */
   namerModel: z.string().min(1).default('haiku'),
   /** Live title updates: refresh the display title through the namer on each
-   *  turn end. Absent = the `CEZ_TITLE_UPDATES` env decides (default ON — owner
+   *  turn end. Absent = the `ONNI_TITLE_UPDATES` env decides (default ON — owner
    *  decision on PR #479). */
   liveTitleUpdates: z.boolean().optional(),
   /** Optional diff-first review gate (#489): when a successful run with changes
-   *  should park at `review` for a human. Absent = the `CEZ_REVIEW_GATE` env
+   *  should park at `review` for a human. Absent = the `ONNI_REVIEW_GATE` env
    *  decides (default OFF — the deliberate inverse of `liveTitleUpdates`).
    *  Autonomous runs always skip the gate regardless of this. */
   reviewGate: z.boolean().optional(),
@@ -136,7 +136,7 @@ const configSchema = z.object({
     .catch(undefined),
   /**
    * Make each coding agent's native model setting authoritative. This is an
-   * optional repo-level counterpart to `CEZ_AGENT_MODELS_LOCKED=1`; absent or
+   * optional repo-level counterpart to `ONNI_AGENT_MODELS_LOCKED=1`; absent or
    * false preserves the ordinary per-runner model selector.
    */
   modelsLocked: z.boolean().optional().catch(undefined),

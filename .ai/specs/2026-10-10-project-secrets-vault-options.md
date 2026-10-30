@@ -29,7 +29,7 @@ decisions, and because most of PR #1291 survives either way.
 - **Surfaces**: `GET /check-env` → names only; `PUT`/`DELETE /check-env/:name`; `cezar check-env
   list|set|unset` (value on stdin); Settings → *Check credentials*. Contract in
   `packages/contract/src/check-env.ts` (`checkEnvNameIssue`, `checkEnvValueIssue`).
-- Phases 2–3 (run context `CEZ_*` vars, PR-head worktrees) are merged into the same branch.
+- Phases 2–3 (run context `ONNI_*` vars, PR-head worktrees) are merged into the same branch.
 - Review: approved by `om-auto-review-pr` (self-review, not the ruleset's human approval); `needs-qa`.
 - Against today's `main` it has **one conflict**, in `packages/work/src/workflows/run.ts`
   (`git merge-tree origin/main pr-1291`); everything else auto-merges.
@@ -237,7 +237,7 @@ features without touching the agents' subscription login.
 
 | Scenario | Before (main) | After |
 | --- | --- | --- |
-| Workflow with checks, nothing stored | `process.env` | same, plus `CEZ_*` context |
+| Workflow with checks, nothing stored | `process.env` | same, plus `ONNI_*` context |
 | Check step without `secrets:` | — | all `checks`-audience project secrets (PR behavior) |
 | No keychain on the machine | — | file backend, one `note` the first time, never a failure |
 | `@napi-rs/keyring` platform package absent | — | file backend, CLI boots |
@@ -250,7 +250,7 @@ features without touching the agents' subscription login.
    OS keychain through `@napi-rs/keyring` (an `optionalDependency`; Linux pinned to Secret Service,
    because the library's default falls back to the kernel keyutils store, which does not survive a
    reboot) and `~/.cezar/secrets/.key` (`0600`) holds it otherwise. `GET …/secrets` and
-   `cezar secrets list` report `keyBackend`. `CEZ_SECRETS_KEYCHAIN=0` forces the file.
+   `cezar secrets list` report `keyBackend`. `ONNI_SECRETS_KEYCHAIN=0` forces the file.
 2. **Reworked on PR #1291's branch**, before it merges: `check-env` → `secrets` everywhere (store,
    routes, CLI, cockpit, docs), JSON records with `audiences`, the step-level `secrets:` binding
    (refused on agent steps at load time), fork-head runs still get nothing.

@@ -12,8 +12,8 @@ A user can now type "whenever a PR is opened, review it" into New task and get a
 automation instead of a one-off run. Two ways in, one mechanism underneath:
 
 - `cez automation schema|create|update|check|list|show|enable|pause|delete` — a thin
-  client over the existing automations routes, addressed by the same CEZ_API_URL /
-  CEZ_PROJECT_ID / CEZ_BIN the dispatch CLI uses. Definitions travel as JSON (--file,
+  client over the existing automations routes, addressed by the same ONNI_API_URL /
+  ONNI_PROJECT_ID / ONNI_BIN the dispatch CLI uses. Definitions travel as JSON (--file,
   --json or stdin); create is paused unless --enable; check queues a preview and polls
   it; update merges over the editable keys and echoes the revision.
 - A short automations part composed into every task's system prompt at both session
@@ -23,7 +23,7 @@ automation instead of a one-off run. Two ways in, one mechanism underneath:
   automation" composer template assigned to it.
 
 All of it gated on capabilities.automations AND the cockpit transport
-(automationsReachable): a headless run or a cockpit with CEZ_AUTOMATIONS unset composes
+(automationsReachable): a headless run or a cockpit with ONNI_AUTOMATIONS unset composes
 nothing, lists nothing, offers nothing — the dispatch lesson (spec 2026-09-10 A2/A8).
 
 Spec: .ai/specs/2026-09-13-automations-from-prompt.md
@@ -85,7 +85,7 @@ index 0000000..3ccbd1f
 +  schema|create|update|check|list|show|enable|pause|delete`, a thin client over the existing
 +  automations routes; routed in `src/index.ts` ahead of the cockpit parser like `cez task`.
 +- `packages/work/src/automations/builtin-skill.ts` — `automationsReachable()` (flag AND
-+  `CEZ_API_URL`), the built-in `Skill` (`source: 'builtin'`, `interactive: true`) and
++  `ONNI_API_URL`), the built-in `Skill` (`source: 'builtin'`, `interactive: true`) and
 +  `builtinSkills()`; `src/skills.ts` appends it last in `discoverSkills`. `Skill.source` gains
 +  `'builtin'` in `src/skills.ts` and `packages/contract/src/skills.ts` (additive).
 +- `packages/work/src/workflows/run.ts` — `ActiveRun.automationsPrompt`,
@@ -124,8 +124,8 @@ index 0000000..a623ba9
 @@ -0,0 +1,84 @@
 +# Automations from a prompt — a task may create a GitHub automation
 +
-+> Slug: `automations-from-prompt` · Status: implemented · Gated by the existing `CEZ_AUTOMATIONS=1`
-+> (→ `capabilities.automations`) plus the cockpit transport (`CEZ_API_URL`), exactly like dispatch.
++> Slug: `automations-from-prompt` · Status: implemented · Gated by the existing `ONNI_AUTOMATIONS=1`
++> (→ `capabilities.automations`) plus the cockpit transport (`ONNI_API_URL`), exactly like dispatch.
 +> Extends: `2026-07-25-github-automations.md` (the feature), `2026-09-10-dispatch.md` (the mechanism).
 +
 +## TLDR
@@ -144,7 +144,7 @@ index 0000000..a623ba9
 +
 +Underneath: a `cez automation` CLI (`packages/work/src/automations/automation-cli.ts`), a thin HTTP
 +client over the existing `/api/v1/p/:projectId/automations*` routes, addressed by the same
-+`CEZ_API_URL` / `CEZ_PROJECT_ID` / `CEZ_BIN` variables the dispatch CLI uses. No new routes, no new
++`ONNI_API_URL` / `ONNI_PROJECT_ID` / `ONNI_BIN` variables the dispatch CLI uses. No new routes, no new
 +state, no new flag.
 +
 +## Why this shape
@@ -176,8 +176,8 @@ index 0000000..a623ba9
 +
 +| # | Question | Applied default | Why |
 +|---|---|---|---|
-+| A1 | How a task creates an automation | `cez automation …` over the existing automations routes, through `node "$CEZ_BIN"`, with `CEZ_API_URL` and `CEZ_PROJECT_ID` from the agent's env. | Same transport and reasoning as dispatch A1; the routes already validate, baseline and log. |
-+| A2 | Gating | `automationsReachable()` = `capabilities.automations && CEZ_API_URL`. Off or unreachable: no prompt part, no built-in skill, no template; the CLI without `CEZ_API_URL` exits 2 saying so; with the flag off the routes' 409 (naming `CEZ_AUTOMATIONS=1`) is relayed verbatim and exits 1. | Dispatch A2/A8. |
++| A1 | How a task creates an automation | `cez automation …` over the existing automations routes, through `node "$ONNI_BIN"`, with `ONNI_API_URL` and `ONNI_PROJECT_ID` from the agent's env. | Same transport and reasoning as dispatch A1; the routes already validate, baseline and log. |
++| A2 | Gating | `automationsReachable()` = `capabilities.automations && ONNI_API_URL`. Off or unreachable: no prompt part, no built-in skill, no template; the CLI without `ONNI_API_URL` exits 2 saying so; with the flag off the routes' 409 (naming `ONNI_AUTOMATIONS=1`) is relayed verbatim and exits 1. | Dispatch A2/A8. |
 +| A3 | Enabled or paused on create | Paused unless `--enable`; the prompt says enable only when the user asked, and never without a preview. A definition copied from `show` carrying `enabled: true` is lifted into the route's `enable` flag rather than refused. | Automations Q1: no backfill, no surprise fan-out. |
 +| A4 | How the skill ships | One built-in `Skill` with `source: 'builtin'`, `path: builtin:create-cezar-automation`, `interactive: true`; `discoverSkills` appends `builtinSkills()` last. Contract enum gains `'builtin'` (additive). | The user's repo is the source of truth; nothing to isolate in a worktree, and the agent may have to ask which label was meant. |
 +| A5 | What the composer shows | The skill in the picker; a built-in template `create-automation` (Settings → Prompt templates, editable) assigned to the skill, hidden with `AUTOMATIONS_TEMPLATE_IDS` unless `capabilities.automations`. | Same gate as `DISPATCH_TEMPLATE_IDS`, same reason. |
@@ -190,7 +190,7 @@ index 0000000..a623ba9
 +`cez automation schema` · `create [--file <def.json> | --json '<json>'] [--enable]` (stdin when
 +neither) · `update <id> [--file | --json]` · `check <id> [--execute]` · `list` · `show <id>` ·
 +`enable <id>` · `pause <id>` · `delete <id>`. Every mutating command prints the automation's cockpit
-+page (`<CEZ_API_URL>/p/<project>/automations/<id>`). Exit 0 ok, 1 refused/failed, 2 usage or no
++page (`<ONNI_API_URL>/p/<project>/automations/<id>`). Exit 0 ok, 1 refused/failed, 2 usage or no
 +cockpit. Routed in `index.ts` before the cockpit's own parser, like `cez task`.
 +
 +## Prompt (`packages/work/src/automations/prompts.ts`)
@@ -218,16 +218,16 @@ index 7500db3..d85894f 100644
 +# .ai/specs/2026-09-13-automations-from-prompt.md): the built-in `create-cezar-automation` skill
 +# is listed, every task's system prompt names the `cez automation` CLI, and the composer offers
 +# the "Create an automation" template. Off, none of the three appear.
- # CEZ_AUTOMATIONS=1
+ # ONNI_AUTOMATIONS=1
  # The browser suite exercises the default-off route. To also exercise enabled automations in a
- # fresh shared test environment, run: `CEZ_AUTOMATIONS=1 npm run test:e2e -- --force`.
+ # fresh shared test environment, run: `ONNI_AUTOMATIONS=1 npm run test:e2e -- --force`.
 @@ -183,7 +187,7 @@
- #   CEZ_TASK_ID, CEZ_HANDOFF_FILE, CEZ_TODOS_FILE
- #   — and, while dispatch is on (not CEZ_DISPATCH=0): CEZ_API_URL (this cockpit's address), CEZ_PROJECT_ID (the
- #   run's project) and CEZ_BIN (this cockpit's own entrypoint, so `node "$CEZ_BIN" task …`
+ #   ONNI_TASK_ID, ONNI_HANDOFF_FILE, ONNI_TODOS_FILE
+ #   — and, while dispatch is on (not ONNI_DISPATCH=0): ONNI_API_URL (this cockpit's address), ONNI_PROJECT_ID (the
+ #   run's project) and ONNI_BIN (this cockpit's own entrypoint, so `node "$ONNI_BIN" task …`
 -#   never hits an older `cez` on the PATH), which the `cez task` CLI uses; and, for a run in a dispatch tree only,
 +#   never hits an older `cez` on the PATH), which the `cez task` and `cez automation` CLIs use; and, for a run in a dispatch tree only,
- #   CEZ_TREE_DIR: the tree directory under .ai/cezar/dispatch/<rootRunId>/ (brief.md,
+ #   ONNI_TREE_DIR: the tree directory under .ai/cezar/dispatch/<rootRunId>/ (brief.md,
  #   units/<id8>/{order,notes,report}.md, inbox/<id8>/) that every task of the tree reads and
  #   writes as its file channel.
 diff --git a/BACKWARD_COMPATIBILITY.md b/BACKWARD_COMPATIBILITY.md
@@ -239,7 +239,7 @@ index fd50b46..a3f7cd7 100644
  
  - **Bins:** `cezar` and `cez` (both in `package.json` `bin`). Removing either alias is breaking.
 -- **Commands:** bare invocation = `serve` (cockpit); `cezar run "<task>"`; `cezar init`.
-+- **Commands:** bare invocation = `serve` (cockpit); `cezar run "<task>"`; `cezar init`; `cezar task <create|report|list|tree>` (spec `.ai/specs/2026-09-10-dispatch.md`) and `cezar automation <schema|create|update|check|list|show|enable|pause|delete>` (spec `.ai/specs/2026-09-13-automations-from-prompt.md`) — both thin clients of a running cockpit addressed by `CEZ_API_URL`/`CEZ_PROJECT_ID`, exit 2 without one, 1 on a refusal (the automations 409 under `CEZ_AUTOMATIONS` unset included), 0 otherwise.
++- **Commands:** bare invocation = `serve` (cockpit); `cezar run "<task>"`; `cezar init`; `cezar task <create|report|list|tree>` (spec `.ai/specs/2026-09-10-dispatch.md`) and `cezar automation <schema|create|update|check|list|show|enable|pause|delete>` (spec `.ai/specs/2026-09-13-automations-from-prompt.md`) — both thin clients of a running cockpit addressed by `ONNI_API_URL`/`ONNI_PROJECT_ID`, exit 2 without one, 1 on a refusal (the automations 409 under `ONNI_AUTOMATIONS` unset included), 0 otherwise.
  - **`cezar projects` subcommands:** `list` (the default), `add`, `remove`/`rm`, `tag`. `tag <id> [<tag>…]` replaces a project's grouping tags wholesale; naming none clears them.
  - **Flags:** `-p/--port` (default 4321, auto-picks the next free port), `--repo <dir>`, `--workflow <name>` (default `quick-task`), `--model <model>`, `--no-open`, `-h/--help`.
  - **Exit codes:** `run` exits 0 on `done` **and** `review` (spec 009 — headless runs must not hang on the review gate), 1 on `failed`/`cancelled`/unknown workflow. CI scripts depend on this.
@@ -261,14 +261,14 @@ index a734a9f..20bbaa7 100644
 --- a/README.md
 +++ b/README.md
 @@ -517,7 +517,7 @@ Useful environment variables:
- | `CEZ_AGENT_MODELS_LOCKED=1` | Globally lock each runner to the model configured in its native Claude/Codex/OpenCode settings while keeping runner selection available. Exact `1` also delegates authentication and provider enablement to those native agents, so Cezar skips its credential probes and provider-disable preferences. Existing Cezar presets are preserved but ignored, and an environment change requires a restart. The config-file equivalent is `"modelsLocked": true` in global `~/.cezar/config.json` or one repository's `.ai/cezar/config.json`; config-file locks do not disable provider checks. |
- | `CEZ_APPROVAL_GATE=1` | Opt into Claude's interactive approval UI; by default, unapproved tools are denied without interrupting the run. |
- | `CEZ_FOLLOWUPS=1` | Turn on the global follow-up **Inbox**: agents are asked to leave follow-ups in `todos.json` when they finish, and the Inbox view appears. Off by default — each task's own **Notes** handoff journal runs either way. |
--| `CEZ_AUTOMATIONS=1` | Turn on **GitHub automations**: the Automations view appears and cezar polls GitHub on each enabled automation's interval, launching tasks from what it finds. Off by default, and only the exact value `1` enables it — without it nothing polls GitHub, the automations endpoints answer `409`, and the nav item is absent. Read at boot, so restart after changing it; definitions, receipts and high-watermarks are retained, so unsetting it and restarting restores the feature without migration or data loss. |
-+| `CEZ_AUTOMATIONS=1` | Turn on **GitHub automations**: the Automations view appears and cezar polls GitHub on each enabled automation's interval, launching tasks from what it finds. With it on, an agent can also **create an automation from a prompt**: type "whenever a PR is opened, review it" into New task — pick the built-in `create-cezar-automation` skill, or just ask; every task's system prompt teaches it to recognise the intent — and the agent writes the definition and creates it through `cez automation create` (paused, with a `cez automation check` preview of what it would match), then links the Automations page. Off by default, and only the exact value `1` enables it — without it nothing polls GitHub, the automations endpoints answer `409`, the nav item is absent, no task is told about the CLI and the skill is not listed. Read at boot, so restart after changing it; definitions, receipts and high-watermarks are retained, so unsetting it and restarting restores the feature without migration or data loss. |
- | `CEZ_DISPATCH=0` | Turn OFF **task dispatch**, which is on by default: a running task may start other cezar tasks with `cez task create` — each in its OWN worktree forked off the parent's branch, with a budget carved out of the parent's — and they report back into the parent's session when they settle (`cez task report`). Children appear nested under their parent in the task lists. Tasks talk through a tree directory (`.ai/cezar/dispatch/<root>/`: the brief, each task's order/notes/report, an inbox per task) and cezar wakes a parked recipient when a file lands. A `--kind review` child judges another task's branch and answers with a verdict. ON by default (the owner-approved exception to "cost-widening features are opt-in" — see `AGENTS.md`), and only the exact value `0` turns it off; with it off the `/runs/:id/dispatch` and `/runs/:id/report` routes answer `409`, no task is told about the CLI, and the cockpit hides the "Review open PRs" template. A headless `cezar run` never dispatches either way — there is no cockpit for the CLI to reach, so no task is told about it. Read at boot, so restart after changing it. This is the widest cost-widening flag here — one task can start four more agents — so give dispatching tasks a budget. |
- | `CEZ_AUTOSAVE=1` | Re-enable the periodic (90 s) autosave commit in task worktrees. Off by default (#471) — turn-end and pre-PR flushes always run, so branches still end complete. Every autosave names its trigger in the commit subject (`cezar autosave (periodic)` vs `(turn end)` / `(run finalize)` / `(pre-PR)`), so the flushes you keep are distinguishable from the timer you disabled. |
- | `CEZ_CLAUDE_BIN=/path/to/claude` | Override which `claude` binary is used. |
+ | `ONNI_AGENT_MODELS_LOCKED=1` | Globally lock each runner to the model configured in its native Claude/Codex/OpenCode settings while keeping runner selection available. Exact `1` also delegates authentication and provider enablement to those native agents, so Cezar skips its credential probes and provider-disable preferences. Existing Cezar presets are preserved but ignored, and an environment change requires a restart. The config-file equivalent is `"modelsLocked": true` in global `~/.cezar/config.json` or one repository's `.ai/cezar/config.json`; config-file locks do not disable provider checks. |
+ | `ONNI_APPROVAL_GATE=1` | Opt into Claude's interactive approval UI; by default, unapproved tools are denied without interrupting the run. |
+ | `ONNI_FOLLOWUPS=1` | Turn on the global follow-up **Inbox**: agents are asked to leave follow-ups in `todos.json` when they finish, and the Inbox view appears. Off by default — each task's own **Notes** handoff journal runs either way. |
+-| `ONNI_AUTOMATIONS=1` | Turn on **GitHub automations**: the Automations view appears and cezar polls GitHub on each enabled automation's interval, launching tasks from what it finds. Off by default, and only the exact value `1` enables it — without it nothing polls GitHub, the automations endpoints answer `409`, and the nav item is absent. Read at boot, so restart after changing it; definitions, receipts and high-watermarks are retained, so unsetting it and restarting restores the feature without migration or data loss. |
++| `ONNI_AUTOMATIONS=1` | Turn on **GitHub automations**: the Automations view appears and cezar polls GitHub on each enabled automation's interval, launching tasks from what it finds. With it on, an agent can also **create an automation from a prompt**: type "whenever a PR is opened, review it" into New task — pick the built-in `create-cezar-automation` skill, or just ask; every task's system prompt teaches it to recognise the intent — and the agent writes the definition and creates it through `cez automation create` (paused, with a `cez automation check` preview of what it would match), then links the Automations page. Off by default, and only the exact value `1` enables it — without it nothing polls GitHub, the automations endpoints answer `409`, the nav item is absent, no task is told about the CLI and the skill is not listed. Read at boot, so restart after changing it; definitions, receipts and high-watermarks are retained, so unsetting it and restarting restores the feature without migration or data loss. |
+ | `ONNI_DISPATCH=0` | Turn OFF **task dispatch**, which is on by default: a running task may start other cezar tasks with `cez task create` — each in its OWN worktree forked off the parent's branch, with a budget carved out of the parent's — and they report back into the parent's session when they settle (`cez task report`). Children appear nested under their parent in the task lists. Tasks talk through a tree directory (`.ai/cezar/dispatch/<root>/`: the brief, each task's order/notes/report, an inbox per task) and cezar wakes a parked recipient when a file lands. A `--kind review` child judges another task's branch and answers with a verdict. ON by default (the owner-approved exception to "cost-widening features are opt-in" — see `AGENTS.md`), and only the exact value `0` turns it off; with it off the `/runs/:id/dispatch` and `/runs/:id/report` routes answer `409`, no task is told about the CLI, and the cockpit hides the "Review open PRs" template. A headless `cezar run` never dispatches either way — there is no cockpit for the CLI to reach, so no task is told about it. Read at boot, so restart after changing it. This is the widest cost-widening flag here — one task can start four more agents — so give dispatching tasks a budget. |
+ | `ONNI_AUTOSAVE=1` | Re-enable the periodic (90 s) autosave commit in task worktrees. Off by default (#471) — turn-end and pre-PR flushes always run, so branches still end complete. Every autosave names its trigger in the commit subject (`cezar autosave (periodic)` vs `(turn end)` / `(run finalize)` / `(pre-PR)`), so the flushes you keep are distinguishable from the timer you disabled. |
+ | `ONNI_CLAUDE_BIN=/path/to/claude` | Override which `claude` binary is used. |
 diff --git a/packages/work/src/automations/automation-cli.test.ts b/packages/work/src/automations/automation-cli.test.ts
 new file mode 100644
 index 0000000..3df3c01
@@ -283,7 +283,7 @@ index 0000000..3df3c01
 + *  definition and env, how it relays a refusal, and that it never talks to a server it was not
 + *  given — never the routes, which have their own tests (`server/automations-api.test.ts`). */
 +describe('cez automation', () => {
-+  const env = { CEZ_API_URL: 'http://127.0.0.1:4321/', CEZ_PROJECT_ID: 'proj' };
++  const env = { ONNI_API_URL: 'http://127.0.0.1:4321/', ONNI_PROJECT_ID: 'proj' };
 +
 +  const definition = {
 +    name: 'Review new PRs',
@@ -370,9 +370,9 @@ index 0000000..3df3c01
 +  });
 +
 +  it('create relays the cockpit’s refusal — the automations-off 409 included — with a non-zero exit', async () => {
-+    const h = harness([{ status: 409, body: { error: 'GitHub automations are disabled — set CEZ_AUTOMATIONS=1 to enable them' } }]);
++    const h = harness([{ status: 409, body: { error: 'GitHub automations are disabled — set ONNI_AUTOMATIONS=1 to enable them' } }]);
 +    expect(await runAutomationCommand(['create', '--json', JSON.stringify(definition)], env, h.io)).toBe(1);
-+    expect(h.err[0]).toBe('cez automation: create refused — GitHub automations are disabled — set CEZ_AUTOMATIONS=1 to enable them');
++    expect(h.err[0]).toBe('cez automation: create refused — GitHub automations are disabled — set ONNI_AUTOMATIONS=1 to enable them');
 +  });
 +
 +  it('update reads the current definition, merges the patch over its editable keys, restates enabled and echoes the revision', async () => {
@@ -468,14 +468,14 @@ index 0000000..3df3c01
 +    expect(schema.out[0]).toBe(AUTOMATION_SCHEMA_REFERENCE);
 +    const none = harness([]);
 +    expect(await runAutomationCommand(['list'], {}, none.io)).toBe(2);
-+    expect(none.err[0]).toContain('CEZ_API_URL is not set');
++    expect(none.err[0]).toContain('ONNI_API_URL is not set');
 +    expect(none.err[0]).toContain('Do not substitute a cron job');
 +    expect(none.calls).toHaveLength(0);
 +  });
 +
 +  it('falls back to the unscoped API and link without a project id', async () => {
 +    const h = harness([{ status: 201, body: { automation: { id: 'x', name: 'n', enabled: false } } }]);
-+    expect(await runAutomationCommand(['create', '--json', JSON.stringify(definition)], { CEZ_API_URL: 'http://127.0.0.1:1' }, h.io)).toBe(0);
++    expect(await runAutomationCommand(['create', '--json', JSON.stringify(definition)], { ONNI_API_URL: 'http://127.0.0.1:1' }, h.io)).toBe(0);
 +    expect(h.calls[0]?.url).toBe('http://127.0.0.1:1/api/v1/automations');
 +    expect(h.out[1]).toBe('cockpit: http://127.0.0.1:1/automations/x');
 +  });
@@ -501,10 +501,10 @@ index 0000000..3b8164c
 + * `cez automation …` — the CLI a running agent (or a human at a shell) uses to create and manage
 + * GitHub automations on a running cockpit (spec `.ai/specs/2026-09-13-automations-from-prompt.md`).
 + *
-+ * A thin HTTP client over the automations family, addressed like `cez task` is: `CEZ_API_URL`
-+ * (the cockpit) and `CEZ_PROJECT_ID` (which project the run belongs to), both put in every agent's
++ * A thin HTTP client over the automations family, addressed like `cez task` is: `ONNI_API_URL`
++ * (the cockpit) and `ONNI_PROJECT_ID` (which project the run belongs to), both put in every agent's
 + * environment by the engine while the cockpit is reachable. No server: the command says so and
-+ * exits 2. Automations off on the cockpit (`CEZ_AUTOMATIONS` unset): every route answers 409 with
++ * exits 2. Automations off on the cockpit (`ONNI_AUTOMATIONS` unset): every route answers 409 with
 + * the flag's name, which this command relays verbatim and exits 1 — the agent is told to stop and
 + * report, never to substitute a cron job or a polling script.
 + *
@@ -517,8 +517,8 @@ index 0000000..3b8164c
 +import { AUTOMATION_SCHEMA_REFERENCE } from './prompts.ts';
 +
 +export interface AutomationCliEnv {
-+  CEZ_API_URL?: string;
-+  CEZ_PROJECT_ID?: string;
++  ONNI_API_URL?: string;
++  ONNI_PROJECT_ID?: string;
 +}
 +
 +export interface AutomationCliIo {
@@ -533,7 +533,7 @@ index 0000000..3b8164c
 +  sleep?: (ms: number) => Promise<void>;
 +}
 +
-+const USAGE = `cez automation — create and manage GitHub automations on a running cockpit (CEZ_AUTOMATIONS=1)
++const USAGE = `cez automation — create and manage GitHub automations on a running cockpit (ONNI_AUTOMATIONS=1)
 +
 +  cez automation schema                         print the definition shape, bounds and prompt placeholders
 +  cez automation create [--file <def.json> | --json '<json>'] [--enable]
@@ -556,9 +556,9 @@ index 0000000..3b8164c
 +const EDITABLE_KEYS = ['name', 'description', 'events', 'intervalSeconds', 'filters', 'task'] as const;
 +
 +function base(env: AutomationCliEnv): { url: string; scope: string; projectId?: string } | null {
-+  const url = env.CEZ_API_URL?.replace(/\/+$/, '');
++  const url = env.ONNI_API_URL?.replace(/\/+$/, '');
 +  if (!url) return null;
-+  const projectId = env.CEZ_PROJECT_ID || undefined;
++  const projectId = env.ONNI_PROJECT_ID || undefined;
 +  const scope = projectId ? `${url}/api/v1/p/${encodeURIComponent(projectId)}` : `${url}/api/v1`;
 +  return { url, scope, projectId };
 +}
@@ -639,7 +639,7 @@ index 0000000..3b8164c
 +  }
 +  const api = base(env);
 +  if (!api) {
-+    io.error('cez automation: CEZ_API_URL is not set — this command only works inside a task run by a cockpit with automations on (CEZ_AUTOMATIONS=1). Do not substitute a cron job, a GitHub Action or a polling script: stop and report that automations are unavailable.');
++    io.error('cez automation: ONNI_API_URL is not set — this command only works inside a task run by a cockpit with automations on (ONNI_AUTOMATIONS=1). Do not substitute a cron job, a GitHub Action or a polling script: stop and report that automations are unavailable.');
 +    return 2;
 +  }
 +  const json = async (url: string, init?: RequestInit): Promise<Response> =>
@@ -812,7 +812,7 @@ index 0000000..bdbf2ec
 + * pack gate, the `files` list and the discovery walk stay exactly what they were.
 + *
 + * Gated like everything else an agent is TOLD about automations (`automationsReachable`): the
-+ * skill lists only on a cockpit that has automations on AND can be reached over `CEZ_API_URL` — a
++ * skill lists only on a cockpit that has automations on AND can be reached over `ONNI_API_URL` — a
 + * headless `cezar run` or a cockpit with the flag off would hand the agent a playbook whose every
 + * command is refused. Lowest precedence in the catalog: a repo that ships its own skill of this
 + * name wins ("the user's repo is the source of truth").
@@ -822,12 +822,12 @@ index 0000000..bdbf2ec
 +import { CREATE_AUTOMATION_SKILL_BODY, CREATE_AUTOMATION_SKILL_NAME } from './prompts.ts';
 +
 +/**
-+ * Can a task actually USE automations? The flag alone is not enough: `CEZ_API_URL` is set by
++ * Can a task actually USE automations? The flag alone is not enough: `ONNI_API_URL` is set by
 + * `serveCommand`, so a headless run has no cockpit to call. The one predicate behind the built-in
 + * skill and the always-on prompt part (`RunManager.prepareAutomationsSession`).
 + */
 +export function automationsReachable(env: NodeJS.ProcessEnv = process.env): boolean {
-+  return resolveCapabilities(env).automations && Boolean(env.CEZ_API_URL);
++  return resolveCapabilities(env).automations && Boolean(env.ONNI_API_URL);
 +}
 +
 +export const CREATE_AUTOMATION_SKILL: Skill = {
@@ -865,7 +865,7 @@ index 0000000..ededf70
 + *  shape, so they must name every command, every event and every key the storage schema accepts. */
 +describe('the automations prompt part', () => {
 +  it('teaches the CLI through the cockpit’s own entrypoint, and the create → check → enable order', () => {
-+    expect(AUTOMATIONS_PROMPT).toContain('node "$CEZ_BIN" automation');
++    expect(AUTOMATIONS_PROMPT).toContain('node "$ONNI_BIN" automation');
 +    for (const command of ['schema', 'create --file', '--enable', 'check <id>', 'list', 'show <id>', 'update <id>', 'enable <id>', 'pause <id>', 'delete <id>']) {
 +      expect(AUTOMATIONS_PROMPT).toContain(command);
 +    }
@@ -934,8 +934,8 @@ index 0000000..ededf70
 +describe('the built-in skill body', () => {
 +  it('walks the create → preview → report path and embeds the reference', () => {
 +    expect(CREATE_AUTOMATION_SKILL_NAME).toBe('create-cezar-automation');
-+    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$CEZ_BIN" automation create --file');
-+    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$CEZ_BIN" automation check <id>');
++    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$ONNI_BIN" automation create --file');
++    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$ONNI_BIN" automation check <id>');
 +    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('cez automation update <id> --file');
 +    expect(CREATE_AUTOMATION_SKILL_BODY).toContain(AUTOMATION_SCHEMA_REFERENCE);
 +    expect(CREATE_AUTOMATION_SKILL_BODY).toMatch(/created PAUSED/);
@@ -1012,14 +1012,14 @@ index 0000000..ce2aa66
 +/** The part composed into EVERY task's system prompt while automations are on and reachable. */
 +export const AUTOMATIONS_PROMPT = `GitHub automations. This cockpit can watch this repository's GitHub for you: an automation is a bounded poll — a new pull request, a new issue, a label added to or removed from an issue, optionally filtered by author, assignee or labels — that launches an ordinary cezar task for every match, with a prompt template you write. When the user asks for something to happen "whenever", "every time" or "each time" a pull request or issue appears or is labelled, they are asking for an automation: create one instead of doing the work once, and instead of polling GitHub yourself.
 +
-+Always through the cockpit's own binary, node "$CEZ_BIN", because a cez on your PATH may be an older install without this command; every "cez automation …" below means node "$CEZ_BIN" automation …:
++Always through the cockpit's own binary, node "$ONNI_BIN", because a cez on your PATH may be an older install without this command; every "cez automation …" below means node "$ONNI_BIN" automation …:
 +
 +  cez automation schema                              the definition shape, every key, every bound, the prompt placeholders
 +  cez automation create --file <def.json> [--enable]  create one (paused unless --enable); --json '<json>' or stdin work too
 +  cez automation check <id> [--execute]              preview what the filter matches right now (launches nothing without --execute)
 +  cez automation list | show <id> | update <id> --file <def.json> | enable <id> | pause <id> | delete <id>
 +
-+Write the definition to a file and read cez automation schema first. Create it PAUSED and run a preview check so the user can see what it would have matched, unless they explicitly asked for it to be enabled; only enable when the user asked, and say so. Never enable an automation whose filter you have not previewed. The command prints the automation's id and its page in the cockpit — put that link in your final message. If cez automation is refused or CEZ_BIN is unset, stop and report that automations are unavailable on this cockpit: do not write a cron job, a GitHub Action or a polling script in the repository as a substitute.`;
++Write the definition to a file and read cez automation schema first. Create it PAUSED and run a preview check so the user can see what it would have matched, unless they explicitly asked for it to be enabled; only enable when the user asked, and say so. Never enable an automation whose filter you have not previewed. The command prints the automation's id and its page in the cockpit — put that link in your final message. If cez automation is refused or ONNI_BIN is unset, stop and report that automations are unavailable on this cockpit: do not write a cron job, a GitHub Action or a polling script in the repository as a substitute.`;
 +
 +/**
 + * The built-in skill's body — the full playbook a run under `create-cezar-automation` follows.
@@ -1041,15 +1041,15 @@ index 0000000..ce2aa66
 +
 +## 2. Create it
 +
-+Run \`node "$CEZ_BIN" automation schema\` and read it. Write the definition as JSON to a file outside the repository (your temp directory is fine) and create it:
++Run \`node "$ONNI_BIN" automation schema\` and read it. Write the definition as JSON to a file outside the repository (your temp directory is fine) and create it:
 +
-+    node "$CEZ_BIN" automation create --file <def.json>
++    node "$ONNI_BIN" automation create --file <def.json>
 +
 +The automation is created PAUSED. The command prints its id and the cockpit page where the user can edit it. If the user explicitly asked for it to be switched on, add \`--enable\`; otherwise leave it paused and say how to enable it. If the command is refused, stop and report exactly what it printed — do not work around it.
 +
 +## 3. Preview before anyone enables it
 +
-+    node "$CEZ_BIN" automation check <id>
++    node "$ONNI_BIN" automation check <id>
 +
 +This runs the filter against GitHub right now and counts the matches without launching anything. Report the count. Zero matches on a filter that should match something means a wrong label, author or event — fix the definition (\`cez automation update <id> --file <def.json>\`) and preview again. Enabling establishes a current-time baseline, so a preview is the only way to see what the filter does to existing items.
 +
@@ -1075,8 +1075,8 @@ index 2a40961..d227f09 100644
 @@ -43,6 +44,7 @@ Usage:
    cezar                     start the cockpit (server + GUI) for the current repo
    cezar run "<task>"        run a task headless in the terminal
-   cezar task <create|report|list>  dispatch or report from inside a running task (CEZ_DISPATCH=0 turns it off)
-+  cezar automation <create|check|list|…>  create and manage GitHub automations on a running cockpit (CEZ_AUTOMATIONS=1)
+   cezar task <create|report|list>  dispatch or report from inside a running task (ONNI_DISPATCH=0 turns it off)
++  cezar automation <create|check|list|…>  create and manage GitHub automations on a running cockpit (ONNI_AUTOMATIONS=1)
    cezar init                scaffold .ai/cezar/ (example workflow + skill)
    cezar projects            list the projects this cockpit serves
                              (also: projects add [<dir>] · projects remove <id>)
@@ -1102,14 +1102,14 @@ index 9b828fa..b11f9a1 100644
   * definitions, receipts and high-watermarks survive the flag being off, so
 - * unsetting it and restarting restores the feature wholesale.
 + * unsetting it and restarting restores the feature wholesale. On, and with a
-+ * cockpit to reach (`CEZ_API_URL`), a task may also CREATE automations from a
++ * cockpit to reach (`ONNI_API_URL`), a task may also CREATE automations from a
 + * prompt (spec 2026-09-13-automations-from-prompt): the `cez automation` CLI,
 + * an automations part in every task's system prompt, the built-in
 + * `create-cezar-automation` skill and the composer's "Create an automation"
 + * template all hang off this one capability.
   *
   * `dispatch` (spec 2026-09-10-dispatch): a task dispatching other tasks through the `cez task`
-  * CLI is **on by default** and `CEZ_DISPATCH=0` turns it off (the owner-approved exception to
+  * CLI is **on by default** and `ONNI_DISPATCH=0` turns it off (the owner-approved exception to
 diff --git a/packages/work/src/skills.test.ts b/packages/work/src/skills.test.ts
 index 20eff6a..e2a064a 100644
 --- a/packages/work/src/skills.test.ts
@@ -1136,8 +1136,8 @@ index 20eff6a..e2a064a 100644
 +describe('the built-in create-cezar-automation skill', () => {
 +  const saved: Record<string, string | undefined> = {};
 +  beforeEach(() => {
-+    saved.CEZ_AUTOMATIONS = process.env.CEZ_AUTOMATIONS;
-+    saved.CEZ_API_URL = process.env.CEZ_API_URL;
++    saved.ONNI_AUTOMATIONS = process.env.ONNI_AUTOMATIONS;
++    saved.ONNI_API_URL = process.env.ONNI_API_URL;
 +  });
 +  afterEach(() => {
 +    for (const [key, value] of Object.entries(saved)) {
@@ -1157,18 +1157,18 @@ index 20eff6a..e2a064a 100644
 +
 +  it('is absent with automations off, and absent with the flag on but no cockpit to reach', async () => {
 +    const repoRoot = await emptyRepo();
-+    delete process.env.CEZ_AUTOMATIONS;
-+    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
++    delete process.env.ONNI_AUTOMATIONS;
++    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
 +    expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-cezar-automation')).toBe(false);
-+    process.env.CEZ_AUTOMATIONS = '1';
-+    delete process.env.CEZ_API_URL;
++    process.env.ONNI_AUTOMATIONS = '1';
++    delete process.env.ONNI_API_URL;
 +    expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-cezar-automation')).toBe(false);
 +  });
 +
 +  it('lists as a builtin, interactive skill when automations are on and reachable', async () => {
 +    const repoRoot = await emptyRepo();
-+    process.env.CEZ_AUTOMATIONS = '1';
-+    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
++    process.env.ONNI_AUTOMATIONS = '1';
++    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
 +    const skill = (await discoverSkills(repoRoot)).find((s) => s.name === 'create-cezar-automation');
 +    expect(skill).toMatchObject({ source: 'builtin', interactive: true, path: 'builtin:create-cezar-automation' });
 +    expect(skill?.body).toContain('cez automation');
@@ -1176,8 +1176,8 @@ index 20eff6a..e2a064a 100644
 +
 +  it('is shadowed by a repo skill of the same name', async () => {
 +    const repoRoot = await emptyRepo();
-+    process.env.CEZ_AUTOMATIONS = '1';
-+    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
++    process.env.ONNI_AUTOMATIONS = '1';
++    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
 +    await mkdir(join(repoRoot, '.ai/skills'), { recursive: true });
 +    await writeFile(join(repoRoot, '.ai/skills/create-cezar-automation.md'), '---\nname: create-cezar-automation\n---\nHouse version');
 +    const matches = (await discoverSkills(repoRoot)).filter((s) => s.name === 'create-cezar-automation');
@@ -1263,7 +1263,7 @@ index 0e6589c..71654a9 100644
 +   * The automations twin of `prepareDispatchSession` (spec 2026-09-13-automations-from-prompt):
 +   * the short prompt part that lets a task recognise "whenever a PR is opened, do X" as an
 +   * automation and create one with `cez automation`. Gated on `automationsReachable` — the flag
-+   * AND the transport — so a headless run, or a cockpit with `CEZ_AUTOMATIONS` unset, composes
++   * AND the transport — so a headless run, or a cockpit with `ONNI_AUTOMATIONS` unset, composes
 +   * nothing and behaves exactly as it did before the feature existed.
 +   */
 +  private prepareAutomationsSession(state: ActiveRun): void {
@@ -1327,22 +1327,22 @@ index a88e3ea..fb37d09 100644
  import { RunStore } from '../runs/store.ts';
  import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 @@ -120,13 +121,18 @@ describe('systemPrompt end-to-end (dry run)', () => {
-     savedEnv.CEZ_FOLLOWUPS = process.env.CEZ_FOLLOWUPS;
-     savedEnv.CEZ_AUTONAME = process.env.CEZ_AUTONAME;
-     savedEnv.CEZ_DISPATCH = process.env.CEZ_DISPATCH;
+     savedEnv.ONNI_FOLLOWUPS = process.env.ONNI_FOLLOWUPS;
+     savedEnv.ONNI_AUTONAME = process.env.ONNI_AUTONAME;
+     savedEnv.ONNI_DISPATCH = process.env.ONNI_DISPATCH;
 -    // The two dispatch tests below set and clear this; restore whatever the outer process had.
-+    savedEnv.CEZ_AUTOMATIONS = process.env.CEZ_AUTOMATIONS;
++    savedEnv.ONNI_AUTOMATIONS = process.env.ONNI_AUTOMATIONS;
 +    // The dispatch and automations tests below set and clear this; restore whatever the outer process had.
-     savedEnv.CEZ_API_URL = process.env.CEZ_API_URL;
-     process.env.CEZ_DRY_RUN = '1';
+     savedEnv.ONNI_API_URL = process.env.ONNI_API_URL;
+     process.env.ONNI_DRY_RUN = '1';
      // Dispatch is on by default (spec 2026-09-10-dispatch A2) and composes its own prompt part
      // ahead of everything asserted here. These goldens are about the BASE composition, so they
      // run with it off; the default-on part is pinned by its own test below.
-     process.env.CEZ_DISPATCH = '0';
+     process.env.ONNI_DISPATCH = '0';
 +    // GitHub automations are opt-in (#801) and compose their own prompt part when on AND
 +    // reachable (spec 2026-09-13-automations-from-prompt); the goldens run without it and the
 +    // part is pinned by its own tests below.
-+    delete process.env.CEZ_AUTOMATIONS;
++    delete process.env.ONNI_AUTOMATIONS;
      // The global inbox is opt-in (#471). These assertions are about prompt composition and the
      // per-run opt-out, so they run on an inbox-enabled server; the gate itself is covered by
      // the suite below.
@@ -1354,16 +1354,16 @@ index a88e3ea..fb37d09 100644
 +  // the part rides only when the flag is on AND the cockpit is reachable, at the same session
 +  // sites as the dispatch prompt — so a Continue keeps it too.
 +  it('automations on and reachable: every task is taught the cez automation CLI', async () => {
-+    process.env.CEZ_AUTOMATIONS = '1';
-+    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
++    process.env.ONNI_AUTOMATIONS = '1';
++    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
 +    try {
 +      await runToEnd({ task: 'do the thing mock:done' });
 +    } finally {
-+      delete process.env.CEZ_AUTOMATIONS;
-+      delete process.env.CEZ_API_URL;
++      delete process.env.ONNI_AUTOMATIONS;
++      delete process.env.ONNI_API_URL;
 +    }
 +    const prompt = capturedSystemPrompt();
-+    expect(prompt).toContain('node "$CEZ_BIN" automation');
++    expect(prompt).toContain('node "$ONNI_BIN" automation');
 +    expect(prompt).toContain(CONFIG_PROMPT);
 +    // Dispatch is off in this suite, so the automations part is the only cockpit part composed —
 +    // ahead of the extra prompt, which may amend it.
@@ -1371,19 +1371,19 @@ index a88e3ea..fb37d09 100644
 +  });
 +
 +  it('automations on but unreachable (headless), or off: no task is taught the CLI', async () => {
-+    process.env.CEZ_AUTOMATIONS = '1';
-+    delete process.env.CEZ_API_URL;
++    process.env.ONNI_AUTOMATIONS = '1';
++    delete process.env.ONNI_API_URL;
 +    try {
 +      await runToEnd({ task: 'do the thing mock:done' });
 +    } finally {
-+      delete process.env.CEZ_AUTOMATIONS;
++      delete process.env.ONNI_AUTOMATIONS;
 +    }
 +    expect(capturedSystemPrompt()).not.toContain('cez automation');
-+    process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
++    process.env.ONNI_API_URL = 'http://127.0.0.1:4321';
 +    try {
 +      await runToEnd({ task: 'do the thing mock:done' });
 +    } finally {
-+      delete process.env.CEZ_API_URL;
++      delete process.env.ONNI_API_URL;
 +    }
 +    expect(capturedSystemPrompt()).not.toContain('cez automation');
 +  });
@@ -1495,7 +1495,7 @@ index 810644a..cd01da0 100644
 + * Templates that only make sense when the server runs GitHub automations
 + * (`capabilities.automations`, spec 2026-09-13-automations-from-prompt): the built-in "Create an
 + * automation" briefs the agent for the `create-cezar-automation` skill, which the server only
-+ * lists — and whose `cez automation` CLI only answers — with `CEZ_AUTOMATIONS=1`. Same gate, same
++ * lists — and whose `cez automation` CLI only answers — with `ONNI_AUTOMATIONS=1`. Same gate, same
 + * reasoning as `DISPATCH_TEMPLATE_IDS`; Settings keeps listing it so the text stays editable.
 + */
 +export const AUTOMATIONS_TEMPLATE_IDS: ReadonlySet<string> = new Set(['create-automation'])

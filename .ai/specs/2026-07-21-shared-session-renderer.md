@@ -353,7 +353,7 @@ Assert that differences are only normalized capability presence, never a differe
 
 ### E2E and visual checks
 
-- `CEZ_DRY_RUN=1` short main transcript: no visual regression.
+- `ONNI_DRY_RUN=1` short main transcript: no visual regression.
 - `mock:subagents` agent sheet: open a row, confirm grouped tools/results, attachment interaction, scrollbar, scroll-up detachment, jump-to-latest, and close/reopen behavior.
 - Force the virtual threshold with a long fixture in both main and panel modes.
 - Capture desktop dark/light and mobile panel screenshots for PR QA during implementation.

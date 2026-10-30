@@ -113,7 +113,7 @@ function isInsideTaskWorktree(path: string): boolean {
  * `repoRoot` is:
  *
  * - inside any `…/.ai/onni/worktrees/…` path (task worktrees and nested
- *   `onni` invocations — the same nesting reality the `CEZ_TODOS_FILE=''`
+ *   `onni` invocations — the same nesting reality the `ONNI_TODOS_FILE=''`
  *   guard in `workflows/run.ts` acknowledges), checked on both the raw and
  *   realpath'd spelling so neither a symlinked prefix nor a literal one
  *   slips through; or
@@ -154,7 +154,7 @@ export async function shouldAutoRegisterProject(
 ): Promise<boolean> {
   const real = await normalizeRoot(repoRoot);
   if (!(await isRegistrableRoot(real, repoRoot))) return false;
-  if (env.CEZ_SINGLE_PROJECT === '1') return true;
+  if (env.ONNI_SINGLE_PROJECT === '1') return true;
   const { projects } = await loadWorkspaceConfig();
   return projects.length === 0 || projects.some((project) => project.root === real);
 }
@@ -312,9 +312,9 @@ async function probeRoot(root: string): Promise<RootProbe & { tracker?: TrackerK
     probeCache.set(root, { at: Date.now(), probe });
   }
   const association = await readTrackerAssociation(join(root, '.ai/onni'));
-  const connection = association && process.env.CEZ_DRY_RUN !== '1'
+  const connection = association && process.env.ONNI_DRY_RUN !== '1'
     ? await new TrackerConnections().read(root) : null;
-  const connected = process.env.CEZ_DRY_RUN === '1' || (connection
+  const connected = process.env.ONNI_DRY_RUN === '1' || (connection
     && connection.credentials.kind === association?.kind
     && (!association.connectionId || association.connectionId === connection.id));
   const tracker = connected ? association?.kind : undefined;

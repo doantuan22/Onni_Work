@@ -64,7 +64,7 @@ D:\Multi Agent
 ├── AGENTS.md             Quy ước làm việc trong repo (đọc trước khi sửa code)
 ├── AGENT_PROTOCOL.md     Hợp đồng event giữa runner và UI
 ├── BACKWARD_COMPATIBILITY.md  Bề mặt công khai không được phá vỡ
-└── e2e.config.ts         Cấu hình runner e2e agentic (target: web, CEZ_DRY_RUN=1)
+└── e2e.config.ts         Cấu hình runner e2e agentic (target: web, ONNI_DRY_RUN=1)
 ```
 
 **4 npm workspace**: `contract`, `api-client`, `cezar`, `web`. `desktop` cố ý đứng ngoài
@@ -80,7 +80,7 @@ D:\Multi Agent
 ┌──────────────────────────────────────────────────────────────────────┐
 │  DESKTOP SHELL (Rust / Tauri 2)   packages/desktop/src-tauri         │
 │  • cửa sổ + title bar overlay, splash, tray, single-instance, badge  │
-│  • chạy engine đã build sẵn (link hoặc CEZ_DESKTOP_ENTRY)            │
+│  • chạy engine đã build sẵn (link hoặc ONNI_DESKTOP_ENTRY)            │
 │  • spawn sidecar, chờ /api/v1/health, điều hướng webview tới cockpit │
 │  • menu Versions (đổi link), trang lỗi + Restart                     │
 └───────────────┬──────────────────────────────────────────────────────┘
@@ -129,7 +129,7 @@ không parse trong handler; mọi thứ trả lời dưới `/api/v1`.
 | `workspace/` | Registry `~/.cezar/config.json`, migrations, semaphore `maxParallel`, agent accounts |
 | `git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` | Worktree/task, chọn base diff đúng, chọn remote PR/push |
 | `agent-config/` | Đọc/ghi file config gốc của các agent (chỉ local, byte-exact) |
-| `paths.ts` | `cezarHomeDir()` — mọi đường dẫn `~/.cezar` đi qua đây (`CEZ_HOME` cho test/container) |
+| `paths.ts` | `cezarHomeDir()` — mọi đường dẫn `~/.cezar` đi qua đây (`ONNI_HOME` cho test/container) |
 | `release/`, `self-update/`, `server-install/` | Đóng gói, tự cập nhật, cài server |
 
 ### 4.4 Backend agent hiện có
@@ -137,7 +137,7 @@ không parse trong handler; mọi thứ trả lời dưới `/api/v1`.
 `claude-cli-runner` (id cũ `claude-cli` giữ để đọc run record cũ), `codex-app-server-runner`,
 `opencode-server-runner`, `cursor-agent-runner`, `copilot-acp-runner`, `junie-runner`, `pi-runner`.
 Tất cả đi qua một seam duy nhất và phát đồng thời stream v1 `AgentEvent` + v2 `UiEvent`
-(`AGENT_PROTOCOL.md`). `CEZ_DRY_RUN=1` dùng mock agent có sẵn, không cần login, không cần mạng.
+(`AGENT_PROTOCOL.md`). `ONNI_DRY_RUN=1` dùng mock agent có sẵn, không cần login, không cần mạng.
 
 ---
 
@@ -169,7 +169,7 @@ Tauri start
   └─ setup: tạo window + splash, init tray, đăng ký single-instance
        └─ thread supervise():
             port = pick_port()                      # port trống
-            entry = CEZ_DESKTOP_ENTRY, else ~/.cezar/versions/current
+            entry = ONNI_DESKTOP_ENTRY, else ~/.cezar/versions/current
             spawn: node <entry> serve --no-open --port <port>
             poll GET /api/v1/health (timeout)
               ├─ OK    → webview.navigate http://127.0.0.1:<port>
@@ -220,14 +220,14 @@ refetch toàn bộ chỉ khi reconnect hoặc tab hiện lại.
 
 ### 6.4 Dispatch (agent chính giao việc cho agent con)
 
-`cez task create` (HTTP tới `CEZ_API_URL`) → task con có worktree/branch riêng, budget trích từ cha,
+`cez task create` (HTTP tới `ONNI_API_URL`) → task con có worktree/branch riêng, budget trích từ cha,
 tối đa **4 con in-flight**, report queue 20, kết quả quay về agent cha (`cez task report`).
-Bật mặc định; tắt bằng `CEZ_DISPATCH=0`.
+Bật mặc định; tắt bằng `ONNI_DISPATCH=0`.
 
 ### 6.5 Automations
 
 Timer chỉ arm cho automation người dùng đã bật; poll GitHub theo lookback; kết quả dùng lại
-đúng đường dispatch/deferred-start. Bật mặc định; `CEZ_AUTOMATIONS=0` để tắt.
+đúng đường dispatch/deferred-start. Bật mặc định; `ONNI_AUTOMATIONS=0` để tắt.
 
 ### 6.6 Review → PR
 
@@ -255,8 +255,8 @@ tại thời điểm run bắt đầu) để không tính lịch sử ngoài tas
 Nguyên tắc: **state được ghi, không bao giờ bị bắt buộc**. Xoá `.ai/cezar/`, `~/.cache/cez/`, `~/.cezar/`
 thì hệ thống tự tái tạo (riêng `~/.cezar` xoá cả thư mục mới là reset thật).
 
-Các cờ môi trường đáng chú ý: `CEZ_HOME`, `CEZ_DRY_RUN`, `CEZ_DISPATCH`, `CEZ_AUTOMATIONS`,
-`CEZ_DESIGN_MODE`, `CEZ_SKILLS_AUTO_UPDATE`.
+Các cờ môi trường đáng chú ý: `ONNI_HOME`, `ONNI_DRY_RUN`, `ONNI_DISPATCH`, `ONNI_AUTOMATIONS`,
+`ONNI_DESIGN_MODE`, `ONNI_SKILLS_AUTO_UPDATE`.
 
 ---
 
@@ -283,7 +283,7 @@ npm test                    # vitest: server + cockpit unit suites
 npm run test:unit           # node:test: core module nhanh
 npm run build               # tsc → dist, vite → packages/work/web/dist, check:pack
 npm run test:package        # pack tarball rồi chạy CLI đã build
-npm run test:e2e            # UI smoke thật (agent-browser), CEZ_DRY_RUN=1
+npm run test:e2e            # UI smoke thật (agent-browser), ONNI_DRY_RUN=1
 ```
 
 | Workflow CI | Nội dung |
@@ -309,7 +309,7 @@ bật, nên `cargo check` / `cargo test` / `cargo build` chạy được local (
 | Lịch sử git | 1694 commit upstream | 1 commit gốc của dự án |
 | Tài liệu thừa | `docs/architecture/`, `docs/mockups/` | đã xoá; README.md rỗng |
 
-Phần **hosted/remote mode** (`CEZ_REMOTE`) được giữ nguyên, không đụng tới.
+Phần **hosted/remote mode** (`ONNI_REMOTE`) được giữ nguyên, không đụng tới.
 
 ---
 

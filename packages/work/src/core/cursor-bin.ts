@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { resolveProgram } from './disclaim-spawn.ts';
 
 /**
- * The real Cursor binary — `CEZ_CURSOR_AGENT_BIN`, else `cursor-agent` on PATH, else the
+ * The real Cursor binary — `ONNI_CURSOR_AGENT_BIN`, else `cursor-agent` on PATH, else the
  * installer's `~/.local/bin/cursor-agent`, else `agent` on PATH, else a bare `agent` (so a spawn
  * fails with the usual "not found"). Shared by every call site that shells out to the real CLI.
  *
@@ -19,7 +19,7 @@ export function resolveCursorAgentBin(
   platform: NodeJS.Platform = process.platform,
 ): string {
   if (optsBin) return optsBin;
-  if (env.CEZ_CURSOR_AGENT_BIN) return env.CEZ_CURSOR_AGENT_BIN;
+  if (env.ONNI_CURSOR_AGENT_BIN) return env.ONNI_CURSOR_AGENT_BIN;
   if (platform === 'win32') return 'agent';
   if (resolveProgram('cursor-agent', env.PATH)) return 'cursor-agent';
   const installed = resolveProgram(join(home, '.local', 'bin', 'cursor-agent'), undefined);
@@ -38,6 +38,6 @@ export function isForeignCursorAgent(
   version: string | null,
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  if (executable !== 'agent' || env.CEZ_CURSOR_AGENT_BIN || !version) return false;
+  if (executable !== 'agent' || env.ONNI_CURSOR_AGENT_BIN || !version) return false;
   return !/^20\d{2}\.\d{1,2}\.\d{1,2}(?:\D|$)/.test(version);
 }

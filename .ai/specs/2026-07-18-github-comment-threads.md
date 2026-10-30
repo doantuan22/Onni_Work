@@ -37,7 +37,7 @@ Alternatives considered:
 
 ## Architecture
 
-- **`src/server/forge/github.ts`** — owns everything `gh`: the new counts query inside `fetchGithub`, and a new `fetchGithubComments(repoRoot, kind, number)` with its own module-level cache — same 60 s TTL discipline as the list cache, but keyed `kind#number` and therefore **bounded**: a small LRU (cap ~50 threads, evict oldest) so a long browsing session cannot grow it without limit; `refresh=1` busts a key. `CEZ_DRY_RUN=1` returns mock threads for the fixture items so the tab stays demoable offline.
+- **`src/server/forge/github.ts`** — owns everything `gh`: the new counts query inside `fetchGithub`, and a new `fetchGithubComments(repoRoot, kind, number)` with its own module-level cache — same 60 s TTL discipline as the list cache, but keyed `kind#number` and therefore **bounded**: a small LRU (cap ~50 threads, evict oldest) so a long browsing session cannot grow it without limit; `refresh=1` busts a key. `ONNI_DRY_RUN=1` returns mock threads for the fixture items so the tab stays demoable offline.
 - **`src/server/forge/types.ts`** — `ForgeComment` added next to `ForgeItem`; `ForgeItem` itself is unchanged (the `comments: number` field finally carries real data — additive per `BACKWARD_COMPATIBILITY.md` §2).
 - **`src/server/server.ts`** — one new GET route following the house pattern: zod `safeParse` on params, `{ error }` + 400 on garbage, availability degrade in the payload (never a 5xx for gh absence).
 - **`web/app/src/api/`** — `ForgeComment`/`GithubCommentsData` mirrored in `types.ts`, `getGithubComments` in `client.ts`, `useGithubComments` in `queries.ts` (enabled only while a detail route is mounted; `staleTime` aligned with the 60 s server cache).
@@ -117,7 +117,7 @@ query ($owner: String!, $name: String!, $endCursor: String) {
 - **Private-repo image attachments** — `<img>` redirect requires auth the browser lacks → broken image; alt text and the comment's `url` deep link remain usable. Documented degrade (Q5), proxy follow-up noted.
 - **Huge threads / bodies** — 200-entry cap + `truncated` flag; 8 000-char body slice (same cap as item bodies).
 - **Malformed markdown / hostile content** — Streamdown sanitizes through rehype-harden: raw HTML never executes, scripts/iframes are stripped. Its 2.5.0 default does allow images/links from any origin (the app's existing posture for task threads and issue bodies); comment bodies are third-party-authored, so an external image can reveal the reader's IP to the image host — same exposure class as opening the issue on github.com, accepted per Q5, with origin-tightening named as a separate hardening follow-up. No `dangerouslySetInnerHTML` anywhere.
-- **`CEZ_DRY_RUN=1`** — `mockGithub()` items already carry non-zero counts; a `mockGithubComments()` fixture returns a small thread (including one image-bearing and one review entry) so the whole feature is demoable and e2e-testable offline.
+- **`ONNI_DRY_RUN=1`** — `mockGithub()` items already carry non-zero counts; a `mockGithubComments()` fixture returns a small thread (including one image-bearing and one review entry) so the whole feature is demoable and e2e-testable offline.
 
 ## Risks & Impact Review
 
@@ -137,7 +137,7 @@ query ($owner: String!, $name: String!, $endCursor: String) {
 **Phase 1 — counts + icons**
 1. `src/server/forge/github.ts`: add `fetchCommentCounts` (GraphQL query above, `gh api graphql`, zod schema for the response, ≤10-page pagination) as a fourth `Promise.all` entry in `fetchGithub`, isolated so its rejection degrades to empty maps; merge counts into the issue/PR mappers (replace the two `comments: 0` literals). Unit tests: merge logic, degrade-on-failure, pagination cap (`test/unit/` pattern).
 2. `web/app/src/routes/github/github.tsx`: `MessageSquareIcon` + count in `GithubRow` meta (render only when `> 0`) and in `GithubDetail` meta. Component test for both visibility states.
-3. Verify `mockGithub()` counts flow end-to-end under `CEZ_DRY_RUN=1`; adjust the e2e smoke if it asserts on row meta.
+3. Verify `mockGithub()` counts flow end-to-end under `ONNI_DRY_RUN=1`; adjust the e2e smoke if it asserts on row meta.
 
 **Phase 2 — comment threads**
 4. `src/server/forge/types.ts`: add `ForgeComment` / `ForgeCommentsData`. `src/server/forge/github.ts`: `fetchGithubComments(repoRoot, kind, number, refresh)` — gh calls, zod boundary schemas, review filtering/mapping, chronological merge, 200-entry/8 000-char caps, 60 s keyed cache, `mockGithubComments()` for dry-run. Unit tests: normalization, review filtering, caps, cache, degrade.
@@ -148,7 +148,7 @@ query ($owner: String!, $name: String!, $endCursor: String) {
 **Phase 3 — polish**
 8. `github.tsx`: avatar rendering with letter fallback; review-state chips wired to the existing tone tables; `truncated` trailing row. Component tests: avatar fallback, chip per review state, truncation row, and an image-bearing mock comment rendering an `<img>` through `Markdown`.
 9. e2e: extend the dry-run smoke to open a mock issue detail and assert the thread (count badge → thread entries → image present).
-10. Full gate: `npm run typecheck && npm test && npm run test:unit && npm run build && npm run test:package`; manual pass under `CEZ_DRY_RUN=1 npm run dev` (issue with mock thread + image), screenshot for QA evidence.
+10. Full gate: `npm run typecheck && npm test && npm run test:unit && npm run build && npm run test:package`; manual pass under `ONNI_DRY_RUN=1 npm run dev` (issue with mock thread + image), screenshot for QA evidence.
 
 ## Out of scope
 

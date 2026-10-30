@@ -163,8 +163,8 @@ describe('composeNameResult — branch (spec 2026-10-11-branch-naming-instructio
 
 describe('generateRunName (dry run)', () => {
   it('answers a short, pr-classified title through the mock runner and never throws', async () => {
-    const saved = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    const saved = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     try {
       const { mkdtempSync, rmSync } = await import('node:fs');
       const { tmpdir } = await import('node:os');
@@ -178,43 +178,43 @@ describe('generateRunName (dry run)', () => {
         rmSync(root, { recursive: true, force: true });
       }
     } finally {
-      if (saved === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = saved;
+      if (saved === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = saved;
     }
   }, 30_000);
 });
 
 describe('liveTitleUpdatesEnabled', () => {
-  const saved = process.env.CEZ_TITLE_UPDATES;
+  const saved = process.env.ONNI_TITLE_UPDATES;
   afterEach(() => {
-    if (saved === undefined) delete process.env.CEZ_TITLE_UPDATES;
-    else process.env.CEZ_TITLE_UPDATES = saved;
+    if (saved === undefined) delete process.env.ONNI_TITLE_UPDATES;
+    else process.env.ONNI_TITLE_UPDATES = saved;
   });
 
   it('defaults ON (owner decision, PR #479)', () => {
-    delete process.env.CEZ_TITLE_UPDATES;
+    delete process.env.ONNI_TITLE_UPDATES;
     expect(liveTitleUpdatesEnabled({})).toBe(true);
   });
 
   it('the env default turns it off with exactly "0"', () => {
-    expect(liveTitleUpdatesEnabled({}, { CEZ_TITLE_UPDATES: '0' })).toBe(false);
-    expect(liveTitleUpdatesEnabled({}, { CEZ_TITLE_UPDATES: '1' })).toBe(true);
-    expect(liveTitleUpdatesEnabled({}, { CEZ_TITLE_UPDATES: 'off' })).toBe(true);
+    expect(liveTitleUpdatesEnabled({}, { ONNI_TITLE_UPDATES: '0' })).toBe(false);
+    expect(liveTitleUpdatesEnabled({}, { ONNI_TITLE_UPDATES: '1' })).toBe(true);
+    expect(liveTitleUpdatesEnabled({}, { ONNI_TITLE_UPDATES: 'off' })).toBe(true);
   });
 
   it('the Settings toggle (config) wins over the env in both directions', () => {
     expect(liveTitleUpdatesEnabled({ liveTitleUpdates: false }, {})).toBe(false);
-    expect(liveTitleUpdatesEnabled({ liveTitleUpdates: true }, { CEZ_TITLE_UPDATES: '0' })).toBe(true);
-    expect(liveTitleUpdatesEnabled({ liveTitleUpdates: false }, { CEZ_TITLE_UPDATES: '1' })).toBe(false);
+    expect(liveTitleUpdatesEnabled({ liveTitleUpdates: true }, { ONNI_TITLE_UPDATES: '0' })).toBe(true);
+    expect(liveTitleUpdatesEnabled({ liveTitleUpdates: false }, { ONNI_TITLE_UPDATES: '1' })).toBe(false);
   });
 });
 
 describe('autoNamingActive', () => {
-  it('on by default; CEZ_AUTONAME=0 kills it; dry-run is off unless forced', () => {
+  it('on by default; ONNI_AUTONAME=0 kills it; dry-run is off unless forced', () => {
     expect(autoNamingActive({})).toBe(true);
-    expect(autoNamingActive({ CEZ_AUTONAME: '0' })).toBe(false);
-    expect(autoNamingActive({ CEZ_DRY_RUN: '1' })).toBe(false);
-    expect(autoNamingActive({ CEZ_DRY_RUN: '1', CEZ_AUTONAME: '1' })).toBe(true);
-    expect(autoNamingActive({ CEZ_DRY_RUN: '1', CEZ_AUTONAME: '0' })).toBe(false);
+    expect(autoNamingActive({ ONNI_AUTONAME: '0' })).toBe(false);
+    expect(autoNamingActive({ ONNI_DRY_RUN: '1' })).toBe(false);
+    expect(autoNamingActive({ ONNI_DRY_RUN: '1', ONNI_AUTONAME: '1' })).toBe(true);
+    expect(autoNamingActive({ ONNI_DRY_RUN: '1', ONNI_AUTONAME: '0' })).toBe(false);
   });
 });

@@ -238,7 +238,7 @@ Mirrored in `web/app/src/api/types.ts` (`RunActivity` + `RunRecord.activity?`). 
   `deriveAttention` branch (+ widening its input type). No `RunStatus` enum change → no
   status-guard/exhaustiveness churn.
 - **Backward compatibility:** additive optional field; old `runs.json`/NDJSON parse
-  unchanged (schema test). No public route/config change. No new `CEZ_*` env var (a
+  unchanged (schema test). No public route/config change. No new `ONNI_*` env var (a
   safe-by-default status refinement, not an exposure/cost-widening feature) →
   `.env.example` untouched.
 - **Behavioral regression risk:** the only status-behavior change is at turn-end and
@@ -309,5 +309,5 @@ Each phase leaves the app working and is independently shippable.
    `monitoring` in the turn-end handoff-heartbeat message (`run.ts:793`, `:1215`).
    Document `CEZ:MONITORING` beside `CEZ:DONE` in the agent-contract docs
    (`AGENTS.md` and/or `AGENT_PROTOCOL.md` — wherever `CEZ:DONE` is described). No
-   `CEZ_*` env var, so `.env.example` is untouched.
+   `ONNI_*` env var, so `.env.example` is untouched.
    *Test:* a text event ending in the marker is stripped in the emitted transcript.

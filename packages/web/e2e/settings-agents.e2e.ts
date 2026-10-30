@@ -117,7 +117,7 @@ describe('settings → agents against the live dry-run server', () => {
   })
 
   it('per-runner model preset: select writes the runner key, others untouched', async ({ skip }) => {
-    if (modelsLocked) skip('model selection is locked by CEZ_AGENT_MODELS_LOCKED')
+    if (modelsLocked) skip('model selection is locked by ONNI_AGENT_MODELS_LOCKED')
     // A coding agent's own native model (e.g. ~/.codex/config.toml) shows through as its default,
     // so "untouched" means unchanged from what the server answered before the pick.
     const before = await waitForConfig(() => true)

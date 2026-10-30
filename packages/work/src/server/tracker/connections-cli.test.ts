@@ -8,7 +8,7 @@ const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
 it('lists no secrets, removes orphan credentials, and rejects invalid arguments', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tracker-cli-')); roots.push(root);
-  const env = { CEZ_HOME: join(root, 'home') };
+  const env = { ONNI_HOME: join(root, 'home') };
   const project = join(root, 'repo'); await mkdir(project);
   const store = new TrackerConnections(env);
   await store.write(project, { kind: 'linear', key: 'private-secret' });
@@ -29,12 +29,12 @@ it('dry-run cannot list or remove real files, and inaccessible storage reports f
   await mkdir(join(root, 'tracker-connections'), { mode: 0o700 });
   const id = 'a'.repeat(64); const path = join(root, 'tracker-connections', id + '.env');
   await writeFile(path, 'invalid dummy', { mode: 0o600 });
-  const output = { log: vi.fn(), error: vi.fn() }; const env = { CEZ_HOME: root, CEZ_DRY_RUN: '1' };
+  const output = { log: vi.fn(), error: vi.fn() }; const env = { ONNI_HOME: root, ONNI_DRY_RUN: '1' };
   expect(await runTrackerConnectionsCommand(['list'], env, output)).toBe(0);
   expect(output.log).toHaveBeenCalledTimes(1);
   expect(await runTrackerConnectionsCommand(['remove', id], env, output)).toBe(0);
   expect(await readFile(path, 'utf8')).toBe('invalid dummy');
   await rm(join(root, 'tracker-connections'), { recursive: true });
   await writeFile(join(root, 'tracker-connections'), 'not a directory');
-  expect(await runTrackerConnectionsCommand(['list'], { CEZ_HOME: root }, output)).toBe(1);
+  expect(await runTrackerConnectionsCommand(['list'], { ONNI_HOME: root }, output)).toBe(1);
 });

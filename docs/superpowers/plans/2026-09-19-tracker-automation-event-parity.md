@@ -56,7 +56,7 @@ pierwotny plan; stan wykonania opisuje ten akapit i raport.
 - W tej sesji tylko plan. Bez implementacji, commitów, push, PR, komentarzy i publikacji.
 - Przy przyszłej realizacji dotychczasowy zakaz publikacji nadal obowiązuje, dopóki użytkownik
   go nie zmieni. Nie włączać produkcyjnych automatyzacji ani nie tworzyć live issue/PR do testów.
-- Wszystkie testy z `TMPDIR=/tmp`; izolowane `CEZ_HOME`; nie czytać tokenów do logów ani promptów.
+- Wszystkie testy z `TMPDIR=/tmp`; izolowane `ONNI_HOME`; nie czytać tokenów do logów ani promptów.
 - HTTP: Zod w `packages/contract`, route chaining, middleware validators, `/api/v1` i aliasy
   projektowe. Typy wire tylko przez `z.infer`; re-eksport przez api-client.
 - Istniejące harmonogramy godzinowe pozostają bez zmian. 1800s mieści się w istniejącym
@@ -400,7 +400,7 @@ expect(createAutomation).toHaveBeenCalledWith(expect.objectContaining({ enable: 
 w `packages/work/src/automations/event-poll-cycle.test.ts`; dowody `.ai/qa/tracker-automation-events/`.
 Nie edytować pozostałych funkcji podczas bramki bez nowego odtworzonego błędu.
 
-- [ ] Fixture uruchamia osobny serwer, CEZ_HOME i repo. Zegar testowy dla30min; osobno smoke normalnego
+- [ ] Fixture uruchamia osobny serwer, ONNI_HOME i repo. Zegar testowy dla30min; osobno smoke normalnego
   timera bez zmiany stałych produkcyjnych. GitHub/Linear/Jira nie kontaktują live usług w tym scenariuszu.
 - [ ] UI: create paused → preview bez runa → enable → event po baseline → dokładnie jeden run →
   ponowny odczyt tego eventu bez runa → drugie rzeczywiste przejście z nowym eventId → drugi run.

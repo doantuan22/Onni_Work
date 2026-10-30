@@ -24,7 +24,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
   let store: SecretStore;
   let project: SecretScopeRef & { kind: 'project' };
   const workspace: SecretScopeRef = { kind: 'workspace' };
-  const env = (): NodeJS.ProcessEnv => ({ ...process.env, CEZ_HOME: home });
+  const env = (): NodeJS.ProcessEnv => ({ ...process.env, ONNI_HOME: home });
   /** Default: no keychain on this machine — the file fallback, which must always work. */
   const noKeychain = async () => null;
 
@@ -120,7 +120,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
     ['lowercase', 'e2e_key'],
     ['leading digit', '1KEY'],
     ['too long', `K${'A'.repeat(128)}`],
-    ['onni namespace', 'CEZ_RUN_ID'],
+    ['onni namespace', 'ONNI_RUN_ID'],
     ['loader', 'DYLD_INSERT_LIBRARIES'],
     ['shell', 'PATH'],
     ['shell', 'BASH_ENV'],
@@ -214,7 +214,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
   });
 
   it('trips the sandbox guard when a test would write the real onni home', async () => {
-    const unpinned = new SecretStore({ ...process.env, CEZ_HOME: join(homedir(), '.onni') }, { keychain: noKeychain });
+    const unpinned = new SecretStore({ ...process.env, ONNI_HOME: join(homedir(), '.onni') }, { keychain: noKeychain });
     await expect(unpinned.set(project, 'KEY', 'v-long-enough')).rejects.toThrow(/refusing to write/);
   });
 

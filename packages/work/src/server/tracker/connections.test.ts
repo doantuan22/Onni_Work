@@ -13,7 +13,7 @@ it('stores each project outside its checkout with private permissions and fresh 
   const home = join(root, 'home');
   const a = join(root, 'a'); const b = join(root, 'b');
   await mkdir(a); await mkdir(b);
-  const store = new TrackerConnections({ CEZ_HOME: home });
+  const store = new TrackerConnections({ ONNI_HOME: home });
   const first = await store.write(a, { kind: 'linear', key: 'private-test-A' });
   expect(first).not.toBeNull();
   expect(await store.read(b)).toBeNull();
@@ -35,7 +35,7 @@ it('stores each project outside its checkout with private permissions and fresh 
   expect(await store.read(a)).toBeNull();
 });
 it('fails closed on corrupt storage and keeps the previous record after invalid replacement', async () => {
-  const store = new TrackerConnections({ CEZ_HOME: join(root, 'home') });
+  const store = new TrackerConnections({ ONNI_HOME: join(root, 'home') });
   const saved = await store.write(root, { kind: 'linear', key: 'previous-secret' });
   expect(await store.write(root, { kind: 'linear', key: '' })).toBeNull();
   expect((await store.read(root))?.id).toBe(saved?.id);
@@ -50,7 +50,7 @@ async function legacy(home: string, project: string) {
   return record;
 }
 it('writes dotenv outside the repo and never populates the process environment', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   const before = process.env.LINEAR_API_KEY;
   const value = 'dummy#=value$' + '{UNEXPANDED}\\tail';
   const saved = await store.write(root, { kind: 'linear', key: value });
@@ -63,17 +63,17 @@ it('writes dotenv outside the repo and never populates the process environment',
 });
 it('leaves prototype JSON untouched and never migrates it', async () => {
   const home = join(root, 'home'); const record = await legacy(home, root);
-  expect(await new TrackerConnections({ CEZ_HOME: home }).read(root)).toBeNull();
+  expect(await new TrackerConnections({ ONNI_HOME: home }).read(root)).toBeNull();
   expect(JSON.parse(await readFile(secretPath(home, root, '.json'), 'utf8'))).toEqual(record);
   expect(await stat(secretPath(home, root, '.env')).catch(() => null)).toBeNull();
 });
 it('never falls back to legacy JSON when an env file exists but is corrupt', async () => {
   const home = join(root, 'home'); await legacy(home, root);
   await writeFile(secretPath(home, root, '.env'), 'invalid', { mode: 0o600 });
-  expect(await new TrackerConnections({ CEZ_HOME: home }).read(root)).toBeNull();
+  expect(await new TrackerConnections({ ONNI_HOME: home }).read(root)).toBeNull();
 });
 it('rejects manual token changes with an old revision and recovers through the form save', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   const saved = await store.write(root, { kind: 'linear', key: 'before-edit' });
   const file = secretPath(home, root, '.env');
   await writeFile(file, (await readFile(file, 'utf8')).replace('before-edit', 'after-edit'));
@@ -83,7 +83,7 @@ it('rejects manual token changes with an old revision and recovers through the f
   expect((await store.read(root))?.credentials).toEqual({ kind: 'linear', key: 'after-edit' });
 });
 it('removes the env record without a deletion marker or touching prototype files', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   await store.write(root, { kind: 'linear', key: 'current-dummy' });
   await legacy(home, root);
   expect(await store.remove(root)).toBe(true);
@@ -92,14 +92,14 @@ it('removes the env record without a deletion marker or touching prototype files
   expect(await store.read(root)).toBeNull();
 });
 it('does not alter existing credentials on line-injection input', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   const saved = await store.write(root, { kind: 'linear', key: 'valid-dummy' });
   expect(await store.write(root, { kind: 'linear', key: 'dummy\nNODE_OPTIONS=--inspect' })).toBeNull();
   expect(await store.read(root)).toEqual(saved);
 });
 
 it('keeps the previous env when an atomic replacement fails', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   const record = await store.write(root, { kind: 'linear', key: 'previous' });
   vi.spyOn(fs, 'rename').mockRejectedValue(Object.assign(new Error('fixture'), { code: 'EACCES' }));
   expect(await store.write(root, { kind: 'linear', key: 'replacement' })).toBeNull();
@@ -110,7 +110,7 @@ it('does not follow credential symlinks or oversized env files, including with l
   const file = secretPath(home, root, '.env');
   const target = join(root, 'elsewhere'); await writeFile(target, 'dummy', { mode: 0o600 });
   await symlink(target, file);
-  const store = new TrackerConnections({ CEZ_HOME: home });
+  const store = new TrackerConnections({ ONNI_HOME: home });
   expect(await store.read(root)).toBeNull();
   expect(await store.remove(root)).toBe(true);
   expect(await readFile(target, 'utf8')).toBe('dummy');
@@ -119,14 +119,14 @@ it('does not follow credential symlinks or oversized env files, including with l
 });
 
 it('requires an existing canonical root and stores its identity', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   expect(await store.write(join(root, 'missing'), { kind: 'linear', key: 'dummy' })).toBeNull();
   await store.write(root, { kind: 'linear', key: 'dummy' });
   expect(await readFile(secretPath(home, root, '.env'), 'utf8')).toContain('PROJECT_ROOT=');
 });
 
 it('lists invalid records safely and removes entries after a repository disappears', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   const project = join(root, 'project'); await mkdir(project);
   await store.write(project, { kind: 'linear', key: 'secret-never-listed' });
   const id = createHash('sha256').update(project).digest('hex');
@@ -139,7 +139,7 @@ it('lists invalid records safely and removes entries after a repository disappea
   await expect(store.removeId('../escape')).rejects.toThrow();
 });
 it('distinguishes missing storage from corrupt credentials and rejects mismatched owners', async () => {
-  const home = join(root, 'home'); const store = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const store = new TrackerConnections({ ONNI_HOME: home });
   expect(await store.inspect(root)).toEqual({ record: null });
   await store.write(root, { kind: 'linear', key: 'dummy' });
   const path = secretPath(home, root, '.env');
@@ -148,8 +148,8 @@ it('distinguishes missing storage from corrupt credentials and rejects mismatche
 });
 
 it('serializes independent store mutations and reports failed unlink without claiming deletion', async () => {
-  const home = join(root, 'home'); const first = new TrackerConnections({ CEZ_HOME: home });
-  const second = new TrackerConnections({ CEZ_HOME: home });
+  const home = join(root, 'home'); const first = new TrackerConnections({ ONNI_HOME: home });
+  const second = new TrackerConnections({ ONNI_HOME: home });
   await first.write(root, { kind: 'linear', key: 'old' });
   const rename = fs.rename.bind(fs);
   let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
@@ -171,10 +171,10 @@ it('serializes independent store mutations and reports failed unlink without cla
   expect(await first.read(root)).not.toBeNull();
 });
 
-it('keeps managed credentials out of git when CEZ_HOME is inside a repository', async () => {
+it('keeps managed credentials out of git when ONNI_HOME is inside a repository', async () => {
   execFileSync('git', ['init', '-q', root]);
   const home = join(root, 'local-home');
-  const store = new TrackerConnections({ CEZ_HOME: home });
+  const store = new TrackerConnections({ ONNI_HOME: home });
   expect(await store.write(root, { kind: 'linear', key: 'synthetic-private-token' })).not.toBeNull();
   execFileSync('git', ['add', '.'], { cwd: root });
   expect(execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf8' })).toBe('');

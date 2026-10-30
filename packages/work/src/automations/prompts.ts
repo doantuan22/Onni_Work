@@ -121,7 +121,7 @@ A new automation is PAUSED unless created with --enable. Enabling a GitHub poll 
 /** The part composed into EVERY task's system prompt while automations are on and reachable. */
 export const AUTOMATIONS_PROMPT = `Automations. This cockpit can do recurring work for you without you doing it once: an automation is a tracker event poll for this project’s connected Jira/Linear issues, a bounded GitHub poll — a new pull request, a new issue, a label added to or removed from an issue, a review submitted on a pull request, a review requested (or re-requested from someone who already reviewed) — optionally filtered by author, assignee, labels or reviewer — or a schedule (every day at a time, weekdays, one weekday a week, every N hours, or once at a date and time), and it launches an ordinary onni task for every match or occurrence, with a prompt template you write. When the user asks for something to happen "whenever", "every time" or "each time" a pull request or issue appears, is labelled, is reviewed or a review is (re-)requested, or "every day at", "on weekdays", "every Friday", "every 6 hours" — or for a task to start later, "tonight at 23:00", "tomorrow at 7" — they are asking for an automation: create one instead of doing the work once, and instead of polling GitHub or sleeping yourself.
 
-Always through the cockpit's own binary, node "$CEZ_BIN", because a onni on your PATH may be an older install without this command; every "onni automation …" below means node "$CEZ_BIN" automation …:
+Always through the cockpit's own binary, node "$ONNI_BIN", because a onni on your PATH may be an older install without this command; every "onni automation …" below means node "$ONNI_BIN" automation …:
 
   onni automation schema                              the definition shape, every key, every bound, the prompt placeholders
   onni automation create --file <def.json> [--enable]  create one from JSON (paused unless --enable); --json '<json>' or stdin work too
@@ -133,7 +133,7 @@ Always through the cockpit's own binary, node "$CEZ_BIN", because a onni on your
 
 For a tracker, first GET /api/v1/p/:projectId/tracker/automation-options to discover supported events, the exact association and status/label IDs. Use JSON with trackerTrigger through create --file; never edit automation state files. Jira supports creation and status transitions; Linear supports creation only.
 
-Read onni automation schema first. Create it PAUSED — for a GitHub or tracker poll run a preview check so the user can see what it would have matched; for a schedule tell the user the next occurrence — unless they explicitly asked for it to be enabled; only enable when the user asked, and say so. Never enable a GitHub poll whose filter you have not previewed. Apply the same preview requirement to tracker polls; create paused, check, then enable when requested. The command prints the automation's id and its page in the cockpit — put that link in your final message. If onni automation is refused or CEZ_BIN is unset, stop and report that automations are unavailable on this cockpit: do not write a cron job, a GitHub Action or a polling script in the repository as a substitute.`;
+Read onni automation schema first. Create it PAUSED — for a GitHub or tracker poll run a preview check so the user can see what it would have matched; for a schedule tell the user the next occurrence — unless they explicitly asked for it to be enabled; only enable when the user asked, and say so. Never enable a GitHub poll whose filter you have not previewed. Apply the same preview requirement to tracker polls; create paused, check, then enable when requested. The command prints the automation's id and its page in the cockpit — put that link in your final message. If onni automation is refused or ONNI_BIN is unset, stop and report that automations are unavailable on this cockpit: do not write a cron job, a GitHub Action or a polling script in the repository as a substitute.`;
 
 /**
  * The built-in skill's body — the full playbook a run under `create-onni-automation` follows.
@@ -156,17 +156,17 @@ If the user named a skill, workflow, runner or model for the launched tasks, use
 
 ## 2. Create it
 
-Run \`node "$CEZ_BIN" automation schema\` and read it. Write the definition as JSON to a file outside the repository (your temp directory is fine) and create it:
+Run \`node "$ONNI_BIN" automation schema\` and read it. Write the definition as JSON to a file outside the repository (your temp directory is fine) and create it:
 
-    node "$CEZ_BIN" automation create --file <def.json>
+    node "$ONNI_BIN" automation create --file <def.json>
 
-The automation is created PAUSED. The command prints its id and the cockpit page where the user can edit it. For event polls, preview first, then run \`node "$CEZ_BIN" automation enable <id>\` if the user asked for it to be switched on. For schedules, explicit authorization allows \`--enable\`; otherwise leave it paused and say how to enable it. Never write automations.json or runtime state directly. If the command is refused, stop and report exactly what it printed — do not work around it.
+The automation is created PAUSED. The command prints its id and the cockpit page where the user can edit it. For event polls, preview first, then run \`node "$ONNI_BIN" automation enable <id>\` if the user asked for it to be switched on. For schedules, explicit authorization allows \`--enable\`; otherwise leave it paused and say how to enable it. Never write automations.json or runtime state directly. If the command is refused, stop and report exactly what it printed — do not work around it.
 
 ## 3. Preview before anyone enables it
 
 For a GitHub or tracker poll:
 
-    node "$CEZ_BIN" automation check <id>
+    node "$ONNI_BIN" automation check <id>
 
 This reads bounded provider events right now and counts the matches without launching anything. Report the count. Zero matches can mean no recent events; verify capabilities and IDs before changing the definition (\`onni automation update <id> --file <def.json>\`) and preview again. Enabling establishes a current-time baseline, so a preview is the only way to see what the filter does to existing items.
 

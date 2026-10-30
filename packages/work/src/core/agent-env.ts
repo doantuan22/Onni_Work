@@ -7,13 +7,13 @@
  * attacker-controlled prompt can drive. Instead we build an explicit,
  * curated child env: a base allowlist of the non-secret vars a shell / dev
  * toolchain genuinely needs, plus the specific auth vars the chosen backend
- * requires, plus onni's own `CEZ_*` namespace and the per-run `spec.env`.
+ * requires, plus onni's own `ONNI_*` namespace and the per-run `spec.env`.
  * Everything else — notably arbitrary secrets — is dropped by default.
  *
  * Zero-config: the safe env is the default and needs no configuration. Two
  * opt-in escape hatches (both read from the host env, both off by default):
- *   - `CEZ_ENV_PASSTHROUGH=A,B,C` forwards those extra named vars;
- *   - `CEZ_AGENT_ENV_FULL=1` restores the legacy full-`process.env` behavior.
+ *   - `ONNI_ENV_PASSTHROUGH=A,B,C` forwards those extra named vars;
+ *   - `ONNI_AGENT_ENV_FULL=1` restores the legacy full-`process.env` behavior.
  */
 
 import type { AgentBackend } from './agent-runner.ts';
@@ -311,7 +311,7 @@ export function isClaudeBackend(backend: AgentBackend): boolean {
 
 export interface BuildChildEnvOptions {
   backend: AgentBackend;
-  /** Per-run env (CEZ_HANDOFF_FILE etc.) — always applied, wins over host. */
+  /** Per-run env (ONNI_HANDOFF_FILE etc.) — always applied, wins over host. */
   extraEnv?: Record<string, string>;
   /** Source env; defaults to `process.env`. */
   source?: NodeJS.ProcessEnv;
@@ -336,9 +336,9 @@ export function buildChildEnv(opts: BuildChildEnvOptions): NodeJS.ProcessEnv {
 
   // Escape hatch: restore legacy full-inheritance (opt-in, off by default).
   // Parsed with the same `isTruthy` the Bedrock/Vertex toggles use (#456
-  // review) — an exact `=== '1'` made `CEZ_AGENT_ENV_FULL=true` silently do
+  // review) — an exact `=== '1'` made `ONNI_AGENT_ENV_FULL=true` silently do
   // nothing, which is a confusing way to fail open-vs-closed.
-  if (isTruthy(readVar(source, 'CEZ_AGENT_ENV_FULL'))) {
+  if (isTruthy(readVar(source, 'ONNI_AGENT_ENV_FULL'))) {
     const full: NodeJS.ProcessEnv = {};
     for (const [name, value] of Object.entries(source)) {
       if (!overridden.has(name.toUpperCase())) full[name] = value;
@@ -348,7 +348,7 @@ export function buildChildEnv(opts: BuildChildEnvOptions): NodeJS.ProcessEnv {
 
   const backendPrefixes = BACKEND_ALLOW_PREFIXES[opts.backend] ?? BACKEND_ALLOW_PREFIXES.claude;
   const passthrough = upperSet(
-    (readVar(source, 'CEZ_ENV_PASSTHROUGH') ?? '')
+    (readVar(source, 'ONNI_ENV_PASSTHROUGH') ?? '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
@@ -382,8 +382,8 @@ export function buildChildEnv(opts: BuildChildEnvOptions): NodeJS.ProcessEnv {
   /** `name` is matched normalized; the caller keeps the original spelling. */
   function allow(name: string): boolean {
     const key = name.toUpperCase();
-    // onni's own namespace (CEZ_DRY_RUN plumbing, mock hooks, run wiring).
-    if (key.startsWith('CEZ_')) return true;
+    // onni's own namespace (ONNI_DRY_RUN plumbing, mock hooks, run wiring).
+    if (key.startsWith('ONNI_')) return true;
     // Backend auth + gh handoff + the cloud creds an active Bedrock/Vertex
     // toggle needs: forwarded even though they are secrets — the backend cannot
     // authenticate without them. They are still redacted before anything

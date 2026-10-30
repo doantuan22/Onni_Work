@@ -31,10 +31,10 @@ async function waitFor(check: () => boolean | Promise<boolean>, ms = 5_000): Pro
 }
 
 describe('task-processes parsers', () => {
-  it('reads CEZ_TASK_ID from a NUL-separated environ', () => {
-    expect(taskIdFromEnviron('PATH=/bin\0CEZ_TASK_ID=abc-123\0HOME=/h\0')).toBe('abc-123');
-    expect(taskIdFromEnviron('PATH=/bin\0XCEZ_TASK_ID=nope\0')).toBeUndefined();
-    expect(taskIdFromEnviron('CEZ_TASK_ID=\0')).toBeUndefined();
+  it('reads ONNI_TASK_ID from a NUL-separated environ', () => {
+    expect(taskIdFromEnviron('PATH=/bin\0ONNI_TASK_ID=abc-123\0HOME=/h\0')).toBe('abc-123');
+    expect(taskIdFromEnviron('PATH=/bin\0XONNI_TASK_ID=nope\0')).toBeUndefined();
+    expect(taskIdFromEnviron('ONNI_TASK_ID=\0')).toBeUndefined();
     expect(taskIdFromEnviron('')).toBeUndefined();
   });
 
@@ -46,7 +46,7 @@ describe('task-processes parsers', () => {
   it('parses macOS ps -E rows, keeping only marked processes but every parent link', () => {
     const { procs, parents } = parsePsEnvOutput(
       [
-        '  101     1 /usr/bin/program --flag PATH=/bin CEZ_TASK_ID=run-1 HOME=/h',
+        '  101     1 /usr/bin/program --flag PATH=/bin ONNI_TASK_ID=run-1 HOME=/h',
         '  102   101 node server.js PATH=/bin HOME=/h',
         'garbage',
       ].join('\n'),
@@ -55,10 +55,10 @@ describe('task-processes parsers', () => {
     expect(parents.get(102)).toBe(101);
   });
 
-  it('is on unless CEZ_TASK_PROCESS_REAP is exactly 0', () => {
+  it('is on unless ONNI_TASK_PROCESS_REAP is exactly 0', () => {
     expect(taskProcessReapEnabled({})).toBe(true);
-    expect(taskProcessReapEnabled({ CEZ_TASK_PROCESS_REAP: '1' })).toBe(true);
-    expect(taskProcessReapEnabled({ CEZ_TASK_PROCESS_REAP: '0' })).toBe(false);
+    expect(taskProcessReapEnabled({ ONNI_TASK_PROCESS_REAP: '1' })).toBe(true);
+    expect(taskProcessReapEnabled({ ONNI_TASK_PROCESS_REAP: '0' })).toBe(false);
   });
 
   it('describes reaped processes for the lifecycle note', () => {
@@ -122,7 +122,7 @@ describe.runIf(process.platform === 'linux')('reaping real processes (linux)', (
     const other = randomUUID();
     // `setsid` forks when it already leads a group, so the sleep's pid comes from the listing.
     const spawnSleep = (id: string): void =>
-      spawn('setsid', ['sleep', '100000'], { env: { ...process.env, CEZ_TASK_ID: id }, detached: true, stdio: 'ignore' }).unref();
+      spawn('setsid', ['sleep', '100000'], { env: { ...process.env, ONNI_TASK_ID: id }, detached: true, stdio: 'ignore' }).unref();
     spawnSleep(taskId);
     spawnSleep(other);
     const pidOf = async (id: string): Promise<number | undefined> =>

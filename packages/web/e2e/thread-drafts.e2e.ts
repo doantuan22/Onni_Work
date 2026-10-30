@@ -11,7 +11,7 @@ import { AgentBrowser, onniCli, fixtureServeEnv, stopFixtureServer } from './age
  * In-task drafts (#939) end-to-end: the exact loop the feature exists for — type a reply to one
  * task, glance at another, come back, and find the message still there.
  *
- * Against a real `onni` (CEZ_DRY_RUN=1) on a real tmp repo, so the round trip goes through the
+ * Against a real `onni` (ONNI_DRY_RUN=1) on a real tmp repo, so the round trip goes through the
  * real routes and the real files under `.ai/onni/drafts/`. Two runs, because the bug this fixes
  * only appears when there is somewhere else to go.
  */

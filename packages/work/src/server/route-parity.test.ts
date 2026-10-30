@@ -31,13 +31,13 @@ const spellings = (bootId: string, path: string): [string, string, string] => [
 ];
 
 describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/p/default)', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedFollowups = process.env.CEZ_FOLLOWUPS;
-  const savedSingleProject = process.env.CEZ_SINGLE_PROJECT;
-  const savedAutomations = process.env.CEZ_AUTOMATIONS;
-  const savedDispatch = process.env.CEZ_DISPATCH;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedFollowups = process.env.ONNI_FOLLOWUPS;
+  const savedSingleProject = process.env.ONNI_SINGLE_PROJECT;
+  const savedAutomations = process.env.ONNI_AUTOMATIONS;
+  const savedDispatch = process.env.ONNI_DISPATCH;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let home: string;
   let repoRoot: string;
   let otherRoot: string;
@@ -51,20 +51,20 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     home = mkdtempSync(join(tmpdir(), 'onni-parity-home-'));
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-parity-boot-'));
     otherRoot = mkdtempSync(join(tmpdir(), 'onni-parity-other-'));
-    process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
-    delete process.env.CEZ_REMOTE;
-    delete process.env.CEZ_FOLLOWUPS;
-    delete process.env.CEZ_SINGLE_PROJECT;
+    process.env.ONNI_HOME = home; // paths.ts sends all workspace paths here
+    delete process.env.ONNI_REMOTE;
+    delete process.env.ONNI_FOLLOWUPS;
+    delete process.env.ONNI_SINGLE_PROJECT;
     // #801: automations are opt-in, and this suite compares the REAL answers of every mirrored
     // route. Left off, the whole `/automations*` family would answer an identical 409 under all
     // three spellings — parity would pass while testing nothing about those routes.
-    process.env.CEZ_AUTOMATIONS = '1';
+    process.env.ONNI_AUTOMATIONS = '1';
     // Dispatch is opt-in on the same terms (spec 2026-09-10-dispatch) and for the same
     // reason: left off, both `/runs/:id/{dispatch,report}` routes would answer an identical 409
     // under all three spellings, and parity would pass while testing nothing about them.
-    process.env.CEZ_DISPATCH = '1';
+    process.env.ONNI_DISPATCH = '1';
     // Deterministic on any machine: no network, no real agent CLIs.
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     // `skillsRepos: []` disables team skills — no background clone can warm a
     // cache between the first and third spelling of the /skills sweep.
     for (const root of [repoRoot, otherRoot]) {
@@ -96,20 +96,20 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     contexts.disposeAll();
     store.flush();
     for (const dir of [home, repoRoot, otherRoot]) rmSync(dir, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
-    if (savedFollowups === undefined) delete process.env.CEZ_FOLLOWUPS;
-    else process.env.CEZ_FOLLOWUPS = savedFollowups;
-    if (savedSingleProject === undefined) delete process.env.CEZ_SINGLE_PROJECT;
-    else process.env.CEZ_SINGLE_PROJECT = savedSingleProject;
-    if (savedAutomations === undefined) delete process.env.CEZ_AUTOMATIONS;
-    else process.env.CEZ_AUTOMATIONS = savedAutomations;
-    if (savedDispatch === undefined) delete process.env.CEZ_DISPATCH;
-    else process.env.CEZ_DISPATCH = savedDispatch;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
+    if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
+    else process.env.ONNI_FOLLOWUPS = savedFollowups;
+    if (savedSingleProject === undefined) delete process.env.ONNI_SINGLE_PROJECT;
+    else process.env.ONNI_SINGLE_PROJECT = savedSingleProject;
+    if (savedAutomations === undefined) delete process.env.ONNI_AUTOMATIONS;
+    else process.env.ONNI_AUTOMATIONS = savedAutomations;
+    if (savedDispatch === undefined) delete process.env.ONNI_DISPATCH;
+    else process.env.ONNI_DISPATCH = savedDispatch;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   /** Substitute representative values for a manifest path's params. */
@@ -245,7 +245,7 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
       method: 'DELETE',
     }));
     await expectParity('/groups/no-such-group/pick', json('POST', { runId: 'x' }));
-    // 409: the follow-up inbox is off (CEZ_FOLLOWUPS unset).
+    // 409: the follow-up inbox is off (ONNI_FOLLOWUPS unset).
     await expectParity('/todos/t1/start', json('POST', {}));
     // 200 non-GET without observable side effects (no worktrees exist).
     await expectParity('/worktrees/reclaim', json('POST', {}));

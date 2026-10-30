@@ -215,7 +215,7 @@ units Guard condition (`!(unitTurn.hasUnit && Boolean(ask))`) once inside the sh
 `tryAutonomousNudge` helper that commit introduces, rather than per call site.
 *Default path:* this changes behaviour for **every** `#autonomous` run, not just units — `runAgentStep`
 goes from silently parking to nudging. Call that out explicitly; it is a default-path change outside
-the `CEZ_UNITS` gate. For unit runs the shipped default is unchanged in intent, only reachable.
+the `ONNI_UNITS` gate. For unit runs the shipped default is unchanged in intent, only reachable.
 *Transitions:* adds none; restores a missing one.
 *Tests:* carry over `autonomous-nudge.test.ts`; extend `units-engine.test.ts:474-522` to drive the ask
 through a child's **first** turn (`runAgentStep`) — today's `askOnContinue` helper exercises only

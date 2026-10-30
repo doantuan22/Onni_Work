@@ -52,7 +52,7 @@ const CHECK_ONLY: WorkflowDef = {
 };
 
 const roots: string[] = [];
-const savedAutoname = process.env.CEZ_AUTONAME;
+const savedAutoname = process.env.ONNI_AUTONAME;
 
 function fixtureRepo(): string {
   const root = mkdtempSync(join(tmpdir(), 'onni-branch-fallback-'));
@@ -74,13 +74,13 @@ async function waitForDone(store: RunStore, id: string): Promise<void> {
 }
 
 beforeEach(() => {
-  process.env.CEZ_AUTONAME = '1';
+  process.env.ONNI_AUTONAME = '1';
 });
 
 afterEach(() => {
   refuseNamedBranch = false;
-  if (savedAutoname === undefined) delete process.env.CEZ_AUTONAME;
-  else process.env.CEZ_AUTONAME = savedAutoname;
+  if (savedAutoname === undefined) delete process.env.ONNI_AUTONAME;
+  else process.env.ONNI_AUTONAME = savedAutoname;
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
 });
 

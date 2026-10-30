@@ -4,13 +4,13 @@
 
 Replace the cockpit's single weighted token total with explicit `IN` and `OUT` token counts alongside the session's reported USD cost. Keep all three values visible by default, while allowing deployments to hide token usage and cost independently through strict runtime environment flags.
 
-The implementation is additive: normalized v2 usage already carries raw input/output counts for Claude, Codex, and OpenCode; this work persists those counters on step/run records and exposes separate presentation capabilities. The existing `tokensUsed`, `costUsd`, `CEZ_HIDE_TOKEN_METRICS`, event types, and API fields remain compatible.
+The implementation is additive: normalized v2 usage already carries raw input/output counts for Claude, Codex, and OpenCode; this work persists those counters on step/run records and exposes separate presentation capabilities. The existing `tokensUsed`, `costUsd`, `ONNI_HIDE_TOKEN_METRICS`, event types, and API fields remain compatible.
 
 ## Resolved assumptions (autonomous defaults)
 
 | # | Applied default | Rationale |
 |---|---|---|
-| Q1 | Keep `CEZ_HIDE_TOKEN_METRICS=1` as a legacy master switch that hides both token usage and cost; add `CEZ_HIDE_TOKEN_USAGE=1` and `CEZ_HIDE_COST=1` for independent control. | Existing embedded deployments already rely on the shipped flag. An alias preserves their behavior while the two new strict opt-outs provide the requested matrix. |
+| Q1 | Keep `ONNI_HIDE_TOKEN_METRICS=1` as a legacy master switch that hides both token usage and cost; add `ONNI_HIDE_TOKEN_USAGE=1` and `ONNI_HIDE_COST=1` for independent control. | Existing embedded deployments already rely on the shipped flag. An alias preserves their behavior while the two new strict opt-outs provide the requested matrix. |
 | Q2 | Display the normalized protocol's top-level `usage.input` and `usage.output` values exactly; do not fold cache or reasoning detail buckets into them. | Provider detail buckets do not share one overlap contract: Codex reports cached/reasoning counts as subsets of top-level direction totals, while Claude/OpenCode expose additional buckets. Summing them would double-count some backends. Raw top-level values are the smallest backend-neutral truth. |
 | Q3 | Old records without directional counters show an honest absence (`— / —` in fixed table cells; no usage fragment on compact surfaces). Never relabel legacy weighted `tokensUsed` as input or output. | The old value is deliberately cost-weighted and cannot be split or safely backfilled. Honest absence avoids fabricated telemetry and requires no migration. |
 | Q4 | Replace the old token total on every current browser usage surface: quick lists, task overview table/cards, task-thread header, project groups, and variant comparison. | A deployment policy and a session metric must mean the same thing everywhere. Limiting the change to one screen would recreate the drift that the shared visibility helper was introduced to prevent. |
@@ -24,14 +24,14 @@ Cezar currently presents a single `tokensUsed` value plus optional `costUsd` for
 
 The normalized v2 protocol already answers that question. Every supported backend emits cumulative `usage.updated` events with `TokenUsage.input` and `TokenUsage.output`, enforced by the golden-fixture parity test in `packages/work/src/core/ui-parity.test.ts`. `UiEventSink` persists those snapshots to NDJSON, but `RunManager` does not copy the direction counters into `runs.json`; list and header views therefore cannot render them without replaying the full event log.
 
-Presentation control is also too coarse. The implemented `.ai/specs/2026-07-28-hide-token-metrics.md` design has one `CEZ_HIDE_TOKEN_METRICS=1` flag that hides tokens and cost together. The requested follow-up explicitly needs four valid deployment states:
+Presentation control is also too coarse. The implemented `.ai/specs/2026-07-28-hide-token-metrics.md` design has one `ONNI_HIDE_TOKEN_METRICS=1` flag that hides tokens and cost together. The requested follow-up explicitly needs four valid deployment states:
 
 | Token usage | Cost | Example use |
 |---|---|---|
 | visible | visible | Default local cockpit with full accounting context. |
 | hidden | visible | A cost-focused embedded or managed service that does not want token internals. |
 | visible | hidden | A service that exposes throughput but treats provider pricing as irrelevant or commercially sensitive. |
-| hidden | hidden | Existing `CEZ_HIDE_TOKEN_METRICS=1` deployments and fully accounting-agnostic embeds. |
+| hidden | hidden | Existing `ONNI_HIDE_TOKEN_METRICS=1` deployments and fully accounting-agnostic embeds. |
 
 The change must preserve zero config, historical recordings, public run/health schemas, backend parity, and the browser-only scope of the existing presentation policy.
 
@@ -41,15 +41,15 @@ Persist two optional raw counters—`inputTokens` and `outputTokens`—on each a
 
 Split runtime presentation policy into two current capabilities:
 
-- `tokenUsageMetrics`: false when `CEZ_HIDE_TOKEN_USAGE=1` or the legacy `CEZ_HIDE_TOKEN_METRICS=1` is set.
-- `costMetrics`: false when `CEZ_HIDE_COST=1` or the legacy `CEZ_HIDE_TOKEN_METRICS=1` is set.
+- `tokenUsageMetrics`: false when `ONNI_HIDE_TOKEN_USAGE=1` or the legacy `ONNI_HIDE_TOKEN_METRICS=1` is set.
+- `costMetrics`: false when `ONNI_HIDE_COST=1` or the legacy `ONNI_HIDE_TOKEN_METRICS=1` is set.
 - Keep `tokenMetrics` as the backward-compatible combined value, equal to `tokenUsageMetrics && costMetrics`. An older cockpit talking to a newer server therefore hides both whenever either dimension is restricted; it may hide more than necessary, but it never reveals a value the deployment opted out of.
 
 Only the exact string `1` enables any opt-out. The flags change presentation only: collection, NDJSON persistence, run responses, SSE, CLI output, and cost calculation are unaffected by whether either flag is set. Directional telemetry separately adds optional fields and normalized turn usage as specified below. Environment flags are evaluated by the server and conveyed through the existing health snapshot; the prebuilt SPA never reads `import.meta.env`.
 
 ### Alternatives considered
 
-1. **Rename `CEZ_HIDE_TOKEN_METRICS` to mean only tokens.** Rejected because existing deployments use it to hide both values. Reinterpreting it would reveal cost after an upgrade.
+1. **Rename `ONNI_HIDE_TOKEN_METRICS` to mean only tokens.** Rejected because existing deployments use it to hide both values. Reinterpreting it would reveal cost after an upgrade.
 2. **Remove `tokenMetrics` immediately.** Rejected because `/api/v1/health` is protected and old browser bundles can remain cached. The derived legacy field is cheap and gives fail-closed presentation behavior.
 3. **Reconstruct directional usage by replaying NDJSON on every list request.** Rejected because `runs.json` is the list index, list rendering must stay cheap, and old recordings still cannot be split when they contain v1-only telemetry.
 4. **Infer cost from input/output counts for Codex.** Rejected because model prices, cache discounts, reasoning rates, subscriptions, and provider billing rules are external and unstable. Cezar continues showing only backend-reported `costUsd`.
@@ -131,9 +131,9 @@ interface Capabilities {
 Resolution is strict and deterministic:
 
 ```ts
-const hideAll = env.CEZ_HIDE_TOKEN_METRICS === '1'
-const tokenUsageMetrics = !hideAll && env.CEZ_HIDE_TOKEN_USAGE !== '1'
-const costMetrics = !hideAll && env.CEZ_HIDE_COST !== '1'
+const hideAll = env.ONNI_HIDE_TOKEN_METRICS === '1'
+const tokenUsageMetrics = !hideAll && env.ONNI_HIDE_TOKEN_USAGE !== '1'
+const costMetrics = !hideAll && env.ONNI_HIDE_COST !== '1'
 const tokenMetrics = tokenUsageMetrics && costMetrics
 ```
 
@@ -282,7 +282,7 @@ Run fields and current health fields are additive. The legacy `tokensUsed` and `
 
 ### Configuration contract
 
-Adding `CEZ_HIDE_TOKEN_USAGE` and `CEZ_HIDE_COST`, and clarifying `CEZ_HIDE_TOKEN_METRICS`, requires `.env.example` in the same commit plus the README environment table. A missing documentation update is a bug under the repository's zero-config rules.
+Adding `ONNI_HIDE_TOKEN_USAGE` and `ONNI_HIDE_COST`, and clarifying `ONNI_HIDE_TOKEN_METRICS`, requires `.env.example` in the same commit plus the README environment table. A missing documentation update is a bug under the repository's zero-config rules.
 
 ### Layout drift
 
@@ -306,7 +306,7 @@ Ship mapper-normalized per-turn accounting, optional run aggregates, separate he
 2. Extend `stepStateSchema`, `runRecordSchema`, and `groupVariantSchema` in `packages/contract/src/runs.ts` with optional non-negative directional fields and the full-run step checkpoint fields; keep checkpoint metadata out of `GroupVariant`. Mirror the persisted step/run additions in `packages/work/src/runs/store.ts`, or replace those private schemas with a shared non-stripping source. Update type-exactness fixtures and add a save-close-reopen test proving old records parse and every new field survives restart.
 3. Add persisted invocation-start/observed counters, a runner-invocation epoch, and unique-turn accounting in `RunManager`: checkpoint each invocation before `startSession`, count its first unique `turn.started` once, count every unique turn start once, add valid completion usage once, and record completion once. Recompute run aggregates only when every started agent step has at least one observed invocation and tracked turn, `usageInvocationsStarted === usageInvocationsObserved`, and `usageTurnsStarted === usageTurnsRecorded`; cover startSession failure and process exit before a turn, a later metered retry that must not heal either mismatch, zero-turn steps, metered-then-unmetered turns, duplicate start/completion, process interruption/resume, multiple turns, live follow-ups, and mixed historical/current steps. Keep v1 token/cost handling byte-for-byte compatible.
 4. Add `tokenUsageMetrics` and `costMetrics` to `resolveCapabilities` and `packages/contract/src/health.ts`, retain derived `tokenMetrics`, and add the full strict-env truth table to capability/health tests. Verify `/api/v1/health` and the health topic expose the same snapshot.
-5. Document `CEZ_HIDE_TOKEN_USAGE=1`, `CEZ_HIDE_COST=1`, and legacy-master precedence in `.env.example`, README, and `BACKWARD_COMPATIBILITY.md`; explicitly state that telemetry/API payloads are preserved and a restart is required.
+5. Document `ONNI_HIDE_TOKEN_USAGE=1`, `ONNI_HIDE_COST=1`, and legacy-master precedence in `.env.example`, README, and `BACKWARD_COMPATIBILITY.md`; explicitly state that telemetry/API payloads are preserved and a restart is required.
 6. Replace the browser's boolean resolver with `usageMetricVisibility`, covering new-server, old-server, missing-health, legacy hide-all, token-only hidden, cost-only hidden, and both-hidden cases.
 7. Build a shared directional usage fragment/formatter with compact visual text and expanded accessible text. Use it in the task-thread header, task quick lists/project groups, and variant comparison; add tests for historical absence and all visibility combinations.
 8. Update both task-overview layouts. Replace the total token column/card item with IN/OUT, gate IN/OUT and Cost independently, compute semantic columns/queue spans from rendered columns, and add desktop/mobile tests for all four capability states.

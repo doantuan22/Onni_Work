@@ -46,7 +46,7 @@ export function mergeUsageWindows(previous: UsageWindowsSnapshot | null, incomin
   return { ...newest, windows: [...windows.values()].sort((a, b) => b.observedAt - a.observedAt).slice(0, 128) };
 }
 
-/** Cross-process read/merge/atomic-write. Resolve CEZ_HOME once, including its sandbox guard. */
+/** Cross-process read/merge/atomic-write. Resolve ONNI_HOME once, including its sandbox guard. */
 export async function saveUsageWindows(binding: UsageAccountBinding, observation: UsageWindowsObservation): Promise<boolean> {
   const path = join(onniHomeDir(), 'usage-windows.json');
   assertOnniHomeWriteIsSandboxed(path);

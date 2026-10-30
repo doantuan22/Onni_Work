@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 /**
  * The global follow-up inbox (spec 007): `.ai/onni/todos.json`, a flat JSON
- * array agents append to (via CEZ_TODOS_FILE). Agent entries are external
+ * array agents append to (via ONNI_TODOS_FILE). Agent entries are external
  * data — each one is zod-validated on read and malformed ones are skipped
  * with a warning, never fatal. Server writes are serialized with an
  * in-process lock (the janitor `withLock` pattern) and land atomically

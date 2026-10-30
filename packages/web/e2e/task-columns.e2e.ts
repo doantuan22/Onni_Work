@@ -25,8 +25,8 @@ import { AgentBrowser, bootProjectId, onniCli, fixtureServeEnv, stopFixtureServe
  *      rich enough to render every column (branch, diff stat, reference, directional usage, cost)
  *      can only be seeded BEFORE boot. Writing it under the running shared instance would change
  *      nothing — the same reason `quick-list.e2e.ts` boots its own.
- *   2. This suite READS AND MUTATES `ui-state.json`. `fixtureServeEnv` pins `CEZ_HOME` inside the
- *      throwaway `dataRoot`, which is a stronger form of the issue's "isolated CEZ_HOME" than the
+ *   2. This suite READS AND MUTATES `ui-state.json`. `fixtureServeEnv` pins `ONNI_HOME` inside the
+ *      throwaway `dataRoot`, which is a stronger form of the issue's "isolated ONNI_HOME" than the
  *      shared `.ai/qa/onni-home`: it cannot collide with `settings-appearance.e2e.ts`, which
  *      save/restores that very file, and it is removed with the `dataRoot` in `afterAll`.
  *
@@ -223,7 +223,7 @@ beforeAll(async () => {
   mkdirSync(join(dataRoot, '.ai/onni'), { recursive: true })
   writeFileSync(join(dataRoot, '.ai/onni/runs.json'), JSON.stringify(FIXTURE, null, 2), 'utf8')
 
-  // Mirrors `fixtureServeEnv`, which pins CEZ_HOME here — change one, change the other.
+  // Mirrors `fixtureServeEnv`, which pins ONNI_HOME here — change one, change the other.
   onniHome = resolve(dataRoot, '.onni-home')
   uiStateFile = join(onniHome, 'ui-state.json')
 

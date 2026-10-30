@@ -112,12 +112,12 @@ function onSearchPath(
 }
 
 /**
- * The Claude Code binary to SPAWN: `CEZ_CLAUDE_BIN`, else `claude` when it is on PATH, else the
+ * The Claude Code binary to SPAWN: `ONNI_CLAUDE_BIN`, else `claude` when it is on PATH, else the
  * first installed candidate from {@link claudeInstallCandidates}, else a bare `claude` (so the
  * spawn fails with the usual "not found" and its install hint). Re-resolved on every call — a
  * handful of `access()` probes — so installing claude while onni runs needs no restart.
  *
- * `CEZ_CLAUDE_BIN` is returned verbatim and unvalidated on purpose: an operator who points it at
+ * `ONNI_CLAUDE_BIN` is returned verbatim and unvalidated on purpose: an operator who points it at
  * the wrong path should get a loud failure naming their path, not a silent fallback.
  */
 export function resolveClaudeBin(
@@ -126,7 +126,7 @@ export function resolveClaudeBin(
   platform: NodeJS.Platform = process.platform,
   candidates: string[] = claudeInstallCandidates(home, platform),
 ): string {
-  if (env.CEZ_CLAUDE_BIN) return env.CEZ_CLAUDE_BIN;
+  if (env.ONNI_CLAUDE_BIN) return env.ONNI_CLAUDE_BIN;
   if (onSearchPath('claude', env.PATH ?? '', platform)) return 'claude';
   return candidates.find(isExecutable) ?? 'claude';
 }
@@ -143,7 +143,7 @@ export function resolveClaudeBin(
  * window saying `command not found`. A resolved absolute path works in every one of them.
  *
  * Unlike {@link resolveClaudeBin} this DOES validate: a path nobody can execute — including a
- * mistyped `CEZ_CLAUDE_BIN` — must not turn a working menu entry into a broken one.
+ * mistyped `ONNI_CLAUDE_BIN` — must not turn a working menu entry into a broken one.
  *
  * An unexecutable override is therefore treated as NO override and falls through to the normal
  * resolution rather than answering `null` outright. Answering `null` would also discard the
@@ -157,7 +157,7 @@ export function claudeShellCommand(
   platform: NodeJS.Platform = process.platform,
   candidates: string[] = claudeShellCandidates(home, platform),
 ): string | null {
-  if (env.CEZ_CLAUDE_BIN && isExecutable(env.CEZ_CLAUDE_BIN)) return env.CEZ_CLAUDE_BIN;
+  if (env.ONNI_CLAUDE_BIN && isExecutable(env.ONNI_CLAUDE_BIN)) return env.ONNI_CLAUDE_BIN;
   if (onSearchPath('claude', env.PATH ?? '', platform, SHELL_PATH_SUFFIXES)) return null;
   return candidates.find(isExecutable) ?? null;
 }

@@ -30,7 +30,7 @@ enabled. An ownership or storage failure reports the existing storage/coordinato
 
 ## Enable and connect
 
-1. Start cezar with `CEZ_WEBHOOKS=1` in its server environment. Restart after changing the flag.
+1. Start cezar with `ONNI_WEBHOOKS=1` in its server environment. Restart after changing the flag.
    Without the flag, the Webhooks settings page explains how to enable delivery; it creates no
    webhook storage, capture observers, timers or requests.
 2. Open your project's **Settings → Webhooks**, then **Add receiver**. Use an HTTPS receiver URL.
@@ -290,8 +290,8 @@ for delivery. This applies even if the question is still unanswered or the task 
 review. cezar does not start a task manager merely to validate a webhook. Opening the project
 later does not resend these suppressed notifications; they are not a recoverable backlog.
 
-`CEZ_WORKFLOW_WEBHOOKS` is independent: it enables an HTTP node **inside a workflow graph**, whose
-result can affect graph execution. `CEZ_WEBHOOKS` observes task lifecycle outside the workflow.
+`ONNI_WORKFLOW_WEBHOOKS` is independent: it enables an HTTP node **inside a workflow graph**, whose
+result can affect graph execution. `ONNI_WEBHOOKS` observes task lifecycle outside the workflow.
 They do not share receivers, signing keys, delivery IDs, retries or rate budgets. Pausing lifecycle
 receivers does not stop workflow-node HTTP, and a lifecycle delivery failure cannot fail the task.
 
@@ -311,5 +311,5 @@ npx --no-install e2e run --config packages/web/e2e/webhooks-review.config.ts
 
 The chat suite covers native receiver setup; the review suite covers delayed UI
 actions and delivery controls. Both use fictional credentials and a server forced
-to `CEZ_DRY_RUN=1`. They require the e2e browser runtime and do not verify live
+to `ONNI_DRY_RUN=1`. They require the e2e browser runtime and do not verify live
 Slack or Discord delivery.

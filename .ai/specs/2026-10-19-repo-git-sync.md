@@ -20,7 +20,7 @@ whatever branch was checked out.
 - **Network only on a click.** `POST /repo/{fetch,pull,push,sync}`. Nothing fetches in the
   background, so this adds no default-on network traffic (§ Zero config). Every network call runs
   with `GIT_TERMINAL_PROMPT=0`, `credential.interactive=false` and a 60 s timeout. Under
-  `CEZ_DRY_RUN=1`, fetch and push are skipped.
+  `ONNI_DRY_RUN=1`, fetch and push are skipped.
 - **Pull is fast-forward only.** A diverged branch is a 409 that says so. cezar never picks merge
   or rebase for the user's own checkout. Sync = pull, then push (VS Code's Sync).
 - **One mutation per checkout** at a time (an in-process queue), so a double-clicked Sync cannot

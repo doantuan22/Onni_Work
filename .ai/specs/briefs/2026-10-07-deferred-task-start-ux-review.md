@@ -50,7 +50,7 @@ Claude limitation: cezar cannot independently request limits without sending a m
 
 ### 🧪 Next test
 
-1. **Technical spike first (half an hour):** run one Claude task with `CEZ_DRY_RUN=0` and capture raw `stream-json`. Does `rate_limit_event` arrive with status `allowed` and `resetsAt` for the five-hour window? Perform the equivalent check with Codex `account/rateLimits/read`.
+1. **Technical spike first (half an hour):** run one Claude task with `ONNI_DRY_RUN=0` and capture raw `stream-json`. Does `rate_limit_event` arrive with status `allowed` and `resetsAt` for the five-hour window? Perform the equivalent check with Codex `account/rateLimits/read`.
    - Yes → use the scope below.
    - Only with `allowed_warning`/`rejected` → the Claude option works only near the limit; otherwise show “No current limit data” and offer date/time selection. The product owner decides the scope.
 2. **User test after the spike:** give participants the mockup and this task: “You have used 80% of the current window. Schedule a task without consuming the remainder.” Success: the participant selects the reset option and can explain when the task will start.
@@ -139,7 +139,7 @@ Cockpit and engine code were inspected. Usage-limit event schemas were read from
 ### ⚠️ Open decisions
 
 - The product owner decides Claude scope if the spike shows events only near the limit.
-- Does an on-demand Codex read (app-server process and network activity when opening the option) require a `CEZ_*` flag? AGENTS.md makes exposure-increasing features opt-in. Here an explicit user action triggers the read, so the recommendation is no flag, subject to owner confirmation.
+- Does an on-demand Codex read (app-server process and network activity when opening the option) require a `ONNI_*` flag? AGENTS.md makes exposure-increasing features opt-in. Here an explicit user action triggers the read, so the recommendation is no flag, subject to owner confirmation.
 
 ### 🧪 Evidence limits
 

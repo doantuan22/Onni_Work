@@ -14,7 +14,7 @@ import { RUNNER_IDS } from '../core/agent-runner.ts';
 
 export const DISPATCH_PROMPT = `Dispatching tasks. onni can run other onni tasks for you, each in its own git worktree forked off YOUR branch as you last committed it, each reporting back into this session when it settles. Use it for work that is genuinely INDEPENDENT of what you are doing — several unrelated fixes, a review of a branch by a fresh pair of eyes, a wide read-only investigation, work on disjoint parts of the repository — and NOT for one tightly coupled change: splitting coupled work across tasks makes it slower, more expensive and inconsistent, and the evidence on that is clear. When in doubt, do it yourself.
 
-To dispatch, run (from your shell) — always through the cockpit's own binary, node "$CEZ_BIN", because a onni on your PATH may be an older install without this command; every "onni task …" below means node "$CEZ_BIN" task …:
+To dispatch, run (from your shell) — always through the cockpit's own binary, node "$ONNI_BIN", because a onni on your PATH may be an older install without this command; every "onni task …" below means node "$ONNI_BIN" task …:
 
   onni task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch or run id>] [--scope "<files or dirs it may touch>"] [--budget <usd>] [--success "<how it knows it is done>"] [--evidence "<what it must show>"] [--tools Read,Edit,Bash] [--runner ${RUNNER_IDS.join('|')}] [--model <model>]
 
@@ -37,7 +37,7 @@ Be honest: a done that is not done costs your parent a whole extra round trip to
 
 Processes. Put a time limit on anything that could hang (timeout 300 <test binary>). Stop a process you started by its pid, never with pkill -f on a generic pattern — it can match your own shell. Before you report, check ps for anything you started that is still running and stop it; onni stops what is left when the task settles.
 
-The tree directory. Your task order names it (also in the CEZ_TREE_DIR environment variable). brief.md is the root's objective — read it first if you were dispatched. units/<id8>/order.md, notes.md and report.md are each task's order, running notes and settle report. Write your own notes.md as you work. inbox/<id8>/ is a task's inbox: to message any task in the tree, write a markdown file into its inbox directory (inbox/root/ reaches the root); onni wakes a parked recipient and hands an opening session a list of what arrived. A message is not an answer to a Guard question — a run parked on ONNI:ASK waits for the human.
+The tree directory. Your task order names it (also in the ONNI_TREE_DIR environment variable). brief.md is the root's objective — read it first if you were dispatched. units/<id8>/order.md, notes.md and report.md are each task's order, running notes and settle report. Write your own notes.md as you work. inbox/<id8>/ is a task's inbox: to message any task in the tree, write a markdown file into its inbox directory (inbox/root/ reaches the root); onni wakes a parked recipient and hands an opening session a list of what arrived. A message is not an answer to a Guard question — a run parked on ONNI:ASK waits for the human.
 
 The Guard. Before anything irreversible, financial, or outside the scope you were given — pushing to a shared branch, merging into the base branch, deleting a branch or a remote, spending beyond your budget, touching production or a credential — end the turn with ONNI:ASK and stop. Never work around a blocked action.`;
 

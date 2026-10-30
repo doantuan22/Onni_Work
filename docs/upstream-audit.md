@@ -6,7 +6,7 @@
   cờ cấu hình, kết quả kiểm chứng và danh sách link còn lại (Deferred)
 - **Mục tiêu:** (A) tuân thủ MIT và ghi công đúng; (B) cắt mọi đường dẫn tới hạ tầng cezar để app không tự cập nhật về bản gốc, không gửi dữ liệu tới họ, không vô tình publish dưới tên package của họ.
 
-> Ràng buộc đang giữ nguyên: **chưa đổi tên nội bộ** (`cez`, `.ai/cezar`, `~/.cezar`, `CEZ_*`, scope `@open-mercato/*`). Việc rename là bước sau, nên báo cáo này **không** tính các import `@open-mercato/*` là link cần cắt ở Phase 2.
+> Ràng buộc đang giữ nguyên: **chưa đổi tên nội bộ** (`cez`, `.ai/cezar`, `~/.cezar`, `ONNI_*`, scope `@open-mercato/*`). Việc rename là bước sau, nên báo cáo này **không** tính các import `@open-mercato/*` là link cần cắt ở Phase 2.
 
 > **Cập nhật 2026-10-30:** đợt cleanup sau Phase 2 đã xoá thêm `docs/site`, `docs/upstream`,
 > `docs/brand`, `docs/screenshots`, `docs/adr`, `.ai/runs`, các workflow release/backport và
@@ -172,7 +172,7 @@ Ngoài ra `cezar link` trỏ vào checkout local (hành vi dev, không gọi ups
 |----------|---------|
 | `packages/work/src/telemetry.ts:29` | `DEFAULT_TELEMETRY_URL = 'https://stats.openmercato.cloud'` |
 | `telemetry.ts:31,33` | `TELEMETRY_POLICY_VERSION = 1`, dev service ID upstream |
-| `telemetry.ts` (`CEZ_TELEMETRY_URL`) | cho phép override endpoint |
+| `telemetry.ts` (`ONNI_TELEMETRY_URL`) | cho phép override endpoint |
 | `packages/work/src/server/server.ts:7954-7985` | route `/api/v1/telemetry/{consent,page,event,error}` |
 | `packages/desktop/src-tauri/src/telemetry.rs:16` | `DEFAULT_URL = "https://stats.openmercato.cloud"` |
 | `telemetry.rs:170` | `POST {base}/track/error` |
@@ -181,7 +181,7 @@ Ngoài ra `cezar link` trỏ vào checkout local (hành vi dev, không gọi ups
 | `docs/telemetry.md:137` | mô tả endpoint |
 | `packages/web/src/components/telemetry-consent.test.tsx:17` | fixture endpoint upstream |
 
-Trạng thái thực tế: **opt-in** — không gửi gì cho tới khi người dùng đồng ý (consent bar/Settings/`cezar telemetry enable`), `CEZ_TELEMETRY=0`/`DO_NOT_TRACK=1` chặn cả khi đã đồng ý; nút "Send error report" ở trang lỗi desktop là consent cho từng báo cáo. Rủi ro không phải "gửi ngầm" mà là **dữ liệu đi vào hạ tầng upstream** khi người dùng đồng ý.
+Trạng thái thực tế: **opt-in** — không gửi gì cho tới khi người dùng đồng ý (consent bar/Settings/`cezar telemetry enable`), `ONNI_TELEMETRY=0`/`DO_NOT_TRACK=1` chặn cả khi đã đồng ý; nút "Send error report" ở trang lỗi desktop là consent cho từng báo cáo. Rủi ro không phải "gửi ngầm" mà là **dữ liệu đi vào hạ tầng upstream** khi người dùng đồng ý.
 
 ### 4.3 PUBLISH — bề mặt phát hành (mức Cao)
 
@@ -279,12 +279,12 @@ Mục tiêu đúng nên là: **0 link chức năng gọi ra hạ tầng upstream
 1. **Desktop npm install (quan trọng nhất):** tách `PACKAGE` thành một hằng cấu hình duy nhất; Phase 2 đặt về chế độ "không tự cài" — khi `~/.cezar/versions` trống, hiển thị trang hướng dẫn cài thủ công thay vì `npm install @onni/work`. Không bịa package/tag mới.
 2. **Tauri updater:** xoá block `plugins.updater` (pubkey + endpoint) khỏi `tauri.conf.json`; gỡ `tauri-plugin-updater` khỏi `Cargo.toml`/`Cargo.lock` nếu không còn dùng; ẩn/disable menu "Update cezar to latest…", `check_shell_update`, `update_cezar_command`, các pill "Update/Switch version". Quyết định: xoá hẳn code hay chỉ vô hiệu hoá bằng một cờ build.
 3. **CLI:** một module cờ rõ ràng (ví dụ `self-update/availability.ts` với `SELF_UPDATE_ENABLED = false`) mà `install/update/versions/use` và help đều đọc. Khi tắt: lệnh in thông báo "tính năng đã bị vô hiệu hoá trong bản Onni Work", không gọi mạng. `uninstall-as-command` chỉ được phép gỡ package **do chính bản này cài**, không đụng package global khác.
-4. Giữ nguyên `CEZ_DRY_RUN=1` và test offline.
+4. Giữ nguyên `ONNI_DRY_RUN=1` và test offline.
 
 ### 6.3 Nhóm B-TELEMETRY
 
 1. `DEFAULT_TELEMETRY_URL` → rỗng/không có endpoint; `send()` trả về ngay khi không có endpoint (không DNS, không request).
-2. Giữ nguyên interface: consent store, schema route, consent bar/Settings, `CEZ_TELEMETRY_URL` cho ai muốn tự host.
+2. Giữ nguyên interface: consent store, schema route, consent bar/Settings, `ONNI_TELEMETRY_URL` cho ai muốn tự host.
 3. Desktop `telemetry.rs`: `DEFAULT_URL` rỗng; nút "Send error report" chỉ hiện khi có endpoint được cấu hình; giữ nguyên cơ chế consent từng báo cáo.
 4. Cập nhật `.env.example`, `docs/telemetry.md` (hoặc xoá trang nếu bỏ docs), fixtures test.
 5. Kiểm tra không còn ref `stats.openmercato.cloud` ngoài test fixture cố ý.
@@ -332,7 +332,7 @@ Mục tiêu đúng nên là: **0 link chức năng gọi ra hạ tầng upstream
 2. **Tauri updater:** xoá hẳn plugin + command/menu, hay giữ code nhưng vô hiệu hoá bằng cờ build?
 3. **CLI install/update/versions/use:** ẩn hẳn khỏi help + trả lỗi, hay giữ lệnh nhưng in thông báo "disabled"?
 4. **Desktop npm install khi máy trống:** hiển thị hướng dẫn cài thủ công, hay cho phép cài từ một package do bạn phát hành (cần tên package mới — trái với ràng buộc chưa rename)?
-5. **Telemetry:** giữ interface + `CEZ_TELEMETRY_URL` (khuyến nghị) hay xoá toàn bộ tính năng?
+5. **Telemetry:** giữ interface + `ONNI_TELEMETRY_URL` (khuyến nghị) hay xoá toàn bộ tính năng?
 6. **Star-count:** xoá hẳn (a), giữ route trả `available:false` (b), hay trỏ repo của bạn (c)?
 7. **Default skills repo:** đặt `[]` (khuyến nghị) hay trỏ một repo skills của bạn?
 8. **Docs site:** xoá toàn bộ `docs/site`, hay giữ và rebrand?
@@ -365,7 +365,7 @@ cd packages/desktop/src-tauri && cargo check
 
 ## 9. Ngoài phạm vi Phase 2 (ghi nhận, chưa làm)
 
-- Đổi tên nội bộ `cez`, `cezar`, `.ai/cezar`, `~/.cezar`, `CEZ_*`, scope `@open-mercato/*`.
+- Đổi tên nội bộ `cez`, `cezar`, `.ai/cezar`, `~/.cezar`, `ONNI_*`, scope `@open-mercato/*`.
 - Đổi logo/icon/nhận diện thương hiệu.
 - Đổi `productName`/`identifier` desktop (trừ khi bạn quyết ở câu 13).
 - Viết lại toàn bộ docs site theo thương hiệu mới.
@@ -375,18 +375,18 @@ cd packages/desktop/src-tauri && cargo check
 ## 10. Phase 2 — nhật ký thực thi (2026-10-29)
 
 Phase 2 chạy trên nhánh `dev`, **chỉ commit local** — không push, không tag, không chạy workflow phát hành.
-Mọi thay đổi giữ nguyên ràng buộc "không đổi tên nội bộ": `cez`, `.ai/cezar`, `~/.cezar`, `CEZ_*`,
+Mọi thay đổi giữ nguyên ràng buộc "không đổi tên nội bộ": `cez`, `.ai/cezar`, `~/.cezar`, `ONNI_*`,
 scope package `@open-mercato/*` và `productName`/`identifier` của desktop đều không bị đụng tới.
 
 ### 10.1 Cờ cấu hình
 
 | Cờ | Trạng thái | Tác dụng |
 | --- | --- | --- |
-| `CEZ_SELF_UPDATE` | **mới, mặc định tắt** | Chỉ giá trị đúng `1` mới bật (cùng quy ước với `CEZ_REVIEW_GATE=1`). Khi tắt: `cezar install`, `cezar update`, `cezar versions`, `cezar use`, self-update service (`/api/v1/workspace/self-update*`), dialog cập nhật trong cockpit và mọi đường cập nhật của desktop đều trả **"không khả dụng trong Onni Work"** và không gọi registry. Đọc ở `packages/work/src/self-update/enabled.ts`; desktop dùng `const SELF_UPDATE_ENABLED: bool = false` trong `packages/desktop/src-tauri/src/lib.rs` (bản build desktop hiện tại không bật cờ này). |
-| `CEZ_TELEMETRY_URL` | giữ, mặc định rỗng | Không còn endpoint upstream, nên telemetry là no-op cho tới khi người dùng tự cấu hình một endpoint của mình. Consent flow, `TELEMETRY_POLICY_VERSION` và các khoá đóng vẫn nguyên. |
-| `CEZ_NO_BANNER` | giữ, **no-op** | Promo mà nó từng tắt (banner skills + dòng star) đã bị xoá; biến còn lại chỉ để script/cấu hình cũ không vỡ. |
+| `ONNI_SELF_UPDATE` | **mới, mặc định tắt** | Chỉ giá trị đúng `1` mới bật (cùng quy ước với `ONNI_REVIEW_GATE=1`). Khi tắt: `cezar install`, `cezar update`, `cezar versions`, `cezar use`, self-update service (`/api/v1/workspace/self-update*`), dialog cập nhật trong cockpit và mọi đường cập nhật của desktop đều trả **"không khả dụng trong Onni Work"** và không gọi registry. Đọc ở `packages/work/src/self-update/enabled.ts`; desktop dùng `const SELF_UPDATE_ENABLED: bool = false` trong `packages/desktop/src-tauri/src/lib.rs` (bản build desktop hiện tại không bật cờ này). |
+| `ONNI_TELEMETRY_URL` | giữ, mặc định rỗng | Không còn endpoint upstream, nên telemetry là no-op cho tới khi người dùng tự cấu hình một endpoint của mình. Consent flow, `TELEMETRY_POLICY_VERSION` và các khoá đóng vẫn nguyên. |
+| `ONNI_NO_BANNER` | giữ, **no-op** | Promo mà nó từng tắt (banner skills + dòng star) đã bị xoá; biến còn lại chỉ để script/cấu hình cũ không vỡ. |
 
-Ba biến trên đều được ghi trong `.env.example`; `CEZ_SELF_UPDATE` và `CEZ_NO_BANNER` có thêm dòng trong
+Ba biến trên đều được ghi trong `.env.example`; `ONNI_SELF_UPDATE` và `ONNI_NO_BANNER` có thêm dòng trong
 bảng env của `docs/reference.md`.
 
 ### 10.2 Commit theo nhóm
@@ -394,7 +394,7 @@ bảng env của `docs/reference.md`.
 | Nhóm | Commit | Nội dung |
 | --- | --- | --- |
 | A — giấy phép & ghi công | `7b11c1f` | `Copyright (c) 2026 DOANTUANIT` dưới dòng cezar gốc trong `LICENSE` và `packages/work/LICENSE`; `NOTICE` mới; `README.md` viết lại; bỏ `README.zh-CN.md`/`README.zh-TW.md`; metadata `repository`, license của Rust crate/desktop, `PKGBUILD`; `CHANGELOG.md` của cezar chuyển sang `docs/upstream/CHANGELOG-cezar.md` và `CHANGELOG.md` mới cho Onni Work. |
-| B-UPDATE | `498ecfb` | Tauri: bỏ `plugins.updater.endpoints` + `pubkey` khỏi `tauri.conf.json`, không đăng ký plugin updater, mọi nhánh install/update/restart mở trang `self_update_off`. CLI + service: gate bằng `CEZ_SELF_UPDATE`, thông điệp "không khả dụng trong Onni Work". |
+| B-UPDATE | `498ecfb` | Tauri: bỏ `plugins.updater.endpoints` + `pubkey` khỏi `tauri.conf.json`, không đăng ký plugin updater, mọi nhánh install/update/restart mở trang `self_update_off`. CLI + service: gate bằng `ONNI_SELF_UPDATE`, thông điệp "không khả dụng trong Onni Work". |
 | B-TELEMETRY | `75a43be` | `DEFAULT_TELEMETRY_URL = ''` (service) và `DEFAULT_URL = ""` (Rust); `post()` short-circuit; `endpoint()` trả `Option<String>`; consent chỉ hỏi khi có endpoint; nút *Send error report* ẩn khi không có endpoint; Settings → Privacy hiện trạng thái "chưa cấu hình". |
 | B-PUBLISH | `a772142` | `packages/work` + `packages/api-client` `private: true`; bỏ mọi `publishConfig`; xoá `nightly.yml`, `npm-preview-cleanup.yml` và job `publish-snapshot` trong `ci.yml`; `BACKWARD_COMPATIBILITY.md` §6, `docs/publishing.md` ghi rõ "publishes nothing"; các workflow release còn lại chỉ chạy bằng dispatch/tag và cần secret + quyền npm scope của upstream nên không thể phát hành gì. |
 | B-other | commit cuối Phase 2 | star-count trả `available:false` không gọi mạng; `DEFAULT_SKILLS_REPOS = []` và xoá banner terminal (`skills-banner.ts`); `CEZAR_REPO_URL` trỏ repo Onni Work; cập nhật `AGENTS.md`, `BACKWARD_COMPATIBILITY.md`, `docs/reference.md`, `docs/server-install/ubuntu-vps.md`, `packages/api-client/README.md`, banner `docs/site/README.md`; thêm `docs/project-overview.md` + tài liệu này. |
@@ -413,7 +413,7 @@ bảng env của `docs/reference.md`.
   built-in không đổi. Gating (`gatedSkillsRepos`/`projectGatedSkillsRepos`) vẫn chạy nhưng rỗng.
 - **Updater.** Desktop không còn endpoint/khoá nên kể cả khi bật plugin cũng không có nguồn cập nhật;
   nhánh `install/update` của shell, npm install khi máy trống và "update on restart" đều bị compile off.
-  CLI chỉ bật lại bằng `CEZ_SELF_UPDATE=1` + một nguồn phát hành riêng (Onni Work chưa có).
+  CLI chỉ bật lại bằng `ONNI_SELF_UPDATE=1` + một nguồn phát hành riêng (Onni Work chưa có).
 - **Telemetry.** Không còn URL upstream ở bất kỳ tầng nào; không có endpoint thì consent không hỏi, `post()`
   không gửi, nút gửi báo lỗi desktop bị ẩn. Việc ghi consent trong `~/.cezar/config.json` không đổi.
 - **Tài liệu.** `docs/site` chỉ thêm banner ở `README.md` (nội dung gốc cezar, không deploy — không có
@@ -456,7 +456,7 @@ grep -rhoE "https?://[^ )\"'<>]+" <dir> | grep -Ei "open-mercato|cezar\.run" | w
 | --- | --- | --- |
 | Import/tên package `@open-mercato/*` | 602 file | Ràng buộc "chưa rename nội bộ" của Phase 2; đổi scope là một bước riêng. |
 | Fixture/URL trong `*.test.ts(x)`, `packages/web/e2e`, `__fixtures__` | 225 | Dữ liệu mẫu cho test (PR link, repo URL, mock event); không phải liên kết chức năng, không chạy mạng. |
-| `CEZ_DRY_RUN` fake PR URL (`packages/work/src/server/forge/github.ts`, `packages/work/scripts/mock-claude.mjs`) | 3 | Placeholder của chế độ dry-run; không request nào được gửi. |
+| `ONNI_DRY_RUN` fake PR URL (`packages/work/src/server/forge/github.ts`, `packages/work/scripts/mock-claude.mjs`) | 3 | Placeholder của chế độ dry-run; không request nào được gửi. |
 | Comment trích PR/issue upstream (`packages/work/src/runs/store.ts`) | 2 | Lịch sử kỹ thuật trong mã, không phải URL chạy được. |
 | `docs/brand/README.md` | 1 | Ghi nguồn sinh mark/icon (repo asset của upstream) — provenance của file thiết kế. |
 | `docs/upstream-audit.md` | 1 | Chính tài liệu này trích URL release manifest của upstream để mô tả cái đã gỡ. |

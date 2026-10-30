@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Mock `junie --acp=true` for CEZ_DRY_RUN=1 — speaks just enough real ACP
+// Mock `junie --acp=true` for ONNI_DRY_RUN=1 — speaks just enough real ACP
 // JSON-RPC 2.0 JSONL (confirmed live against @jetbrains/junie 26.9.22, see
 // junie-ui-mapper.ts's module doc) for the engine / store / GUI to be
 // exercised without a logged-in Junie or burning tokens, and doubles as the
@@ -80,8 +80,8 @@ rl.on('line', (line) => {
     return;
   }
   if (msg.method === 'authenticate') {
-    if (process.env.CEZ_MOCK_JUNIE_AUTH_ERROR) {
-      emit({ id: msg.id, error: { code: -32000, message: process.env.CEZ_MOCK_JUNIE_AUTH_ERROR } });
+    if (process.env.ONNI_MOCK_JUNIE_AUTH_ERROR) {
+      emit({ id: msg.id, error: { code: -32000, message: process.env.ONNI_MOCK_JUNIE_AUTH_ERROR } });
     } else {
       emit({ id: msg.id, result: {} });
     }

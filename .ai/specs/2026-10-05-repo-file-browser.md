@@ -33,7 +33,7 @@ spec's PR before implementation starts.
 | Q4 | Does the tree show `.gitignore`d files? | **No.** The tree is exactly what the index lists: tracked, plus untracked-but-not-ignored. | Keeps tree and search showing the same set (an index-backed search cannot find what a wider tree displays), keeps build output and `node_modules` out of a repository browser, and is what "browse the repo" means in GitHub, Gitea and VS Code's source-control view. A `?showIgnored=1` toggle is a later, additive change if anyone misses it. |
 | Q5 | Does `GET /repo/files` serve any path inside the root, or only indexed ones? | **Only paths present in the index**, re-derived per request; anything else is `409`. | `readWorktreePath` guards against escaping the root — it knows nothing about `.gitignore`, so without this check `?path=.env` would be served verbatim. AGENTS.md § Zero config states a repository `.env` is never auto-loaded; making it one fetch away from any cockpit client would walk that back. The check is one set membership. |
 | Q6 | Search matches paths, or file contents too? | **Paths only.** | Content search is a grep surface with its own cost, cancellation and abuse profile, and the brief asked to "search in that file tree". Deferred to its own spec, where it belongs. |
-| Q7 | Gate the new routes behind hosted mode (`CEZ_REMOTE`)? | **No new route-specific gate**, consistent with the existing `/repo/*` family. | The index holds tracked and not-ignored files — content already in the git remote — and `GET /repo/changes` already serves the working tree's full diffs, untracked files included, with no route-specific gate. The new routes inherit the server-wide `/api/*` request-origin guard, remain same-origin/non-CORS, and in hosted mode rely on the deployment's reverse-proxy TLS/auth perimeter. Q5 is the control that keeps ignored untracked secrets out. Reversible: adding a narrower gate later is additive. |
+| Q7 | Gate the new routes behind hosted mode (`ONNI_REMOTE`)? | **No new route-specific gate**, consistent with the existing `/repo/*` family. | The index holds tracked and not-ignored files — content already in the git remote — and `GET /repo/changes` already serves the working tree's full diffs, untracked files included, with no route-specific gate. The new routes inherit the server-wide `/api/*` request-origin guard, remain same-origin/non-CORS, and in hosted mode rely on the deployment's reverse-proxy TLS/auth perimeter. Q5 is the control that keeps ignored untracked secrets out. Reversible: adding a narrower gate later is additive. |
 | Q8 | `.md` default view: rendered or raw? | **Rendered**, with a toggle to raw source that persists for the session. | The brief asks for "MD file formatting" by name. Raw stays one click away for anyone reading a spec's table syntax. |
 | Q9 | Virtualize the tree? | **No.** Cap rendered search results instead. | Folders start closed, so rendered rows stay in the dozens however large the index is; the one unbounded case is a filter matching thousands of paths, and a result cap with an honest "N more" answers it without taking on `virtua` and the measurement cache it needs. `diff-scroll.ts`'s own doctrine is not to virtualize prematurely. |
 
@@ -289,7 +289,7 @@ Prototype: none — see §Review limits.
 | File >1500 lines | Highlighting skipped, plaintext rendered — `HIGHLIGHT_MAX_LINES`, the cap `diff-view.tsx` and `file-preview.tsx` already share. |
 | Markdown that is enormous or adversarial | Streamdown renders it with the same link-safety config the thread uses; the `Source` toggle is always available as the escape hatch. |
 | Filter matching every path | Capped at 200 rendered rows with the "N more" footer. |
-| Hosted mode (`CEZ_REMOTE`) | No new gate (Q7); the index membership check is the control. |
+| Hosted mode (`ONNI_REMOTE`) | No new gate (Q7); the index membership check is the control. |
 
 ## 📝 Risks & Impact Review
 
@@ -380,7 +380,7 @@ Each step leaves the application working and is verifiable by a test.
     shows the toggle; assert no second `createHighlighterCore` (the highlighter module's own test
     hook, `resetHighlighterForTests`, makes this checkable).
 11. **Docs.** `BACKWARD_COMPATIBILITY.md` §2 gains both routes; `docs/reference.md` gains the tab.
-    No new `CEZ_*` var, so `.env.example` is untouched. *Test:* the repo's docs/lint gate.
+    No new `ONNI_*` var, so `.env.example` is untouched. *Test:* the repo's docs/lint gate.
 
 ### Phase 2 — Search
 

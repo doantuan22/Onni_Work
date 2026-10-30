@@ -92,8 +92,8 @@ it.each([false, true])('a failed scheduled write cannot be rescued or overwrite 
   const { AutomationStore } = await import('./store.ts');
   const { ScheduleRunner } = await import('./schedule-runner.ts');
   const root = await mkdtemp(join(tmpdir(), 'review-flush-'));
-  vi.stubEnv('CEZ_AUTONAME', '0');
-  vi.stubEnv('CEZ_DRY_RUN', '1');
+  vi.stubEnv('ONNI_AUTONAME', '0');
+  vi.stubEnv('ONNI_DRY_RUN', '1');
   const dataDir = join(root, '.ai/onni');
   const store = RunStore.open(dataDir);
   const manager = new RunManager(store, root);

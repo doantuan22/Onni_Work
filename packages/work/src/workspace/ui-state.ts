@@ -49,7 +49,7 @@ export async function readWorkspaceUiState(
  * degrading is the caller's policy, per house rules.
  *
  * Path resolved once, before the `await`, for the same reason as
- * `mergeWriteWorkspaceConfig`: a `CEZ_HOME` that changes mid-flight must not be
+ * `mergeWriteWorkspaceConfig`: a `ONNI_HOME` that changes mid-flight must not be
  * able to send the read and the write to two different files.
  */
 export async function mergeWriteWorkspaceUiState(

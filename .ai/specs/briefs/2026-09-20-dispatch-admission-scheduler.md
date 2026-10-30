@@ -85,7 +85,7 @@ browser loop, no held flag, no timer.**
 - No minimum-interval/time-based pacing (would need a deadline wake).
 - No per-tree or per-project override — the tree brakes (`4 in-flight`, `maxSubtasks`, budget)
   already bound the tree; the new key protects the host, like `maxParallel`.
-- No new database, state file, `CEZ_*` env var, `RunStatus`, or route.
+- No new database, state file, `ONNI_*` env var, `RunStatus`, or route.
 - No preemption: lowering the cap never cancels or pauses a running child.
 
 ## Affected areas (if known)

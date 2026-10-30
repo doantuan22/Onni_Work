@@ -336,7 +336,7 @@ export function NewTaskRoute() {
   const worktreeToggleShown = hasGit
 
   // Dispatch (spec 2026-09-10-dispatch): this task may fan work out to subtasks. Offered only
-  // while the server has it on (`CEZ_DISPATCH=0` hides it — the routes 409 then) and in a git
+  // while the server has it on (`ONNI_DISPATCH=0` hides it — the routes 409 then) and in a git
   // repo: a child forks off the parent's committed branch, so there is nothing to fork without
   // one. A draft toggled on under a server that has since turned it off sends nothing.
   const dispatchAvailable = health.data?.capabilities.dispatch === true && hasGit
@@ -397,7 +397,7 @@ export function NewTaskRoute() {
   const autonomousOn = runMode.autonomous
 
   // Follow-up generation (#444) is offered only while the server has the global inbox on
-  // (#471, `CEZ_FOLLOWUPS=1`) — there is no inbox for the follow-ups to land in otherwise, and
+  // (#471, `ONNI_FOLLOWUPS=1`) — there is no inbox for the follow-ups to land in otherwise, and
   // the server pins the flag to false regardless, so a toggle would be a lie. Hidden, the value
   // is false, matching what the server will do. Health unknown → assume offered, the `hasGit`
   // rule above: the composer must not flicker its controls while health is in flight.
@@ -549,7 +549,7 @@ export function NewTaskRoute() {
       // A rejected replay cannot rule out an earlier accepted write.
       const rejected = !wasAmbiguous && error instanceof ApiError && (error.status === 400 ||
         (error.status === 409 && (error.message === 'Settings or reset time changed. Check the preview again.' ||
-          error.message === 'Automations are off — this cockpit was started with CEZ_AUTOMATIONS=0')))
+          error.message === 'Automations are off — this cockpit was started with ONNI_AUTOMATIONS=0')))
       if (rejected) {
         saveScheduleRecovery(recoveryKey, null)
         scheduleRequest.current = null

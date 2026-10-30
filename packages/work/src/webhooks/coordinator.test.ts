@@ -13,7 +13,7 @@ function root() { const value = mkdtempSync(join(realpathSync(tmpdir()), 'webhoo
 afterEach(async () => { for (const coordinator of instances.splice(0)) await coordinator.dispose(); for (const dir of roots.splice(0)) rmSync(dir, { recursive: true, force: true }); vi.unstubAllEnvs(); });
 describe('lightweight project webhook enrollment', () => {
   it('reopens a broken cached service during discovery preserving its public slug', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const project = root();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const project = root();
     const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [], singleProject: true }); instances.push(coordinator);
     const service = await coordinator.get('public-slug', project, true);
     vi.spyOn(service.endpoints, 'create').mockRejectedValueOnce(new Error('temporary storage failure'));
@@ -24,7 +24,7 @@ describe('lightweight project webhook enrollment', () => {
     await expect(repaired.create({ name: 'Ops', url: 'https://example.com' })).resolves.toBeDefined();
   });
   it('unregisters and closes listeners even when owner release fails', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const project = root();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const project = root();
     const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [] }); instances.push(coordinator);
     const service = await coordinator.get('project', project); const disposed = vi.fn(); service.on('dispose', disposed);
     const ownership = (service as unknown as { ownership: { release(): Promise<void> } }).ownership;
@@ -34,7 +34,7 @@ describe('lightweight project webhook enrollment', () => {
     await service.dispose();
   });
   it('reattaches ready capture after repair without backfilling the gap or changing the public slug', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const project = root(); const dataDir = join(project, '.ai/onni');
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const project = root(); const dataDir = join(project, '.ai/onni');
     const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [], singleProject: true, dryRun: true }); instances.push(coordinator);
     const store = RunStore.open(dataDir);
     const context = { id: 'default', root: project, store, manager: { isActive: () => false } } as unknown as ProjectContext;
@@ -53,7 +53,7 @@ describe('lightweight project webhook enrollment', () => {
     store.flush();
   });
   it('bounds failed reopen attempts and refuses to steal a live owner', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const project = root();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const project = root();
     const deps = { mode: () => 'local' as const, ports: () => [], projects: async () => [] };
     const coordinator = new WebhookCoordinator(deps), other = new WebhookCoordinator(deps); instances.push(coordinator, other);
     const service = await coordinator.get('project', project);
@@ -65,7 +65,7 @@ describe('lightweight project webhook enrollment', () => {
     finally { spy.mockRestore(); }
   });
   it('pins an unregistered boot root and aliases use one canonical owner', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const boot = root(), other = root();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const boot = root(), other = root();
     const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [4317], projects: async () => [{ id: 'a', root: other, status: 'ok' }] }); instances.push(coordinator);
     const first = await coordinator.get('boot-slug', boot, true);
     await coordinator.discover();
@@ -73,7 +73,7 @@ describe('lightweight project webhook enrollment', () => {
     expect(coordinator.count()).toBe(1);
   });
   it('does not discover other enrolled roots in single-project mode', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const boot = root(), other = root();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const boot = root(), other = root();
     const seed = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [] }); instances.push(seed);
     await (await seed.get('other', other)).create({ name: 'Other', url: 'https://example.com' }); await seed.dispose();
     const projects = vi.fn(async () => [{ id: 'other', root: other, status: 'ok' }]);
@@ -82,7 +82,7 @@ describe('lightweight project webhook enrollment', () => {
     expect(coordinator.count()).toBe(1); expect(projects).not.toHaveBeenCalled();
   });
   it('pauses an owned project durably on explicit removal but not routine discovery', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const project = root();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const project = root();
     const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [] }); instances.push(coordinator);
     const service = await coordinator.get('project', project, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
@@ -94,7 +94,7 @@ describe('lightweight project webhook enrollment', () => {
 });
 
 it('throttles failed first opens across aliases and retries after failure cooldown', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const project = root();
   const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [] });
   instances.push(coordinator);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Mock `claude` binary for CEZ_DRY_RUN=1 — emits a plausible stream-json
+// Mock `claude` binary for ONNI_DRY_RUN=1 — emits a plausible stream-json
 // session so the engine / store / GUI can be exercised without tokens.
 // Mirrors the real CLI's contract in SESSION mode: keeps reading {type:user}
 // NDJSON lines from stdin, answers each with a scripted turn (assistant
@@ -9,10 +9,10 @@ import { createInterface } from 'node:readline';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// The cosmetic pauses between events exist for the demo cockpit; CEZ_MOCK_PACE scales them
+// The cosmetic pauses between events exist for the demo cockpit; ONNI_MOCK_PACE scales them
 // (0 = none, the vitest default). `mock:slow`/`mock:pause` are test contracts and never scale.
-const paceEnv = Number(process.env.CEZ_MOCK_PACE);
-const PACE = process.env.CEZ_MOCK_PACE && paceEnv >= 0 ? paceEnv : 1;
+const paceEnv = Number(process.env.ONNI_MOCK_PACE);
+const PACE = process.env.ONNI_MOCK_PACE && paceEnv >= 0 ? paceEnv : 1;
 const pace = (ms) => sleep(ms * PACE);
 const write = (obj) => process.stdout.write(`${JSON.stringify(obj)}\n`);
 
@@ -49,22 +49,22 @@ function emit(obj) {
   }
 }
 
-// Testability hook: CEZ_MOCK_ARGS_FILE=<path> appends the argv this mock was
+// Testability hook: ONNI_MOCK_ARGS_FILE=<path> appends the argv this mock was
 // spawned with (one JSON array per line), so tests and dry-run proofs can
 // assert exactly what reached the CLI (e.g. `--append-system-prompt …`).
-if (process.env.CEZ_MOCK_ARGS_FILE) {
+if (process.env.ONNI_MOCK_ARGS_FILE) {
   try {
-    appendFileSync(process.env.CEZ_MOCK_ARGS_FILE, `${JSON.stringify(process.argv.slice(2))}\n`);
+    appendFileSync(process.env.ONNI_MOCK_ARGS_FILE, `${JSON.stringify(process.argv.slice(2))}\n`);
   } catch {
     // best effort — never break the mock over the hook
   }
 }
 
-// Testability hook: CEZ_MOCK_MISSING_SESSIONS=<id,id|*> makes `--resume <id>` fail the way the
+// Testability hook: ONNI_MOCK_MISSING_SESSIONS=<id,id|*> makes `--resume <id>` fail the way the
 // real CLI does once it has pruned that transcript (cleanupPeriodDays).
 const resumeAt = process.argv.indexOf('--resume');
 const resumedId = resumeAt >= 0 ? process.argv[resumeAt + 1] : undefined;
-const missingSessions = (process.env.CEZ_MOCK_MISSING_SESSIONS ?? '').split(',').filter(Boolean);
+const missingSessions = (process.env.ONNI_MOCK_MISSING_SESSIONS ?? '').split(',').filter(Boolean);
 if (resumedId && (missingSessions.includes('*') || missingSessions.includes(resumedId))) {
   // Flushed before exiting: a pipe write is asynchronous on macOS, and exit would drop it.
   const result = { type: 'result', subtype: 'error_during_execution', is_error: true, session_id: resumedId };
@@ -97,11 +97,11 @@ const MOCK_SCREENSHOT_B64 =
 
 
 // Spec 007: behave like an agent that read the handoff/todos instructions —
-// append a progress line to CEZ_HANDOFF_FILE and a follow-up entry to
-// CEZ_TODOS_FILE, so the inbox loop is testable without tokens.
+// append a progress line to ONNI_HANDOFF_FILE and a follow-up entry to
+// ONNI_TODOS_FILE, so the inbox loop is testable without tokens.
 function writeHandoffAndTodo() {
   try {
-    const handoff = process.env.CEZ_HANDOFF_FILE;
+    const handoff = process.env.ONNI_HANDOFF_FILE;
     if (handoff) {
       const text = readFileSync(handoff, 'utf8');
       const line = `- ${new Date().toISOString()} — mock: implemented the change (dry run)\n`;
@@ -117,7 +117,7 @@ function writeHandoffAndTodo() {
     // best effort — the mock still answers without a handoff file
   }
   try {
-    const todosFile = process.env.CEZ_TODOS_FILE;
+    const todosFile = process.env.ONNI_TODOS_FILE;
     if (todosFile) {
       let items = [];
       try {
@@ -128,7 +128,7 @@ function writeHandoffAndTodo() {
       if (!Array.isArray(items)) items = [];
       items.push({
         ts: new Date().toISOString(),
-        taskId: process.env.CEZ_TASK_ID,
+        taskId: process.env.ONNI_TASK_ID,
         summary: 'Follow up: verify the mock change',
         suggestedPrompt: 'Verify the change from the previous task',
       });
@@ -307,11 +307,11 @@ async function respond(userText, imageCount) {
   // `mock:limit` → the envelope Claude Code emits when the subscription window is
   // exhausted: an `is_error` result whose text is the machine-readable
   // `Claude AI usage limit reached|<epoch seconds>` marker. Makes the auto-resume path
-  // (spec 2026-08-03-auto-resume-after-usage-limit) reachable under CEZ_DRY_RUN=1 for QA and
-  // the e2e smoke. `CEZ_MOCK_LIMIT_RESET_SECONDS` moves the reset instant (default 60 s out),
+  // (spec 2026-08-03-auto-resume-after-usage-limit) reachable under ONNI_DRY_RUN=1 for QA and
+  // the e2e smoke. `ONNI_MOCK_LIMIT_RESET_SECONDS` moves the reset instant (default 60 s out),
   // so a dry run can actually watch the resume fire instead of reading about it.
   if (userText.includes('mock:limit')) {
-    const configured = Number(process.env.CEZ_MOCK_LIMIT_RESET_SECONDS ?? '60');
+    const configured = Number(process.env.ONNI_MOCK_LIMIT_RESET_SECONDS ?? '60');
     const seconds = Number.isFinite(configured) ? configured : 60;
     emit({
       type: 'result',
@@ -362,7 +362,7 @@ async function respond(userText, imageCount) {
   // `mock:subagents` → a parallel fan-out: two `Task` spawns whose child items
   // carry `parent_tool_use_id`, interleaved the way a real fan-out interleaves,
   // then their results. Makes the Agents dock and its drill-down sheet reachable
-  // under CEZ_DRY_RUN=1 for QA, screenshots and the e2e smoke (spec
+  // under ONNI_DRY_RUN=1 for QA, screenshots and the e2e smoke (spec
   // `.ai/specs/2026-07-20-grouped-subagent-display.md` §"Testability hook", #474).
   // Derived from the `subagent-task.ndjson` golden fixture's wire shape.
   if (userText.includes('mock:subagents')) {
@@ -657,14 +657,14 @@ rl.on('line', (line) => {
   } catch {
     // keep placeholders
   }
-  // Testability hook: CEZ_MOCK_STDIN_FILE=<path> appends the FULL inbound
+  // Testability hook: ONNI_MOCK_STDIN_FILE=<path> appends the FULL inbound
   // text + image count (one JSON object per line) — the scripted replies
   // below only echo a truncated slice, so tests asserting exact wiring (e.g.
   // #357's pasted-attachment path note in the prompt) need the untruncated
   // text this hook captures.
-  if (process.env.CEZ_MOCK_STDIN_FILE) {
+  if (process.env.ONNI_MOCK_STDIN_FILE) {
     try {
-      appendFileSync(process.env.CEZ_MOCK_STDIN_FILE, `${JSON.stringify({ userText, imageCount })}\n`);
+      appendFileSync(process.env.ONNI_MOCK_STDIN_FILE, `${JSON.stringify({ userText, imageCount })}\n`);
     } catch {
       // best effort — never break the mock over the hook
     }

@@ -35,7 +35,7 @@ export async function probeCodexIdentity(profile: ResolvedAgentProfile, { force 
 }
 
 function probe(profile: ResolvedAgentProfile, options: { force?: boolean; identityOnly?: boolean }): Promise<ProbeOutcome> {
-  if (profile.provider !== 'codex' || process.env.CEZ_DRY_RUN === '1') return Promise.resolve(null);
+  if (profile.provider !== 'codex' || process.env.ONNI_DRY_RUN === '1') return Promise.resolve(null);
   const key = JSON.stringify([profile.id, profile.path, options.identityOnly === true]);
   const pending = flights.get(key);
   if (pending) return pending.then((value) => structuredClone(value));

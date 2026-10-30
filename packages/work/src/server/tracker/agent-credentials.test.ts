@@ -14,7 +14,7 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'tracker-agent-env-'));
   project = join(root, 'project');
   await mkdir(project);
-  env = { CEZ_HOME: join(root, 'home') };
+  env = { ONNI_HOME: join(root, 'home') };
   const record = await new TrackerConnections(env).write(project, { kind: 'jira', origin: 'https://acme.atlassian.net', email: 'a@acme.com', token: 'synthetic-token' });
   association = { kind: 'jira', source: { id: 'https://acme.atlassian.net', webUrl: 'https://acme.atlassian.net' }, externalId: 'SAM', externalName: 'Sam', connectionId: record!.id };
   await writeTrackerAssociation(join(project, '.ai/onni'), association);
@@ -33,7 +33,7 @@ it.each(['externalId', 'source', 'kind'] as const)('rejects a changed %s', async
 });
 it('legacy and dry runs never receive real credentials', async () => {
   expect(await resolveTrackerAgentEnv(project, undefined, env)).toEqual({});
-  expect(await resolveTrackerAgentEnv(project, association, { ...env, CEZ_DRY_RUN: '1' })).toEqual({});
+  expect(await resolveTrackerAgentEnv(project, association, { ...env, ONNI_DRY_RUN: '1' })).toEqual({});
 });
 
 it('rejects a removed connection', async () => {

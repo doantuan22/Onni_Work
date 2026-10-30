@@ -36,8 +36,8 @@ function storedRun(over: Record<string, unknown> & { id: string; title: string }
 }
 
 describe('workspace runs index API', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let home: string;
   let repoRoot: string;
   let otherRoot: string;
@@ -47,8 +47,8 @@ describe('workspace runs index API', () => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-runs-index-home-'));
     repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-runs-index-boot-'));
     otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-runs-index-other-'));
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_DRY_RUN = '1';
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     clearProjectProbeCache();
   });
@@ -56,10 +56,10 @@ describe('workspace runs index API', () => {
   afterEach(() => {
     store.flush();
     for (const dir of [home, repoRoot, otherRoot]) rmSync(dir, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   const makeApp = (over: Partial<ServerDeps> = {}) =>

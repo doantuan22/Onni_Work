@@ -100,7 +100,7 @@ function needsUndo(outcome: StepOutcome | undefined): outcome is StepOutcome {
 }
 
 /**
- * A `CEZ_DRY_RUN` preview persists a full ledger with no real side effects
+ * A `ONNI_DRY_RUN` preview persists a full ledger with no real side effects
  * (the packaged e2e round-trip depends on that). Two invariants keep previews
  * from destroying real state:
  *
@@ -117,7 +117,7 @@ function reconcileDryRun(state: ServerState, opts: RunOptions, ui: Ui): { persis
     return { persist: false };
   }
   if (!opts.dryRun && state.dryRun) {
-    ui.info('The recorded state came from a CEZ_DRY_RUN preview — starting from a clean slate.');
+    ui.info('The recorded state came from a ONNI_DRY_RUN preview — starting from a clean slate.');
     state.steps = {};
     state.installed = false;
     state.platform = undefined;

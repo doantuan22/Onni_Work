@@ -20,14 +20,14 @@ describe('request-origin guard (#426)', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-guard-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    delete process.env.CEZ_REMOTE;
-    process.env.CEZ_DRY_RUN = '1'; // keeps the /api/v1/health probe off the network
+    delete process.env.ONNI_REMOTE;
+    process.env.ONNI_DRY_RUN = '1'; // keeps the /api/v1/health probe off the network
     // Capturing stub (the start-run.test.ts pattern) — the guard runs before
     // the handler, so a real run only needs to prove the request got through.
     const manager = {
@@ -46,10 +46,10 @@ describe('request-origin guard (#426)', () => {
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   const LOOPBACK = '127.0.0.1:4321';
@@ -297,7 +297,7 @@ describe('request-origin guard (#426)', () => {
 });
 
 /**
- * Hosted mode (CEZ_REMOTE=1 — spec §"Deployment modes"): onni binds loopback
+ * Hosted mode (ONNI_REMOTE=1 — spec §"Deployment modes"): onni binds loopback
  * behind a reverse proxy that forwards the real public Host, so the loopback
  * allowlist must stand down there. CSRF protection stays on — Origin still has
  * to match the served Host.
@@ -306,12 +306,12 @@ describe('request-origin guard — hosted mode (#426)', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedRemote = process.env.ONNI_REMOTE;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-guard-hosted-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    process.env.CEZ_REMOTE = '1';
+    process.env.ONNI_REMOTE = '1';
     const manager = {
       startRun: (_workflow: WorkflowDef, input: StartRunInput) =>
         store.createRun({ title: 't', workflow: '(planned)', task: input.task, steps: [] }),
@@ -328,8 +328,8 @@ describe('request-origin guard — hosted mode (#426)', () => {
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const startBody = { task: 'do the thing', steps: [{ id: 'work', prompt: '{{task}}' }] };

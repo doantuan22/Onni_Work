@@ -503,7 +503,7 @@ export interface RunEvent {
 const ORPHAN_LAYOUT_GRACE_MS = 10 * 60_000;
 const DEFAULT_RUNS_KEPT = 300;
 const DEFAULT_ARCHIVED_KEPT = 500;
-/** `CEZ_RUNS_KEEP` / `CEZ_ARCHIVED_RUNS_KEEP`: how many settled runs the index keeps (at least 1; live runs and active dispatch trees are never pruned). */
+/** `ONNI_RUNS_KEEP` / `ONNI_ARCHIVED_RUNS_KEEP`: how many settled runs the index keeps (at least 1; live runs and active dispatch trees are never pruned). */
 function keepLimit(name: string, fallback: number): number {
   const n = Number.parseInt(process.env[name] ?? '', 10);
   return Number.isFinite(n) && n >= 1 ? n : fallback;
@@ -1436,7 +1436,7 @@ export class RunStore extends EventEmitter {
     patch: Partial<Omit<RunRecord, 'id' | 'steps'>>,
     runId: string,
   ): Partial<Omit<RunRecord, 'id' | 'steps'>> {
-    if (process.env.CEZ_REDACT_SECRETS === '0') return patch;
+    if (process.env.ONNI_REDACT_SECRETS === '0') return patch;
     const out = { ...patch };
     for (const field of ['title', 'titleSummary', 'error'] as const) {
       const value = out[field];
@@ -1454,7 +1454,7 @@ export class RunStore extends EventEmitter {
    * The remaining fields are ids, enums, counters and timestamps.
    */
   private redactStepPatch(patch: Partial<Omit<StepState, 'id'>>, runId: string): Partial<Omit<StepState, 'id'>> {
-    if (process.env.CEZ_REDACT_SECRETS === '0') return patch;
+    if (process.env.ONNI_REDACT_SECRETS === '0') return patch;
     if (typeof patch.error !== 'string') return patch;
     return { ...patch, error: this.redactText(patch.error, runId) };
   }
@@ -1900,7 +1900,7 @@ export class RunStore extends EventEmitter {
   private drainStreamRedaction(runId: string, event: { type: string; stepId?: string; [key: string]: unknown }): void {
     for (const tail of this.streamRedaction.drain(runId, event)) {
       // Bypass transform: a terminal proper prefix must be released, not held again.
-      const safe = process.env.CEZ_REDACT_SECRETS === '0' ? tail : redactDeep(tail, this.secretsForRun(runId));
+      const safe = process.env.ONNI_REDACT_SECRETS === '0' ? tail : redactDeep(tail, this.secretsForRun(runId));
       const full = { ...safe, seq: this.nextSeq(runId), ts: new Date().toISOString() };
       this.emit('event', { runId, event: full });
     }
@@ -1911,18 +1911,18 @@ export class RunStore extends EventEmitter {
 
   /**
    * Scrub known credential values / token shapes from an event before it is
-   * persisted or fanned out. On by default; `CEZ_REDACT_SECRETS=0` opts out.
+   * persisted or fanned out. On by default; `ONNI_REDACT_SECRETS=0` opts out.
    */
   private redact(event: RunEvent, runId: string): RunEvent {
-    if (process.env.CEZ_REDACT_SECRETS === '0') return event;
+    if (process.env.ONNI_REDACT_SECRETS === '0') return event;
     const secrets = this.secretsForRun(runId);
     return redactDeep(this.streamRedaction.transform(runId, event, secrets), secrets) as RunEvent;
   }
 
   /** Best-effort scrub of one free-text string bound for `runs.json`. Honors
-   *  the `CEZ_REDACT_SECRETS=0` opt-out itself so every caller inherits it. */
+   *  the `ONNI_REDACT_SECRETS=0` opt-out itself so every caller inherits it. */
   private redactText(text: string, runId?: string): string {
-    if (process.env.CEZ_REDACT_SECRETS === '0') return text;
+    if (process.env.ONNI_REDACT_SECRETS === '0') return text;
     return redactSecrets(text, this.secretsForRun(runId));
   }
 
@@ -2131,8 +2131,8 @@ export class RunStore extends EventEmitter {
       if (run.dispatch?.rootRunId) pinned.add(run.dispatch.rootRunId);
     }
     const stalePool = [
-      ...all.filter((r) => !r.archived).slice(keepLimit('CEZ_RUNS_KEEP', DEFAULT_RUNS_KEPT)),
-      ...all.filter((r) => r.archived).slice(keepLimit('CEZ_ARCHIVED_RUNS_KEEP', DEFAULT_ARCHIVED_KEPT)),
+      ...all.filter((r) => !r.archived).slice(keepLimit('ONNI_RUNS_KEEP', DEFAULT_RUNS_KEPT)),
+      ...all.filter((r) => r.archived).slice(keepLimit('ONNI_ARCHIVED_RUNS_KEEP', DEFAULT_ARCHIVED_KEPT)),
     ].filter((r) => !pinned.has(r.id));
     for (const stale of stalePool) {
       this.forget(stale.id);

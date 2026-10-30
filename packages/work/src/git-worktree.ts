@@ -63,11 +63,11 @@ export function taskRemotes(dir: string): Promise<TaskRemotes> {
  * not whatever the remote-tracking ref happened to hold at the last manual
  * fetch. Best effort: offline, auth required or a timeout all leave the
  * existing refs untouched. The explicit refspec updates the tracking ref even
- * when the remote has a narrowed fetch config. Skipped under `CEZ_DRY_RUN=1`,
+ * when the remote has a narrowed fetch config. Skipped under `ONNI_DRY_RUN=1`,
  * which must stay network-free.
  */
 async function fetchBase(repoRoot: string, remote: string, base: string): Promise<void> {
-  if (process.env.CEZ_DRY_RUN === '1') return;
+  if (process.env.ONNI_DRY_RUN === '1') return;
   // The name is spliced into a refspec — only a well-formed branch name may be.
   const wellFormed = await git(repoRoot, ['check-ref-format', `refs/heads/${base}`]);
   if (!wellFormed.ok) return;
@@ -445,7 +445,7 @@ export async function removeWorktree(
 
 /**
  * Why an autosave commit happened. Only `periodic` is gated (behind
- * `CEZ_AUTOSAVE=1`, #471) — the three flushes always run so the branch ends
+ * `ONNI_AUTOSAVE=1`, #471) — the three flushes always run so the branch ends
  * holding the finished state. Before this was recorded, all four wrote the bare
  * message `onni autosave`, so a user who had opted out of the periodic timer
  * still saw `onni autosave` in `git log` and reasonably concluded the opt-out
@@ -804,9 +804,9 @@ export function parseShortstat(s: string): DiffStat {
  * git failure (the caller notes it, never fails the run); an empty diff is a
  * valid all-zero stat.
  */
-/** Push `branch` to the push remote (the graph `git.push` node). Never throws; `CEZ_DRY_RUN=1` is a no-op. */
+/** Push `branch` to the push remote (the graph `git.push` node). Never throws; `ONNI_DRY_RUN=1` is a no-op. */
 export async function pushBranch(dir: string, branch: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (process.env.CEZ_DRY_RUN === '1') return { ok: true };
+  if (process.env.ONNI_DRY_RUN === '1') return { ok: true };
   if (!isSafeGitRef(branch)) return { ok: false, error: `refusing option-like branch: ${branch}` };
   const { push: remote } = await taskRemotes(dir);
   if (!remote) return { ok: false, error: 'no git remote' };
@@ -830,7 +830,7 @@ export async function syncWithBase(
   const remotes = await taskRemotes(dir);
   const split = splitRemoteRef(baseBranch, remotes.names);
   const remote = split.remote ?? remotes.base;
-  if (remote && process.env.CEZ_DRY_RUN !== '1') {
+  if (remote && process.env.ONNI_DRY_RUN !== '1') {
     await fetchBase(dir, remote, split.branch);
     const remoteRef = await git(dir, ['rev-parse', '--verify', '--quiet', `${remote}/${split.branch}`]);
     if (remoteRef.ok) ref = `${remote}/${split.branch}`;

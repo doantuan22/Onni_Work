@@ -69,8 +69,8 @@ export interface ClaudeCliRunnerOptions {
 }
 
 /**
- * The claude binary a spawn should use: an explicit override, else `CEZ_CLAUDE_BIN`, else the
- * bundled mock under `CEZ_DRY_RUN`, else `claude` on PATH or at a known install location
+ * The claude binary a spawn should use: an explicit override, else `ONNI_CLAUDE_BIN`, else the
+ * bundled mock under `ONNI_DRY_RUN`, else `claude` on PATH or at a known install location
  * (`resolveClaudeBin`).
  *
  * Exported so model discovery (`claude-model-catalog.ts`) resolves the executable exactly the
@@ -79,10 +79,10 @@ export interface ClaudeCliRunnerOptions {
  */
 export function resolveClaudeExecutable(override?: string): string {
   if (override) return override;
-  // CEZ_DRY_RUN=1 swaps in the bundled mock so the cockpit / store /
+  // ONNI_DRY_RUN=1 swaps in the bundled mock so the cockpit / store /
   // GUI can be exercised without a logged-in claude or burning tokens.
-  if (process.env.CEZ_CLAUDE_BIN) return process.env.CEZ_CLAUDE_BIN;
-  return process.env.CEZ_DRY_RUN === '1' ? mockClaudePath() : resolveClaudeBin();
+  if (process.env.ONNI_CLAUDE_BIN) return process.env.ONNI_CLAUDE_BIN;
+  return process.env.ONNI_DRY_RUN === '1' ? mockClaudePath() : resolveClaudeBin();
 }
 
 /**
@@ -394,7 +394,7 @@ export class ClaudeCliRunner implements AgentRunner {
  * `stream_event` token deltas the cockpit renders as live text;
  * `--permission-mode dontAsk` keeps headless runs non-interactive: tools in
  * `--allowedTools` proceed and everything else is denied instead of prompting.
- * `CEZ_APPROVAL_GATE=1` selects Claude's `acceptEdits` mode, but onni still
+ * `ONNI_APPROVAL_GATE=1` selects Claude's `acceptEdits` mode, but onni still
  * has no cockpit permission response channel.
  */
 export function buildClaudeArgs(
@@ -411,7 +411,7 @@ export function buildClaudeArgs(
     '--verbose',
     '--include-partial-messages',
     '--permission-mode',
-    env.CEZ_APPROVAL_GATE === '1' ? 'acceptEdits' : 'dontAsk',
+    env.ONNI_APPROVAL_GATE === '1' ? 'acceptEdits' : 'dontAsk',
   ];
   args.push('--append-system-prompt', appendClaudeSystemPrompt(spec.systemPrompt));
   // Pin the session so the user can `claude --resume <sessionId>` in the repo
@@ -493,7 +493,7 @@ export function isClaudeMissingSessionError(message: string): boolean {
   return /No conversation found with session ID/i.test(message);
 }
 
-/** Path to the bundled mock (`scripts/mock-claude.mjs`), for CEZ_DRY_RUN=1. */
+/** Path to the bundled mock (`scripts/mock-claude.mjs`), for ONNI_DRY_RUN=1. */
 function mockClaudePath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   // here = <pkg>/dist/core (built) or <pkg>/src/core (tsx dev).

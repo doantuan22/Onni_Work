@@ -367,7 +367,7 @@ describe('the global settings area (/settings/global)', () => {
   })
 
   // A bookmarked deep link into any of the four `/automations*` routes still resolves — the route
-  // map is unchanged — but on a cockpit started with CEZ_AUTOMATIONS=0 the view says the feature
+  // map is unchanged — but on a cockpit started with ONNI_AUTOMATIONS=0 the view says the feature
   // is off instead of rendering an editor whose every request would 409.
   for (const path of ['automations', 'automations/new', 'automations/a-1', 'automations/a-1/log']) {
     it(`/${path} renders the disabled state while the capability is off`, async () => {
@@ -375,7 +375,7 @@ describe('the global settings area (/settings/global)', () => {
       expect(currentPathname()).toBe(`/p/${BOOT}/${path}`)
       expect(routeName()).toBe('automations')
       expect(await screen.findByText('Automations are off', {}, { timeout: 5_000 })).not.toBeNull()
-      expect(await screen.findByText(/CEZ_AUTOMATIONS=0/, {}, { timeout: 5_000 })).not.toBeNull()
+      expect(await screen.findByText(/ONNI_AUTOMATIONS=0/, {}, { timeout: 5_000 })).not.toBeNull()
     })
   }
 

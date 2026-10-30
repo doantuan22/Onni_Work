@@ -103,7 +103,7 @@ export const DICTATION_OLD_SHELL = 'Dictation needs a newer Onni app — update 
 /** The macOS desktop shell, when it hosts this page: `microphone` says whether it is entitled to
  *  one. Shells before 0.1.10 are not, and macOS refuses every dictation there (telemetry c55c7b0b). */
 function macosShell(): { microphone: boolean } | null {
-  const shell = (window as { __CEZ_DESKTOP__?: { platform?: string; microphone?: boolean } }).__CEZ_DESKTOP__
+  const shell = (window as { __ONNI_DESKTOP__?: { platform?: string; microphone?: boolean } }).__ONNI_DESKTOP__
   if (shell?.platform !== 'macos' && document.documentElement.dataset.onniDesktop !== 'macos') return null
   return { microphone: shell?.microphone === true }
 }

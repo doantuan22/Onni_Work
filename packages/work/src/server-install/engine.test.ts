@@ -46,14 +46,14 @@ function strategyOf(steps: InstallStep[], redeploy?: PlatformStrategy['redeploy'
 
 describe('engine', () => {
   let home: string;
-  const original = process.env.CEZ_HOME;
+  const original = process.env.ONNI_HOME;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-engine-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
   afterEach(() => {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
     rmSync(home, { recursive: true, force: true });
   });
 
@@ -316,14 +316,14 @@ describe('engine', () => {
 
 describe('engine — ledger preservation and uninstall safety (PR #423 review fixes)', () => {
   let home: string;
-  const original = process.env.CEZ_HOME;
+  const original = process.env.ONNI_HOME;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-engine-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
   });
   afterEach(() => {
-    if (original === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = original;
+    if (original === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = original;
     rmSync(home, { recursive: true, force: true });
   });
 
@@ -413,7 +413,7 @@ describe('engine — ledger preservation and uninstall safety (PR #423 review fi
     expect(res.state.platform).toBe('macosx-ngrok');
   });
 
-  it('a real install does not resume from a CEZ_DRY_RUN preview record', async () => {
+  it('a real install does not resume from a ONNI_DRY_RUN preview record', async () => {
     const dry = fakeStep('a');
     await runInstall(strategyOf([dry]), opts({ dryRun: true }));
     expect(loadServerState().dryRun).toBe(true);

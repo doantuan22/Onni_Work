@@ -12,7 +12,7 @@ const day = 86400000;
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 async function fixture(profile: 'minimal' | 'standard' = 'minimal', graceSeconds = 0) {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-retention-health-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
   const dataDir = join(root, '.ai/onni'), start = Date.parse('2026-10-13T12:00:00Z'); let now = start;

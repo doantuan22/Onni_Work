@@ -133,17 +133,17 @@ describe('taskRemotes (real git)', () => {
     expect((await taskRemotes(work)).base).toBe('origin');
   });
 
-  it('skips the GitHub lookup entirely under CEZ_DRY_RUN=1', async () => {
+  it('skips the GitHub lookup entirely under ONNI_DRY_RUN=1', async () => {
     const { work } = await forkFixture('origin-is-fork');
     let asked = false;
     setForkParentLookup(async () => ((asked = true), 'acme/shop'));
-    const prev = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    const prev = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     try {
       expect((await taskRemotes(work)).base).toBe('origin');
     } finally {
-      if (prev === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = prev;
+      if (prev === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = prev;
     }
     expect(asked).toBe(false);
   });

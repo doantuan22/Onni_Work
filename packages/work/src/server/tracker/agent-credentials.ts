@@ -13,7 +13,7 @@ export async function resolveTrackerAgentEnv(
   expected: TrackerAssociation | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<Record<string, string>> {
-  if (!expected || env.CEZ_DRY_RUN === '1') return {};
+  if (!expected || env.ONNI_DRY_RUN === '1') return {};
   const current = await readTrackerAssociation(join(root, '.ai/onni'));
   const record = await new TrackerConnections(env).read(root);
   if (!expected.connectionId || !current || !record

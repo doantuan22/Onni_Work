@@ -283,7 +283,7 @@ it('parallel variants ignore a worktree opt-out and retain isolated mode', () =>
  * Turn-end bookkeeping (#389, task auto-naming spec) against a REAL fixture
  * repo: `recordTurnEnd` is the exact method both agent-event paths fire on
  * `turn-end`, driven directly here because a live agent session is the only
- * other way to reach it. The suite-wide CEZ_AUTONAME=0 (vitest.setup.ts) keeps
+ * other way to reach it. The suite-wide ONNI_AUTONAME=0 (vitest.setup.ts) keeps
  * the namer (an LLM call) out of these fixtures — titles are ONLY ever
  * namer-owned or user-owned now, never derived from turn text.
  */
@@ -714,13 +714,13 @@ describe('RunManager.continueRun override', () => {
 /**
  * Optional review gate (#489, spec 2026-07-18-optional-review-gate): the
  * terminal `settleSuccess` transition parks a changed run at `review` ONLY when
- * the gate is enabled (config toggle over `CEZ_REVIEW_GATE`, default off) and the
+ * the gate is enabled (config toggle over `ONNI_REVIEW_GATE`, default off) and the
  * run is not autonomous. Driven directly through the private `settleSuccess`
  * (the same method `execute`, `runContinuation`, and `recover`'s waiting-run path
  * all call) against a real fixture worktree.
  */
 describe('RunManager.settleSuccess — optional review gate', () => {
-  const savedGate = process.env.CEZ_REVIEW_GATE;
+  const savedGate = process.env.ONNI_REVIEW_GATE;
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
@@ -738,13 +738,13 @@ describe('RunManager.settleSuccess — optional review gate', () => {
   afterAll(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedGate === undefined) delete process.env.CEZ_REVIEW_GATE;
-    else process.env.CEZ_REVIEW_GATE = savedGate;
+    if (savedGate === undefined) delete process.env.ONNI_REVIEW_GATE;
+    else process.env.ONNI_REVIEW_GATE = savedGate;
   });
 
   afterEach(() => {
     manager.dispose(); // see DISPOSE at the top of this file
-    delete process.env.CEZ_REVIEW_GATE;
+    delete process.env.ONNI_REVIEW_GATE;
     // Reset the config file each test so config.reviewGate never leaks across cases.
     rmSync(join(repoRoot, '.ai/onni', 'config.json'), { force: true });
   });
@@ -779,21 +779,21 @@ describe('RunManager.settleSuccess — optional review gate', () => {
   });
 
   it('gate on (env) + non-autonomous + changes → review', async () => {
-    process.env.CEZ_REVIEW_GATE = '1';
+    process.env.ONNI_REVIEW_GATE = '1';
     const record = await changedRun();
     await settle(record.id);
     expect(store.getRun(record.id)?.status).toBe('review');
   });
 
   it('gate on + autonomous + changes → done (autonomous wins — the #489 fix)', async () => {
-    process.env.CEZ_REVIEW_GATE = '1';
+    process.env.ONNI_REVIEW_GATE = '1';
     const record = await changedRun(true);
     await settle(record.id);
     expect(store.getRun(record.id)?.status).toBe('done');
   });
 
   it('gate on + no changes → done (the diff check stays first)', async () => {
-    process.env.CEZ_REVIEW_GATE = '1';
+    process.env.ONNI_REVIEW_GATE = '1';
     const record = await cleanRun();
     store.setLifecycleObserver(() => undefined);
     await settle(record.id);
@@ -829,8 +829,8 @@ describe('a chain of 2 selected skills runs BOTH steps, in order (#410)', () => 
 
   beforeAll(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-410-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -919,8 +919,8 @@ describe('a single agent step plus a check step gets NO chain note (#410)', () =
 
   beforeAll(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-410-single-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -980,7 +980,7 @@ describe('worktree off + newBranch switches the repo checkout to a branch off ba
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   const workflow: WorkflowDef = {
     name: 'quick-task',
     source: 'built-in',
@@ -997,7 +997,7 @@ describe('worktree off + newBranch switches the repo checkout to a branch off ba
 
   beforeAll(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-inplace-branch-'));
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, '.gitignore'), '.ai/\nnotes.md\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -1014,8 +1014,8 @@ describe('worktree off + newBranch switches the repo checkout to a branch off ba
 
   afterAll(async () => {
     manager.dispose();
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     await removeTempDir(repoRoot);
   });
@@ -1057,11 +1057,11 @@ describe('check-step mutations stay out of autosave commits (#1079)', () => {
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   beforeAll(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-1079-'));
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'debug_test.txt'), 'base\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -1072,8 +1072,8 @@ describe('check-step mutations stay out of autosave commits (#1079)', () => {
 
   afterAll(() => {
     manager.dispose();
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -1140,8 +1140,8 @@ describe('ONNI:MONITORING parks as running/monitoring, not waiting (#490)', () =
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-490-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -1358,8 +1358,8 @@ describe('a turn that parks on its sub-agents while declaring its PR is not "nee
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-933-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -1482,8 +1482,8 @@ describe('ONNI:ASK parks as waiting and emits ask.requested (#473)', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-473-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -1903,7 +1903,7 @@ describe('ONNI:ASK parks as waiting and emits ask.requested (#473)', () => {
   }, 30_000);
 
   it('keeps the review gate for an idle-closed final wait whose worktree holds changes', async () => {
-    process.env.CEZ_REVIEW_GATE = '1';
+    process.env.ONNI_REVIEW_GATE = '1';
     try {
       const record = manager.startRun(SINGLE_STEP, { task: 'just do the thing' });
       currentId = record.id;
@@ -1924,7 +1924,7 @@ describe('ONNI:ASK parks as waiting and emits ask.requested (#473)', () => {
       expect(store.getRun(record.id)?.steps[0]?.status).toBe('done');
       expect(manager.isActive(record.id)).toBe(false);
     } finally {
-      delete process.env.CEZ_REVIEW_GATE;
+      delete process.env.ONNI_REVIEW_GATE;
     }
   }, 30_000);
 
@@ -3114,8 +3114,8 @@ describe('queued stacking reaches the backend (#472)', () => {
 
   beforeAll(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-472-e2e-'));
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -3232,18 +3232,18 @@ describe('native Codex requestUserInput parks and resumes the run (#565)', () =>
   let store: RunStore;
   let manager: RunManager;
   let runId: string | undefined;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedCodexBin = process.env.CEZ_CODEX_BIN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedCodexBin = process.env.ONNI_CODEX_BIN;
   const workflow: WorkflowDef = {
     name: 'quick-task', source: 'built-in', steps: [{ id: 'task', name: 'Task', prompt: '{{task}}' }],
   };
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-565-'));
-    delete process.env.CEZ_DRY_RUN;
+    delete process.env.ONNI_DRY_RUN;
     // Resolved from this file, not the cwd: the fixture is a sibling of the source under test,
     // so the path holds wherever vitest is invoked from and survives the tree moving.
-    process.env.CEZ_CODEX_BIN = join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs');
+    process.env.ONNI_CODEX_BIN = join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -3255,8 +3255,8 @@ describe('native Codex requestUserInput parks and resumes the run (#565)', () =>
   afterEach(() => {
     if (runId) manager.cancel(runId);
     manager.dispose(); // see DISPOSE at the top of this file — after the cancel it enables
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN; else process.env.CEZ_DRY_RUN = savedDryRun;
-    if (savedCodexBin === undefined) delete process.env.CEZ_CODEX_BIN; else process.env.CEZ_CODEX_BIN = savedCodexBin;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN; else process.env.ONNI_DRY_RUN = savedDryRun;
+    if (savedCodexBin === undefined) delete process.env.ONNI_CODEX_BIN; else process.env.ONNI_CODEX_BIN = savedCodexBin;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -3303,16 +3303,16 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
   let store: RunStore;
   let manager: RunManager;
   let runId: string | undefined;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedCodexBin = process.env.CEZ_CODEX_BIN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedCodexBin = process.env.ONNI_CODEX_BIN;
   const SINGLE_STEP: WorkflowDef = {
     name: 'quick-task', source: 'built-in', steps: [{ id: 'task', name: 'Task', prompt: '{{task}}' }],
   };
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-955-'));
-    delete process.env.CEZ_DRY_RUN;
-    process.env.CEZ_CODEX_BIN = join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs');
+    delete process.env.ONNI_DRY_RUN;
+    process.env.ONNI_CODEX_BIN = join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -3337,8 +3337,8 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
       }
     } finally {
       manager.dispose(); // see DISPOSE at the top of this file — after the cancel it enables
-      if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN; else process.env.CEZ_DRY_RUN = savedDryRun;
-      if (savedCodexBin === undefined) delete process.env.CEZ_CODEX_BIN; else process.env.CEZ_CODEX_BIN = savedCodexBin;
+      if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN; else process.env.ONNI_DRY_RUN = savedDryRun;
+      if (savedCodexBin === undefined) delete process.env.ONNI_CODEX_BIN; else process.env.ONNI_CODEX_BIN = savedCodexBin;
       store.flush();
       rmSync(repoRoot, { recursive: true, force: true });
     }
@@ -3515,8 +3515,8 @@ describe('registry /skill expansion survives a continuation (#811)', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-811-'));
-    savedDryRun = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedDryRun = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -3534,8 +3534,8 @@ describe('registry /skill expansion survives a continuation (#811)', () => {
   afterEach(() => {
     if (runId) manager.cancel(runId);
     manager.dispose(); // see DISPOSE at the top of this file — after the cancel it enables
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -3676,8 +3676,8 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-278-'));
-    savedDryRun = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1';
+    savedDryRun = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -3694,8 +3694,8 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
 
   afterEach(() => {
     if (runId) manager.cancel(runId);
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });
@@ -3764,8 +3764,8 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
   it("writes no skill copies into the user's own checkout on an in-place run", async () => {
     // In place the cwd IS the checkout, whose skill dirs `discoverSkills` reads ahead of the
     // builtin — a written-out copy would shadow the real skill for good.
-    const savedApiUrl = process.env.CEZ_API_URL;
-    process.env.CEZ_API_URL = 'http://127.0.0.1:1';
+    const savedApiUrl = process.env.ONNI_API_URL;
+    process.env.ONNI_API_URL = 'http://127.0.0.1:1';
     try {
       const record = manager.startRun(SINGLE_STEP, { task: '/create-onni-automation daily', worktree: false });
       runId = record.id;
@@ -3774,8 +3774,8 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
         expect(existsSync(join(repoRoot, dir, 'create-onni-automation'))).toBe(false);
       }
     } finally {
-      if (savedApiUrl === undefined) delete process.env.CEZ_API_URL;
-      else process.env.CEZ_API_URL = savedApiUrl;
+      if (savedApiUrl === undefined) delete process.env.ONNI_API_URL;
+      else process.env.ONNI_API_URL = savedApiUrl;
     }
   }, 40_000);
 

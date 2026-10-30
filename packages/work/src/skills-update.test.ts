@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isOpenMercatoSkillsSource, SkillsUpdateConflictError, SkillsUpdateCoordinator, SkillsUpdateService } from './skills-update.ts';
 
-const oldDryRun = process.env.CEZ_DRY_RUN;
-afterEach(() => { if (oldDryRun === undefined) delete process.env.CEZ_DRY_RUN; else process.env.CEZ_DRY_RUN = oldDryRun; });
+const oldDryRun = process.env.ONNI_DRY_RUN;
+afterEach(() => { if (oldDryRun === undefined) delete process.env.ONNI_DRY_RUN; else process.env.ONNI_DRY_RUN = oldDryRun; });
 
 async function fixture(project: unknown, global?: unknown) {
   const root = await mkdtemp(join(tmpdir(), 'onni-skills-update-'));
@@ -17,7 +17,7 @@ async function fixture(project: unknown, global?: unknown) {
 }
 
 describe('SkillsUpdateService', () => {
-  beforeEach(() => { process.env.CEZ_DRY_RUN = '0'; });
+  beforeEach(() => { process.env.ONNI_DRY_RUN = '0'; });
 
   it('matches only canonical Open Mercato GitHub sources', () => {
     expect(['open-mercato/skills', 'https://github.com/open-mercato/skills', 'https://github.com/open-mercato/skills.git'].every(isOpenMercatoSkillsSource)).toBe(true);
@@ -104,7 +104,7 @@ describe('SkillsUpdateService', () => {
   });
 
   it('returns deterministic dry-run state without files, tools, or network', async () => {
-    process.env.CEZ_DRY_RUN = '1'; const run = vi.fn();
+    process.env.ONNI_DRY_RUN = '1'; const run = vi.fn();
     const state = await new SkillsUpdateService({ homeDir: '/missing', run, resolveNpx: async () => { throw new Error('no'); } }).check('/missing');
     expect(state.status).toBe('current'); expect(run).not.toHaveBeenCalled();
   });
@@ -178,7 +178,7 @@ describe('SkillsUpdateService', () => {
     expect(await one).toBe(await two);
     expect(run.mock.calls.filter((call) => call[1][2] === 'update')).toHaveLength(1);
 
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     const dryRun = vi.fn();
     const dry = new SkillsUpdateService({ run: dryRun, resolveNpx: async () => 'npx' });
     expect((await dry.update(repo)).needsUpgradeNotes).toBe(true);

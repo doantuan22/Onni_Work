@@ -101,7 +101,7 @@ every e2e command cezar writes: cezar does not widen network exposure on the use
 ## Live verification (2026-10-10)
 
 A fresh Vite + React app (`npm create vite -- --template react-ts`), cezar booted from this branch's
-build with an isolated `CEZ_HOME`, real Claude Code runner, no model key:
+build with an isolated `ONNI_HOME`, real Claude Code runner, no model key:
 
 1. **Run 1** (`d050f86f`): all three steps green in ~2 min, but it exposed two bugs. The engine's
    `{{task}}` substitution rewrote the template inside the prompt, so the written workflow carried
@@ -117,7 +117,7 @@ build with an isolated `CEZ_HOME`, real Claude Code runner, no model key:
    in ~1 min: `deps` → `implement` (it changed `App.tsx` AND the smoke test's assertion) → `browser`
    (real e2e run, 1 passed).
 
-The review gate is off by default (`CEZ_REVIEW_GATE`), so a setup run normally settles as `done`
+The review gate is off by default (`ONNI_REVIEW_GATE`), so a setup run normally settles as `done`
 with its branch unmerged. The section says "Setup finished — merge branch cez/… to finish" until
 the config is in the checkout.
 

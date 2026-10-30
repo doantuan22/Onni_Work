@@ -916,7 +916,7 @@ describe('the inbox gate (#471)', () => {
     // The distinction matters: "Inbox empty" would blame the agents for a switched-off feature.
     expect(screen.queryByText('Inbox empty')).toBeNull()
     // And it tells the user how to get it back.
-    expect(screen.getByText(/CEZ_FOLLOWUPS=1/)).toBeTruthy()
+    expect(screen.getByText(/ONNI_FOLLOWUPS=1/)).toBeTruthy()
     const header = document.querySelector('[data-route="inbox"] header')
     expect(header?.textContent).toContain('Disabled for this server; per-task Notes still run.')
     expect(header?.textContent).not.toContain('Follow-ups agents suggested')

@@ -96,7 +96,7 @@ action in Settings), and codex sandbox escalation flows.
 | Surface | Today | File |
 | --- | --- | --- |
 | claude args | `--permission-mode acceptEdits`, `--allowedTools` default-deny, `Bash(prefix:*)` globs | `src/core/claude-cli-runner.ts:301-360` |
-| codex args | `sandbox: danger-full-access`, `approvalPolicy: never` (#563; `CEZ_CODEX_NETWORK=0` opts into network-blocked `workspace-write`) | `src/core/codex-app-server-runner.ts:295` |
+| codex args | `sandbox: danger-full-access`, `approvalPolicy: never` (#563; `ONNI_CODEX_NETWORK=0` opts into network-blocked `workspace-write`) | `src/core/codex-app-server-runner.ts:295` |
 | opencode | auto-approved permissions, `allowedTools` ignored | `src/core/opencode-server-runner.ts:39` |
 | Protocol | `permission.requested` / `permission.resolved` RESERVED; `PermissionOption` kinds `allow_once` / `allow_always` / `reject_once` / `reject_always` | `src/core/ui-events.ts:122-135, 296-312` |
 | Attention | `permission` already tops the priority ladder | `web/app/src/lib/attention.ts:16` |
@@ -307,7 +307,7 @@ conventions. Copy stays agent-agnostic (capability names, never vendor flags).
 - **Old run records / old events** — `permissions` and the new events are
   optional; old files parse. Old cockpit against new server ignores unknown
   events (existing contract).
-- **`CEZ_DRY_RUN=1`** — the bundled mock CLI gains a scripted
+- **`ONNI_DRY_RUN=1`** — the bundled mock CLI gains a scripted
   `can_use_tool` exchange so the whole flow is testable offline; dry-run must
   keep working for all presets.
 - **Deny-by-rule** — enforced by the backend itself (claude
@@ -415,6 +415,6 @@ step group is `npm run typecheck && npm test && npm run test:unit`.
 - 2.5 Cockpit prompt card in the task thread + attention/notification wiring +
   component tests.
 - 2.6 `scripts/mock-claude.mjs`: scripted permission exchange for
-  `CEZ_DRY_RUN=1`; e2e spec driving prompt → answer → run continues.
+  `ONNI_DRY_RUN=1`; e2e spec driving prompt → answer → run continues.
 - 2.7 Full gate (`npm run build`, `npm run test:package`, `npm run test:e2e`)
   and spec/docs sync.

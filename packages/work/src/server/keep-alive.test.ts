@@ -13,8 +13,8 @@ import { startServer } from './server.ts';
 const BROWSER_IDLE_POOL_MS = 300_000;
 
 describe('keep-alive (telemetry 7adbfbd7)', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let repoRoot: string;
   let home: string;
   let store: RunStore;
@@ -24,18 +24,18 @@ describe('keep-alive (telemetry 7adbfbd7)', () => {
     home = mkdtempSync(join(tmpdir(), 'onni-keep-alive-home-'));
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_DRY_RUN = '1';
   });
 
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
     rmSync(home, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   it('the server startServer boots keeps idle sockets open longer than a browser pools them', async () => {

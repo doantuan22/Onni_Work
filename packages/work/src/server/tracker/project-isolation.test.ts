@@ -32,7 +32,7 @@ beforeEach(async () => {
   calls.length = 0; defer = undefined;
 });
 afterEach(async () => { await rm(root, { recursive: true, force: true }); });
-const service = () => createTrackerService({ CEZ_HOME: join(root, 'home'), JIRA_API_TOKEN: 'ignored', LINEAR_API_KEY: 'ignored' }, fetcher);
+const service = () => createTrackerService({ ONNI_HOME: join(root, 'home'), JIRA_API_TOKEN: 'ignored', LINEAR_API_KEY: 'ignored' }, fetcher);
 const data = (project: string) => join(project, '.ai/onni');
 async function connect(s: ReturnType<typeof service>, project: string) {
   const result = await s.resolve(project, { kind: 'linear', sourceId: 'same-org', externalId: team, connectionId: (await s.connection(project)).connection?.id });
@@ -110,7 +110,7 @@ it('does not release an in-flight result after credentials are removed', async (
 
 it('keeps dry-run fixtures independent from real saved credentials', async () => {
   const s = service(); await s.saveConnection(a, { kind: 'linear', key: 'private-A' });
-  const demo = createTrackerService({ CEZ_HOME: join(root, 'home'), CEZ_DRY_RUN: '1' }, fetcher);
+  const demo = createTrackerService({ ONNI_HOME: join(root, 'home'), ONNI_DRY_RUN: '1' }, fetcher);
   expect(await demo.connection(a)).toEqual({ connection: null, demo: true });
   expect(await demo.removeConnection(a)).toBe(false);
   expect(await demo.saveConnection(a, { kind: 'linear', key: 'replacement' })).toBeNull();

@@ -194,7 +194,7 @@ export class SkillsUpdateService {
   }
 
   private async performCheck(repoRoot: string, force = false, rejectIfBusy = false): Promise<SkillsUpdateState> {
-    if (process.env.CEZ_DRY_RUN === '1') {
+    if (process.env.ONNI_DRY_RUN === '1') {
       const checkedAt = new Date(this.now()).toISOString();
       const scopes = [blankScope('project'), blankScope('global')].map((scope) => ({ ...scope, status: 'current' as const, checkedAt }));
       const state = { ...this.makeState(scopes), status: 'current' as const, checkedAt };
@@ -239,7 +239,7 @@ export class SkillsUpdateService {
   }
 
   private async performUpdate(repoRoot: string, rejectIfBusy: boolean): Promise<SkillsUpdateState> {
-    if (process.env.CEZ_DRY_RUN === '1') {
+    if (process.env.ONNI_DRY_RUN === '1') {
       const updatedAt = new Date(this.now()).toISOString();
       const scopes = [blankScope('project'), blankScope('global')].map((scope) => ({ ...scope, status: 'current' as const, checkedAt: updatedAt, updatedAt }));
       const state = { ...this.makeState(scopes), status: 'current' as const, checkedAt: updatedAt, updatedAt, needsUpgradeNotes: true };

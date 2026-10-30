@@ -16,20 +16,20 @@ import { clearProjectProbeCache, registerProject } from './projects.ts';
  * of those tests green.
  */
 describe('initWorkspace', () => {
-  const originalHome = process.env.CEZ_HOME;
+  const originalHome = process.env.ONNI_HOME;
   let home: string;
   let repos: string;
 
   beforeEach(() => {
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-boot-home-'));
     repos = mkdtempSync(join(realpathSync(tmpdir()), 'onni-boot-repos-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
     clearProjectProbeCache();
   });
 
   afterEach(() => {
-    if (originalHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = originalHome;
+    if (originalHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalHome;
     rmSync(home, { recursive: true, force: true });
     rmSync(repos, { recursive: true, force: true });
   });

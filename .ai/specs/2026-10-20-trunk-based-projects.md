@@ -88,7 +88,7 @@ unless another task holds the checkout (it would commit that task's edits too). 
 settle (autonomous, or Finish while the session was closing) that fails to land fails the run,
 so unlanded work never wears a success badge. The outcome is recorded
 on the run as `landing` (`status`, `sha`, `pushed`, `files`, or `stage` + `error`) and as notes.
-`CEZ_DRY_RUN=1` skips fetch and push.
+`ONNI_DRY_RUN=1` skips fetch and push.
 
 **Permission.** Pushing to the base branch is the owner's decision, so it is granted the way
 worktree scripts are: a git-tracked `.ai/cezar/config.json` cannot grant it (the run notes why,

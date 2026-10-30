@@ -170,7 +170,7 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
         <h2 className="text-sm font-semibold text-foreground">Agent accounts</h2>
         <p data-slot="accounts-hosted" className="text-[13px] text-soft-foreground">
           Agent accounts are disabled for remote access. On a trusted, authenticated self-hosted
-          deployment, set CEZ_REMOTE_AGENT_ACCOUNTS=1 and restart onni.
+          deployment, set ONNI_REMOTE_AGENT_ACCOUNTS=1 and restart onni.
         </p>
       </div>
     )

@@ -19,8 +19,8 @@ import { apiRequest } from './loopback-request.testkit.ts';
 // `claude-bin.test.ts`, and the handoff's own use of it by `open-in-app-claude-bin.test.ts`.
 vi.mock('../core/claude-bin.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../core/claude-bin.ts')>()),
-  resolveClaudeBin: () => process.env.CEZ_CLAUDE_BIN ?? 'claude',
-  claudeShellCommand: () => process.env.CEZ_CLAUDE_BIN ?? null,
+  resolveClaudeBin: () => process.env.ONNI_CLAUDE_BIN ?? 'claude',
+  claudeShellCommand: () => process.env.ONNI_CLAUDE_BIN ?? null,
 }));
 
 // The terminal launcher actually spawns a process (osascript/cmd/x-terminal-emulator) — mocked
@@ -86,28 +86,28 @@ describe('POST /api/v1/runs/:id/open-in — agent CLI resume vs fresh launch', (
   let repoRoot: string;
   let home: string;
   let store: RunStore;
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedHome = process.env.CEZ_HOME;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedHome = process.env.ONNI_HOME;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-open-in-cli-'));
     // The account resolution behind the handoff (spec 2026-07-29-agent-profiles) reads
-    // `~/.onni/agent-accounts.json`, so this suite must own one — without `CEZ_HOME` it would read the
+    // `~/.onni/agent-accounts.json`, so this suite must own one — without `ONNI_HOME` it would read the
     // developer's real workspace and its answers would depend on who ran it.
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-open-in-cli-home-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_REMOTE;
     mockOpenInTerminal.mockClear();
   });
 
   afterEach(() => {
     store.flush();
     for (const dir of [repoRoot, home]) rmSync(dir, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
   });
 
   const app = (options: { disabled?: ProviderId[]; disconnected?: ProviderId[] } = {}) =>
@@ -204,8 +204,8 @@ describe('POST /api/v1/runs/:id/open-in — agent CLI resume vs fresh launch', (
     },
   );
 
-  it('hosted mode (CEZ_REMOTE=1) 409s before any session lookup, CLI or not', async () => {
-    process.env.CEZ_REMOTE = '1';
+  it('hosted mode (ONNI_REMOTE=1) 409s before any session lookup, CLI or not', async () => {
+    process.env.ONNI_REMOTE = '1';
     const run = makeRun('claude', 'sess-1');
     const res = await openIn(run.id, 'cli:claude');
     expect(res.status).toBe(409);

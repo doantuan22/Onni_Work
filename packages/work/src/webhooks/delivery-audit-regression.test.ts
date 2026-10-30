@@ -18,7 +18,7 @@ afterEach(async () => {
   uuidQueue.length = 0; vi.restoreAllMocks(); vi.unstubAllEnvs();
 });
 async function fixture() {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-delivery-audit-'));
   cleanup.push(() => rmSync(root, { recursive: true, force: true }));
   execFileSync('git', ['init', '-q'], { cwd: root });

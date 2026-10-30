@@ -119,7 +119,7 @@ interface ProviderDescriptor {
    * answer is unreadable; `true` reports `not-installed` (telemetry 8d304c50, f67df9d2).
    */
   foreign?: (executable: string, version: ProviderCommandResult) => boolean;
-  /** The `CEZ_*_BIN` override `executable` honours — only so a report can say the binary came from it. */
+  /** The `ONNI_*_BIN` override `executable` honours — only so a report can say the binary came from it. */
   overrideEnv: string;
 }
 
@@ -419,14 +419,14 @@ function parseCopilotStatus(result: ProviderCommandResult): ProviderConnectionSt
 function copilotUnrecognizedHint(result: ProviderCommandResult): string | undefined {
   if (/"jsonrpc"\s*:/.test(`${result.stdout}\n${result.stderr}`)) return undefined;
   return 'The `copilot` command did not start GitHub Copilot CLI\'s ACP server. Update it with '
-    + '`npm i -g @github/copilot`, or point CEZ_COPILOT_BIN at the GitHub Copilot CLI if another '
+    + '`npm i -g @github/copilot`, or point ONNI_COPILOT_BIN at the GitHub Copilot CLI if another '
     + 'program named `copilot` comes first on PATH.';
 }
 
 const DESCRIPTORS: readonly ProviderDescriptor[] = [
   {
     id: 'claude',
-    overrideEnv: 'CEZ_CLAUDE_BIN',
+    overrideEnv: 'ONNI_CLAUDE_BIN',
     executable: () => resolveClaudeBin(),
     statusArgs: ['auth', 'status', '--json'],
     loginArgs: ['auth', 'login'],
@@ -436,8 +436,8 @@ const DESCRIPTORS: readonly ProviderDescriptor[] = [
   },
   {
     id: 'codex',
-    overrideEnv: 'CEZ_CODEX_BIN',
-    executable: () => process.env.CEZ_CODEX_BIN ?? 'codex',
+    overrideEnv: 'ONNI_CODEX_BIN',
+    executable: () => process.env.ONNI_CODEX_BIN ?? 'codex',
     statusArgs: ['login', 'status'],
     loginArgs: ['login'],
     installHint: 'Install the Codex CLI, then run `codex login`.',
@@ -445,8 +445,8 @@ const DESCRIPTORS: readonly ProviderDescriptor[] = [
   },
   {
     id: 'opencode',
-    overrideEnv: 'CEZ_OPENCODE_BIN',
-    executable: () => process.env.CEZ_OPENCODE_BIN ?? 'opencode',
+    overrideEnv: 'ONNI_OPENCODE_BIN',
+    executable: () => process.env.ONNI_OPENCODE_BIN ?? 'opencode',
     statusArgs: ['auth', 'list'],
     fallbackArgs: openCodeFallbackArgs,
     loginArgs: ['auth', 'login'],
@@ -456,7 +456,7 @@ const DESCRIPTORS: readonly ProviderDescriptor[] = [
   },
   {
     id: 'cursor',
-    overrideEnv: 'CEZ_CURSOR_AGENT_BIN',
+    overrideEnv: 'ONNI_CURSOR_AGENT_BIN',
     executable: () => resolveCursorAgentBin(),
     statusArgs: ['status', '--format', 'json'],
     fallbackArgs: cursorFallbackArgs,
@@ -475,20 +475,20 @@ const DESCRIPTORS: readonly ProviderDescriptor[] = [
   },
   {
     id: 'pi',
-    overrideEnv: 'CEZ_PI_BIN',
-    executable: () => process.env.CEZ_PI_BIN ?? 'pi',
+    overrideEnv: 'ONNI_PI_BIN',
+    executable: () => process.env.ONNI_PI_BIN ?? 'pi',
     statusArgs: ['--list-models'],
     loginArgs: ['/login'],
     installHint: 'Install pi, then run `pi /login`.',
     parse: parsePiStatus,
     // Real pi answers `--version` with exit 0, like detection requires; a `pi` that can't is a shim
     // or another tool whose wording no pattern list keeps up with (telemetry f67df9d2, after #1504).
-    foreign: (_executable, version) => !process.env.CEZ_PI_BIN && version.exitCode !== 0,
+    foreign: (_executable, version) => !process.env.ONNI_PI_BIN && version.exitCode !== 0,
   },
   {
     id: 'junie',
-    overrideEnv: 'CEZ_JUNIE_BIN',
-    executable: () => process.env.CEZ_JUNIE_BIN ?? 'junie',
+    overrideEnv: 'ONNI_JUNIE_BIN',
+    executable: () => process.env.ONNI_JUNIE_BIN ?? 'junie',
     statusArgs: [],
     loginArgs: [],
     installHint: 'Install Junie (https://junie.jetbrains.com/cli), then run `junie` once and log in.',
@@ -496,8 +496,8 @@ const DESCRIPTORS: readonly ProviderDescriptor[] = [
   },
   {
     id: 'copilot',
-    overrideEnv: 'CEZ_COPILOT_BIN',
-    executable: () => process.env.CEZ_COPILOT_BIN ?? 'copilot',
+    overrideEnv: 'ONNI_COPILOT_BIN',
+    executable: () => process.env.ONNI_COPILOT_BIN ?? 'copilot',
     // `--no-auto-update`, as the runner passes: a status check must not download a CLI, nor run a
     // cached newer package than the one a run will launch (telemetry 298c2e1f).
     statusArgs: ['--acp', '--no-auto-update'],
@@ -570,7 +570,7 @@ function openCodeFallbackArgs(result: ProviderCommandResult): readonly string[] 
 function cursorUnrecognizedHint(result: ProviderCommandResult): string | undefined {
   if (result.stdout.trim()) return undefined;
   return 'The Cursor CLI did not answer its status check. Update it with `cursor-agent update`, or point '
-    + 'CEZ_CURSOR_AGENT_BIN at Cursor\'s `cursor-agent` if another program named `agent` comes first on PATH.';
+    + 'ONNI_CURSOR_AGENT_BIN at Cursor\'s `cursor-agent` if another program named `agent` comes first on PATH.';
 }
 
 /**
@@ -832,7 +832,7 @@ export class ProviderAuthService {
    * answer that is true NOW.
    */
   status(options?: { refresh?: boolean }): Promise<ProviderStatusResponse> {
-    if (process.env.CEZ_DRY_RUN === '1' || providerAuthChecksDisabled()) {
+    if (process.env.ONNI_DRY_RUN === '1' || providerAuthChecksDisabled()) {
       return Promise.resolve({
         providers: PROVIDER_IDS.map((provider) => ({ provider, status: 'connected' })),
       });
@@ -856,7 +856,7 @@ export class ProviderAuthService {
   }
 
   reportRuntimeAuthFailure(provider: ProviderId, options?: { definitive?: boolean }): RuntimeAuthFailureReport | null {
-    if (process.env.CEZ_DRY_RUN === '1' || providerAuthChecksDisabled()) return null;
+    if (process.env.ONNI_DRY_RUN === '1' || providerAuthChecksDisabled()) return null;
     const current = this.runtimeFailures.get(provider);
     const failure: RuntimeAuthFailure = {
       generation: ++this.nextRuntimeFailureGeneration,
@@ -888,7 +888,7 @@ export class ProviderAuthService {
     profileId: string,
     options?: { definitive?: boolean },
   ): RuntimeAuthFailureReport | null {
-    if (process.env.CEZ_DRY_RUN === '1' || providerAuthChecksDisabled()) return null;
+    if (process.env.ONNI_DRY_RUN === '1' || providerAuthChecksDisabled()) return null;
     const key = profileCacheKey(provider, profileId);
     const current = this.profileRuntimeFailures.get(key);
     const failure: RuntimeAuthFailure = {
@@ -959,7 +959,7 @@ export class ProviderAuthService {
    * - spawn more than one probe per provider per {@link RUNTIME_AUTH_VERIFY_COOLDOWN_MS}.
    */
   async verifyRuntimeAuthFailure(provider: ProviderId): Promise<ProviderStatus | null> {
-    if (process.env.CEZ_DRY_RUN === '1' || providerAuthChecksDisabled()) return null;
+    if (process.env.ONNI_DRY_RUN === '1' || providerAuthChecksDisabled()) return null;
     const failure = this.runtimeFailures.get(provider);
     // The CLI's status reads the same dead login and would answer connected (telemetry 9e4a95db).
     if (!failure || failure.definitive) return null;
@@ -1092,7 +1092,7 @@ export class ProviderAuthService {
     provider: ProviderId,
     profile: { id: string; configDir: string | null },
   ): Promise<ProviderStatus> {
-    if (process.env.CEZ_DRY_RUN === '1') {
+    if (process.env.ONNI_DRY_RUN === '1') {
       return { provider, status: 'connected', profileId: profile.id };
     }
     const key = profileCacheKey(provider, profile.id);
@@ -1186,7 +1186,7 @@ export class ProviderAuthService {
    * Callers that need a guaranteed-fresh answer call {@link status} or pass `refresh`.
    */
   peekProfileStatus(provider: ProviderId, profileId: string): ProviderStatus | undefined {
-    if (process.env.CEZ_DRY_RUN === '1') {
+    if (process.env.ONNI_DRY_RUN === '1') {
       return { provider, status: 'connected', profileId };
     }
     const cached = this.completedProfiles.get(profileCacheKey(provider, profileId))?.status;
@@ -1199,7 +1199,7 @@ export class ProviderAuthService {
   /** The cached default-profile rows, or `undefined` when the probe has never completed. Same
    *  no-spawn contract as {@link peekProfileStatus}. */
   peekStatus(): ProviderStatusResponse | undefined {
-    if (process.env.CEZ_DRY_RUN === '1') {
+    if (process.env.ONNI_DRY_RUN === '1') {
       return { providers: PROVIDER_IDS.map((provider) => ({ provider, status: 'connected' })) };
     }
     if (!this.completed) return undefined;

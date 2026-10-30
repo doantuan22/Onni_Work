@@ -160,19 +160,19 @@ describe('loadConfig systemPrompt', () => {
 describe('resolveWorktreeRetention', () => {
   let repoRoot: string;
   let onniHome: string;
-  const savedHome = process.env.CEZ_HOME;
+  const savedHome = process.env.ONNI_HOME;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-retention-'));
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     // Pinned so the suite never reads (or writes) the developer's real ~/.onni.
     onniHome = mkdtempSync(join(tmpdir(), 'onni-home-'));
-    process.env.CEZ_HOME = onniHome;
+    process.env.ONNI_HOME = onniHome;
   });
 
   afterEach(() => {
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
     rmSync(repoRoot, { recursive: true, force: true });
     rmSync(onniHome, { recursive: true, force: true });
   });
@@ -307,18 +307,18 @@ describe('gatedSkillsRepos', () => {
 describe('loadConfig machine-wide agent defaults', () => {
   let repoRoot: string;
   let onniHome: string;
-  const savedHome = process.env.CEZ_HOME;
+  const savedHome = process.env.ONNI_HOME;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-machine-defaults-'));
     onniHome = mkdtempSync(join(tmpdir(), 'onni-machine-home-'));
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
-    process.env.CEZ_HOME = onniHome;
+    process.env.ONNI_HOME = onniHome;
   });
 
   afterEach(() => {
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
     for (const dir of [repoRoot, onniHome]) rmSync(dir, { recursive: true, force: true });
   });
 

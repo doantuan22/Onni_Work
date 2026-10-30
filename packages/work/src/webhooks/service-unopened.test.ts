@@ -25,7 +25,7 @@ afterEach(() => {
  */
 describe('unopened project disk state', () => {
   it('sends a manual failure and supersedes an old question while another run still looks live', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1');
+    vi.stubEnv('ONNI_WEBHOOKS', '1');
     const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-unopened-'));
     roots.push(root);
     execFileSync('git', ['init', '-q'], { cwd: root });

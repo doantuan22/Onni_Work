@@ -13,7 +13,7 @@ import type { ProjectContext } from './project-context.ts';
 
 afterEach(() => vi.unstubAllEnvs());
 it.each(['/api/v1', '/api/v1/p/project'])('creates and tests a real local receiver through %s', async prefix => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = mkdtempSync(join(tmpdir(), 'webhook-loopback-api-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
   let secret = '', verified = false;

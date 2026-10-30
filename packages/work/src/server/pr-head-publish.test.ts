@@ -17,7 +17,7 @@ describe('POST /runs/:id/pr on a pull-request head run', () => {
   let store: RunStore;
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-pr-head-publish-'));
-    vi.stubEnv('CEZ_HOME', join(root, 'home'));
+    vi.stubEnv('ONNI_HOME', join(root, 'home'));
     mkdirSync(join(root, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(root, '.ai/onni'));
   });

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { AgentBrowser, bootProjectId, readTestEnv } from './agent-browser'
 
 /**
- * Automatic Open Mercato skill updates against the real CEZ_DRY_RUN cockpit.
+ * Automatic Open Mercato skill updates against the real ONNI_DRY_RUN cockpit.
  *
  * Reachability: dry-run deliberately reports a deterministic `current` state with no tracked
  * installation, so this spec covers the inherited preference, its persisted override, the clear

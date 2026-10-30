@@ -62,29 +62,29 @@ import {
  * dropping each other's registrations.
  */
 describe('workspace config', () => {
-  const originalHome = process.env.CEZ_HOME;
-  const originalBrowseRoot = process.env.CEZ_BROWSE_ROOT;
-  const originalProjectsDir = process.env.CEZ_PROJECTS_DIR;
-  const originalSkillsAutoUpdate = process.env.CEZ_SKILLS_AUTO_UPDATE;
+  const originalHome = process.env.ONNI_HOME;
+  const originalBrowseRoot = process.env.ONNI_BROWSE_ROOT;
+  const originalProjectsDir = process.env.ONNI_PROJECTS_DIR;
+  const originalSkillsAutoUpdate = process.env.ONNI_SKILLS_AUTO_UPDATE;
   let home: string;
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-workspace-'));
-    process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
-    delete process.env.CEZ_BROWSE_ROOT;
-    delete process.env.CEZ_PROJECTS_DIR;
-    delete process.env.CEZ_SKILLS_AUTO_UPDATE;
+    process.env.ONNI_HOME = home; // paths.ts sends all workspace paths here
+    delete process.env.ONNI_BROWSE_ROOT;
+    delete process.env.ONNI_PROJECTS_DIR;
+    delete process.env.ONNI_SKILLS_AUTO_UPDATE;
   });
 
   afterEach(() => {
-    if (originalHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = originalHome;
-    if (originalBrowseRoot === undefined) delete process.env.CEZ_BROWSE_ROOT;
-    else process.env.CEZ_BROWSE_ROOT = originalBrowseRoot;
-    if (originalProjectsDir === undefined) delete process.env.CEZ_PROJECTS_DIR;
-    else process.env.CEZ_PROJECTS_DIR = originalProjectsDir;
-    if (originalSkillsAutoUpdate === undefined) delete process.env.CEZ_SKILLS_AUTO_UPDATE;
-    else process.env.CEZ_SKILLS_AUTO_UPDATE = originalSkillsAutoUpdate;
+    if (originalHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalHome;
+    if (originalBrowseRoot === undefined) delete process.env.ONNI_BROWSE_ROOT;
+    else process.env.ONNI_BROWSE_ROOT = originalBrowseRoot;
+    if (originalProjectsDir === undefined) delete process.env.ONNI_PROJECTS_DIR;
+    else process.env.ONNI_PROJECTS_DIR = originalProjectsDir;
+    if (originalSkillsAutoUpdate === undefined) delete process.env.ONNI_SKILLS_AUTO_UPDATE;
+    else process.env.ONNI_SKILLS_AUTO_UPDATE = originalSkillsAutoUpdate;
     rmSync(home, { recursive: true, force: true });
     vi.restoreAllMocks();
     fsTestState.events.length = 0;
@@ -147,8 +147,8 @@ describe('workspace config', () => {
   });
 
   it('takes zero-config roots from the environment while explicit stored values win', async () => {
-    process.env.CEZ_BROWSE_ROOT = '~/source';
-    process.env.CEZ_PROJECTS_DIR = '~/checkouts';
+    process.env.ONNI_BROWSE_ROOT = '~/source';
+    process.env.ONNI_PROJECTS_DIR = '~/checkouts';
     expect(defaultWorkspaceConfig()).toMatchObject({
       browseRoot: '~/source',
       projectsDir: '~/checkouts',
@@ -162,11 +162,11 @@ describe('workspace config', () => {
 
   it('resolves skills auto-update as explicit setting, then 0/1 env, then true', () => {
     expect(effectiveSkillsAutoUpdate({}, {})).toBe(true);
-    expect(effectiveSkillsAutoUpdate({}, { CEZ_SKILLS_AUTO_UPDATE: '0' })).toBe(false);
-    expect(effectiveSkillsAutoUpdate({}, { CEZ_SKILLS_AUTO_UPDATE: '1' })).toBe(true);
-    expect(effectiveSkillsAutoUpdate({}, { CEZ_SKILLS_AUTO_UPDATE: 'invalid' })).toBe(true);
-    expect(effectiveSkillsAutoUpdate({ skillsAutoUpdate: false }, { CEZ_SKILLS_AUTO_UPDATE: '1' })).toBe(false);
-    expect(effectiveSkillsAutoUpdate({ skillsAutoUpdate: true }, { CEZ_SKILLS_AUTO_UPDATE: '0' })).toBe(true);
+    expect(effectiveSkillsAutoUpdate({}, { ONNI_SKILLS_AUTO_UPDATE: '0' })).toBe(false);
+    expect(effectiveSkillsAutoUpdate({}, { ONNI_SKILLS_AUTO_UPDATE: '1' })).toBe(true);
+    expect(effectiveSkillsAutoUpdate({}, { ONNI_SKILLS_AUTO_UPDATE: 'invalid' })).toBe(true);
+    expect(effectiveSkillsAutoUpdate({ skillsAutoUpdate: false }, { ONNI_SKILLS_AUTO_UPDATE: '1' })).toBe(false);
+    expect(effectiveSkillsAutoUpdate({ skillsAutoUpdate: true }, { ONNI_SKILLS_AUTO_UPDATE: '0' })).toBe(true);
   });
 
   it('resolves composer defaults as stored value, exact 0/1 env, then fallback', () => {

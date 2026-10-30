@@ -20,9 +20,9 @@ import { createApp } from './server.ts';
  * project field.
  */
 describe('usage SSE fan-out is scoped per project', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedRemote = process.env.CEZ_REMOTE;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedRemote = process.env.ONNI_REMOTE;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let home: string;
   let repoRoot: string;
   let otherRoot: string;
@@ -36,9 +36,9 @@ describe('usage SSE fan-out is scoped per project', () => {
     home = mkdtempSync(join(tmpdir(), 'onni-usage-home-'));
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-usage-boot-'));
     otherRoot = mkdtempSync(join(tmpdir(), 'onni-usage-other-'));
-    process.env.CEZ_HOME = home;
-    delete process.env.CEZ_REMOTE;
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_HOME = home;
+    delete process.env.ONNI_REMOTE;
+    process.env.ONNI_DRY_RUN = '1';
     for (const root of [repoRoot, otherRoot]) {
       mkdirSync(join(root, '.ai/onni'), { recursive: true });
       writeFileSync(join(root, '.ai/onni', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
@@ -67,12 +67,12 @@ describe('usage SSE fan-out is scoped per project', () => {
     contexts.disposeAll();
     store.flush();
     for (const dir of [home, repoRoot, otherRoot]) rmSync(dir, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   /** Open one SSE stream and return an incremental until-reader. */

@@ -26,7 +26,7 @@ describe("POST /api/v1/runs/:id/open-in — target 'default' (local-mode file op
   let store: RunStore;
   let runId: string;
   let worktree: string;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedRemote = process.env.ONNI_REMOTE;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -38,15 +38,15 @@ describe("POST /api/v1/runs/:id/open-in — target 'default' (local-mode file op
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     runId = store.createRun({ title: 't', workflow: 'quick-task', task: 'do it', steps: [] }).id;
     store.updateRun(runId, { worktreePath: worktree });
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_REMOTE;
   });
 
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
     rmSync(worktree, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const post = (body: unknown, over: Partial<ServerDeps> = {}) =>
@@ -56,8 +56,8 @@ describe("POST /api/v1/runs/:id/open-in — target 'default' (local-mode file op
       { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) },
     );
 
-  it('409s in hosted mode (CEZ_REMOTE=1) before any filesystem/open-in-app call', async () => {
-    process.env.CEZ_REMOTE = '1';
+  it('409s in hosted mode (ONNI_REMOTE=1) before any filesystem/open-in-app call', async () => {
+    process.env.ONNI_REMOTE = '1';
     const res = await post({ target: 'default', path: 'logo.png' });
     expect(res.status).toBe(409);
     expect(((await res.json()) as { error: string }).error).toContain('hosted mode');

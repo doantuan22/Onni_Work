@@ -67,7 +67,7 @@ const delay = (milliseconds: number): Promise<void> => new Promise(resolve => se
 export async function executeLifecycleCommand(options: LifecycleExecutorOptions): Promise<LifecycleExecutionResult> {
   const timeout = options.timeoutSeconds ?? LIFECYCLE_DEFAULT_TIMEOUT_SECONDS;
   if (!Number.isFinite(timeout) || timeout < 1 || timeout > 86400) throw new Error('Lifecycle timeout must be 1–86400 seconds');
-  if (options.dryRun || process.env.CEZ_DRY_RUN === '1') return { state: 'succeeded', exitCode: 0, quiescent: true, truncated: false };
+  if (options.dryRun || process.env.ONNI_DRY_RUN === '1') return { state: 'succeeded', exitCode: 0, quiescent: true, truncated: false };
   if (options.signal?.aborted) return { state: 'interrupted', exitCode: null, reason: 'Stopped before launch', quiescent: true, truncated: false };
   const windows = (options.platform ?? process.platform) === 'win32';
   const completionMarker = `__onni_${randomUUID().replaceAll('-', '')}`;

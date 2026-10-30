@@ -20,7 +20,7 @@ project with its own desktop-first surface. Upstream services are not used:
 - the GitHub star-count chip, its one-time toast and `GET /api/v1/star-count` are removed; no
   request to github.com is made.
 
-Internal identifiers (`cez`, `.ai/cezar`, `~/.cezar`, `CEZ_*`, the `@open-mercato/*` package
+Internal identifiers (`cez`, `.ai/cezar`, `~/.cezar`, `ONNI_*`, the `@open-mercato/*` package
 scope) are unchanged. See `NOTICE` for attribution and `CHANGELOG.md` for this fork's history.
 
 ## Layout
@@ -45,9 +45,9 @@ npm run test:unit    # node:test: fast core-module coverage
 npm run build        # tsc, vite build, pack gate
 ```
 
-`CEZ_DRY_RUN=1 npm run dev` exercises the whole cockpit offline with mocked agent CLIs.
+`ONNI_DRY_RUN=1 npm run dev` exercises the whole cockpit offline with mocked agent CLIs.
 
-Configuration is discovered, not required: every `CEZ_*` variable is optional and documented in
+Configuration is discovered, not required: every `ONNI_*` variable is optional and documented in
 `.env.example` and `docs/reference.md`.
 
 ## License

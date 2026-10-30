@@ -38,10 +38,10 @@ const wait = (condition: () => void) => vi.waitFor(condition, { timeout: 12_000,
 beforeEach(() => {
   launched = []; launchCheck = undefined;
   semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 1 } });
-  vi.stubEnv('CEZ_DRY_RUN', '0');
-  vi.stubEnv('CEZ_AUTONAME', '0');
-  vi.stubEnv('CEZ_TITLE_UPDATES', '0');
-  vi.stubEnv('CEZ_REVIEW_GATE', '0');
+  vi.stubEnv('ONNI_DRY_RUN', '0');
+  vi.stubEnv('ONNI_AUTONAME', '0');
+  vi.stubEnv('ONNI_TITLE_UPDATES', '0');
+  vi.stubEnv('ONNI_REVIEW_GATE', '0');
   vi.spyOn(ClaudeCliRunner.prototype, 'startSession').mockImplementation(spec => {
     launched.push(spec); launchCheck?.(spec);
     return { result: Promise.resolve({ text: 'Fixture task completed', toolCalls: [], tokensUsed: 0, sessionId: spec.sessionId ?? randomUUID() }), open: false, sendMessage: () => false, end: () => undefined, interrupt: () => undefined } satisfies AgentSession;

@@ -20,7 +20,7 @@ const changed = (): TrackerFailure => ({ available: false, code: 'source_changed
 /** Secrets, adapter instances and cursor namespaces belong to a project and connection revision. */
 export function createTrackerService(env: NodeJS.ProcessEnv = process.env, fetcher: typeof fetch = fetch) {
   const store = new TrackerConnections(env);
-  const demo = env.CEZ_DRY_RUN === '1';
+  const demo = env.ONNI_DRY_RUN === '1';
   const providers = new Map<string, { root: string; provider: TrackerProvider }>();
   const invalidate = (root: string) => {
     for (const [key, entry] of providers) if (entry.root === root) {

@@ -471,7 +471,7 @@ export const AUTOSAVE_INTERVAL_MS = 90_000;
  *  noise interleaving PR history. The flushes (`autosaveCommit` at turn end and before
  *  a draft PR) are NOT gated: the branch must still end holding the finished state. */
 export function periodicAutosaveEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.CEZ_AUTOSAVE === '1';
+  return env.ONNI_AUTOSAVE === '1';
 }
 
 /**
@@ -482,11 +482,11 @@ export function periodicAutosaveEnabled(env: NodeJS.ProcessEnv = process.env): b
  * files or Git state. Isolated worktree runs are unaffected.
  */
 export function repositoryRootLockDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.CEZ_DISABLE_REPO_LOCK === '1';
+  return env.ONNI_DISABLE_REPO_LOCK === '1';
 }
 
 const REPOSITORY_ROOT_LOCK_DISABLED_NOTE =
-  'repository-root lock disabled by CEZ_DISABLE_REPO_LOCK=1 (shared checkout is unsafe)';
+  'repository-root lock disabled by ONNI_DISABLE_REPO_LOCK=1 (shared checkout is unsafe)';
 
 const CONTINUABLE_STATUSES: readonly string[] = ['done', 'failed', 'cancelled', 'review'];
 
@@ -815,10 +815,10 @@ function deferredBindingActive(run: Pick<RunRecord, 'id' | 'deferredBinding' | '
 }
 
 const AUTO_RESUME_PROMPT =
-  'The provider usage limit that interrupted this task has reset. Read the handoff file (CEZ_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
+  'The provider usage limit that interrupted this task has reset. Read the handoff file (ONNI_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
 type AutoResumeReason = NonNullable<RunRecord['autoResumeReason']>;
 const TRANSIENT_RETRY_PROMPT =
-  'Your previous turn stopped on a temporary provider error (overloaded, unreachable or a login refresh race), not on anything in the task. Read the handoff file (CEZ_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
+  'Your previous turn stopped on a temporary provider error (overloaded, unreachable or a login refresh race), not on anything in the task. Read the handoff file (ONNI_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
 
 /** Which automatic resume a failure earns: a usage limit's reset window or a transient retry. */
 function autoResumeReasonFor(error: string | undefined): AutoResumeReason | undefined {
@@ -972,7 +972,7 @@ export function dispatchPromptPart(prompt: string | undefined, extra: string | u
  * library when the project has one (#929), plus its own temp directory when this
  * run got one (#785). Handing an agent a `TMPDIR` its file tools are not allowed
  * to write would trade one silent failure for another, so the two travel
- * together; under `CEZ_AGENT_TMPDIR=0` there is no per-run directory and the
+ * together; under `ONNI_AGENT_TMPDIR=0` there is no per-run directory and the
  * list is exactly what it always was.
  *
  * The library is on this list for the same reason `runsDir` is: `pastedAttachmentsText`
@@ -991,7 +991,7 @@ export function agentDirectories(
   // A dispatched run's tree directory (spec 2026-09-10-dispatch: the filesystem channel) — its
   // brief, its notes, its inbox. Same rule as TMPDIR: the env names it, so the file tools must
   // reach it.
-  if (env.CEZ_TREE_DIR) dirs.push(env.CEZ_TREE_DIR);
+  if (env.ONNI_TREE_DIR) dirs.push(env.ONNI_TREE_DIR);
   return dirs;
 }
 
@@ -1200,7 +1200,7 @@ export const VARIANT_HINTS: Record<string, string | undefined> = {
 };
 
 const RESTART_CONTINUATION_PROMPT =
-  'The onni process restarted while you were working on this task. Read the handoff file (CEZ_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
+  'The onni process restarted while you were working on this task. Read the handoff file (ONNI_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
 
 interface PendingContinuation {
   stepId: string;
@@ -1238,7 +1238,7 @@ interface PreparedUserMessage {
  * `WorkspaceSemaphore`, spec 2026-07-20 step 2.5) and each run executes in its
  * own git worktree on a `onni/<id8>` branch (spec 006), autosave-committed at
  * turn end and before a draft PR — plus every 90 s when opted in via
- * CEZ_AUTOSAVE=1 (#471). Each autosave records its trigger in the commit
+ * ONNI_AUTOSAVE=1 (#471). Each autosave records its trigger in the commit
  * subject, so the always-on flushes are not mistaken for the opt-in timer.
  * The user's working tree is never touched.
  */
@@ -1312,7 +1312,7 @@ export class RunManager {
    * Runs normally isolate in worktrees and may execute in parallel. When that
    * isolation is unavailable (or explicitly disabled), access to `repoRoot` is
    * serialized by default so two agents cannot edit/revert the same files
-   * (#438). `CEZ_DISABLE_REPO_LOCK=1` deliberately bypasses this safety lease.
+   * (#438). `ONNI_DISABLE_REPO_LOCK=1` deliberately bypasses this safety lease.
    */
   private repoRootTail: Promise<void> = Promise.resolve();
   /** Leases chained onto `repoRootTail` and not yet released — holders and waiters alike. Zero
@@ -1533,7 +1533,7 @@ export class RunManager {
   /** Env the spawned claude gets so the agent can find its handoff file and
    *  the global inbox (spec 007; the inbox only when the run opted in).
    *
-   *  `CEZ_TODOS_FILE` is set to `''` rather than omitted when follow-ups are
+   *  `ONNI_TODOS_FILE` is set to `''` rather than omitted when follow-ups are
    *  off: runners spawn with `{ ...process.env, ...spec.env }`, so omitting the
    *  key would let a value inherited from *this* process through — a nested
    *  onni (an agent running `onni serve`/`onni run`/the test suite) would then
@@ -1549,22 +1549,22 @@ export class RunManager {
     const dispatch = this.dispatchOf(runId);
     // The same ONE gate the dispatch prompt uses, so an agent is never told about a CLI whose
     // address it was not given (and never given an address it was not told about).
-    const apiUrl = this.dispatchReachable() ? process.env.CEZ_API_URL : undefined;
+    const apiUrl = this.dispatchReachable() ? process.env.ONNI_API_URL : undefined;
     return {
-      CEZ_HANDOFF_FILE: handoffPath(this.dataDir, runId),
-      CEZ_TASK_ID: runId,
-      CEZ_TODOS_FILE: generateFollowups ? todosPath(this.dataDir) : '',
+      ONNI_HANDOFF_FILE: handoffPath(this.dataDir, runId),
+      ONNI_TASK_ID: runId,
+      ONNI_TODOS_FILE: generateFollowups ? todosPath(this.dataDir) : '',
       ...agentTmpEnv(this.dataDir, runId),
       // Task dispatch (spec 2026-09-10-dispatch): where the `onni task` CLI reaches this server and
       // which project the run belongs to. Absent (not empty) while the feature is off, so the env
       // is byte-for-byte as before.
-      ...(apiUrl ? { CEZ_API_URL: apiUrl } : {}),
-      ...(apiUrl && this.projectId ? { CEZ_PROJECT_ID: this.projectId } : {}),
-      // The cockpit's OWN entrypoint, so an agent runs `node "$CEZ_BIN" task …` and never an older
+      ...(apiUrl ? { ONNI_API_URL: apiUrl } : {}),
+      ...(apiUrl && this.projectId ? { ONNI_PROJECT_ID: this.projectId } : {}),
+      // The cockpit's OWN entrypoint, so an agent runs `node "$ONNI_BIN" task …` and never an older
       // `onni` that happens to be on its PATH without the command (observed on the first live run).
-      ...(apiUrl && process.env.CEZ_BIN ? { CEZ_BIN: process.env.CEZ_BIN } : {}),
+      ...(apiUrl && process.env.ONNI_BIN ? { ONNI_BIN: process.env.ONNI_BIN } : {}),
       // The tree directory — brief, notes, inbox — for a run in a dispatch tree only.
-      ...(dispatch ? { CEZ_TREE_DIR: treeDir(this.dataDir, dispatch.rootRunId) } : {}),
+      ...(dispatch ? { ONNI_TREE_DIR: treeDir(this.dataDir, dispatch.rootRunId) } : {}),
     };
   }
 
@@ -1639,7 +1639,7 @@ export class RunManager {
     const boundIdentity = backend === 'codex' && bound?.id === resolved.profile.id && bound.path === profilePath ? bound.identity : undefined;
     let attributionDisabled = false;
     const association = run?.automationTracker?.association;
-    const trackerEnv = association && this.resolveTrackerEnv && process.env.CEZ_DRY_RUN !== '1'
+    const trackerEnv = association && this.resolveTrackerEnv && process.env.ONNI_DRY_RUN !== '1'
       ? await this.resolveTrackerEnv(this.repoRoot, association)
       : {};
     const secrets = [trackerEnv.JIRA_API_TOKEN, trackerEnv.LINEAR_API_KEY].filter((value): value is string => Boolean(value));
@@ -2542,7 +2542,7 @@ export class RunManager {
   }
 
   /**
-   * Stop every process still carrying one of these runs' `CEZ_TASK_ID` (#1411) after `graceMs`,
+   * Stop every process still carrying one of these runs' `ONNI_TASK_ID` (#1411) after `graceMs`,
    * skipping any run that became live again, and note what was stopped on the run.
    * Fire-and-forget: never delays or throws into the lifecycle.
    */
@@ -2574,8 +2574,8 @@ export class RunManager {
   }
 
   /**
-   * Can a task actually REACH the dispatch routes? The flag being on is not enough: `CEZ_API_URL`
-   * and `CEZ_BIN` are set by `serveCommand`, so a headless `onni run` has neither — no cockpit to
+   * Can a task actually REACH the dispatch routes? The flag being on is not enough: `ONNI_API_URL`
+   * and `ONNI_BIN` are set by `serveCommand`, so a headless `onni run` has neither — no cockpit to
    * call, and no entrypoint to call it with.
    *
    * The gate for everything an agent is TOLD about dispatch (the prompt), as opposed to what the
@@ -2586,12 +2586,12 @@ export class RunManager {
    * capability an agent cannot use must not be described to it.
    */
   private dispatchReachable(): boolean {
-    return this.dispatchEnabled() && Boolean(process.env.CEZ_API_URL);
+    return this.dispatchEnabled() && Boolean(process.env.ONNI_API_URL);
   }
 
   /**
    * THE gate for everything that needs a `dispatch` record: answers `undefined` when the feature
-   * is off (`CEZ_DISPATCH=0`) or when this run has neither dispatched nor been dispatched.
+   * is off (`ONNI_DISPATCH=0`) or when this run has neither dispatched nor been dispatched.
    * Re-read from the store on every call rather than cached: the stored object is written DURING
    * a turn (a report, a pending report from a settled child, the over-budget flag).
    */
@@ -2625,7 +2625,7 @@ export class RunManager {
    * The automations twin of `prepareDispatchSession` (spec 2026-09-13-automations-from-prompt):
    * the short prompt part that lets a task recognise "whenever a PR is opened, do X" as an
    * automation and create one with `onni automation`. Gated on `automationsReachable` — the flag
-   * AND the transport — so a headless run, or a cockpit with `CEZ_AUTOMATIONS` unset, composes
+   * AND the transport — so a headless run, or a cockpit with `ONNI_AUTOMATIONS` unset, composes
    * nothing and behaves exactly as it did before the feature existed.
    */
   private prepareAutomationsSession(state: ActiveRun): void {
@@ -2860,7 +2860,7 @@ export class RunManager {
      *  the single synthetic step an agent's order gets. */
     opts: { workflow?: WorkflowDef } = {},
   ): { id: string; branch?: string } | { refused: string } {
-    if (!this.dispatchEnabled()) return { refused: 'dispatch is disabled on this cockpit (CEZ_DISPATCH=0) — the operator turned it off. Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is disabled.' };
+    if (!this.dispatchEnabled()) return { refused: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0) — the operator turned it off. Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is disabled.' };
     const parent = this.store.getRun(parentId);
     if (!parent) return { refused: `no such run: ${parentId}` };
     if (isTerminalStatus(parent.status)) return { refused: `run ${parentId} has already settled (${parent.status})` };
@@ -3651,7 +3651,7 @@ export class RunManager {
    */
   /**
    * Give the exclusive working-tree lease back while an in-place run is parked. Only the run that
-   * holds one has anything to give (a worktree run never acquired it; `CEZ_DISABLE_REPO_LOCK=1`
+   * holds one has anything to give (a worktree run never acquired it; `ONNI_DISABLE_REPO_LOCK=1`
    * never granted it). The first live dispatch tree found the gap: a commander running in the
    * repo working tree parked as a monitor for the whole life of its children — slot-exempt, so
    * the queue looked free — while every other in-place task waited on a lease nobody was using.
@@ -5349,7 +5349,7 @@ export class RunManager {
     } else if (repo && input.worktree === false) {
       // Composer opt-out: run in the repo working tree, no branch/worktree. The
       // repository-root lease serializes these runs by default; the explicit
-      // CEZ_DISABLE_REPO_LOCK=1 escape hatch allows unsafe overlap.
+      // ONNI_DISABLE_REPO_LOCK=1 escape hatch allows unsafe overlap.
       const recordedRun = this.store.getRun(runId);
       if (recordedRun?.inPlaceBranch) {
         // spec 2026-10-19-repo-git-sync: fork the checkout itself onto a task branch. A recorded
@@ -6434,11 +6434,11 @@ export class RunManager {
       case 'notify.webhook': {
         // A network call to an arbitrary URL widens exposure, so it is opt-in (AGENTS.md § Zero
         // config): with the flag off the node refuses loudly instead of calling out.
-        if (process.env.CEZ_WORKFLOW_WEBHOOKS !== '1') {
-          note('webhooks are off — set CEZ_WORKFLOW_WEBHOOKS=1 to let workflows POST to URLs', 'danger');
+        if (process.env.ONNI_WORKFLOW_WEBHOOKS !== '1') {
+          note('webhooks are off — set ONNI_WORKFLOW_WEBHOOKS=1 to let workflows POST to URLs', 'danger');
           return 'failed';
         }
-        if (process.env.CEZ_DRY_RUN === '1') {
+        if (process.env.ONNI_DRY_RUN === '1') {
           outputs.set(node.id, { status: 200 });
           note(`dry run — webhook to ${node.url} not sent`);
           return 'done';
@@ -6476,7 +6476,7 @@ export class RunManager {
           outputs.set(node.id, { status: 'no-pr' });
           return 'failed';
         }
-        if (process.env.CEZ_DRY_RUN === '1') {
+        if (process.env.ONNI_DRY_RUN === '1') {
           note(`dry run — CI on PR #${number} reported green`);
           outputs.set(node.id, { status: 'passing' });
           return 'green';
@@ -7469,8 +7469,8 @@ export class RunManager {
     task: string,
     live?: { turnText?: string; diffStat?: string },
   ): Promise<string | undefined> {
-    // CEZ_AUTONAME=0 kills all LLM naming; dry-run skips it too unless
-    // CEZ_AUTONAME=1 forces the mock path — see autoNamingActive.
+    // ONNI_AUTONAME=0 kills all LLM naming; dry-run skips it too unless
+    // ONNI_AUTONAME=1 forces the mock path — see autoNamingActive.
     if (!autoNamingActive()) return undefined;
     task = this.store.redactRunText(runId, task);
     if (live?.turnText) live = { ...live, turnText: this.store.redactRunText(runId, live.turnText) };
@@ -7614,7 +7614,7 @@ export class RunManager {
   /**
    * Live title refresh (task auto-naming spec, step 3): re-run the namer with
    * the turn's context. Skips: toggle off (`liveTitleUpdates` config over
-   * `CEZ_TITLE_UPDATES` env, default ON), user-owned title, marker-owned title
+   * `ONNI_TITLE_UPDATES` env, default ON), user-owned title, marker-owned title
    * (the agent declares via `ONNI:TITLE` — the token-saving fast path), dry-run
    * mocks (canned answers add nothing), empty turn text, unchanged namer inputs.
    */
@@ -7694,7 +7694,7 @@ export class RunManager {
    * runs never enter review; no worktree or an empty diff means plain `done`.
    *
    * The gate is opt-in (#489): the review park happens only when it is enabled
-   * (`reviewGateEnabled` — config toggle over the `CEZ_REVIEW_GATE` env, default
+   * (`reviewGateEnabled` — config toggle over the `ONNI_REVIEW_GATE` env, default
    * OFF) AND the run is not autonomous. Autonomous runs — and runs with the gate
    * off — settle straight to `done`, leaving the diff in the worktree untouched.
    */
@@ -8609,7 +8609,7 @@ export class RunManager {
   }
 
   /** Autosave-commit the worktree every 90 s while the run lives (spec 006).
-   *  Opt-in via CEZ_AUTOSAVE=1 (#471) — see periodicAutosaveEnabled. */
+   *  Opt-in via ONNI_AUTOSAVE=1 (#471) — see periodicAutosaveEnabled. */
   private armAutosave(runId: string, state: ActiveRun): void {
     if (!periodicAutosaveEnabled()) return;
     if (state.cwd === this.repoRoot || state.autosaveTimer) return;
@@ -8671,18 +8671,18 @@ export class RunManager {
       Object.values(resolved.values).filter((value) => value.length >= MIN_SECRET_LEN),
     );
     // The run context wins last (Phase 2). Its names are first removed from what the server
-    // inherited — a onni started inside another onni task carries that task's `CEZ_*` — so a
+    // inherited — a onni started inside another onni task carries that task's `ONNI_*` — so a
     // variable this run does not set is absent, never a stale value from somewhere else. The
     // login shell `runCheckStep` spawns sources the user's profile after this, so the guarantee
     // is about the server's environment, not about a profile that exports one of these names.
     const base: NodeJS.ProcessEnv = { ...process.env };
     for (const name of CHECK_CONTEXT_VARS) {
-      // `CEZ_PROJECT_ID` is the one context name that is ALSO a documented CLI input
+      // `ONNI_PROJECT_ID` is the one context name that is ALSO a documented CLI input
       // (BACKWARD_COMPATIBILITY.md §1 — `onni task`/`onni automation` address a cockpit with it),
       // so it is replaced, never stripped. A headless `onni run` builds its manager without a
-      // projectId, and deleting the operator's value there would leave `CEZ_API_URL` in place
+      // projectId, and deleting the operator's value there would leave `ONNI_API_URL` in place
       // while `onni task create` silently fell back to the cockpit's boot project.
-      if (name === 'CEZ_PROJECT_ID' && !this.projectId) continue;
+      if (name === 'ONNI_PROJECT_ID' && !this.projectId) continue;
       delete base[name];
     }
     return { ...base, ...resolved.values, ...(await this.checkContextEnv(runId, state, step.id)) };
@@ -8691,35 +8691,35 @@ export class RunManager {
   /**
    * What a check step knows about the run it verifies (spec 2026-10-06-agentic-e2e-checks
    * Phase 2). Onni-set outputs, not knobs: every value is a string, and a value this run does
-   * not have is omitted rather than set empty, so `[ -n "$CEZ_GITHUB_NUMBER" ]` means what it
-   * says. `CEZ_SHARED_CACHE_DIR` is one directory per project, shared by its tasks, so a
+   * not have is omitted rather than set empty, so `[ -n "$ONNI_GITHUB_NUMBER" ]` means what it
+   * says. `ONNI_SHARED_CACHE_DIR` is one directory per project, shared by its tasks, so a
    * replay cache recorded in one worktree is warm in the next.
    */
   private async checkContextEnv(runId: string, state: ActiveRun, stepId: string): Promise<Record<string, string>> {
     const run = this.store.getRun(runId);
     const context: Record<string, string> = {
-      CEZ_RUN_ID: runId,
-      CEZ_WORKTREE: state.cwd,
-      CEZ_STEP_ID: stepId,
-      CEZ_ATTEMPT: String(run?.steps.find((step) => step.id === stepId)?.iterations ?? 1),
+      ONNI_RUN_ID: runId,
+      ONNI_WORKTREE: state.cwd,
+      ONNI_STEP_ID: stepId,
+      ONNI_ATTEMPT: String(run?.steps.find((step) => step.id === stepId)?.iterations ?? 1),
     };
     if (this.projectId) {
-      context.CEZ_PROJECT_ID = this.projectId;
+      context.ONNI_PROJECT_ID = this.projectId;
       const cache = await sharedCheckCacheDir(this.projectId);
-      if (cache) context.CEZ_SHARED_CACHE_DIR = cache;
+      if (cache) context.ONNI_SHARED_CACHE_DIR = cache;
     }
-    if (run?.branch) context.CEZ_BRANCH = run.branch;
-    if (run?.baseBranch) context.CEZ_BASE = run.baseBranch;
+    if (run?.branch) context.ONNI_BRANCH = run.branch;
+    if (run?.baseBranch) context.ONNI_BASE = run.baseBranch;
     const github = run?.automation ? parseGithubItemUrl(run.automation.githubUrl) : undefined;
     if (github && run?.automation) {
-      context.CEZ_GITHUB_REPO = github.repo;
-      context.CEZ_GITHUB_NUMBER = String(github.number);
-      context.CEZ_GITHUB_EVENT = run.automation.event;
+      context.ONNI_GITHUB_REPO = github.repo;
+      context.ONNI_GITHUB_NUMBER = String(github.number);
+      context.ONNI_GITHUB_EVENT = run.automation.event;
     }
     if (run?.prHead) {
-      context.CEZ_PR_HEAD_SHA = run.prHead.headSha;
-      context.CEZ_PR_HEAD_REF = run.prHead.headRef;
-      context.CEZ_PR_BASE_REF = run.prHead.baseRef;
+      context.ONNI_PR_HEAD_SHA = run.prHead.headSha;
+      context.ONNI_PR_HEAD_REF = run.prHead.headRef;
+      context.ONNI_PR_BASE_REF = run.prHead.baseRef;
     }
     return context;
   }
@@ -8803,20 +8803,20 @@ export class RunManager {
  * Documented in `docs/reference.md` and `.env.example`; keep the three in step.
  */
 export const CHECK_CONTEXT_VARS = [
-  'CEZ_RUN_ID',
-  'CEZ_PROJECT_ID',
-  'CEZ_WORKTREE',
-  'CEZ_BRANCH',
-  'CEZ_BASE',
-  'CEZ_STEP_ID',
-  'CEZ_ATTEMPT',
-  'CEZ_SHARED_CACHE_DIR',
-  'CEZ_GITHUB_REPO',
-  'CEZ_GITHUB_NUMBER',
-  'CEZ_GITHUB_EVENT',
-  'CEZ_PR_HEAD_SHA',
-  'CEZ_PR_HEAD_REF',
-  'CEZ_PR_BASE_REF',
+  'ONNI_RUN_ID',
+  'ONNI_PROJECT_ID',
+  'ONNI_WORKTREE',
+  'ONNI_BRANCH',
+  'ONNI_BASE',
+  'ONNI_STEP_ID',
+  'ONNI_ATTEMPT',
+  'ONNI_SHARED_CACHE_DIR',
+  'ONNI_GITHUB_REPO',
+  'ONNI_GITHUB_NUMBER',
+  'ONNI_GITHUB_EVENT',
+  'ONNI_PR_HEAD_SHA',
+  'ONNI_PR_HEAD_REF',
+  'ONNI_PR_BASE_REF',
 ] as const;
 
 /** `https://<github host>/<owner>/<repo>/(pull|issues)/<n>` → its repo and number (any host: GitHub Enterprise). */

@@ -44,7 +44,7 @@ const REPLAY_WAIT_MS = 5_000;
 const AUTO_END_DELAY_MS = 250;
 
 export interface CopilotAcpRunnerOptions {
-  /** Override the binary; defaults to `copilot` on PATH (`CEZ_COPILOT_BIN`). */
+  /** Override the binary; defaults to `copilot` on PATH (`ONNI_COPILOT_BIN`). */
   bin?: string;
   /** Inactivity timeout for a run (ms); per-spec `timeoutMs` still wins. */
   timeoutMs?: number;
@@ -70,7 +70,7 @@ export class CopilotAcpRunner implements AgentRunner {
 
   constructor(opts: CopilotAcpRunnerOptions = {}) {
     this.bin =
-      opts.bin ?? process.env.CEZ_COPILOT_BIN ?? (process.env.CEZ_DRY_RUN === '1' ? mockCopilotPath() : 'copilot');
+      opts.bin ?? process.env.ONNI_COPILOT_BIN ?? (process.env.ONNI_DRY_RUN === '1' ? mockCopilotPath() : 'copilot');
     this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
@@ -584,7 +584,7 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-/** Path to the bundled mock (`scripts/mock-copilot-acp.mjs`), for CEZ_DRY_RUN=1. */
+/** Path to the bundled mock (`scripts/mock-copilot-acp.mjs`), for ONNI_DRY_RUN=1. */
 function mockCopilotPath(): string {
   // Resolved like `mockPiPath`: `new URL().pathname` yields `/C:/…` on Windows, which spawn rejects.
   const here = dirname(fileURLToPath(import.meta.url));

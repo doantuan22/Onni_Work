@@ -23,7 +23,7 @@ async function setup() {
 afterEach(async () => { for (const service of services.splice(0)) await service.dispose(); for (const store of stores.splice(0)) store.flush(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); vi.unstubAllEnvs(); });
 describe('project webhook lifecycle service', () => {
   it.each(['transient', 'policy', 'rate_limited'] as const)('manual test is one-shot after %s and cannot recover Suspended later', async kind => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.id, 1);
     for (let i = 0; i < 10; i++) await service.endpoints.deliveryResult(receiver.id, 2, 1, 'transient', false);
     const current = service.list().receivers[0]!;
@@ -36,7 +36,7 @@ describe('project webhook lifecycle service', () => {
     await service.tick(); expect(service.list().receivers[0]!.state).toBe('active');
   }, 20000);
   it.each([60000, 4 * 86400000])('terminates an interrupted manual claim as unknown after %i ms without resending', async delay => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com' });
     await service.test(receiver.id, { expectedRevision: 1, deliveryRevision: 1, operationId: 'interrupted' });
     vi.spyOn(service as unknown as { complete(): Promise<void> }, 'complete').mockRejectedValueOnce(new Error('crash'));
@@ -47,7 +47,7 @@ describe('project webhook lifecycle service', () => {
     expect(service.deliveries(receiver.id)[0]).toMatchObject({ status: 'failed', reason: 'outcome_unknown' });
   });
   it.each(['missing', 'corrupt', 'outbox'] as const)('safely resets %s identity integrity preserving inactive definitions', async fault => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.id, 1);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const old = store.createRun({ title: 'old', task: 'old', workflow: 'w', steps: [] }); store.updateRun(old.id, { status: 'done' });
@@ -64,14 +64,14 @@ describe('project webhook lifecycle service', () => {
     expect(service.list().receivers[0]!.state).toBe('active');
   });
   it('keeps masked notice identity after deletion', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com/private?token=fixture' });
     await service.delete(receiver.id, 1);
     expect(service.list().notice).toMatchObject({ receiverId: receiver.id, receiverName: 'Ops', destination: 'https://example.com/…', source: 'cockpit/api' });
     expect(JSON.stringify(service.list().notice)).not.toContain('fixture');
   });
   it('expires a beyond-lifetime Retry-After before constructing its date', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com', graceSeconds: 0 }); await service.activate(receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] }); store.updateRun(run.id, { status: 'done' });
@@ -80,7 +80,7 @@ describe('project webhook lifecycle service', () => {
     expect(service.list().webhookHealth.status).toBe('ready');
   });
   it('projects payload retention separately from retry expiry and refreshes task availability', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com', graceSeconds: 0 }); await service.activate(receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] }); store.updateRun(run.id, { status: 'done' }); await service.tick();
@@ -95,7 +95,7 @@ describe('project webhook lifecycle service', () => {
     expect(row()).toMatchObject({ payloadAvailability: 'expired', replayUnavailableReason: 'payload_expired', replayAllowed: false });
   });
   it('resumes an interrupted integrity reset and cancels pending bodies without changing bytes', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.id, 1);
     await service.test(receiver.id, { expectedRevision: 2, deliveryRevision: 1, operationId: 'queued' });
     const body = service.deliveries(receiver.id)[0]!.body;
@@ -109,14 +109,14 @@ describe('project webhook lifecycle service', () => {
     await service.tick(); expect(x.send).not.toHaveBeenCalled();
   });
   it('does not overwrite corrupt receiver definitions while resetting missing identity', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     await service.create({ name: 'Ops', url: 'https://example.com' }); await service.dispose();
     rmSync(join(x.dataDir, 'webhooks/identity.json')); writeFileSync(join(x.dataDir, 'webhooks/endpoints.json'), '{broken');
     await expect(module.WebhookService.open(x.options)).rejects.toThrow('Invalid webhook state: endpoints.json');
     expect(readFileSync(join(x.dataDir, 'webhooks/endpoints.json'), 'utf8')).toBe('{broken');
   });
   it('exposes retained saturation and task-filterable compact drops without source text', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const admissions = (service as unknown as { admissions: AdmissionRepository }).admissions;
     (admissions as unknown as { limits: { retainedBytes: number } }).limits.retainedBytes = 12000;
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
@@ -127,7 +127,7 @@ describe('project webhook lifecycle service', () => {
     expect(service.deliveryPage(receiver.id, { limit: 100, taskId: lost.id }).items).toMatchObject([{ taskId: lost.id, reason: 'retained_capacity', payloadAvailability: 'not_created' }]);
   });
   it.each(['history', 'endpoint', 'after_endpoint'])('recovers persisted result effects after a crash at %s', async (boundary) => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup();
     let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com', graceSeconds: 0 }); await service.activate(receiver.id, 1);
@@ -146,7 +146,7 @@ describe('project webhook lifecycle service', () => {
     expect(x.send).toHaveBeenCalledTimes(1);
   });
   it.each([400, 429, 302])('waits another fifteen minutes after a failed suspended probe (%i)', async (status) => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com', graceSeconds: 0 }); await service.activate(receiver.id, 1);
     for (let i = 0; i < 10; i++) await service.endpoints.deliveryResult(receiver.id, 2, 1, 'transient', false);
@@ -156,7 +156,7 @@ describe('project webhook lifecycle service', () => {
     expect(service.list().receivers[0]!.nextProbeAt).toBe('2026-10-13T12:30:01.000Z');
   });
   it('records changed configuration field names without their private values', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com/private' });
     const old = service.endpoints.privateReceiver(receiver.id)!;
     await service.update(receiver.id, { name: old.name, url: 'https://example.com/secret-path', profile: 'standard', preset: old.preset, events: old.events, scope: old.scope, graceSeconds: old.graceSeconds, allowLocalNetwork: old.allowLocalNetwork, includeScheduledFailures: old.includeScheduledFailures, expectedRevision: 1 });
@@ -165,7 +165,7 @@ describe('project webhook lifecycle service', () => {
     expect(JSON.stringify(row)).not.toContain('secret-path');
   });
   it('does not rewrite completed history on every restart', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup();
     const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const { receiver } = await service.create({ name: 'Ops', url: 'https://example.com', graceSeconds: 0 }); await service.activate(receiver.id, 1);
@@ -176,12 +176,12 @@ describe('project webhook lifecycle service', () => {
     finally { spy.mockRestore(); }
   });
   it('does not create storage or a service unless the exact flag is enabled', async () => {
-    const x = await setup(); vi.stubEnv('CEZ_WEBHOOKS', 'true');
+    const x = await setup(); vi.stubEnv('ONNI_WEBHOOKS', 'true');
     expect(await module.WebhookService.open(x.options)).toBeUndefined();
     expect(existsSync(x.dataDir)).toBe(false);
   });
   it('captures only post-activation transitions and sends signed-body input outside task mutation', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const old = store.createRun({ title: 'earlier', task: 'private prompt', workflow: 'w', steps: [] }); store.updateRun(old.id, { status: 'done' });
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com', graceSeconds: 0 }); await service.activate(receiver.receiver.id, 1);
@@ -194,7 +194,7 @@ describe('project webhook lifecycle service', () => {
     expect(service.deliveries(receiver.receiver.id)[0]!.status).toBe('delivered');
   });
   it('suppresses replied questions during grace and defers failures while active', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); let active = false; service.attach(store, { isActive: () => active }, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] });
@@ -205,7 +205,7 @@ describe('project webhook lifecycle service', () => {
     active = false; await service.tick(); expect(x.send).toHaveBeenCalledTimes(1);
   });
   it('keeps failure disposition dedupe after restart and does not create a second manual alert', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] }); store.updateRun(run.id, { status: 'failed' }); x.time(Date.parse('2026-10-13T12:01:00Z'));
@@ -216,7 +216,7 @@ describe('project webhook lifecycle service', () => {
     expect(x.send).toHaveBeenCalledTimes(1);
   });
   it('retains current failure identity beyond payload and history retention', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] }); store.updateRun(run.id, { status: 'failed' });
@@ -230,7 +230,7 @@ describe('project webhook lifecycle service', () => {
     expect(JSON.parse(readFileSync(join(x.dataDir, 'webhooks/failure-episodes.json'), 'utf8')).episodes[run.id]).toBeDefined();
   });
   it('keeps the newest failure episode when several transitions precede admission', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] });
@@ -240,7 +240,7 @@ describe('project webhook lifecycle service', () => {
     expect(service.deliveries(receiver.receiver.id).map(item => item.status)).toEqual(['superseded', 'delivered']);
   });
   it('does not resurrect an old waiting episode while draining the outbox', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com', graceSeconds: 0 }); await service.activate(receiver.receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] });
@@ -252,7 +252,7 @@ describe('project webhook lifecycle service', () => {
   });
 
   it('tests inactive receivers once and exposes a read-only deleted history', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' });
     const input = { expectedRevision: 1, deliveryRevision: 1, operationId: 'same-click' };
     const first = await service.test(receiver.receiver.id, input);
@@ -266,7 +266,7 @@ describe('project webhook lifecycle service', () => {
     expect(service.activityPage(receiver.receiver.id).items.some(row => row.action === 'test')).toBe(true);
   });
   it('replays retained terminal bytes once per operation with the same event ID', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] }); store.updateRun(run.id, { status: 'done' }); await service.tick();
@@ -281,7 +281,7 @@ describe('project webhook lifecycle service', () => {
   });
 
   it('rejects a fourth queued test for the same host while an idempotent retry remains free', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' });
     const first = { expectedRevision: 1, deliveryRevision: 1, operationId: 'one' };
     const result = await service.test(receiver.receiver.id, first);
@@ -292,7 +292,7 @@ describe('project webhook lifecycle service', () => {
   });
 
   it('retains hosted activation policy after restarting in local mode', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open({ ...x.options, mode: 'hosted' }))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open({ ...x.options, mode: 'hosted' }))!; services.push(service);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
     await service.dispose(); services.pop();
     service = (await module.WebhookService.open(x.options))!; services.push(service);
@@ -302,7 +302,7 @@ describe('project webhook lifecycle service', () => {
   });
 
   it('retires failure identities on archival and when a restarted owner sees a completed task', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup(); let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);
     const receiver = await service.create({ name: 'Ops', url: 'https://example.com' }); await service.activate(receiver.receiver.id, 1);
     const run = store.createRun({ title: 'task', task: 'task', workflow: 'w', steps: [] }); store.updateRun(run.id, { status: 'failed' });
@@ -318,7 +318,7 @@ describe('project webhook lifecycle service', () => {
   });
 
   it('resets a copied project without using its inherited receivers, keys or live-owner lock', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const a = await setup(); const original = (await module.WebhookService.open(a.options))!; services.push(original);
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const a = await setup(); const original = (await module.WebhookService.open(a.options))!; services.push(original);
     const created = await original.create({ name: 'Original', url: 'https://example.com' }); await original.activate(created.receiver.id, 1);
     const b = await setup(); cpSync(a.dataDir, b.dataDir, { recursive: true });
     const copy = (await module.WebhookService.open(b.options))!; services.push(copy);
@@ -333,7 +333,7 @@ describe('native chat delivery pipeline', () => {
   const slack = 'https://hooks.slack.com/services/T1/B1/test';
   const discord = `https://discord.com/api/webhooks/123456789012345678/${'x'.repeat(68)}`;
   it.each([['slack.v1', slack], ['discord.v1', discord]] as const)('renders test and task notifications for %s, retaining onni JSON and retry snapshots', async (format, url) => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup();
     const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Team', format, url, preset: 'all', graceSeconds: 0 });
     await service.test(receiver.id, { expectedRevision: 1, deliveryRevision: 1, operationId: 'chat-test' });
@@ -359,7 +359,7 @@ describe('native chat delivery pipeline', () => {
     expect(JSON.stringify(service.deliveryPage(receiver.id, { limit: 100 }))).not.toContain(url);
   });
   it.each([[404, 10015, 'disabled'], [401, 50027, 'disabled'], [400, undefined, 'active'], [404, undefined, 'active']] as const)('maps Discord %i/%s to %s', async (status, providerCode, state) => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup();
     const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Discord', format: 'discord.v1', url: discord });
     const active = await service.activate(receiver.id, 1);
@@ -371,7 +371,7 @@ describe('native chat delivery pipeline', () => {
 });
 
 it('settles corrupt chat payloads without publishing a claim or sending', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup();
+  vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup();
   let service = (await module.WebhookService.open(x.options))!; services.push(service);
   const { receiver } = await service.create({ name: 'Slack', format: 'slack.v1', url: 'https://hooks.slack.com/services/T1/B1/test' });
   await service.test(receiver.id, { expectedRevision: 1, deliveryRevision: 1, operationId: 'corrupt-chat' });
@@ -389,7 +389,7 @@ it('settles corrupt chat payloads without publishing a claim or sending', async 
 
 describe('legacy invalid hostname isolation', () => {
   it.each([false, true])('drains healthy receivers across reopen (persisted admission: %s)', async pending => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup();
+    vi.stubEnv('ONNI_WEBHOOKS', '1'); const x = await setup();
     let clock = x.options.now(); x.options.now = () => clock++;
     let service = (await module.WebhookService.open(x.options))!; services.push(service);
     const bad = await service.create({ name: 'bad', url: 'https://bad.example.com', preset: 'all' });

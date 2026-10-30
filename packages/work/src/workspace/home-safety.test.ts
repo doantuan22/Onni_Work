@@ -10,14 +10,14 @@ import { atomicWriteJsonSync, loadWorkspaceConfig, mergeWriteWorkspaceConfig } f
 /**
  * The registry-clobber regression. A onni test run used to be able to replace
  * the developer's real `~/.onni/config.json` with a fixture's projects: the
- * `CEZ_HOME` pin lives in `process.env`, a timing-out test drops it in
+ * `ONNI_HOME` pin lives in `process.env`, a timing-out test drops it in
  * `afterEach` while a merge-write is still in flight, and the write then
  * resolved a different home than the read. These cases lock in the two
  * defences — one resolved path per merge-write, and a hard refusal to write
  * into the real onni home from a test process.
  */
 describe('onni home write safety', () => {
-  const originalCezHome = process.env.CEZ_HOME;
+  const originalCezHome = process.env.ONNI_HOME;
   const originalHome = process.env.HOME;
   let pinned: string;
   let elsewhere: string;
@@ -28,23 +28,23 @@ describe('onni home write safety', () => {
     pinned = mkdtempSync(join(base, 'onni-home-safety-pinned-'));
     elsewhere = mkdtempSync(join(base, 'onni-home-safety-elsewhere-'));
     fakeUserHome = mkdtempSync(join(base, 'onni-home-safety-user-'));
-    process.env.CEZ_HOME = pinned;
+    process.env.ONNI_HOME = pinned;
   });
 
   afterEach(() => {
-    if (originalCezHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = originalCezHome;
+    if (originalCezHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalCezHome;
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
     for (const dir of [pinned, elsewhere, fakeUserHome]) rmSync(dir, { recursive: true, force: true });
   });
 
-  it('keeps a merge-write inside one file when CEZ_HOME moves mid-flight', async () => {
+  it('keeps a merge-write inside one file when ONNI_HOME moves mid-flight', async () => {
     await mergeWriteWorkspaceConfig((config) => {
       // Exactly what a test's afterEach does to an orphaned write: the pin is
       // gone by the time the write runs. The write must still land where the
       // read came from.
-      process.env.CEZ_HOME = elsewhere;
+      process.env.ONNI_HOME = elsewhere;
       config.projects.push({
         id: 'shop',
         root: '/tmp/shop',
@@ -71,23 +71,23 @@ describe('onni home write safety', () => {
         source: 'local',
       });
     });
-    process.env.CEZ_HOME = pinned;
+    process.env.ONNI_HOME = pinned;
     expect((await loadWorkspaceConfig()).projects.map((p) => p.id)).toEqual(['shop']);
   });
 
   it('refuses a write into the real onni home while running under vitest', () => {
     process.env.HOME = fakeUserHome;
-    delete process.env.CEZ_HOME;
+    delete process.env.ONNI_HOME;
     const target = workspaceConfigPath();
 
     expect(target).toBe(join(fakeUserHome, '.onni', 'config.json'));
-    expect(() => atomicWriteJsonSync(target, { projects: [] })).toThrow(/CEZ_HOME is not pinned/);
+    expect(() => atomicWriteJsonSync(target, { projects: [] })).toThrow(/ONNI_HOME is not pinned/);
     expect(existsSync(join(fakeUserHome, '.onni'))).toBe(false);
   });
 
   it('leaves an existing real-home registry byte-for-byte intact when a leaked write is refused', () => {
     process.env.HOME = fakeUserHome;
-    delete process.env.CEZ_HOME;
+    delete process.env.ONNI_HOME;
     const target = workspaceConfigPath();
     const existing = '{"projects":[{"id":"real","root":"/repos/real"}]}\n';
     mkdirSync(join(fakeUserHome, '.onni'), { recursive: true });
@@ -100,7 +100,7 @@ describe('onni home write safety', () => {
   it('survives a real, timing-out suite run: the home registry is never created', () => {
     // The reproduction from the bug report, run for real: part of the workspace
     // CLI suite with a timeout short enough that every case is killed mid-write,
-    // pointed at a throwaway HOME and started with no CEZ_HOME at all — the way
+    // pointed at a throwaway HOME and started with no ONNI_HOME at all — the way
     // `npm test` runs on a developer's machine. Run against the code as it was
     // before this change, that command wrote `<home>/.onni/config.json` holding
     // the fixture's projects on 5 runs out of 5; the `remove` cases are the
@@ -114,7 +114,7 @@ describe('onni home write safety', () => {
     const packageRoot = fileURLToPath(new URL('../..', import.meta.url));
     const vitestBin = join(packageRoot, '..', '..', 'node_modules', '.bin', 'vitest');
     const env: NodeJS.ProcessEnv = { ...process.env, HOME: fakeUserHome };
-    delete env.CEZ_HOME;
+    delete env.ONNI_HOME;
     delete env.VITEST;
 
     const run = spawnSync(

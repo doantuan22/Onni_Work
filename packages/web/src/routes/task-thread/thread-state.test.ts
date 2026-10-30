@@ -217,7 +217,7 @@ describe('reduceThread — v1-only fallback (pre-v2 transcripts)', () => {
 })
 
 describe('reduceThread — mixed v1+v2 files (the dedup rule)', () => {
-  // Verbatim from an R2 dry-run transcript (CEZ_DRY_RUN=1, seq/ts as persisted): the v2 items
+  // Verbatim from an R2 dry-run transcript (ONNI_DRY_RUN=1, seq/ts as persisted): the v2 items
   // land FIRST, their v1 `text` twin one line later — the order the rule is grounded in.
   const md = '## Markdown fixture\n```ts\nconst answer: number = 42;\n```'
   const mixed: RunEvent[] = [

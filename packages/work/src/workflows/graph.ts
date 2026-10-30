@@ -144,7 +144,7 @@ export const graphNodeSchema = z.discriminatedUnion('type', [
   }),
   /** Comment on the task's issue (`ONNI:ISSUE`, or the issue the task is about), or on `issue`. */
   z.object({ ...nodeBase, type: z.literal('github.issue-comment'), issue: z.number().int().positive().optional(), body: z.string().min(1) }),
-  /** POST to a URL — a network call, so it only runs with `CEZ_WORKFLOW_WEBHOOKS=1`. */
+  /** POST to a URL — a network call, so it only runs with `ONNI_WORKFLOW_WEBHOOKS=1`. */
   z.object({ ...nodeBase, type: z.literal('notify.webhook'), url: z.string().url().regex(/^https?:\/\//, 'http(s) URLs only'), body: z.string().optional() }),
 ]);
 
@@ -229,7 +229,7 @@ export const NODE_CATALOG: NodeCatalogEntry[] = [
   { type: 'git.sync-base', category: 'git', label: 'Sync with base', description: 'Merge the latest base branch in; stops on conflict for an agent to resolve.', ports: ['done', 'conflict', 'failed'], outputs: ['conflicts'] },
   { type: 'github.pr-update', category: 'git', label: 'Update PR', description: 'Mark the task PR ready, add labels, request reviewers.', ports: ['done', 'failed'], outputs: [] },
   { type: 'github.issue-comment', category: 'git', label: 'Issue comment', description: "Comment on the task's issue.", ports: ['done', 'failed'], outputs: ['issue'] },
-  { type: 'notify.webhook', category: 'scripts', label: 'Webhook', description: 'POST a message to a URL (needs CEZ_WORKFLOW_WEBHOOKS=1).', ports: ['done', 'failed'], outputs: ['status'] },
+  { type: 'notify.webhook', category: 'scripts', label: 'Webhook', description: 'POST a message to a URL (needs ONNI_WORKFLOW_WEBHOOKS=1).', ports: ['done', 'failed'], outputs: ['status'] },
   { type: 'workflow', category: 'flow', label: 'Sub-workflow', description: 'Run another saved workflow as a subtask and wait for it.', ports: ['done', 'failed'], outputs: ['runId', 'status', 'summary'] },
 ];
 

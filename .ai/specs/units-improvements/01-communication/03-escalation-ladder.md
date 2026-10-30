@@ -159,7 +159,7 @@ ask path has no equivalent. Confirmed: the ladder does not exist today.**
 | F-E3 | high | `ask.requested` has no persisted counterpart on the run record — only an ephemeral v2 SSE event (`run.ts:173-177`). | `run.ts:173-177`; grep of `ask.requested` shows it only in event-history / UI-event plumbing, never in `unitSchema` (`packages/contract/src/units.ts:101-117`) | Combined with F-E2, a pending ask/escalation is invisible to anything that reads only the record (a recovered process, a script, a second cockpit tab that missed the SSE event) — the ONLY durable trace is the transcript event, not structured state a new marker/escalation design can safely branch on. |
 | F-E4 | med | `resolveAskTurn`'s unit-run nudge-skip guard (`!(unitTurn.hasUnit && Boolean(ask))`, `run.ts:3006`) exists in `runAgentStep` but the equivalent fold happens implicitly inside `runContinuation`'s `waiting` gate (`run.ts:3718`) rather than as a parallel named guard — the two sites express the same rule through different code shapes. | `run.ts:3002-3018` vs `run.ts:3718-3745` | Any escalation marker that needs the "must not answer its own question" guarantee has to be re-verified against BOTH shapes independently; a naive port of the `runAgentStep` guard into a hypothetical `runContinuation` rewrite could silently diverge, which is precisely the AGENTS.md "two near-identical turn-end handlers" trap. |
 | F-E5 | med | The cockpit Guard inbox filter (`needsGuard: run.status === 'waiting'`) has no way to distinguish "waiting on the human" from "waiting on a live ancestor" — its own comment admits this is coincidence, not a guarantee (`missions.ts:58-62`). | `missions.ts:58-62`, `missions.ts:106` | Any ladder design that keeps the CHILD at `status: 'waiting'` while its question is only addressed to a parent (not the human) will, unless the filter changes, immediately re-flood the Guard inbox with internal rank-to-rank chatter — the exact regression F-E1 is meant to fix, shipped as a "fix" that changes nothing on the default path (AGENTS.md § replacement-that-ships-off). |
-| F-E6 | med | Role prompts (`CAESAR_PROMPT`, `LEGATE_PROMPT`, `CENTURION_PROMPT`) are the ONLY place a unit run learns the `CEZ:ASK`/`CEZ:SPAWN`/`CEZ:REPORT` shapes (`prompts.ts:7-10`) — a marker/schema change with no matching prompt change is unreachable by any model. | `prompts.ts:7-10`, `prompts.ts:79-84` composed identically into all three roles | This is the concrete form of "a replacement that ships OFF is not a replacement" for this specific feature: shipping a new marker without updating `CENTURION_PROMPT`/`LEGATE_PROMPT` means zero unit runs will ever emit it — the ladder is dead on the default path even with `CEZ_UNITS=1`. |
+| F-E6 | med | Role prompts (`CAESAR_PROMPT`, `LEGATE_PROMPT`, `CENTURION_PROMPT`) are the ONLY place a unit run learns the `CEZ:ASK`/`CEZ:SPAWN`/`CEZ:REPORT` shapes (`prompts.ts:7-10`) — a marker/schema change with no matching prompt change is unreachable by any model. | `prompts.ts:7-10`, `prompts.ts:79-84` composed identically into all three roles | This is the concrete form of "a replacement that ships OFF is not a replacement" for this specific feature: shipping a new marker without updating `CENTURION_PROMPT`/`LEGATE_PROMPT` means zero unit runs will ever emit it — the ladder is dead on the default path even with `ONNI_UNITS=1`. |
 | F-E7 | low | `MAX_AUTO_CONTINUES` (`run.ts:313`) and the monitoring-wake counters (`ActiveRun.autoContinues`, `ActiveRun.monitoringWakeups`, `run.ts:276`, `run.ts:264`) are **in-memory only** — not persisted on the record — so they reset to 0 on every restart. | `run.ts:253-310` (`ActiveRun` interface, no `autoContinues`/`monitoringWakeups` in `unitSchema`, `packages/contract/src/units.ts:101-117`) | Pre-existing gap, not introduced here, but directly relevant: any NEW round-cap for escalation ping-pong must decide up front whether to repeat this in-memory-only pattern (simple, but restart-forgetful) or persist on `unit` (restart-safe, but a new field every read path must thread through — see §3, P-E4). |
 
 ---
@@ -258,13 +258,13 @@ sibling `unitTurn.escalated` / `unitTurn.answered` flag to `handleUnitMarkers`'s
 
 **Default-path impact (every new knob at its shipped default).**
 
-- `CEZ_UNITS` unset → nothing parses `CEZ:ESCALATE`/`CEZ:ANSWER` at all (same gate as today's
+- `ONNI_UNITS` unset → nothing parses `CEZ:ESCALATE`/`CEZ:ANSWER` at all (same gate as today's
   `unitOf` at `run.ts:1450-1453`). Byte-for-byte unchanged.
-- `CEZ_UNITS=1`, run has no `unit` (a plain flat run) → `state.unitRole` is unset, and the new
+- `ONNI_UNITS=1`, run has no `unit` (a plain flat run) → `state.unitRole` is unset, and the new
   markers are gated on it exactly like `stripUnitMarkers` is today (`run.ts:2928`). `CEZ:ASK`
   behaves exactly as it does today for every non-unit run. **This is the single most important
   default-path check**: it must never regress the far more common flat-run ask flow.
-- `CEZ_UNITS=1`, unit run, **prompt not updated** → dead knob (F-E6). This proposal is only a
+- `ONNI_UNITS=1`, unit run, **prompt not updated** → dead knob (F-E6). This proposal is only a
   replacement if shipped together with P-E5 (prompt update) in the same commit — see effort/risk
   below.
 
@@ -334,7 +334,7 @@ exactly the AGENTS.md "state with no exit" failure mode.
    chain), so the Guard inbox row is self-explaining rather than looking identical to a normal
    escalation.
 
-**Default-path impact.** Only reachable when `CEZ_UNITS=1` and the run is a unit run with a
+**Default-path impact.** Only reachable when `ONNI_UNITS=1` and the run is a unit run with a
 `parentRunId` — a Caesar (no parent) always falls to step 4 immediately, which is exactly
 `CEZ:ASK`'s current, unchanged behaviour. No new knob.
 
@@ -447,7 +447,7 @@ feature: a restart mid-ask silently settles the run "done" and reports that upwa
    but is **not** fixed by this proposal; fixing it would need a persisted pending-ask flag on
    `RunRecord` outside `unit`, which is out of this ladder's scope and listed in §5).
 
-**Default-path impact.** `CEZ_UNITS` unset or run has no `unit` → `recover()`'s new check reads
+**Default-path impact.** `ONNI_UNITS` unset or run has no `unit` → `recover()`'s new check reads
 `undefined` and falls straight through to today's `settleSuccess` path, unchanged. A unit run with
 no pending escalation (the common case even with the feature on) also falls through unchanged.
 

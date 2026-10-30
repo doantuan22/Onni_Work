@@ -2,11 +2,11 @@
  * `onni automation …` — the CLI a running agent (or a human at a shell) uses to create and manage
  * GitHub automations on a running cockpit (spec `.ai/specs/2026-09-13-automations-from-prompt.md`).
  *
- * A thin HTTP client over the automations family, addressed like `onni task` is: `CEZ_API_URL`
- * (the cockpit) and `CEZ_PROJECT_ID` (which project the run belongs to), both put in every agent's
+ * A thin HTTP client over the automations family, addressed like `onni task` is: `ONNI_API_URL`
+ * (the cockpit) and `ONNI_PROJECT_ID` (which project the run belongs to), both put in every agent's
  * environment by the engine while the cockpit is reachable; a person at a shell sets them by hand.
  * No server: the command says so (`cockpit-address.ts`, worded for whoever is asking) and exits 2.
- * Automations off on the cockpit (`CEZ_AUTOMATIONS` unset): every route answers 409 with
+ * Automations off on the cockpit (`ONNI_AUTOMATIONS` unset): every route answers 409 with
  * the flag's name, which this command relays verbatim and exits 1 — the agent is told to stop and
  * report, never to substitute a cron job or a polling script.
  *
@@ -22,10 +22,10 @@ import { RUNNER_IDS } from '../core/agent-runner.ts';
 import { AUTOMATION_SCHEMA_REFERENCE } from './prompts.ts';
 
 export interface AutomationCliEnv {
-  CEZ_API_URL?: string;
-  CEZ_PROJECT_ID?: string;
+  ONNI_API_URL?: string;
+  ONNI_PROJECT_ID?: string;
   /** Set for every agent by the engine; only read to pick who the missing-address message is for. */
-  CEZ_TASK_ID?: string;
+  ONNI_TASK_ID?: string;
 }
 
 export interface AutomationCliIo {
@@ -75,9 +75,9 @@ const CHECK_TIMEOUT_MS = 120_000;
 const EDITABLE_KEYS = ['name', 'description', 'kind', 'events', 'intervalSeconds', 'filters', 'schedule', 'trackerTrigger', 'task'] as const;
 
 function base(env: AutomationCliEnv): { url: string; scope: string; projectId?: string } | null {
-  const url = env.CEZ_API_URL?.replace(/\/+$/, '');
+  const url = env.ONNI_API_URL?.replace(/\/+$/, '');
   if (!url) return null;
-  const projectId = env.CEZ_PROJECT_ID || undefined;
+  const projectId = env.ONNI_PROJECT_ID || undefined;
   const scope = projectId ? `${url}/api/v1/p/${encodeURIComponent(projectId)}` : `${url}/api/v1`;
   return { url, scope, projectId };
 }

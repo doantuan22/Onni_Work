@@ -99,7 +99,7 @@ describe('Global settings → Skills', () => {
     })
     expect(toggle.getAttribute('aria-checked')).toBe('true')
     expect(screen.getByText('On (default)')).toBeTruthy()
-    expect(screen.getByText(/CEZ_SKILLS_AUTO_UPDATE supplies/)).toBeTruthy()
+    expect(screen.getByText(/ONNI_SKILLS_AUTO_UPDATE supplies/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Use default' }) as HTMLButtonElement).disabled).toBe(true)
   })
 

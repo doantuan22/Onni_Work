@@ -13,7 +13,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 it.each(['retry', 'grace', 'probe'] as const)(
   'rechecks %s deadline after a real scheduler wait and sends once when due again',
   async kind => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1');
+    vi.stubEnv('ONNI_WEBHOOKS', '1');
     const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-timing-'));
     execFileSync('git', ['init', '-q'], { cwd: root });
     const dataDir = join(root, '.ai/onni');
@@ -86,7 +86,7 @@ it.each(['retry', 'grace', 'probe'] as const)(
 );
 
 it('keeps a live test claim past its lease and records the actual result across restart', async () => {
-  vi.stubEnv('CEZ_WEBHOOKS', '1');
+  vi.stubEnv('ONNI_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-slow-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
   const dataDir = join(root, '.ai/onni');

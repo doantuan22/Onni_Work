@@ -33,12 +33,12 @@ describe('a queued run re-resolves its workflow at dequeue (#1078)', () => {
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   const workflowFile = () => join(repoRoot, '.ai/onni/workflows', 'demo.yaml');
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-1078-'));
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
@@ -51,8 +51,8 @@ describe('a queued run re-resolves its workflow at dequeue (#1078)', () => {
 
   afterEach(() => {
     manager.dispose();
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
   });

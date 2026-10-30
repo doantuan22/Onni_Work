@@ -43,10 +43,10 @@ describe('repo sync — the main checkout against a local bare origin', () => {
   let remote: string;
   let repo: string;
   let peer: string;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
 
   beforeEach(() => {
-    delete process.env.CEZ_DRY_RUN;
+    delete process.env.ONNI_DRY_RUN;
     base = mkdtempSync(join(tmpdir(), 'onni-sync-'));
     remote = join(base, 'origin.git');
     repo = join(base, 'repo');
@@ -62,8 +62,8 @@ describe('repo sync — the main checkout against a local bare origin', () => {
   });
 
   afterEach(async () => {
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
     await removeTempDir(base);
   });
 
@@ -143,8 +143,8 @@ describe('repo sync — the main checkout against a local bare origin', () => {
     expect(g(remote, 'log', '-1', '--format=%s', 'main').trim()).toBe('local work');
   });
 
-  it('CEZ_DRY_RUN=1 never touches the network', async () => {
-    process.env.CEZ_DRY_RUN = '1';
+  it('ONNI_DRY_RUN=1 never touches the network', async () => {
+    process.env.ONNI_DRY_RUN = '1';
     commit(repo, 'b.txt', 'local work');
     expect(await fetchRepo(repo)).toEqual({ ok: true, message: 'dry run — fetch skipped' });
     expect(await pushRepo(repo)).toEqual({ ok: true, message: 'dry run — push skipped' });

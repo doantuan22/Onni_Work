@@ -37,7 +37,7 @@ import { acpMcpCapabilities, skippedServersNote, toAcpMcpServers } from './priva
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
 
 export interface JunieRunnerOptions {
-  /** Override the binary name/path; defaults to `junie` on PATH (`CEZ_JUNIE_BIN`). */
+  /** Override the binary name/path; defaults to `junie` on PATH (`ONNI_JUNIE_BIN`). */
   bin?: string;
   /** Inactivity timeout for a run (ms); per-spec `timeoutMs` still wins. */
   timeoutMs?: number;

@@ -20,12 +20,12 @@ import { createApp } from './server.ts';
  * single-mount, never under `/api/v1/p/`.
  */
 describe('the workspace settings API (step 2.7)', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedBrowseRoot = process.env.CEZ_BROWSE_ROOT;
-  const savedProjectsDir = process.env.CEZ_PROJECTS_DIR;
-  const savedSkillsAutoUpdate = process.env.CEZ_SKILLS_AUTO_UPDATE;
-  const savedAutonomousDefault = process.env.CEZ_AUTONOMOUS_DEFAULT;
-  const savedWorktreeDefault = process.env.CEZ_WORKTREE_DEFAULT;
+  const savedHome = process.env.ONNI_HOME;
+  const savedBrowseRoot = process.env.ONNI_BROWSE_ROOT;
+  const savedProjectsDir = process.env.ONNI_PROJECTS_DIR;
+  const savedSkillsAutoUpdate = process.env.ONNI_SKILLS_AUTO_UPDATE;
+  const savedAutonomousDefault = process.env.ONNI_AUTONOMOUS_DEFAULT;
+  const savedWorktreeDefault = process.env.ONNI_WORKTREE_DEFAULT;
   let home: string;
   let repoRoot: string;
   let store: RunStore;
@@ -34,16 +34,16 @@ describe('the workspace settings API (step 2.7)', () => {
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-workspace-api-'));
-    process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
-    delete process.env.CEZ_BROWSE_ROOT;
-    delete process.env.CEZ_PROJECTS_DIR;
-    delete process.env.CEZ_SKILLS_AUTO_UPDATE;
-    delete process.env.CEZ_AUTONOMOUS_DEFAULT;
-    delete process.env.CEZ_WORKTREE_DEFAULT;
+    process.env.ONNI_HOME = home; // paths.ts sends all workspace paths here
+    delete process.env.ONNI_BROWSE_ROOT;
+    delete process.env.ONNI_PROJECTS_DIR;
+    delete process.env.ONNI_SKILLS_AUTO_UPDATE;
+    delete process.env.ONNI_AUTONOMOUS_DEFAULT;
+    delete process.env.ONNI_WORKTREE_DEFAULT;
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-workspace-api-repo-'));
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    // The REAL semaphore with its production loader (which reads the CEZ_HOME
+    // The REAL semaphore with its production loader (which reads the ONNI_HOME
     // config), so the PUT → refresh() → cached-limits chain is observed end to
     // end. The routes never touch the manager — an empty stub is honest.
     semaphore = new WorkspaceSemaphore();
@@ -58,18 +58,18 @@ describe('the workspace settings API (step 2.7)', () => {
 
   afterEach(() => {
     store.flush();
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedBrowseRoot === undefined) delete process.env.CEZ_BROWSE_ROOT;
-    else process.env.CEZ_BROWSE_ROOT = savedBrowseRoot;
-    if (savedProjectsDir === undefined) delete process.env.CEZ_PROJECTS_DIR;
-    else process.env.CEZ_PROJECTS_DIR = savedProjectsDir;
-    if (savedSkillsAutoUpdate === undefined) delete process.env.CEZ_SKILLS_AUTO_UPDATE;
-    else process.env.CEZ_SKILLS_AUTO_UPDATE = savedSkillsAutoUpdate;
-    if (savedAutonomousDefault === undefined) delete process.env.CEZ_AUTONOMOUS_DEFAULT;
-    else process.env.CEZ_AUTONOMOUS_DEFAULT = savedAutonomousDefault;
-    if (savedWorktreeDefault === undefined) delete process.env.CEZ_WORKTREE_DEFAULT;
-    else process.env.CEZ_WORKTREE_DEFAULT = savedWorktreeDefault;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedBrowseRoot === undefined) delete process.env.ONNI_BROWSE_ROOT;
+    else process.env.ONNI_BROWSE_ROOT = savedBrowseRoot;
+    if (savedProjectsDir === undefined) delete process.env.ONNI_PROJECTS_DIR;
+    else process.env.ONNI_PROJECTS_DIR = savedProjectsDir;
+    if (savedSkillsAutoUpdate === undefined) delete process.env.ONNI_SKILLS_AUTO_UPDATE;
+    else process.env.ONNI_SKILLS_AUTO_UPDATE = savedSkillsAutoUpdate;
+    if (savedAutonomousDefault === undefined) delete process.env.ONNI_AUTONOMOUS_DEFAULT;
+    else process.env.ONNI_AUTONOMOUS_DEFAULT = savedAutonomousDefault;
+    if (savedWorktreeDefault === undefined) delete process.env.ONNI_WORKTREE_DEFAULT;
+    else process.env.ONNI_WORKTREE_DEFAULT = savedWorktreeDefault;
     for (const dir of [home, repoRoot]) rmSync(dir, { recursive: true, force: true });
   });
 
@@ -124,8 +124,8 @@ describe('the workspace settings API (step 2.7)', () => {
   });
 
   it('GET resolves both zero-config roots from the environment', async () => {
-    process.env.CEZ_BROWSE_ROOT = '~/source';
-    process.env.CEZ_PROJECTS_DIR = '~/clones';
+    process.env.ONNI_BROWSE_ROOT = '~/source';
+    process.env.ONNI_PROJECTS_DIR = '~/clones';
     const body = (await (await getConfig()).json()) as WorkspaceConfigResponse;
     expect(body).toMatchObject({ browseRoot: '~/source', projectsDir: '~/clones' });
   });
@@ -374,7 +374,7 @@ describe('the workspace settings API (step 2.7)', () => {
   });
 
   it('PUT stores explicit auto-update values and null clears back to the inherited env value', async () => {
-    process.env.CEZ_SKILLS_AUTO_UPDATE = '0';
+    process.env.ONNI_SKILLS_AUTO_UPDATE = '0';
     expect((await (await getConfig()).json()) as WorkspaceConfigResponse).toMatchObject({
       skillsAutoUpdate: null,
       effectiveSkillsAutoUpdate: false,
@@ -406,8 +406,8 @@ describe('the workspace settings API (step 2.7)', () => {
   });
 
   it('PUT stores and independently clears composer defaults while exposing env inheritance', async () => {
-    process.env.CEZ_AUTONOMOUS_DEFAULT = '1';
-    process.env.CEZ_WORKTREE_DEFAULT = '0';
+    process.env.ONNI_AUTONOMOUS_DEFAULT = '1';
+    process.env.ONNI_WORKTREE_DEFAULT = '0';
     const inherited = (await (await getConfig()).json()) as WorkspaceConfigResponse;
     expect(inherited.composerDefaults).toEqual({
       autonomous: null,

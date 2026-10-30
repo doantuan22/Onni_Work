@@ -27,13 +27,13 @@ import { RUNNER_IDS } from '../core/agent-runner.ts';
 // exemption is still required because `refuseSpawnUnderTest` runs inside `runDetached` BEFORE
 // `spawn`, so it trips on the mock exactly as it would on the real thing. Scoped to the file and
 // restored afterwards, so no other suite inherits the exemption.
-const savedAllowSpawn = process.env.CEZ_ALLOW_TEST_SPAWN;
+const savedAllowSpawn = process.env.ONNI_ALLOW_TEST_SPAWN;
 beforeAll(() => {
-  process.env.CEZ_ALLOW_TEST_SPAWN = '1';
+  process.env.ONNI_ALLOW_TEST_SPAWN = '1';
 });
 afterAll(() => {
-  if (savedAllowSpawn === undefined) delete process.env.CEZ_ALLOW_TEST_SPAWN;
-  else process.env.CEZ_ALLOW_TEST_SPAWN = savedAllowSpawn;
+  if (savedAllowSpawn === undefined) delete process.env.ONNI_ALLOW_TEST_SPAWN;
+  else process.env.ONNI_ALLOW_TEST_SPAWN = savedAllowSpawn;
 });
 
 import {

@@ -103,7 +103,7 @@ export async function planChain(repoRoot: string, task: string): Promise<PlanRes
   };
 }
 
-/** The `[onni-planner]` marker lets the CEZ_DRY_RUN mock recognize a planning call. */
+/** The `[onni-planner]` marker lets the ONNI_DRY_RUN mock recognize a planning call. */
 function buildPlannerPrompt(task: string, skills: Skill[], verifyCommands: string[]): string {
   const catalog = skills.length
     ? skills.map((s) => `- ${s.name} — ${s.description ?? ''}`).join('\n')

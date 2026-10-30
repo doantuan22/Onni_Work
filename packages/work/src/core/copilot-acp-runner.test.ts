@@ -85,14 +85,14 @@ describe('copilotExitMessage', () => {
 });
 
 describe('CopilotAcpRunner — one turn over the mock', () => {
-  const saved = process.env.CEZ_DRY_RUN;
+  const saved = process.env.ONNI_DRY_RUN;
   afterEach(() => {
-    if (saved === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = saved;
+    if (saved === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = saved;
   });
 
-  it('CEZ_DRY_RUN=1 swaps in the bundled mock and streams both protocols to one done', async () => {
-    process.env.CEZ_DRY_RUN = '1';
+  it('ONNI_DRY_RUN=1 swaps in the bundled mock and streams both protocols to one done', async () => {
+    process.env.ONNI_DRY_RUN = '1';
     const argsFile = join(cwd, 'args.json');
     const c = collect();
     const session = new CopilotAcpRunner().startSession(
@@ -101,7 +101,7 @@ describe('CopilotAcpRunner — one turn over the mock', () => {
         systemPrompt: 'Be terse.',
         cwd,
         model: 'claude-sonnet-4',
-        env: { CEZ_MOCK_COPILOT_ARGS_FILE: argsFile },
+        env: { ONNI_MOCK_COPILOT_ARGS_FILE: argsFile },
       },
       c.onEvent,
       { autoEndAfterFirstTurn: true, onUiEvent: c.onUiEvent },
@@ -140,7 +140,7 @@ describe('CopilotAcpRunner — one turn over the mock', () => {
   });
 
   it('reads a started tool as running and its plan off the native plan channel', async () => {
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     const c = collect();
     await new CopilotAcpRunner().startSession({ userPrompt: 'go', cwd }, c.onEvent, {
       autoEndAfterFirstTurn: true,
@@ -226,7 +226,7 @@ describe('CopilotAcpRunner — session lifecycle', () => {
   it('end() during a turn is onni closing the session, not an agent failure (telemetry 2e3b122d)', async () => {
     const c = collect();
     const session = new CopilotAcpRunner({ bin: MOCK }).startSession(
-      { userPrompt: 'go', cwd, env: { CEZ_MOCK_COPILOT_PROMPT_HANGS: '1' } },
+      { userPrompt: 'go', cwd, env: { ONNI_MOCK_COPILOT_PROMPT_HANGS: '1' } },
       c.onEvent,
       { onUiEvent: c.onUiEvent },
     );
@@ -242,7 +242,7 @@ describe('CopilotAcpRunner — session lifecycle', () => {
   it('a CLI that quits cleanly mid-turn on its own says the prompt went unanswered', async () => {
     const c = collect();
     const session = new CopilotAcpRunner({ bin: MOCK }).startSession(
-      { userPrompt: 'go', cwd, env: { CEZ_MOCK_COPILOT_EXIT_MID_TURN: '1' } },
+      { userPrompt: 'go', cwd, env: { ONNI_MOCK_COPILOT_EXIT_MID_TURN: '1' } },
       c.onEvent,
       { onUiEvent: c.onUiEvent },
     );
@@ -256,7 +256,7 @@ describe('CopilotAcpRunner — session lifecycle', () => {
     // with no exit, which is the failure mode AGENTS.md § "enumerate the transitions" names.
     const c = collect();
     const session = new CopilotAcpRunner({ bin: MOCK }).startSession(
-      { userPrompt: 'go', cwd, env: { CEZ_MOCK_COPILOT_ASK_PERMISSION: '1' } },
+      { userPrompt: 'go', cwd, env: { ONNI_MOCK_COPILOT_ASK_PERMISSION: '1' } },
       c.onEvent,
       { autoEndAfterFirstTurn: true, onUiEvent: c.onUiEvent },
     );
@@ -285,7 +285,7 @@ describe('CopilotAcpRunner — session lifecycle', () => {
   it('surfaces an unauthenticated agent as a fatal, actionable session error', async () => {
     const c = collect();
     const session = new CopilotAcpRunner({ bin: MOCK }).startSession(
-      { userPrompt: 'go', cwd, env: { CEZ_MOCK_COPILOT_UNAUTHENTICATED: '1' } },
+      { userPrompt: 'go', cwd, env: { ONNI_MOCK_COPILOT_UNAUTHENTICATED: '1' } },
       c.onEvent,
       { onUiEvent: c.onUiEvent },
     );

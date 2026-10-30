@@ -66,7 +66,7 @@ account first, then organisations sorted by login — or `{ available: false, re
 (no `gh`, unauthenticated). Only `https://` avatars are passed on. The dialog renders the
 owners as selectable cards (avatar, login, "Personal account" or the org description),
 the personal account selected by default; it links nowhere else.
-A failed org listing degrades to the personal account. `CEZ_DRY_RUN=1` fakes every `gh`
+A failed org listing degrades to the personal account. `ONNI_DRY_RUN=1` fakes every `gh`
 call and runs real `git`.
 
 ## Telemetry (opt-in, docs/telemetry.md)

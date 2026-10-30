@@ -62,7 +62,7 @@ const transport = await import(base + 'transport.ts');
 const { sendWebhook } = transport;
 const { signWebhook } = await import(base + 'signing.ts');
 signed = signWebhook;
-process.env.CEZ_WEBHOOKS = '1';
+process.env.ONNI_WEBHOOKS = '1';
 try {
   service = await WebhookService.open({ root, dataDir: root + '/.ai/onni', projectId: 'synthetic', mode: 'local', serverPorts: () => [], scheduler: new WebhookScheduler(), send: async input => {
     keys = input.secrets;

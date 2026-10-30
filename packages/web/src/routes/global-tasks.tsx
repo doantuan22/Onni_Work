@@ -237,7 +237,7 @@ function useIndexedRunMutation<V extends { task: GlobalTask }>({
 
 export function GlobalTasksRoute() {
   const projects = useProjects()
-  // The same host gate the per-project table honours: `CEZ_HIDE_COST` and friends turn these
+  // The same host gate the per-project table honours: `ONNI_HIDE_COST` and friends turn these
   // columns off everywhere, and a cross-project view is not an exception.
   const metrics = usageMetricVisibility(useHealth().data)
   // Always enabled here — unlike the ⌘K palette, which parks it in a single-project workspace:

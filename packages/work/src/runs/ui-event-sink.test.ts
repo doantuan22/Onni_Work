@@ -498,7 +498,7 @@ describe('streaming credentials across real store flush boundaries', () => {
   }));
 
   it('keeps the redaction opt-out and large-buffer immediate flush', () => withStore((sink, wire) => {
-    vi.stubEnv('CEZ_REDACT_SECRETS', '0');
+    vi.stubEnv('ONNI_REDACT_SECRETS', '0');
     sink.handle(delta('a', secret.slice(0, 9)));
     vi.advanceTimersByTime(DELTA_FLUSH_MS);
     expect(chunks(wire)).toBe(secret.slice(0, 9));

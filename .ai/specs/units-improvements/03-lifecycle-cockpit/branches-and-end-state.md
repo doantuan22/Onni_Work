@@ -146,7 +146,7 @@ Traced fully; nothing was found that does this automatically.
   `packages/work/src/server/server.ts:3529`, every spawned child at `run.ts:1671` — with no
   exception anywhere for the root. So `run.autonomous !== true` is `false` for every node in
   every mission, and `review` is `false` unconditionally, **even when a repository has explicitly
-  turned the review gate on** (`CEZ_REVIEW_GATE`/`reviewGateEnabled`, default OFF per #489). A
+  turned the review gate on** (`ONNI_REVIEW_GATE`/`reviewGateEnabled`, default OFF per #489). A
   finished mission root settles straight to `done` with the plain lifecycle note "run finished"
   (run.ts:4174), never the review-branch's "changes ready for review — send feedback, open a draft
   PR, or finish" (run.ts:4173). `engine.ts`'s own `TERMINAL_STATUSES` (engine.ts:42) and
@@ -289,7 +289,7 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
   true` — always `false` for a unit run). `packages/work/src/units/engine.ts:42,141-146` still
   branches on `'review'` as a live settle status — dead code for units.
 - Why it matters: even a repository that has explicitly turned the review gate on
-  (`CEZ_REVIEW_GATE`) gets NONE of that protection for missions specifically — the one feature
+  (`ONNI_REVIEW_GATE`) gets NONE of that protection for missions specifically — the one feature
   built to slow a human down before a diff disappears into `done` is bypassed by construction for
   the very feature (autonomous, multi-rank delegation) that most needs a checkpoint before its
   accumulated result ships.

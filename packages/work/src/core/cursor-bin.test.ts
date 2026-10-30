@@ -49,9 +49,9 @@ describe.skipIf(process.platform === 'win32')('resolveCursorAgentBin', () => {
     expect(resolveCursorAgentBin(undefined, { PATH: join(root, 'empty') }, root, 'darwin')).toBe('agent');
   });
 
-  it('returns an explicit binary or CEZ_CURSOR_AGENT_BIN verbatim', () => {
+  it('returns an explicit binary or ONNI_CURSOR_AGENT_BIN verbatim', () => {
     executable(join(root, 'bin'), 'cursor-agent');
-    const env = { PATH: join(root, 'bin'), CEZ_CURSOR_AGENT_BIN: '/opt/agent' };
+    const env = { PATH: join(root, 'bin'), ONNI_CURSOR_AGENT_BIN: '/opt/agent' };
     expect(resolveCursorAgentBin('/x/agent', env, root, 'darwin')).toBe('/x/agent');
     expect(resolveCursorAgentBin(undefined, env, root, 'darwin')).toBe('/opt/agent');
   });
@@ -67,7 +67,7 @@ describe('isForeignCursorAgent', () => {
     ['agent', '2026.01.28-fd13201', {}, false],
     ['agent', '2025.9.12', {}, false],
     ['agent', null, {}, false],
-    ['agent', '0.2.22', { CEZ_CURSOR_AGENT_BIN: 'agent' }, false],
+    ['agent', '0.2.22', { ONNI_CURSOR_AGENT_BIN: 'agent' }, false],
     ['cursor-agent', '0.2.22', {}, false],
   ])('%s answering %s (env %j) → %s', (executable, version, env, expected) => {
     expect(isForeignCursorAgent(executable, version, env)).toBe(expected);

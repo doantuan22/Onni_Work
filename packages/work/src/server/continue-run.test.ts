@@ -37,15 +37,15 @@ describe('POST /api/v1/runs/:id/continue override', () => {
   let calls: number;
   let refuse: string | undefined;
   let home: string;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
-  const savedHome = process.env.CEZ_HOME;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
 
   beforeEach(() => {
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_DRY_RUN = '1';
     // Agent accounts resolve against `~/.onni/` — pinned to a temp home so the machine's real
     // logins can neither be read nor decide the outcome.
     home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-continue-home-'));
-    process.env.CEZ_HOME = home;
+    process.env.ONNI_HOME = home;
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-continue-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     captured = undefined;
@@ -71,10 +71,10 @@ describe('POST /api/v1/runs/:id/continue override', () => {
   afterEach(() => {
     store.flush();
     for (const dir of [repoRoot, home]) rmSync(dir, { recursive: true, force: true });
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
   });
 
   /** One stored Claude login beside the discovered account. */

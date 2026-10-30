@@ -16,7 +16,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
  *
  * `recover()` re-queues runs that were `queued` when the process died, rebuilding their
  * StartRunInput straight from the persisted record — the one path into the engine that does NOT
- * go through `startRun`. A run queued while `CEZ_FOLLOWUPS=1` and recovered after the flag was
+ * go through `startRun`. A run queued while `ONNI_FOLLOWUPS=1` and recovered after the flag was
  * dropped must not come back claiming it generates follow-ups: `execute()` gates the agent at
  * spawn time regardless, so the behavior was always safe, but the record would have kept
  * echoing `generateFollowups: true` for a run that produces none.
@@ -28,7 +28,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 describe('recover() and the follow-up ceiling (#471)', () => {
   let repoRoot: string;
   let store: RunStore;
-  const savedFollowups = process.env.CEZ_FOLLOWUPS;
+  const savedFollowups = process.env.ONNI_FOLLOWUPS;
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-'));
@@ -47,8 +47,8 @@ describe('recover() and the follow-up ceiling (#471)', () => {
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedFollowups === undefined) delete process.env.CEZ_FOLLOWUPS;
-    else process.env.CEZ_FOLLOWUPS = savedFollowups;
+    if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
+    else process.env.ONNI_FOLLOWUPS = savedFollowups;
   });
 
   const WORKFLOW_DEF = {
@@ -73,7 +73,7 @@ describe('recover() and the follow-up ceiling (#471)', () => {
   };
 
   it('normalizes a recovered record to false when the inbox is off', async () => {
-    delete process.env.CEZ_FOLLOWUPS;
+    delete process.env.ONNI_FOLLOWUPS;
     const id = queuedRun(true);
     expect(store.getRun(id)?.generateFollowups).toBe(true); // the pre-restart truth
 
@@ -85,7 +85,7 @@ describe('recover() and the follow-up ceiling (#471)', () => {
   });
 
   it('leaves the record alone when the inbox is on', async () => {
-    process.env.CEZ_FOLLOWUPS = '1';
+    process.env.ONNI_FOLLOWUPS = '1';
     const id = queuedRun(true);
 
     await new RunManager(store, repoRoot, { semaphore: frozen() }).recover();
@@ -94,7 +94,7 @@ describe('recover() and the follow-up ceiling (#471)', () => {
   });
 
   it('does not resurrect an explicit per-run opt-out', async () => {
-    process.env.CEZ_FOLLOWUPS = '1';
+    process.env.ONNI_FOLLOWUPS = '1';
     const id = queuedRun(false);
 
     await new RunManager(store, repoRoot, { semaphore: frozen() }).recover();

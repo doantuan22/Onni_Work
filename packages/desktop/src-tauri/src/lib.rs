@@ -1,7 +1,7 @@
 //! cezar desktop: a native window around a locally built cezar.
 //!
 //! The shell is deliberately thin. It resolves the entry file of the engine it will run — a
-//! checkout named by `CEZ_DESKTOP_ENTRY`, else the active link (`~/.cezar/versions/current` that
+//! checkout named by `ONNI_DESKTOP_ENTRY`, else the active link (`~/.cezar/versions/current` that
 //! `cezar link --use` set) — runs it as a sidecar through the user's login shell (so the
 //! `node`, `claude`, `gh` on their PATH are the ones cezar sees — a GUI app inherits none of
 //! that), waits for `/api/v1/health`, and points the webview at the cockpit.
@@ -75,7 +75,7 @@ const INIT_SCRIPT: &str = r#"
     var platform = "__PLATFORM__";
     // `microphone`: this shell is entitled to it. An older macOS shell refuses every
     // dictation, so the cockpit disables the mic there instead.
-    window.__CEZ_DESKTOP__ = { platform: platform, microphone: true };
+    window.__ONNI_DESKTOP__ = { platform: platform, microphone: true };
     // At document start the root element may not exist yet; the flag is a convenience, the
     // rest of this script is not.
     if (document.documentElement) document.documentElement.dataset.cezDesktop = platform;
@@ -129,7 +129,7 @@ const INIT_SCRIPT: &str = r#"
       return !document.querySelector('[data-slot="desktop-titlebar"]');
     }
     // `offer_version` (Rust) calls this once the shell knows.
-    window.__CEZ_DESKTOP__.showVersion = function (version) {
+    window.__ONNI_DESKTOP__.showVersion = function (version) {
       if (version && legacy()) renderVersion(version);
     };
 
@@ -506,7 +506,7 @@ fn switcher_has_choices(installed: usize) -> bool {
 /// chip); a legacy one grows the switcher in its strip.
 fn offer_version(window: &WebviewWindow, version: &str) {
     let _ = window.eval(&format!(
-        "window.__CEZ_DESKTOP__ && window.__CEZ_DESKTOP__.showVersion && window.__CEZ_DESKTOP__.showVersion({})",
+        "window.__ONNI_DESKTOP__ && window.__ONNI_DESKTOP__.showVersion && window.__ONNI_DESKTOP__.showVersion({})",
         js_string(version)
     ));
 }
@@ -780,10 +780,10 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
 
 // ---- Node.js — the one prerequisite ---------------------------------------------------------
 
-/// The `node` the shell runs: `CEZ_DESKTOP_NODE` when set (a path, or a bogus one to test the
+/// The `node` the shell runs: `ONNI_DESKTOP_NODE` when set (a path, or a bogus one to test the
 /// missing-Node page), else whatever the user's PATH resolves.
 fn node_program() -> String {
-    std::env::var("CEZ_DESKTOP_NODE").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| "node".into())
+    std::env::var("ONNI_DESKTOP_NODE").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| "node".into())
 }
 
 /// Node 20+ reachable? Returns its version, or the reason it is not. Also decides the PATH every
@@ -794,7 +794,7 @@ fn node_program() -> String {
 ///    an rc file a login shell skips, an old system Node shadowing a new one.
 fn check_node() -> Result<String, String> {
     let first = node_version(tool_command(&node_program(), &["-p", "process.versions.node"]));
-    if first.is_ok() || std::env::var_os("CEZ_DESKTOP_NODE").is_some_and(|v| !v.is_empty()) {
+    if first.is_ok() || std::env::var_os("ONNI_DESKTOP_NODE").is_some_and(|v| !v.is_empty()) {
         return first;
     }
     set_tool_path(ToolPath { node_dir: None, base: resolve_base_path() });
@@ -911,8 +911,8 @@ fn engine_missing(window: &WebviewWindow) {
         window,
         "No cezar engine found",
         "In this repository run npm install once, then npm run build, and register the build with \
-         node packages/work/dist/index.js link --use. Alternatively set CEZ_DESKTOP_ENTRY to \
-         packages/work/dist/index.js and CEZ_DESKTOP_CWD to the repository. Then press Restart.",
+         node packages/work/dist/index.js link --use. Alternatively set ONNI_DESKTOP_ENTRY to \
+         packages/work/dist/index.js and ONNI_DESKTOP_CWD to the repository. Then press Restart.",
         "",
     );
 }
@@ -926,11 +926,11 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
         // Never the project itself: on macOS a project under Desktop/Documents/Downloads the app may
         // not read fails getcwd, and cezar exited 1 before answering.
         .current_dir(home_dir())
-        .env("CEZ_DESKTOP", "1")
-        .env("CEZ_SUPERVISED", "1")
+        .env("ONNI_DESKTOP", "1")
+        .env("ONNI_SUPERVISED", "1")
         // cezar polls this pid and exits when it is gone — a force-quit of the shell never
         // leaves a headless cockpit behind (the Exit handler only runs on a clean quit).
-        .env("CEZ_SUPERVISOR_PID", std::process::id().to_string())
+        .env("ONNI_SUPERVISOR_PID", std::process::id().to_string())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -938,7 +938,7 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
     // app (`disclaim.rs`). The cockpit server itself stays the app's own.
     if cfg!(target_os = "macos") {
         if let Ok(exe) = std::env::current_exe() {
-            command.env("CEZ_DISCLAIM_EXEC", exe);
+            command.env("ONNI_DISCLAIM_EXEC", exe);
         }
     }
     let mut child = command.spawn().map_err(|error| format!("could not start node: {error}"))?;
@@ -1079,7 +1079,7 @@ fn user_shell() -> String {
 }
 
 #[cfg(any(not(windows), test))]
-const PATH_MARKER: &str = "__CEZ_DESKTOP_PATH__";
+const PATH_MARKER: &str = "__ONNI_DESKTOP_PATH__";
 
 #[cfg(not(windows))]
 fn resolve_interactive_path(shell: &str, timeout: Duration) -> Option<String> {
@@ -1597,13 +1597,13 @@ fn home_dir() -> PathBuf {
 }
 
 fn cezar_home() -> PathBuf {
-    std::env::var_os("CEZ_HOME").filter(|value| !value.is_empty()).map(PathBuf::from).unwrap_or_else(|| home_dir().join(".cezar"))
+    std::env::var_os("ONNI_HOME").filter(|value| !value.is_empty()).map(PathBuf::from).unwrap_or_else(|| home_dir().join(".cezar"))
 }
 
-/// `CEZ_DESKTOP_ENTRY` (a checkout's `packages/work/dist/index.js` while developing), else the
+/// `ONNI_DESKTOP_ENTRY` (a checkout's `packages/work/dist/index.js` while developing), else the
 /// `current` entry `cezar link --use` registered under `~/.cezar/versions`.
 fn resolve_entry() -> Option<PathBuf> {
-    if let Some(explicit) = std::env::var_os("CEZ_DESKTOP_ENTRY").map(PathBuf::from) {
+    if let Some(explicit) = std::env::var_os("ONNI_DESKTOP_ENTRY").map(PathBuf::from) {
         if explicit.is_file() {
             return Some(explicit);
         }
@@ -1621,11 +1621,11 @@ fn sidecar_args(entry: &Path, port: u16, project: Option<&Path>) -> Vec<String> 
     args
 }
 
-/// The boot folder: `CEZ_DESKTOP_CWD`, else the most recently opened registered project, else
+/// The boot folder: `ONNI_DESKTOP_CWD`, else the most recently opened registered project, else
 /// none — cezar boots in the home directory, which it never registers as a project, and the
 /// cockpit shows the registry.
 fn pick_project() -> Option<PathBuf> {
-    if let Some(explicit) = std::env::var_os("CEZ_DESKTOP_CWD").map(PathBuf::from) {
+    if let Some(explicit) = std::env::var_os("ONNI_DESKTOP_CWD").map(PathBuf::from) {
         if explicit.is_dir() {
             return Some(explicit);
         }
@@ -1650,14 +1650,14 @@ fn pick_project() -> Option<PathBuf> {
     best.map(|(_, path)| path)
 }
 
-/// Debug builds with `CEZ_DESKTOP_DEBUG_IPC=1`: after the cockpit loads, exercise the two
+/// Debug builds with `ONNI_DESKTOP_DEBUG_IPC=1`: after the cockpit loads, exercise the two
 /// things window dragging needs from the cockpit's (remote) origin — a direct IPC call, and
 /// Tauri's injected drag handler reacting to a double-click on the title band — and print
 /// whether each actually maximized the window. A drag that silently does nothing is otherwise
 /// undiagnosable, and the page cannot report back any other way (document.title is not the
 /// native title).
 fn probe_ipc(window: &WebviewWindow) {
-    if !cfg!(debug_assertions) || std::env::var_os("CEZ_DESKTOP_DEBUG_IPC").is_none() {
+    if !cfg!(debug_assertions) || std::env::var_os("ONNI_DESKTOP_DEBUG_IPC").is_none() {
         return;
     }
     let window = window.clone();
@@ -2123,8 +2123,8 @@ mod tests {
             &entry,
             r#"const args = process.argv.slice(2);
 const port = Number(args[args.indexOf('--port') + 1]);
-const ok = args[0] === 'serve' && args.includes('--no-open') && process.env.CEZ_DESKTOP === '1'
-  && process.env.CEZ_SUPERVISED === '1' && Number(process.env.CEZ_SUPERVISOR_PID) > 0
+const ok = args[0] === 'serve' && args.includes('--no-open') && process.env.ONNI_DESKTOP === '1'
+  && process.env.ONNI_SUPERVISED === '1' && Number(process.env.ONNI_SUPERVISOR_PID) > 0
   && require('node:fs').realpathSync(args[args.indexOf('--repo') + 1]) === __dirname && process.cwd() !== __dirname;
 require('node:http').createServer((req, res) => {
   res.writeHead(ok ? 200 : 500, { 'content-type': 'application/json' });

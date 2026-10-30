@@ -16,10 +16,10 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
  *
  * `model-identity.test.ts` pins the pure mapper; this suite pins the part the
  * PR actually ships — that the run WIRING uses it. It drives the real engine
- * under `CEZ_DRY_RUN=1` and asserts on both ends of the seam at once:
+ * under `ONNI_DRY_RUN=1` and asserts on both ends of the seam at once:
  *
  *  - the wire form the runner is handed (captured from the mock's argv via
- *    `CEZ_MOCK_ARGS_FILE`), and
+ *    `ONNI_MOCK_ARGS_FILE`), and
  *  - the identity persisted on the record (`RunRecord.modelIdentity`).
  *
  * Those two agreeing IS the property #405 exists to guarantee: "a run record
@@ -36,12 +36,12 @@ describe('model identity wiring (dry run)', () => {
   beforeAll(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-model-identity-'));
     argsFile = join(repoRoot, 'mock-args.ndjson');
-    savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
-    savedEnv.CEZ_MOCK_ARGS_FILE = process.env.CEZ_MOCK_ARGS_FILE;
-    savedEnv.CEZ_FOLLOWUPS = process.env.CEZ_FOLLOWUPS;
-    process.env.CEZ_DRY_RUN = '1';
-    process.env.CEZ_MOCK_ARGS_FILE = argsFile;
-    delete process.env.CEZ_FOLLOWUPS;
+    savedEnv.ONNI_DRY_RUN = process.env.ONNI_DRY_RUN;
+    savedEnv.ONNI_MOCK_ARGS_FILE = process.env.ONNI_MOCK_ARGS_FILE;
+    savedEnv.ONNI_FOLLOWUPS = process.env.ONNI_FOLLOWUPS;
+    process.env.ONNI_DRY_RUN = '1';
+    process.env.ONNI_MOCK_ARGS_FILE = argsFile;
+    delete process.env.ONNI_FOLLOWUPS;
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });

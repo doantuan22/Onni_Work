@@ -27,8 +27,8 @@ import { createApp } from './server.ts';
  * a consumer-side copy of this test belongs wherever the type edge lands.
  */
 describe('createOnniClient<AppType>', () => {
-  const savedHome = process.env.CEZ_HOME;
-  const savedDryRun = process.env.CEZ_DRY_RUN;
+  const savedHome = process.env.ONNI_HOME;
+  const savedDryRun = process.env.ONNI_DRY_RUN;
   let home: string;
   let repoRoot: string;
   let store: RunStore;
@@ -39,8 +39,8 @@ describe('createOnniClient<AppType>', () => {
   beforeEach(async () => {
     home = mkdtempSync(join(tmpdir(), 'onni-typed-home-'));
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-typed-boot-'));
-    process.env.CEZ_HOME = home;
-    process.env.CEZ_DRY_RUN = '1';
+    process.env.ONNI_HOME = home;
+    process.env.ONNI_DRY_RUN = '1';
     mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     writeFileSync(join(repoRoot, '.ai/onni', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
     clearProjectProbeCache();
@@ -72,10 +72,10 @@ describe('createOnniClient<AppType>', () => {
     store.flush();
     rmSync(home, { recursive: true, force: true });
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedHome === undefined) delete process.env.CEZ_HOME;
-    else process.env.CEZ_HOME = savedHome;
-    if (savedDryRun === undefined) delete process.env.CEZ_DRY_RUN;
-    else process.env.CEZ_DRY_RUN = savedDryRun;
+    if (savedHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedHome;
+    if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
+    else process.env.ONNI_DRY_RUN = savedDryRun;
   });
 
   // The generous timeout is `/api/v1/health`'s: a cold read shells out to detect the installed

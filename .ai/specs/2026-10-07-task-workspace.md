@@ -31,7 +31,7 @@
 >   column state) is kept in `~/.cezar/ui-state.json` `savedLayouts`, offered in every task of
 >   every project. Opening one gives the task its own copy under that name.
 >   `/tasks/:id/commits/:sha` stays a standalone page; inside a column, Commits picks in place.
-> - **`CEZ_TERMINAL`** unset follows `localHandoff` (on locally, off hosted) — main has no sign-in.
+> - **`ONNI_TERMINAL`** unset follows `localHandoff` (on locally, off hosted) — main has no sign-in.
 >   New shells do not receive brutus's per-task slot environment (`taskSlotEnv`).
 
 ## 3. Product principles and constraints
@@ -318,7 +318,7 @@ list as a shortcut.
 > x64+arm64. A platform with no binary reports the terminal unavailable WITH A REASON and cezar
 > boots normally.
 >
-> **IMPLEMENTATION NOTE — `CEZ_TERMINAL` is a tri-state.** Unset it follows the deployment mode:
+> **IMPLEMENTATION NOTE — `ONNI_TERMINAL` is a tri-state.** Unset it follows the deployment mode:
 > on locally, off on a hosted cockpit, the same line `localHandoff` draws for every other
 > host-machine affordance. `=1` opts a hosted cockpit in; `=0` turns it off everywhere. Hosted is
 > opt-in because cezar has no authentication of its own, so a shell there is handed to whoever the

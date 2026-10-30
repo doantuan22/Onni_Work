@@ -10,7 +10,7 @@
 
 A user who wants cezar to do recurring work today can only react to GitHub events (PR opened,
 issue opened, label changed) through a plain list/editor/log that is off unless
-`CEZ_AUTOMATIONS=1`. The proposed behaviour adds a second trigger kind — **a schedule** (every
+`ONNI_AUTOMATIONS=1`. The proposed behaviour adds a second trigger kind — **a schedule** (every
 day, weekdays, weekly on a day, every N hours, in the cockpit's local time zone) — turns the
 feature **on by default**, and rebuilds the Automations surface to the design: a list with
 this-week stats and next/last run, a Week and a Day calendar of upcoming runs, a "Next runs"
@@ -33,7 +33,7 @@ form beside its JSON form.
 | Q5 | Delivery | **One spec, one PR.** Phases below structure the work and the review, not the PRs. |
 | Q6 | New GitHub events (`pull_request.review_requested`, `release.published`) | **Deferred.** Event chips show the four events the poller reconstructs. |
 | Q7 | Templates "From your other projects" | **Included.** A workspace-level read-only endpoint lists other registered projects' automations. |
-| Q8 | Gating | **Default-on.** `capabilities.automations = CEZ_AUTOMATIONS !== '0'`. Breaking per `BACKWARD_COMPATIBILITY.md`; takes the deprecation path (README + CHANGELOG + minor bump called out as breaking). |
+| Q8 | Gating | **Default-on.** `capabilities.automations = ONNI_AUTOMATIONS !== '0'`. Breaking per `BACKWARD_COMPATIBILITY.md`; takes the deprecation path (README + CHANGELOG + minor bump called out as breaking). |
 | Q9 | Time zone for schedules | Applied default: **server's local zone**, shown in the editor and the header; the structured schedule is stored, the cron string is derived. |
 | Q10 | Run now while paused | Applied default: **allowed** — a manual launch that does not enable the automation; the log records it as `manual`. |
 
@@ -60,7 +60,7 @@ form beside its JSON form.
    the server's zone, one durable receipt per occurrence (so a crash never launches twice), and an
    age rule that fires at most ONE missed occurrence — after a restart, a sleep, or any gap —
    and skips the rest.
-2. **Default-on.** The nav item, the routes and the scheduler are on unless `CEZ_AUTOMATIONS=0`.
+2. **Default-on.** The nav item, the routes and the scheduler are on unless `ONNI_AUTOMATIONS=0`.
    GitHub-kind triggers still degrade on forge availability; schedule-kind triggers need no
    forge, so a repo without a GitHub remote gets the page and the schedule kind only.
 3. **Surface rebuilt to the design**, pixel-matched against the export (§ UI/UX carries the
@@ -128,7 +128,7 @@ existing modules or is UI composed from primitives.
 | `packages/work/src/automations/stats.ts` | new | `automationStats(definitions, logs, runs, now, tz)` → week strip + per-automation 7d tallies. Pure, tested with fixtures. |
 | `packages/work/src/automations/templates.ts` | new | Reads other registered projects' definitions read-only through `AutomationCoordinator` for the palette's second tab. |
 | `packages/contract/src/zoned-time.ts` | new (moved) | `zonedParts`, `zonedWallTimeToUtc` — today private functions in `core/usage-limit.ts:173,200` — move into the contract package (Node-free, `Intl` only) so the schedule math and the usage-limit resume share one implementation; `usage-limit.ts` imports them from there. |
-| `packages/work/src/server/capabilities.ts` | changed | `automations: env.CEZ_AUTOMATIONS !== '0'`. |
+| `packages/work/src/server/capabilities.ts` | changed | `automations: env.ONNI_AUTOMATIONS !== '0'`. |
 | `packages/work/src/server/server.ts` | changed | `automationProjects` (`:5626`) and the boot warm-up (`:5695`) register EVERY registered project (root always; `github` only when the remote parses as github.com); kind-aware create/update validation; `POST /automations/:id/run`; kind-aware retry; list response gains `timeZone`, `stats`, per-entry `runs7d`/`costUsd7d`/`nextRunAt`/`lastRun`; log response gains `runs` map; `GET /workspace/automation-templates`; default-on re-baseline at boot (Lifecycle § Default-on). |
 | `packages/work/src/automations/automation-cli.ts` (patch) | changed on apply | `add` subcommand (flag sugar) building the same body; `schema` reference covers both kinds. |
 | `packages/work/src/automations/prompts.ts`, `builtin-skill.ts` (patch) | changed on apply | Playbook knows schedules; the system-prompt part recognises "every day at …", "on weekdays …". |
@@ -172,7 +172,7 @@ GitHub kind lifecycle is unchanged (spec 2026-07-25 § Lifecycle) except for one
 the default flip needs:
 
 **Default-on re-baseline.** A store may hold github definitions with `enabled: true` from a
-time the operator had `CEZ_AUTOMATIONS=1`, later unset the flag, and forgot them. With the
+time the operator had `ONNI_AUTOMATIONS=1`, later unset the flag, and forgot them. With the
 default flipped they would resume from a stale cursor and could launch up to `maxRecords` tasks
 each with no user action — the "diff the default path" failure AGENTS.md warns about. So at boot,
 before the timer arms, every enabled github definition whose `lastSuccessAt` is absent or older
@@ -508,8 +508,8 @@ Filters (result, event) stay as `Select`s in the header's spacer area (shipped b
 
 - Nav item "Automations" (`zap`) shows whenever `capabilities.automations`; the forge no longer
   gates it.
-- `CEZ_AUTOMATIONS=0`: deep links render `CenteredState` "Automations are off — this cockpit was
-  started with CEZ_AUTOMATIONS=0." (text updated; the e2e "absent without opt-in" case flips to
+- `ONNI_AUTOMATIONS=0`: deep links render `CenteredState` "Automations are off — this cockpit was
+  started with ONNI_AUTOMATIONS=0." (text updated; the e2e "absent without opt-in" case flips to
   "absent when opted out").
 - Forge unavailable: list header says "GitHub unavailable · <reason>"; github rows show
   `Pill dot=neutral` "paused by capability" in State; the editor disables the GitHub segment.
@@ -571,11 +571,11 @@ Screen components (all under `routes/automations/`, one file each, props typed o
   enabled); the routes stop answering `409` by default; stores with forgotten enabled github
   definitions are re-baselined at boot rather than resumed (Lifecycle § Default-on) — the one
   way this flip could have launched work on its own. Required path (BACKWARD_COMPATIBILITY.md
-  general rule): README env row rewritten (`CEZ_AUTOMATIONS=0` opts out; `=1` accepted, no-op),
+  general rule): README env row rewritten (`ONNI_AUTOMATIONS=0` opts out; `=1` accepted, no-op),
   CHANGELOG entry at release marked breaking, minor bump, a new compatibility section
   "Automations — default-on (this spec)", and an AGENTS.md § Zero config owner-approved
   exception bullet in the form the dispatch and skills-updates entries use. Rollback:
-  `CEZ_AUTOMATIONS=0`. Owner-approved on 2026-09-14 (gate Q8).
+  `ONNI_AUTOMATIONS=0`. Owner-approved on 2026-09-14 (gate Q8).
 - **Contract addition — `RunRecord.automationTrigger`.** Optional, stripped by older readers;
   `automation` is untouched. Called out in the compatibility file §3.
 - **Nav gating change.** The Automations item no longer needs a forge. A repo without GitHub sees
@@ -670,7 +670,7 @@ Validation gate for every step: `npm run typecheck`, `npm test`, `npm run test:u
     `BACKWARD_COMPATIBILITY.md` §2 list it and `run`.
 16. `capabilities.ts` default-on + boot re-baseline (+tests: idle enabled github definition is
     re-baselined with a `baseline` row, a recently polled one is not); `automations-gate.test.ts`
-    flips to `CEZ_AUTOMATIONS=0`; `health` tests; README env row; `BACKWARD_COMPATIBILITY.md`
+    flips to `ONNI_AUTOMATIONS=0`; `health` tests; README env row; `BACKWARD_COMPATIBILITY.md`
     default-on section and §3 `automationTrigger`; AGENTS.md exception bullet; `.env.example`.
 17. `api-client`: `runAutomationNow`, `deleteAutomation`, `getAutomationTemplates`, types.
 
@@ -715,7 +715,7 @@ Validation gate for every step: `npm run typecheck`, `npm test`, `npm run test:u
 32. `copy-as-cli-card` emits the `add` form; README CLI section.
 
 **Phase 8 — verification**
-33. `packages/web/e2e/automations.e2e.ts`: opted-out case (`CEZ_AUTOMATIONS=0`); schedule
+33. `packages/web/e2e/automations.e2e.ts`: opted-out case (`ONNI_AUTOMATIONS=0`); schedule
     journey (new → template → save paused → Run now → task appears → log shows it → week view
     shows the block → enable → next runs rail lists it → pause → delete); github journey as
     today. `ios-sweep.e2e.ts` gains the list and the editor (asserts no horizontal overflow).

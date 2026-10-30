@@ -8,7 +8,7 @@
  * pack gate, the `files` list and the discovery walk stay exactly what they were.
  *
  * Gated like everything else an agent is TOLD about automations (`automationsReachable`): the
- * skill lists only on a cockpit that has automations on AND can be reached over `CEZ_API_URL` — a
+ * skill lists only on a cockpit that has automations on AND can be reached over `ONNI_API_URL` — a
  * headless `onni run` or a cockpit with the flag off would hand the agent a playbook whose every
  * command is refused. Lowest precedence in the catalog: a repo that ships its own skill of this
  * name wins ("the user's repo is the source of truth").
@@ -18,12 +18,12 @@ import type { Skill } from '../skills.ts';
 import { CREATE_AUTOMATION_SKILL_BODY, CREATE_AUTOMATION_SKILL_NAME } from './prompts.ts';
 
 /**
- * Can a task actually USE automations? The flag alone is not enough: `CEZ_API_URL` is set by
+ * Can a task actually USE automations? The flag alone is not enough: `ONNI_API_URL` is set by
  * `serveCommand`, so a headless run has no cockpit to call. The one predicate behind the built-in
  * skill and the always-on prompt part (`RunManager.prepareAutomationsSession`).
  */
 export function automationsReachable(env: NodeJS.ProcessEnv = process.env): boolean {
-  return resolveCapabilities(env).automations && Boolean(env.CEZ_API_URL);
+  return resolveCapabilities(env).automations && Boolean(env.ONNI_API_URL);
 }
 
 export const CREATE_AUTOMATION_SKILL: Skill = {

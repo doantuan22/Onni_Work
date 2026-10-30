@@ -77,7 +77,7 @@ export async function fetchGithubPrDiff(
   number: number,
   refresh = false,
 ): Promise<ForgePrDiffResult> {
-  if (process.env.CEZ_DRY_RUN === '1') return mockGithubPrDiff(number);
+  if (process.env.ONNI_DRY_RUN === '1') return mockGithubPrDiff(number);
   try {
     const head = ghPrHeadSchema.parse(
       JSON.parse(await gh(repoRoot, ['pr', 'view', String(number), '--json', 'headRefOid'])),
@@ -531,7 +531,7 @@ export async function fetchGithub(
   limit = 30,
   cursors: { issuesCursor?: string; prsCursor?: string } = {},
 ): Promise<GithubData> {
-  if (process.env.CEZ_DRY_RUN === '1') return mockGithubPage(limit, cursors);
+  if (process.env.ONNI_DRY_RUN === '1') return mockGithubPage(limit, cursors);
   const capped = Math.min(Math.max(limit, 1), GH_MAX_LIMIT);
   const cacheKey = `${repoRoot}\0${cursors.issuesCursor ?? ''}\0${cursors.prsCursor ?? ''}`;
   const hit = listCache.get(cacheKey);
@@ -759,7 +759,7 @@ export async function searchGithubItems(
   const trimmed = query.trim();
   if (trimmed === '') return { available: true, items: [] };
   const capped = Math.min(Math.max(limit, 1), GH_SEARCH_MAX);
-  if (process.env.CEZ_DRY_RUN === '1') {
+  if (process.env.ONNI_DRY_RUN === '1') {
     const mock = mockGithub();
     const pool = kind === 'issue' ? mock.issues : mock.prs;
     const needle = trimmed.replace(/^#/, '').toLowerCase();
@@ -844,7 +844,7 @@ export async function searchGithubItems(
   }
 }
 
-/** CEZ_DRY_RUN=1 — a small fixed catalog so the GitHub tab is demoable offline. */
+/** ONNI_DRY_RUN=1 — a small fixed catalog so the GitHub tab is demoable offline. */
 function mockGithub(): GithubData {
   const mk = (over: Partial<GithubItem> & Pick<GithubItem, 'kind' | 'number' | 'title' | 'body'>): GithubItem => ({
     author: 'mock',
@@ -1466,7 +1466,7 @@ export function __clearChecksCacheForTests(): void {
  * Numbers are de-duplicated, validated, and capped at `GH_CHECKS_MAX`.
  */
 export async function fetchGithubChecks(repoRoot: string, numbers: number[]): Promise<GithubChecksData> {
-  if (process.env.CEZ_DRY_RUN === '1') return mockGithubChecks(numbers);
+  if (process.env.ONNI_DRY_RUN === '1') return mockGithubChecks(numbers);
   const wanted = [...new Set(numbers)].filter((n) => Number.isInteger(n) && n > 0).slice(0, GH_CHECKS_MAX);
   const checks: Record<number, ChecksGlyph> = {};
   const misses: number[] = [];
@@ -1510,7 +1510,7 @@ export async function fetchGithubChecks(repoRoot: string, numbers: number[]): Pr
   }
 }
 
-/** CEZ_DRY_RUN=1 — glyphs straight from the mock catalog so the offline demo shows checks. */
+/** ONNI_DRY_RUN=1 — glyphs straight from the mock catalog so the offline demo shows checks. */
 function mockGithubChecks(numbers: number[]): GithubChecksData {
   const byNumber = new Map(mockGithub().prs.map((p) => [p.number, (p.checks ?? null) as ChecksGlyph]));
   const checks: Record<number, ChecksGlyph> = {};
@@ -2236,7 +2236,7 @@ export async function fetchGithubRefStatus(
 ): Promise<GithubRefStatusData> {
   const asPrs = sanitizeRefNumbers(input.prs);
   const asIssues = sanitizeRefNumbers(input.issues);
-  if (process.env.CEZ_DRY_RUN === '1') return mockGithubRefStatus(asPrs, asIssues);
+  if (process.env.ONNI_DRY_RUN === '1') return mockGithubRefStatus(asPrs, asIssues);
   const wanted = [...new Set([...asPrs, ...asIssues])];
 
   const resolved = { prs: {} as Record<number, ReferenceStatus>, issues: {} as Record<number, ReferenceStatus> };
@@ -2344,7 +2344,7 @@ function sanitizeRefNumbers(numbers: number[] | undefined): number[] {
   return [...new Set(numbers ?? [])].filter((n) => Number.isInteger(n) && n > 0).slice(0, GH_REF_STATUS_MAX);
 }
 
-/** CEZ_DRY_RUN=1 — statuses derived from the mock catalog so the offline demo paints real chips. */
+/** ONNI_DRY_RUN=1 — statuses derived from the mock catalog so the offline demo paints real chips. */
 function mockGithubRefStatus(prs: number[], issues: number[]): GithubRefStatusData {
   const catalog = mockGithub();
   const byPr = new Map(catalog.prs.map((p) => [p.number, p]));
@@ -2381,7 +2381,7 @@ export async function fetchGithubComments(
   number: number,
   refresh = false,
 ): Promise<ForgeCommentsData> {
-  if (process.env.CEZ_DRY_RUN === '1') return mockGithubComments(kind);
+  if (process.env.ONNI_DRY_RUN === '1') return mockGithubComments(kind);
   // NUL separator: cannot appear in a filesystem path, so roots can never alias.
   const key = `${repoRoot}\0${kind}#${number}`;
   const hit = commentsCache.get(key);
@@ -2522,7 +2522,7 @@ export async function fetchGithubComments(
   }
 }
 
-/** CEZ_DRY_RUN=1 — a small fixed thread (one image-bearing comment, plus a review for PRs) so
+/** ONNI_DRY_RUN=1 — a small fixed thread (one image-bearing comment, plus a review for PRs) so
  *  the whole feature is demoable and e2e-testable offline. */
 function mockGithubComments(kind: 'issue' | 'pr'): ForgeCommentsData {
   const base = Date.now() - 3_600_000;
@@ -2715,9 +2715,9 @@ export async function createDraftPr(input: DraftPrInput): Promise<DraftPrOutcome
     return { ok: false, error: 'could not commit the final changes — check git status in the worktree' };
   }
 
-  // DRY-RUN (CEZ_DRY_RUN=1): no push, no gh — simulate success with a fake PR
+  // DRY-RUN (ONNI_DRY_RUN=1): no push, no gh — simulate success with a fake PR
   // URL so the whole review → PR flow is testable without GitHub.
-  if (process.env.CEZ_DRY_RUN === '1') {
+  if (process.env.ONNI_DRY_RUN === '1') {
     return { ok: true, url: 'https://github.com/open-mercato/demo/pull/777', dryRun: true };
   }
 
@@ -2823,7 +2823,7 @@ const branchPrsSchema = z.array(
  *  and on any failure (no gh, offline): adoption is best-effort, never an error. */
 export async function findBranchPr(worktree: string, target: PrTarget): Promise<{ url: string; number: number } | null> {
   // Dry-run has no forge: stand in with the same demo PR `createDraftPr` fakes, so the flow completes.
-  if (process.env.CEZ_DRY_RUN === '1') return { url: 'https://github.com/open-mercato/demo/pull/777', number: 777 };
+  if (process.env.ONNI_DRY_RUN === '1') return { url: 'https://github.com/open-mercato/demo/pull/777', number: 777 };
   const [forkOwner, branch] = target.head.includes(':') ? target.head.split(':', 2) : [undefined, target.head];
   // `--head` matches the branch NAME across every fork; the head's owner is what makes it ours —
   // the fork's for a fork push, else the base repo's (`host/owner/name`).
@@ -2922,16 +2922,16 @@ interface ExecResult {
 /**
  * Post a comment on a PR through `gh` — the graph `github.pr-comment` node (spec
  * 2026-09-30-workflow-node-editor). Never throws: every failure is a one-line error, and
- * `CEZ_DRY_RUN=1` answers ok without touching the network.
+ * `ONNI_DRY_RUN=1` answers ok without touching the network.
  */
 /** Mark a PR ready and/or add labels and reviewers (the graph `github.pr-update` node). Never
- *  throws; `CEZ_DRY_RUN=1` answers ok offline. */
+ *  throws; `ONNI_DRY_RUN=1` answers ok offline. */
 export async function updatePr(
   repoRoot: string,
   number: number,
   changes: { ready?: boolean; addLabels?: string[]; reviewers?: string[] },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (process.env.CEZ_DRY_RUN === '1') return { ok: true };
+  if (process.env.ONNI_DRY_RUN === '1') return { ok: true };
   const fail = (res: ExecResult, what: string) =>
     res.notFound ? 'gh is not installed' : (res.stderr || res.stdout).trim().split('\n')[0] || `${what} failed`;
   if (changes.ready) {
@@ -2955,7 +2955,7 @@ export async function commentOnIssue(
   number: number,
   body: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (process.env.CEZ_DRY_RUN === '1') return { ok: true };
+  if (process.env.ONNI_DRY_RUN === '1') return { ok: true };
   const res = await execTool(['issue', 'comment', String(number), '--body', body], repoRoot, 'gh', 60_000);
   if (res.notFound) return { ok: false, error: 'gh is not installed' };
   if (res.ok) return { ok: true };
@@ -2967,7 +2967,7 @@ export async function commentOnPr(
   number: number,
   body: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (process.env.CEZ_DRY_RUN === '1') return { ok: true };
+  if (process.env.ONNI_DRY_RUN === '1') return { ok: true };
   const res = await execTool(['pr', 'comment', String(number), '--body', body], repoRoot, 'gh', 60_000);
   if (res.notFound) return { ok: false, error: 'gh is not installed' };
   if (res.ok) return { ok: true };
@@ -3018,7 +3018,7 @@ const detectInflight = new Map<string, Promise<ForgeAvailability>>();
 const DETECT_CACHE_MAX = 50;
 
 function detectGithub(repoRoot: string): Promise<ForgeAvailability> {
-  if (process.env.CEZ_DRY_RUN === '1') return Promise.resolve({ available: true });
+  if (process.env.ONNI_DRY_RUN === '1') return Promise.resolve({ available: true });
   const hit = detectCache.get(repoRoot);
   if (hit && Date.now() - hit.at < CACHE_MS) return Promise.resolve(hit.result);
   const inflight = detectInflight.get(repoRoot);
@@ -3065,7 +3065,7 @@ async function probeGithub(repoRoot: string): Promise<ForgeAvailability> {
  * dropping `forge.available` and blinking the sidebar item out until the background probe warmed.
  */
 export function detectGithubCached(repoRoot: string): ForgeAvailability | null {
-  if (process.env.CEZ_DRY_RUN === '1') return { available: true };
+  if (process.env.ONNI_DRY_RUN === '1') return { available: true };
   const hit = detectCache.get(repoRoot);
   const fresh = hit && Date.now() - hit.at < CACHE_MS;
   if (!fresh) {
@@ -3277,7 +3277,7 @@ export async function fetchPrMergeState(
   number: number,
   refresh = false,
 ): Promise<ForgePrMergeStateResult> {
-  if (process.env.CEZ_DRY_RUN === '1') {
+  if (process.env.ONNI_DRY_RUN === '1') {
     return {
       available: true,
       mergeState: normalizeMergeState(
@@ -3415,7 +3415,7 @@ async function mergePullRequest(
     if (!mergePreflightAllowed(current, input.overrideRules)) {
       return { merged: false, status: 409, error: current.blockers[0]?.message ?? 'The pull request is not eligible to merge.', code: current.eligibility, current };
     }
-    if (process.env.CEZ_DRY_RUN === '1') {
+    if (process.env.ONNI_DRY_RUN === '1') {
       evictGithubProjectCaches(repoRoot);
       return { merged: true, number, url: current.url, method: input.method, mergeCommitSha: 'abcdef0123456789abcdef0123456789abcdef01' };
     }
@@ -3476,7 +3476,7 @@ export function createGithubDriver(repoRoot: string, repoRef: GithubRepoRef | nu
     // Null covers everything from "no PR yet" to "gh missing" — the callers
     // (Create PR → View PR flip) treat all of it as "nothing to link".
     prStatus: async (branch) => {
-      if (process.env.CEZ_DRY_RUN === '1') return null;
+      if (process.env.ONNI_DRY_RUN === '1') return null;
       try {
         const out = await gh(repoRoot, ['pr', 'view', branch, '--json', 'number,url,state,isDraft,statusCheckRollup']);
         const pr = ghPrViewSchema.parse(JSON.parse(out));
@@ -3533,7 +3533,7 @@ async function recentGithubCreated(
       !/^\d{4}-\d{2}-\d{2}$/.test(sinceDate) || !Number.isFinite(Date.parse(sinceDate))) {
     return { available: false, reason: 'GitHub repository or creation date is invalid', items: [] };
   }
-  if (process.env.CEZ_DRY_RUN === '1') {
+  if (process.env.ONNI_DRY_RUN === '1') {
     return { available: true, truncated: false, items: [{
       number: kind === 'issue' ? 101 : 102,
       title: kind === 'issue' ? 'Dashboard example issue' : 'Dashboard example pull request',

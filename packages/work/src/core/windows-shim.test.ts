@@ -73,7 +73,7 @@ describe('spawnableCommand (telemetry a330744e)', () => {
     expect(shimScript(join(bin, 'codex.cmd'))).toBe(script);
   });
 
-  // Telemetry 3626ac13: CEZ_OPENCODE_BIN pointed at npm's opencode.ps1, which Node cannot spawn.
+  // Telemetry 3626ac13: ONNI_OPENCODE_BIN pointed at npm's opencode.ps1, which Node cannot spawn.
   it('reads the .ps1 twin npm writes beside the .cmd', () => {
     const { script } = npmInstall();
     writeFileSync(join(dir, 'codex.ps1'), NPM_PS1);

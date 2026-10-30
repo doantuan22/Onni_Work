@@ -991,8 +991,8 @@ describe('session git API routes', () => {
   });
 
   it('POST pr/adopt records the PR found by branch, leaves the status alone, and is idempotent', async () => {
-    const previous = process.env.CEZ_DRY_RUN;
-    process.env.CEZ_DRY_RUN = '1'; // the forge lookup answers the fixed demo PR, no gh
+    const previous = process.env.ONNI_DRY_RUN;
+    process.env.ONNI_DRY_RUN = '1'; // the forge lookup answers the fixed demo PR, no gh
     try {
       const adopt = () => apiRequest(app, `/api/v1/runs/${run.id}/pr/adopt`, { method: 'POST' });
       // No remote, no target: nothing to look up.
@@ -1006,8 +1006,8 @@ describe('session git API routes', () => {
       expect(await (await adopt()).json()).toEqual({ found: true, url });
       expect((await apiRequest(app, '/api/v1/runs/nope/pr/adopt', { method: 'POST' })).status).toBe(404);
     } finally {
-      if (previous === undefined) delete process.env.CEZ_DRY_RUN;
-      else process.env.CEZ_DRY_RUN = previous;
+      if (previous === undefined) delete process.env.ONNI_DRY_RUN;
+      else process.env.ONNI_DRY_RUN = previous;
     }
   });
 

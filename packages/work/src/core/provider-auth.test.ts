@@ -15,12 +15,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  */
 vi.mock('./claude-bin.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('./claude-bin.ts')>(),
-  resolveClaudeBin: (env: NodeJS.ProcessEnv = process.env) => env.CEZ_CLAUDE_BIN || 'claude',
+  resolveClaudeBin: (env: NodeJS.ProcessEnv = process.env) => env.ONNI_CLAUDE_BIN || 'claude',
 }));
 // Same reason for Cursor: `cursor-bin.test.ts` covers the real PATH resolution.
 vi.mock('./cursor-bin.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('./cursor-bin.ts')>(),
-  resolveCursorAgentBin: () => process.env.CEZ_CURSOR_AGENT_BIN || 'agent',
+  resolveCursorAgentBin: () => process.env.ONNI_CURSOR_AGENT_BIN || 'agent',
 }));
 vi.mock('./junie-auth-probe.ts', () => ({
   probeJunieAuthentication: vi.fn(async () => ({ connected: true })),
@@ -80,27 +80,27 @@ const connectedResults: Record<string, ProviderCommandResult> = {
 };
 
 const originalEnv = {
-  CEZ_AGENT_MODELS_LOCKED: process.env.CEZ_AGENT_MODELS_LOCKED,
-  CEZ_DRY_RUN: process.env.CEZ_DRY_RUN,
-  CEZ_CLAUDE_BIN: process.env.CEZ_CLAUDE_BIN,
-  CEZ_CODEX_BIN: process.env.CEZ_CODEX_BIN,
-  CEZ_OPENCODE_BIN: process.env.CEZ_OPENCODE_BIN,
-  CEZ_PI_BIN: process.env.CEZ_PI_BIN,
+  ONNI_AGENT_MODELS_LOCKED: process.env.ONNI_AGENT_MODELS_LOCKED,
+  ONNI_DRY_RUN: process.env.ONNI_DRY_RUN,
+  ONNI_CLAUDE_BIN: process.env.ONNI_CLAUDE_BIN,
+  ONNI_CODEX_BIN: process.env.ONNI_CODEX_BIN,
+  ONNI_OPENCODE_BIN: process.env.ONNI_OPENCODE_BIN,
+  ONNI_PI_BIN: process.env.ONNI_PI_BIN,
   CURSOR_API_KEY: process.env.CURSOR_API_KEY,
-  CEZ_COPILOT_BIN: process.env.CEZ_COPILOT_BIN,
-  CEZ_CURSOR_AGENT_BIN: process.env.CEZ_CURSOR_AGENT_BIN,
+  ONNI_COPILOT_BIN: process.env.ONNI_COPILOT_BIN,
+  ONNI_CURSOR_AGENT_BIN: process.env.ONNI_CURSOR_AGENT_BIN,
 };
 
 beforeEach(() => {
-  delete process.env.CEZ_AGENT_MODELS_LOCKED;
-  delete process.env.CEZ_DRY_RUN;
-  delete process.env.CEZ_CLAUDE_BIN;
-  delete process.env.CEZ_CODEX_BIN;
-  delete process.env.CEZ_OPENCODE_BIN;
-  delete process.env.CEZ_PI_BIN;
+  delete process.env.ONNI_AGENT_MODELS_LOCKED;
+  delete process.env.ONNI_DRY_RUN;
+  delete process.env.ONNI_CLAUDE_BIN;
+  delete process.env.ONNI_CODEX_BIN;
+  delete process.env.ONNI_OPENCODE_BIN;
+  delete process.env.ONNI_PI_BIN;
   delete process.env.CURSOR_API_KEY;
-  delete process.env.CEZ_COPILOT_BIN;
-  delete process.env.CEZ_CURSOR_AGENT_BIN;
+  delete process.env.ONNI_COPILOT_BIN;
+  delete process.env.ONNI_CURSOR_AGENT_BIN;
 });
 
 afterEach(() => {
@@ -807,7 +807,7 @@ describe('provider auth parsers', () => {
 
     const cursor = (await statuses(service)).cursor;
     expect(cursor?.status).toBe('unknown');
-    expect(cursor?.hint).toContain('CEZ_CURSOR_AGENT_BIN');
+    expect(cursor?.hint).toContain('ONNI_CURSOR_AGENT_BIN');
   });
 
   // Telemetry 8d304c50 regressed after #1503: no Cursor at all, so resolution still ends at the foreign `agent`.
@@ -822,7 +822,7 @@ describe('provider auth parsers', () => {
 
     const cursor = (await statuses(service)).cursor;
     expect(cursor?.status).toBe('not-installed');
-    expect(cursor?.hint).toContain('CEZ_CURSOR_AGENT_BIN');
+    expect(cursor?.hint).toContain('ONNI_CURSOR_AGENT_BIN');
       });
 
   it.each([
@@ -830,7 +830,7 @@ describe('provider auth parsers', () => {
     ['an explicit override', 'agent', 'agent', '0.2.22\n'],
     ['an unreadable version', 'agent', undefined, 'agent: error\n'],
   ])('keeps an unreadable status unknown for %s', async (_label, executable, override, version) => {
-    if (override) process.env.CEZ_CURSOR_AGENT_BIN = override;
+    if (override) process.env.ONNI_CURSOR_AGENT_BIN = override;
     const runCommand = vi.fn<RunProviderCommand>(async (bin, args) => {
       if (bin !== executable) return resultFor(bin);
       return args.includes('--version')
@@ -1419,7 +1419,7 @@ describe('ProviderAuthService', () => {
       expect(runCommand).not.toHaveBeenCalled();
     });
 
-    it.each(['CEZ_DRY_RUN', 'CEZ_AGENT_MODELS_LOCKED'])(
+    it.each(['ONNI_DRY_RUN', 'ONNI_AGENT_MODELS_LOCKED'])(
       'probes nothing under %s=1',
       async (variable) => {
         process.env[variable] = '1';
@@ -1477,8 +1477,8 @@ describe('ProviderAuthService', () => {
     });
   });
 
-  it('keeps CEZ_DRY_RUN connected and ignores runtime invalidation', async () => {
-    process.env.CEZ_DRY_RUN = '1';
+  it('keeps ONNI_DRY_RUN connected and ignores runtime invalidation', async () => {
+    process.env.ONNI_DRY_RUN = '1';
     const createAuthFailureId = vi.fn(() => 'unused-incident');
     const service = new ProviderAuthService({ runCommand: runner(), createAuthFailureId });
 
@@ -1487,8 +1487,8 @@ describe('ProviderAuthService', () => {
     await expect(statuses(service)).resolves.toMatchObject({ claude: { status: 'connected' } });
   });
 
-  it('keeps exact CEZ_AGENT_MODELS_LOCKED=1 connected without credential probes or runtime invalidation', async () => {
-    process.env.CEZ_AGENT_MODELS_LOCKED = '1';
+  it('keeps exact ONNI_AGENT_MODELS_LOCKED=1 connected without credential probes or runtime invalidation', async () => {
+    process.env.ONNI_AGENT_MODELS_LOCKED = '1';
     const runCommand = runner();
     const createAuthFailureId = vi.fn(() => 'unused-incident');
     const service = new ProviderAuthService({ runCommand, createAuthFailureId });
@@ -1511,9 +1511,9 @@ describe('ProviderAuthService', () => {
   });
 
   it.each(['0', 'true', 'yes', ''])(
-    'does not disable provider checks for CEZ_AGENT_MODELS_LOCKED=%j',
+    'does not disable provider checks for ONNI_AGENT_MODELS_LOCKED=%j',
     (value) => {
-      process.env.CEZ_AGENT_MODELS_LOCKED = value;
+      process.env.ONNI_AGENT_MODELS_LOCKED = value;
       expect(providerAuthChecksDisabled()).toBe(false);
     },
   );
@@ -1558,9 +1558,9 @@ describe('ProviderAuthService', () => {
     });
   });
 
-  it('uses CEZ_CODEX_BIN and CEZ_OPENCODE_BIN for both probe and login commands', async () => {
-    process.env.CEZ_CODEX_BIN = '/tools/codex custom';
-    process.env.CEZ_OPENCODE_BIN = '/tools/opencode custom';
+  it('uses ONNI_CODEX_BIN and ONNI_OPENCODE_BIN for both probe and login commands', async () => {
+    process.env.ONNI_CODEX_BIN = '/tools/codex custom';
+    process.env.ONNI_OPENCODE_BIN = '/tools/opencode custom';
     const runCommand = runner();
     const service = new ProviderAuthService({ runCommand, platform: 'linux' });
 
@@ -1571,8 +1571,8 @@ describe('ProviderAuthService', () => {
     expect(service.loginCommand('opencode')).toBe("'/tools/opencode custom' auth login");
   });
 
-  it('uses CEZ_PI_BIN for the model-availability probe and interactive login', async () => {
-    process.env.CEZ_PI_BIN = '/tools/pi custom';
+  it('uses ONNI_PI_BIN for the model-availability probe and interactive login', async () => {
+    process.env.ONNI_PI_BIN = '/tools/pi custom';
     const runCommand = runner((executable) =>
       executable === '/tools/pi custom' ? connectedResults.pi! : resultFor(executable));
     const service = new ProviderAuthService({ runCommand, platform: 'linux' });
@@ -1582,8 +1582,8 @@ describe('ProviderAuthService', () => {
     expect(service.loginCommand('pi')).toBe("'/tools/pi custom' /login");
   });
 
-  it('uses the documented CEZ_CLAUDE_BIN override for both probe and login commands', async () => {
-    process.env.CEZ_CLAUDE_BIN = '/tools/claude custom';
+  it('uses the documented ONNI_CLAUDE_BIN override for both probe and login commands', async () => {
+    process.env.ONNI_CLAUDE_BIN = '/tools/claude custom';
     const runCommand = runner((executable) =>
       executable === '/tools/claude custom' ? connectedResults.claude! : resultFor(executable));
     const service = new ProviderAuthService({ runCommand, platform: 'linux' });
@@ -1594,8 +1594,8 @@ describe('ProviderAuthService', () => {
   });
 
   it('renders POSIX and Windows login commands safely for executable special characters', () => {
-    process.env.CEZ_CODEX_BIN = "a path/'codex'";
-    process.env.CEZ_OPENCODE_BIN = 'C:\\Program Files\\op%en&co!de".exe';
+    process.env.ONNI_CODEX_BIN = "a path/'codex'";
+    process.env.ONNI_OPENCODE_BIN = 'C:\\Program Files\\op%en&co!de".exe';
 
     expect(new ProviderAuthService({ platform: 'linux' }).loginCommand('codex'))
       .toBe("'a path/'\\''codex'\\''' login");
@@ -1603,8 +1603,8 @@ describe('ProviderAuthService', () => {
       .toBe('"C:\\Program Files\\op^%en^&co^!de^".exe" auth login');
   });
 
-  it('reports every provider connected in CEZ_DRY_RUN without executing a command', async () => {
-    process.env.CEZ_DRY_RUN = '1';
+  it('reports every provider connected in ONNI_DRY_RUN without executing a command', async () => {
+    process.env.ONNI_DRY_RUN = '1';
     const runCommand = runner();
     const service = new ProviderAuthService({ runCommand });
 
@@ -1756,8 +1756,8 @@ describe('ProviderAuthService', () => {
       expect(calls).toBe(4);
     });
 
-    it('answers connected per account in CEZ_DRY_RUN without executing a command', async () => {
-      process.env.CEZ_DRY_RUN = '1';
+    it('answers connected per account in ONNI_DRY_RUN without executing a command', async () => {
+      process.env.ONNI_DRY_RUN = '1';
       const runCommand = runner();
       const service = new ProviderAuthService({ runCommand });
       await expect(service.profileStatus('claude', { id: 'work', configDir: '/work' })).resolves.toEqual({
@@ -1807,7 +1807,7 @@ describe('inconclusive probe reports', () => {
         ? { stdout: '', stderr: '', exitCode: 0 }
         : { stdout: '{"loggedIn":true}', stderr: '', exitCode: 0 };
     };
-    vi.stubEnv('CEZ_CLAUDE_BIN', 'claude');
+    vi.stubEnv('ONNI_CLAUDE_BIN', 'claude');
     try {
       const service = new ProviderAuthService({ runCommand });
       const status = await service.status({ refresh: true });
@@ -1949,7 +1949,7 @@ describe('inconclusive probe reports', () => {
   });
 
   it('keeps the code of a spawn that threw, and names the setting for an unrunnable shim', async () => {
-    vi.stubEnv('CEZ_CODEX_BIN', 'C:\\tools\\codex.cmd');
+    vi.stubEnv('ONNI_CODEX_BIN', 'C:\\tools\\codex.cmd');
     try {
       const service = new ProviderAuthService({
         runCommand: async (executable) => {
@@ -1958,7 +1958,7 @@ describe('inconclusive probe reports', () => {
         }
       });
       const row = (await service.status({ refresh: true })).providers.find((p) => p.provider === 'codex');
-      expect(row).toMatchObject({ status: 'unknown', hint: expect.stringContaining('CEZ_CODEX_BIN') });
+      expect(row).toMatchObject({ status: 'unknown', hint: expect.stringContaining('ONNI_CODEX_BIN') });
           } finally {
       vi.unstubAllEnvs();
     }
@@ -1966,7 +1966,7 @@ describe('inconclusive probe reports', () => {
 
   // Telemetry 3626ac13: a `.ps1` override throws with a code other than EINVAL.
   it('names the setting for an unrunnable PowerShell shim too', async () => {
-    vi.stubEnv('CEZ_OPENCODE_BIN', 'C:\\tools\\opencode.ps1');
+    vi.stubEnv('ONNI_OPENCODE_BIN', 'C:\\tools\\opencode.ps1');
     try {
       const service = new ProviderAuthService({
         runCommand: async (executable) => {
@@ -1975,7 +1975,7 @@ describe('inconclusive probe reports', () => {
         },
       });
       const row = (await service.status({ refresh: true })).providers.find((p) => p.provider === 'opencode');
-      expect(row).toMatchObject({ status: 'unknown', hint: expect.stringContaining('CEZ_OPENCODE_BIN') });
+      expect(row).toMatchObject({ status: 'unknown', hint: expect.stringContaining('ONNI_OPENCODE_BIN') });
     } finally {
       vi.unstubAllEnvs();
     }
@@ -1994,7 +1994,7 @@ describe('inconclusive probe reports', () => {
       }
       });
     const row = (await service.status({ refresh: true })).providers.find((p) => p.provider === 'copilot');
-    expect(row).toMatchObject({ status: 'unknown', hint: expect.stringContaining('CEZ_COPILOT_BIN') });
+    expect(row).toMatchObject({ status: 'unknown', hint: expect.stringContaining('ONNI_COPILOT_BIN') });
   });
 
   // Telemetry f67df9d2: an asdf shim named `pi`, exit 1, nothing on stdout, Python's version on stderr.
@@ -2012,7 +2012,7 @@ describe('inconclusive probe reports', () => {
       status: 'not-installed',
       hint: expect.stringContaining('No version is set for command pi'),
     });
-    expect(row?.hint).toContain('CEZ_PI_BIN');
+    expect(row?.hint).toContain('ONNI_PI_BIN');
       });
 
   // f67df9d2 regressed in 0.16.0: the shim's stderr matched none of #1504's patterns. Whatever its
@@ -2025,14 +2025,14 @@ describe('inconclusive probe reports', () => {
         : resultFor(executable)
       });
     const row = (await service.status({ refresh: true })).providers.find((p) => p.provider === 'pi');
-    expect(row).toMatchObject({ status: 'not-installed', hint: expect.stringContaining('CEZ_PI_BIN') });
+    expect(row).toMatchObject({ status: 'not-installed', hint: expect.stringContaining('ONNI_PI_BIN') });
       });
 
   it.each([
     ['a pi that answers --version', undefined],
-    ['an explicit CEZ_PI_BIN', 'pi'],
+    ['an explicit ONNI_PI_BIN', 'pi'],
   ])('keeps a failed pi status unknown and reported for %s', async (_label, override) => {
-    if (override) process.env.CEZ_PI_BIN = override;
+    if (override) process.env.ONNI_PI_BIN = override;
     const service = new ProviderAuthService({
       runCommand: async (executable, args) => {
         if (executable !== 'pi') return resultFor(executable);
@@ -2185,7 +2185,7 @@ describe('inconclusive probe reports', () => {
       });
       const row = (await service.status({ refresh: true })).providers.find((p) => p.provider === 'copilot');
       expect(row).toMatchObject({ status: 'not-installed', hint: expect.stringContaining('node: command not found') });
-      expect(row?.hint).toContain('CEZ_COPILOT_BIN');
+      expect(row?.hint).toContain('ONNI_COPILOT_BIN');
           }
   });
 

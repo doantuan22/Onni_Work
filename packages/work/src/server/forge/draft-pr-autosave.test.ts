@@ -35,7 +35,7 @@ describe('createDraftPr pre-PR autosave (#471 follow-up)', () => {
     await git(['add', '-A']);
     await git([...GIT_ID, 'commit', '-q', '-m', 'base']);
     warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    vi.stubEnv('CEZ_DRY_RUN', '1'); // stop before push/gh; the guard runs earlier
+    vi.stubEnv('ONNI_DRY_RUN', '1'); // stop before push/gh; the guard runs earlier
   });
 
   afterEach(() => {
@@ -45,7 +45,7 @@ describe('createDraftPr pre-PR autosave (#471 follow-up)', () => {
   });
 
   it('disables terminal credential prompts for raw git pushes', async () => {
-    vi.stubEnv('CEZ_DRY_RUN', '0');
+    vi.stubEnv('ONNI_DRY_RUN', '0');
     vi.stubEnv('GIT_TERMINAL_PROMPT', '1');
     const remote = mkdtempSync(join(tmpdir(), 'onni-push-remote-'));
     try {
@@ -129,7 +129,7 @@ describe('createDraftPr draft flag', () => {
       `#!/bin/sh\nprintf '%s\\n' "$@" > "${bin}/argv"\necho https://github.com/acme/demo/pull/9\n`,
       { mode: 0o755 },
     );
-    vi.stubEnv('CEZ_DRY_RUN', '0');
+    vi.stubEnv('ONNI_DRY_RUN', '0');
     vi.stubEnv('PATH', `${bin}:${process.env.PATH ?? ''}`);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
@@ -194,7 +194,7 @@ describe('createDraftPr recovery', () => {
     await git([...GIT_ID, 'commit', '-q', '-m', 'base']);
     await git(['remote', 'add', 'origin', remote]);
     await git(['checkout', '-q', '-b', 'onni/abc123']);
-    vi.stubEnv('CEZ_DRY_RUN', '0');
+    vi.stubEnv('ONNI_DRY_RUN', '0');
     vi.stubEnv('PATH', `${bin}:${process.env.PATH ?? ''}`);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });

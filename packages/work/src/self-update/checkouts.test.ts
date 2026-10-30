@@ -26,7 +26,7 @@ describe('linked checkouts', () => {
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-link-'));
-    env = { ...process.env, CEZ_HOME: join(home, 'onni-home') };
+    env = { ...process.env, ONNI_HOME: join(home, 'onni-home') };
   });
   afterEach(() => rmSync(home, { recursive: true, force: true }));
 

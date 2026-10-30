@@ -19,7 +19,7 @@ describe('project webhook settings', () => {
     mount()
     expect(screen.getByText(/aren’t available on this platform/i)).toBeTruthy()
     expect(screen.getByText(/Linux/)).toBeTruthy()
-    expect(screen.queryByText(/CEZ_WEBHOOKS=1/)).toBeNull()
+    expect(screen.queryByText(/ONNI_WEBHOOKS=1/)).toBeNull()
     expect(screen.queryByText(/How to enable/)).toBeNull()
     expect(mocks.list).not.toHaveBeenCalled()
   })
@@ -39,7 +39,7 @@ describe('project webhook settings', () => {
   })
   it('explains opt-in in friendly language without creating a receiver query', async () => {
     mount(); expect(screen.getByText('Webhooks are off')).toBeTruthy()
-    expect(screen.getByText(/CEZ_WEBHOOKS=1/)).toBeTruthy(); expect(mocks.list).not.toHaveBeenCalled()
+    expect(screen.getByText(/ONNI_WEBHOOKS=1/)).toBeTruthy(); expect(mocks.list).not.toHaveBeenCalled()
   })
   it('offers full Custom selection and keeps destination secrets out of warnings', async () => {
     mocks.enabled = true; mocks.list.mockResolvedValue({ receivers: [], history: [], historyCount: 0, changeSequence: 0, webhookHealth: { status: 'ready' } })

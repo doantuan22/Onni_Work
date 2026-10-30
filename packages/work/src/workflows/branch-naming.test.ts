@@ -11,7 +11,7 @@ import type { WorkflowDef } from './types.ts';
  * Branch naming instructions (spec 2026-10-11-branch-naming-instructions), end to end through
  * the real RunManager against a real fixture repo: the dry-run namer (mock-claude answers
  * `feature/implementing cr fixes` whenever the prompt carries instructions) names the branch the
- * fork is created on. CEZ_AUTONAME=1 forces the namer under CEZ_DRY_RUN (vitest.setup pins it
+ * fork is created on. ONNI_AUTONAME=1 forces the namer under ONNI_DRY_RUN (vitest.setup pins it
  * off for every other case).
  */
 
@@ -47,9 +47,9 @@ async function waitForDone(store: RunStore, id: string): Promise<void> {
 }
 
 beforeEach(() => {
-  for (const key of ['CEZ_DRY_RUN', 'CEZ_AUTONAME']) savedEnv[key] = process.env[key];
-  process.env.CEZ_DRY_RUN = '1';
-  process.env.CEZ_AUTONAME = '1';
+  for (const key of ['ONNI_DRY_RUN', 'ONNI_AUTONAME']) savedEnv[key] = process.env[key];
+  process.env.ONNI_DRY_RUN = '1';
+  process.env.ONNI_AUTONAME = '1';
 });
 
 afterEach(() => {
@@ -129,7 +129,7 @@ describe('branch naming instructions', () => {
   }, 30_000);
 
   it('keeps onni/<id8> when naming is off, without waiting on a namer that never runs', async () => {
-    process.env.CEZ_AUTONAME = '0';
+    process.env.ONNI_AUTONAME = '0';
     const root = fixtureRepo({ branchNaming: 'start with feature/' });
     const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);

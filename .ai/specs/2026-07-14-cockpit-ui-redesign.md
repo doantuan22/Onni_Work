@@ -125,7 +125,7 @@ Every UI capability in this spec MUST work with **all coding agents cezar suppor
 | System prompt | `--append-system-prompt` | prepended first message | prepended first message |
 | Plan mode / turn end / stop reasons | `result` | `turn/completed|failed` | `session.idle` |
 
-Where a backend genuinely lacks a signal (e.g. claude has no live command output), the UI degrades per-capability (the card fills when the result arrives) — never per-backend (no "works best with X" features). **Acceptance per implementation step: the golden-fixture suite passes for all three backends**, and the phase's QA pass exercises each backend at least once (CEZ_DRY_RUN mock counts for claude in CI).
+Where a backend genuinely lacks a signal (e.g. claude has no live command output), the UI degrades per-capability (the card fills when the result arrives) — never per-backend (no "works best with X" features). **Acceptance per implementation step: the golden-fixture suite passes for all three backends**, and the phase's QA pass exercises each backend at least once (ONNI_DRY_RUN mock counts for claude in CI).
 
 ### Testing strategy (mandatory — every step ships unit tests)
 
@@ -171,7 +171,7 @@ New endpoints (all zod-validated, all degrade with 409 + human reason, never HTM
 
 cezar's default stays exactly `npx cezar-cli` in a repo: zero config, zero flags, cockpit on localhost. But the same server can run on a VPS/remote box, where "open a terminal on my machine" makes no sense. This becomes explicit:
 
-- **`CEZ_REMOTE=1`** (env flag; auto-implied when the server binds a non-loopback host) switches the server to hosted mode: `capabilities.localHandoff:false` in `/api/health`.
+- **`ONNI_REMOTE=1`** (env flag; auto-implied when the server binds a non-loopback host) switches the server to hosted mode: `capabilities.localHandoff:false` in `/api/health`.
 - When `localHandoff` is false the UI **completely hides** (not disables) every local-machine affordance: the Terminal button, `Open in VS Code` / open-in-editor, "Open in Finder"-style actions, and the copy-resume-command hints switch to plain "resume with: `claude --resume <id>`" text (still copyable — the user runs it wherever they have the checkout).
 - Everything else (thread, git view, commit/push, PR, settings, dictation) is location-independent and stays.
 - Server-side, the `open-in-cli`/`open-in-editor` endpoints return 409 with a reason in hosted mode — defense in depth, the UI never shows them anyway.
@@ -293,7 +293,7 @@ The degradation table is the product (README promise: everything degrades):
 | Backend CLI missing | Runner pill hides it; model pill collapses to auto (unchanged) |
 | `web/dist` missing (dev) | Server serves a plain page: "run `npm run dev:web` or `npm run build:web`" |
 | Web Speech unavailable (Firefox, some WebViews) | Mic hidden; tooltip in composer overflow explains |
-| Hosted mode (`CEZ_REMOTE=1` or non-loopback bind) | Terminal / VS Code / open-in-editor hidden entirely; resume hints render as copyable commands; endpoints 409 |
+| Hosted mode (`ONNI_REMOTE=1` or non-loopback bind) | Terminal / VS Code / open-in-editor hidden entirely; resume hints render as copyable commands; endpoints 409 |
 | SSE drops / phone sleeps | Reconnect → authoritative refetch + seq-dedup reconcile; thread restores scroll + open cards |
 | Huge diffs / files | >500 KB files use the virtualized diff path; >400 KB raw endpoints stay capped; "Load full diff" gate beyond caps |
 | Unknown v2 event type / unknown tool | Generic tool card with heuristic label; never raw JSON, never a crash |
@@ -306,7 +306,7 @@ The degradation table is the product (README promise: everything degrades):
 - **`@pierre/diffs` is young**: pinned version + local `<Diff>` facade; documented fallback `@git-diff-view/react` behind the same facade.
 - **Compatibility policy**: this program updates `BACKWARD_COMPATIBILITY.md` with an explicit **redesign waiver** — compatibility must not limit the redesign. Hard-kept: CLI commands/flags, readability of existing on-disk state (old `runs.json`/NDJSON v1 always parseable), the `/new` bookmarklet + launch-key contract, workflow YAML and skills formats, additive-only config. Waived for the duration of R1–R7: the `web/` asset layout, npm tarball layout (`web/dist`), and internal-only `/api` shapes whose sole consumer is the bundled UI — breaks ride the phase PR with a release-note line and a minor bump; no deprecation window. The waiver expires at R7.
 - **Scope discipline**: multi-agent engine, worktree/queue logic, review-gate semantics, CEZ:DONE contract, skills/workflow formats are untouched — this program is UI, protocol normalization, and the listed API additions only.
-- **Migration risk**: phased view-by-view with the legacy UI reachable until R7; each phase ships a working app (validation gate + `CEZ_DRY_RUN=1` smoke on every phase).
+- **Migration risk**: phased view-by-view with the legacy UI reachable until R7; each phase ships a working app (validation gate + `ONNI_DRY_RUN=1` smoke on every phase).
 - **Rollback**: any phase can be reverted independently (legacy UI intact until R7); npm packaging change reverts by restoring `files: ["web"]`.
 
 ## Phasing
@@ -349,7 +349,7 @@ Steps are sized for autonomous runs (om-auto-create-pr / -loop, one PR per phase
 15. Task list/table: editable titles, ± stats, PR chips; header meta with context gauge.
 
 ### Phase R5 — Git view + forge
-16. Server: `/changes`, `/files`, `git/commit|push`, `/api/repo/changes`, `/api/repo/branch`; forge driver extraction + health `forge` + `capabilities.localHandoff` (`CEZ_REMOTE`/non-loopback detection); tests.
+16. Server: `/changes`, `/files`, `git/commit|push`, `/api/repo/changes`, `/api/repo/branch`; forge driver extraction + health `forge` + `capabilities.localHandoff` (`ONNI_REMOTE`/non-loopback detection); tests.
 17. `<Diff>` facade on `@pierre/diffs` (fallback impl behind same props); Changes tab (tree, viewer, action policy bar); Files tab.
 18. Repo view rebuild; Create PR→View PR flow; open-in-editor endpoint + buttons; mobile diff mode.
 

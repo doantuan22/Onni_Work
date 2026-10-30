@@ -5,41 +5,41 @@
  * `localHandoff` (cockpit-ui redesign spec §"Deployment modes — local vs
  * hosted"): the default deployment is `npx onni-cli` on localhost, where
  * handing a session off to a local terminal/editor makes sense. On a VPS/remote
- * box it doesn't: `CEZ_REMOTE=1` (or binding a non-loopback host) switches to
+ * box it doesn't: `ONNI_REMOTE=1` (or binding a non-loopback host) switches to
  * hosted mode — the UI hides every local-machine affordance and the open-in-*
  * endpoints 409.
  *
  * `followups` (spec 007, #444, #471): the global follow-up inbox is **opt-in**
- * via `CEZ_FOLLOWUPS=1` and off by default. Off, agents are never told to write
+ * via `ONNI_FOLLOWUPS=1` and off by default. Off, agents are never told to write
  * `todos.json` (they get `HANDOFF_ONLY_INSTRUCTIONS` and an empty
- * `CEZ_TODOS_FILE`), the Inbox nav item is gone and the inbox endpoints refuse.
+ * `ONNI_TODOS_FILE`), the Inbox nav item is gone and the inbox endpoints refuse.
  * The per-task handoff journal is independent and runs either way.
  *
  * `singleProject` (spec 2026-07-21-onni-single-project): the workspace is
- * deliberately constrained to the launch project when `CEZ_SINGLE_PROJECT=1`.
+ * deliberately constrained to the launch project when `ONNI_SINGLE_PROJECT=1`.
  * Like the other opt-in capabilities, activation is strict: no other spelling
  * enables it.
  *
  * `automations` (spec 2026-07-25-github-automations, #801): GitHub automations
- * are **opt-in** via `CEZ_AUTOMATIONS=1` and off by default. Off, the
+ * are **opt-in** via `ONNI_AUTOMATIONS=1` and off by default. Off, the
  * `Automations` nav item is gone everywhere it is rendered, the
  * `/automations*` endpoints refuse, and the workspace scheduler never polls
  * GitHub — the flag removes the behavior, not only the UI. Activation is
  * strict, like the two capabilities above. Nothing on disk is touched:
  * definitions, receipts and high-watermarks survive the flag being off, so
  * unsetting it and restarting restores the feature wholesale. On, and with a
- * cockpit to reach (`CEZ_API_URL`), a task may also CREATE automations from a
+ * cockpit to reach (`ONNI_API_URL`), a task may also CREATE automations from a
  * prompt (spec 2026-09-13-automations-from-prompt): the `onni automation` CLI,
  * an automations part in every task's system prompt, the built-in
  * `create-onni-automation` skill and the composer's "Create an automation"
  * template all hang off this one capability.
  *
  * `agentAccountsEnabled` keeps account folders local by default. An operator may explicitly set
- * `CEZ_REMOTE_AGENT_ACCOUNTS=1` for an authenticated remote deployment; this does not change
+ * `ONNI_REMOTE_AGENT_ACCOUNTS=1` for an authenticated remote deployment; this does not change
  * `localHandoff`, so desktop-only actions remain unavailable.
  *
  * `dispatch` (spec 2026-09-10-dispatch): a task dispatching other tasks through the `onni task`
- * CLI is **on by default** and `CEZ_DISPATCH=0` turns it off (the owner-approved exception to
+ * CLI is **on by default** and `ONNI_DISPATCH=0` turns it off (the owner-approved exception to
  * AGENTS.md § Zero config, recorded there: the brakes live in the engine — four children in
  * flight, a child's budget carved out of its parent's — and a default-off dispatch left the
  * agent fanning out through its own sub-agents instead, unbudgeted and invisible). Off, the
@@ -47,8 +47,8 @@
  * dispatching; the `dispatch` field on existing run records survives the flag being off.
  *
  * Usage presentation: token counts and monetary cost stay visible by default.
- * `CEZ_HIDE_TOKEN_USAGE=1` and `CEZ_HIDE_COST=1` hide them independently;
- * legacy `CEZ_HIDE_TOKEN_METRICS=1` remains the master hide-all switch. None
+ * `ONNI_HIDE_TOKEN_USAGE=1` and `ONNI_HIDE_COST=1` hide them independently;
+ * legacy `ONNI_HIDE_TOKEN_METRICS=1` remains the master hide-all switch. None
  * changes collection, persistence, events, or API run records.
  */
 
@@ -189,33 +189,33 @@ export function agentAccountsEnabled(
   env: NodeJS.ProcessEnv = process.env,
   bindHost?: string,
 ): boolean {
-  return localHandoffEnabled(env, bindHost) || env.CEZ_REMOTE_AGENT_ACCOUNTS === '1';
+  return localHandoffEnabled(env, bindHost) || env.ONNI_REMOTE_AGENT_ACCOUNTS === '1';
 }
 
 /** One spelling of the local-machine boundary, shared by every capability derived from it. */
 function localHandoffEnabled(env: NodeJS.ProcessEnv, bindHost?: string): boolean {
-  return env.CEZ_REMOTE !== '1' && isLoopbackHost(bindHost);
+  return env.ONNI_REMOTE !== '1' && isLoopbackHost(bindHost);
 }
 
 /**
  * Whether the Preview tab may offer Design Mode (spec `2026-10-09-design-mode`). Only on a local
  * cockpit: the picker proxy listens on loopback, which a hosted cockpit's viewer cannot reach.
- * `CEZ_DESIGN_MODE=0` is the off switch; there is deliberately no `=1` for hosted mode.
+ * `ONNI_DESIGN_MODE=0` is the off switch; there is deliberately no `=1` for hosted mode.
  */
 function designModeEnabled(env: NodeJS.ProcessEnv, bindHost?: string): boolean {
-  return env.CEZ_DESIGN_MODE !== '0' && localHandoffEnabled(env, bindHost);
+  return env.ONNI_DESIGN_MODE !== '0' && localHandoffEnabled(env, bindHost);
 }
 
-/** `CEZ_REMOTE=1` or a non-loopback bind host ⇒ hosted mode (no local handoff).
- *  `CEZ_FOLLOWUPS=1` ⇒ the follow-up inbox exists (#471).
- *  `CEZ_AUTOMATIONS=1` ⇒ GitHub automations exist (#801).
- *  `CEZ_DISPATCH=0` ⇒ task dispatch is OFF (spec 2026-09-10-dispatch); on otherwise.
+/** `ONNI_REMOTE=1` or a non-loopback bind host ⇒ hosted mode (no local handoff).
+ *  `ONNI_FOLLOWUPS=1` ⇒ the follow-up inbox exists (#471).
+ *  `ONNI_AUTOMATIONS=1` ⇒ GitHub automations exist (#801).
+ *  `ONNI_DISPATCH=0` ⇒ task dispatch is OFF (spec 2026-09-10-dispatch); on otherwise.
  *
- *  Read per request — cheap, and tests/ops can flip `CEZ_REMOTE` live. `followups` is honest
+ *  Read per request — cheap, and tests/ops can flip `ONNI_REMOTE` live. `followups` is honest
  *  per request too, but flipping it ON at runtime is only half a switch: the per-dataDir
  *  todos watch (step 2.3) is created by an SSE subscription, so connections opened while the
  *  flag was off never subscribed and get no live inbox updates until they reconnect. Hence
- *  the UI's "set CEZ_FOLLOWUPS=1 and restart onni" wording — treat it as a boot-time flag.
+ *  the UI's "set ONNI_FOLLOWUPS=1 and restart onni" wording — treat it as a boot-time flag.
  *
  *  `automations` carries the same caveat and for the same reason: the workspace scheduler is
  *  started once, on the server's `listening` event, so flipping the flag on afterwards gates
@@ -224,18 +224,18 @@ function designModeEnabled(env: NodeJS.ProcessEnv, bindHost?: string): boolean {
  *  `dispatch` is boot-time for a third reason: the dispatch prompt is composed into a run's system
  *  prompt when the run STARTS, so flipping the flag mid-flight would open (or close) the routes
  *  while every run already in the tree kept its prompt. Set it and restart. */
-/** `CEZ_TERMINAL` tri-state: unset follows `localHandoff` (an interactive shell is the most
+/** `ONNI_TERMINAL` tri-state: unset follows `localHandoff` (an interactive shell is the most
  *  exposure a hosted cockpit can add), `=1` opts a hosted cockpit in, `=0` turns it off everywhere. */
 function terminalEnabled(env: NodeJS.ProcessEnv, bindHost?: string): boolean {
-  if (env.CEZ_TERMINAL === '1') return true;
-  if (env.CEZ_TERMINAL === '0') return false;
+  if (env.ONNI_TERMINAL === '1') return true;
+  if (env.ONNI_TERMINAL === '0') return false;
   return localHandoffEnabled(env, bindHost);
 }
 
 export function resolveCapabilities(env: NodeJS.ProcessEnv = process.env, bindHost?: string): Capabilities {
-  const hideAllUsage = env.CEZ_HIDE_TOKEN_METRICS === '1';
-  const tokenUsageMetrics = !hideAllUsage && env.CEZ_HIDE_TOKEN_USAGE !== '1';
-  const costMetrics = !hideAllUsage && env.CEZ_HIDE_COST !== '1';
+  const hideAllUsage = env.ONNI_HIDE_TOKEN_METRICS === '1';
+  const tokenUsageMetrics = !hideAllUsage && env.ONNI_HIDE_TOKEN_USAGE !== '1';
+  const costMetrics = !hideAllUsage && env.ONNI_HIDE_COST !== '1';
   return {
     localHandoff: localHandoffEnabled(env, bindHost),
     terminal: terminalEnabled(env, bindHost),
@@ -243,11 +243,11 @@ export function resolveCapabilities(env: NodeJS.ProcessEnv = process.env, bindHo
     // Deliberately not re-derived here: RunManager enforces the same predicate,
     // and two spellings of "is the inbox on" would eventually disagree.
     followups: followupsEnabled(env),
-    singleProject: env.CEZ_SINGLE_PROJECT === '1',
-    automations: env.CEZ_AUTOMATIONS !== '0',
-    webhooks: webhookPlatformSupported() && env.CEZ_WEBHOOKS === '1',
+    singleProject: env.ONNI_SINGLE_PROJECT === '1',
+    automations: env.ONNI_AUTOMATIONS !== '0',
+    webhooks: webhookPlatformSupported() && env.ONNI_WEBHOOKS === '1',
     ...(!webhookPlatformSupported() ? { webhooksUnavailableReason: 'unsupported_platform' as const } : {}),
-    dispatch: env.CEZ_DISPATCH !== '0',
+    dispatch: env.ONNI_DISPATCH !== '0',
     tokenMetrics: tokenUsageMetrics && costMetrics,
     tokenUsageMetrics,
     costMetrics,

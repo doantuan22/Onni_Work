@@ -871,8 +871,8 @@ describe('CodexAppServerRunner v2 wiring (against the bundled mock app-server)',
     await expect(session.result).resolves.toMatchObject({ sessionId: 'th_mock_1' });
   }, 30_000);
 
-  it('retains CEZ_CODEX_NETWORK=0 as an explicit restricted-sandbox opt-out', async () => {
-    vi.stubEnv('CEZ_CODEX_NETWORK', '0');
+  it('retains ONNI_CODEX_NETWORK=0 as an explicit restricted-sandbox opt-out', async () => {
+    vi.stubEnv('ONNI_CODEX_NETWORK', '0');
     try {
       const runner = new CodexAppServerRunner({ bin: mockBin, timeoutMs: 60_000 });
       const session = runner.startSession(

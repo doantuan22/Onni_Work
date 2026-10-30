@@ -14,13 +14,13 @@
 #   cgroupns    `docker --cgroupns=host --cpus=2`: the limit sits on an ANCESTOR cgroup of the
 #               private namespace, which is the case a root-only read misses
 #
-# Requires: docker (with an image that has Node; override with CEZ_CONFORMANCE_IMAGE) and network on
+# Requires: docker (with an image that has Node; override with ONNI_CONFORMANCE_IMAGE) and network on
 # the first run to pull it. Read-only mounts only: nothing here writes into the repository.
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
-IMAGE=${CEZ_CONFORMANCE_IMAGE:-node:22-bookworm-slim}
+IMAGE=${ONNI_CONFORMANCE_IMAGE:-node:22-bookworm-slim}
 
 log() { printf '%s\n' "$*" >&2; }
 

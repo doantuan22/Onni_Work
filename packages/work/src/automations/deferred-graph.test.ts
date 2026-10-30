@@ -16,11 +16,11 @@ beforeEach(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'deferred-graph-')));
   mkdirSync(join(root, '.ai/onni/workflows'), { recursive: true });
   for (const dir of ['claude', 'codex', 'override', 'home']) mkdirSync(join(root, dir));
-  vi.stubEnv('CEZ_HOME', join(root, 'home'));
+  vi.stubEnv('ONNI_HOME', join(root, 'home'));
   vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'claude'));
   vi.stubEnv('CODEX_HOME', join(root, 'codex'));
-  vi.stubEnv('CEZ_DRY_RUN', '1');
-  vi.stubEnv('CEZ_AGENT_MODELS_LOCKED', '0');
+  vi.stubEnv('ONNI_DRY_RUN', '1');
+  vi.stubEnv('ONNI_AGENT_MODELS_LOCKED', '0');
 });
 afterEach(() => { vi.unstubAllEnvs(); rmSync(root, { recursive: true, force: true }); });
 const task = { task: 'Later', workflow: 'parent', runner: 'claude' as const };
@@ -147,7 +147,7 @@ it('keeps repeated references distinct and bounds exponential expansion', async 
 });
 it('uses native models under the model lock for every declarative child', async () => {
   graph('parent', [{ type: 'dispatch', prompt: 'work', model: 'opus' }, { type: 'workflow', workflow: 'child' }]); child();
-  vi.stubEnv('CEZ_AGENT_MODELS_LOCKED', '1');
+  vi.stubEnv('ONNI_AGENT_MODELS_LOCKED', '1');
   const result = await resolveDeferredExecution(root, { ...task, dispatch: { model: 'intent' } });
   expect(result.models.map(m => m.model)).toEqual([undefined, undefined]);
 });

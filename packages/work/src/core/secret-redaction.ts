@@ -13,7 +13,7 @@
  *   2. Pattern-based — well-known token shapes (gh*, sk-*, AKIA*, AIza*,
  *      xox*-*) so secrets that never lived in onni's own env are still caught.
  *
- * Zero-config: redaction is on by default; `CEZ_REDACT_SECRETS=0` opts out.
+ * Zero-config: redaction is on by default; `ONNI_REDACT_SECRETS=0` opts out.
  */
 
 export const REDACTED = '[REDACTED]';

@@ -33,20 +33,20 @@ import { apiRequest } from './loopback-request.testkit.ts';
 describe('POST /api/v1/open-in — the project folder in a local app', () => {
   let repoRoot: string;
   let store: RunStore;
-  const savedRemote = process.env.CEZ_REMOTE;
+  const savedRemote = process.env.ONNI_REMOTE;
 
   beforeEach(() => {
     vi.clearAllMocks();
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-openproject-'));
     store = RunStore.open(join(repoRoot, '.ai/onni'));
-    delete process.env.CEZ_REMOTE;
+    delete process.env.ONNI_REMOTE;
   });
 
   afterEach(() => {
     store.flush();
     rmSync(repoRoot, { recursive: true, force: true });
-    if (savedRemote === undefined) delete process.env.CEZ_REMOTE;
-    else process.env.CEZ_REMOTE = savedRemote;
+    if (savedRemote === undefined) delete process.env.ONNI_REMOTE;
+    else process.env.ONNI_REMOTE = savedRemote;
   });
 
   const post = (body: unknown, over: Partial<ServerDeps> = {}) =>
@@ -66,8 +66,8 @@ describe('POST /api/v1/open-in — the project folder in a local app', () => {
     expect(openInApp).toHaveBeenCalledWith('finder', body.path);
   });
 
-  it('409s in hosted mode (CEZ_REMOTE=1) without launching anything', async () => {
-    process.env.CEZ_REMOTE = '1';
+  it('409s in hosted mode (ONNI_REMOTE=1) without launching anything', async () => {
+    process.env.ONNI_REMOTE = '1';
     const res = await post({ target: 'finder' });
     expect(res.status).toBe(409);
     expect(((await res.json()) as { error: string }).error).toContain('hosted mode');

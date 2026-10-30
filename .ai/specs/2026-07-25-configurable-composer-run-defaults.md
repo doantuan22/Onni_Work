@@ -35,7 +35,7 @@ based on whichever task ran last.
 2. Worktree appears for any ordinary git-backed skill/workflow. Parallel
    variants show it on and disabled with a reason.
 3. `~/.cezar/config.json` gains optional workspace composer overrides.
-4. `CEZ_AUTONOMOUS_DEFAULT` and `CEZ_WORKTREE_DEFAULT` seed absent overrides.
+4. `ONNI_AUTONOMOUS_DEFAULT` and `ONNI_WORKTREE_DEFAULT` seed absent overrides.
 5. Global Resources Settings gains a **New task defaults** card with
    Inherit/On/Off choices.
 6. A pure resolver combines run-shape constraints, explicit draft values,
@@ -112,8 +112,8 @@ No migration or required configuration is introduced.
 
 Environment contract:
 
-- `CEZ_AUTONOMOUS_DEFAULT=0|1`
-- `CEZ_WORKTREE_DEFAULT=0|1`
+- `ONNI_AUTONOMOUS_DEFAULT=0|1`
+- `ONNI_WORKTREE_DEFAULT=0|1`
 
 Only exact values are recognized. Invalid/unset values use historical fallback
 and never block boot. Stored values override environment seeds. Add both to

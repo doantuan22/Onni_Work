@@ -22,19 +22,19 @@ import { apiRequest } from './loopback-request.testkit.ts';
 const dirs: string[] = [];
 const stores: RunStore[] = [];
 const cleanups: Array<() => void> = [];
-const savedHome = process.env.CEZ_HOME;
+const savedHome = process.env.ONNI_HOME;
 beforeEach(() => {
   const home = mkdtempSync(join(tmpdir(), 'onni-dashboard-home-'));
   dirs.push(home);
-  process.env.CEZ_HOME = home;
+  process.env.ONNI_HOME = home;
 });
 afterEach(() => {
   vi.restoreAllMocks();
   for (const cleanup of cleanups.splice(0)) cleanup();
   for (const s of stores.splice(0)) s.flush();
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
-  if (savedHome === undefined) delete process.env.CEZ_HOME;
-  else process.env.CEZ_HOME = savedHome;
+  if (savedHome === undefined) delete process.env.ONNI_HOME;
+  else process.env.ONNI_HOME = savedHome;
 });
 describe('dashboard workspace routes', () => {
   it('reads cold project automations without opening contexts or changing persisted state', async () => {
@@ -96,19 +96,19 @@ describe('dashboard workspace routes', () => {
       chmodSync(path, 0o644);
       chmodSync(statePath, 0o644);
     }
-    const single = process.env.CEZ_SINGLE_PROJECT;
-    process.env.CEZ_SINGLE_PROJECT = '1';
+    const single = process.env.ONNI_SINGLE_PROJECT;
+    process.env.ONNI_SINGLE_PROJECT = '1';
     try { expect((await get()).status).toBe(404); }
     finally {
-      if (single === undefined) delete process.env.CEZ_SINGLE_PROJECT;
-      else process.env.CEZ_SINGLE_PROJECT = single;
+      if (single === undefined) delete process.env.ONNI_SINGLE_PROJECT;
+      else process.env.ONNI_SINGLE_PROJECT = single;
     }
-    const enabled = process.env.CEZ_AUTOMATIONS;
-    process.env.CEZ_AUTOMATIONS = '0';
+    const enabled = process.env.ONNI_AUTOMATIONS;
+    process.env.ONNI_AUTOMATIONS = '0';
     try { expect((await get()).status).toBe(409); }
     finally {
-      if (enabled === undefined) delete process.env.CEZ_AUTOMATIONS;
-      else process.env.CEZ_AUTOMATIONS = enabled;
+      if (enabled === undefined) delete process.env.ONNI_AUTOMATIONS;
+      else process.env.ONNI_AUTOMATIONS = enabled;
     }
     rmSync(statePath);
     expect(dashboardAutomationsSchema.parse(await (await get()).json()).automations[0]).not.toHaveProperty('nextRunAt');
@@ -191,7 +191,7 @@ describe('dashboard workspace routes', () => {
       version: 'test',
       onDispose: (cleanup) => cleanups.push(cleanup),
     });
-    const names = ['CEZ_HIDE_TOKEN_METRICS', 'CEZ_HIDE_COST', 'CEZ_HIDE_TOKEN_USAGE'] as const;
+    const names = ['ONNI_HIDE_TOKEN_METRICS', 'ONNI_HIDE_COST', 'ONNI_HIDE_TOKEN_USAGE'] as const;
     const saved = names.map((name) => process.env[name]);
     const read = async (snapshotId?: string) => {
       const response = await apiRequest(
@@ -209,8 +209,8 @@ describe('dashboard workspace routes', () => {
       let first = await read();
       for (const tokens of [true, false])
         for (const cost of [true, false]) {
-          process.env.CEZ_HIDE_TOKEN_USAGE = tokens ? '0' : '1';
-          process.env.CEZ_HIDE_COST = cost ? '0' : '1';
+          process.env.ONNI_HIDE_TOKEN_USAGE = tokens ? '0' : '1';
+          process.env.ONNI_HIDE_COST = cost ? '0' : '1';
           for (const result of [await read(first.snapshotId), await read()]) {
             expect(result.visibility).toEqual({ tokens, cost });
             expect('inputTokens' in result.totals).toBe(tokens);
@@ -221,9 +221,9 @@ describe('dashboard workspace routes', () => {
             first = result;
           }
         }
-      process.env.CEZ_HIDE_TOKEN_USAGE = '0';
-      process.env.CEZ_HIDE_COST = '0';
-      process.env.CEZ_HIDE_TOKEN_METRICS = '1';
+      process.env.ONNI_HIDE_TOKEN_USAGE = '0';
+      process.env.ONNI_HIDE_COST = '0';
+      process.env.ONNI_HIDE_TOKEN_METRICS = '1';
       const hidden = await read();
       expect(hidden.visibility).toEqual({ tokens: false, cost: false });
       expect(hidden.totals).toEqual({ tasks: 1 });
@@ -327,8 +327,8 @@ describe('dashboard workspace routes', () => {
           procCount: 1,
         },
       ]);
-      const previous = process.env.CEZ_SINGLE_PROJECT;
-      process.env.CEZ_SINGLE_PROJECT = '1';
+      const previous = process.env.ONNI_SINGLE_PROJECT;
+      process.env.ONNI_SINGLE_PROJECT = '1';
       try {
         const single = dashboardSnapshotSchema.parse(await (await get('')).json());
         expect(single.coverage.projects.map((p) => p.projectId)).toEqual([bootId]);
@@ -337,8 +337,8 @@ describe('dashboard workspace routes', () => {
           dashboardTelemetrySchema.parse(await (await get('/telemetry')).json()).samples,
         ).toHaveLength(1);
       } finally {
-        if (previous === undefined) delete process.env.CEZ_SINGLE_PROJECT;
-        else process.env.CEZ_SINGLE_PROJECT = previous;
+        if (previous === undefined) delete process.env.ONNI_SINGLE_PROJECT;
+        else process.env.ONNI_SINGLE_PROJECT = previous;
       }
       expect(contexts.ids()).toEqual([]);
       expect((await listProjects()).map((p) => p.id)).toEqual(otherId ? [otherId] : []);
@@ -391,8 +391,8 @@ describe('dashboard workspace routes', () => {
     );
     expect(costs.tasks.rows.some((row) => row.id === 'cold-review')).toBe(true);
     expect(contexts.ids()).toEqual([]);
-    const previous = process.env.CEZ_SINGLE_PROJECT;
-    process.env.CEZ_SINGLE_PROJECT = '1';
+    const previous = process.env.ONNI_SINGLE_PROJECT;
+    process.env.ONNI_SINGLE_PROJECT = '1';
     try {
       const single = dashboardSnapshotSchema.parse(
         await (await apiRequest(app, '/api/v1/workspace/dashboard')).json(),
@@ -401,8 +401,8 @@ describe('dashboard workspace routes', () => {
       expect(single.counts.reviews).toBe(0);
       expect(contexts.ids()).toEqual([]);
     } finally {
-      if (previous === undefined) delete process.env.CEZ_SINGLE_PROJECT;
-      else process.env.CEZ_SINGLE_PROJECT = previous;
+      if (previous === undefined) delete process.env.ONNI_SINGLE_PROJECT;
+      else process.env.ONNI_SINGLE_PROJECT = previous;
     }
   });
   it('chains real routes, validates paging, and returns exactly contract JSON', async () => {

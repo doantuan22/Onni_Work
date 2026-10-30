@@ -1,6 +1,6 @@
 /**
  * Processes a task leaves running after it settles (#1411). Every agent is spawned with
- * `CEZ_TASK_ID` in its environment and every descendant inherits it — re-parented, `setsid`ed and
+ * `ONNI_TASK_ID` in its environment and every descendant inherits it — re-parented, `setsid`ed and
  * double-forked ones included — so the marker finds what a process-tree walk misses, and never a
  * user's own shell in the worktree. It also finds orphans of onni versions that predate this.
  *
@@ -11,23 +11,23 @@
 import { execFile } from 'node:child_process';
 import { readdir, readFile } from 'node:fs/promises';
 
-const MARKER = 'CEZ_TASK_ID';
+const MARKER = 'ONNI_TASK_ID';
 const SCAN_BATCH = 64;
 
 export interface TaskProcess {
   pid: number;
-  /** The `CEZ_TASK_ID` the process was started with. */
+  /** The `ONNI_TASK_ID` the process was started with. */
   taskId: string;
   /** argv joined with spaces, capped — for the run's lifecycle note only. */
   command: string;
 }
 
-/** Off only for the exact value `0`, like every other `CEZ_*` kill switch. */
+/** Off only for the exact value `0`, like every other `ONNI_*` kill switch. */
 export function taskProcessReapEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.CEZ_TASK_PROCESS_REAP !== '0';
+  return env.ONNI_TASK_PROCESS_REAP !== '0';
 }
 
-/** The `CEZ_TASK_ID` value in a NUL-separated `/proc/<pid>/environ` blob. */
+/** The `ONNI_TASK_ID` value in a NUL-separated `/proc/<pid>/environ` blob. */
 export function taskIdFromEnviron(environ: string): string | undefined {
   for (const entry of environ.split('\0')) {
     if (entry.startsWith(`${MARKER}=`)) return entry.slice(MARKER.length + 1) || undefined;
@@ -123,7 +123,7 @@ function listDarwin(): Promise<TaskProcess[]> {
   });
 }
 
-/** Every live process carrying a `CEZ_TASK_ID`, onni's own ancestry excluded. Never throws. */
+/** Every live process carrying a `ONNI_TASK_ID`, onni's own ancestry excluded. Never throws. */
 export async function listTaskProcesses(): Promise<TaskProcess[]> {
   try {
     if (process.platform === 'linux') return await listLinux();

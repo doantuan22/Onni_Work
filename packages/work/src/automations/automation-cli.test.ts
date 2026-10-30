@@ -11,7 +11,7 @@ function containsRunnerToken(text: string, runner: string): boolean {
  *  definition and env, how it relays a refusal, and that it never talks to a server it was not
  *  given — never the routes, which have their own tests (`server/automations-api.test.ts`). */
 describe('onni automation', () => {
-  const env = { CEZ_API_URL: 'http://127.0.0.1:4321/', CEZ_PROJECT_ID: 'proj' };
+  const env = { ONNI_API_URL: 'http://127.0.0.1:4321/', ONNI_PROJECT_ID: 'proj' };
 
   const definition = {
     name: 'Review new PRs',
@@ -98,9 +98,9 @@ describe('onni automation', () => {
   });
 
   it('create relays the cockpit’s refusal — the automations-off 409 included — with a non-zero exit', async () => {
-    const h = harness([{ status: 409, body: { error: 'GitHub automations are disabled — set CEZ_AUTOMATIONS=1 to enable them' } }]);
+    const h = harness([{ status: 409, body: { error: 'GitHub automations are disabled — set ONNI_AUTOMATIONS=1 to enable them' } }]);
     expect(await runAutomationCommand(['create', '--json', JSON.stringify(definition)], env, h.io)).toBe(1);
-    expect(h.err[0]).toBe('onni automation: create refused — GitHub automations are disabled — set CEZ_AUTOMATIONS=1 to enable them');
+    expect(h.err[0]).toBe('onni automation: create refused — GitHub automations are disabled — set ONNI_AUTOMATIONS=1 to enable them');
   });
 
   it('update reads the current definition, merges the patch over its editable keys, restates enabled and echoes the revision', async () => {
@@ -195,8 +195,8 @@ describe('onni automation', () => {
     expect(await runAutomationCommand(['schema'], {}, schema.io)).toBe(0);
     expect(schema.out[0]).toBe(AUTOMATION_SCHEMA_REFERENCE);
     const none = harness([]);
-    expect(await runAutomationCommand(['list'], { CEZ_TASK_ID: 'run-1' }, none.io)).toBe(2);
-    expect(none.err[0]).toContain('CEZ_API_URL is not set');
+    expect(await runAutomationCommand(['list'], { ONNI_TASK_ID: 'run-1' }, none.io)).toBe(2);
+    expect(none.err[0]).toContain('ONNI_API_URL is not set');
     expect(none.err[0]).toContain('Do not substitute a cron job');
     expect(none.calls).toHaveLength(0);
   });
@@ -204,14 +204,14 @@ describe('onni automation', () => {
   it('outside a task, a missing address is explained to the person instead of calling it task-only (#1080)', async () => {
     const none = harness([]);
     expect(await runAutomationCommand(['list'], {}, none.io)).toBe(2);
-    expect(none.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 onni automation list');
+    expect(none.err[0]).toContain('ONNI_API_URL=http://127.0.0.1:4321 onni automation list');
     expect(none.err[0]).not.toContain('only works inside a task');
     expect(none.calls).toHaveLength(0);
   });
 
   it('falls back to the unscoped API and link without a project id', async () => {
     const h = harness([{ status: 201, body: { automation: { id: 'x', name: 'n', enabled: false } } }]);
-    expect(await runAutomationCommand(['create', '--json', JSON.stringify(definition)], { CEZ_API_URL: 'http://127.0.0.1:1' }, h.io)).toBe(0);
+    expect(await runAutomationCommand(['create', '--json', JSON.stringify(definition)], { ONNI_API_URL: 'http://127.0.0.1:1' }, h.io)).toBe(0);
     expect(h.calls[0]?.url).toBe('http://127.0.0.1:1/api/v1/automations');
     expect(h.out[1]).toBe('cockpit: http://127.0.0.1:1/automations/x');
   });
@@ -230,7 +230,7 @@ describe('onni automation', () => {
 });
 
 describe('onni automation add / run (spec 2026-09-14)', () => {
-  const env = { CEZ_API_URL: 'http://127.0.0.1:4321', CEZ_PROJECT_ID: 'proj' };
+  const env = { ONNI_API_URL: 'http://127.0.0.1:4321', ONNI_PROJECT_ID: 'proj' };
   const harness = (replies: Array<{ status: number; body?: unknown }>) => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const out: string[] = [];
@@ -328,7 +328,7 @@ it('tracker add resolves the project association before posting the trigger', as
   const association = { kind: 'jira', source: { id: 'cloud', webUrl: 'https://example.atlassian.net' }, externalId: '100', externalName: 'Team', connectionId: '11111111-1111-4111-8111-111111111111' };
   const calls: Array<{ url: string; body?: unknown }> = [];
   const errors: string[] = [];
-  const code = await runAutomationCommand(['add', '--kind', 'tracker', '--name', 'Jira work', '--on', 'issue.status_changed', '--to-status', 'todo-id', '--require-label', 'bug', '--require-label', 'urgent', '--prompt', 'Implement'], { CEZ_API_URL: 'http://localhost:4321', CEZ_PROJECT_ID: 'project' }, {
+  const code = await runAutomationCommand(['add', '--kind', 'tracker', '--name', 'Jira work', '--on', 'issue.status_changed', '--to-status', 'todo-id', '--require-label', 'bug', '--require-label', 'urgent', '--prompt', 'Implement'], { ONNI_API_URL: 'http://localhost:4321', ONNI_PROJECT_ID: 'project' }, {
     fetch: (async (input, init) => {
       const url = String(input); calls.push({ url, ...(init?.body ? { body: JSON.parse(String(init.body)) } : {}) });
       return new Response(JSON.stringify(url.endsWith('/automation-options')
