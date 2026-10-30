@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from '@/lib/project-router'
 
 import { useHealth, useLaunchKey, useProjects } from '@/api/queries'
-import type { Skill } from '@open-mercato/cezar-api-client'
+import type { Skill } from '@onni/api-client'
 import { repoChipOf } from '@/components/app-shell-container'
 import { BookmarkletRow } from '@/components/bookmarklet-row'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'

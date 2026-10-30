@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Hono } from 'hono';
 import { afterEach, expect, it, vi } from 'vitest';
-import { webhookSecretResponseSchema, webhookDeliveriesPageSchema } from '@open-mercato/cezar-contract';
+import { webhookSecretResponseSchema, webhookDeliveriesPageSchema } from '@onni/contract';
 import { WebhookCoordinator } from '../webhooks/coordinator.ts';
 import { verifyWebhook } from '../webhooks/signing.ts';
 import { createWebhookRoutes } from './webhooks.ts';

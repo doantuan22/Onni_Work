@@ -8,7 +8,7 @@ import {
   dashboardTelemetrySchema,
   type DashboardGroup,
   type DashboardFeed,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { cez, unwrap } from './client'
 import { workspaceQueryKeys } from './queries'
 import { dashboardLive } from './dashboard-live'

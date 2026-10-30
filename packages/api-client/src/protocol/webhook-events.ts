@@ -1,4 +1,4 @@
-import { webhookInvalidationSchema, type WebhookInvalidation } from '@open-mercato/cezar-contract'
+import { webhookInvalidationSchema, type WebhookInvalidation } from '@onni/contract'
 /** A project-specific stream carries invalidations only; ignore unknown or malformed frames. */
 export function decodeWebhookInvalidation(type: string, data: string): WebhookInvalidation | undefined {
   if ((type !== 'change' && type !== 'resync') || data.length > 1024) return

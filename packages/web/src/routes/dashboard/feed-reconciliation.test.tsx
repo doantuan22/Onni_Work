@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { DashboardFeed, DashboardFeedRow } from '@open-mercato/cezar-api-client'
+import type { DashboardFeed, DashboardFeedRow } from '@onni/api-client'
 import { Feed } from './feed'
 import { collectDashboardExport, dashboardCsv, printableDashboard } from './export'
 

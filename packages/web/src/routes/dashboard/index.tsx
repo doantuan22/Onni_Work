@@ -10,7 +10,7 @@ import type {
   DashboardFeed,
   DashboardGroup,
   DashboardSnapshot,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { useDashboard, useDashboardTelemetry } from '@/api/dashboard'
 import { useDashboardLive } from '@/api/dashboard-live'
 import { Button } from '@/components/ui/button'

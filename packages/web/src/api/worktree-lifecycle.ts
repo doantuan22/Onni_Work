@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { queryScope, type LifecycleActionInput } from '@open-mercato/cezar-api-client'
+import { queryScope, type LifecycleActionInput } from '@onni/api-client'
 import { useProjectScope } from './project-scope-context'
 import { actOnLifecycleOperation, getLifecycleOperation, getLifecycleOutput, getWorktreeLifecycle, getWorktreeLifecycleDetail } from './client'
 

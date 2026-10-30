@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createQueryClient } from '@/api/query-client'
 import { Trends } from './trends'
-import type { DashboardCosts, DashboardCostSeriesPoint } from '@open-mercato/cezar-api-client'
+import type { DashboardCosts, DashboardCostSeriesPoint } from '@onni/api-client'
 const at = '2026-09-19T00:00:00.000Z'
 function point(
   date: string,

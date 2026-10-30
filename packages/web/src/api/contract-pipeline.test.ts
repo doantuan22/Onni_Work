@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { healthResponseSchema, type HealthResponse } from '@open-mercato/cezar-api-client'
+import { healthResponseSchema, type HealthResponse } from '@onni/api-client'
 
 /**
  * The `sync-contract` pipeline, end to end.

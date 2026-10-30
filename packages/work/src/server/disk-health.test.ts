@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { healthResponseSchema } from '@open-mercato/cezar-contract';
+import { healthResponseSchema } from '@onni/contract';
 import { resetDirSizeCacheForTests } from '../disk-space.ts';
 import { diskHealth } from './disk-health.ts';
 

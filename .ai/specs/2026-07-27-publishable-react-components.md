@@ -16,25 +16,25 @@ application still cannot install Cezar and compose its task list, task creator, 
 changes, repository, GitHub, workflow, skill, inbox, or settings surfaces.
 
 Add a fifth workspace, `packages/react`, published as
-`@open-mercato/cezar-react`. It exports connected feature components backed by an explicit
+`@onni/work-react`. It exports connected feature components backed by an explicit
 `CezarClient`, selected client-independent presentation components, an isolated
 `CezarProvider`, scoped compiled CSS, a router-neutral navigation contract, and an optional
-React Router adapter. The private `@open-mercato/cezar-web` cockpit becomes the reference
+React Router adapter. The private `@onni/web` cockpit becomes the reference
 consumer of exactly those public exports.
 
 The dependency direction is:
 
 ```text
-@open-mercato/cezar-web (private reference cockpit)
+@onni/web (private reference cockpit)
                     |
                     v
-@open-mercato/cezar-react (public React components)
+@onni/work-react (public React components)
                     |
                     v
-@open-mercato/cezar-api-client (public transport + contract re-export)
+@onni/api-client (public transport + contract re-export)
                     |
                     v
-@open-mercato/cezar-contract (public zod schemas and inferred types)
+@onni/contract (public zod schemas and inferred types)
 ```
 
 The contract and API client must be stabilized and published before, or in the same release as,
@@ -59,18 +59,18 @@ The React package inherits these decisions unchanged:
 1. **The root is private and packages live under `packages/*`.** The completed
    `packages/{cezar,contract,api-client,web}` layout is extended additively with
    `packages/react`.
-   The CLI remains inside `@open-mercato/cezar`.
+   The CLI remains inside `@onni/work`.
 2. **The API client is the only service-contract package imported by a UI.**
-   `@open-mercato/cezar-contract` owns every request/response zod schema and inferred type;
-   `@open-mercato/cezar-api-client` depends on and re-exports that entire contract. React
+   `@onni/contract` owns every request/response zod schema and inferred type;
+   `@onni/api-client` depends on and re-exports that entire contract. React
    components import schemas, DTOs, protocol types, project-scope helpers, and transport
-   operations only from `@open-mercato/cezar-api-client`. They do not declare a direct dependency
-   on `@open-mercato/cezar-contract`, import the server graph, or mirror a contract shape.
+   operations only from `@onni/api-client`. They do not declare a direct dependency
+   on `@onni/contract`, import the server graph, or mirror a contract shape.
 3. **The typed public API uses `/api/v1` exclusively.** The unversioned `/api` surface was
    removed by the upstream spec's amended decision 8. React consumers use `/api/v1` and
    `/api/v1/p/:projectId`; no React compatibility layer revives an unversioned spelling.
 4. **Zod schemas plus Hono RPC form the TypeScript contract.** Every request and response shape
-   originates in `@open-mercato/cezar-contract`; middleware validation and chained family
+   originates in `@onni/contract`; middleware validation and chained family
    builders make those shapes visible through exported `AppType`, and the client wraps
    `hc<AppType>`. The stable domain methods required by connected components are the rich-client
    layer already committed by the independent-server spec, not a competing client design.
@@ -104,11 +104,11 @@ The upstream implementation status also determines this spec's starting point:
 | Phase 5: remote auth | not started | preserve the client/provider extension points; default cockpit login joins the public React surface when this phase lands |
 | Phase 6: OpenAPI | not started | independent and non-blocking for the React package |
 
-The current tree keeps both `@open-mercato/cezar-contract` and
-`@open-mercato/cezar-api-client` private. API-client already declares the contract as a runtime
+The current tree keeps both `@onni/contract` and
+`@onni/api-client` private. API-client already declares the contract as a runtime
 dependency, so publishing API-client while contract remains private would produce an
 uninstallable package. This spec adds the next publication trigger: a public
-`@open-mercato/cezar-react` package is a published runtime consumer of API-client. Contract must
+`@onni/work-react` package is a published runtime consumer of API-client. Contract must
 therefore lose `private` before API-client, and API-client before React, or all three gates must
 open atomically while npm publication still runs in that dependency order. The server's temporary
 `inline-contract.mjs` packaging bridge is removed when contract becomes a real published runtime
@@ -117,8 +117,8 @@ dependency, as its own header already requires.
 ## Resolved decisions (confirmed with owner 2026-07-27)
 
 1. **Create a separate public React package.**
-   `@open-mercato/cezar-react` owns the embeddable contract.
-   `@open-mercato/cezar-web` remains the private executable/reference SPA. Publishing the
+   `@onni/work-react` owns the embeddable contract.
+   `@onni/web` remains the private executable/reference SPA. Publishing the
    existing web workspace as both an application and a library is rejected because its router,
    boot process, providers, and internal modules would become accidental public API.
 2. **Expose every major cockpit area.** The first public release covers tasks, new-task
@@ -145,8 +145,8 @@ dependency, as its own header already requires.
    Radix wrappers, table rows, and private orchestration components are not public.
 8. **Contract, API client, and React publish in dependency order.** This is the additional
    publication trigger described above, extending amended decision 7 of the independent-server
-   spec. The API client depends at runtime on `@open-mercato/cezar-contract`, and React depends at
-   runtime on `@open-mercato/cezar-api-client`; npm must never receive any dependent whose
+   spec. The API client depends at runtime on `@onni/contract`, and React depends at
+   runtime on `@onni/api-client`; npm must never receive any dependent whose
    dependency remains private or unpublished at the matching version.
 9. **The shipped cockpit uses the public contract.** Every standard cockpit screen is composed
    from the same exports available to another application. A second private rendering path is
@@ -171,7 +171,7 @@ boundary but not a reusable UI boundary:
   reset, and theme rules. Loading it unchanged would take over the embedding application's
   document.
 - Radix portals currently assume the application owns the document-level overlay surface.
-- `@open-mercato/cezar-contract` and `@open-mercato/cezar-api-client` are private. The contract
+- `@onni/contract` and `@onni/api-client` are private. The contract
   owns the current zod schemas and inferred types; API-client depends on and re-exports them while
   exposing the typed Hono client plus protocol/scope helpers. Much of the rich request,
   subscription, cache, and error layer still lives in `packages/web/src/api`.
@@ -186,13 +186,13 @@ fixes that the public package is meant to centralize.
 
 - The zero-config local cockpit remains the default product. No environment variable, config
   file, account, proxy, or remote service becomes required.
-- `@open-mercato/cezar` remains the server and CLI package and continues to ship the built
+- `@onni/work` remains the server and CLI package and continues to ship the built
   reference cockpit under `web/dist`.
 - The `/api/v1` wire surface, project scoping, SSE vocabulary, and
   WebSocket demand-driven subscription rules remain governed by
   `.ai/specs/2026-07-23-independent-server-web-packages.md`, `AGENT_PROTOCOL.md`, and
   `BACKWARD_COMPATIBILITY.md`.
-- `@open-mercato/cezar-contract` and `@open-mercato/cezar-api-client` remain Node-free by
+- `@onni/contract` and `@onni/api-client` remain Node-free by
   construction.
 - The shared `SessionTranscript` is the one session rendering pipeline for both main and
   sub-agent sessions. This spec publishes that boundary; it does not create another transcript
@@ -240,7 +240,7 @@ fixes that the public package is meant to centralize.
 
 ## Alternatives considered
 
-### Publish `@open-mercato/cezar-web` as both application and library
+### Publish `@onni/web` as both application and library
 
 Rejected. It minimizes initial file movement but makes application boot, root routing, lazy
 route chunks, same-origin defaults, and private provider composition part of a published
@@ -266,7 +266,7 @@ independent value, as `Diff` and `SessionTranscript` do.
 
 ### Package roles
 
-#### `@open-mercato/cezar-contract`
+#### `@onni/contract`
 
 The browser-safe HTTP shape package. It exports every request and response zod schema, with every
 TypeScript type inferred from those schemas rather than handwritten. It stays free of Node APIs,
@@ -278,7 +278,7 @@ and every public React source file imports those schemas and types through API-c
 host application's install and import story on one UI-facing boundary and prevents React from
 gaining a redundant direct dependency that can drift from API-client's pinned version.
 
-#### `@open-mercato/cezar-api-client`
+#### `@onni/api-client`
 
 The browser-safe transport and contract package defined by the independent-server spec. This
 spec consumes and completes that package; it does not introduce another client package or
@@ -304,7 +304,7 @@ for advanced consumers and contract work.
 The client package has no React, DOM-at-import-time, Node runtime, cache, theme, or navigation
 dependency. Browser transport constructors are resolved lazily or injected.
 
-#### `@open-mercato/cezar-react`
+#### `@onni/work-react`
 
 The public React component package. It owns:
 
@@ -322,7 +322,7 @@ The public React component package. It owns:
 It may depend on browser UI libraries, but each feature entry point must remain independently
 tree-shakeable. It may not import any path owned by `packages/web`.
 
-#### `@open-mercato/cezar-web`
+#### `@onni/web`
 
 The private reference application. Its responsibilities shrink to:
 
@@ -336,7 +336,7 @@ Application-specific redirects and backward-compatible top-level URLs may live h
 public router adapter when they are generally useful. Feature rendering cannot be duplicated
 here.
 
-#### `@open-mercato/cezar`
+#### `@onni/work`
 
 Unchanged in role: server, CLI, headless runner, and owner of the bundled reference-cockpit
 artifact. It must not gain a runtime React dependency.
@@ -397,18 +397,18 @@ The first public release exposes these stable entry points:
 
 | Entry point | Public exports |
 | --- | --- |
-| `@open-mercato/cezar-react` | `CezarProvider`, provider props, adapters, public shared types |
-| `@open-mercato/cezar-react/tasks` | `TaskList`, `TaskOverview`, `NewTask` |
-| `@open-mercato/cezar-react/session` | `TaskSession`, `SessionTranscript`, `RunHeader`, `ReviewControls` |
-| `@open-mercato/cezar-react/git` | `TaskChanges`, `TaskFiles`, `TaskCommits`, `RepositoryView`, `Diff` |
-| `@open-mercato/cezar-react/github` | `GitHubView`, `GitHubList`, `GitHubDetail` |
-| `@open-mercato/cezar-react/workflows` | `WorkflowList`, `WorkflowEditor` |
-| `@open-mercato/cezar-react/skills` | `SkillsBrowser`, `SkillDetail` |
-| `@open-mercato/cezar-react/inbox` | `Inbox` |
-| `@open-mercato/cezar-react/settings` | `ProjectSettings`, `GlobalSettings` |
-| `@open-mercato/cezar-react/shell` | `CezarShell`, `CezarCockpit` |
-| `@open-mercato/cezar-react/router` | `CezarRouter`, React Router adapter helpers |
-| `@open-mercato/cezar-react/styles.css` | compiled isolated theme, utilities, and component styles |
+| `@onni/work-react` | `CezarProvider`, provider props, adapters, public shared types |
+| `@onni/work-react/tasks` | `TaskList`, `TaskOverview`, `NewTask` |
+| `@onni/work-react/session` | `TaskSession`, `SessionTranscript`, `RunHeader`, `ReviewControls` |
+| `@onni/work-react/git` | `TaskChanges`, `TaskFiles`, `TaskCommits`, `RepositoryView`, `Diff` |
+| `@onni/work-react/github` | `GitHubView`, `GitHubList`, `GitHubDetail` |
+| `@onni/work-react/workflows` | `WorkflowList`, `WorkflowEditor` |
+| `@onni/work-react/skills` | `SkillsBrowser`, `SkillDetail` |
+| `@onni/work-react/inbox` | `Inbox` |
+| `@onni/work-react/settings` | `ProjectSettings`, `GlobalSettings` |
+| `@onni/work-react/shell` | `CezarShell`, `CezarCockpit` |
+| `@onni/work-react/router` | `CezarRouter`, React Router adapter helpers |
+| `@onni/work-react/styles.css` | compiled isolated theme, utilities, and component styles |
 
 The export map rejects private deep paths. Adding a file under `src/features` does not publish
 it. A new public component requires an explicit barrel/export-map change, documentation, type
@@ -633,7 +633,7 @@ redirects required by the cockpit.
 Consumers import:
 
 ```ts
-import '@open-mercato/cezar-react/styles.css'
+import '@onni/work-react/styles.css'
 ```
 
 They do not install Tailwind, add Cezar source paths to a scanner, or copy a token file. The
@@ -769,7 +769,7 @@ host creates CezarClient
  query/mutation/live        typed props only
           |
           v
- @open-mercato/cezar-api-client
+ @onni/api-client
  HTTP · SSE · WebSocket subscriptions
 ```
 
@@ -826,7 +826,7 @@ in a non-DOM build must not throw.
 
 ## Package and build contract
 
-`@open-mercato/cezar-react` publishes ESM JavaScript, declaration files, CSS, and font assets.
+`@onni/work-react` publishes ESM JavaScript, declaration files, CSS, and font assets.
 Its export map lists every supported entry point. The package marks only its stylesheet as a
 side effect so JavaScript feature imports remain tree-shakeable.
 
@@ -870,7 +870,7 @@ publication gate, and its manifest set grows a React entry between API-client an
 
 ## Public compatibility and versioning
 
-The release set has one version. `@open-mercato/cezar-react` may not choose an independent major
+The release set has one version. `@onni/work-react` may not choose an independent major
 version from contract, API-client, or server: a breaking React change advances the lockstep release
 even when the wire protocol did not change. Before 1.0, an incompatible public-surface change
 increments the minor version; at and after 1.0 it increments the major version. Compatible
@@ -914,7 +914,7 @@ surface or a compatibility promise.
 
 - Resume the independent-server spec at its first incomplete work; do not create a React-local
   transport or parallel DTO layer.
-- Finish packed-consumer coverage for `@open-mercato/cezar-contract`, remove its `private` gate,
+- Finish packed-consumer coverage for `@onni/contract`, remove its `private` gate,
   and publish it before API-client. Once the server resolves the published contract normally,
   remove the temporary `packages/work/scripts/inline-contract.mjs` bundling bridge and its
   repointing checks.
@@ -927,7 +927,7 @@ surface or a compatibility promise.
   resource URLs used by the public components.
 - Preserve same-origin defaults and the current reference cockpit behavior.
 - Keep React source imports on API-client's contract re-export; add a dependency-direction check
-  that rejects direct `@open-mercato/cezar-contract` imports from `packages/react`.
+  that rejects direct `@onni/contract` imports from `packages/react`.
 - Make API-client public only after contract is installable and every operation required by the
   React package has a stable public schema/type and packed-consumer coverage.
 
@@ -993,7 +993,7 @@ Each family:
 - Provider tests cover generated roots, adopted `rootElement` containers, portal placement, all
   four appearance dimensions, and cleanup without mutating the host document.
 - Import-boundary tests reject references from `packages/react` to `packages/web`, reject direct
-  `@open-mercato/cezar-contract` imports from `packages/react`, and reject Node imports in contract
+  `@onni/contract` imports from `packages/react`, and reject Node imports in contract
   and API-client.
 
 ### Integration tests
@@ -1110,8 +1110,8 @@ focused tests, route tests, screenshots, and real-browser E2E remain the compati
 
 The work is complete when:
 
-1. `@open-mercato/cezar-contract`, `@open-mercato/cezar-api-client`, and
-   `@open-mercato/cezar-react` are public, installable npm packages with working packed-consumer
+1. `@onni/contract`, `@onni/api-client`, and
+   `@onni/work-react` are public, installable npm packages with working packed-consumer
    fixtures and dependency ranges that resolve at the matching lockstep release.
 2. A separate React 19 application can create one client, mount `CezarProvider`, and independently
    compose every major feature listed in this spec using only public imports.
@@ -1124,7 +1124,7 @@ The work is complete when:
    version.
 6. Two providers can render different services, projects, themes, accents, densities, and reading
    widths on one page without cache, connection, storage, credential, or CSS leakage.
-7. `@open-mercato/cezar-web` contains no private alternative implementation of a published
+7. `@onni/web` contains no private alternative implementation of a published
    feature and builds the standard cockpit entirely from public component exports. Its pre-paint
    adapter stamps and adopts the public root contract without mutating the host document or
    flashing the wrong appearance.

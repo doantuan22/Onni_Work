@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
-import { queryScope, trackerWatchSignalSchema, type TrackerItemsResponse, type TrackerItemsSuccess, type TrackerWatchInput, type TrackerWatchSnapshot } from '@open-mercato/cezar-api-client'
+import { queryScope, trackerWatchSignalSchema, type TrackerItemsResponse, type TrackerItemsSuccess, type TrackerWatchInput, type TrackerWatchSnapshot } from '@onni/api-client'
 import { openTrackerWatch, readTrackerWatch, refreshTrackerWatch } from './client'
 import { useHealth, workspaceQueryKeys } from './queries'
 import { subscribeTopic } from './ws'

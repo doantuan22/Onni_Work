@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LifecycleStore, withLifecycleFileLock } from './store.ts';
-import { lifecycleOperationSchema, type WorktreeLifecycleRecord } from '@open-mercato/cezar-contract';
+import { lifecycleOperationSchema, type WorktreeLifecycleRecord } from '@onni/contract';
 
 let root: string;
 let store: LifecycleStore;

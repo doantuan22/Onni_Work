@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { WebhookList } from '@open-mercato/cezar-api-client'
+import type { WebhookList } from '@onni/api-client'
 import { useHealth } from '@/api/queries'
 import { useWebhookList, useWebhookSubscription } from './use-webhooks'
 import { toast } from '@/components/ui/toaster'

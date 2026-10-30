@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import * as contract from '@open-mercato/cezar-contract';
+import * as contract from '@onni/contract';
 
 // Assert exports before calling so RED reports the missing contract rather than an import error.
 const schemas = contract as unknown as Record<string, z.ZodType>;

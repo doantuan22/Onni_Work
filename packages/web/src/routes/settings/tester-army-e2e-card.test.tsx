@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { setApiScope, type E2eStatus } from '@open-mercato/cezar-api-client'
+import { setApiScope, type E2eStatus } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
 import { TesterArmyE2eCard } from './tester-army-e2e-card'
 

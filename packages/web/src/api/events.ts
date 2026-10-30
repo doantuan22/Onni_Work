@@ -1,5 +1,5 @@
-import { WORKSPACE_RUN_EVENT_OMITTED_KEYS } from '@open-mercato/cezar-api-client'
-import type { ApiRun, ProcessUsage, RunRecord, TodoItem, WorkspaceRunEvent } from '@open-mercato/cezar-api-client'
+import { WORKSPACE_RUN_EVENT_OMITTED_KEYS } from '@onni/api-client'
+import type { ApiRun, ProcessUsage, RunRecord, TodoItem, WorkspaceRunEvent } from '@onni/api-client'
 
 /**
  * The global stream's data layer: parse one SSE message, and fold it into cached state.

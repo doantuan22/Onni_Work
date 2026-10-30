@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { MemoryRouter } from 'react-router'
 import { afterEach, expect, it, vi } from 'vitest'
 
-import type { TrackerItem } from '@open-mercato/cezar-api-client'
+import type { TrackerItem } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
 import { workspaceQueryKeys } from '@/api/queries'
 import { TrackerHandoff } from './tracker-handoff'

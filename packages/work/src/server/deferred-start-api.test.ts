@@ -1,5 +1,5 @@
 import * as codexProbes from '../core/codex-usage-probe.ts';
-import { deferredOptionsSchema, deferredAlreadyStartedSchema } from '@open-mercato/cezar-contract';
+import { deferredOptionsSchema, deferredAlreadyStartedSchema } from '@onni/contract';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';

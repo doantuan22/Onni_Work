@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import type { BackendCheck, ForgeInfo, HealthResponse, ProjectsResponse } from '@open-mercato/cezar-api-client'
+import type { BackendCheck, ForgeInfo, HealthResponse, ProjectsResponse } from '@onni/api-client'
 import { useHealth, useProjects } from '@/api/queries'
 import { useActiveProjectId } from '@/lib/project-router'
 

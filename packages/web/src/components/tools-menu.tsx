@@ -1,7 +1,7 @@
 import { ChevronDownIcon, SettingsIcon } from 'lucide-react'
 import { Link as RouterLink } from 'react-router'
 
-import type { BackendCheck, ForgeInfo, HealthResponse, Runner } from '@open-mercato/cezar-api-client'
+import type { BackendCheck, ForgeInfo, HealthResponse, Runner } from '@onni/api-client'
 import { StatusDot } from '@/components/status-dot'
 import { formatMem } from '@/lib/tasks-table'
 import { Link } from '@/lib/project-router'

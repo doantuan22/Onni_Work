@@ -5,7 +5,7 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import {
   trackerCandidatesResponseSchema, trackerAssociationResponseSchema, trackerItemsResponseSchema,
   trackerItemResponseSchema, trackerChangedEventSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { registerProject } from '../workspace/projects.ts';
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';

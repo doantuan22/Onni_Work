@@ -5,7 +5,7 @@ import { afterEach, it, expect, vi } from 'vitest'
 import { createQueryClient } from '@/api/query-client'
 import { DashboardRoute } from './index'
 import { readEntry, saveEntry } from './state'
-import type { DashboardCosts } from '@open-mercato/cezar-api-client'
+import type { DashboardCosts } from '@onni/api-client'
 const at = '2026-09-19T00:00:00.000Z'
 function fixture(id = 's1'): DashboardCosts {
   return {

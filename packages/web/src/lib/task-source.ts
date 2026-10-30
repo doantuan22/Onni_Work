@@ -1,4 +1,4 @@
-import type { UiState } from '@open-mercato/cezar-api-client'
+import type { UiState } from '@onni/api-client'
 
 /**
  * What a start surface runs: a named workflow or a single skill.

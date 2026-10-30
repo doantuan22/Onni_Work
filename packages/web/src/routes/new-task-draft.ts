@@ -3,7 +3,7 @@ import {
   DISPATCH_MAX_SUBTASKS,
   type DispatchIntent,
   type Runner,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import type { PendingAttachment } from '@/components/composer/composer-attachments'
 import { RUNNERS, type TaskSource } from './new-task-form'
 

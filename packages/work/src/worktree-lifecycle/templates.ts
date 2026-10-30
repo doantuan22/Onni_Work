@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { LifecycleTemplateVariables } from '@open-mercato/cezar-contract';
+import type { LifecycleTemplateVariables } from '@onni/contract';
 import { shellQuote } from '../core/shell-env.ts';
 
 export const LIFECYCLE_RENDERER_VERSION = 'bash-posix-quote-v1';

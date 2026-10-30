@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { RunEvent } from '@open-mercato/cezar-api-client'
-import type { UiMessageItem, UiToolItem } from '@open-mercato/cezar-api-client'
+import type { RunEvent } from '@onni/api-client'
+import type { UiMessageItem, UiToolItem } from '@onni/api-client'
 
 import bashAndScreenshot from '../../../../work/src/core/__fixtures__/claude/bash-and-screenshot.expected.json'
 import failedAndDenied from '../../../../work/src/core/__fixtures__/claude/failed-and-denied.expected.json'

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { setApiScope, type TrackerAssociation } from '@open-mercato/cezar-api-client'
+import { setApiScope, type TrackerAssociation } from '@onni/api-client'
 import { getTrackerItem, getTrackerItems, searchTrackerItems } from './client'
 
 afterEach(() => { vi.unstubAllGlobals(); setApiScope(null) })

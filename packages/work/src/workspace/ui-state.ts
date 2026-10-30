@@ -1,4 +1,4 @@
-import type { WorkspaceUiState } from '@open-mercato/cezar-contract';
+import type { WorkspaceUiState } from '@onni/contract';
 import { readFileWithRetry } from '../fs-rename.ts';
 import { workspaceUiStatePath } from '../paths.ts';
 import { atomicWriteJson, serializedByPath } from './config.ts';

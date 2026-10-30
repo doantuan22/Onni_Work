@@ -6,7 +6,7 @@ import { createQueryClient } from '@/api/query-client'
 import { DashboardEntryContext } from './state'
 import { dashboardTransition, dashboardProjectTransition } from '@/api/dashboard-truth'
 import { Overview } from './overview'
-import type { DashboardOverview } from '@open-mercato/cezar-api-client'
+import type { DashboardOverview } from '@onni/api-client'
 const at = '2026-09-19T12:00:00.000Z'
 const metrics = {
   running: 1,

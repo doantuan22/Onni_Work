@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import type { BranchTracking, LogEntry, RepoSync } from '@open-mercato/cezar-contract';
+import type { BranchTracking, LogEntry, RepoSync } from '@onni/contract';
 import { isSafeGitRef } from '../git-refs.ts';
 import { resolveTaskRemotes } from '../git-remotes.ts';
 import { pushCurrentBranch, syncFailureReason } from './git-changes.ts';

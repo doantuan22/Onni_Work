@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { queryKeys } from '@/api/queries'
 import { createQueryClient } from '@/api/query-client'
-import type { ApiRun, HealthResponse, RepoCommitPayload, RunCommitsResponse } from '@open-mercato/cezar-api-client'
+import type { ApiRun, HealthResponse, RepoCommitPayload, RunCommitsResponse } from '@onni/api-client'
 
 import { TaskCommitsRoute } from './task-commits'
 

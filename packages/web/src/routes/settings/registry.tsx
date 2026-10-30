@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 
-import type { Capabilities } from '@open-mercato/cezar-api-client'
+import type { Capabilities } from '@onni/api-client'
 import { AccountsSection } from './accounts-section'
 import { AgentConfigSection } from './agent-config-section'
 import { AgentsSection } from './agents-section'

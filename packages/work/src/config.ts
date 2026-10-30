@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { worktreeLifecycleConfigSchema } from '@open-mercato/cezar-contract';
+import { worktreeLifecycleConfigSchema } from '@onni/contract';
 import { loadWorkspaceConfig, type WorkspaceConfig } from './workspace/config.ts';
 import { RUNNER_IDS } from './core/agent-runner.ts';
 

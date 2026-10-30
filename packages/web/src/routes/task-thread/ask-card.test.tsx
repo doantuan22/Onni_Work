@@ -6,7 +6,7 @@ import { ApiError } from '@/api/client'
 import { AskCard } from './ask-card'
 import { readAskSelections, resetAskSelections } from './ask-selections'
 import type { ThreadAsk } from './thread-state'
-import type { ApiRun, ProviderStatusResponse, StepState } from '@open-mercato/cezar-api-client'
+import type { ApiRun, ProviderStatusResponse, StepState } from '@onni/api-client'
 
 const mutateAsync = vi.fn().mockResolvedValue({})
 const continueAsync = vi.fn().mockResolvedValue({})

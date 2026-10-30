@@ -1,4 +1,4 @@
-import type { RunEvent, RunStatus } from '@open-mercato/cezar-api-client'
+import type { RunEvent, RunStatus } from '@onni/api-client'
 import { runItemKey } from '@/api/run-events'
 import { isOutdatedBackendError } from '@/lib/agent-errors'
 import {
@@ -9,7 +9,7 @@ import {
   type UiAskQuestion,
   type UiItem,
   type UiToolItem,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 /**
  * The thread reducer: folds one run's ordered event list (`useRunEvents` — v1 lines and

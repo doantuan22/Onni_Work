@@ -6,7 +6,7 @@ import { CircleHelp, Activity, CheckCheck, CircleAlert, ChevronRight } from 'luc
 import { useDashboardLive } from '@/api/dashboard-live'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import type { DashboardOverview, DashboardOverviewGroup } from '@open-mercato/cezar-api-client'
+import type { DashboardOverview, DashboardOverviewGroup } from '@onni/api-client'
 import { useDashboardOverview } from '@/api/dashboard-overview'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'

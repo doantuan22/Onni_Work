@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
-import type { WebhookReceiver, WebhookHistoricalReceiver, WebhookDelivery, WebhookDeliveryStatus } from '@open-mercato/cezar-api-client'
+import type { WebhookReceiver, WebhookHistoricalReceiver, WebhookDelivery, WebhookDeliveryStatus } from '@onni/api-client'
 import { webhookApi } from '@/api/client'
 import { webhookKey } from '@/hooks/use-webhooks'
 import { Button } from '@/components/ui/button'

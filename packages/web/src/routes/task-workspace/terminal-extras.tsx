@@ -2,7 +2,7 @@ import { ChevronDownIcon, CircleIcon, ExternalLinkIcon, PanelRightIcon, PlayIcon
 import { useCallback, useEffect, useState } from 'react'
 
 import { getRunTerminalCommands, getRunTerminalUrls } from '@/api/client'
-import type { DetectedUrlEntry, DiscoveredCommandEntry } from '@open-mercato/cezar-api-client'
+import type { DetectedUrlEntry, DiscoveredCommandEntry } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { HealthResponse, ProjectListEntry, ProjectsResponse } from '@open-mercato/cezar-api-client'
+import type { HealthResponse, ProjectListEntry, ProjectsResponse } from '@onni/api-client'
 import { activeForgeOf, cliFor, forgeCliUnavailableReason } from './active-forge'
 
 const GH_OK = { name: 'gh' as const, available: true, version: 'authenticated' }

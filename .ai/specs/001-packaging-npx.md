@@ -23,7 +23,7 @@ npx cezar                      # ...i tyle. Otwiera się przeglądarka.
 
 ## Zakres
 
-1. **Nazwa paczki — ROZSTRZYGNIĘTE**: `@open-mercato/cezar` (publikacja w
+1. **Nazwa paczki — ROZSTRZYGNIĘTE**: `@onni/work` (publikacja w
    org scope) **plus** alias unscoped `cezar` (`alias-cezar/`: bin-shim z
    zależnością na scoped paczkę), bo `npx cezar` instaluje paczkę unscoped —
    nazwa była wolna, zajmujemy ją. Bin: `cezar` + `cez`.

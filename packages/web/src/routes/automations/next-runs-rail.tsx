@@ -1,5 +1,5 @@
 import { CalendarClockIcon } from 'lucide-react'
-import { occurrencesBetween, zonedParts, type AutomationListEntry } from '@open-mercato/cezar-api-client'
+import { occurrencesBetween, zonedParts, type AutomationListEntry } from '@onni/api-client'
 
 import { StatusDot } from '@/components/status-dot'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'

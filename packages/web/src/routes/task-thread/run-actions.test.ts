@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { RunRecord, RunStatus, StepState } from '@open-mercato/cezar-api-client'
+import type { RunRecord, RunStatus, StepState } from '@onni/api-client'
 
 import { isUnread } from '@/lib/read-state'
 

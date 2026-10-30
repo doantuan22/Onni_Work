@@ -1,5 +1,5 @@
 import { fireDeferred } from './deferred-lifecycle.ts';
-import { nextOccurrence, occurrencesBetween } from '@open-mercato/cezar-contract';
+import { nextOccurrence, occurrencesBetween } from '@onni/contract';
 import type { AutomationStore } from './store.ts';
 import type { AutomationLogRecord, AutomationReceipt, ScheduleAutomationDefinition } from './types.ts';
 

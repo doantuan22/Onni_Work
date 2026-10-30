@@ -1,7 +1,7 @@
 import { it, expect, vi, afterEach } from 'vitest'
 import { render, screen, act, cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { DashboardFeedRow } from '@open-mercato/cezar-api-client'
+import type { DashboardFeedRow } from '@onni/api-client'
 import { Feed } from '@/routes/dashboard/feed'
 import {
   dashboardTransition,

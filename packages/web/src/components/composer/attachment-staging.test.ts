@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ATTACHMENT_UPLOAD_MISSING } from '@open-mercato/cezar-api-client'
+import { ATTACHMENT_UPLOAD_MISSING } from '@onni/api-client'
 
 const api = vi.hoisted(() => ({
   stageUpload: vi.fn(),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { workspaceLayoutsSchema } from '@open-mercato/cezar-api-client'
+import { workspaceLayoutsSchema } from '@onni/api-client'
 
 import {
   addLayout,

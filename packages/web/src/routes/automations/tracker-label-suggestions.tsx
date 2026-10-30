@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { queryScope, type TrackerAssociation } from '@open-mercato/cezar-api-client'
+import { queryScope, type TrackerAssociation } from '@onni/api-client'
 import { getTrackerItems } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/chip'

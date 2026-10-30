@@ -30,7 +30,7 @@ import {
   type ProviderId,
   type Runner,
   type SetWorkspaceConfigInput,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import {
   AlertDialog,

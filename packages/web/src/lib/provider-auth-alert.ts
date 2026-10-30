@@ -2,7 +2,7 @@ import type {
   ProviderId,
   ProviderStatusResponse,
   WorkspaceUiState,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 const PROVIDERS: readonly ProviderId[] = ['claude', 'codex', 'junie', 'opencode', 'cursor', 'pi', 'copilot']
 export const PROVIDER_LABELS: Record<ProviderId, string> = {

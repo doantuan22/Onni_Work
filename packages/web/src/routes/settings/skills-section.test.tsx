@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { queryKeys, workspaceQueryKeys } from '@/api/queries'
 import { createQueryClient } from '@/api/query-client'
-import type { WorkspaceConfigResponse } from '@open-mercato/cezar-api-client'
+import type { WorkspaceConfigResponse } from '@onni/api-client'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'
 

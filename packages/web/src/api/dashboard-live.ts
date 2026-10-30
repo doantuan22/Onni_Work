@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { DashboardTelemetrySample } from '@open-mercato/cezar-api-client'
+import type { DashboardTelemetrySample } from '@onni/api-client'
 
 export function createDashboardLiveStore(clock = () => performance.now()) {
   const entries = new Map<string, { sample: DashboardTelemetrySample; deadline: number }>()

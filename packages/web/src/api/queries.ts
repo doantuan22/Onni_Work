@@ -94,7 +94,7 @@ import {
   getRepoSync,
   runRepoSyncAction,
 } from './client'
-import { queryScope, REFERENCE_STATUS_MAX, runnerDiscoversModels } from '@open-mercato/cezar-api-client'
+import { queryScope, REFERENCE_STATUS_MAX, runnerDiscoversModels } from '@onni/api-client'
 import { useProjectScope } from './project-scope-context'
 import { isReferenceStatus } from '@/lib/reference-status'
 import { githubRepoBase } from '@/lib/tasks-table'
@@ -125,7 +125,7 @@ import type {
   TrackerAssociation,
   TrackerItemsResponse,
   TrackerKind,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { subscribeTopic } from './ws'
 
 /**

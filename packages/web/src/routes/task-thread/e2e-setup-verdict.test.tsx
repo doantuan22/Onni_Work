@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { ApiRun, E2eStatus } from '@open-mercato/cezar-api-client'
+import type { ApiRun, E2eStatus } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
 import { E2eSetupVerdict } from './e2e-setup-verdict'
 

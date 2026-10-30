@@ -8,7 +8,7 @@ import { createQueryClient } from '@/api/query-client'
 import type {
   AgentProfilesResponse,
   WorkspaceConfigResponse,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'

@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { startAppRecipeSchema, type EffectiveStartApp, type StartAppRecipe, type StartAppState } from '@open-mercato/cezar-contract';
+import { startAppRecipeSchema, type EffectiveStartApp, type StartAppRecipe, type StartAppState } from '@onni/contract';
 
 import { LifecycleConfigError, readLifecycleConfigRaw, withLifecycleConfigLock } from './worktree-lifecycle/config.ts';
 import { atomicLifecycleWrite, LifecycleStoreError } from './worktree-lifecycle/store.ts';

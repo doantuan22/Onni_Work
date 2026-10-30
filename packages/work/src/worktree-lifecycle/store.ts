@@ -7,7 +7,7 @@ import {
   runIdParamSchema, worktreeLifecycleRecordSchema,
   type LifecycleOperation, type LifecycleOutputFrame, type LifecycleOutputResponse,
   type WorktreeLifecycleRecord,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 
 const OUTPUT_CAP = 10 * 1024 * 1024;
 const HISTORY_TTL = 7 * 24 * 60 * 60 * 1000;

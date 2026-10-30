@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { secretNameIssue } from '@open-mercato/cezar-contract';
+import { secretNameIssue } from '@onni/contract';
 import type { DataKeyring } from './secret-keyring.ts';
 import { SecretStore, SecretsError, parseSecretFile, type SecretScopeRef } from './secrets.ts';
 

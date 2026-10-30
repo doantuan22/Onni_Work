@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from 'lucide-react'
 import { useState } from 'react'
 
-import type { AutomationEvent } from '@open-mercato/cezar-api-client'
+import type { AutomationEvent } from '@onni/api-client'
 import { Chip } from '@/components/chip'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'

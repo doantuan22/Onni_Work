@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { e2eStatusSchema, secretsListSchema } from '@open-mercato/cezar-contract';
+import { e2eStatusSchema, secretsListSchema } from '@onni/contract';
 import { ProviderAuthService } from '../core/provider-auth.ts';
 import { RunStore, type RunRecord } from '../runs/store.ts';
 import { defaultWorkspaceConfig } from '../workspace/config.ts';

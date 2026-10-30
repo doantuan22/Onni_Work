@@ -1,4 +1,4 @@
-import { zonedParts, zonedWallTimeToUtc } from '@open-mercato/cezar-contract';
+import { zonedParts, zonedWallTimeToUtc } from '@onni/contract';
 import type { RunRecord } from '../runs/store.ts';
 import type { AutomationDefinition, AutomationLogRecord } from './types.ts';
 

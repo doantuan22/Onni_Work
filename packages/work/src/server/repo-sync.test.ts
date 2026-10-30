@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { RepoSync, RepoSyncActionResponse } from '@open-mercato/cezar-contract';
+import type { RepoSync, RepoSyncActionResponse } from '@onni/contract';
 import { RunStore } from '../runs/store.ts';
 import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 import type { RunManager } from '../workflows/run.ts';

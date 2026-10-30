@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
-import { WORKSPACE_RUN_EVENT_OMITTED_KEYS, workspaceRunEventSchema } from '@open-mercato/cezar-contract';
+import { WORKSPACE_RUN_EVENT_OMITTED_KEYS, workspaceRunEventSchema } from '@onni/contract';
 import type { RunRecord, RunStore } from '../runs/store.ts';
 import { onRunFrames, toWorkspaceRunEvent } from './run-frames.ts';
 

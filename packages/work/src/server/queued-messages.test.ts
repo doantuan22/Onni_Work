@@ -9,7 +9,7 @@ import { attachmentLibraryDir, type RunManager } from '../workflows/run.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 import { connectedProviderAuth } from './provider-auth.testkit.ts';
 import { createApp } from './server.ts';
-import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENTS_TOTAL_BASE64 } from '@open-mercato/cezar-contract';
+import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENTS_TOTAL_BASE64 } from '@onni/contract';
 
 /**
  * #472 — the queued prompt stack over HTTP: the three-rung delivery ladder on

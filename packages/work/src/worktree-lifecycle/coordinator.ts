@@ -10,7 +10,7 @@ import {
   type LifecycleOperationView, type LifecyclePendingLaunch, type LifecycleIntent,
   type StartLifecycleRemovalInput, type WorktreeLifecycleRecord,
   type WorktreeLifecycleSummary, type WorktreeLifecycleDetail, type LifecyclePreviewResponse,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { isSafeGitRef } from '../git-refs.ts';

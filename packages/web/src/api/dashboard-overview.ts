@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   dashboardOverviewSchema,
   type DashboardOverviewQuery,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { cez, unwrap } from './client'
 import { workspaceQueryKeys } from './queries'
 

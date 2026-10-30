@@ -1,7 +1,7 @@
 import { dashboardTruthRevision, reconcileDashboardTruth } from './dashboard-truth'
 import { useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { dashboardCostsSchema, type DashboardCosts } from '@open-mercato/cezar-api-client'
+import { dashboardCostsSchema, type DashboardCosts } from '@onni/api-client'
 import { cez, unwrap, ApiError } from './client'
 import { workspaceQueryKeys } from './queries'
 export const costsKey = [...workspaceQueryKeys.dashboard, 'costs'] as const

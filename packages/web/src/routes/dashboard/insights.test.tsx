@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { DashboardInsights } from '@open-mercato/cezar-api-client'
+import type { DashboardInsights } from '@onni/api-client'
 import { AutomationOutcomes, BackendComparison, OutcomeInsights } from './insights'
 
 const state = vi.hoisted(() => ({ cost: true, failures: true, definitionsFailed: false, partial: false, big: false }))

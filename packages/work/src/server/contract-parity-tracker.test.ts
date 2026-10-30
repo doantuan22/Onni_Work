@@ -7,7 +7,7 @@ import type {
   TrackerCandidatesResponse, TrackerItemsResponse, TrackerItemResponse,
   TrackerErrorResponse, TrackerAssociationInput, TrackerCandidatesQueryInput,
   TrackerCredentials, TrackerConnectionResponse, TrackerListQueryInput, TrackerSearchQueryInput, TrackerItemParams, TrackerItemQuery,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 const client = hc<AppType>('http://127.0.0.1');

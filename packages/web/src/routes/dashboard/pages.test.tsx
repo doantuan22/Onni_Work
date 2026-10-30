@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { getDashboardTasks } from '@/api/dashboard'
-import type { DashboardSnapshot, DashboardTaskRow } from '@open-mercato/cezar-api-client'
+import type { DashboardSnapshot, DashboardTaskRow } from '@onni/api-client'
 import { useDisplacedRows } from './pages'
 vi.mock('@/api/dashboard', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/dashboard')>()),

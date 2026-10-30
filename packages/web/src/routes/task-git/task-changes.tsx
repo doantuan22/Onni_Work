@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'react-router'
 
 import { ApiError, getRunFile, openRunFileInApp, runFileRawUrl } from '@/api/client'
 import { queryKeys, useHealth, useRepo, useRun, useRunChanges } from '@/api/queries'
-import type { ApiRun, ChangedFile } from '@open-mercato/cezar-api-client'
+import type { ApiRun, ChangedFile } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { canPreviewMarkdown, Diff, type DiffHandle, type DiffMode, type DiffRevealTarget } from '@/components/diff'
 import { toast } from '@/components/ui/toaster'

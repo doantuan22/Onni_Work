@@ -15,7 +15,7 @@
  */
 
 import { execFile } from 'node:child_process';
-import type { DashboardTelemetrySample } from '@open-mercato/cezar-contract';
+import type { DashboardTelemetrySample } from '@onni/contract';
 
 /** One aggregated sample for a run's process tree. */
 export interface ProcessUsage {

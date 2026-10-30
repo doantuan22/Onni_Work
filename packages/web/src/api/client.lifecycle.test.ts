@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setApiBaseUrl, setApiScope } from '@open-mercato/cezar-api-client'
+import { setApiBaseUrl, setApiScope } from '@onni/api-client'
 import { actOnLifecycleOperation, getLifecycleOutput, getWorktreeLifecycle, previewLifecycleCommand, startLifecycleRemoval } from './client'
 const fetchMock=vi.fn<typeof fetch>()
 beforeEach(()=>{ vi.stubGlobal('fetch',fetchMock);setApiScope('other-project');fetchMock.mockResolvedValue(new Response('{}',{status:200,headers:{'content-type':'application/json'}})) })

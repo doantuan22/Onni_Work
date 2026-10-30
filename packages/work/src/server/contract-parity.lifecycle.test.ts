@@ -2,7 +2,7 @@ import { hc, type InferResponseType } from 'hono/client';
 import type { z } from 'zod';
 import type { ExtractSchema } from 'hono/types';
 import { describe, expect, it } from 'vitest';
-import type { lifecycleListResponseSchema, lifecycleDetailResponseSchema, lifecycleOperationResponseSchema, lifecycleOutputResponseSchema, lifecyclePreviewResponseSchema } from '@open-mercato/cezar-contract';
+import type { lifecycleListResponseSchema, lifecycleDetailResponseSchema, lifecycleOperationResponseSchema, lifecycleOutputResponseSchema, lifecyclePreviewResponseSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 describe('lifecycle routes and contract agree in both directions', () => {

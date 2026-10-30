@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { worktreeLifecycleConfigSchema, type ConfigResponse } from '@open-mercato/cezar-api-client'
+import { worktreeLifecycleConfigSchema, type ConfigResponse } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
 import { WorktreeLifecycleEditor } from './worktree-lifecycle-editor'
 

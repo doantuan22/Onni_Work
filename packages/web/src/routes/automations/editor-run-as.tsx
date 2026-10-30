@@ -1,4 +1,4 @@
-import type { Skill, WorkflowDef } from '@open-mercato/cezar-api-client'
+import type { Skill, WorkflowDef } from '@onni/api-client'
 import { EnginePills, type EnginePick } from '@/components/engine-pills'
 import { PickerPill } from '@/components/picker-pill'
 import { Label } from '@/components/ui/label'

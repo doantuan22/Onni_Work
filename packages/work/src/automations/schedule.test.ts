@@ -12,7 +12,7 @@ import {
   zonedParts,
   zonedWallTimeToUtc,
   type AutomationSchedule,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 
 const WARSAW = 'Europe/Warsaw';
 const NEW_YORK = 'America/New_York';

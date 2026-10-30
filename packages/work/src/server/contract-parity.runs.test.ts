@@ -24,7 +24,7 @@ import type {
   runCommitsResponseSchema,
   runRecordSchema,
   startNowResponseSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 /**

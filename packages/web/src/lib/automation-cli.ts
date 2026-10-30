@@ -1,4 +1,4 @@
-import { cronOf, hm, normalizeSchedule, type AutomationDefinition, type AutomationDispatch, type AutomationEvent, type AutomationFilters, type AutomationSchedule } from '@open-mercato/cezar-api-client'
+import { cronOf, hm, normalizeSchedule, type AutomationDefinition, type AutomationDispatch, type AutomationEvent, type AutomationFilters, type AutomationSchedule } from '@onni/api-client'
 
 /**
  * The editor's "Copy as CLI" card (spec 2026-09-14-automations-redesign Q1): the flag form of

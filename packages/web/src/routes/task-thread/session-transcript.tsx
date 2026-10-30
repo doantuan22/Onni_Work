@@ -1,6 +1,6 @@
 import { memo, useMemo, type ReactNode } from 'react'
 
-import type { ApiRun, UiMessageItem, UiReasoningItem, UiToolItem } from '@open-mercato/cezar-api-client'
+import type { ApiRun, UiMessageItem, UiReasoningItem, UiToolItem } from '@onni/api-client'
 import { sameData } from '@/lib/same-data'
 
 import { groupThreadItems, type ThreadBlock } from './thread-groups'

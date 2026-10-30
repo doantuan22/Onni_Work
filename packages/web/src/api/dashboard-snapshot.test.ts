@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import type { DashboardSnapshot, DashboardTaskRow } from '@open-mercato/cezar-api-client'
+import type { DashboardSnapshot, DashboardTaskRow } from '@onni/api-client'
 import { getDashboard, getDashboardTasks } from './dashboard'
 import { dashboardTransition, dashboardTruth } from './dashboard-truth'
 

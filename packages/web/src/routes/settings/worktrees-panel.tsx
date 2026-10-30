@@ -5,7 +5,7 @@ import { reclaimWorktrees, removeRunWorktree, startLifecycleRemoval } from '@/ap
 import { queryKeys, useWorktrees, useConfig } from '@/api/queries'
 import { lifecycleQueryKeys, useWorktreeLifecycles } from '@/api/worktree-lifecycle'
 import { LifecycleOperationCard } from '@/components/worktree-lifecycle-operation'
-import type { WorktreeLifecycleSummary, WorktreeInfo } from '@open-mercato/cezar-api-client'
+import type { WorktreeLifecycleSummary, WorktreeInfo } from '@onni/api-client'
 import {
   AlertDialog,
   AlertDialogAction,

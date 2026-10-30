@@ -3,7 +3,7 @@
  *
  *   ~/.cezar/versions/<id>/                       one cezar build per id
  *   ~/.cezar/versions/<id>/.cezar-install.json    manifest: version, source, installedAt
- *   ~/.cezar/versions/<id>/node_modules/@open-mercato/cezar/dist/index.js   the entry
+ *   ~/.cezar/versions/<id>/node_modules/@onni/work/dist/index.js   the entry
  *   ~/.cezar/versions/current  →  <id>            the active version (a symlink; a junction on
  *                                                 Windows)
  *
@@ -11,7 +11,7 @@
  * collide.
  *
  * A LINKED checkout (`cezar link`, source `link`) is the only way a version gets here now:
- * `versions/<version>+<branch>/node_modules/@open-mercato/cezar` is a symlink (a junction on
+ * `versions/<version>+<branch>/node_modules/@onni/work` is a symlink (a junction on
  * Windows) to a worktree's `packages/work`. Node runs the entry through its realpath, so the
  * checkout's own `node_modules` resolve, and every rebuild of that worktree is live on the next
  * restart. Anything that reads `current` — the desktop shell — runs it unchanged. Removing a
@@ -26,7 +26,7 @@ import { z } from 'zod';
 
 import { cezarHomeDir } from '../paths.ts';
 
-export const PACKAGE_NAME = '@open-mercato/cezar';
+export const PACKAGE_NAME = '@onni/work';
 export const CURRENT_LINK = 'current';
 const MANIFEST_FILE = '.cezar-install.json';
 
@@ -176,7 +176,7 @@ export interface LinkResult {
 }
 
 /**
- * Register a built checkout's package root (the directory holding `@open-mercato/cezar`'s
+ * Register a built checkout's package root (the directory holding `@onni/work`'s
  * package.json and `dist/index.js`) as a version: a link, not a copy. Re-linking the same
  * checkout replaces its previous entry (the version or branch may have moved since); a
  * DIFFERENT checkout that would get the same id gets a path-derived suffix instead.
@@ -248,7 +248,7 @@ function shortHash(value: string): string {
 /**
  * How the running entry file was installed:
  *   managed     → `~/.cezar/versions/…` — a link the desktop shell switches
- *   global-npm  → `npm i -g` prefix (`…/lib/node_modules/@open-mercato/cezar/…`)
+ *   global-npm  → `npm i -g` prefix (`…/lib/node_modules/@onni/work/…`)
  *   npx         → the `_npx` cache
  *   checkout    → a git checkout (`packages/work/dist/index.js` beside `src/`) — dev mode
  */

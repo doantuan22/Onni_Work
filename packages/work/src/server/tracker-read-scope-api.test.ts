@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { trackerFailureSchema, trackerReadScope, type TrackerAssociation } from '@open-mercato/cezar-contract';
+import { trackerFailureSchema, trackerReadScope, type TrackerAssociation } from '@onni/contract';
 import { RunStore } from '../runs/store.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 import { createApp } from './server.ts';

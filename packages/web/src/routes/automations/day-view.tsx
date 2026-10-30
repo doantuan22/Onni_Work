@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { useState } from 'react'
-import { zonedParts, type AutomationsResponse } from '@open-mercato/cezar-api-client'
+import { zonedParts, type AutomationsResponse } from '@onni/api-client'
 
 import { GithubIcon } from '@/components/icons'
 import { Pill } from '@/components/pill'

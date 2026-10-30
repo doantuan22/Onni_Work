@@ -1,4 +1,4 @@
-import { deferredCreationRecordSchema, type DeferredCreationRecord } from '@open-mercato/cezar-contract';
+import { deferredCreationRecordSchema, type DeferredCreationRecord } from '@onni/contract';
 import {
   closeSync,
   existsSync,

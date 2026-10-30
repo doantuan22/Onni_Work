@@ -60,7 +60,7 @@ A page contains **100 session items**, but its `events` array may contain more t
 - `session.*`, `turn.*`, usage, token, cost, and engine bookkeeping events are structural: they do not consume the 100-item budget, but the scanner includes the minimal boundary events required to fold the selected items correctly.
 - In a mixed v1/v2 turn, v2 item coverage suppresses v1 tool twins and text twins using the same evidence as `reduceThread()`. The implementation must continue scanning backward until **100 post-dedup item keys** are selected, not stop at 100 candidates.
 
-The classifier is deliberately server-owned; the service cannot runtime-import the private `@open-mercato/cezar-api-client` workspace. Drift is prevented with shared golden inputs: server projection tests and web reducer tests consume the same mixed v1/v2 fixture pages and assert the resulting item identities/counts. This is a test-only cross-package reach, which repository rules allow.
+The classifier is deliberately server-owned; the service cannot runtime-import the private `@onni/api-client` workspace. Drift is prevented with shared golden inputs: server projection tests and web reducer tests consume the same mixed v1/v2 fixture pages and assert the resulting item identities/counts. This is a test-only cross-package reach, which repository rules allow.
 
 ### 2. Bounded reverse reader
 

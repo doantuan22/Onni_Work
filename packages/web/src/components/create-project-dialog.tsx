@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 
 import { onWorkspaceEvent } from '@/api/global-events'
 import { useCreateProject, useGithubOwners, useProjects } from '@/api/queries'
-import { GITHUB_REPO_NAME_PATTERN, type CheckoutProgressEvent, type GithubOwner } from '@open-mercato/cezar-api-client'
+import { GITHUB_REPO_NAME_PATTERN, type CheckoutProgressEvent, type GithubOwner } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

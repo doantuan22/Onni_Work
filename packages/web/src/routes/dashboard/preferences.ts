@@ -1,4 +1,4 @@
-import { dashboardPreferencesSchema } from '@open-mercato/cezar-api-client'
+import { dashboardPreferencesSchema } from '@onni/api-client'
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWorkspaceUiState, workspaceQueryKeys } from '@/api/queries'

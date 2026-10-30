@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ApiError, continueRun, createRunPr } from '@/api/client'
 import { queryKeys } from '@/api/queries'
-import type { ApiRun, RunStatus } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunStatus } from '@onni/api-client'
 import { TwinkleBackdrop } from '@/components/centered-state'
 import { RunDiff } from '@/components/run-diff'
 import { Button } from '@/components/ui/button'

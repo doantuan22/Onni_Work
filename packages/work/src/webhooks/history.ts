@@ -2,7 +2,7 @@ import { constants } from 'node:fs';
 import { open, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { webhookActivitySchema, webhookDeliverySchema, type WebhookActivity, type WebhookDelivery } from '@open-mercato/cezar-contract';
+import { webhookActivitySchema, webhookDeliverySchema, type WebhookActivity, type WebhookDelivery } from '@onni/contract';
 import { redactDeep, collectSecretValues } from '../core/secret-redaction.ts';
 import { prepareText, statePath } from './storage.ts';
 import { WebhookStateError } from './endpoints.ts';

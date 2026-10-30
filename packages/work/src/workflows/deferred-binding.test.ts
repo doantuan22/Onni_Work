@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UsageWindowsObservation } from '@open-mercato/cezar-contract';
+import type { UsageWindowsObservation } from '@onni/contract';
 import { RunStore } from '../runs/store.ts';
 import type { WorkflowDef } from './types.ts';
 import { RunManager } from './run.ts';

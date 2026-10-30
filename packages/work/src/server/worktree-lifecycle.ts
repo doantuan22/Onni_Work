@@ -3,7 +3,7 @@ import {
   lifecycleListQuerySchema, lifecycleWorktreeParamSchema, lifecycleOperationParamSchema,
   startLifecycleRemovalInputSchema, lifecycleActionInputSchema, lifecycleOutputQuerySchema,
   lifecyclePreviewInputSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { LifecycleNotFound } from '../worktree-lifecycle/coordinator.ts';
 import { LifecycleTemplateError } from '../worktree-lifecycle/templates.ts';
 import type { ProjectContext } from './project-context.ts';

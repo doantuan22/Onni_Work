@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LifecycleAction, LifecycleOperationView, ScriptEntry, WorktreeLifecycleConfig } from '@open-mercato/cezar-contract';
+import type { LifecycleAction, LifecycleOperationView, ScriptEntry, WorktreeLifecycleConfig } from '@onni/contract';
 import type { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { createWorktreeWithOutcome } from '../git-worktree.ts';

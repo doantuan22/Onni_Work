@@ -10,7 +10,7 @@ import { activate, activeId, branchSlug, currentEntry, linkCheckout, linkId, lis
 function fakeCheckout(root: string, version = '0.13.0', built = true): string {
   const pkg = join(root, 'packages', 'cezar');
   mkdirSync(pkg, { recursive: true });
-  writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: '@open-mercato/cezar', version }));
+  writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: '@onni/work', version }));
   if (built) {
     mkdirSync(join(pkg, 'dist'), { recursive: true });
     writeFileSync(join(pkg, 'dist', 'index.js'), '// entry\n');
@@ -41,7 +41,7 @@ describe('linked checkouts', () => {
     const pkg = fakeCheckout(join(home, 'wt'));
     const result = linkCheckout(pkg, 'cez/cb28888e', env);
     expect(result.id).toBe('0.13.0+cez-cb28888e');
-    const link = join(versionDir(result.id, env), 'node_modules', '@open-mercato', 'cezar');
+    const link = join(versionDir(result.id, env), 'node_modules', '@onni', 'work');
     expect(lstatSync(link).isSymbolicLink()).toBe(true);
     expect(realpathSync(link)).toBe(pkg);
 
@@ -66,7 +66,7 @@ describe('linked checkouts', () => {
   it('re-linking a checkout replaces its old entry; another checkout with the same id gets its own', () => {
     const pkg = fakeCheckout(join(home, 'a'));
     linkCheckout(pkg, 'feature', env);
-    writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: '@open-mercato/cezar', version: '0.14.0' }));
+    writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: '@onni/work', version: '0.14.0' }));
     const again = linkCheckout(pkg, 'feature', env);
     expect(again.id).toBe('0.14.0+feature');
     expect(listLinks(env).map((entry) => entry.id)).toEqual(['0.14.0+feature']);
@@ -78,7 +78,7 @@ describe('linked checkouts', () => {
   });
 
   it('refuses what is not a built cezar package', () => {
-    expect(() => linkCheckout(join(home, 'nothing'), 'x', env)).toThrow(/is not a @open-mercato\/cezar package/);
+    expect(() => linkCheckout(join(home, 'nothing'), 'x', env)).toThrow(/is not a @onni\/work package/);
     const unbuilt = fakeCheckout(join(home, 'raw'), '0.13.0', false);
     expect(() => linkCheckout(unbuilt, 'x', env)).toThrow(/not built/);
   });
@@ -98,7 +98,7 @@ describe('linked checkouts', () => {
     expect(realpathSync(cezarPackageRoot(mono)!)).toBe(mono);
     const flat = join(home, 'flat');
     mkdirSync(flat, { recursive: true });
-    writeFileSync(join(flat, 'package.json'), JSON.stringify({ name: '@open-mercato/cezar', version: '0.9.0' }));
+    writeFileSync(join(flat, 'package.json'), JSON.stringify({ name: '@onni/work', version: '0.9.0' }));
     expect(cezarPackageRoot(flat)).toBe(flat);
     expect(cezarPackageRoot(home)).toBeNull();
   });

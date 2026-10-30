@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createWebhookSchema, updateWebhookSchema } from '@open-mercato/cezar-contract';
+import { createWebhookSchema, updateWebhookSchema } from '@onni/contract';
 const slack = 'https://hooks.slack.com/services/T1/B1/test';
 const discord = `https://discord.com/api/webhooks/123456789012345678/${'x'.repeat(68)}`;
 describe('chat receiver contract', () => {

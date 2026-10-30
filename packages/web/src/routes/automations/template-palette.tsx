@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Clock3Icon } from 'lucide-react'
 import { useState } from 'react'
 
-import { queryScope } from '@open-mercato/cezar-api-client'
+import { queryScope } from '@onni/api-client'
 import { getAutomationTemplates } from '@/api/client'
 import { BranchChip } from '@/components/branch-chip'
 import { GithubIcon } from '@/components/icons'

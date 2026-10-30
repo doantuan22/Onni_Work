@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeCliRunner } from './claude-cli-runner.ts';
 import { CodexAppServerRunner } from './codex-app-server-runner.ts';
-import type { UsageWindowsObservation } from '@open-mercato/cezar-contract';
+import type { UsageWindowsObservation } from '@onni/contract';
 const bin = fileURLToPath(new URL('./__fixtures__/codex/usage-metadata.mjs', import.meta.url));
 for (const Runner of [ClaudeCliRunner, CodexAppServerRunner]) {
   for (const mode of ['run', 'startSession'] as const) {

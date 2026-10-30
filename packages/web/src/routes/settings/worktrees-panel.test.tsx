@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
 
 import { createQueryClient } from '@/api/query-client'
-import type { WorktreesResponse, WorktreeLifecycleSummary } from '@open-mercato/cezar-api-client'
+import type { WorktreesResponse, WorktreeLifecycleSummary } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 import { WorktreesPanel } from './worktrees-panel'
 

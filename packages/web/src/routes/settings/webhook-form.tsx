@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import { createWebhookSchema, updateWebhookSchema, type CreateWebhook, type UpdateWebhook, type WebhookReceiver, type WebhookTaskEventType } from '@open-mercato/cezar-api-client'
+import { createWebhookSchema, updateWebhookSchema, type CreateWebhook, type UpdateWebhook, type WebhookReceiver, type WebhookTaskEventType } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { graceLabels, presetLabels, scopeLabels } from './webhook-presentation'

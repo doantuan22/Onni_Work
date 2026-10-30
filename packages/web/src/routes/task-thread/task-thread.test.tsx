@@ -15,7 +15,7 @@ import type {
   ProviderStatusResponse,
   RunEvent,
   RunStatus,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 import { TaskThreadRoute, ThreadView, liveTurnStart } from './task-thread'
 import { buildTranscriptRows, mainTranscriptSections } from './session-transcript'

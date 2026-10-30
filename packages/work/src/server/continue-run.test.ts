@@ -13,7 +13,7 @@ import {
   ATTACHMENT_UPLOAD_MISSING,
   MAX_ATTACHMENTS_PER_MESSAGE,
   MAX_ATTACHMENTS_TOTAL_BASE64,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 
 /**
  * `POST /api/v1/runs/:id/continue` runner/model override (#401) — the follow-up composer lets the

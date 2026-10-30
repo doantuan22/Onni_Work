@@ -45,7 +45,7 @@ import {
   validateWorkflowGraph,
 } from '@/api/client'
 import { queryKeys, useSkills, useWorkflowNodes, useWorkflows } from '@/api/queries'
-import type { WorkflowGraph, WorkflowGraphNode } from '@open-mercato/cezar-api-client'
+import type { WorkflowGraph, WorkflowGraphNode } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import {
   AlertDialog,

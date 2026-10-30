@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { useHealth, useProjects, useWorkspaceConfig } from '@/api/queries'
-import type { Capabilities, ProjectListEntry } from '@open-mercato/cezar-api-client'
+import type { Capabilities, ProjectListEntry } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { useActiveProjectId } from '@/lib/project-router'
 import { withServedBootProject } from '@/lib/served-boot-project'

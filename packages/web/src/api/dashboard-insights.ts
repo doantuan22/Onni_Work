@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { dashboardInsightsSchema, type DashboardInsightsQuery } from '@open-mercato/cezar-api-client'
+import { dashboardInsightsSchema, type DashboardInsightsQuery } from '@onni/api-client'
 import { cez, unwrap } from './client'
 import { workspaceQueryKeys } from './queries'
 

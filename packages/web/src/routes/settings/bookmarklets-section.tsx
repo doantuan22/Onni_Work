@@ -2,7 +2,7 @@ import { TriangleAlertIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { useHealth, useLaunchKey, useProjects, useSkills } from '@/api/queries'
-import type { Skill } from '@open-mercato/cezar-api-client'
+import type { Skill } from '@onni/api-client'
 import { repoChipOf } from '@/components/app-shell-container'
 import { BookmarkletRow } from '@/components/bookmarklet-row'
 import { CenteredState } from '@/components/centered-state'

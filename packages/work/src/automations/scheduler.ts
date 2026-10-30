@@ -5,7 +5,7 @@ import type { GithubCandidate, GithubPoller, GithubPollResult } from './github-p
 import { ScheduleRunner, type ScheduleLauncher } from './schedule-runner.ts';
 import type { AutomationStore } from './store.ts';
 import type { TrackerDriver } from '../server/tracker/types.ts';
-import type { TrackerFailure } from '@open-mercato/cezar-contract';
+import type { TrackerFailure } from '@onni/contract';
 import { TrackerPoller, type TrackerAutomationCandidate } from './tracker-poller.ts';
 import { isGithubAutomation, isScheduleAutomation, isTrackerAutomation, type AutomationRuntimeState, type GithubAutomationDefinition, type TrackerAutomationDefinition } from './types.ts';
 

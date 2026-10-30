@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { LifecycleAction, LifecycleOperationView } from '@open-mercato/cezar-api-client'
+import type { LifecycleAction, LifecycleOperationView } from '@onni/api-client'
 import { useLifecycleAction, useLifecycleOperation, useLifecycleOutput, useWorktreeLifecycleDetail } from '@/api/worktree-lifecycle'
 import { Link } from '@/lib/project-router'
 import { Button } from './ui/button'

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAccountStatusResponse, AgentProfilesResponse, AgentProfileResponse } from '@open-mercato/cezar-contract';
+import type { AgentAccountStatusResponse, AgentProfilesResponse, AgentProfileResponse } from '@onni/contract';
 import { agentAccountsPath } from '../paths.ts';
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';

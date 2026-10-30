@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetTrigger } from '@/components/ui/sheet'
 import { activeNavItem, activeNavPath, visibleNavItems, type NavItem } from '@/components/nav-items'
-import type { TrackerKind } from '@open-mercato/cezar-api-client'
+import type { TrackerKind } from '@onni/api-client'
 import { SidebarDrawer, SidebarFrame, useDesktopShell, useSidebarWidth, type SidebarResize } from '@/components/sidebar-frame'
 import { cn } from '@/lib/utils'
 /** Tailwind's `md`. The drawer is the `<md` affordance, so this must stay in step with the

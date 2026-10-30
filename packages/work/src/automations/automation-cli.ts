@@ -16,7 +16,7 @@
  */
 import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { trackerAutomationOptionsSchema, SCHEDULE_TYPES, parseCron, parseScheduleDate, scheduleLabel, type AutomationSchedule } from '@open-mercato/cezar-contract';
+import { trackerAutomationOptionsSchema, SCHEDULE_TYPES, parseCron, parseScheduleDate, scheduleLabel, type AutomationSchedule } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
 import { AUTOMATION_SCHEMA_REFERENCE } from './prompts.ts';

@@ -2,7 +2,7 @@ import type { InferRequestType, InferResponseType } from 'hono/client';
 import { hc } from 'hono/client';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
-import type { dispatchInputSchema, dispatchReportSchema, dispatchResponseSchema } from '@open-mercato/cezar-contract';
+import type { dispatchInputSchema, dispatchReportSchema, dispatchResponseSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 /**

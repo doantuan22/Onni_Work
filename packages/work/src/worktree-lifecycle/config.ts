@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
-import { worktreeLifecycleConfigSchema, type WorktreeLifecycleConfig } from '@open-mercato/cezar-contract';
+import { worktreeLifecycleConfigSchema, type WorktreeLifecycleConfig } from '@onni/contract';
 import { assertLifecyclePath, atomicLifecycleWrite, LifecycleConflictError, LifecycleStoreError, withLifecycleFileLock } from './store.ts';
 
 export class LifecycleConfigError extends Error {}

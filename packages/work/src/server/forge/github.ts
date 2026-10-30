@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { ghEnv } from '../../core/gh-env.ts';
 import { promisify } from 'node:util';
 import { z } from 'zod';
-import { REFERENCE_STATUS_MAX } from '@open-mercato/cezar-contract';
+import { REFERENCE_STATUS_MAX } from '@onni/contract';
 import { autosaveCommit, taskRemotes } from '../../git-worktree.ts';
 import { parseRemote, splitRemoteRef } from '../../git-remotes.ts';
 import { GITHUB_COM, isGithubHost } from '../../github-hosts.ts';

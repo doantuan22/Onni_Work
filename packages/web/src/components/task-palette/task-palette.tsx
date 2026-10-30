@@ -3,7 +3,7 @@ import * as React from 'react'
 import { matchPath, useLocation } from 'react-router'
 
 import { useHealth, usePatchRun, useProjects, useRun, useRunTree } from '@/api/queries'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import {
   paletteScore,
   paletteTaskPath,

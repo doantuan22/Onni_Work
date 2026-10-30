@@ -1,4 +1,4 @@
-import { deferredStartStateSchema } from '@open-mercato/cezar-contract';
+import { deferredStartStateSchema } from '@onni/contract';
 import { z } from 'zod';
 import {
   DISPATCH_MAX_SUBTASKS,
@@ -7,7 +7,7 @@ import {
   trackerAssociationSchema,
   automationScheduleSchema,
   type AutomationSchedule,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
 import { workflowStepSchema } from '../workflows/types.ts';
 

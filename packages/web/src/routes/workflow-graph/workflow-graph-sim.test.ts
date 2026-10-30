@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { WorkflowGraph } from '@open-mercato/cezar-api-client'
+import type { WorkflowGraph } from '@onni/api-client'
 
 import { simStep, startSim } from './workflow-graph'
 

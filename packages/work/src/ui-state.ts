@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { UiState } from '@open-mercato/cezar-contract';
+import type { UiState } from '@onni/contract';
 import { readWorkspaceUiState } from './workspace/ui-state.ts';
 
 /**

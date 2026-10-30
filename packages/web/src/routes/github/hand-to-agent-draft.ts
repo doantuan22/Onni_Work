@@ -1,4 +1,4 @@
-import type { Runner } from '@open-mercato/cezar-api-client'
+import type { Runner } from '@onni/api-client'
 
 import { RUNNERS } from '@/routes/new-task-form'
 

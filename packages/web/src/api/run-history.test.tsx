@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ApiRun, RunHistoryContext, RunHistoryPage, RunRecord } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunHistoryContext, RunHistoryPage, RunRecord } from '@onni/api-client'
 import { getRunHistory, getRunHistoryContext } from './client'
 import { queryKeys } from './queries'
 import { coveredLiveEventSeqs, mergeRunHistoryEvents, useRunHistory } from './run-history'

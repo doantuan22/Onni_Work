@@ -4,7 +4,7 @@ import {
   MAX_WORKSPACE_LAYOUTS,
   workspaceLayoutsSchema,
   type WorkspaceLayouts,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { atomicWriteJsonSync } from '../workspace/config.ts';
 
 /**

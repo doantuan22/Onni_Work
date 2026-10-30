@@ -1,6 +1,6 @@
 import { PlusIcon, ZapIcon } from 'lucide-react'
 import { useState } from 'react'
-import type { AutomationsResponse } from '@open-mercato/cezar-api-client'
+import type { AutomationsResponse } from '@onni/api-client'
 
 import { CenteredState } from '@/components/centered-state'
 import { Segmented, type SegmentedOption } from '@/components/segmented'

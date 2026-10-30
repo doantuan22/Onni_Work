@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   createWebhookSchema, webhookStoredSettingsSchema, updateWebhookSchema, webhookReceiverStateSchema, webhookHistoricalReceiverSchema, webhookNoticeSchema,
   type WebhookReceiver, type WebhookList,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { collectSecretValues, redactSecrets } from '../core/secret-redaction.ts';
 import { generateSigningKey } from './signing.ts';
 import { maskDestination } from './destination.ts';

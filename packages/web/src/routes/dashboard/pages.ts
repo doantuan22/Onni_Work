@@ -3,7 +3,7 @@ import type {
   DashboardSnapshot,
   DashboardGroup,
   DashboardTaskRow,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { dashboardKeys, getDashboard, getDashboardTasks } from '@/api/dashboard'
 import { ApiError } from '@/api/client'
 export function useDashboardPage(

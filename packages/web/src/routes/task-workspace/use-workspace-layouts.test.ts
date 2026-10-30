@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { workspaceLayoutsSchema } from '@open-mercato/cezar-api-client'
+import { workspaceLayoutsSchema } from '@onni/api-client'
 
 import { useWorkspaceLayouts } from './use-workspace-layouts'
 import { fixedViewOf, type WorkspaceState } from './layout-state'

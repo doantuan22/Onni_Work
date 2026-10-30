@@ -28,7 +28,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from '@/components/ui/toaster'
 import { ZoomableImage } from '@/components/zoomable-image'
 import { Link } from '@/lib/project-router'
-import { isImageAttachmentName, type FileDiff, type ToolKind, type UiToolItem } from '@open-mercato/cezar-api-client'
+import { isImageAttachmentName, type FileDiff, type ToolKind, type UiToolItem } from '@onni/api-client'
 import { cn } from '@/lib/utils'
 
 import { parseReviewMessage } from './diff-comments'

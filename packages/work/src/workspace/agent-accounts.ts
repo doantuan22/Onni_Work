@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { DEFAULT_AGENT_ACCOUNT_ID } from '@open-mercato/cezar-contract';
+import { DEFAULT_AGENT_ACCOUNT_ID } from '@onni/contract';
 import { PROVIDER_IDS, type ProviderId } from '../core/provider-auth.ts';
 import { supportsProfiles } from '../core/agent-profiles.ts';
 import { agentAccountsPath, isAbsolutePath, workspaceConfigPath } from '../paths.ts';

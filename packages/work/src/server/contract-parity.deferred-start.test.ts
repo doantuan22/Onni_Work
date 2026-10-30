@@ -1,7 +1,7 @@
 import type { InferResponseType } from 'hono/client';
 import { hc } from 'hono/client';
 import type { z } from 'zod';
-import type { deferredOptionsSchema, deferredPreviewSchema, deferredCreateResponseSchema, deferredCancellationConflictSchema } from '@open-mercato/cezar-contract';
+import type { deferredOptionsSchema, deferredPreviewSchema, deferredCreateResponseSchema, deferredCancellationConflictSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 import { expect, it } from 'vitest';
 const client = hc<AppType>('http://127.0.0.1');

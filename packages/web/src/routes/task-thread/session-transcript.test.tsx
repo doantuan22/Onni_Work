@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ApiRun, RunEvent, UiToolItem } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunEvent, UiToolItem } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
 import { sameData } from '@/lib/same-data'
 

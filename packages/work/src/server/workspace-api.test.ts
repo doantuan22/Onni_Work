@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { hostUsageSchema, setWorkspaceConfigInputSchema, type WorkspaceConfigResponse } from '@open-mercato/cezar-contract';
+import { hostUsageSchema, setWorkspaceConfigInputSchema, type WorkspaceConfigResponse } from '@onni/contract';
 import { workspaceConfigPath, workspaceUiStatePath } from '../paths.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { RunStore } from '../runs/store.ts';

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type {
   TrackerAssociation,
   TrackerAutomationEvent,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { TrackerEventCandidate } from '../../automations/event-source.ts';
 import { TrackerRequestError } from './transport.ts';
 

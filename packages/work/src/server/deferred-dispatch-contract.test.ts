@@ -7,7 +7,7 @@ import {
   automationDetailResponseSchema, automationResponseSchema, automationListEntrySchema,
   automationTaskSchema, createAutomationInputSchema, updateAutomationInputSchema,
   automationTemplateSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { createApp } from './server.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 import { RunStore } from '../runs/store.ts';

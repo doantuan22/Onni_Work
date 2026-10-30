@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { UsageAccountBinding, UsageWindowsObservation } from '@open-mercato/cezar-contract';
+import type { UsageAccountBinding, UsageWindowsObservation } from '@onni/contract';
 import type { ResolvedAgentProfile } from '../workspace/agent-profiles.ts';
 import { profileDirState } from '../workspace/agent-profiles.ts';
 import { CodexAppServerRpc, resolveCodexExecutable, spawnCodexAppServer, type CodexAppServerMessage } from './codex-app-server-transport.ts';

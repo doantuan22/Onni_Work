@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { resolveTaskDiffBase } from '../git-diff-base.ts';
 import type { RunRecord } from '../runs/store.ts';
-import type { WebhookCompletionReason } from '@open-mercato/cezar-contract';
+import type { WebhookCompletionReason } from '@onni/contract';
 
 /** Only called while lifecycle capture is attached. Never makes completion depend on git. */
 export async function completionReason(run: RunRecord | undefined): Promise<WebhookCompletionReason> {

@@ -7,7 +7,7 @@ import type {
   DashboardCosts,
   DashboardCostsQuery,
   DashboardCoverage,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 
 export type CostVisibility = DashboardCostVisibility;
 type Project = { id: string; root: string };

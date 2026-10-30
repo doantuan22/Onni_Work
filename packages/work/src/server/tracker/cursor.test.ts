@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { encodeCursor, decodeCursor } from './cursor.ts';
-import { trackerCredentialsSchema } from '@open-mercato/cezar-contract';
+import { trackerCredentialsSchema } from '@onni/contract';
 
 describe('tracker source configuration and cursors', () => {
   it('rejects attacker endpoints and credentials embedded in Jira URL', () => {

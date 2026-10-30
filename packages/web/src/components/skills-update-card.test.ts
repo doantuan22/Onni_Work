@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/api/client'
-import type { SkillsUpdateState } from '@open-mercato/cezar-api-client'
+import type { SkillsUpdateState } from '@onni/api-client'
 
 import { applySkillsUpdateSettled } from './skills-update-card'
 

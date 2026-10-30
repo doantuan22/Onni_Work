@@ -3,7 +3,7 @@ import type {
   ReferenceStatus,
   RunRecord,
   RunStatus,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { groupTitle, runTitle, type ListView } from '@/lib/task-groups'
 import { isAwaitingAnswer } from '@/lib/attention'
 

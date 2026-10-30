@@ -11,7 +11,7 @@ import { Link } from '@/lib/project-router'
 
 import { createRun, putUiState } from '@/api/client'
 import { queryKeys, useHealth, useUiState } from '@/api/queries'
-import type { GithubItem, Skill, WorkflowDef } from '@open-mercato/cezar-api-client'
+import type { GithubItem, Skill, WorkflowDef } from '@onni/api-client'
 import { EnginePills, engineRunBody, useResolvedEngine, type EnginePick } from '@/components/engine-pills'
 import { WorkflowPicker, SkillsPicker } from '@/components/agent-task-pickers'
 import { Button } from '@/components/ui/button'

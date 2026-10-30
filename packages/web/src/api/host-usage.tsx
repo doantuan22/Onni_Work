@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { hostUsageSchema, type HostUsage } from '@open-mercato/cezar-api-client'
+import { hostUsageSchema, type HostUsage } from '@onni/api-client'
 
 import { getWorkspaceHostUsage } from './client'
 import { useHealth, workspaceQueryKeys } from './queries'

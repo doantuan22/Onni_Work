@@ -44,14 +44,14 @@ Lịch sử upstream (open-mercato/cezar) **không còn** trong repo này; muố
 ```
 D:\Multi Agent
 ├── packages/
-│   ├── cezar/            @open-mercato/cezar        Service + CLI (toàn bộ engine)
+│   ├── cezar/            @onni/work        Service + CLI (toàn bộ engine)
 │   │   ├── src/          ~150 module nguồn + test cạnh file
 │   │   ├── test/         unit (node:test) + e2e package (pack/install tarball)
 │   │   └── web/dist/     cockpit đã build, CLI phục vụ tĩnh (gitignored)
-│   ├── contract/         @open-mercato/cezar-contract  Zod schema cho toàn bộ HTTP API
-│   ├── api-client/       @open-mercato/cezar-api-client  Typed client + kiểu SSE/WS (Node-free)
-│   ├── web/              @open-mercato/cezar-web     Cockpit SPA (React 19 + Vite + Tailwind v4)
-│   └── desktop/          @open-mercato/cezar-desktop Shell Tauri 2 (KHÔNG phải npm workspace)
+│   ├── contract/         @onni/contract  Zod schema cho toàn bộ HTTP API
+│   ├── api-client/       @onni/api-client  Typed client + kiểu SSE/WS (Node-free)
+│   ├── web/              @onni/web     Cockpit SPA (React 19 + Vite + Tailwind v4)
+│   └── desktop/          @onni/desktop Shell Tauri 2 (KHÔNG phải npm workspace)
 │       ├── src-tauri/    Rust: lib.rs, disclaim.rs
 │       └── ui/           Splash page + icon
 ├── docs/

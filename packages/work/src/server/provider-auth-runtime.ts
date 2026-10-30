@@ -6,7 +6,7 @@ import {
   type ProviderStatus,
 } from '../core/provider-auth.ts';
 import type { RunEvent, RunStore } from '../runs/store.ts';
-import { DEFAULT_AGENT_ACCOUNT_ID } from '@open-mercato/cezar-contract';
+import { DEFAULT_AGENT_ACCOUNT_ID } from '@onni/contract';
 import { recordedProfileFor } from './recorded-profile.ts';
 
 const AUTH_ERROR_EVENT_TYPES = new Set(['error', 'session.error', 'note']);

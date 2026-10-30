@@ -14,7 +14,7 @@ import type {
   Skill,
   WorkspaceConfigResponse,
   WorkflowsResponse,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { resetToasts, Toaster } from '@/components/ui/toaster'
 
 import { readDraft, resetDraft, writeDraft } from './new-task-draft'

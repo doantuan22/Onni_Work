@@ -15,7 +15,7 @@ import type {
   RepoSync,
   RepoTree,
   WorktreeEntry,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { Toaster, onDangerToast, resetToasts } from '@/components/ui/toaster'
 
 import { RepoGitRoute } from './repo-git'

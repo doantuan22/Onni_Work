@@ -1,4 +1,4 @@
-import { validWebhookDestinationHost } from '@open-mercato/cezar-contract';
+import { validWebhookDestinationHost } from '@onni/contract';
 import { renderSlackMessage } from './slack.ts';
 import { renderDiscordMessage } from './discord.ts';
 import { readTrackerAssociation } from '../tracker-association.ts';
@@ -11,7 +11,7 @@ import { rm } from 'node:fs/promises';
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { updateWebhookSchema, WebhookOperation, WebhookDelivery, WebhookDeliveriesPage, WebhookActivityPage, WebhookHistoryPage } from '@open-mercato/cezar-contract';
+import type { updateWebhookSchema, WebhookOperation, WebhookDelivery, WebhookDeliveriesPage, WebhookActivityPage, WebhookHistoryPage } from '@onni/contract';
 import { RunStore, type RunRecord } from '../runs/store.ts';
 import { runLifecycleSnapshot, type RunLifecycleObserver } from '../runs/lifecycle.ts';
 import { readRunIndexDiagnostic } from '../runs/run-index.ts';

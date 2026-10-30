@@ -1,5 +1,5 @@
 import { useAgentProfiles, useConfig, useRunnerModels } from '@/api/queries'
-import { DEFAULT_AGENT_ACCOUNT_ID, type ApiRun } from '@open-mercato/cezar-api-client'
+import { DEFAULT_AGENT_ACCOUNT_ID, type ApiRun } from '@onni/api-client'
 import { PickerPill } from '@/components/picker-pill'
 import { modelsForRunner } from '@/routes/new-task-form'
 

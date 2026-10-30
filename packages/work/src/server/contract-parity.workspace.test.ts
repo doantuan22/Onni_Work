@@ -12,7 +12,7 @@ import type {
   agentProfilesResponseSchema,
   openAgentAccountFileResponseSchema,
   removeAgentProfileResponseSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type {
   fsBrowseResponseSchema,
   launchKeyResponseSchema,
@@ -20,8 +20,8 @@ import type {
   registerProjectResponseSchema,
   removeProjectResponseSchema,
   updateProjectResponseSchema,
-} from '@open-mercato/cezar-contract';
-import type { runsIndexResponseSchema } from '@open-mercato/cezar-contract';
+} from '@onni/contract';
+import type { runsIndexResponseSchema } from '@onni/contract';
 import type {
   configResponseSchema,
   hostUsageSchema,
@@ -41,7 +41,7 @@ import type {
   deleteUploadResponseSchema,
   stagedUploadSchema,
   workspaceUiStateSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 /**

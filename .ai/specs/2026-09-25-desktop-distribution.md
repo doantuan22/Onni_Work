@@ -17,7 +17,7 @@ page. The shell ships **rarely and on its own version** (`0.1.1` today, decouple
 
 | What | Contains | Updated by | How often |
 | --- | --- | --- | --- |
-| **cezar** (`@open-mercato/cezar`) | server + cockpit | the cockpit's version chip → dialog, or `cezar update` (managed install, spec self-update) | every release / nightly |
+| **cezar** (`@onni/work`) | server + cockpit | the cockpit's version chip → dialog, or `cezar update` (managed install, spec self-update) | every release / nightly |
 | **cezar desktop** (`packages/desktop`) | window, title bar, sidecar supervisor, splash, icon | Tauri's updater plugin polling `desktop-latest.json` on GitHub Releases | a few times a year |
 
 The shell must ship when: the shell changes (window, supervisor, splash), a Tauri/webview
@@ -263,7 +263,7 @@ admits the splash and the cockpit **on the port this shell spawned** and nothing
 
 Any shell version must run any cezar version, so these are frozen and listed in
 `BACKWARD_COMPATIBILITY.md`: the managed entry path
-`~/.cezar/versions/current/node_modules/@open-mercato/cezar/dist/index.js`; the launch
+`~/.cezar/versions/current/node_modules/@onni/work/dist/index.js`; the launch
 `serve --no-open --port <n>`; `CEZ_DESKTOP=1`, `CEZ_SUPERVISED=1`, `CEZ_SUPERVISOR_PID`;
 exit status **75** = "relaunch me"; `GET /api/v1/health` as the readiness probe. Changing any
 of them is the one case where the shell must ship BEFORE the cezar version that needs it.

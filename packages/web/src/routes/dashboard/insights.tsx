@@ -5,7 +5,7 @@ import type {
   DashboardBackendStat,
   DashboardFailureReason,
   DashboardInsights,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { useDashboardInsights } from '@/api/dashboard-insights'
 import { useProjects } from '@/api/queries'
 import { Button } from '@/components/ui/button'

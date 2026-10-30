@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, expect, it } from 'vitest';
-import type { TrackerAssociation } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation } from '@onni/contract';
 import { writeTrackerAssociation } from '../../tracker-association.ts';
 import { TrackerConnections } from './connections.ts';
 import { resolveTrackerAgentEnv } from './agent-credentials.ts';

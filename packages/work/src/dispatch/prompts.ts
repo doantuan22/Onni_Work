@@ -9,7 +9,7 @@
  * The CLI contract below is the ONLY place an agent is told the `cez task` commands, so it
  * restates the flags of `dispatchInputSchema` and `dispatchReportSchema` key for key.
  */
-import { DISPATCH_MAX_IN_FLIGHT, type DispatchIntent, type DispatchKind } from '@open-mercato/cezar-contract';
+import { DISPATCH_MAX_IN_FLIGHT, type DispatchIntent, type DispatchKind } from '@onni/contract';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
 
 export const DISPATCH_PROMPT = `Dispatching tasks. cezar can run other cezar tasks for you, each in its own git worktree forked off YOUR branch as you last committed it, each reporting back into this session when it settles. Use it for work that is genuinely INDEPENDENT of what you are doing — several unrelated fixes, a review of a branch by a fresh pair of eyes, a wide read-only investigation, work on disjoint parts of the repository — and NOT for one tightly coupled change: splitting coupled work across tasks makes it slower, more expensive and inconsistent, and the evidence on that is clear. When in doubt, do it yourself.

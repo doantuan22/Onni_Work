@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { API_PREFIX, getApiBaseUrl, decodeWebhookInvalidation } from '@open-mercato/cezar-api-client'
+import { API_PREFIX, getApiBaseUrl, decodeWebhookInvalidation } from '@onni/api-client'
 import { webhookApi } from '@/api/client'
 export const webhookKey = (projectId: string) => [projectId, 'webhooks'] as const
 export function useWebhookList(projectId: string, enabled: boolean) {

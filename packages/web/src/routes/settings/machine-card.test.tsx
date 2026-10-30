@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HostUsageProvider } from '@/api/host-usage'
 import { createQueryClient } from '@/api/query-client'
-import type { HostUsage } from '@open-mercato/cezar-api-client'
+import type { HostUsage } from '@onni/api-client'
 import { MachineCard } from './machine-card'
 
 /**

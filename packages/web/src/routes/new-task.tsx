@@ -1,6 +1,6 @@
 import { previewSettingsKey, StartTimePicker, type StartChoice } from '@/components/start-time-picker'
 import { ApiError, createDeferredStart } from '@/api/client'
-import { deferredCreateInputSchema } from '@open-mercato/cezar-api-client'
+import { deferredCreateInputSchema } from '@onni/api-client'
 import { markScheduledTasks } from '@/lib/scheduled-tasks-gate'
 import { automationsQueryKey } from './automations/use-automations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -40,7 +40,7 @@ import type {
   ProjectListEntry,
   RepoResponse,
   Runner,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { TwinkleBackdrop } from '@/components/centered-state'
 import { Composer, type ComposerHandle } from '@/components/composer/composer'
 import { DispatchToggle } from '@/components/dispatch-toggle'

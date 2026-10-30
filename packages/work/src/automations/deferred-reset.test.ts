@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeClaudeUsageWindows, normalizeCodexUsageWindows } from '../core/usage-windows.ts';
 import { selectResetWindows } from './deferred-reset.ts';
-import type { UsageWindow, UsageWindowsSnapshot } from '@open-mercato/cezar-contract';
+import type { UsageWindow, UsageWindowsSnapshot } from '@onni/contract';
 const NOW = Date.parse('2026-10-13T09:00:00Z');
 const window = (extra: Partial<UsageWindow> = {}): UsageWindow => ({ id: 'five_hour', kind: 'five-hour', applicability: 'all', models: [], resetsAt: NOW + 300_000, durationMinutes: 300, usedPercent: 20, status: 'allowed', observedAt: NOW - 3_600_000, ...extra });
 const snapshot = (windows: UsageWindow[], provider: 'claude' | 'codex' = 'claude'): UsageWindowsSnapshot => ({ provider, source: provider === 'claude' ? 'claude-stream' : 'codex-read', observedAt: NOW, windows, binding: { provider, accountId: 'default', profilePath: '/profile' } });

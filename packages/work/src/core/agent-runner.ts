@@ -16,7 +16,7 @@
  *                 `junie --acp=true`), JSON-RPC 2.0 (JSONL) over stdin/stdout.
  */
 
-import type { UsageWindowsObservation } from '@open-mercato/cezar-contract';
+import type { UsageWindowsObservation } from '@onni/contract';
 import type { UiEvent } from './ui-events.ts';
 import type { PrivateMcpServer } from './private-mcp.ts';
 

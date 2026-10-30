@@ -2,7 +2,7 @@ import { QueryClientProvider, type InfiniteData } from '@tanstack/react-query'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import type { TrackerItemsResponse, TrackerWatchSnapshot } from '@open-mercato/cezar-api-client'
+import type { TrackerItemsResponse, TrackerWatchSnapshot } from '@onni/api-client'
 import { createQueryClient } from './query-client'
 import { useTrackerWatch } from './tracker-watch'
 

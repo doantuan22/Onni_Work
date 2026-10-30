@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useRef, useState } from 'react'
 
-import type { Skill, WorkflowDef } from '@open-mercato/cezar-api-client'
+import type { Skill, WorkflowDef } from '@onni/api-client'
 import { chevron, chipClass } from '@/components/picker-pill'
 import { SkillPreviewDialog } from '@/components/skill-detail'
 import {

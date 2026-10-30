@@ -1,4 +1,4 @@
-import type { ProjectListEntry, RunIndexEntry } from '@open-mercato/cezar-api-client'
+import type { ProjectListEntry, RunIndexEntry } from '@onni/api-client'
 
 import { allProjectTags } from '@/lib/project-tags'
 import { compareIsoDesc, runTitle, sortTimestamp, type SortBy } from '@/lib/task-groups'

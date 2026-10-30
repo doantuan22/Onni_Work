@@ -16,7 +16,7 @@ import {
   useRuns,
 } from '@/api/queries'
 import { useRunHistory, type RunHistoryState } from '@/api/run-history'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { TaskLifecycleCard } from '@/components/worktree-lifecycle-operation'
 import { StatusDot } from '@/components/status-dot'

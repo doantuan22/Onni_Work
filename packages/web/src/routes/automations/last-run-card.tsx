@@ -1,6 +1,6 @@
 import { PlayIcon, ScrollTextIcon } from 'lucide-react'
 
-import type { AutomationLastRun } from '@open-mercato/cezar-api-client'
+import type { AutomationLastRun } from '@onni/api-client'
 import { StatusDot } from '@/components/status-dot'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'

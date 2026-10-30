@@ -57,7 +57,7 @@ describe('firstPackReport', () => {
   });
 
   it('reads the object-keyed-by-name shape (npm 12)', () => {
-    expect(firstPackReport({ '@open-mercato/cezar': report })).toEqual(report);
+    expect(firstPackReport({ '@onni/work': report })).toEqual(report);
   });
 
   it('returns undefined for empty or non-object output', () => {

@@ -2,7 +2,7 @@ import { MessageSquareTextIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { useConfig } from '@/api/queries'
-import type { ConfigResponse } from '@open-mercato/cezar-api-client'
+import type { ConfigResponse } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'

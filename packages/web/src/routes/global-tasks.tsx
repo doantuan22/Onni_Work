@@ -22,7 +22,7 @@ import {
   useRunsIndex,
   workspaceQueryKeys,
 } from '@/api/queries'
-import type { ProjectListEntry, RunIndexEntry, RunsIndexResponse } from '@open-mercato/cezar-api-client'
+import type { ProjectListEntry, RunIndexEntry, RunsIndexResponse } from '@onni/api-client'
 import { dispatchKindLabel, subtaskLabel, taskTreeRows, type TaskTreeInput } from '@/lib/task-tree'
 import { CenteredState } from '@/components/centered-state'
 import { FacetFilter, SegmentedControl, ToggleChip } from '@/components/facet-filter'

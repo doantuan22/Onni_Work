@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import type { AutomationListEntry } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry } from '@onni/api-client'
 import { ApiError, deleteAutomation, runAutomationNow, updateAutomation } from '@/api/client'
 import { automationsQueryKey, useAutomationsGate, useAutomationsQuery } from '@/routes/automations/use-automations'
 import { Link, useNavigate } from '@/lib/project-router'

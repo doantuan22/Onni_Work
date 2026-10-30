@@ -1,4 +1,4 @@
-import type { Skill, WorkflowDef } from '@open-mercato/cezar-api-client'
+import type { Skill, WorkflowDef } from '@onni/api-client'
 
 /**
  * The shared skill presentation rules (#377/#380): the ⌘K palette, the composer's `/`

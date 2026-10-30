@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import type { AutomationSchedule } from '@open-mercato/cezar-api-client'
+import type { AutomationSchedule } from '@onni/api-client'
 
 import { EditorScheduleFields } from './editor-schedule-fields'
 

@@ -17,7 +17,7 @@ import {
 
 import { putUiState } from '@/api/client'
 import { queryKeys, useSkills, useUiState } from '@/api/queries'
-import type { AttachmentEntry } from '@open-mercato/cezar-api-client'
+import type { AttachmentEntry } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { IconTooltip } from '@/components/ui/icon-tooltip'
 import { Command, CommandItem, CommandList } from '@/components/ui/command'

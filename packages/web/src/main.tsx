@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { setApiBaseUrl } from '@open-mercato/cezar-api-client'
+import { setApiBaseUrl } from '@onni/api-client'
 import { App } from './app'
 import './styles/index.css'
 

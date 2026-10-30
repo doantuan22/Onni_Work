@@ -4,7 +4,7 @@ import { promises as fs, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { TrackerAssociation } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation } from '@onni/contract';
 import {
   classifyTracker,
   clearTrackerAssociation,

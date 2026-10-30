@@ -1,10 +1,10 @@
-import { dashboardOverviewTaskSchema } from '@open-mercato/cezar-contract';
+import { dashboardOverviewTaskSchema } from '@onni/contract';
 import type {
   DashboardOverview,
   DashboardOverviewQuery,
   DashboardSnapshot,
   DashboardTaskRow,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 
 /** Current workload plus finish-date outcomes; neither task count nor done implies business acceptance. */
 export function buildDashboardOverview(

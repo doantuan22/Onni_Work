@@ -1,7 +1,7 @@
 import type {
   ProjectsResponse,
   WorkspaceLastLocation,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 import { orderProjects } from './project-order'
 import { pathnameProjectId } from './project-router'

@@ -1,5 +1,5 @@
 import { MetricContent, metricAccents, metricSurface } from './presentation'
-import type { DashboardCostProject, DashboardCosts } from '@open-mercato/cezar-api-client'
+import type { DashboardCostProject, DashboardCosts } from '@onni/api-client'
 import { ArrowDownLeft, ArrowUpRight, DollarSign, ChevronRight } from 'lucide-react'
 import {
   Tooltip,

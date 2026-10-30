@@ -2,7 +2,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { RunRecord } from '@open-mercato/cezar-api-client'
+import type { RunRecord } from '@onni/api-client'
 import { deriveAttention } from '@/lib/attention'
 import { TasksOverview } from '@/routes/tasks-overview'
 

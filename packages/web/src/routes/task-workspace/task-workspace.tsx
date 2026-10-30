@@ -13,7 +13,7 @@ import { useNavigationType, useParams } from 'react-router'
 import { ApiError } from '@/api/client'
 import { useHealth, useMarkRunSeen, useRun } from '@/api/queries'
 import { useRunHistory } from '@/api/run-history'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import {
   AlertDialog,

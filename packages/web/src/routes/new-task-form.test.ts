@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { MODEL_DISCOVERY_RUNNERS, runnerDiscoversModels } from '@open-mercato/cezar-api-client'
-import type { BackendCheck, Skill, WorkflowDef } from '@open-mercato/cezar-api-client'
+import { MODEL_DISCOVERY_RUNNERS, runnerDiscoversModels } from '@onni/api-client'
+import type { BackendCheck, Skill, WorkflowDef } from '@onni/api-client'
 
 import {
   looksLikeQuestion,

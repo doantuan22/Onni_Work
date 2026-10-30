@@ -20,7 +20,7 @@ import * as React from 'react'
 import { useLocation } from 'react-router'
 
 import { useArchiveRun, useHealth, usePinRun, useProjectRepoBase, useProjectRuns } from '@/api/queries'
-import type { ProjectListEntry, RunRecord } from '@open-mercato/cezar-api-client'
+import type { ProjectListEntry, RunRecord } from '@onni/api-client'
 import { useSidebarNavigate } from '@/components/app-shell'
 import { useListView } from '@/components/list-view'
 import { activeNavPath, visibleNavItems } from '@/components/nav-items'

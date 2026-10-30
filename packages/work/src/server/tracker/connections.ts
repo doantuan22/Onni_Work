@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs, constants } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { renameWithRetry } from '../../fs-rename.ts';
-import type { TrackerCredentials } from '@open-mercato/cezar-contract';
+import type { TrackerCredentials } from '@onni/contract';
 import { cezarHomeDir, assertCezarHomeWriteIsSandboxed } from '../../paths.ts';
 import { connectionRecordSchema, decodeConnectionEnv, encodeConnectionEnv, type StoredTrackerConnection } from './connection-env.ts';
 export type { StoredTrackerConnection } from './connection-env.ts';

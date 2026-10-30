@@ -1,7 +1,7 @@
 import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import lockfile from 'proper-lockfile';
-import { usageWindowsSnapshotSchema, type UsageAccountBinding, type UsageWindowsObservation, type UsageWindowsSnapshot, type UsageWindow } from '@open-mercato/cezar-contract';
+import { usageWindowsSnapshotSchema, type UsageAccountBinding, type UsageWindowsObservation, type UsageWindowsSnapshot, type UsageWindow } from '@onni/contract';
 import { assertCezarHomeWriteIsSandboxed, cezarHomeDir } from '../paths.ts';
 import { atomicWriteJsonSync } from './config.ts';
 

@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import type { WebhookAttentionRequest, TrackerAssociation, UsageWindowsObservation } from '@open-mercato/cezar-contract';
+import type { WebhookAttentionRequest, TrackerAssociation, UsageWindowsObservation } from '@onni/contract';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
 import { TrackerAgentBindingError } from '../server/tracker/agent-credentials.ts';
@@ -61,7 +61,7 @@ import {
   PENDING_ASK_MAX_QUESTIONS,
   sanitizeAttachmentName,
   storedAttachmentExtension,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { AgentEvent, AgentRunResult, ContentBlock } from '../core/agent-runner.ts';
 import { discoverSkills, type Skill } from '../skills.ts';
 import { automationsReachable } from '../automations/builtin-skill.ts';
@@ -98,7 +98,7 @@ import type { QueuedMessage, RunRecord, RunStore, StepState } from '../runs/stor
 // Task dispatch (spec 2026-09-10-dispatch). Every import below is inert unless the feature is
 // ON *and* the run carries a `dispatch`: `dispatchOf()` is the single gate, and a run without one
 // takes byte-for-byte the path it took before this feature existed.
-import type { DispatchInput, DispatchIntent, DispatchReport, RunDispatch } from '@open-mercato/cezar-contract';
+import type { DispatchInput, DispatchIntent, DispatchReport, RunDispatch } from '@onni/contract';
 import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import {

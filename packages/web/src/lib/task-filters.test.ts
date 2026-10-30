@@ -1,4 +1,4 @@
-import type { RunRecord } from '@open-mercato/cezar-api-client'
+import type { RunRecord } from '@onni/api-client'
 import { describe, expect, it } from 'vitest'
 
 import {

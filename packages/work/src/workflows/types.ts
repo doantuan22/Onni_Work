@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { stepSecretsSchema } from '@open-mercato/cezar-contract';
+import { stepSecretsSchema } from '@onni/contract';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
 import { workflowGraphSchema } from './graph.ts';
 

@@ -1,6 +1,6 @@
 /**
  * Finding cezar's own checkout — what `cezar link` needs to turn a directory into a version the
- * desktop shell can run: the `@open-mercato/cezar` package root inside it and the branch it is
+ * desktop shell can run: the `@onni/work` package root inside it and the branch it is
  * on. The switch itself is `linkCheckout` in layout.ts.
  */
 

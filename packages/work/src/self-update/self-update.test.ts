@@ -83,8 +83,8 @@ describe('managed layout', () => {
 
   it('tells install kinds apart by where the entry file lives', () => {
     expect(detectInstallKind(versionEntry('0.11.1', env), env)).toBe('managed');
-    expect(detectInstallKind('/Users/x/.npm/_npx/abc123/node_modules/@open-mercato/cezar/dist/index.js', env)).toBe('npx');
-    expect(detectInstallKind('/opt/homebrew/lib/node_modules/@open-mercato/cezar/dist/index.js', env)).toBe('global-npm');
+    expect(detectInstallKind('/Users/x/.npm/_npx/abc123/node_modules/@onni/work/dist/index.js', env)).toBe('npx');
+    expect(detectInstallKind('/opt/homebrew/lib/node_modules/@onni/work/dist/index.js', env)).toBe('global-npm');
     const checkout = join(home, 'repo', 'packages', 'cezar');
     mkdirSync(join(checkout, 'src'), { recursive: true });
     mkdirSync(join(checkout, 'dist'), { recursive: true });
@@ -100,7 +100,7 @@ describe('managed layout', () => {
     mkdirSync(join(checkout, 'dist'), { recursive: true });
     writeFileSync(join(checkout, 'package.json'), '{}');
     writeFileSync(join(checkout, 'dist', 'index.js'), '');
-    const link = join(versionDir('0.15.2+cez-abc12345', env), 'node_modules', '@open-mercato', 'cezar');
+    const link = join(versionDir('0.15.2+cez-abc12345', env), 'node_modules', '@onni', 'work');
     mkdirSync(join(link, '..'), { recursive: true });
     symlinkSync(checkout, link, 'dir');
     const entry = join(link, 'dist', 'index.js');

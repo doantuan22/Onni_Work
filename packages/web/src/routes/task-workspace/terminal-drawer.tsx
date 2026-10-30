@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { createRunTerminal, getRunTerminal, stopRunTerminal, writeRunTerminal } from '@/api/client'
 import { useHealth } from '@/api/queries'
-import type { TerminalSession } from '@open-mercato/cezar-api-client'
+import type { TerminalSession } from '@onni/api-client'
 import {
   AlertDialog,
   AlertDialogAction,

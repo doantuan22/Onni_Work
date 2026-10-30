@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from './client'
 import { createQueryClient } from './query-client'
-import { setApiScope } from '@open-mercato/cezar-api-client'
+import { setApiScope } from '@onni/api-client'
 import { ProjectScopeContext } from './project-scope-context'
-import type { GithubRefStatusData, HealthResponse } from '@open-mercato/cezar-api-client'
+import type { GithubRefStatusData, HealthResponse } from '@onni/api-client'
 import {
   refStatusRecheckAfter,
   useReferenceProjectId,

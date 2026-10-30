@@ -1,4 +1,4 @@
-import type { AutomationListEntry, AutomationsResponse } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry, AutomationsResponse } from '@onni/api-client'
 import { vi } from 'vitest'
 
 import type { AutomationActions } from './use-automations'

@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import { ApiError, cancelRun } from '@/api/client'
 import { queryKeys } from '@/api/queries'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import {
   AlertDialog,
   AlertDialogAction,

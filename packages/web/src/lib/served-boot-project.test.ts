@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { HealthResponse, ProjectsResponse } from '@open-mercato/cezar-api-client'
+import type { HealthResponse, ProjectsResponse } from '@onni/api-client'
 import { withServedBootProject } from './served-boot-project'
 
 const HEALTH: HealthResponse = {

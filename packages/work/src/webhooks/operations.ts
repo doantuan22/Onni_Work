@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { webhookOperationSchema, type WebhookOperation } from '@open-mercato/cezar-contract';
+import { webhookOperationSchema, type WebhookOperation } from '@onni/contract';
 import { AdmissionRepository, terminalDelivery, type Admission, type OperationReceipt } from './admission.ts';
 import { EndpointRegistry, WebhookStateError, type PrivateReceiver } from './endpoints.ts';
 import { maskDestination } from './destination.ts';

@@ -1,4 +1,4 @@
-import type { QueueWaitReason } from '@open-mercato/cezar-api-client'
+import type { QueueWaitReason } from '@onni/api-client'
 /** The zone is always named (spec 2026-10-07 § times): the server's when known, else the browser's. */
 export function queueWaitLabel(reason: QueueWaitReason | undefined, timeZone?: string): string | undefined {
   if (!reason) return undefined

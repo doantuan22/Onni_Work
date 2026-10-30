@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { queryKeys } from '@/api/queries'
 import { createQueryClient } from '@/api/query-client'
-import type { ApiRun, ChangesPayload, HealthResponse, RepoResponse } from '@open-mercato/cezar-api-client'
+import type { ApiRun, ChangesPayload, HealthResponse, RepoResponse } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 
 import { GitActions, GitToolbar } from './git-toolbar'

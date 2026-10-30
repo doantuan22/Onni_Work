@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { queryScope } from '@open-mercato/cezar-api-client'
+import { queryScope } from '@onni/api-client'
 import { onWorkspaceEvent } from '@/api/global-events'
 import { useActiveProjectId } from '@/lib/project-router'
 import { useAutomationsGate, useAutomationsQuery } from '@/routes/automations/use-automations'

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { useSkills } from '@/api/queries'
-import type { ConfigResponse, SetConfigInput } from '@open-mercato/cezar-api-client'
+import type { ConfigResponse, SetConfigInput } from '@onni/api-client'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toaster'
 import { SettingsField } from './settings-field'

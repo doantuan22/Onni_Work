@@ -1,4 +1,4 @@
-import type { ProviderStatus, ProviderStatusResponse, Runner } from '@open-mercato/cezar-api-client'
+import type { ProviderStatus, ProviderStatusResponse, Runner } from '@onni/api-client'
 
 /** The cockpit's canonical runner order, exported so a surface that renders one row per
  *  provider derives it instead of keeping a fifth hand-written copy — the copy in

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { useProjects, useRegisterProject } from '@/api/queries'
-import type { FsBrowseDir } from '@open-mercato/cezar-api-client'
+import type { FsBrowseDir } from '@onni/api-client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {

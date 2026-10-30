@@ -90,7 +90,7 @@ Zasada wydawnicza: po każdej fali publikacja na npm i test na czystej maszynie
 ## Otwarte decyzje
 
 1. ~~Nazwa paczki npm~~ → **ROZSTRZYGNIĘTE (2026-07-10, Patryk):**
-   `@open-mercato/cezar` (org scope dostępny) + alias unscoped `cezar`
+   `@onni/work` (org scope dostępny) + alias unscoped `cezar`
    (folder `alias-cezar/`), żeby `npx cezar` działało dosłownie. Bin: `cezar`
    (+ `cez` jako skrót).
 2. **Idle-timeout otwartej sesji** — propozycja 15 min (spec 002), do walidacji.

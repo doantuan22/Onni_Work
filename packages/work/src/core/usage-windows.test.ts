@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { emitUsageWindows, normalizeClaudeTerminalUsageLimit, normalizeClaudeUsageWindows, normalizeCodexUsageWindows } from './usage-windows.ts';
-import { usageWindowsObservationSchema } from '@open-mercato/cezar-contract';
+import { usageWindowsObservationSchema } from '@onni/contract';
 
 // The parent owns the contract barrel export; keep this component independently testable.
-vi.mock('@open-mercato/cezar-contract', async (original) => ({
+vi.mock('@onni/contract', async (original) => ({
   ...await original<object>(), ...await import(new URL('../../../contract/src/usage-windows.ts', import.meta.url).href),
 }));
 

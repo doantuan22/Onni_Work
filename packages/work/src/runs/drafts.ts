@@ -11,7 +11,7 @@ import {
   type DraftImage,
   type DraftImageContent,
   type RunDraftsResponse,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { atomicWriteJsonSync } from '../workspace/config.ts';
 
 /**

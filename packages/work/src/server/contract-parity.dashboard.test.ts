@@ -9,7 +9,7 @@ import type {
   DashboardTelemetry,
   DashboardFeed,
   DashboardInsights,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { AppType } from './app-type.ts';
 const client = hc<AppType>('http://127.0.0.1');
 const dashboard = client.api.v1.workspace.dashboard;

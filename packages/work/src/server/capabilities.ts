@@ -54,7 +54,7 @@
 
 import { webhookPlatformSupported } from '../webhooks/platform.ts';
 import { followupsEnabled } from '../handoff.ts';
-import type { Capabilities } from '@open-mercato/cezar-contract';
+import type { Capabilities } from '@onni/contract';
 
 /** Every IPv4 address in 127.0.0.0/8, anchored. Anchoring is load-bearing: a
  *  `startsWith('127.')` test also matches attacker-controlled *hostnames* like

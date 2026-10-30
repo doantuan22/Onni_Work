@@ -10,7 +10,7 @@
  * (`.passthrough()` schema, the #408 `skillUsage` pattern) — so "no key at all" and "the built-ins,
  * saved verbatim" are indistinguishable in effect but the former costs nothing to ship.
  */
-import { DISPATCH_MAX_IN_FLIGHT, PROMPT_TEMPLATE_TEXT_MAX } from '@open-mercato/cezar-api-client'
+import { DISPATCH_MAX_IN_FLIGHT, PROMPT_TEMPLATE_TEXT_MAX } from '@onni/api-client'
 
 export interface PromptTemplate {
   id: string

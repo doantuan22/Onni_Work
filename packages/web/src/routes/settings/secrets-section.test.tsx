@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { setApiScope } from '@open-mercato/cezar-api-client'
+import { setApiScope } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
 import { ProjectSecretsSection, WorkspaceSecretsSection } from './secrets-section'
 

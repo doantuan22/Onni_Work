@@ -1,7 +1,7 @@
 import { plural } from './webhook-presentation'
 import { useWebhookList } from '@/hooks/use-webhooks'
 import { useHealth, useRemoveProject } from '@/api/queries'
-import type { ProjectListEntry } from '@open-mercato/cezar-api-client'
+import type { ProjectListEntry } from '@onni/api-client'
 import {
   AlertDialog,
   AlertDialogAction,

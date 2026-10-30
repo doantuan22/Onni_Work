@@ -46,7 +46,7 @@ import {
   startTodo,
   retryProviderAuth,
 } from './client'
-import { setApiBaseUrl, setApiScope } from '@open-mercato/cezar-api-client'
+import { setApiBaseUrl, setApiScope } from '@onni/api-client'
 
 /** A message's idempotency key (telemetry 1a212342) — fixed here so the request shape is exact. */
 const KEY = '0190f5d6-1c2b-7a3d-8e4f-5a6b7c8d9e0f'

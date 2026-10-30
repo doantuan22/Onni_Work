@@ -1,7 +1,7 @@
 import type { InferRequestType, InferResponseType } from 'hono/client';
 import { hc } from 'hono/client';
 import { expect, it } from 'vitest';
-import type { SecretsErrorResponse, SecretsList, SecretParams, SecretValueInput } from '@open-mercato/cezar-contract';
+import type { SecretsErrorResponse, SecretsList, SecretParams, SecretValueInput } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 const client = hc<AppType>('http://127.0.0.1');

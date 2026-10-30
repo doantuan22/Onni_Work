@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hostUsageSchema } from '@open-mercato/cezar-contract';
+import { hostUsageSchema } from '@onni/contract';
 
 import type { CgroupFacts } from './cgroup-probe.ts';
 import {

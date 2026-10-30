@@ -12,7 +12,7 @@ export function hostedTaskLink(records: readonly { state: ServerState }[], mode:
   } catch { return; }
 }
 
-import type { TrackerAssociation } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation } from '@onni/contract';
 export function canonicalTrackerLink(tracker: { association?: TrackerAssociation; provider: 'jira' | 'linear'; key: string; url: string } | undefined, connected: TrackerAssociation | null): string | undefined {
   const captured = tracker?.association;
   if (!tracker || !captured || !connected || !connected.connectionId || tracker.provider !== connected.kind ||

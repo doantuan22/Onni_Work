@@ -16,7 +16,7 @@
  */
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
-import { runRecordSchema, runStatusSchema, type RunStatus } from '@open-mercato/cezar-contract';
+import { runRecordSchema, runStatusSchema, type RunStatus } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 
 export interface RunsCliEnv {

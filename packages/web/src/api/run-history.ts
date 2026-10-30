@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
-import type { ApiRun, RunEvent, RunHistoryPage, RunRecord } from '@open-mercato/cezar-api-client'
-import { queryScope } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunEvent, RunHistoryPage, RunRecord } from '@onni/api-client'
+import { queryScope } from '@onni/api-client'
 import { useThrottledValue } from '@/lib/use-throttled-value'
 import { getRunHistory, getRunHistoryContext } from './client'
 import { mergeRun } from './events'

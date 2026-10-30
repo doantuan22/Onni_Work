@@ -5,7 +5,7 @@ import {
   isImageMediaType,
   MAX_ATTACHMENTS_PER_MESSAGE,
   type AttachmentInput,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 /**
  * The composer's attachment intake — paperclip, ⌘V paste, and drag-drop all funnel here, exactly

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 
 import { ApiError, adoptRunPr, createRunPr, landRun, pushRun } from '@/api/client'
 import { queryKeys, useConfig, useRepo, useRunGitStatus } from '@/api/queries'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { useReferenceStatus } from '@/components/reference-status'
 import { toast } from '@/components/ui/toaster'
 import { useActiveForge } from '@/lib/active-forge'

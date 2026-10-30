@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LifecycleOperationView } from '@open-mercato/cezar-api-client'
+import type { LifecycleOperationView } from '@onni/api-client'
 import { LifecycleOperationCard, TaskLifecycleCard } from './worktree-lifecycle-operation'
 
 const client = vi.hoisted(() => ({getLifecycleOperation: vi.fn(), getLifecycleOutput: vi.fn(), actOnLifecycleOperation: vi.fn(), getWorktreeLifecycle: vi.fn(), getWorktreeLifecycleDetail: vi.fn()}))

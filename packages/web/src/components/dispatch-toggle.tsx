@@ -5,7 +5,7 @@ import {
   DISPATCH_MAX_IN_FLIGHT,
   type DispatchIntent,
   type Runner,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { useRunnerModels } from '@/api/queries'
 import { chipClass } from '@/components/picker-pill'
 import { Input } from '@/components/ui/input'

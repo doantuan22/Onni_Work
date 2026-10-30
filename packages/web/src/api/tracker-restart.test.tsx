@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
-import type { TrackerItemsResponse } from '@open-mercato/cezar-api-client'
+import type { TrackerItemsResponse } from '@onni/api-client'
 
 import { createQueryClient } from './query-client'
 import { queryKeys, useTrackerItems } from './queries'

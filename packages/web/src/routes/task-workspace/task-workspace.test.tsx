@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
 import { resetViewMemory } from '@/lib/view-memory'
-import type { ApiRun, HealthResponse } from '@open-mercato/cezar-api-client'
+import type { ApiRun, HealthResponse } from '@onni/api-client'
 
 import { reviveState, type ViewId } from './layout-state'
 

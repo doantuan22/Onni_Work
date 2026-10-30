@@ -6,7 +6,7 @@ import { createQueryClient } from '@/api/query-client'
 import { dashboardKeys } from '@/api/dashboard'
 import { dashboardLive } from '@/api/dashboard-live'
 import { DashboardRoute } from './index'
-import type { DashboardTaskRow, DashboardSnapshot } from '@open-mercato/cezar-api-client'
+import type { DashboardTaskRow, DashboardSnapshot } from '@onni/api-client'
 let entrySequence = 0
 const at = '2026-09-18T00:00:00.000Z'
 const row = (id: string, status: 'waiting' | 'review' = 'waiting'): DashboardTaskRow => ({

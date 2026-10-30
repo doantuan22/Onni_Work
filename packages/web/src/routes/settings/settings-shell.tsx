@@ -7,7 +7,7 @@ import {
   useLocation,
   useNavigate,
 } from 'react-router'
-import type { Capabilities, ProjectListEntry } from '@open-mercato/cezar-api-client'
+import type { Capabilities, ProjectListEntry } from '@onni/api-client'
 
 import { useHealth, useProjects, useWorkspaceConfig } from '@/api/queries'
 import { VersionChip } from '@/components/app-shell'

@@ -1,4 +1,4 @@
-import type { WebhookFormat } from '@open-mercato/cezar-contract';
+import type { WebhookFormat } from '@onni/contract';
 import type { Agent } from 'undici';
 import { collectSecretValues, redactSecrets } from '../core/secret-redaction.ts';
 import { DestinationPolicyError, validateDestination, type DestinationPolicy, type Lookup } from './destination.ts';

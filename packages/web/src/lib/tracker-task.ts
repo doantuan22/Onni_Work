@@ -1,4 +1,4 @@
-import type { CreateRunInput, TrackerItem } from '@open-mercato/cezar-api-client'
+import type { CreateRunInput, TrackerItem } from '@onni/api-client'
 
 import { MAX_CHAIN_STEPS, skillChainSteps } from './github-task'
 

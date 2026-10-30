@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Trash2Icon } from 'lucide-react'
 import { useState } from 'react'
 
-import { SECRET_AUDIENCES, secretNameIssue, type SecretAudience, type SecretsList } from '@open-mercato/cezar-api-client'
-import { queryScope } from '@open-mercato/cezar-api-client'
+import { SECRET_AUDIENCES, secretNameIssue, type SecretAudience, type SecretsList } from '@onni/api-client'
+import { queryScope } from '@onni/api-client'
 import {
   removeProjectSecret, removeWorkspaceSecret, saveProjectSecret, saveWorkspaceSecret,
 } from '@/api/client'

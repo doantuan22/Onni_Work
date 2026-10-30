@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createWebhookRoutes } from './webhooks.ts';
 import { WebhookCoordinator } from '../webhooks/coordinator.ts';
-import { webhookListSchema, webhookSecretResponseSchema, webhookDeliveriesPageSchema } from '@open-mercato/cezar-contract';
+import { webhookListSchema, webhookSecretResponseSchema, webhookDeliveriesPageSchema } from '@onni/contract';
 import type { ProjectContext } from './project-context.ts';
 const roots: string[] = [], coordinators: WebhookCoordinator[] = [];
 afterEach(async () => { for (const coordinator of coordinators.splice(0)) await coordinator.dispose(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); vi.unstubAllEnvs(); });

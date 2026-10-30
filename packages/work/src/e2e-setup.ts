@@ -1,6 +1,6 @@
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
-import { E2E_CREDENTIAL_NAMES, E2E_SETUP_WORKFLOW_NAME, type E2eCredentialName, type E2eStatus } from '@open-mercato/cezar-contract';
+import { E2E_CREDENTIAL_NAMES, E2E_SETUP_WORKFLOW_NAME, type E2eCredentialName, type E2eStatus } from '@onni/contract';
 import type { RunRecord } from './runs/store.ts';
 import { compileV1, graphToSteps } from './workflows/graph.ts';
 import type { WorkflowDef, WorkflowStepDef } from './workflows/types.ts';

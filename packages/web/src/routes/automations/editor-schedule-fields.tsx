@@ -7,7 +7,7 @@ import {
   zonedParts,
   type AutomationSchedule,
   type ScheduleType,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 import { BranchChip } from '@/components/branch-chip'
 import { Chip } from '@/components/chip'

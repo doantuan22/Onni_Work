@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { QUICK_TASK } from '@/lib/task-source'
 
-import type { AutomationDefinition } from '@open-mercato/cezar-api-client'
+import type { AutomationDefinition } from '@onni/api-client'
 
 import {
   DEFAULT_FILTERS,
@@ -34,7 +34,7 @@ describe('unenforcedPromptLogins', () => {
   })
   it('ignores emails, npm scopes, placeholders and unquoted prose', () => {
     expect(unenforcedPromptLogins(github(
-      'Mail a@b.com, bump @open-mercato/cezar, greet @{{github.author}}, branch from `main`',
+      'Mail a@b.com, bump @onni/work, greet @{{github.author}}, branch from `main`',
     ))).toEqual([])
     expect(unenforcedPromptLogins(github('Review it by default as the user asked'))).toEqual([])
   })

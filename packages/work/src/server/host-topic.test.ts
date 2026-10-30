@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { hostUsageSchema, type HostUsage } from '@open-mercato/cezar-contract';
+import { hostUsageSchema, type HostUsage } from '@onni/contract';
 import { HOST_SAMPLE_INTERVAL_MS, hostUsageSampler } from '../core/host-usage.ts';
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';

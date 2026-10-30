@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as contract from '@open-mercato/cezar-contract';
+import * as contract from '@onni/contract';
 
 describe('dashboard contract', () => {
   it('rejects unknown task group and unsafe pagination while defaulting a bounded page', () => {

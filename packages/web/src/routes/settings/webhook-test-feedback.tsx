@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { toast } from '@/components/ui/toaster'
 import { useQuery } from '@tanstack/react-query'
-import type { WebhookReceiver } from '@open-mercato/cezar-api-client'
+import type { WebhookReceiver } from '@onni/api-client'
 import { webhookApi } from '@/api/client'
 import { webhookKey } from '@/hooks/use-webhooks'
 import { Button } from '@/components/ui/button'

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { RunnerId } from '../core/agent-runner.ts';
 import { validateDeferredBinding, DeferredPrelaunchError } from './deferred-start.ts';
-import type { DispatchIntent } from '@open-mercato/cezar-contract';
-import { dispatchIntentSchema, zonedParts } from '@open-mercato/cezar-contract';
+import type { DispatchIntent } from '@onni/contract';
+import { dispatchIntentSchema, zonedParts } from '@onni/contract';
 import { loadWorkflows } from '../workflows/load.ts';
 import { stepsIssue, type WorkflowDef } from '../workflows/types.ts';
 import type { RunStore } from '../runs/store.ts';

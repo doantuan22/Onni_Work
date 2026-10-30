@@ -11,7 +11,7 @@ import type {
   ProviderStatusResponse,
   RunRecord,
   SkillsUpdateState,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { AppShellContainer, repoChipOf, skillsUpdateMarkerOf } from '@/components/app-shell-container'
 import { ThemeProvider } from '@/components/theme-provider'
 

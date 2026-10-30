@@ -28,7 +28,7 @@ import {
   useReferenceProjectId,
   useRuns,
 } from '@/api/queries'
-import type { ApiRun, OpenTarget } from '@open-mercato/cezar-api-client'
+import type { ApiRun, OpenTarget } from '@onni/api-client'
 import { DiffStatLabel } from '@/components/diff-stat'
 import { TitleEditInput, useTitleEditor, type TitleEditor } from '@/components/editable-title'
 import { TOGGLE_ON_CLASS, TOGGLE_ON_ICON_CLASS } from '@/components/pin-toggle'

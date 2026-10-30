@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { TerminalSession } from '@open-mercato/cezar-api-client'
+import type { TerminalSession } from '@onni/api-client'
 
 const api = vi.hoisted(() => ({
   getStartApp: vi.fn(),

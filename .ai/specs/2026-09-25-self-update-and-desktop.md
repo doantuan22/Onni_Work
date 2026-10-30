@@ -18,7 +18,7 @@ current `npx` flow untouched — and a desktop app for macOS/Windows/Linux.
 ```
 ~/.cezar/versions/<id>/                                one `npm install --prefix` tree per version
 ~/.cezar/versions/<id>/.cezar-install.json             {version, source: registry|local, installedAt}
-~/.cezar/versions/<id>/node_modules/@open-mercato/cezar/dist/index.js
+~/.cezar/versions/<id>/node_modules/@onni/work/dist/index.js
 ~/.cezar/versions/current -> <id>                      the active version (symlink, renamed into place)
 ~/.cezar/bin/cezar, cez                                launchers: exec node <current entry>
 ```

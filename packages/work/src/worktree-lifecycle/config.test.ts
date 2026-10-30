@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { applyLifecycleConfigUpdate, lifecycleConfigFromRaw, readLifecycleConfig, writeLifecycleConfig } from './config.ts';
-import { worktreeLifecycleConfigSchema } from '@open-mercato/cezar-contract';
+import { worktreeLifecycleConfigSchema } from '@onni/contract';
 
 let root: string;
 let path: string;

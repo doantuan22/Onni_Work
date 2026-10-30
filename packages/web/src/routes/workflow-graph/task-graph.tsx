@@ -18,7 +18,7 @@ import { useParams } from 'react-router'
 import { Link } from '@/lib/project-router'
 
 import { useRun } from '@/api/queries'
-import type { ApiRun, WorkflowGraphNode } from '@open-mercato/cezar-api-client'
+import type { ApiRun, WorkflowGraphNode } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import {
   graphForWorkflow,

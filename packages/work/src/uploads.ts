@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { closeSync, fstatSync, openSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { attachmentInputSchema, UPLOAD_ID_RE, type AttachmentInput, type StagedUpload } from '@open-mercato/cezar-contract';
+import { attachmentInputSchema, UPLOAD_ID_RE, type AttachmentInput, type StagedUpload } from '@onni/contract';
 import { cezarHomeDir } from './paths.ts';
 import { atomicWriteJsonSync } from './workspace/config.ts';
 

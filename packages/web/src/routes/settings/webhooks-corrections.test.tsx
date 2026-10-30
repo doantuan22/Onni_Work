@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { webhookEventSchema, type WebhookReceiver } from '@open-mercato/cezar-api-client'
+import { webhookEventSchema, type WebhookReceiver } from '@onni/api-client'
 import { WebhooksSection } from './webhooks-section'
 
 const mocks = vi.hoisted(() => ({ enabled: true, project: 'alpha', list: vi.fn(), create: vi.fn(), update: vi.fn(), activate: vi.fn(), rotate: vi.fn(), history: vi.fn(), activity: vi.fn(), deliveries: vi.fn(), test: vi.fn(), toast: vi.fn() }))

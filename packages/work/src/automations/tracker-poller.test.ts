@@ -51,7 +51,7 @@ it.each(['jira', 'linear'] as const)('requires all exact label names before deli
 });
 
 it('validates bounded required label names and preserves the optional no-filter contract', async () => {
-  const { trackerTriggerSchema } = await import('@open-mercato/cezar-contract');
+  const { trackerTriggerSchema } = await import('@onni/contract');
   const base = { association, events: ['issue.opened'] };
   expect(trackerTriggerSchema.parse(base).requiredLabels).toBeUndefined();
   expect(trackerTriggerSchema.parse({ ...base, requiredLabels: [' bug '] }).requiredLabels).toEqual(['bug']);

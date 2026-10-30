@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WORKSPACE_RUN_EVENT_OMITTED_KEYS, workspaceRunEventSchema } from '@open-mercato/cezar-contract';
+import { WORKSPACE_RUN_EVENT_OMITTED_KEYS, workspaceRunEventSchema } from '@onni/contract';
 import { ProviderAuthService } from '../core/provider-auth.ts';
 import * as processUsage from '../core/process-usage.ts';
 import { emitUsageForTest, type ProcessUsage } from '../core/process-usage.ts';

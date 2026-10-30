@@ -1,4 +1,4 @@
-import { zonedParts, type AutomationsResponse } from '@open-mercato/cezar-api-client'
+import { zonedParts, type AutomationsResponse } from '@onni/api-client'
 
 import { Card } from '@/components/ui/card'
 import { useNow } from '@/lib/use-now'

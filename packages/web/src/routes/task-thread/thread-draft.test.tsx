@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { DraftEntry, RunDraftsResponse } from '@open-mercato/cezar-api-client'
+import type { DraftEntry, RunDraftsResponse } from '@onni/api-client'
 import {
   toAttachmentInput,
   type PendingAttachment,

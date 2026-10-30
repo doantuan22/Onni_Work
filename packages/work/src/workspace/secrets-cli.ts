@@ -1,6 +1,6 @@
 import { realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { SECRET_AUDIENCES, secretNameIssue, type SecretAudience } from '@open-mercato/cezar-contract';
+import { SECRET_AUDIENCES, secretNameIssue, type SecretAudience } from '@onni/contract';
 import { SecretStore, SecretsError, type SecretScopeRef } from './secrets.ts';
 import { loadWorkspaceConfig } from './config.ts';
 

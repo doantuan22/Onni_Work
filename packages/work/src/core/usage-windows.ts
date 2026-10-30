@@ -1,4 +1,4 @@
-import type { UsageWindow, UsageWindowsObservation } from '@open-mercato/cezar-contract';
+import type { UsageWindow, UsageWindowsObservation } from '@onni/contract';
 import { parseUsageLimit } from './usage-limit.ts';
 
 const record = (value: unknown): Record<string, unknown> =>

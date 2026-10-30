@@ -3,7 +3,7 @@ import { CheckIcon, ExternalLinkIcon, MinusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 
-import { E2E_CREDENTIAL_NAMES, queryScope, type E2eCredentialName, type RunStatus } from '@open-mercato/cezar-api-client'
+import { E2E_CREDENTIAL_NAMES, queryScope, type E2eCredentialName, type RunStatus } from '@onni/api-client'
 import { startE2eSetup } from '@/api/client'
 import { queryKeys, useE2eStatus, useRun } from '@/api/queries'
 import { Button } from '@/components/ui/button'

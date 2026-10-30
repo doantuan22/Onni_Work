@@ -234,7 +234,7 @@ diff --git a/BACKWARD_COMPATIBILITY.md b/BACKWARD_COMPATIBILITY.md
 index fd50b46..a3f7cd7 100644
 --- a/BACKWARD_COMPATIBILITY.md
 +++ b/BACKWARD_COMPATIBILITY.md
-@@ -7,7 +7,7 @@ cezar is a published npm CLI (`@open-mercato/cezar`, currently 0.x — renamed f
+@@ -7,7 +7,7 @@ cezar is a published npm CLI (`@onni/work`, currently 0.x — renamed f
  ## 1. CLI commands, flags and exit codes (`packages/work/src/index.ts`)
  
  - **Bins:** `cezar` and `cez` (both in `package.json` `bin`). Removing either alias is breaking.
@@ -1233,7 +1233,7 @@ index 0e6589c..71654a9 100644
 --- a/packages/work/src/workflows/run.ts
 +++ b/packages/work/src/workflows/run.ts
 @@ -41,6 +41,8 @@ import {
- } from '@open-mercato/cezar-contract';
+ } from '@onni/contract';
  import type { AgentEvent, ContentBlock } from '../core/agent-runner.ts';
  import { discoverSkills, type Skill } from '../skills.ts';
 +import { automationsReachable } from '../automations/builtin-skill.ts';

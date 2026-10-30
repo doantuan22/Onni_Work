@@ -1,4 +1,4 @@
-import type { HealthResponse, ProjectsResponse } from '@open-mercato/cezar-api-client'
+import type { HealthResponse, ProjectsResponse } from '@onni/api-client'
 
 /**
  * The registry plus the folder `serve` was started in, while that folder is the project on

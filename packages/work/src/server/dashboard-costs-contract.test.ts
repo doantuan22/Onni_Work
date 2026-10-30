@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as contract from '@open-mercato/cezar-contract';
+import * as contract from '@onni/contract';
 
 describe('dashboard cost contract', () => {
   it('bounds detail requests and rejects unsupported cohorts and sorting', () => {

@@ -3,7 +3,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { StrictMode, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { HostUsage } from '@open-mercato/cezar-api-client'
+import type { HostUsage } from '@onni/api-client'
 import {
   createHostUsageStore,
   HostUsageProvider,

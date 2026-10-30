@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
 import { queryKeys } from '@/api/queries'
-import type { ApiRun, RunEvent } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunEvent } from '@onni/api-client'
 
 import {
   liveSessionSeq,

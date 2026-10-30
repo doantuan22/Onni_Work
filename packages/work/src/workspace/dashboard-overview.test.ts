@@ -4,7 +4,7 @@ import {
   dashboardOverviewSchema,
   type DashboardSnapshot,
   type DashboardTaskRow,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { buildDashboardOverview } from './dashboard-overview.ts';
 const at = '2026-09-19T12:00:00.000Z';
 const snapshot: DashboardSnapshot = {

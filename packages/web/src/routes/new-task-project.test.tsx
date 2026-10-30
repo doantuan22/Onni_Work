@@ -11,7 +11,7 @@ import type {
   RepoResponse,
   Skill,
   WorkflowsResponse,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { resetToasts, Toaster } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 

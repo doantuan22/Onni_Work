@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { ghEnv } from '../core/gh-env.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { GITHUB_REPO_NAME_PATTERN, type GithubOwner, type GithubOwnersResponse } from '@open-mercato/cezar-contract';
+import { GITHUB_REPO_NAME_PATTERN, type GithubOwner, type GithubOwnersResponse } from '@onni/contract';
 import { GH_CREDENTIAL_HELPER_CONFIG, cleanupCheckout, isValidCheckoutName, parseRepoRef, type CheckoutProgressEvent } from './checkout.ts';
 
 /**

@@ -4,7 +4,7 @@ import { useParams } from 'react-router'
 
 import { ApiError } from '@/api/client'
 import { useRun, useRunFile } from '@/api/queries'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { useIsDesktop } from '@/lib/use-desktop'
 

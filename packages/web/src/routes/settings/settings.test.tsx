@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { queryKeys, workspaceQueryKeys } from '@/api/queries'
 import { createQueryClient } from '@/api/query-client'
-import type { ProjectListEntry } from '@open-mercato/cezar-api-client'
+import type { ProjectListEntry } from '@onni/api-client'
 import { AppearanceProvider } from '@/components/appearance-provider'
 import { OPEN_COMMAND_PALETTE_EVENT } from '@/components/command-palette'
 import { ListViewProvider } from '@/components/list-view'

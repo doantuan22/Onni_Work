@@ -10,7 +10,7 @@ import type {
   RunIndexEntry,
   RunRecord,
   Skill,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import {
   CommandPalette,
   mergeTasks,

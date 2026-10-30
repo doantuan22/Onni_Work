@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 
 import { getRunDrafts, putRunDraft } from '@/api/client'
 import { queryKeys, useRunDrafts } from '@/api/queries'
-import { DRAFT_TEXT_MAX, type RunDraftsResponse } from '@open-mercato/cezar-api-client'
+import { DRAFT_TEXT_MAX, type RunDraftsResponse } from '@onni/api-client'
 import { COMMENT_MAX, describeLines, type DiffLineComment, type DiffLineEnd, type DiffNewLineComment } from '@/components/diff'
 import { toast } from '@/components/ui/toaster'
 

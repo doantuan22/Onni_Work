@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { cleanup, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, expect, it, vi } from 'vitest'
-import type { DashboardCosts } from '@open-mercato/cezar-api-client'
+import type { DashboardCosts } from '@onni/api-client'
 import { useCostTasks } from './dashboard-costs'
 afterEach(() => {
   cleanup()

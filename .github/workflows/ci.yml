@@ -85,7 +85,7 @@ jobs:
       # packable package honest; the root stays `private` and no workspace is published.
       - name: Verify packable packages
         run: |
-          npm pack --dry-run --ignore-scripts -w @open-mercato/cezar
+          npm pack --dry-run --ignore-scripts -w @onni/work
 
   # Exercise filesystem ownership/recovery on every supported OS. macOS and Windows also
   # build and test the installed release package; Linux does that in `verify` above.

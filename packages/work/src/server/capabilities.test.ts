@@ -1,4 +1,4 @@
-import { capabilitiesSchema } from '@open-mercato/cezar-contract';
+import { capabilitiesSchema } from '@onni/contract';
 import { describe, expect, it } from 'vitest';
 import {
   agentAccountsEnabled,

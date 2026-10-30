@@ -4,7 +4,7 @@ import {
   createWebhookSchema, updateWebhookSchema, webhookReceiverParamsSchema, webhookDeliveryParamsSchema,
   webhookRevisionSchema, webhookActivationSchema, webhookRotationSchema, webhookOperationSchema, webhookReplaySchema,
   webhookNoticeAcknowledgementSchema, webhookHistoryQuerySchema, webhookDeliveriesQuerySchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { ProjectContext } from './project-context.ts';
 import { jsonZodValidator, paramZodValidator, queryZodValidator } from './validators.ts';
 import type { WebhookService } from '../webhooks/service.ts';

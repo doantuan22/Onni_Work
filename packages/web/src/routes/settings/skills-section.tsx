@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 import { putWorkspaceConfig } from '@/api/client'
 import { useWorkspaceConfig, workspaceQueryKeys } from '@/api/queries'
-import type { SetWorkspaceConfigInput, WorkspaceConfigResponse } from '@open-mercato/cezar-api-client'
+import type { SetWorkspaceConfigInput, WorkspaceConfigResponse } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

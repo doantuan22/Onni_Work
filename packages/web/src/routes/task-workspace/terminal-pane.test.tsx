@@ -1,7 +1,7 @@
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { TerminalSession } from '@open-mercato/cezar-api-client'
+import type { TerminalSession } from '@onni/api-client'
 
 /**
  * `TerminalPane`'s size handshake (spec `.ai/specs/2026-10-07-task-workspace.md` §6, "resize

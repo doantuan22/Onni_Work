@@ -1,7 +1,7 @@
 // A contract VALUE, not a type: which runners cezar can interrogate for a live catalog is decided
 // once, by the schema `GET /api/v1/models` validates with, so the picker and the route cannot
 // disagree about who has discovery. It narrows `Runner` to `ModelDiscoveryRunner`.
-import { runnerDiscoversModels } from '@open-mercato/cezar-api-client'
+import { runnerDiscoversModels } from '@onni/api-client'
 import type {
   BackendCheck,
   CreateRunInput,
@@ -13,7 +13,7 @@ import type {
   RunnerModelCatalogResponse,
   Skill,
   WorkflowDef,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 /**
  * The new-task form's picker rules and its POST body, as pure functions — the exact semantics

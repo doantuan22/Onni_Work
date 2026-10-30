@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { openInIcon, type OpenInChoice } from '@/components/open-in-menu'
 import type { GitAction, GitActionId } from '@/lib/git-actions'
 import type { TaskWorkspaceBridge } from '@/lib/task-workspace-bridge'

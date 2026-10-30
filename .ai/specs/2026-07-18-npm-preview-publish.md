@@ -19,7 +19,7 @@ packaged-CLI E2E, pack check) — nothing publishes unless everything is green. 
 snapshot posts a sticky PR comment with the **exact version numbers** ready to copy-paste;
 the comment is generated from the published manifests, so if the package or bin name ever
 changes, the comment stays correct automatically. Alongside, the real package moves to the
-open-mercato npm org: `@pat-lewczuk/cezar` → `@open-mercato/cezar`, with the unscoped
+open-mercato npm org: `@pat-lewczuk/cezar` → `@onni/work`, with the unscoped
 `cezar-cli` alias (the name users actually type) unchanged. An admin runbook lists exactly
 what to configure on npmjs.com and GitHub (one secret: `NPM_TOKEN`).
 
@@ -31,7 +31,7 @@ triggers automatically after CI instead of `workflow_dispatch`-only.
 
 - **Q1 — does the npx command name change?** No. `npx cezar-cli` stays the user-facing
   entrypoint; only the scoped implementation package renames (`@pat-lewczuk/cezar` →
-  `@open-mercato/cezar`). All `npx cezar-cli …` docs stay valid. The brief's "if the npx
+  `@onni/work`). All `npx cezar-cli …` docs stay valid. The brief's "if the npx
   command name changes…" contingency is covered structurally: the PR comment renders the
   install line from the actually-published package name + version, never from a hardcoded string.
 - **Q2 — what does `main` publish?** A `main`-channel snapshot under the **`main` dist-tag**
@@ -51,8 +51,8 @@ triggers automatically after CI instead of `workflow_dispatch`-only.
   mirroring open-mercato's `resolve-pr` check). Fork-PR previews are out of scope.
 - **Q5 — both packages or just the alias?** Both, in lockstep. `cezar-cli` is a bin-shim
   that depends on the scoped package, so a snapshot of only the alias would run *old* code.
-  Order: publish `@open-mercato/cezar@<v>` first, then `cezar-cli@<v>` with its dependency
-  **pinned exact** (`"@open-mercato/cezar": "0.1.5-pr482.123"`). Stable releases keep the
+  Order: publish `@onni/work@<v>` first, then `cezar-cli@<v>` with its dependency
+  **pinned exact** (`"@onni/work": "0.1.5-pr482.123"`). Stable releases keep the
   `^` range in the alias.
 - **Q6 — where does the publish job live?** In the existing `.github/workflows/ci.yml` as a
   `publish-snapshot` job with `needs: verify` — one workflow, one `run_number` sequence, and
@@ -80,18 +80,18 @@ triggers automatically after CI instead of `workflow_dispatch`-only.
 
 ### Package naming and ownership
 
-- `package.json` `name`: `@pat-lewczuk/cezar` → **`@open-mercato/cezar`** (version, bins
+- `package.json` `name`: `@pat-lewczuk/cezar` → **`@onni/work`** (version, bins
   `cezar`/`cez`, `files`, `publishConfig.access: public` unchanged).
-- `alias-cezar/package.json`: dependency → `@open-mercato/cezar`; `alias-cezar/bin.js`
-  import → `@open-mercato/cezar/dist/index.js`. Bins `cezar-cli`/`cezar`/`cez` unchanged.
+- `alias-cezar/package.json`: dependency → `@onni/work`; `alias-cezar/bin.js`
+  import → `@onni/work/dist/index.js`. Bins `cezar-cli`/`cezar`/`cez` unchanged.
 - **Migration path** (required by `BACKWARD_COMPATIBILITY.md` §6, which protects the
-  package name): after the first successful `@open-mercato/cezar` stable publish, the admin
+  package name): after the first successful `@onni/work` stable publish, the admin
   (a) publishes one final `@pat-lewczuk/cezar` patch whose `dist/index.js` re-exports from a
-  new dependency on `@open-mercato/cezar` (so pinned users keep working), and (b) runs
-  `npm deprecate @pat-lewczuk/cezar "moved to @open-mercato/cezar — npx cezar-cli still works"`.
+  new dependency on `@onni/work` (so pinned users keep working), and (b) runs
+  `npm deprecate @pat-lewczuk/cezar "moved to @onni/work — npx cezar-cli still works"`.
   Existing `npx cezar-cli` users are untouched: the alias's next release simply depends on
   the new scoped name. `BACKWARD_COMPATIBILITY.md` §6 is updated in the same PR to name
-  `@open-mercato/cezar` as the protected package name and record this migration.
+  `@onni/work` as the protected package name and record this migration.
 - `src/server-install/platforms/ubuntu-vps.ts:521` (`OFFICIAL_CLI_PKG = 'cezar-cli'`) and
   `src/server/capabilities.ts` are **unchanged** — the user-facing name doesn't move.
 
@@ -175,11 +175,11 @@ Try this PR build (exact pinned version — copy-paste as-is):
     npx cezar-cli@0.1.5-pr482.123 server-deploy --platform ubuntu-vps   # roll a server to this build
 
 Also tagged: `npm install -g cezar-cli@pr-482` (moving tag for this PR).
-Packages: `cezar-cli@0.1.5-pr482.123` → `@open-mercato/cezar@0.1.5-pr482.123` (provenance attested).
+Packages: `cezar-cli@0.1.5-pr482.123` → `@onni/work@0.1.5-pr482.123` (provenance attested).
 ```
 
 **Dist-tag cleanup**: a small separate workflow on `pull_request: [closed]` best-effort
-runs `npm dist-tag rm {cezar-cli,@open-mercato/cezar} pr-<N>`. Snapshot *versions* stay
+runs `npm dist-tag rm {cezar-cli,@onni/work} pr-<N>`. Snapshot *versions* stay
 on the registry (npm allows unpublish only within 72 h and forbids it with dependents —
 we don't try); untagged prerelease versions are inert and never resolved by `npx cezar-cli`.
 
@@ -187,10 +187,10 @@ we don't try); untagged prerelease versions are inert and never resolved by `npx
 
 | File | Change |
 |---|---|
-| `package.json`, `package-lock.json` | `name` → `@open-mercato/cezar` |
-| `alias-cezar/package.json`, `alias-cezar/bin.js` | dependency + import → `@open-mercato/cezar` |
-| `src/index.ts:458-460` (`readOwnName`) | fallback name → `@open-mercato/cezar`, so the npm-registry update check (#368) never queries the deprecated package |
-| `README.md:149` | `npx @pat-lewczuk/cezar` → `npx @open-mercato/cezar` |
+| `package.json`, `package-lock.json` | `name` → `@onni/work` |
+| `alias-cezar/package.json`, `alias-cezar/bin.js` | dependency + import → `@onni/work` |
+| `src/index.ts:458-460` (`readOwnName`) | fallback name → `@onni/work`, so the npm-registry update check (#368) never queries the deprecated package |
+| `README.md:149` | `npx @pat-lewczuk/cezar` → `npx @onni/work` |
 | `README.md` (Quick start area) | new **Preview builds** subsection: `npx cezar-cli@develop`, `npx cezar-cli@main`, per-PR `pr-<N>` tags + where the PR comment appears |
 | `docs/server-install/README.md`, `ubuntu-vps.md`, `macosx-ngrok.md` | note that `server-deploy` accepts a pinned preview (`npx cezar-cli@<snapshot> server-deploy …`) for testing a PR build on a VPS |
 | `docs/publishing.md` (new) | the admin runbook below + how the snapshot pipeline works, for maintainers |
@@ -210,7 +210,7 @@ All other `cezar-cli` references (`src/server-install/*`, `src/server/capabiliti
    current `cezar-cli` owner.
 3. Create a **granular access token**: *Read and write*; **Packages and scopes** →
    select the `@open-mercato` scope (with "new packages" allowed — the first
-   `@open-mercato/cezar` publish comes from CI) **and** the `cezar-cli` package;
+   `@onni/work` publish comes from CI) **and** the `cezar-cli` package;
    expiry per your policy (set a calendar reminder; CI fails loudly with `E401/E404`
    when it lapses).
 4. For both packages, Settings → *Publishing access* → **"Require two-factor
@@ -228,10 +228,10 @@ All other `cezar-cli` references (`src/server-install/*`, `src/server/capabiliti
    (`pull-requests: write`, `id-token: write`), so repo-level Actions defaults can stay
    read-only, and `develop` already exists.
 
-**After the first stable `@open-mercato/cezar` publish** (post-merge, manual):
+**After the first stable `@onni/work` publish** (post-merge, manual):
 
 7. Publish the final `@pat-lewczuk/cezar` forwarding patch and run
-   `npm deprecate @pat-lewczuk/cezar "moved to @open-mercato/cezar — npx cezar-cli still works"`.
+   `npm deprecate @pat-lewczuk/cezar "moved to @onni/work — npx cezar-cli still works"`.
 
 The implementing PR's summary comment must repeat steps 1–6 so the admin can configure
 everything before merging (the first post-merge push to `main` is the pipeline's live test).
@@ -259,7 +259,7 @@ The Phase/Step numbering is the execution order for `om-auto-create-pr`
 (`Source doc:` = this file). Each phase leaves CI green.
 
 **Phase 1 — Rename and rewire (no publishing yet).**
-1. Rename `package.json` `name` to `@open-mercato/cezar`; regenerate `package-lock.json`;
+1. Rename `package.json` `name` to `@onni/work`; regenerate `package-lock.json`;
    update `alias-cezar/package.json` dependency and `alias-cezar/bin.js` import; the
    `readOwnName` fallback (`src/index.ts:458-460`); `README.md:149`. Tests: full suite
    (`test:package` proves the tarball still works), plus the update-check unit coverage

@@ -1,4 +1,4 @@
-import type { UiToolItem } from '@open-mercato/cezar-api-client'
+import type { UiToolItem } from '@onni/api-client'
 
 import type { ThreadEntry } from './thread-state'
 

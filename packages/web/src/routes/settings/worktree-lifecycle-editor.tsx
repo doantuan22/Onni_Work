@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { worktreeLifecycleConfigSchema, type ConfigResponse, type LifecyclePreviewResponse, type ScriptEntry, type WorktreeLifecycleConfig } from '@open-mercato/cezar-api-client'
+import { worktreeLifecycleConfigSchema, type ConfigResponse, type LifecyclePreviewResponse, type ScriptEntry, type WorktreeLifecycleConfig } from '@onni/api-client'
 import { getConfig, previewLifecycleCommand, putConfig } from '@/api/client'
 import { queryKeys } from '@/api/queries'
 import { useWorktreeLifecycles } from '@/api/worktree-lifecycle'

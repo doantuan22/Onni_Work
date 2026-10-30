@@ -28,7 +28,7 @@ import { memo } from 'react'
 
 import { Link } from '@/lib/project-router'
 
-import type { WorkflowGraph, WorkflowGraphNode, WorkflowNodeCatalogResponse } from '@open-mercato/cezar-api-client'
+import type { WorkflowGraph, WorkflowGraphNode, WorkflowNodeCatalogResponse } from '@onni/api-client'
 import { cn } from '@/lib/utils'
 import {
   CAPTION_WIDTH,

@@ -7,10 +7,10 @@
 > The reusable-React-components half of that comment is a **separate** effort and is out of scope here.
 
 ## TLDR
-`cezar` ships as one npm package whose server+CLI (`src/`) and React SPA (`web/app/`) share a single `package.json`, dependency tree, and build. This spec turns the server into a **standalone headless service** with its own `package.json`, and makes the frontend one client of it, joined **only** by a new `@open-mercato/cezar-api-client` package that exports the server's `AppType` wrapped in Hono's RPC client (`hc<AppType>`), plus DTO types and pure helpers. The current hand-mirror (`web/app/src/api/types.ts`) and its cross-boundary drift test (`src/server/api-types.test.ts`) are **deleted** — the typed client becomes the single source of the contract. To make "used independently of the main application" real and safe, the service gains an **opt-in remote-access mode**: local use stays zero-config (loopback + same-origin guard, no auth), but exposing cezar beyond loopback (e.g. reaching it from your phone over an exposed port/tunnel) is gated behind a "remote access setup" that creates an account and enables **built-in JWT auth** (`hono/jwt`) + CORS for configured origins. A committed later phase publishes an **explicit OpenAPI specification** as the language-neutral public contract, with `hc` as the convenience client on top.
+`cezar` ships as one npm package whose server+CLI (`src/`) and React SPA (`web/app/`) share a single `package.json`, dependency tree, and build. This spec turns the server into a **standalone headless service** with its own `package.json`, and makes the frontend one client of it, joined **only** by a new `@onni/api-client` package that exports the server's `AppType` wrapped in Hono's RPC client (`hc<AppType>`), plus DTO types and pure helpers. The current hand-mirror (`web/app/src/api/types.ts`) and its cross-boundary drift test (`src/server/api-types.test.ts`) are **deleted** — the typed client becomes the single source of the contract. To make "used independently of the main application" real and safe, the service gains an **opt-in remote-access mode**: local use stays zero-config (loopback + same-origin guard, no auth), but exposing cezar beyond loopback (e.g. reaching it from your phone over an exposed port/tunnel) is gated behind a "remote access setup" that creates an account and enables **built-in JWT auth** (`hono/jwt`) + CORS for configured origins. A committed later phase publishes an **explicit OpenAPI specification** as the language-neutral public contract, with `hc` as the convenience client on top.
 
 ## Resolved decisions (confirmed with owner 2026-07-23)
-1. ~~**In-place layout, least churn.** Root stays the server+CLI package (`@open-mercato/cezar`) — same name, `bin`, `files`, no source moves. `web/app/` gains its own `package.json`; a new `web/api-client/` package is added; root gains `workspaces`.~~ **Superseded 2026-07-25 — see decision 5.**
+1. ~~**In-place layout, least churn.** Root stays the server+CLI package (`@onni/work`) — same name, `bin`, `files`, no source moves. `web/app/` gains its own `package.json`; a new `web/api-client/` package is added; root gains `workspaces`.~~ **Superseded 2026-07-25 — see decision 5.**
 2. **Two access modes, auth opt-in.** *Local* (default, zero-config) keeps today's posture: loopback bind + same-origin origin-guard (`src/server/server.ts:836`), **no auth to configure**. *Remote access* is **opt-in** — a "remote access setup" creates an account and enables **built-in JWT auth** (Hono's `jwt` middleware) + CORS for the configured origin(s). This is the safety layer for the "expose a port, reach cezar from your phone / from a workflow" case, and an alternative to the existing "reverse proxy must provide auth" hosted mode.
 3. **Contract now = Hono RPC; OpenAPI is a committed later goal.** The api-client exports `hc<AppType>` + DTO types + helper utils (near-term). A dedicated later phase adds an **explicit OpenAPI spec** served by the service, for language-neutral/independent consumers.
 4. **Reusable React components are out of scope** here (the other half of the #557 comment) — tracked separately; the shared session renderer already has `.ai/specs/2026-07-21-shared-session-renderer.md` / PR #580.
@@ -19,11 +19,11 @@
 
 These reverse or extend the original ones. Each was taken with the code in front of us; the reasoning is recorded because the original decision documented the opposite.
 
-5. **Full `packages/*` layout; the root publishes nothing.** Reverses decision 1 and the "Full monorepo reshuffle" rejection below. The forcing argument was not tidiness: with the root doubling as the published package, (a) `api-client` had no way to resolve `@open-mercato/cezar` in-repo, so the `import type { AppType }` edge the whole design rests on could not exist as a real dependency, and (b) the root's `dependencies` (the server's runtime deps) and `devDependencies` (the toolchain of three packages) were the same field doing two jobs. The layout is now `packages/{cezar,api-client,web}` + `alias-cezar`, root `private: true`. The churn the original decision feared was real but one-off and mechanical; it is done.
+5. **Full `packages/*` layout; the root publishes nothing.** Reverses decision 1 and the "Full monorepo reshuffle" rejection below. The forcing argument was not tidiness: with the root doubling as the published package, (a) `api-client` had no way to resolve `@onni/work` in-repo, so the `import type { AppType }` edge the whole design rests on could not exist as a real dependency, and (b) the root's `dependencies` (the server's runtime deps) and `devDependencies` (the toolchain of three packages) were the same field doing two jobs. The layout is now `packages/{cezar,api-client,web}` + `alias-cezar`, root `private: true`. The churn the original decision feared was real but one-off and mechanical; it is done.
    - **The CLI stays with the server.** It is not a layer over the service but the same program: `packages/work/src/index.ts` boots `startServer` *and* `RunManager`/`RunStore`/the workspace registry, and `cezar run` executes a workflow with no server at all. Splitting it would require extracting a `core` package first, and the seam is not obvious. The tarball must also ship `web/dist`, so service + CLI + cockpit assets are one artifact by construction. Revisit only when a second consumer of `core` exists.
 6. **The API is versioned from the start: `/api/v1/*`.** Every chained family is mounted under `/api/v1` (and `/api/v1/p/:projectId`). Originally additive alongside the unversioned paths — superseded by decision 8.
-7. **`@open-mercato/cezar-api-client` is `private` for now — internal to the workspace.** (Amended again 2026-07-27; the first form of this decision was "published from the start".) The package is in the release set and stamped in lockstep, but never handed to npm. Two reasons: nothing published depends on it yet (it is a devDependency of the service, used by tests; the cockpit bundles it from source), and its surface is *designed to shrink* — it still carries the hand-written DTOs, which are deleted family by family as routes are chained, so publishing now would advertise a contract that changes materially every release. The release pipeline gates publication on npm's own `private` flag, so opening it up is one line in its manifest and no change to the release code.
-   - **The trigger to publish is Phase 3**: the moment the service imports the DTOs at runtime, the api-client becomes a real `dependency` of the published CLI, and an unpublished dependency would make `@open-mercato/cezar` uninstallable. Publish it *before* making that move, not after.
+7. **`@onni/api-client` is `private` for now — internal to the workspace.** (Amended again 2026-07-27; the first form of this decision was "published from the start".) The package is in the release set and stamped in lockstep, but never handed to npm. Two reasons: nothing published depends on it yet (it is a devDependency of the service, used by tests; the cockpit bundles it from source), and its surface is *designed to shrink* — it still carries the hand-written DTOs, which are deleted family by family as routes are chained, so publishing now would advertise a contract that changes materially every release. The release pipeline gates publication on npm's own `private` flag, so opening it up is one line in its manifest and no change to the release code.
+   - **The trigger to publish is Phase 3**: the moment the service imports the DTOs at runtime, the api-client becomes a real `dependency` of the published CLI, and an unpublished dependency would make `@onni/work` uninstallable. Publish it *before* making that move, not after.
    - Publishing also needs the release token to be scoped to `@open-mercato/*` rather than a package list — a token restricted to selected packages cannot create a new one, and npm reports that as a misleading `E404 … PUT`. See `docs/publishing.md`.
 8. **The unversioned `/api/*` surface is REMOVED; `/api/v1` is the only surface** (confirmed with owner 2026-07-27). Reverses the additive half of decision 6 and the "no breaking wire change" non-goal. Two surfaces meant two things to keep working and only one of them could be the typed contract. The stated justification for freezing `/api/*` — saved bookmarklets probing `/api/health` cross-origin — had already lapsed: GitHub's CSP blocked those probes in 2026-07, so a saved bookmarklet now only opens a page URL. Remaining consumers were the cockpit (ships in lockstep), our own probes, and unscripted third parties; at 0.x that is a documented breaking change, not a blocker.
    - **The migration path that mattered was not scripts but data.** Run transcripts persist absolute image URLs (`/api/runs/<id>/images/…`) into NDJSON forever, so the cockpit renders URLs written by every version that ever ran. `resolveApiUrl` upgrades those to `/api/v1` at render time; the stored bytes are never rewritten.
@@ -49,14 +49,14 @@ What is **not** broken and must be preserved: the runtime boundary is already cl
 
 ### Non-goals
 - **Reusable React components / embedding cezar UI in another app's layout** (the other half of #557) — separate effort.
-- ~~No move of `src/`~~ (superseded by amended decision 5 — `src/` moved to `packages/work/src/`), no rename of the published `@open-mercato/cezar` package (still holds: same name, same `bin`).
+- ~~No move of `src/`~~ (superseded by amended decision 5 — `src/` moved to `packages/work/src/`), no rename of the published `@onni/work` package (still holds: same name, same `bin`).
 - No **breaking** change to the HTTP wire surface: every existing path, status code, the `/api` + `/api/p/:projectId` double-mount and the SSE event names answer exactly as before. Narrowed by amended decision 6 — chained families gain an *additive* `/api/v1` twin. This is packaging + type-plumbing + additive layers, not an API redesign.
 - Multi-user / RBAC / SSO. The account model is single-owner (a personal cockpit); richer identity is future work.
 
 ## Proposed Solution
 Three moves, largely independent:
 
-**1. Extract the boundary into `@open-mercato/cezar-api-client`** — a Node-free leaf package that owns DTO types, pure utils, SSE/protocol types, and the `hc<AppType>` client (+ the rich wrapper: `ApiError`, project-scope prefixing, SSE subscribe helpers, base-URL). web depends on it (Vite bundles it); server depends on it for the shared DTOs/utils it should stop duplicating. The only server tie is `import type { AppType }` — erased at build, so no runtime cycle and no Node code leaks into the web bundle.
+**1. Extract the boundary into `@onni/api-client`** — a Node-free leaf package that owns DTO types, pure utils, SSE/protocol types, and the `hc<AppType>` client (+ the rich wrapper: `ApiError`, project-scope prefixing, SSE subscribe helpers, base-URL). web depends on it (Vite bundles it); server depends on it for the shared DTOs/utils it should stop duplicating. The only server tie is `import type { AppType }` — erased at build, so no runtime cycle and no Node code leaks into the web bundle.
 
 **2. Make the API a first-class contract via Hono RPC.** Hono infers endpoint types from the app's *type*, which accumulates only through **method chaining**. cezar registers routes as imperative statements (`const app = new Hono(); app.get(...)`, and the project-scoped `const api = new Hono<ProjectApiEnv>(); api.get(...)` double-mounted at `server.ts:3209-3210`), so `typeof app` captures **zero** routes. The core work is refactoring registration into a chained builder and `export type AppType = typeof app`, done **route-family by family** behind the unchanged parity tests. An explicit **OpenAPI** document (Phase 6) is layered on the same routes later.
 
@@ -73,9 +73,9 @@ Three moves, largely independent:
 Three packages under one npm workspace root; the server package is unmoved.
 
 ```
-/ (root = @open-mercato/cezar — server + CLI, PUBLISHED)
+/ (root = @onni/work — server + CLI, PUBLISHED)
   package.json          # + "workspaces": ["web/app","web/api-client"]; keeps name/bin/files;
-                        #   + "@open-mercato/cezar-api-client" in dependencies
+                        #   + "@onni/api-client" in dependencies
   src/                  # UNCHANGED locations; intra-src ".js" specifiers untouched
     server/server.ts    # routes → chained; exports the app; origin-guard + double-mount intact
     server/app-type.ts  # NEW: export type AppType = typeof app  (type-only boundary surface)
@@ -84,16 +84,16 @@ Three packages under one npm workspace root; the server package is unmoved.
   scripts/dev.mjs       # one-command dev — delegates to workspace scripts
   scripts/check-pack.mjs# UNCHANGED — still asserts web/dist ships in the CLI tarball
   web/
-    api-client/         # NEW @open-mercato/cezar-api-client — Node-free LEAF, PUBLISHED
+    api-client/         # NEW @onni/api-client — Node-free LEAF, PUBLISHED
       src/index.ts      # hc<AppType> factory + DTO/helper re-exports; attaches Authorization
       src/dto/*         # DTO types — single source; server imports these for c.json() typing
       src/utils/*       # scopeApiPath, validators (moved from web/app/src/api + lib)
       src/protocol/*    # SSE / ui-event / tool-display types (moved from web/app/src/protocol)
       src/client.ts     # rich wrapper: ApiError, scope prefixing, base URL, token, SSE helpers
-    app/                # NOW @open-mercato/cezar-web — private SPA, own package.json
+    app/                # NOW @onni/web — private SPA, own package.json
       package.json      # relocated react/vite/tailwind/radix/etc. + dependency on api-client
       vite.config.ts    # outDir stays ../dist (web/dist); base URL configurable
-      src/…             # imports "@open-mercato/cezar-api-client"; adds a login screen (remote mode)
+      src/…             # imports "@onni/api-client"; adds a login screen (remote mode)
     dist/               # Vite output — UNCHANGED (server's resolveWebDir serves it)
 ```
 
@@ -122,13 +122,13 @@ Contract types move (not a persisted change): response/domain types from `web/ap
 - Optional `GET /api/auth/me` → the current identity (for the web login state).
 
 **Type contract:**
-- New type-only export `@open-mercato/cezar/app-type` → `AppType`.
-- New package `@open-mercato/cezar-api-client` exporting `createCezClient({ baseUrl?, token? })`, DTO types, protocol types, helpers. The client attaches `Authorization` when a token is set.
+- New type-only export `@onni/work/app-type` → `AppType`.
+- New package `@onni/api-client` exporting `createCezClient({ baseUrl?, token? })`, DTO types, protocol types, helpers. The client attaches `Authorization` when a token is set.
 - `web/app/src/api/types.ts` and `src/server/api-types.test.ts` **deleted** once the shared source + `AppType` inference cover the surface.
 - Phase 6: `GET /api/openapi.json` (language-neutral public contract), drift-tested against the route manifest.
 
 ## UI/UX
-No change for local users — the cockpit looks and behaves identically. In **remote-auth mode**, the web app shows a **login screen** on `401`, stores the JWT, and attaches it to API + SSE requests; a "remote access setup" flow (CLI wizard, mirroring `server-install`) creates the account and prints the URL/credentials. Developer-facing: web app code imports from `@open-mercato/cezar-api-client` and gets compile-time errors for wrong paths/bodies/response shapes.
+No change for local users — the cockpit looks and behaves identically. In **remote-auth mode**, the web app shows a **login screen** on `401`, stores the JWT, and attaches it to API + SSE requests; a "remote access setup" flow (CLI wizard, mirroring `server-install`) creates the account and prints the URL/credentials. Developer-facing: web app code imports from `@onni/api-client` and gets compile-time errors for wrong paths/bodies/response shapes.
 
 ## Edge Cases & Failure Scenarios
 - **SSE can't send `Authorization` headers.** Native `EventSource` forbids custom headers, so in remote-auth mode the three SSE streams (`/api/events`, `/api/runs/:id/events`, `/api/workspace/events`) need either a **short-lived token query param** (`?access_token=`, accepting URL/log exposure of a short-TTL token) or an **httpOnly JWT cookie** (cleaner, but cross-origin then needs `SameSite=None; Secure` + credentialed CORS). **Recommend the cookie path** for cross-origin and query-param only as a same-origin fallback — resolve during the auth phase.
@@ -161,13 +161,13 @@ Live status is tracked in `.ai/runs/2026-07-23-independent-server-web-packages.m
 
 ## Implementation Plan
 ### Phase 0 — Scaffold api-client
-Create `web/api-client` (`@open-mercato/cezar-api-client`) with `package.json` + `tsconfig`. Move the Node-free shared pieces first: `web/app/src/api/project-scope.ts`, `web/app/src/protocol/*`, pure validators/utils. Leave re-export shims at old web paths. Root gains `workspaces`; add placeholder `web/app/package.json`. Suite green.
+Create `web/api-client` (`@onni/api-client`) with `package.json` + `tsconfig`. Move the Node-free shared pieces first: `web/app/src/api/project-scope.ts`, `web/app/src/protocol/*`, pure validators/utils. Leave re-export shims at old web paths. Root gains `workspaces`; add placeholder `web/app/package.json`. Suite green.
 
 ### Phase 1 — `AppType` + first family + `hc`
 Add `src/server/app-type.ts` (`export type AppType = typeof app`) + a `./app-type` entry in the server package `exports`. Chain one small self-contained family in `server.ts`. In api-client add `src/client.ts` = `hc<AppType>` wrapped with `ApiError`/`scopeApiPath`/SSE lifted from `web/app/src/api/client.ts`, and the `src/index.ts` barrel. Prove typed end-to-end for that family. Parity tests green.
 
 ### Phase 2 — Web package
-Move all React/Vite/Tailwind/Radix/etc. deps from root `devDependencies` into `web/app/package.json` (`@open-mercato/cezar-web`, `private`) + dependency on api-client. Repoint web imports `./api/{types,client}` → the package (keep shims). Update `web/app/vite.config.ts` (outDir stays `web/dist`) + split vitest config. `npm run dev` still boots both.
+Move all React/Vite/Tailwind/Radix/etc. deps from root `devDependencies` into `web/app/package.json` (`@onni/web`, `private`) + dependency on api-client. Repoint web imports `./api/{types,client}` → the package (keep shims). Update `web/app/vite.config.ts` (outDir stays `web/dist`) + split vitest config. `npm run dev` still boots both.
 
 ### Phase 3 — Chain the rest; single-source DTOs; delete the mirror
 Chain remaining route families. Move response types → `web/api-client/src/dto/*`; server imports them for `c.json()` typing (optionally `z.infer` of zod response schemas per family). Migrate the other mirrored logic (model presets, skills ordering, skills banner) into api-client. **Delete** `web/app/src/api/types.ts` + `src/server/api-types.test.ts` once covered.
@@ -193,6 +193,6 @@ With routes chained, layer `hono-openapi` (or `@hono/zod-openapi` per family) to
 ## Out of scope
 - **Reusable React components / embedding cezar UI in another product's layout** (the other half of #557) — separate spec.
 - Multi-user / RBAC / SSO / OAuth — v1 auth is single-owner JWT.
-- Moving `src/` or renaming/splitting the published `@open-mercato/cezar` CLI package.
+- Moving `src/` or renaming/splitting the published `@onni/work` CLI package.
 - Any change to the HTTP wire surface, SSE event vocabulary, or existing on-disk state formats.
 ```

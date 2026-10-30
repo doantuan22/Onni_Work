@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { RunStatus } from '@open-mercato/cezar-api-client'
+import type { RunStatus } from '@onni/api-client'
 
 import { gitActionPolicy, trunkGitActionPolicy, type GitActionState } from './git-actions'
 

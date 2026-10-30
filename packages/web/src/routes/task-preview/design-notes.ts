@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'r
 
 import { continueRun, putRunDraft } from '@/api/client'
 import { useRunDrafts } from '@/api/queries'
-import { DRAFT_TEXT_MAX, type ApiRun } from '@open-mercato/cezar-api-client'
+import { DRAFT_TEXT_MAX, type ApiRun } from '@onni/api-client'
 import { toast } from '@/components/ui/toaster'
 
 import { useDeliverPrompt } from '../task-thread/deliver-prompt'

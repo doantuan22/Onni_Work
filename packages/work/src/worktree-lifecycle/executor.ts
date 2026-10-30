@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { execFile, spawn } from 'node:child_process';
-import type { LifecycleOutputFrame, LifecycleProcessIdentity } from '@open-mercato/cezar-contract';
-export type { LifecycleProcessIdentity } from '@open-mercato/cezar-contract';
+import type { LifecycleOutputFrame, LifecycleProcessIdentity } from '@onni/contract';
+export type { LifecycleProcessIdentity } from '@onni/contract';
 import { hostname } from 'node:os';
 import { promisify } from 'node:util';
 import { collectSecretValues, redactSecrets } from '../core/secret-redaction.ts';

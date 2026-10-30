@@ -1,6 +1,6 @@
 import { CircleCheckIcon, CircleXIcon } from 'lucide-react'
 
-import { E2E_SETUP_WORKFLOW_NAME, type ApiRun } from '@open-mercato/cezar-api-client'
+import { E2E_SETUP_WORKFLOW_NAME, type ApiRun } from '@onni/api-client'
 import { useE2eStatus } from '@/api/queries'
 import { Link } from '@/lib/project-router'
 import { cn } from '@/lib/utils'

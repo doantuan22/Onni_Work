@@ -1,4 +1,4 @@
-import { localTimeZone, type UsageAccountBinding, type UsageWindow, type UsageWindowsSnapshot } from '@open-mercato/cezar-contract';
+import { localTimeZone, type UsageAccountBinding, type UsageWindow, type UsageWindowsSnapshot } from '@onni/contract';
 import { MAX_USAGE_LIMIT_WAIT_MS } from '../core/usage-limit.ts';
 import { AUTO_RESUME_GRACE_MS } from '../workflows/run.ts';
 import { probeCodexUsageWindows } from '../core/codex-usage-probe.ts';

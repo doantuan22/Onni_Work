@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { ApiRun, RunStatus } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunStatus } from '@onni/api-client'
 import type { GitAction } from '@/lib/git-actions'
 import type { TaskWorkspaceBridge } from '@/lib/task-workspace-bridge'
 

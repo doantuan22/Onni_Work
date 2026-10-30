@@ -1,8 +1,8 @@
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { setApiScope } from '@open-mercato/cezar-api-client'
-import type { RunRecord } from '@open-mercato/cezar-api-client'
+import { setApiScope } from '@onni/api-client'
+import type { RunRecord } from '@onni/api-client'
 import { parseRunEvent, RUN_EVENT_BATCH_MS, useRunEvents } from './run-events'
 
 /**

@@ -1,4 +1,4 @@
-import type { WebhookDeliveryStatus, WebhookReceiver, WebhookReceiverState } from '@open-mercato/cezar-api-client'
+import type { WebhookDeliveryStatus, WebhookReceiver, WebhookReceiverState } from '@onni/api-client'
 
 import type { StatusDotTone } from '@/components/status-dot'
 

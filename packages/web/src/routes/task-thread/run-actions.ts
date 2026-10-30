@@ -1,4 +1,4 @@
-import type { RunRecord, RunStatus, Runner } from '@open-mercato/cezar-api-client'
+import type { RunRecord, RunStatus, Runner } from '@onni/api-client'
 import { cliTargetRunner } from '@/components/open-in-menu'
 import { canBeUnread, isUnread } from '@/lib/read-state'
 import { isRunActive } from '@/lib/run-status'

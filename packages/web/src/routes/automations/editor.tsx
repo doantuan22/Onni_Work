@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeftIcon, FileTextIcon, LayoutTemplateIcon, Settings2Icon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import type { AutomationListEntry, AutomationsResponse } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry, AutomationsResponse } from '@onni/api-client'
 import { ApiError, createAutomation, updateAutomation } from '@/api/client'
 import { useHealth, useRepo, useSkills, useUiState, useWorkflows } from '@/api/queries'
 import { Chip } from '@/components/chip'

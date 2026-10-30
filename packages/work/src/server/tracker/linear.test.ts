@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createLinearClient } from './linear.ts';
-import type { TrackerAssociation } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation } from '@onni/contract';
 
 const teamId = '11111111-1111-4111-8111-111111111111';
 const association: TrackerAssociation = { kind: 'linear', source: { id: 'org-1', webUrl: 'https://linear.app/acme' }, externalId: teamId, externalName: 'Engineering' };

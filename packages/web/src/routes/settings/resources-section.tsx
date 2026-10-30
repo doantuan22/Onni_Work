@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 
 import { putWorkspaceConfig } from '@/api/client'
 import { useWorkspaceConfig, workspaceQueryKeys } from '@/api/queries'
-import type { SetWorkspaceConfigInput, WorkspaceConfigResponse } from '@open-mercato/cezar-api-client'
+import type { SetWorkspaceConfigInput, WorkspaceConfigResponse } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { IntegerStepper } from '@/components/integer-stepper'
 import { Button } from '@/components/ui/button'

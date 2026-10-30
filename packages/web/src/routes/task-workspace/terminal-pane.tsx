@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { readRunTerminal, resizeRunTerminal, writeRunTerminal } from '@/api/client'
 import { useHostTransport } from '@/api/host-usage'
 import { subscribeTopic } from '@/api/ws'
-import type { TerminalOutput, TerminalSession } from '@open-mercato/cezar-api-client'
+import type { TerminalOutput, TerminalSession } from '@onni/api-client'
 import { cn } from '@/lib/utils'
 
 import '@xterm/xterm/css/xterm.css'

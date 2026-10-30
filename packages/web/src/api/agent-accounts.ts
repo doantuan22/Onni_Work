@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { agentAccountRouteId, type Runner } from '@open-mercato/cezar-api-client'
+import { agentAccountRouteId, type Runner } from '@onni/api-client'
 
 import { getAgentAccountStatus } from '@/api/client'
 import { useAgentAccountStatus, useAgentProfiles, useRepo, workspaceQueryKeys } from '@/api/queries'

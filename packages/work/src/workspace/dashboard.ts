@@ -5,7 +5,7 @@ import {
   projectInsightRow,
   type InsightRow,
 } from './dashboard-insights.ts';
-import type { DashboardInsightsQuery, DashboardOverviewQuery } from '@open-mercato/cezar-contract';
+import type { DashboardInsightsQuery, DashboardOverviewQuery } from '@onni/contract';
 import { randomUUID } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -24,7 +24,7 @@ import {
   type DashboardTaskRow,
   type DashboardTasksPage,
   type DashboardTelemetry,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import {
   DashboardCostSnapshots,
   projectCostTask,

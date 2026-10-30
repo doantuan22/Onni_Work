@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useParams } from 'react-router'
 
 import { useHealth, useRun, useRunHandoff } from '@/api/queries'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { useNavigate } from '@/lib/project-router'
 
 import { GitTabLoadError, GitTabLoading } from '../task-git/git-tab-loading'

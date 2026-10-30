@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 
 import { useProjectRun } from '@/api/queries'
 import { ReferenceChip, useCloseReferenceCard } from '@/components/reference-chip'

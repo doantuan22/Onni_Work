@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { trackerCandidatesQuerySchema, trackerListQuerySchema, trackerSearchQuerySchema, trackerItemsResultSchema } from '@open-mercato/cezar-contract';
+import { trackerCandidatesQuerySchema, trackerListQuerySchema, trackerSearchQuerySchema, trackerItemsResultSchema } from '@onni/contract';
 import { createDryTrackerClient } from './dry-run.ts';
 
 for (const kind of ['jira', 'linear'] as const) describe(`${kind} offline fixture`, () => {

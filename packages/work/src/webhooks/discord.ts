@@ -1,4 +1,4 @@
-import { webhookEventSchema } from '@open-mercato/cezar-contract';
+import { webhookEventSchema } from '@onni/contract';
 
 const presentation = {
   'task.attention_required': ['Needs your input', 15105570], 'task.review_ready': ['Ready for review', 3447003],

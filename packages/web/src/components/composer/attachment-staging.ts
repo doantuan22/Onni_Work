@@ -1,5 +1,5 @@
 import { deleteStagedUpload, stageUpload } from '@/api/client'
-import { ATTACHMENT_UPLOAD_MISSING, type AttachmentEntry } from '@open-mercato/cezar-api-client'
+import { ATTACHMENT_UPLOAD_MISSING, type AttachmentEntry } from '@onni/api-client'
 
 import { toAttachmentInput, type PendingAttachment } from './composer-attachments'
 

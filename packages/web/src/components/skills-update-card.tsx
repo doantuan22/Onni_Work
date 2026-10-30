@@ -17,7 +17,7 @@ import { toast } from '@/components/ui/toaster'
 import { useNavigate } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 import { startedRunPath } from '@/routes/new-task-form'
-import type { SkillsUpdateState } from '@open-mercato/cezar-api-client'
+import type { SkillsUpdateState } from '@onni/api-client'
 
 type UpdateRequest =
   | { action: 'check'; seq: number }

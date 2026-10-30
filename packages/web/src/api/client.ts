@@ -3,8 +3,8 @@ import type {
   lifecycleListResponseSchema, lifecycleDetailResponseSchema, lifecycleOperationResponseSchema,
   lifecyclePreviewInputSchema, lifecycleListQuerySchema, LifecycleOutputResponse,
   LifecyclePreviewResponse, LifecycleActionInput, StartLifecycleRemovalInput,
-} from '@open-mercato/cezar-api-client'
-import { deferredAlreadyStartedSchema, trackerReadScope, resolveApiUrl, workspaceBrandingLogoResponseSchema } from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
+import { deferredAlreadyStartedSchema, trackerReadScope, resolveApiUrl, workspaceBrandingLogoResponseSchema } from '@onni/api-client'
 import type {
   DetectedUrlsResponse,
   DiscoveredCommandsResponse,
@@ -16,9 +16,9 @@ import type {
   TerminalState,
   WorkspaceLayouts,
   WorkspaceLayoutsResponse,
-} from '@open-mercato/cezar-api-client'
-import type { TrackerAutomationOptions } from '@open-mercato/cezar-api-client'
-import { trackerWatchHandleSchema, trackerWatchSnapshotSchema, type TrackerWatchInput } from "@open-mercato/cezar-api-client"
+} from '@onni/api-client'
+import type { TrackerAutomationOptions } from '@onni/api-client'
+import { trackerWatchHandleSchema, trackerWatchSnapshotSchema, type TrackerWatchInput } from "@onni/api-client"
 import type {
   AgentConfigFileContent,
   AgentAccountDetailsResponse,
@@ -163,7 +163,7 @@ import type {
   TrackerKind, TrackerCredentials, TrackerConnectionResponse,
   SecretsList, SecretValueInput,
   E2eStatus, E2eSetupInput, E2eSetupResponse,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { parseProviderStatusResponse } from '@/lib/provider-status'
 import {
   API_PREFIX,
@@ -175,11 +175,11 @@ import {
   runHistoryContextSchema,
   runHistoryPageSchema,
   githubOwnersResponseSchema,
-} from '@open-mercato/cezar-api-client'
-import type { Ok, OkJson } from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
+import type { Ok, OkJson } from '@onni/api-client'
 import type { ClientResponse } from 'hono/client'
 import type { ResponseFormat } from 'hono/types'
-import type { AppType } from '@open-mercato/cezar/app-type'
+import type { AppType } from '@onni/work/app-type'
 import { uuidv7 } from '@/lib/sid'
 
 /**
@@ -222,14 +222,14 @@ export class ApiError extends Error {
   /** `POST /api/runs/:id/open-in-cli`: the resume command, when no terminal could be opened. */
   readonly command?: string
   /** A cancellation lost to launch; links survive removal of the scheduled entry. */
-  readonly runIds?: import('@open-mercato/cezar-api-client').DeferredAlreadyStarted['runIds']
+  readonly runIds?: import('@onni/api-client').DeferredAlreadyStarted['runIds']
   /** `POST /api/workflows`: the file is already there — the caller may retry with `overwrite`. */
   readonly exists?: boolean
 
   constructor(
     status: number,
     message: string,
-    extras: { manual?: string; command?: string; exists?: boolean; runIds?: import('@open-mercato/cezar-api-client').DeferredAlreadyStarted['runIds']; cause?: unknown } = {},
+    extras: { manual?: string; command?: string; exists?: boolean; runIds?: import('@onni/api-client').DeferredAlreadyStarted['runIds']; cause?: unknown } = {},
   ) {
     super(message, extras.cause !== undefined ? { cause: extras.cause } : undefined)
     this.name = 'ApiError'
@@ -281,7 +281,7 @@ function errorFor(status: number, statusText: string, body: string): ApiError {
 }
 
 /**
- * The typed client over the same service (`@open-mercato/cezar-api-client`).
+ * The typed client over the same service (`@onni/api-client`).
  *
  * Routes are being moved onto this one at a time. What it buys is compile-time checking of the
  * path, the request body and the response shape against the server's OWN handlers — the thing
@@ -2713,16 +2713,16 @@ export async function refreshTrackerWatch(projectId: string, watchId: string, si
 // Explicit scope parameters keep late responses and mutations tied to their original project.
 export const webhookApi = {
   list: async (projectId: string, signal?: AbortSignal) => unwrap(await cez.api.v1.p[':projectId'].webhooks.$get({ param: { projectId } }, { init: { signal } }), '/webhooks'),
-  create: async (projectId: string, json: import('@open-mercato/cezar-api-client').CreateWebhook) => unwrap(await cez.api.v1.p[':projectId'].webhooks.$post({ param: { projectId }, json }), '/webhooks'),
-  update: async (projectId: string, id: string, json: import('@open-mercato/cezar-api-client').UpdateWebhook) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].$patch({ param: { projectId, id }, json }), '/webhooks'),
+  create: async (projectId: string, json: import('@onni/api-client').CreateWebhook) => unwrap(await cez.api.v1.p[':projectId'].webhooks.$post({ param: { projectId }, json }), '/webhooks'),
+  update: async (projectId: string, id: string, json: import('@onni/api-client').UpdateWebhook) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].$patch({ param: { projectId, id }, json }), '/webhooks'),
   remove: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].$delete({ param: { projectId, id }, json: { expectedRevision } }), '/webhooks'),
   activate: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].activate.$post({ param: { projectId, id }, json: { expectedRevision, confirmed: true } }), '/webhooks'),
   pause: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].pause.$post({ param: { projectId, id }, json: { expectedRevision } }), '/webhooks'),
   resume: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].resume.$post({ param: { projectId, id }, json: { expectedRevision, confirmed: true } }), '/webhooks'),
   rotate: async (projectId: string, id: string, expectedRevision: number, mode: 'graceful' | 'revoke_now') => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id']['rotate-secret'].$post({ param: { projectId, id }, json: { expectedRevision, mode } }), '/webhooks'),
-  test: async (projectId: string, id: string, json: import('@open-mercato/cezar-api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].test.$post({ param: { projectId, id }, json }), '/webhooks'),
-  retry: async (projectId: string, deliveryId: string, json: import('@open-mercato/cezar-api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].retry.$post({ param: { projectId, deliveryId }, json }), '/webhooks'),
-  replay: async (projectId: string, deliveryId: string, json: import('@open-mercato/cezar-api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].replay.$post({ param: { projectId, deliveryId }, json: { ...json, confirmed: true } }), '/webhooks'),
+  test: async (projectId: string, id: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].test.$post({ param: { projectId, id }, json }), '/webhooks'),
+  retry: async (projectId: string, deliveryId: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].retry.$post({ param: { projectId, deliveryId }, json }), '/webhooks'),
+  replay: async (projectId: string, deliveryId: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].replay.$post({ param: { projectId, deliveryId }, json: { ...json, confirmed: true } }), '/webhooks'),
   acknowledge: async (projectId: string, expectedChangeSequence: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks.notice.acknowledge.$post({ param: { projectId }, json: { expectedChangeSequence } }), '/webhooks'),
   history: async (projectId: string, cursor?: string) => unwrap(await cez.api.v1.p[':projectId'].webhooks.history.$get({ param: { projectId }, query: { limit: '100', ...(cursor ? { cursor } : {}) } }), '/webhooks/history'),
   deliveries: async (projectId: string, id: string, cursor?: string, taskId?: string) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].deliveries.$get({ param: { projectId, id }, query: { limit: '100', ...(cursor ? { cursor } : {}), ...(taskId ? { taskId } : {}) } }), '/webhooks/deliveries'),
@@ -2895,13 +2895,13 @@ export async function putRunLayouts(
   )
 }
 
-export async function previewDeferredStart(body: import('@open-mercato/cezar-api-client').DeferredPreviewInput) {
+export async function previewDeferredStart(body: import('@onni/api-client').DeferredPreviewInput) {
   return unwrap(await cez.api.v1.p[':projectId']['deferred-start'].preview.$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start/preview')
 }
-export async function createDeferredStart(body: import('@open-mercato/cezar-api-client').DeferredCreateInput) {
+export async function createDeferredStart(body: import('@onni/api-client').DeferredCreateInput) {
   return unwrap(await cez.api.v1.p[':projectId']['deferred-start'].$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start')
 }
 
-export async function getDeferredStartOptions(body: import('@open-mercato/cezar-api-client').DeferredOptionsInput) {
+export async function getDeferredStartOptions(body: import('@onni/api-client').DeferredOptionsInput) {
   return unwrap(await cez.api.v1.p[':projectId']['deferred-start'].options.$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start/options')
 }

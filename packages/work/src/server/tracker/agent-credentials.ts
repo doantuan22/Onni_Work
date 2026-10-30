@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { TrackerAssociation } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation } from '@onni/contract';
 import { readTrackerAssociation } from '../../tracker-association.ts';
 import { TrackerConnections } from './connections.ts';
 

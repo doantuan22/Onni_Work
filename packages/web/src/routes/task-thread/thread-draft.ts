@@ -7,7 +7,7 @@ import {
   isImageMediaType,
   type DraftImage,
   type RunDraftsResponse,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import {
   fallbackAttachmentName,
   MAX_ATTACHMENTS,

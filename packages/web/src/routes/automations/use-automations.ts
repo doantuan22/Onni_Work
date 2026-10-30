@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
-import type { AutomationListEntry, AutomationsResponse, CreateAutomationInput } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry, AutomationsResponse, CreateAutomationInput } from '@onni/api-client'
 import {
   checkAutomation,
   createAutomation,
@@ -11,7 +11,7 @@ import {
   setAutomationEnabled,
 } from '@/api/client'
 import { onWorkspaceEvent } from '@/api/global-events'
-import { queryScope } from '@open-mercato/cezar-api-client'
+import { queryScope } from '@onni/api-client'
 import { useHealth } from '@/api/queries'
 import { toast } from '@/components/ui/toaster'
 import { cliOf } from '@/lib/automation-cli'

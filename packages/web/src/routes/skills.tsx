@@ -14,7 +14,7 @@ import {
   useUiState,
   useWorkflows,
 } from '@/api/queries'
-import type { Skill, UiState } from '@open-mercato/cezar-api-client'
+import type { Skill, UiState } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { SkillDetailBody, SkillSourceTag } from '@/components/skill-detail'
 import type { SkillActivation } from '@/components/skill-detail'

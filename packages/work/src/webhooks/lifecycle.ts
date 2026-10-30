@@ -1,4 +1,4 @@
-import type { CreateWebhook, WebhookTaskEventType } from '@open-mercato/cezar-contract';
+import type { CreateWebhook, WebhookTaskEventType } from '@onni/contract';
 import type { RunLifecycleSnapshot } from '../runs/lifecycle.ts';
 
 export function transitionType(before: RunLifecycleSnapshot | undefined, after: RunLifecycleSnapshot | undefined): WebhookTaskEventType | undefined {

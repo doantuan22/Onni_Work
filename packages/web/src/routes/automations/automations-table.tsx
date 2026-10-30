@@ -1,6 +1,6 @@
 import { ArrowUpRightIcon, Clock3Icon, GitForkIcon, ZapIcon } from 'lucide-react'
 import type { SyntheticEvent } from 'react'
-import { nextOccurrence, type AutomationListEntry, type AutomationsResponse } from '@open-mercato/cezar-api-client'
+import { nextOccurrence, type AutomationListEntry, type AutomationsResponse } from '@onni/api-client'
 
 import { GithubIcon } from '@/components/icons'
 import { Pill } from '@/components/pill'

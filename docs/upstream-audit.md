@@ -20,9 +20,9 @@
 
 | # | Nhóm | Phát hiện | Mức độ |
 |---|------|-----------|--------|
-| 1 | UPDATE | Desktop shell tự tải và cài `@open-mercato/cezar` từ npm khi khởi động/khôi phục, **độc lập** với Tauri updater | **Cao** |
+| 1 | UPDATE | Desktop shell tự tải và cài `@onni/work` từ npm khi khởi động/khôi phục, **độc lập** với Tauri updater | **Cao** |
 | 2 | UPDATE | Tauri updater trỏ thẳng vào release feed `github.com/open-mercato/cezar`, kèm pubkey của upstream | **Cao** |
-| 3 | UPDATE | CLI `cezar install/update/versions/use` cài `@open-mercato/cezar` từ `registry.npmjs.org` | **Cao** |
+| 3 | UPDATE | CLI `cezar install/update/versions/use` cài `@onni/work` từ `registry.npmjs.org` | **Cao** |
 | 4 | PUBLISH | `packages/work` bật `publishConfig.access = public`; 6 workflow phát hành/publish còn nguyên | **Cao** |
 | 5 | PUBLISH | Hai package alias `cezar-cli`, `cezar-run` (unscoped, public) phụ thuộc package upstream | Trung bình |
 | 6 | TELEMETRY | Endpoint upstream `https://stats.openmercato.cloud` trong server và desktop (hiện **opt-in**, mặc định không gửi) | Trung bình |
@@ -67,14 +67,14 @@ Cần **tên đầy đủ** để ghi dòng `Copyright (c) 2026 <TÊN>` (theo đ
 
 | Manifest | `name` / version | `license` | `private` | `publishConfig` | `repository` | Ghi chú |
 |----------|------------------|-----------|-----------|-----------------|--------------|---------|
-| `package.json` (root) | `cezar-monorepo` | MIT | ✅ | — | `github.com/open-mercato/cezar` | Không publish |
-| `packages/work/package.json` | `@open-mercato/cezar` 0.17.0 | MIT | ❌ | `access: public` (:73-75) | upstream, `directory: packages/work` | **Có thể `npm publish` nếu có token scope** |
-| `packages/contract/package.json` | `@open-mercato/cezar-contract` 0.17.0 | MIT | ✅ | — | — | Private, được inline lúc build |
-| `packages/api-client/package.json` | `@open-mercato/cezar-api-client` 0.17.0 | MIT | ✅ | `access: public` (:36-38) | upstream, `directory: web/api-client` (:31-35) | **Mâu thuẫn** private + publishConfig; `directory` đã lỗi thời |
-| `packages/web/package.json` | `@open-mercato/cezar-web` 0.17.0 | MIT | ✅ | — | — | — |
-| `packages/desktop/package.json` | `@open-mercato/cezar-desktop` 0.1.11 | **thiếu** | ✅ | — | — | Không phải npm workspace |
-| `docs/site/package.json` | `@open-mercato/cezar-docs` 0.0.0 | **thiếu** | ✅ | — | — | Next.js, không phải workspace |
-| `alias-cezar/package.json` | `cezar-cli` 0.17.0 | MIT | ❌ | `access: public` (:16-18) | — | **Unscoped, ai cũng publish được**; phụ thuộc `@open-mercato/cezar` |
+| `package.json` (root) | `onni-monorepo` | MIT | ✅ | — | `github.com/open-mercato/cezar` | Không publish |
+| `packages/work/package.json` | `@onni/work` 0.17.0 | MIT | ❌ | `access: public` (:73-75) | upstream, `directory: packages/work` | **Có thể `npm publish` nếu có token scope** |
+| `packages/contract/package.json` | `@onni/contract` 0.17.0 | MIT | ✅ | — | — | Private, được inline lúc build |
+| `packages/api-client/package.json` | `@onni/api-client` 0.17.0 | MIT | ✅ | `access: public` (:36-38) | upstream, `directory: web/api-client` (:31-35) | **Mâu thuẫn** private + publishConfig; `directory` đã lỗi thời |
+| `packages/web/package.json` | `@onni/web` 0.17.0 | MIT | ✅ | — | — | — |
+| `packages/desktop/package.json` | `@onni/desktop` 0.1.11 | **thiếu** | ✅ | — | — | Không phải npm workspace |
+| `docs/site/package.json` | `@onni/work-docs` 0.0.0 | **thiếu** | ✅ | — | — | Next.js, không phải workspace |
+| `alias-cezar/package.json` | `cezar-cli` 0.17.0 | MIT | ❌ | `access: public` (:16-18) | — | **Unscoped, ai cũng publish được**; phụ thuộc `@onni/work` |
 | `alias-cezar-run/package.json` | `cezar-run` 0.17.0 | MIT | ❌ | `access: public` (:13-15) | — | Như trên |
 | `packages/desktop/src-tauri/Cargo.toml` | `cezar-desktop` 0.1.11 | **thiếu** | `publish = false` (:6) | — | — | Description "Desktop shell for cezar (PoC)" (:4) |
 | `packages/desktop/src-tauri/tauri.conf.json` | `productName: "Cezar"` (:3), `identifier: com.openmercato.cezar` (:5) | — | — | — | — | Đổi identifier = đổi định danh app (xem §3) |
@@ -115,7 +115,7 @@ Asset: `packages/web/public/icon.svg` + favicon, `packages/desktop/src-tauri/ico
 
 | Tệp | Số tham chiếu upstream | Ghi chú |
 |-----|------------------------|---------|
-| `README.zh-CN.md`, `README.zh-TW.md` | 15 mỗi tệp | Badge npm `@open-mercato/cezar`, `cezar.run`, `openmercatocloud.com/247agentic-cear` — nội dung marketing upstream |
+| `README.zh-CN.md`, `README.zh-TW.md` | 15 mỗi tệp | Badge npm `@onni/work`, `cezar.run`, `openmercatocloud.com/247agentic-cear` — nội dung marketing upstream |
 | `CHANGELOG.md` | 95 link PR `github.com/open-mercato/cezar` | Lịch sử phát hành upstream |
 | `docs/site/` | appName `Cezar`, `gitConfig {open-mercato, cezar}`, link `cezar.run` | Docs site Next.js/Fumadocs |
 | `docs/reference.md`, `docs/publishing.md`, `docs/telemetry.md`, `docs/server-install/*` | nhiều | Tài liệu vận hành upstream |
@@ -133,10 +133,10 @@ Asset: `packages/web/public/icon.svg` + favicon, `packages/desktop/src-tauri/ico
 
 | Tệp:dòng | Hành vi |
 |----------|---------|
-| `packages/desktop/src-tauri/src/lib.rs:53` | `const PACKAGE: &str = "@open-mercato/cezar"` |
-| `lib.rs:587-612` | `check_cezar_update` + `channel_latest` chạy `npm view @open-mercato/cezar@<tag> version` |
+| `packages/desktop/src-tauri/src/lib.rs:53` | `const PACKAGE: &str = "@onni/work"` |
+| `lib.rs:587-612` | `check_cezar_update` + `channel_latest` chạy `npm view @onni/work@<tag> version` |
 | `lib.rs:1092-1100` | `update_cezar_if_newer` — **mỗi lần restart**, nếu npm có bản mới hơn bản đang chạy thì cài và chạy bản upstream |
-| `lib.rs:1205-1237` | `update_cezar` chạy `npm install --prefix <staging> @open-mercato/cezar@<tag>` |
+| `lib.rs:1205-1237` | `update_cezar` chạy `npm install --prefix <staging> @onni/work@<tag>` |
 | `lib.rs:1673` | `npm_install` thực thi lệnh npm |
 | `lib.rs:336` | menu tray "Update cezar to latest…" |
 
@@ -157,12 +157,12 @@ Hệ quả: app desktop đang chạy sẽ tự nâng cấp lên bản cezar desk
 
 | Tệp:dòng | Hành vi |
 |----------|---------|
-| `packages/work/src/self-update/layout.ts:30` | `PACKAGE_NAME = '@open-mercato/cezar'` |
+| `packages/work/src/self-update/layout.ts:30` | `PACKAGE_NAME = '@onni/work'` |
 | `self-update/registry.ts:12` | `REGISTRY = 'https://registry.npmjs.org'` |
-| `self-update/installer.ts:55,98` | `npm install --prefix <staging> @open-mercato/cezar@<version>` |
+| `self-update/installer.ts:55,98` | `npm install --prefix <staging> @onni/work@<version>` |
 | `self-update/cli.ts` | in dist-tags/versions từ registry |
 | `src/index.ts:80-84` | help quảng bá `install`, `update`, `versions`, `use` |
-| `scripts/install-as-command.mjs:9,72` | uninstall chạy `npm rm --global @open-mercato/cezar` |
+| `scripts/install-as-command.mjs:9,72` | uninstall chạy `npm rm --global @onni/work` |
 
 Ngoài ra `cezar link` trỏ vào checkout local (hành vi dev, không gọi upstream), nhưng cùng cụm lệnh.
 
@@ -189,7 +189,7 @@ Trạng thái thực tế: **opt-in** — không gửi gì cho tới khi ngườ
 |--------|----------|
 | `packages/work/package.json:73-75` | `publishConfig: { access: public }` |
 | `packages/api-client/package.json:36-38` | `publishConfig` dù `private: true` |
-| `alias-cezar`, `alias-cezar-run` | package unscoped, `publishConfig public`, phụ thuộc `@open-mercato/cezar` |
+| `alias-cezar`, `alias-cezar-run` | package unscoped, `publishConfig public`, phụ thuộc `@onni/work` |
 | `.github/workflows/ci.yml:154-176` | job publish snapshot lên `registry.npmjs.org` (NPM_TOKEN) |
 | `.github/workflows/nightly.yml:40` | guard `github.repository == 'open-mercato/cezar'`; :84 publish nightly |
 | `.github/workflows/release.yml:49` | workflow_dispatch, publish npm |
@@ -203,7 +203,7 @@ Trạng thái thực tế: **opt-in** — không gửi gì cho tới khi ngườ
 
 Điểm cần nhấn:
 
-- `@open-mercato/cezar` chỉ publish được nếu token có quyền với scope `@open-mercato` (thuộc upstream). Nhưng để nguyên `publishConfig` + workflow là **bẫy**: workflow sẽ chạy, fail giữa chừng, hoặc tệ hơn là publish nhầm nếu token của ai đó có quyền.
+- `@onni/work` chỉ publish được nếu token có quyền với scope `@open-mercato` (thuộc upstream). Nhưng để nguyên `publishConfig` + workflow là **bẫy**: workflow sẽ chạy, fail giữa chừng, hoặc tệ hơn là publish nhầm nếu token của ai đó có quyền.
 - Hai alias `cezar-cli`/`cezar-run` là tên **unscoped** — bất kỳ ai cũng có thể publish, và chúng kéo code upstream về máy người dùng. Nên xoá hoặc đặt `private: true`.
 - `npm-preview-cleanup.yml` và `backport.yml` phụ thuộc mô hình release-line của upstream; trên fork chúng vô nghĩa.
 
@@ -230,7 +230,7 @@ Trạng thái thực tế: **opt-in** — không gửi gì cho tới khi ngườ
 
 ### 4.5 DOC-BRANDING / DOC links
 
-- **README.zh-CN.md / README.zh-TW.md**: marketing upstream đầy đủ (badge npm `@open-mercato/cezar`, `cezar.run`, chiến dịch `openmercatocloud.com/247agentic-cear`). Đề xuất: **xoá**.
+- **README.zh-CN.md / README.zh-TW.md**: marketing upstream đầy đủ (badge npm `@onni/work`, `cezar.run`, chiến dịch `openmercatocloud.com/247agentic-cear`). Đề xuất: **xoá**.
 - **CHANGELOG.md**: 95 link PR upstream. Không bắt buộc bởi MIT. Lựa chọn: xoá, hoặc giữ làm "lịch sử upstream" với header ghi rõ nguồn.
 - **docs/site/**: toàn bộ docs upstream; `appName`, title template, nav `cezar.run`, `gitConfig` upstream. Lựa chọn: xoá cả site, hoặc rebrand (việc lớn).
 - **docs/*.md**: `publishing.md`, `reference.md`, `telemetry.md`, `server-install/*` mô tả quy trình upstream. Cần sửa hoặc xoá theo quyết định về docs.
@@ -245,7 +245,7 @@ Trạng thái thực tế: **opt-in** — không gửi gì cho tới khi ngườ
 | Pattern | Số lần | Số tệp | Diễn giải |
 |---------|--------|--------|-----------|
 | `open-mercato` | 1614 | 796 | Toàn bộ tham chiếu, gồm lịch sử và scope package |
-| `@open-mercato/` | 933 | 647 | Hầu hết là **import package nội bộ** (`@open-mercato/cezar-contract`…) — **được miễn trừ** bởi ràng buộc chưa rename |
+| `@open-mercato/` | 933 | 647 | Hầu hết là **import package nội bộ** (`@onni/contract`…) — **được miễn trừ** bởi ràng buộc chưa rename |
 | `github.com/open-mercato` | 446 | 130 | Link GitHub thật; tập trung ở CHANGELOG (95) và `.ai/runs` |
 | `stats.openmercato.cloud` | 6 | 5 | 2 là comment trong `.env.example`; còn lại code/docs/test |
 | `cezar.run` | 5 (non-history) | — | README zh ×4 dòng, `docs/site/lib/layout.shared.tsx:25`, `CHANGELOG.md:384` |
@@ -276,7 +276,7 @@ Mục tiêu đúng nên là: **0 link chức năng gọi ra hạ tầng upstream
 
 ### 6.2 Nhóm B-UPDATE — cắt tự cập nhật
 
-1. **Desktop npm install (quan trọng nhất):** tách `PACKAGE` thành một hằng cấu hình duy nhất; Phase 2 đặt về chế độ "không tự cài" — khi `~/.cezar/versions` trống, hiển thị trang hướng dẫn cài thủ công thay vì `npm install @open-mercato/cezar`. Không bịa package/tag mới.
+1. **Desktop npm install (quan trọng nhất):** tách `PACKAGE` thành một hằng cấu hình duy nhất; Phase 2 đặt về chế độ "không tự cài" — khi `~/.cezar/versions` trống, hiển thị trang hướng dẫn cài thủ công thay vì `npm install @onni/work`. Không bịa package/tag mới.
 2. **Tauri updater:** xoá block `plugins.updater` (pubkey + endpoint) khỏi `tauri.conf.json`; gỡ `tauri-plugin-updater` khỏi `Cargo.toml`/`Cargo.lock` nếu không còn dùng; ẩn/disable menu "Update cezar to latest…", `check_shell_update`, `update_cezar_command`, các pill "Update/Switch version". Quyết định: xoá hẳn code hay chỉ vô hiệu hoá bằng một cờ build.
 3. **CLI:** một module cờ rõ ràng (ví dụ `self-update/availability.ts` với `SELF_UPDATE_ENABLED = false`) mà `install/update/versions/use` và help đều đọc. Khi tắt: lệnh in thông báo "tính năng đã bị vô hiệu hoá trong bản Onni Work", không gọi mạng. `uninstall-as-command` chỉ được phép gỡ package **do chính bản này cài**, không đụng package global khác.
 4. Giữ nguyên `CEZ_DRY_RUN=1` và test offline.
@@ -358,7 +358,7 @@ cd packages/desktop/src-tauri && cargo check
 
 - `cargo test` **không chạy được trên máy này** (Smart App Control chặn binary tự build) — bỏ qua và ghi chú, theo đúng brief.
 - Chạy lại grep Phase 1 và đính kèm kết quả còn lại, kèm lý do cho từng ref được giữ (scope package, lịch sử).
-- Kiểm tra thêm: `npm pack --dry-run -w @open-mercato/cezar` để chắc `private: true` không phá `check:pack`.
+- Kiểm tra thêm: `npm pack --dry-run -w @onni/work` để chắc `private: true` không phá `check:pack`.
 - Với desktop: kiểm tra `tauri.conf.json` không còn `endpoint`/`pubkey`, `Cargo.lock` không còn `tauri-plugin-updater` nếu gỡ, và luồng khởi động khi `~/.cezar/versions` rỗng hiển thị hướng dẫn thay vì gọi npm.
 
 ---
@@ -430,7 +430,7 @@ Chạy trên `D:\Multi Agent`, Node 24, Windows 10.0.26200 (Smart App Control b�
 | `npm test` (vitest) | 12 715 test: 12 272 pass / 393 fail (98 file) | Toàn bộ lỗi là môi trường Windows, không nằm trong file Phase 2 sửa: 39 `EPERM: symlink`, 198 `EPERM` khác (xoá temp dir đang bị khoá), 119 assertion sai separator `\` vs `/` hoặc mode `0666` vs `0600`, 37 lỗi render jsdom/mermaid. Các file liên quan trực tiếp (config-api, config, skills*, star-count*, star-promo*, app-shell, trunk-based-fields, telemetry, self-update, webhooks, release-workflows) đều **pass** khi chạy riêng; 2 test `skills-remote` + 2 assertion `config-api` hỏng do thay đổi có chủ đích đã được cập nhật trong Phase 2. |
 | `npm run test:unit` (node:test) | 48 test: 46 pass / 1 fail / 1 skip | Lỗi còn lại: `test-env-launcher.test.ts` gọi `/bin/sh` (không có trên Windows) — **không liên quan** Phase 2. Hai test `skills-remote` về "default repo" đã viết lại theo mặc định rỗng. |
 | `npm run build` | **pass** | `tsc` → `vite` → `check:pack`: *1093 files, 167 under web/dist*. |
-| `npm pack --dry-run -w @open-mercato/cezar` | **pass** | `private: true` không chặn pack (`open-mercato-cezar-0.17.0.tgz`, 1093 file). |
+| `npm pack --dry-run -w @onni/work` | **pass** | `private: true` không chặn pack (`open-mercato-cezar-0.17.0.tgz`, 1093 file). |
 | `cargo check` (`packages/desktop/src-tauri`) | **pass** | 3m13s. Plugin `tauri-plugin-updater` vẫn là dependency (giữ code) nhưng **không được đăng ký** trong `Builder`, và `tauri.conf.json` không còn `endpoint`/`pubkey`. |
 | `cargo test` | **bỏ qua** | Smart App Control chặn chạy binary tự build trên máy này, đúng như brief. |
 
@@ -476,10 +476,10 @@ sánh với baseline `d5146dc` trong một git worktree riêng.
 
 | File | `private` | `publishConfig` | Phụ thuộc |
 | --- | --- | --- | --- |
-| `alias-cezar/package.json` | `true` (L6) | không có | `@open-mercato/cezar: ^0.17.0` (L15) |
-| `alias-cezar-run/package.json` | `true` (L6) | không có | `@open-mercato/cezar: ^0.17.0` (L12) |
+| `alias-cezar/package.json` | `true` (L6) | không có | `@onni/work: ^0.17.0` (L15) |
+| `alias-cezar-run/package.json` | `true` (L6) | không có | `@onni/work: ^0.17.0` (L12) |
 
-Hai alias giữ tên npm của upstream và nạp `@open-mercato/cezar` lúc chạy (`bin.js:7`). `private: true`
+Hai alias giữ tên npm của upstream và nạp `@onni/work` lúc chạy (`bin.js:7`). `private: true`
 chặn publish dưới tên đó; vì `packages/work` cũng private, alias chỉ dùng được qua `npm link` /
 `npm install -g .` từ checkout — đúng ý đồ "không phát hành gì" của B-PUBLISH.
 
@@ -517,7 +517,7 @@ vẫn rỗng nên không mở đường mạng.
 
 ### 11.4 `install-as-command`
 
-Uninstall vẫn gỡ global `@open-mercato/cezar`: planner trả `['rm', '--global', PACKAGE_NAME]`
+Uninstall vẫn gỡ global `@onni/work`: planner trả `['rm', '--global', PACKAGE_NAME]`
 (`src/install-as-command.ts:15,40-44`), script dùng cùng lệnh với fallback khi chưa build
 (`scripts/install-as-command.mjs:72-75`) và idempotent (81-84).
 
@@ -549,4 +549,4 @@ health-topic) **pass** khi chạy riêng (217 test). Kết luận: không có re
 | --- | --- | --- |
 | 1 | `scripts/release.mts` (217-218) phát `published: !dryRun`, nên push tag `v*` vẫn chạy bước announce (changelog PR + GitHub Release trong repo này) dù không publish gì. | `published: !dryRun && published.length > 0`. |
 | 2 | `desktop-release.yml` (211-215) có thể sinh artifact updater và `desktop-latest.json` nếu repo có `TAURI_SIGNING_PRIVATE_KEY`. | Bỏ `includeUpdaterJson`/`createUpdaterArtifacts` khỏi workflow nếu không muốn công bố manifest. |
-| 3 | Alias phụ thuộc package private `@open-mercato/cezar`; bước rename nội bộ phải sửa cả hai alias. | Xử lý cùng bước rename. |
+| 3 | Alias phụ thuộc package private `@onni/work`; bước rename nội bộ phải sửa cả hai alias. | Xử lý cùng bước rename. |

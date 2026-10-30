@@ -11,7 +11,7 @@ import type {
   githubPrChangesDataSchema,
   githubPrMergeStateResponseSchema,
   githubRefStatusDataSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type {
   changesPayloadSchema,
   reclaimWorktreesResponseSchema,
@@ -21,7 +21,7 @@ import type {
   repoTreeSchema,
   worktreeEntrySchema,
   worktreesResponseSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 /**

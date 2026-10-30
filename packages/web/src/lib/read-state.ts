@@ -1,4 +1,4 @@
-import type { RunRecord } from '@open-mercato/cezar-api-client'
+import type { RunRecord } from '@onni/api-client'
 
 /**
  * The read/unread grammar for *done items* (#unread-done-items) — the email-style "which

@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { WorkflowDef, WorkflowsResponse } from '@open-mercato/cezar-api-client'
+import type { WorkflowDef, WorkflowsResponse } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 
 import { WorkflowGraphRoute } from './workflow-graph'

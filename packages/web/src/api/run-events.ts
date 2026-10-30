@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { apiPath, getApiScope } from '@open-mercato/cezar-api-client'
-import type { RunEvent, RunRecord } from '@open-mercato/cezar-api-client'
+import { apiPath, getApiScope } from '@onni/api-client'
+import type { RunEvent, RunRecord } from '@onni/api-client'
 
 /**
  * The per-run event stream (`GET /api/runs/:id/events`), as a raw ordered list — R2 Step 2.4's

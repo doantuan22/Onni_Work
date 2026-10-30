@@ -9,7 +9,7 @@ import type {
   DashboardInsightsQuery,
   RunRecord,
   RunStatus,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { projectCostTask, type CostVisibility } from './dashboard-costs.ts';
 
 /** Explicit allowlist, like `projectCostTask`: never prompts, step payloads or session ids. */

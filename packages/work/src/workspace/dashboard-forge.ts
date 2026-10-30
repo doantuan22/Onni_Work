@@ -1,4 +1,4 @@
-import type { DashboardFeedSource, DashboardForgeCreated } from '@open-mercato/cezar-contract';
+import type { DashboardFeedSource, DashboardForgeCreated } from '@onni/contract';
 import { getRepoInfo, isNonRepositoryDirectory } from '../server/git.ts';
 import { parseRemote, resolveForge } from '../server/forge/index.ts';
 import type { ForgeDriver, ForgeRecentCreatedData } from '../server/forge/types.ts';

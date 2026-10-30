@@ -1,4 +1,4 @@
-import type { AutomationDispatch, AutomationEvent, AutomationSchedule } from '@open-mercato/cezar-api-client'
+import type { AutomationDispatch, AutomationEvent, AutomationSchedule } from '@onni/api-client'
 
 /**
  * The editor's built-in automation templates (spec 2026-09-14-automations-redesign § UI/UX 4,

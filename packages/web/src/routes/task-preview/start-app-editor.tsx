@@ -2,7 +2,7 @@ import { PlusIcon, XIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { getStartApp, setStartApp } from '@/api/client'
-import type { StartAppRecipe, StartAppScope, StartAppState } from '@open-mercato/cezar-api-client'
+import type { StartAppRecipe, StartAppScope, StartAppState } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

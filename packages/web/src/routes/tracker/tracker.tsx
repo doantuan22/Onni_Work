@@ -3,7 +3,7 @@ import { AlertTriangleIcon, ArrowLeftIcon, CircleDotIcon, ExternalLinkIcon, Refr
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import { useParams } from 'react-router'
 
-import type { TrackerAssociation, TrackerItem, TrackerItemResponse } from '@open-mercato/cezar-api-client'
+import type { TrackerAssociation, TrackerItem, TrackerItemResponse } from '@onni/api-client'
 import { IssueBrowserLayout } from '@/components/issue-browser-layout'
 import { CenteredState } from '@/components/centered-state'
 import { useIsDesktop } from '@/lib/use-desktop'

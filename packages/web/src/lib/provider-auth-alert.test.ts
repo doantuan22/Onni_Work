@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ProviderStatusResponse } from '@open-mercato/cezar-api-client'
+import type { ProviderStatusResponse } from '@onni/api-client'
 import {
   mergeProviderAuthDismissals,
   providerAuthDismissals,

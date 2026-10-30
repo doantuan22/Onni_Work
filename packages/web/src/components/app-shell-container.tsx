@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, type ReactNode } from 'react'
 import { useLocation } from 'react-router'
 
 import { useHealth, useProjectRuns, useProjects, useRunsForProject, useSkillsUpdate, useTodos, useWorkspaceConfig } from '@/api/queries'
-import type { HealthResponse, SkillsUpdateState } from '@open-mercato/cezar-api-client'
+import type { HealthResponse, SkillsUpdateState } from '@onni/api-client'
 import { AppShell, type RepoChip } from '@/components/app-shell'
 import { CommandPalette } from '@/components/command-palette'
 import { TaskPalette } from '@/components/task-palette/task-palette'

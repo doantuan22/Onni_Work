@@ -9,7 +9,7 @@ import {
   savedWorkspaceLayoutSchema,
   type SavedWorkspaceLayout,
   type WorkspaceUiState,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 import { isReservedLayoutName, isViewId, type SavedLayout } from './layout-state'
 

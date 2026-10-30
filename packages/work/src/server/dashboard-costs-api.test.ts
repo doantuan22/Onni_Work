@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import { dashboardCostsSchema, dashboardSnapshotSchema, dashboardTasksPageSchema, dashboardFeedSchema } from '@open-mercato/cezar-contract';
+import { dashboardCostsSchema, dashboardSnapshotSchema, dashboardTasksPageSchema, dashboardFeedSchema } from '@onni/contract';
 import { DashboardReader } from '../workspace/dashboard.ts';
 import { dashboardRoutes } from './dashboard.ts';
 const roots: string[] = [];

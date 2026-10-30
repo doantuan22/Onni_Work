@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { queryScope, type TrackerTrigger } from '@open-mercato/cezar-api-client'
+import { queryScope, type TrackerTrigger } from '@onni/api-client'
 import { getTrackerAutomationOptions } from '@/api/client'
 import { Chip } from '@/components/chip'
 import { Button } from '@/components/ui/button'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { CreateRunInput, DeferredPreview } from '@open-mercato/cezar-api-client'
+import type { CreateRunInput, DeferredPreview } from '@onni/api-client'
 import { getDeferredStartOptions, previewDeferredStart } from '@/api/client'
 import { defaultAtStart, startLabel, startTitle, AUTO_PREVIEW_MS, StartTimePicker, type StartChoice } from './start-time-picker'
 vi.mock('@/api/client', () => ({ getDeferredStartOptions: vi.fn(), previewDeferredStart: vi.fn() }))

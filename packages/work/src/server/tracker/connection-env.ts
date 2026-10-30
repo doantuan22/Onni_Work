@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { parse } from 'dotenv';
 import { z } from 'zod';
-import { trackerCredentialsSchema } from '@open-mercato/cezar-contract';
+import { trackerCredentialsSchema } from '@onni/contract';
 
 export const connectionRecordSchema = z.object({ id: z.uuid(), projectRoot: z.string().min(1), credentials: trackerCredentialsSchema }).strict();
 export type StoredTrackerConnection = z.infer<typeof connectionRecordSchema>;

@@ -1,4 +1,4 @@
-import { dashboardOverviewSchema } from '@open-mercato/cezar-contract';
+import { dashboardOverviewSchema } from '@onni/contract';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +11,7 @@ import {
   dashboardTelemetrySchema,
   dashboardFeedSchema,
   projectsResponseSchema,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { RunStore } from '../runs/store.ts';
 import * as processUsage from '../core/process-usage.ts';
 import { RunManager } from '../workflows/run.ts';

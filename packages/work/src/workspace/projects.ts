@@ -5,7 +5,7 @@ import {
   PROJECT_TAGS_MAX,
   PROJECT_TAG_MAX_LENGTH,
   type TrackerKind,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { forgeKindOfRemote, forgeWebRoot, type ForgeKind } from '../server/forge/index.ts';
 import { getRepoInfo } from '../server/git.ts';
 import { readTrackerAssociation } from '../tracker-association.ts';

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { MESSAGE_RETRY_DELAYS_MS } from '@/api/client'
 import { createQueryClient } from '@/api/query-client'
-import type { ApiRun, RunStatus } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunStatus } from '@onni/api-client'
 
 import { SESSION_GAP_RETRY_DELAYS_MS, deliveryPath, useDeliverPrompt } from './deliver-prompt'
 import { useContinueAction } from './follow-up-engine'

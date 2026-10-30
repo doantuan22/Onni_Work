@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { ApiError, MESSAGE_RETRY_DELAYS_MS } from '@/api/client'
 import { uuidv7 } from '@/lib/sid'
 import { runQueryOptions, useSendMessage } from '@/api/queries'
-import type { ApiRun, AttachmentEntry, RunStatus } from '@open-mercato/cezar-api-client'
+import type { ApiRun, AttachmentEntry, RunStatus } from '@onni/api-client'
 
 import type { ContinueAction } from './follow-up-engine'
 import { lastSessionId } from './run-actions'

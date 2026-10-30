@@ -12,7 +12,7 @@ import {
   type SecretEntry,
   type SecretKeyBackend,
   type StepSecretBinding,
-} from '@open-mercato/cezar-contract';
+} from '@onni/contract';
 import { assertCezarHomeWriteIsSandboxed, cezarHomeDir } from '../paths.ts';
 import { PROJECT_ID_RE } from './config.ts';
 import { osKeychain, type DataKeyring } from './secret-keyring.ts';

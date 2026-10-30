@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { putConfig } from '@/api/client'
 import { queryKeys } from '@/api/queries'
-import type { SetConfigInput } from '@open-mercato/cezar-api-client'
+import type { SetConfigInput } from '@onni/api-client'
 import { toast } from '@/components/ui/toaster'
 
 /**

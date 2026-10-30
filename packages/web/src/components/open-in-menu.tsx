@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import { runnerSchema, type OpenTarget, type Runner } from '@open-mercato/cezar-api-client'
+import { runnerSchema, type OpenTarget, type Runner } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

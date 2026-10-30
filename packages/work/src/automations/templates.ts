@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import type { AutomationTemplate } from '@open-mercato/cezar-contract';
+import type { AutomationTemplate } from '@onni/contract';
 import { AutomationStore } from './store.ts';
 
 /**

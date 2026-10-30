@@ -7,7 +7,7 @@ import type {
   DiscoveredCommandEntry,
   EffectiveStartApp,
   WorktreeLifecycleProjection,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

@@ -23,7 +23,7 @@ describe('trusted hosted task links', () => {
 });
 
 import { canonicalTrackerLink } from './links.ts';
-import type { TrackerAssociation } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation } from '@onni/contract';
 it('rebuilds Jira links only for the currently connected association', () => {
   const association: TrackerAssociation = { kind: 'jira', source: { id: 'tenant', webUrl: 'https://acme.atlassian.net' }, externalId: 'project-1', externalName: 'Project', connectionId: '00000000-0000-4000-8000-000000000001' };
   const tracker = { association, provider: 'jira' as const, key: 'APP-42', url: 'https://acme.atlassian.net/browse/APP-42?secret=drop' };

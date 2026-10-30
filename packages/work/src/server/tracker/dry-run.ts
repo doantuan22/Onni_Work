@@ -1,4 +1,4 @@
-import type { TrackerAssociation, TrackerAssociationInput, TrackerAssociationResult, TrackerCandidatesQuery, TrackerCandidatesResult, TrackerItemsResult, TrackerItemResult, TrackerKind, TrackerListQuery, TrackerSearchQuery, TrackerItem } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation, TrackerAssociationInput, TrackerAssociationResult, TrackerCandidatesQuery, TrackerCandidatesResult, TrackerItemsResult, TrackerItemResult, TrackerKind, TrackerListQuery, TrackerSearchQuery, TrackerItem } from '@onni/contract';
 import type { TrackerProvider, TrackerDriver } from './types.ts';
 import { decodeCursor, encodeCursor } from './cursor.ts';
 import { descriptionBody } from './adf.ts';

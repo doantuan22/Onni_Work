@@ -1,7 +1,7 @@
 import { ListChecksIcon } from 'lucide-react'
 
 import { useConfig, useRepo } from '@/api/queries'
-import type { ConfigResponse } from '@open-mercato/cezar-api-client'
+import type { ConfigResponse } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toaster'

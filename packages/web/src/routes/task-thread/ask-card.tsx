@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Link } from '@/lib/project-router'
@@ -15,7 +15,7 @@ import {
   writeAskSelections,
 } from './ask-selections'
 import type { ThreadAsk } from './thread-state'
-import type { UiAskQuestion } from '@open-mercato/cezar-api-client'
+import type { UiAskQuestion } from '@onni/api-client'
 
 /** What "Need more info" sends; the CEZ:ASK instructions (`handoff.ts`) tell the agent to
  *  explain the question and ask it again. */

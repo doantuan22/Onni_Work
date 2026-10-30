@@ -1,6 +1,6 @@
 import { parse as parseYaml } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { E2E_CREDENTIAL_NAMES } from '@open-mercato/cezar-contract';
+import { E2E_CREDENTIAL_NAMES } from '@onni/contract';
 import { E2E_SETUP_PR_TITLE, E2E_WORKFLOW_TEMPLATE, e2eCredentialsAmong, e2eSetupWorkflow } from './e2e-setup.ts';
 import { graphIssues } from './workflows/graph.ts';
 import { stepsIssue, workflowDefSchema, workflowFileSchema } from './workflows/types.ts';

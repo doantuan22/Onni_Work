@@ -2,7 +2,7 @@ import { probeCodexIdentity } from '../core/codex-usage-probe.ts';
 import { createHash } from 'node:crypto';
 import { access, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { localTimeZone, onceInstant, type DeferredBinding, type DeferredPreviewInput, type DeferredPreview, type DeferredOptions, type AutomationSchedule } from '@open-mercato/cezar-contract';
+import { localTimeZone, onceInstant, type DeferredBinding, type DeferredPreviewInput, type DeferredPreview, type DeferredOptions, type AutomationSchedule } from '@onni/contract';
 import { loadConfig } from '../config.ts';
 import { agentModelsLocked } from '../core/agent-model-policy.ts';
 import { loadWorkflows } from '../workflows/load.ts';

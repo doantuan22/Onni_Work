@@ -1,9 +1,9 @@
-import { worktreeLifecycleInvalidationSchema } from '@open-mercato/cezar-api-client'
+import { worktreeLifecycleInvalidationSchema } from '@onni/api-client'
 import { lifecycleQueryKeys } from './worktree-lifecycle'
 import { dashboardProjectTransition, dashboardTransition } from './dashboard-truth'
-import { dashboardWorkspaceUsageSchema } from '@open-mercato/cezar-api-client'
+import { dashboardWorkspaceUsageSchema } from '@onni/api-client'
 import { dashboardLive } from './dashboard-live'
-import { trackerChangedEventSchema } from '@open-mercato/cezar-api-client'
+import { trackerChangedEventSchema } from '@onni/api-client'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 
@@ -24,7 +24,7 @@ import {
   type RunSummary,
   type UsageStore,
 } from './events'
-import { apiPath, getApiScope, queryScope } from '@open-mercato/cezar-api-client'
+import { apiPath, getApiScope, queryScope } from '@onni/api-client'
 import { queryKeys, useHealthSubscription, workspaceQueryKeys } from './queries'
 import { ApiError, getProjectRun } from './client'
 import { RUN_EVENT_BATCH_MS } from './run-events'
@@ -33,7 +33,7 @@ import type {
   HealthResponse,
   ProcessUsage,
   ProviderStatusResponse,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 /**
  * The app's one connection to `GET /api/workspace/events`, and the two halves of the sync

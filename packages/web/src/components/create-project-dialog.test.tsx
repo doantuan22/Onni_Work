@@ -4,7 +4,7 @@ import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { GithubOwnersResponse, ProjectListEntry } from '@open-mercato/cezar-api-client'
+import type { GithubOwnersResponse, ProjectListEntry } from '@onni/api-client'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
 
 /**

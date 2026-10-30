@@ -7,7 +7,7 @@ import type { ReactNode } from 'react'
 import { ProjectScopeProvider } from '@/api/project-scope-context'
 import { queryKeys } from '@/api/queries'
 import { createQueryClient } from '@/api/query-client'
-import type { ApiRun, RunStatus, StepState } from '@open-mercato/cezar-api-client'
+import type { ApiRun, RunStatus, StepState } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 
 import { RunHeader, type RunTab } from './run-header'

@@ -4,7 +4,7 @@ import { useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } 
 
 import { createRun, putUiState } from '@/api/client'
 import { queryKeys, useUiState } from '@/api/queries'
-import type { GithubItem, Skill, WorkflowDef } from '@open-mercato/cezar-api-client'
+import type { GithubItem, Skill, WorkflowDef } from '@onni/api-client'
 import { AgentProviderGate } from '@/components/agent-provider-gate'
 import { engineRunBody, useResolvedEngine, type EnginePick } from '@/components/engine-pills'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'

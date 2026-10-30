@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
-import type { AutomationListEntry, AutomationLogRecord, AutomationLogResponse } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry, AutomationLogRecord, AutomationLogResponse } from '@onni/api-client'
 
 import { AutomationLog } from './log'
 

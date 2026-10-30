@@ -11,7 +11,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import { useState, type SyntheticEvent } from 'react'
-import type { AutomationListEntry } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry } from '@onni/api-client'
 
 import {
   AlertDialog,

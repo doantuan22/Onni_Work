@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { AutomationListEntry, AutomationsResponse } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry, AutomationsResponse } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 
 import { AutomationEditor } from './editor'

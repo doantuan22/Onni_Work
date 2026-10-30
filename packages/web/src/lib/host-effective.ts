@@ -1,4 +1,4 @@
-import type { HostUsage } from '@open-mercato/cezar-api-client'
+import type { HostUsage } from '@onni/api-client'
 
 import { formatMem } from './tasks-table'
 

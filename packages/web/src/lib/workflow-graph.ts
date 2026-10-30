@@ -1,5 +1,5 @@
 import dagre from '@dagrejs/dagre'
-import type { WorkflowGraph, WorkflowGraphNode, WorkflowStepDef } from '@open-mercato/cezar-api-client'
+import type { WorkflowGraph, WorkflowGraphNode, WorkflowStepDef } from '@onni/api-client'
 
 /**
  * Pure model helpers for the workflow node editor (spec 2026-09-30-workflow-node-editor, phase 2).

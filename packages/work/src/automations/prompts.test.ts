@@ -1,4 +1,4 @@
-import { trackerAutomationEventSchema } from '@open-mercato/cezar-contract';
+import { trackerAutomationEventSchema } from '@onni/contract';
 import { describe, expect, it } from 'vitest';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
 import { automationDefinitionObjectSchema, automationDefinitionSchema, automationEventSchema } from './types.ts';

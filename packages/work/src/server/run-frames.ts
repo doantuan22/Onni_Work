@@ -1,4 +1,4 @@
-import { WORKSPACE_RUN_EVENT_OMITTED_KEYS, type WorkspaceRunEvent } from '@open-mercato/cezar-contract';
+import { WORKSPACE_RUN_EVENT_OMITTED_KEYS, type WorkspaceRunEvent } from '@onni/contract';
 import type { RunRecord, RunStore } from '../runs/store.ts';
 
 /**

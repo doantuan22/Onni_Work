@@ -1,6 +1,6 @@
 import { CheckIcon, ChevronDownIcon, EyeIcon, SparklesIcon, WorkflowIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { Skill, WorkflowDef } from '@open-mercato/cezar-api-client'
+import type { Skill, WorkflowDef } from '@onni/api-client'
 import { chipClass } from '@/components/picker-pill'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

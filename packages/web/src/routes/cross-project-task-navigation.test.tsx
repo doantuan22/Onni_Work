@@ -5,7 +5,7 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { ProjectsResponse } from '@open-mercato/cezar-api-client'
+import type { ProjectsResponse } from '@onni/api-client'
 import { AppearanceProvider } from '@/components/appearance-provider'
 import { ListViewProvider } from '@/components/list-view'
 import { ProjectGroups } from '@/components/project-groups'

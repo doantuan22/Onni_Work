@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { enabledAutomations, nextAutomationAt } from './automations-data'
-import type { AutomationListEntry, AutomationsResponse } from '@open-mercato/cezar-api-client'
+import type { AutomationListEntry, AutomationsResponse } from '@onni/api-client'
 const a = (id: string, extra = {}) =>
   ({ id, name: id, enabled: true, kind: 'schedule', ...extra }) as AutomationListEntry
 it('orders enabled automation deadlines across projects, leaving unarmed entries last', () => {

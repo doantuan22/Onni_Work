@@ -4,7 +4,7 @@ import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { HealthResponse, RunRecord } from '@open-mercato/cezar-api-client'
+import type { HealthResponse, RunRecord } from '@onni/api-client'
 import { CommandPalette } from '@/components/command-palette'
 import { ThemeProvider } from '@/components/theme-provider'
 import { recordTaskVisit, resetRecentTasks } from '@/lib/recent-tasks'

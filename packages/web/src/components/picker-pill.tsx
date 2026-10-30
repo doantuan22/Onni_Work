@@ -2,7 +2,7 @@ import { SearchIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer } from 'virtua'
 
-import { DEFAULT_AGENT_ACCOUNT_ID, type Runner } from '@open-mercato/cezar-api-client'
+import { DEFAULT_AGENT_ACCOUNT_ID, type Runner } from '@onni/api-client'
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ChangedFile } from '@open-mercato/cezar-api-client'
+import type { ChangedFile } from '@onni/api-client'
 
 import { buildFileTree, buildPathTree } from './file-tree'
 

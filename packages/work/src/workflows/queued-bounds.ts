@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
-import { isImageAttachmentName, MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENTS_TOTAL_BASE64, type QueuedMessage } from '@open-mercato/cezar-contract';
+import { isImageAttachmentName, MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENTS_TOTAL_BASE64, type QueuedMessage } from '@onni/contract';
 import type { PastedContent } from './run.ts';
 
 // Queued prompt stack bounds (#472), shared by `POST /runs/:id/messages` and the engine's own

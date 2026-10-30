@@ -1,5 +1,5 @@
 import { CalendarClockIcon, Clock3Icon } from 'lucide-react'
-import type { AutomationStats } from '@open-mercato/cezar-api-client'
+import type { AutomationStats } from '@onni/api-client'
 
 import { StatusDot } from '@/components/status-dot'
 import { Button } from '@/components/ui/button'

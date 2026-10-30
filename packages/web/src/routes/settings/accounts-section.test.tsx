@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { queryKeys, workspaceQueryKeys } from '@/api/queries'
 import { createQueryClient } from '@/api/query-client'
-import type { AgentProfile, AgentProfilesResponse } from '@open-mercato/cezar-api-client'
+import type { AgentProfile, AgentProfilesResponse } from '@onni/api-client'
 import { Toaster, onDangerToast, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'

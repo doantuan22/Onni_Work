@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { webhookFormatSchema, webhookDeliveryStatusSchema, webhookEventTypeSchema, webhookProfileSchema, type WebhookHealth } from '@open-mercato/cezar-contract';
+import { webhookFormatSchema, webhookDeliveryStatusSchema, webhookEventTypeSchema, webhookProfileSchema, type WebhookHealth } from '@onni/contract';
 import { webhookSourceSchema, type WebhookSource } from './source.ts';
 import { WebhookStateError, type PrivateReceiver } from './endpoints.ts';
 import { selected } from './lifecycle.ts';

@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { HealthResponse, RunRecord } from '@open-mercato/cezar-api-client'
+import type { HealthResponse, RunRecord } from '@onni/api-client'
 import { ListViewProvider } from '@/components/list-view'
 import { RepoBaseContext, TaskQuickList, TaskQuickListContainer } from '@/components/task-quick-list'
 import { markScheduledTasks, resetScheduledTasksGate } from '@/lib/scheduled-tasks-gate'

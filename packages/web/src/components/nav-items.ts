@@ -9,7 +9,7 @@ import {
   TicketIcon,
 } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
-import type { TrackerKind } from '@open-mercato/cezar-api-client'
+import type { TrackerKind } from '@onni/api-client'
 
 import { TRACKER_PROVIDERS } from '@/lib/tracker-providers'
 import { GithubIcon } from '@/components/icons'

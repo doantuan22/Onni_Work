@@ -15,7 +15,7 @@ import { workspaceQueryKeys } from '@/api/queries'
 import { DashboardEntryContext } from './state'
 import { UsageCosts } from './costs'
 import { collectDashboardExport } from './export'
-import type { DashboardCosts } from '@open-mercato/cezar-api-client'
+import type { DashboardCosts } from '@onni/api-client'
 const at = '2026-09-19T00:00:00.000Z'
 function fixture(id = 's1'): DashboardCosts {
   return {

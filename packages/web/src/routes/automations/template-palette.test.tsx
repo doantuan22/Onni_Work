@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
-import type { AutomationTemplatesResponse } from '@open-mercato/cezar-api-client'
+import type { AutomationTemplatesResponse } from '@onni/api-client'
 
 import { TemplatePalette } from './template-palette'
 

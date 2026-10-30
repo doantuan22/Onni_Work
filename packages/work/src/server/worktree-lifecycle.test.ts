@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, realpathSync, writeFileSync, readFileSync, rmS
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { lifecycleListResponseSchema, lifecycleOperationResponseSchema, lifecyclePreviewResponseSchema, type ScriptEntry } from '@open-mercato/cezar-contract';
+import { lifecycleListResponseSchema, lifecycleOperationResponseSchema, lifecyclePreviewResponseSchema, type ScriptEntry } from '@onni/contract';
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';

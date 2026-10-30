@@ -29,7 +29,7 @@ async function linkCommand(dir: string | undefined, use: boolean): Promise<numbe
   const target = resolve(dir ?? process.cwd());
   const packageRoot = cezarPackageRoot(target);
   if (!packageRoot) {
-    console.error(`  ✗ ${target} is not a cezar checkout (no @open-mercato/cezar package.json there or in packages/work)`);
+    console.error(`  ✗ ${target} is not a cezar checkout (no @onni/work package.json there or in packages/work)`);
     return 1;
   }
   try {

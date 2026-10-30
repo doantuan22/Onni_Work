@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { repoFileQuerySchema, repoTreeSchema, type RepoTree } from '@open-mercato/cezar-contract';
+import { repoFileQuerySchema, repoTreeSchema, type RepoTree } from '@onni/contract';
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';
 import { listRepoPaths, repoIndexContains } from './git-changes.ts';

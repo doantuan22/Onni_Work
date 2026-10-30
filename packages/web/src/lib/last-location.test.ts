@@ -1,4 +1,4 @@
-import type { ProjectsResponse, WorkspaceLastLocation } from '@open-mercato/cezar-api-client'
+import type { ProjectsResponse, WorkspaceLastLocation } from '@onni/api-client'
 import { describe, expect, it } from 'vitest'
 
 import { bareRootLanding, locationToRestore, locationToSave, sameLastLocation } from './last-location'

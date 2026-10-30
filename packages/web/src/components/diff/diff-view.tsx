@@ -2,7 +2,7 @@ import { ChevronRightIcon } from 'lucide-react'
 import { useCallback, useContext, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 
-import type { DiffStat } from '@open-mercato/cezar-api-client'
+import type { DiffStat } from '@onni/api-client'
 import { CommentCount } from '@/components/comment-count'
 import { DiffStatLabel } from '@/components/diff-stat'
 import { ensureLang, highlightSync, langForPath, type SynToken } from '@/lib/highlighter'

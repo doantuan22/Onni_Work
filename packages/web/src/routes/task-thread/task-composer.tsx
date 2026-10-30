@@ -1,7 +1,7 @@
 import { useMemo, type CSSProperties, type ReactNode, type Ref } from 'react'
 
 import { useSkills } from '@/api/queries'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { Composer } from '@/components/composer/composer'
 import { toast } from '@/components/ui/toaster'
 import { Link } from '@/lib/project-router'

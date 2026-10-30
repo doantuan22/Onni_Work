@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { TrackerAssociation } from '@open-mercato/cezar-contract';
+import type { TrackerAssociation } from '@onni/contract';
 import {
   candidate,
   createEventScanner,

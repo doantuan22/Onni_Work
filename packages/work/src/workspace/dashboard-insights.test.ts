@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RunRecord } from '@open-mercato/cezar-contract';
+import type { RunRecord } from '@onni/contract';
 import { buildDashboardInsights, classifyFailure, projectInsightRow } from './dashboard-insights.ts';
 
 const NOW = Date.parse('2026-09-30T12:00:00.000Z');

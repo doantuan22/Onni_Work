@@ -1,5 +1,5 @@
 {
-  "name": "@open-mercato/cezar-api-client",
+  "name": "@onni/api-client",
   "version": "0.17.0",
   "description": "Typed client and shared contract types for the cezar cockpit HTTP API.",
   "license": "MIT",
@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
-    "@open-mercato/cezar-contract": "^0.17.0",
+    "@onni/contract": "^0.17.0",
     "hono": "^4.6.0"
   },
   "devDependencies": {

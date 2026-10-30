@@ -1,7 +1,7 @@
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import type { RunEvent } from '@open-mercato/cezar-api-client'
+import type { RunEvent } from '@onni/api-client'
 
 import subagentTask from '../../../../work/src/core/__fixtures__/claude/subagent-task.expected.json'
 import { collectSubagents, subagentChildren } from './subagent-dock'

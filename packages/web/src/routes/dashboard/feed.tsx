@@ -1,7 +1,7 @@
 import { DisclosureChevron, disclosureSummary, widgetHeading } from './presentation'
 import { ExportRows } from './export-rows'
 import { useContext, useLayoutEffect, useMemo, useRef } from 'react'
-import type { DashboardFeed, DashboardFeedRow } from '@open-mercato/cezar-api-client'
+import type { DashboardFeed, DashboardFeedRow } from '@onni/api-client'
 import { useDashboardFeed } from '@/api/dashboard'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'

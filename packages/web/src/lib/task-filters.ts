@@ -1,4 +1,4 @@
-import type { RunRecord } from '@open-mercato/cezar-api-client'
+import type { RunRecord } from '@onni/api-client'
 
 import { automationIdOf, matchesOrigin, type TaskOrigin } from '@/lib/task-origin'
 import { workflowLabel } from '@/lib/tasks-table'

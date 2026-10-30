@@ -11,7 +11,7 @@ import {
   useSelectAgentProfile,
 } from '@/api/queries'
 import { useProjectScope } from '@/api/project-scope-context'
-import type { ConfigResponse, Runner } from '@open-mercato/cezar-api-client'
+import type { ConfigResponse, Runner } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { toast } from '@/components/ui/toaster'
 import { providerStatusFor } from '@/lib/provider-status'

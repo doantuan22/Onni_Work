@@ -14,7 +14,7 @@ import {
 } from '@/api/queries'
 import type { OpenInChoice } from '@/components/open-in-menu'
 import { lifecycleQueryKeys } from '@/api/worktree-lifecycle'
-import type { ApiRun } from '@open-mercato/cezar-api-client'
+import type { ApiRun } from '@onni/api-client'
 import { toast } from '@/components/ui/toaster'
 import { useNavigate } from '@/lib/project-router'
 import { usableRunners } from '@/lib/provider-status'

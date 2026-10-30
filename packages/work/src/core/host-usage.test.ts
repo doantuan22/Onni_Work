@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { hostUsageSchema } from '@open-mercato/cezar-contract';
+import { hostUsageSchema } from '@onni/contract';
 import {
   createHostSampler,
   HOST_SAMPLE_INTERVAL_MS,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { DISPATCH_MAX_IN_FLIGHT } from '@open-mercato/cezar-api-client'
+import { DISPATCH_MAX_IN_FLIGHT } from '@onni/api-client'
 import {
   autoApplyText,
   availablePromptTemplates,

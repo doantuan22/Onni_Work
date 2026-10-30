@@ -3,7 +3,7 @@ import { ArrowDownIcon, ArrowUpIcon, CloudUploadIcon, RefreshCwIcon } from 'luci
 
 import { ApiError, type RepoSyncAction } from '@/api/client'
 import { useRepoSync, useRepoSyncAction } from '@/api/queries'
-import type { BranchTracking, RepoSync } from '@open-mercato/cezar-api-client'
+import type { BranchTracking, RepoSync } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 import { cn } from '@/lib/utils'

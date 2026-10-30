@@ -1,7 +1,7 @@
 import { hc, type InferResponseType } from 'hono/client';
 import { expect, it } from 'vitest';
 import type { z } from 'zod';
-import type { webhookListSchema, webhookSecretResponseSchema, webhookReceiverResponseSchema, webhookDeliveryOperationResponseSchema, webhookOkSchema, webhookHistoryPageSchema, webhookDeliveriesPageSchema, webhookActivityPageSchema } from '@open-mercato/cezar-contract';
+import type { webhookListSchema, webhookSecretResponseSchema, webhookReceiverResponseSchema, webhookDeliveryOperationResponseSchema, webhookOkSchema, webhookHistoryPageSchema, webhookDeliveriesPageSchema, webhookActivityPageSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 const client = hc<AppType>('http://127.0.0.1');
 const routes = client.api.v1.p[':projectId'].webhooks;

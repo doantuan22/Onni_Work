@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 
 import { ApiError } from '@/api/client'
 import { useFsBrowse } from '@/api/queries'
-import type { FsBrowseDir } from '@open-mercato/cezar-api-client'
+import type { FsBrowseDir } from '@onni/api-client'
 import { parentDir } from '@/lib/fs-path'
 import { cn } from '@/lib/utils'
 

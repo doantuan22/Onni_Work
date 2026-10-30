@@ -1,4 +1,4 @@
-import { webhookEventSchema, type WebhookProfile } from '@open-mercato/cezar-contract';
+import { webhookEventSchema, type WebhookProfile } from '@onni/contract';
 import { collectSecretValues, redactDeep } from '../core/secret-redaction.ts';
 import { webhookSourceSchema, type WebhookSource } from './source.ts';
 import { scrubWebhookSource } from './privacy.ts';

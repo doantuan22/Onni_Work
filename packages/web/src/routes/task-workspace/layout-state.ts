@@ -16,7 +16,7 @@ import {
   MAX_WORKSPACE_LAYOUT_NAME_LENGTH,
   MAX_WORKSPACE_LAYOUTS,
   MAX_WORKSPACE_TAB_URL_LENGTH,
-} from '@open-mercato/cezar-api-client'
+} from '@onni/api-client'
 
 import { drawerStorageKey } from './drawer-state'
 

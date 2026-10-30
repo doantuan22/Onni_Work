@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { trackerAssociationSchema, webhookAttentionRequestSchema, webhookCompletionReasonSchema, webhookTaskEventTypeSchema } from '@open-mercato/cezar-contract';
+import { trackerAssociationSchema, webhookAttentionRequestSchema, webhookCompletionReasonSchema, webhookTaskEventTypeSchema } from '@onni/contract';
 
 const id = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
 const time = z.iso.datetime();
