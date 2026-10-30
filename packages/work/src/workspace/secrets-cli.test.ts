@@ -37,7 +37,7 @@ describe('onni secrets (spec 2026-10-10-project-secrets-vault-options)', () => {
     expect(await cli(['list'])).toBe(0);
     expect(await cli(['unset', 'E2E_KEY'])).toBe(0);
     expect(await cli(['list'])).toBe(0);
-    expect(lines).toEqual(['E2E_KEY', 'LLM_KEY', 'E2E_KEY\tchecks', 'LLM_KEY\tcezar,checks', 'E2E_KEY', 'LLM_KEY\tcezar,checks']);
+    expect(lines).toEqual(['E2E_KEY', 'LLM_KEY', 'E2E_KEY\tchecks', 'LLM_KEY\tonni,checks', 'E2E_KEY', 'LLM_KEY\tonni,checks']);
     expect(errors.some((line) => /key file|keychain/.test(line))).toBe(true);
     expect([...lines, ...errors].join('\n')).not.toMatch(/cli-secret-value|cli-llm-value/);
   });

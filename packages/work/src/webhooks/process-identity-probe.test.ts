@@ -64,9 +64,9 @@ describe('probe fail-closed behaviour', async () => {
 
   it.each([
     ['missing sentinel', `${process.pid} 638000000000000000 638900000000000000\n`],
-    ['extra output', `${process.pid} 638000000000000000 638900000000000000\nnoise\ncez-own-probe-complete\n`],
-    ['malformed ticks', `${process.pid} unknown 638900000000000000\ncez-own-probe-complete\n`],
-    ['different pid', `${process.pid + 1} 638000000000000000 638900000000000000\ncez-own-probe-complete\n`],
+    ['extra output', `${process.pid} 638000000000000000 638900000000000000\nnoise\nonni-own-probe-complete\n`],
+    ['malformed ticks', `${process.pid} unknown 638900000000000000\nonni-own-probe-complete\n`],
+    ['different pid', `${process.pid + 1} 638000000000000000 638900000000000000\nonni-own-probe-complete\n`],
   ])('fails closed when the combined Windows probe has %s', async (_name, output) => {
     probe.mockImplementationOnce(() => output);
     await expect(withPlatform('win32', () => ownProcessIdentity())).rejects.toThrow(/process identity/i);
@@ -80,7 +80,7 @@ describe('probe fail-closed behaviour', async () => {
       const script = String((args as string[])?.[3]);
       expect(script).toContain('Get-Process -ErrorAction Stop');
       expect(script).toContain('LastBootUpTime.ToUniversalTime().Ticks');
-      return `${process.pid} 638000000000000000 638900000000000000\ncez-own-probe-complete\n`;
+      return `${process.pid} 638000000000000000 638900000000000000\nonni-own-probe-complete\n`;
     });
     const [own, concurrent] = await withPlatform('win32', () => Promise.all([ownProcessIdentity(), ownProcessIdentity()]));
     expect(concurrent).toBe(own);

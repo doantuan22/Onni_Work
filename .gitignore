@@ -7,8 +7,8 @@ dist/
 # package by packages/work/scripts/sync-readme.mjs. Never edit the copy.
 /packages/work/README.md
 
-# cezar runtime state in this repo (runs, worktrees, launch-key)
-.ai/cezar/
+# Onni Work runtime state in this repo (runs, worktrees, launch-key)
+.ai/onni/
 
 # locally installed agent skills (per-machine installs, not repo content)
 .agents/
@@ -25,7 +25,7 @@ skills-lock.json
 # `test-env-*.log` let a hand-named boot log get swept into a commit by the autosave.
 .ai/qa/*.log
 .ai/qa/.build-cache
-.ai/qa/cez-home/
+.ai/qa/onni-home/
 
 # local symlink into .agents/skills
 .claude/skills
@@ -41,4 +41,4 @@ skills-lock.json
 .e2e/summary.md
 .e2e/logs/
 .e2e/videos/
-.e2e/cez-home/
+.e2e/onni-home/

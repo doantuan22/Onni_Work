@@ -433,7 +433,7 @@ export const runRecordSchema = z.object({
    *  same class as `archived` and `seenAt`. Optional with NO default, unlike `archived`:
    *  absent is what every runs.json written before this carries and it already means
    *  "not pinned", so nothing needs filling in on parse and an unpin can simply delete
-   *  the key rather than persist a `false` older cezars never wrote. */
+   *  the key rather than persist a `false` older releases never wrote. */
   pinned: z.boolean().optional(),
   pinnedAt: z.string().optional(),
   /** Read receipt (#unread-done-items): the ISO time the cockpit last opened this

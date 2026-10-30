@@ -100,7 +100,7 @@ describe('parseDarwinProcessStarts', async () => {
 
 describe('parseWindowsProcessStarts', async () => {
   it('parses ticks as strings, tolerating a BOM and CRLF', async () => {
-    expect(parseWindowsProcessStarts('\uFEFF4242 638912345678901234\r\ncez-probe-complete\r\n'))
+    expect(parseWindowsProcessStarts('\uFEFF4242 638912345678901234\r\nonni-probe-complete\r\n'))
       .toEqual(new Map([[4242, '638912345678901234']]));
   });
 
@@ -113,10 +113,10 @@ describe('parseWindowsProcessStarts', async () => {
   });
 
   it('fails closed when a pid exists but its start time was unreadable', async () => {
-    expect(() => parseWindowsProcessStarts('4242 unknown\ncez-probe-complete\n')).toThrow(/process identity/i);
+    expect(() => parseWindowsProcessStarts('4242 unknown\nonni-probe-complete\n')).toThrow(/process identity/i);
   });
 
   it('fails closed on unrecognised output, never reading it as absence', async () => {
-    expect(() => parseWindowsProcessStarts('Get-Process : Cannot find a process\ncez-probe-complete\n')).toThrow(/process identity/i);
+    expect(() => parseWindowsProcessStarts('Get-Process : Cannot find a process\nonni-probe-complete\n')).toThrow(/process identity/i);
   });
 });
