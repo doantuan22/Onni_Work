@@ -12,7 +12,7 @@ Everything the [README](../README.md) leaves out: the full configuration, every 
 - [Remote access (host Onni Work on a server)](#remote-access-host-onni-work-on-a-server)
 - [Configuration](#configuration-optional)
 - [Worktree lifecycle scripts](#worktree-lifecycle-scripts)
-- [Nightly and preview builds](#nightly-and-preview-builds)
+- [Builds and releases](#builds-and-releases)
 - [Local development](#local-development)
 
 ---
@@ -62,9 +62,11 @@ Five moves that make the cockpit worth the browser tab:
   unlimited) and reclaims the rest — directory only, the `onni/<id8>` branch is
   always kept, so the work stays recoverable. Settings → Resources shows every
   worktree's disk use with per-row delete and a **Reclaim now** button.
-- 🛡️ **Review gate.** A finished run with changes waits in `review`. Read the diff,
-  type notes that go straight back into the agent's session, or push a
-  `gh pr create --draft`. You stay the merge button.
+- 🛡️ **Review gate.** With the diff-first gate on (`ONNI_REVIEW_GATE=1` or
+  Settings → Tasks; off by default), a successful run with changes waits in
+  `review` instead of finishing. Read the diff, type notes that go straight back
+  into the agent's session, or push a `gh pr create --draft`. Nothing ever merges
+  itself — you stay the merge button either way.
 - 📱 **Runs on your coding server, drives from your pocket.** The cockpit is a
   responsive web app streaming over SSE, so the box running Onni Work can be a
   **VPS, cloud, or dedicated server** you never sit in front of. Point a browser
@@ -92,8 +94,8 @@ One browser window, with live task updates over Server-Sent Events:
 **Scheduled-start recovery:** a creation-key replay does not create another schedule, and the scheduler reconciles retained run records before retrying a partial start. This is not a global exactly-once execution guarantee: independent cockpits can recover the same queued run, and **Start missing runs** can recreate a variant whose record was deleted manually or by retention. Check existing work before retrying; **Dismiss** closes an ambiguous entry without starting work.
 
 
-The cockpit is a React app served pre-built from the package — `npx onni-run`
-still means no build step and no dev server on your machine — with a dark/light
+The cockpit is a React app served pre-built by the service — running `onni` means
+no build step and no dev server on your machine — with a dark/light
 theme, a ⌘K command palette, and bookmarklets that launch a task straight from
 a GitHub page.
 
@@ -593,9 +595,12 @@ the API below.
   `/api/v1/workspace/…`) have no scoped twin.
 - **Discovery.** `GET /api/v1/health` answers without the request-origin guard,
   so it is the call to probe whether a cockpit is up and which version it runs.
-- **Routes and shapes.** The route inventory is section 2 of
-  [BACKWARD_COMPATIBILITY.md](../BACKWARD_COMPATIBILITY.md); every request and
-  response is a zod schema in [`packages/contract`](../packages/contract/src).
+- **Routes and shapes.** Routes are chained into family builders in
+  [`packages/work/src/server/server.ts`](../packages/work/src/server/server.ts);
+  every request and response is a zod schema in
+  [`packages/contract`](../packages/contract/src), and `contract-parity*.test.ts`
+  plus `route-parity.test.ts` keep the two aligned (see
+  [BACKWARD_COMPATIBILITY.md](../BACKWARD_COMPATIBILITY.md) §2).
   The common ones: `GET/POST /runs`, `GET /runs/:id`,
   `POST /runs/:id/{cancel,messages,continue,archive}`, `GET /automations`.
 - **No built-in auth.** The cockpit binds `127.0.0.1` and trusts the machine;
@@ -606,7 +611,7 @@ the API below.
 ## Coding agent backends
 
 Onni Work is not married to one vendor. Every agent step runs through a single
-`AgentRunner` seam with five built-in backends:
+`AgentRunner` seam with seven built-in backends:
 
 | Backend | CLI | How Onni Work drives it | Tool access |
 |---|---|---|---|
@@ -616,14 +621,15 @@ Onni Work is not married to one vendor. Every agent step runs through a single
 | **OpenCode** _(experimental)_ | [`opencode`](https://opencode.ai) | `opencode serve` — a local HTTP server with an SSE event stream. | Ignores `allowedTools` entirely; every permission is auto-approved. |
 | **Cursor** | [`agent`](https://cursor.com/docs/cli/overview) (Cursor Agent CLI) | Headless print mode: `agent -p --force --trust --output-format stream-json`. Continue is fresh-session in v1 (print mode exits per turn). Its documented output carries no token/cost figures, so a Cursor run's header always reads zero tokens and no cost — that is the backend not reporting usage, not the run using nothing. | Ignores `allowedTools`; `--force` / `--trust` auto-approves tool use for unattended runs. |
 | **pi** _(experimental)_ | [`pi`](https://github.com/badlogic/pi-mono) | Persistent `--mode rpc` over JSONL; models are picked with the `provider/model` convention. | Maps `allowedTools` onto pi's `--tools` allowlist; a configured `bashAllowlist` disables Bash because pi cannot express command-prefix rules. |
+| **GitHub Copilot** | [`copilot`](https://github.com/github/copilot-cli) | `copilot --acp --allow-all-tools --no-auto-update` — ACP over stdio, one long-lived child per task. | Ignores `allowedTools` / `bashAllowlist`; `--allow-all-tools` is the auto permission mode, and a permission request that still arrives is auto-approved. |
 
-> ⚠️ **Junie, OpenCode and pi support are experimental.** All three runners work
-> but are less battle-tested than the Claude Code and Codex backends, and Junie
-> and OpenCode auto-approve every permission (they ignore `allowedTools`). Treat
-> them as previews and expect rough edges.
+> ⚠️ **Junie, pi and OpenCode support are experimental.** All three runners work
+> but are less battle-tested than the Claude Code and Codex backends, and Junie,
+> OpenCode and Copilot auto-approve every permission (they ignore `allowedTools`).
+> Treat them as previews and expect rough edges.
 
 On startup Onni Work probes which CLIs are installed and the cockpit only offers
-the backends it found — install any one of the five and you're operational.
+the backends it found — install any one of the seven and you're operational.
 
 **Models come from your own machine.** The model picker does not ship a list of
 vendor releases that goes stale between Onni Work versions. For Claude, Codex, Cursor, Junie and
@@ -635,8 +641,8 @@ today with no Onni Work release, and one your provider retired stops being offer
 Discovery is read-only, costs no tokens, and is cached briefly in memory. If the
 CLI is missing, logged out, too old or slow, the picker quietly falls back to
 that runner's built-in entries (`auto` plus Claude's tier aliases) and says so
-in a status row; `pi`, which has no host-local catalog yet, always shows its
-built-in entries. `auto` — send no model at all and let the CLI decide — is
+in a status row; `pi` and GitHub Copilot, which have no host-local catalog yet,
+always show their built-in entries. `auto` — send no model at all and let the CLI decide — is
 always available, and a model you pinned by hand stays selectable even when it
 is no longer advertised.
 
@@ -685,13 +691,16 @@ strategy**, and never escalates silently: every privileged command is printed
 and verified, and it ends with a real authenticated end-to-end check.
 
 ```bash
-npx onni-run server-install   --platform ubuntu-vps   # stand it up
-npx onni-run server-deploy    --platform ubuntu-vps   # roll out a new version (reload the service)
-npx onni-run server-uninstall --platform ubuntu-vps   # reverse it
+onni server-install   --platform ubuntu-vps   # stand it up
+onni server-deploy    --platform ubuntu-vps   # roll out a new version (reload the service)
+onni server-uninstall --platform ubuntu-vps   # reverse it
 
 # host a SECOND cockpit for another domain on the same box (ubuntu-vps):
-npx onni-run server-install   --platform ubuntu-vps --domain shop.example.com
+onni server-install   --platform ubuntu-vps --domain shop.example.com
 ```
+
+From a source checkout the same commands run as `npm run server-install -- …`,
+`npm run server-deploy -- …` and `npm run server-uninstall -- …`.
 
 On `ubuntu-vps` a single host can run several independent cockpits — add
 `--domain <host>` and each gets its own port, nginx site, login and service; a
@@ -702,8 +711,8 @@ nginx already owns `:80/:443`, Onni Work's would fight it for the ports. Install
 service only and let your proxy front it:
 
 ```bash
-npx onni-run server-install --platform ubuntu-vps \
-  --external-proxy --domain Onni Work.example.com --bind-host 172.17.0.1
+onni server-install --platform ubuntu-vps \
+  --external-proxy --domain onni.example.com --bind-host 172.17.0.1
 ```
 
 `--bind-host` is only needed when the proxy runs in a **container** (Traefik
@@ -740,7 +749,7 @@ never blocks startup; configured lifecycle transitions pause on malformed config
   // `skills/` (any depth) is picked up from them: `…/skills/<name>/SKILL.md` is a directory skill
   // (its other files are its references), any other `…/skills/**/*.md` a flat one.
   "worktreeRetention": 10,   // keep the last N finished worktrees on disk; 0 = unlimited (branch always kept)
-  "defaultRunner": "claude", // agent backend: "claude" (default) · "codex" · "junie" · "opencode" · "pi"
+  "defaultRunner": "claude", // agent backend: "claude" (default) · "codex" · "opencode" · "cursor" · "pi" · "junie" · "copilot"
   "modelsLocked": true,      // optional: native per-runner model is fixed/read-only; runner stays selectable
   "plannerModel": "sonnet",  // model the "Plan first" button uses to draft chains
   "baseBranch": "develop",   // branch worktrees fork from + PRs target (also settable in the Git tab)
@@ -996,7 +1005,7 @@ End-to-end, from a fresh clone to a global `onni` command you can run in **any**
 repo on your machine — no npm publish required.
 
 **1. Prerequisites** — Node 20+ and `git` (plus at least one logged-in agent CLI,
-as in [Quick start](../README.md#quick-start)).
+as in the [README](../README.md)).
 
 **2. Clone & install**
 
@@ -1048,7 +1057,7 @@ A worktree has to be built to run (`npm install && npm run build` in it). Then p
 
   ```bash
   onni link [<dir>] --use   # link the checkout (default: cwd) and make it current
-  Onni Work unlink <id>          # forget a link (the worktree is untouched)
+  onni unlink <id|dir>      # forget a link (the worktree is untouched)
   ```
 
   The desktop app picks up a terminal switch on its next start, and the Versions menu refreshes
@@ -1064,7 +1073,7 @@ npm run dev          # server (API :4321) + Vite dev server, opens the cockpit i
 npm run dev:server   # tsx packages/work/src/index.ts — the API server alone
 npm run dev:web      # Vite dev server alone (proxies /api to :4321)
 npm run build        # tsc → packages/work/dist/, vite build → packages/work/web/dist/, then the pack gate
-npm run typecheck    # server + web (tsc --noEmit)
+npm run typecheck    # contract + api-client + server + web (tsc --noEmit)
 npm test             # vitest — server + cockpit unit suites
 npm run test:unit    # node:test — fast core-module tests
 npm run test:package # pack/install and exercise the built CLI
@@ -1073,8 +1082,8 @@ npm run test:e2e     # real-browser cockpit suite (agent-browser)
 
 The stack is deliberately small: **TypeScript** (strict, ESM), **Hono** + SSE for
 the server, **Zod** at every boundary, **YAML** for workflows, and a **React 19 +
-Vite + Tailwind v4 + shadcn/ui** cockpit shipped pre-built in `packages/work/web/dist/` — the
-published package carries the built app, so `npx` users never run a bundler.
+Vite + Tailwind v4 + shadcn/ui** cockpit, built into `packages/work/web/dist/` and served by
+the service, so running `onni` never needs a bundler.
 Every module is meant to be read in one sitting.
 
 ---

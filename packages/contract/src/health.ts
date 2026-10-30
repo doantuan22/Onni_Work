@@ -51,9 +51,10 @@ export const capabilitiesSchema = z.object({
   followups: z.boolean(),
   singleProject: z.boolean(),
   /**
-   * `true` means `ONNI_AUTOMATIONS=1` opted this server into GitHub automations (#801). Off — the
-   * default — the whole feature is absent: no `Automations` nav item anywhere it is rendered, the
-   * `/api/v1/…/automations*` family answers `409`, and the workspace scheduler never polls GitHub.
+   * `true` means GitHub automations are on — the default; `ONNI_AUTOMATIONS=0` turns them off
+   * (#801). Off, the whole feature is absent: no `Automations` nav item anywhere it is rendered,
+   * the `/api/v1/…/automations*` family answers `409`, and the workspace scheduler never polls
+   * GitHub.
    *
    * REQUIRED for the same reason as `tokenMetrics` below: this server always sends it.
    */

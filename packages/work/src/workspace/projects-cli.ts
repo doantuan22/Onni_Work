@@ -109,7 +109,7 @@ async function listCommand(
       : await listProjects();
   if (projects.length === 0) {
     io.log('\n  no projects registered yet');
-    io.log('  start the cockpit in a repo (npx onni) or add one: onni projects add <dir>\n');
+    io.log('  start the cockpit in a repo (onni) or add one: onni projects add <dir>\n');
     return 0;
   }
   const idWidth = Math.max(...projects.map((p) => p.id.length));

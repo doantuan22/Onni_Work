@@ -35,7 +35,7 @@ id — that is the whole point of the seam.
 ### Identity
 
 ```ts
-const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie'] as const;  // the source of truth
+const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot'] as const;  // the source of truth
 type RunnerId     = (typeof RUNNER_IDS)[number];                             // user-selectable
 type AgentBackend = RunnerId | 'claude-cli';                                 // + legacy id, still parses
 ```
@@ -196,7 +196,7 @@ two, so drift fails `npm run typecheck` (the gate) rather than the UI at runtime
 ### Design rules baked in
 
 1. **Item-lifecycle model** (Codex/ACP style): one stable `id` per item with
-   `started → delta → updated → completed` phases. Two of the three backends are
+   `started → delta → updated → completed` phases. The ACP-style backends are
    natively item-shaped; claude maps trivially.
 2. **ACP vocabulary** wherever a choice is arbitrary (tool status/kind, plan
    entries, diff shape, stop reasons) — ecosystem alignment.
@@ -504,7 +504,7 @@ To be first-class:
 ## 10. The plan channel (PR #443)
 
 PR #443 (`fix/issue-433-render-plan-todo`, open at the time of writing) hardens
-`plan.updated` across all three backends after finding the plan never reached the
+`plan.updated` across the backends after finding the plan never reached the
 cockpit dock — for a different reason on each backend. Its direction, which any
 new runner should follow:
 

@@ -132,7 +132,7 @@ make all these behaviors tested by itself.
 Useful starting commands (from the repository root):
 
 ```sh
-TMPDIR=/tmp npx vitest run packages/work/src/server/tracker packages/work/src/server/tracker-api.test.ts packages/web/src/lib/tracker-task.test.ts packages/web/src/routes/settings/tracker-section.test.tsx
+TMPDIR=/tmp npm test -- packages/work/src/server/tracker packages/work/src/server/tracker-api.test.ts packages/web/src/lib/tracker-task.test.ts packages/web/src/routes/settings/tracker-section.test.tsx
 TMPDIR=/tmp npm run typecheck
 TMPDIR=/tmp npm test
 TMPDIR=/tmp npm run build

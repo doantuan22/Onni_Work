@@ -535,9 +535,9 @@ async function runCommand(
   store.flush({ pretty: true });
   const record = store.getRun(run.id);
   if (final === 'review') {
-    console.log(`\n  changes ready for review on branch ${record?.branch ?? '?'} — inspect them in the cockpit: npx onni`);
+    console.log(`\n  changes ready for review on branch ${record?.branch ?? '?'} — inspect them in the cockpit: onni`);
   }
-  console.log(`\nrun ${final} — ${record?.tokensUsed ?? 0} tokens — details in the cockpit: npx onni`);
+  console.log(`\nrun ${final} — ${record?.tokensUsed ?? 0} tokens — details in the cockpit: onni`);
   await manager.lifecycle.shutdown();
   manager.dispose();
   process.off('SIGINT', interrupt);
@@ -757,7 +757,7 @@ description: House rules the agent should follow in this repo.
     }
   }
   ensureDataGitignore(repoRoot);
-  console.log('\nDone. Start the cockpit with: npx onni');
+  console.log('\nDone. Start the cockpit with: onni');
 }
 
 // ---- helpers -----------------------------------------------------------------

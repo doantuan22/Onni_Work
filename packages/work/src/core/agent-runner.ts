@@ -4,7 +4,7 @@
  * no token-budget circuit breaker, no zod response schemas — one run is one
  * agent-CLI session streaming normalized events.
  *
- * Five interchangeable backends implement this seam, each as a persistent
+ * Seven interchangeable backends implement this seam, each as a persistent
  * process so multi-turn follow-ups, `waiting`, interrupt and resume all work:
  *  - `claude`   — Claude Code CLI, stream-json over stdin/stdout;
  *  - `codex`    — `codex app-server`, JSON-RPC 2.0 (JSONL) over stdin/stdout;
@@ -13,7 +13,8 @@
  *  - `pi`       — pi coding CLI, RPC over JSONL stdin/stdout, selecting its
  *                 model with `provider/model`;
  *  - `junie`    — JetBrains Junie CLI, real Agent Client Protocol (ACP:
- *                 `junie --acp=true`), JSON-RPC 2.0 (JSONL) over stdin/stdout.
+ *                 `junie --acp=true`), JSON-RPC 2.0 (JSONL) over stdin/stdout;
+ *  - `copilot`  — GitHub Copilot CLI, ACP over `copilot --acp` on stdio.
  */
 
 import type { UsageWindowsObservation } from '@onni/contract';

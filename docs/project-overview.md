@@ -1,322 +1,291 @@
 # Tổng quan dự án Onni Work
 
-> Báo cáo cấu trúc – kiến trúc – luồng hoạt động – chức năng của repo tại `D:\Multi Agent`.
-> Cập nhật: 2026-10-29. Nội dung phản ánh trạng thái mã nguồn hiện tại (commit `5f81448`, nhánh `dev`).
->
-> Lưu ý: đây là ảnh chụp **trước** Phase 2 (fork hardening). Các thay đổi về license, updater,
-> star-count, skills mặc định và publish nằm ở [`docs/upstream-audit.md`](upstream-audit.md) §10;
-> telemetry đã bị xoá hẳn trong đợt cleanup 2026-10-30.
+> Tài liệu này phản ánh **code tại nhánh `chore/docs-ai`**, commit gốc `52fc641` (2026-10-30).
+> Mọi khẳng định dưới đây đã được đối chiếu với source; chỗ nào chưa kiểm được ghi rõ.
+> Khi tài liệu này mâu thuẫn với code, **code thắng**.
 
 ---
 
-## 1. Dự án là gì
+## 1. Sản phẩm là gì
 
-Onni Work là một **cockpit chạy local để điều phối nhiều AI coding agent song song** trên một repo.
-Người dùng nhập task, chọn workflow và backend (Claude Code, Codex, OpenCode, Cursor, Copilot ACP, Junie, Pi),
-rồi theo dõi agent làm việc theo thời gian thực: từng bước, tool call, token, diff.
+Onni Work là cockpit **local** để chạy và theo dõi nhiều task của AI coding agent trên một repo.
+Người dùng nhập task, chọn backend (`claude`, `codex`, `opencode`, `cursor`, `pi`, `junie`,
+`copilot`) và workflow; mỗi task chạy trong **một git worktree riêng**, stream realtime các bước,
+tool call, token và diff, rồi dừng ở một trạng thái kết thúc do người dùng quyết định.
 
-Các nguyên tắc cốt lõi:
+Ba nguyên tắc:
 
-- **Local-first**: không account, không database, không cloud. Trạng thái là JSON/NDJSON/Markdown trên đĩa.
-- **Zero-config**: mọi thứ được *khám phá* từ repo, môi trường, `gh`; thiếu dependency thì hệ thống thu nhỏ lại chứ không chết.
-- **Cách ly bằng git worktree**: mỗi task chạy trong worktree + branch riêng, kết thúc ở **review gate**, không bao giờ tự merge.
-- **Bề mặt chính là app desktop** (Tauri), HTTP loopback chỉ là transport nội bộ.
-
----
-
-## 2. Trạng thái repo hiện tại
-
-| Hạng mục | Giá trị |
-| --- | --- |
-| Remote | `origin` → `https://github.com/doantuan22/Onni_Work.git` |
-| Nhánh | `main` và `dev` (đang đứng ở `dev`), cùng trỏ một commit |
-| Lịch sử | 1 commit gốc: `d5146dc Initial commit: Onni Work` + `5f81448 docs: clear README` |
-| Tag | không còn (đã xoá toàn bộ tag upstream) |
-| Dung lượng `.git` | ~27 MB sau khi `gc --prune=now` (trước đó 1.3 GB vì chứa lịch sử upstream) |
-| Nội dung đã lược bỏ | README.md (rỗng), `README.zh-CN.md`/`README.zh-TW.md` (còn), `docs/architecture/`, `docs/mockups/`, component `scroll-area.tsx`, permission `request_update.toml` |
-
-Lịch sử upstream (open-mercato/cezar) **không còn** trong repo này; muốn lấy cập nhật gốc phải thêm lại remote và merge với `--allow-unrelated-histories`.
+- **Local-first**: không account, không database, không cloud. Trạng thái là JSON / NDJSON /
+  Markdown trên đĩa, dưới `.ai/onni/` (theo repo) và `~/.onni/` (theo user).
+- **Zero-config**: mọi thứ được khám phá từ repo, môi trường, `gh` và tiến trình đang chạy; thiếu
+  dependency thì thu nhỏ tính năng, không chết boot.
+- **Không tự merge**: không có auto-merge. Task kết thúc ở `review` **chỉ khi** review gate được
+  bật (mặc định TẮT); merge PR là thao tác người dùng bấm.
 
 ---
 
-## 3. Cấu trúc thư mục
+## 2. Cấu trúc package
 
-```
-D:\Multi Agent
-├── packages/
-│   ├── work/            @onni/work        Service + CLI (toàn bộ engine)
-│   │   ├── src/          ~150 module nguồn + test cạnh file
-│   │   ├── test/         unit (node:test) + e2e package (pack/install tarball)
-│   │   └── web/dist/     cockpit đã build, CLI phục vụ tĩnh (gitignored)
-│   ├── contract/         @onni/contract  Zod schema cho toàn bộ HTTP API
-│   ├── api-client/       @onni/api-client  Typed client + kiểu SSE/WS (Node-free)
-│   ├── web/              @onni/web     Cockpit SPA (React 19 + Vite + Tailwind v4)
-│   └── desktop/          @onni/desktop Shell Tauri 2 (KHÔNG phải npm workspace)
-│       ├── src-tauri/    Rust: lib.rs, disclaim.rs
-│       └── ui/           Splash page + icon
-├── docs/
-│   ├── superpowers/      Plan/ghi chú của agent (không build)
-│   └── *.md              reference, project-overview, upstream-audit, …
-├── scripts/              dev.mjs (boot API + Vite)
-├── tests/                Smoke e2e cho runner agentic `e2e` (KHÔNG do vitest chạy)
-├── .ai/                  Bộ nhớ vận hành: specs/, scripts/, skills/, qa/, plans/
-├── .github/workflows/    ci, codeql, desktop-check, desktop-release, release-*, backport, nightly
-├── AGENTS.md             Quy ước làm việc trong repo (đọc trước khi sửa code)
-├── AGENT_PROTOCOL.md     Hợp đồng event giữa runner và UI
-├── BACKWARD_COMPATIBILITY.md  Bề mặt công khai không được phá vỡ
-└── e2e.config.ts         Cấu hình runner e2e agentic (target: web, ONNI_DRY_RUN=1)
-```
+Bốn npm workspace dưới root `private`, cộng một package desktop cố ý nằm ngoài workspace:
 
-**4 npm workspace**: `contract`, `api-client`, `onni`, `web`. `desktop` cố ý đứng ngoài
-để `npm ci` ở root không kéo Tauri CLI.
+| Đường dẫn | Package | Vai trò |
+| --- | --- | --- |
+| `packages/work` | `@onni/work` | Service + CLI + toàn bộ engine. `bin`: `onni`, `onni-cli`, `onni-run`. Phục vụ cockpit đã build từ `packages/work/web/dist`. |
+| `packages/contract` | `@onni/contract` | Toàn bộ schema zod của HTTP API; type suy ra bằng `z.infer`. Node-free. |
+| `packages/api-client` | `@onni/api-client` | Typed client trên `AppType` của Hono + kiểu SSE/WS + helper scope `/p/:projectId`. Node-free. |
+| `packages/web` | `@onni/web` | Cockpit SPA (React 19 + Vite + Tailwind v4 + shadcn/ui). Build ra `packages/work/web/dist`. |
+| `packages/desktop` | `@onni/desktop` | Shell Tauri 2 (Rust). **Không phải npm workspace**; có `package-lock.json` riêng; nằm ngoài `npm install` ở root. |
+
+`packages/work/scripts/inline-contract.mjs` chạy ở `postbuild`: nó nhúng `@onni/contract` (bundle
+và declaration) vào `dist/contract/` rồi trỏ lại các import, vì contract là package `private`
+mà tarball không thể resolve từ npm.
 
 ---
 
-## 4. Kiến trúc hệ thống
-
-### 4.1 Ba lớp
+## 3. Kiến trúc ba lớp
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  DESKTOP SHELL (Rust / Tauri 2)   packages/desktop/src-tauri         │
-│  • cửa sổ + title bar overlay, splash, tray, single-instance, badge  │
-│  • chạy engine đã build sẵn (link hoặc ONNI_DESKTOP_ENTRY)            │
-│  • spawn sidecar, chờ /api/v1/health, điều hướng webview tới cockpit │
-│  • menu Versions (đổi link), trang lỗi + Restart                     │
+│  DESKTOP SHELL — packages/desktop/src-tauri (Rust, Tauri 2)          │
+│  cửa sổ + tray (Open/Quit) + badge taskbar + single-instance          │
+│  chạy engine đã build: ONNI_DESKTOP_ENTRY, nếu không thì              │
+│  ~/.onni/versions/current; menu Versions đổi link; trang lỗi + Restart│
 └───────────────┬──────────────────────────────────────────────────────┘
-                │ HTTP loopback 127.0.0.1:<port>  (transport nội bộ)
+                │ sidecar: node <entry> --no-open  ·  HTTP loopback
 ┌───────────────▼──────────────────────────────────────────────────────┐
-│  SERVICE + ENGINE (Node 20+, TypeScript ESM)   packages/work        │
-│  • Hono HTTP API dưới /api/v1  + SSE + WebSocket                     │
-│  • RunManager, workflow runner, runner adapters cho từng CLI agent   │
-│  • git worktree per task, diff base, review gate, tạo draft PR (gh)  │
-│  • dispatch task con, automations, skills, tracker, webhooks          │
-│  • trạng thái: JSON/NDJSON dưới .ai/onni/ và ~/.onni/              │
+│  SERVICE + ENGINE — packages/work (Node 20+, TypeScript ESM)          │
+│  Hono: /api/v1 · SSE /api/v1/workspace/events · WS /api/v1/ws         │
+│  RunManager + workflow runner + 7 runner adapter                      │
+│  git worktree mỗi task · diff base · draft PR qua gh                  │
+│  dispatch, automations, skills, tracker, webhooks, agent-config       │
 └───────────────┬──────────────────────────────────────────────────────┘
                 │ contract (zod) — một định nghĩa cho cả hai phía
 ┌───────────────▼──────────────────────────────────────────────────────┐
-│  COCKPIT SPA (React 19)   packages/web                               │
-│  • TanStack Query + 1 kết nối SSE toàn cục + 1 WebSocket            │
-│  • routes: tasks, task thread, diff, preview, github, inbox,         │
-│    automations, skills, settings, workflows, dashboard…              │
+│  COCKPIT SPA — packages/web (React 19)                                │
+│  TanStack Query · một SSE toàn cục · một WebSocket (bus subscription) │
+│  route dưới /p/:projectId/…; settings ngoài scope                     │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Hai package hợp đồng (dùng chung)
+Điểm quan trọng: **desktop không có logic nghiệp vụ**. Nó spawn engine Node và điều hướng webview
+tới cockpit. Cùng engine đó chạy được không cần desktop: `node packages/work/dist/index.js`.
 
-| Package | Vai trò | Ràng buộc |
-| --- | --- | --- |
-| `packages/contract` | Mỗi request/response là **một zod schema**, TypeScript type suy ra bằng `z.infer` | Không import `node:*`, không `@types/node` |
-| `packages/api-client` | Typed client trên `AppType` của Hono, kiểu SSE/WS, helper scope `/p/:projectId` | Node-free; service chỉ được import trong test |
-
-Bất biến HTTP (xem `AGENTS.md` § The HTTP API):
-route phải được **chain vào family builder** để Hono suy ra type; validate body/param/query bằng middleware,
-không parse trong handler; mọi thứ trả lời dưới `/api/v1`.
-`contract-parity*.test.ts` kiểm tra schema và route khớp nhau cả hai chiều.
-
-### 4.3 Thành phần engine (`packages/work/src`)
+### 3.1 Thành phần engine (`packages/work/src`)
 
 | Thư mục / file | Chức năng |
 | --- | --- |
-| `index.ts` | CLI: `serve` (mặc định), `run`, `init`, `projects`, `install`, `update`, `versions`, `use`, `link`, `server-*` |
-| `server/` | Hono app, route families, SSE, WS hub, guard origin/CSRF, static UI, GitHub/PR, checkout, capabilities |
-| `runs/` | `RunStore`: index `runs.json` (atomic tmp+rename), 1 file NDJSON event/run, bus sự kiện in-process |
-| `workflows/` | Load/normalize YAML (`steps` hoặc shorthand `skills`), chạy step, retry, continue, recovery, dispatch, landing |
-| `core/` | Seam `AgentRunner`/`AgentSession`, adapters backend, mapping event v1/v2, model catalog, detect |
-| `dispatch/` | Agent cha giao task con: tối đa 4 con in-flight, budget con trích từ cha, report queue 20 |
-| `automations/` | Timer/poll GitHub, deferred start, coordinator, builtin skill |
-| `skills*` | Playbook Markdown: local → `.agents` → global → team repo (cache nền) |
-| `workspace/` | Registry `~/.onni/config.json`, migrations, semaphore `maxParallel`, agent accounts |
-| `git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` | Worktree/task, chọn base diff đúng, chọn remote PR/push |
-| `agent-config/` | Đọc/ghi file config gốc của các agent (chỉ local, byte-exact) |
-| `paths.ts` | `onniHomeDir()` — mọi đường dẫn `~/.onni` đi qua đây (`ONNI_HOME` cho test/container) |
-| `release/`, `self-update/`, `server-install/` | Đóng gói, tự cập nhật, cài server |
+| `index.ts` | CLI. Lệnh: `serve` (mặc định), `run`, `init`, `projects`, `task`, `automation`, `runs`, `tracker-connections`, `secrets`, `server-install`, `server-deploy`, `server-uninstall`, `link`, `unlink`. |
+| `server/` | Hono app, ~40 family route, SSE, WS hub, guard origin, static UI, GitHub/PR, capabilities, validators. |
+| `runs/` | `RunStore` (index `runs.json`, một file NDJSON mỗi run, bus sự kiện in-process), retention, review gate, auto-name, layouts, drafts. |
+| `workflows/` | Load/normalize YAML, chạy step, retry, continue, recovery, dispatch, landing, graph (`version: 2`). |
+| `core/` | Seam `AgentRunner`/`AgentSession`, adapter từng backend, mapping v1 `AgentEvent` → v2 `UiEvent`, model catalog, detect, agent profiles. |
+| `dispatch/` | Agent cha giao task con qua `onni task`; tối đa 4 con in-flight, budget con trích từ cha. |
+| `automations/` | Poll GitHub / lịch, deferred start, receipts, coordinator. |
+| `skills*.ts` | Playbook Markdown: local → `.agents` mirror → global → team repo (cache nền). |
+| `workspace/` | Registry `~/.onni/config.json`, migrations, semaphore `maxParallel`, agent accounts, secrets. |
+| `git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` | Worktree mỗi task, chọn base diff đúng, chọn remote push/PR. |
+| `agent-config/` | Đọc/ghi file config gốc của agent (byte-exact, chỉ local). |
+| `self-update/` | **Chỉ còn layout phiên bản local**: `onni link` / `onni unlink` ghi `~/.onni/versions`. Không registry, không npm, không server. |
+| `server-install/`, `webhooks/`, `worktree-lifecycle/` | Cài cockpit lên VPS, webhook ra ngoài, lịch sử chuẩn bị/dọn worktree. |
+| `paths.ts` | `onniHomeDir()` — mọi đường dẫn `~/.onni` đi qua đây; `ONNI_HOME` cho test/container. |
 
-### 4.4 Backend agent hiện có
+### 3.2 Backend agent
 
-`claude-cli-runner` (id cũ `claude-cli` giữ để đọc run record cũ), `codex-app-server-runner`,
-`opencode-server-runner`, `cursor-agent-runner`, `copilot-acp-runner`, `junie-runner`, `pi-runner`.
-Tất cả đi qua một seam duy nhất và phát đồng thời stream v1 `AgentEvent` + v2 `UiEvent`
-(`AGENT_PROTOCOL.md`). `ONNI_DRY_RUN=1` dùng mock agent có sẵn, không cần login, không cần mạng.
+`RUNNER_IDS = ['claude','codex','opencode','cursor','pi','junie','copilot']` trong
+`core/agent-runner.ts` là nguồn duy nhất; `runnerSchema` trong contract phải khớp.
+`claude-cli` là id cũ, chỉ giữ để đọc run record cũ. Mỗi backend implement cùng một seam và phát
+đồng thời stream v1 + v2. `ONNI_DRY_RUN=1` dùng mock agent: không login, không mạng.
 
 ---
 
-## 5. Chức năng chính
+## 4. Luồng chạy một task
 
-| Nhóm | Người dùng làm được gì |
+1. **Tạo** — `POST /api/v1/p/:projectId/runs` (hoặc composer). Record được tạo với
+   `status: 'queued'`, snapshot workflow + step.
+2. **Xếp hàng** — `WorkspaceSemaphore` giữ `resources.maxParallel` (mặc định 2) cho cả process.
+   Prompt của run `queued` vẫn sửa được (`queuedMessages`), gộp vào `{{task}}` lúc dequeue.
+3. **Chuẩn bị worktree** — `.ai/onni/worktrees/<runId>` trên nhánh `onni/<id8>` (hoặc branch do
+   namer đặt theo `branchNaming`), fork từ base branch.
+4. **Chạy step** — `RunManager.execute` mở session tới backend, chuyển `queued → running`, stream
+   event vào NDJSON và SSE. Mỗi step là agent (`prompt`/`skill`) XOR check (`command`).
+5. **Park** — agent kết thúc lượt nhưng còn việc downstream và khai báo `ONNI:MONITORING`:
+   `running` + `activity: 'monitoring'`, có timer đánh thức. Hỏi người dùng (`ONNI:ASK`) hoặc chờ
+   CI/con: `waiting`.
+6. **Kết thúc** — `settleSuccess`:
+   - gate BẬT + có diff + không autonomous → `review`;
+   - ngược lại → `done`, diff để nguyên trong worktree.
+7. **Sau kết thúc** — người dùng xem Changes, `Continue` (mở lại session), `Finish`/accept
+   (`review → done`), tạo draft PR qua `gh` (`POST /runs/:id/pr`), hoặc merge PR
+   (`POST /api/v1/github/prs/:number/merge`, thao tác người dùng).
+
+Realtime: event đi vào `runs/<id>.ndjson` (append-only) và được SSE replay + stream live, dedupe
+theo `seq`. Cockpit giữ **một** SSE toàn cục và **một** WebSocket; tín hiệu khác dùng topic của
+WS bus, không dùng `refetchInterval`.
+
+---
+
+## 5. State machine của run (đối chiếu `packages/contract/src/runs.ts`)
+
+`runStatusSchema` (dòng 50) có đúng 7 trạng thái:
+`queued`, `running`, `waiting`, `review`, `done`, `failed`, `cancelled`.
+`runActivitySchema` chỉ có `monitoring` — là **sub-state của `running`**, không phải status riêng.
+
+```
+            tạo
+             │
+             ▼
+         ┌────────┐  scheduler nhận slot   ┌─────────┐
+         │ queued │ ──────────────────────▶ │ running │◀────────┐
+         └────────┘                          └─────────┘         │
+             ▲                               │  │  │            │ resume/continue
+             │ retry / requeue               │  │  └─▶ running   │
+             │                               │  │      + activity: monitoring
+             │                               │  │      (ONNI:MONITORING, có timer)
+             │                               │  ▼
+             │                            ┌─────────┐
+             │        ONNI:ASK / chờ CI   │ waiting │
+             │        / worktree scripts  └─────────┘
+             │                               │
+             │             settleSuccess     │
+             │        ┌──────────────────────┴─────────────┐
+             │        ▼                                    ▼
+             │   ┌────────┐  gate BẬT + có diff      ┌──────┐
+             │   │ review │  + không autonomous  ──▶ │ done │
+             │   └────────┘                          └──────┘
+             │        │ accept / Finish                  ▲
+             │        └──────────────────────────────────┘
+             │
+             ▼
+      failed / cancelled  (terminal; retry đưa về queued)
+```
+
+Bảng chuyển trạng thái đã kiểm trong code:
+
+| Từ | Sang | Điều kiện / nơi phát |
+| --- | --- | --- |
+| — | `queued` | tạo run (`runs/store.ts`, `workflows/run.ts`) |
+| `queued` | `running` | scheduler nhận slot |
+| `running` | `waiting` | `ONNI:ASK`, chờ CI/con, worktree scripts cần can thiệp |
+| `running` | `running` + `monitoring` | `ONNI:MONITORING`; timer đánh thức đưa lại `running` |
+| `waiting` | `running` | người dùng nhắn, nudge tự động, timer monitoring |
+| `running`/`waiting` | `review` | `settleSuccess` khi `reviewGateEnabled && có diff && !autonomous` |
+| `running`/`waiting` | `done` | settle không qua gate, hoặc autonomous |
+| `review` | `done` | accept/Finish (`completionReason: 'accepted'`) |
+| `review`/`running`/`waiting` | `cancelled` | `POST /runs/:id/cancel` |
+| `failed` | `queued` | retry / retry step |
+| `waiting` (worktree scripts) | `queued` | hành động recovery tường minh |
+
+`stepStatusSchema` rộng hơn run: thêm `pending` và `skipped`.
+
+---
+
+## 6. Lưu trữ
+
+| Đường dẫn | Nội dung |
 | --- | --- |
-| Task | Tạo task từ prompt/skill/workflow, gán project, chọn backend & model cho từng step; queue, sửa prompt khi còn queued, start-now, pause, cancel, continue, retry step |
-| Theo dõi | Thread realtime: step, tool call, token/cost, diff, handoff note, monitoring state |
-| Review gate | Mọi task dừng ở `review`; xem diff, commit theo step, chỉnh message, land vào branch |
-| Git/PR | Tạo **draft PR** qua `gh` (không `gh` → `{available:false}`), base remote tự xác định (fork-parent) |
-| So sánh | Chạy cùng một task trên nhiều backend rồi so sánh kết quả (`compare-variants`) |
-| Dispatch | Agent cha tạo task con (`onni task create`), theo dõi/report; con có worktree + branch riêng |
-| Automations | Bật automation theo lịch/poll GitHub issue-PR, có lookback an toàn |
-| Skills | Playbook Markdown local/team áp vào system prompt; slash-skill trong prompt |
-| Agent config | Sửa file settings/MCP/memory gốc của Claude/Codex/OpenCode theo scope |
-| Settings | Workspace (maxParallel, memory limit), agent profiles/accounts, tracker, privacy |
-| Đa project | Registry mọi repo đã mở; route `/p/:projectId`; `singleProject` mode |
-| Desktop | Tray (Open/Quit), single-instance, badge số run đang chạy, menu Versions, engine local |
+| `.ai/onni/runs.json` | Index run của project (JSON array của `runRecordSchema`), ghi atomic tmp+rename. |
+| `.ai/onni/runs/<id>.ndjson` | Event append-only của từng run — nguồn replay SSE. |
+| `.ai/onni/runs/<id>.handoff.md`, `<id>-images/` | Handoff journal và ảnh đính kèm. |
+| `.ai/onni/worktrees/<runId>` | Worktree của task; orphan được prune lúc khởi động. |
+| `.ai/onni/workflows/`, `skills/` | Workflow + skill của repo — **committable**. |
+| `.ai/onni/config.json` | Cấu hình project, optional, mọi key có default. |
+| `.ai/onni/ui-state.json`, `todos.json`, `attachments/`, `drafts/`, `layouts/`, `tmp/` | UI state, inbox, thư viện đính kèm, nháp composer, layout task, temp của agent. |
+| `~/.onni/config.json` (+ `.bak`) | Workspace config **và** project registry; ghi qua read-modify-write + lock, `0600`. |
+| `~/.onni/agent-accounts.json` | Account các agent (file riêng để không bị config cũ nuốt). |
+| `~/.onni/secrets/` | Secret store (`0700`/`0600`). |
+| `~/.onni/tracker-connections/` | Credential tracker theo project. |
+| `~/.onni/versions/` | Layout engine cho desktop (`current` → `<id>`; junction trên Windows). |
+| `~/.cache/onni/` | Cache mạng (skill team…) — xoá được, tự dựng lại. |
+
+Nguyên tắc: **state được ghi, không bị bắt buộc**. Xoá `.ai/onni/` hay `~/.cache/onni/` thì hệ
+thống tự dựng lại. Với `~/.onni`, xoá `config.json` thì `config.json.bak` khôi phục registry;
+muốn reset thật thì xoá cả thư mục.
 
 ---
 
-## 6. Luồng hoạt động
+## 7. Bảo mật loopback
 
-### 6.1 Khởi động desktop
-
-```
-Tauri start
-  └─ setup: tạo window + splash, init tray, đăng ký single-instance
-       └─ thread supervise():
-            port = pick_port()                      # port trống
-            entry = ONNI_DESKTOP_ENTRY, else ~/.onni/versions/current
-            spawn: node <entry> serve --no-open --port <port>
-            poll GET /api/v1/health (timeout)
-              ├─ OK    → webview.navigate http://127.0.0.1:<port>
-              │          + thread monitor_badge: 10s/lần GET /api/v1/runs
-              │            → đếm run "running" → set overlay icon (Windows) / badge count
-              └─ FAIL  → trang failure + nút Restart (không có báo lỗi qua mạng)
-       └─ đóng cửa sổ = ẩn xuống tray (agent vẫn chạy); Quit ở tray/menu mới dừng sidecar
-```
-
-Chế độ khác: `npm run dev` (API + Vite, `scripts/dev.mjs`), `onni serve` (port mặc định **4321**),
-`onni run <workflow>` (headless, không cần server).
-
-### 6.2 Tạo và chạy một task
-
-```
-POST /api/v1/runs  (project-scoped: /api/v1/p/:projectId/runs)
-  └─ RunStore.create → status "queued"   (prompt còn sửa được, queuedMessages xếp chồng)
-       └─ WorkflowRunner dequeue (scheduler / maxParallel semaphore)
-            ├─ tạo worktree .ai/onni/worktrees/<runId> + branch onni/<id8>
-            ├─ với mỗi step: dựng prompt ({{task}} + skill + context)
-            │    → AgentRunner(backend).start()  → stream AgentEvent
-            │    → map sang UiEvent → ghi NDJSON + phát SSE
-            │    → check step (shell command) hoặc agent step; onFail.retry
-            ├─ hết step → status "review"  (không auto-merge)
-            └─ người dùng: land / tạo draft PR / cancel / continue
-```
-
-**State machine của run** (`packages/contract/src/runs.ts`):
-
-```
-queued → running ⇄ waiting → review → done
-   │         │         │        └→ failed / cancelled
-   │         │         └→ running (activity: monitoring)
-   └→ cancelled
-```
-
-Step có thêm `pending`, `skipped`, `waiting`, `review`.
-
-### 6.3 Dữ liệu realtime (một kết nối mỗi loại)
-
-| Kênh | Endpoint | Dùng cho |
-| --- | --- | --- |
-| SSE | `GET /api/v1/workspace/events` | Mọi event run (replay từ NDJSON rồi stream live, dedup theo `seq`), snapshot đa project |
-| WebSocket | `/api/v1/ws` (topic `health`, …) | Tín hiệu live dạng "subscribe khi cần": publisher bật ở 0→1 subscriber, tắt ở 1→0 |
-
-Cockpit giữ **một** SSE + **một** WS toàn cục và patch TanStack Query cache tại chỗ;
-refetch toàn bộ chỉ khi reconnect hoặc tab hiện lại.
-
-### 6.4 Dispatch (agent chính giao việc cho agent con)
-
-`onni task create` (HTTP tới `ONNI_API_URL`) → task con có worktree/branch riêng, budget trích từ cha,
-tối đa **4 con in-flight**, report queue 20, kết quả quay về agent cha (`onni task report`).
-Bật mặc định; tắt bằng `ONNI_DISPATCH=0`.
-
-### 6.5 Automations
-
-Timer chỉ arm cho automation người dùng đã bật; poll GitHub theo lookback; kết quả dùng lại
-đúng đường dispatch/deferred-start. Bật mặc định; `ONNI_AUTOMATIONS=0` để tắt.
-
-### 6.6 Review → PR
-
-Diff được neo bằng `resolveTaskDiffBase` (merge-base với base ref *mới nhất*, hoặc branch agent đã checkout
-tại thời điểm run bắt đầu) để không tính lịch sử ngoài task. PR luôn là **draft**, target là remote
-được `resolveTaskRemotes` xác định (không hard-code `origin`).
+- Server bind `127.0.0.1` (mặc định; `--bind-host` chỉ dùng khi có reverse proxy).
+- Guard chạy trước mọi route `/api/*` trừ `/api/v1/health`:
+  - local mode: từ chối `Host` không phải loopback (`isLoopbackHostHeader`, neo đúng
+    `127.0.0.0/8` — không dùng prefix `127.` để tránh `127.0.0.1.evil.com`);
+  - cả hai mode: từ chối request ghi khác origin (CSRF).
+- CORS **chỉ** mở cho `/api/v1/health` (discovery). Health không chứa path project hay secret.
+- WebSocket không có CORS: upgrade guard chỉ nhận origin loopback/same-authority; topic
+  `health` là topic duy nhất được đánh dấu `loopbackReadable`.
+- Ghi file config agent (`PUT /api/agent-config/:id`) là năng lực local-only: 409 khi
+  `capabilities().localHandoff === false` (đóng đường RCE qua hooks).
+- `assertOnniHomeWriteIsSandboxed` chặn test ghi vào `~/.onni` thật.
+- **Không có telemetry gửi đi.** Số liệu host/process trong app là local.
 
 ---
 
-## 7. Lưu trữ & cấu hình (zero-config)
+## 8. Dev — build — test
 
-| Đường dẫn | Nội dung | Ghi chú |
-| --- | --- | --- |
-| `.ai/onni/runs.json` | Index toàn bộ run của project | atomic tmp+rename, debounce, zod-validate |
-| `.ai/onni/runs/<id>.ndjson` | Event append-only của từng run | nguồn replay SSE |
-| `.ai/onni/runs/<id>.handoff.md`, `<id>-images/` | Handoff note, ảnh đính kèm | ảnh không nhét base64 vào runs.json |
-| `.ai/onni/worktrees/<runId>` | Worktree của task | prune orphan khi khởi động |
-| `.ai/onni/workflows/`, `skills/` | Workflow + skill của repo (committable) | `quick-task` luôn có sẵn |
-| `.ai/onni/config.json` (optional) | Cấu hình project | mọi key có default |
-| `~/.onni/config.json` (+ `.bak`) | Workspace config **và** registry project | ghi qua read-modify-write + lock |
-| `~/.onni/agent-accounts.json` | Account các agent | file riêng để không bị mất khi config cũ |
-| `~/.onni/tracker-connections/` | Credentials tracker theo project | parse vào object, không vào `process.env` |
-| `~/.cache/onni/` | Cache mạng: skills team, … | xoá được, tự dựng lại |
+Đã chạy trên máy soạn tài liệu (Windows 11, Git Bash, Node 24):
 
-Nguyên tắc: **state được ghi, không bao giờ bị bắt buộc**. Xoá `.ai/onni/`, `~/.cache/onni/`, `~/.onni/`
-thì hệ thống tự tái tạo (riêng `~/.onni` xoá cả thư mục mới là reset thật).
-
-Các cờ môi trường đáng chú ý: `ONNI_HOME`, `ONNI_DRY_RUN`, `ONNI_DISPATCH`, `ONNI_AUTOMATIONS`,
-`ONNI_DESIGN_MODE`, `ONNI_SKILLS_AUTO_UPDATE`.
-
----
-
-## 8. Bảo mật & phạm vi local
-
-- Server chỉ bind `127.0.0.1`; guard `/api/*` chặn `Host` không phải loopback (DNS-rebinding)
-  và chặn request ghi khác origin (CSRF) — zero-config, cockpit same-origin đi qua bình thường.
-- CORS chỉ mở cho `/api/v1/health`; WS chỉ nhận origin loopback (WS không có CORS).
-- Ghi file config agent (`PUT /api/agent-config/:id`) là **năng lực local-only**, trả 409 khi
-  `capabilities().localHandoff = false` — đóng đường RCE qua hooks.
-- **Không có telemetry**: pipeline gửi usage/lỗi đã bị xoá (service, contract, cockpit, desktop);
-  không có đường nào rời máy. Host/process usage trong app là số liệu local, không gửi đi.
-- `assertOnniHomeWriteIsSandboxed` chặn test ghi nhầm vào `~/.onni` thật.
-
----
-
-## 9. Dev – Build – Test – CI
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run typecheck` | **pass** (contract → api-client → server → web) |
+| `npm test` | **fail 342/12.328 test (89/761 file)** trên Windows native; mẫu lỗi đều do môi trường: `EPERM` khi dọn thư mục tạm/worktree, mode `0600` vs `0666`, `/bin/sh`, đường dẫn POSIX. **Chưa chạy lại trên Linux/WSL.** |
+| `npm run test:unit` | **fail 1 test** trên Windows: `test-env-launcher.test.ts` (`spawnSync /bin/sh ENOENT`) — test POSIX-only |
+| `npm run build` | **pass** (tsc + vite + `check:pack`: 1088 file, 167 file trong `web/dist`) |
+| `npm run test:package` | **pass 4/4** (pack tarball, cài vào consumer tách biệt, chạy CLI `ONNI_DRY_RUN=1`) |
+| `npm run test:e2e` | cần browser provider; **chưa chạy** |
 
 ```bash
-npm install                 # 4 workspace
-npm run dev                 # API + Vite (HMR), mở browser cho dev
-npm run typecheck           # contract + api-client + server + web
-npm test                    # vitest: server + cockpit unit suites
-npm run test:unit           # node:test: core module nhanh
-npm run build               # tsc → dist, vite → packages/work/web/dist, check:pack
-npm run test:package        # pack tarball rồi chạy CLI đã build
-npm run test:e2e            # UI smoke thật (agent-browser), ONNI_DRY_RUN=1
+npm install
+npm run dev            # API :4321 + Vite
+npm run typecheck
+npm test               # vitest
+npm run test:unit      # node:test (POSIX)
+npm run build          # tsc + vite + check:pack
+npm run test:package   # pack tarball và chạy CLI đã build
+npm run test:e2e       # smoke UI thật (ONNI_DRY_RUN=1)
 ```
 
-| Workflow CI | Nội dung |
+Desktop (cài riêng):
+
+```bash
+cd packages/desktop
+npm install
+npm run dev            # tauri dev
+npm run build          # tauri build
+```
+
+Trên Windows, **Smart App Control phải TẮT** (nếu không `cargo` lỗi 4551) và **Developer Mode phải
+BẬT** (nếu không test tạo symlink lỗi `EPERM`). CI: `ci.yml` (typecheck, vitest shard 3, unit,
+build, package, webhook đa nền tảng) + `desktop-check.yml` (`cargo check`/`cargo test`, Linux và
+Windows) + `codeql.yml`.
+
+---
+
+## 9. Mâu thuẫn giữa tài liệu cũ và code (đã sửa)
+
+Bản `docs/project-overview.md` trước đây được viết từ một commit khác và có các điểm sai:
+
+| Tài liệu cũ nói | Code thực tế |
 | --- | --- |
-| `ci.yml` | typecheck, vitest, test:unit, build, test:package |
-| `desktop-check.yml` | `cargo check --locked --all-targets` + `cargo test --locked --lib` (Linux + Windows) |
-| `codeql.yml` | Quét bảo mật CodeQL |
+| "Mọi task dừng ở `review`" | Review gate **mặc định TẮT**. Run thành công không có gate (hoặc autonomous) về thẳng `done`; diff nằm lại worktree. Chỉ khi `config.reviewGate` / `ONNI_REVIEW_GATE=1` mới park ở `review`. |
+| CLI có `install`, `update`, `versions`, `use` | Không tồn tại. CLI thật: `serve`, `run`, `init`, `projects`, `task`, `automation`, `runs`, `tracker-connections`, `secrets`, `server-install/deploy/uninstall`, `link`, `unlink`. |
+| "1 commit gốc, nhánh `dev`, `.git` ~27 MB" | Sai; lịch sử riêng đã có 30+ commit, nhánh làm việc là `chore/docs-ai`. |
+| `README.md` rỗng, còn `README.zh-CN.md` | README có nội dung; không còn file README tiếng Trung. |
+| Có thư mục `release/` | Không tồn tại. |
+| Ba lớp: desktop là "bề mặt chính", HTTP chỉ là transport nội bộ | Đúng về định hướng, nhưng engine chạy độc lập được: `node packages/work/dist/index.js` phục vụ đúng cockpit đó qua browser. |
+| `npm run typecheck` chỉ "server + web" (trong `docs/reference.md`) | Thực tế chạy cả `contract` và `api-client` trước. |
 
-**Ràng buộc trên máy dev hiện tại (Windows 11)**: Smart App Control đã tắt và Developer Mode đã
-bật, nên `cargo check` / `cargo test` / `cargo build` chạy được local (không còn os error 4551).
-
----
-
-## 10. Khác biệt của bản này so với Onni Work gốc
-
-| Hạng mục | Onni Work gốc | Bản hiện tại |
-| --- | --- | --- |
-| Bề mặt | Cockpit web mở bằng browser | **Desktop-first**: app Tauri, không còn mục "Open in browser" trong menu |
-| Tray | không có | Tray icon Open/Quit, click trái mở lại cửa sổ |
-| Đóng cửa sổ | thoát app | **Ẩn xuống tray**, agent tiếp tục chạy tới khi Quit |
-| Nhiều instance | không kiểm soát | Single-instance: lần mở thứ hai focus cửa sổ đang chạy |
-| Badge | không có | Đếm run `running` của project đang mở, poll loopback 10s; Windows dùng overlay icon |
-| Lịch sử git | 1694 commit upstream | 1 commit gốc của dự án |
-| Tài liệu thừa | `docs/architecture/`, `docs/mockups/` | đã xoá; README.md rỗng |
-
-Phần **hosted/remote mode** (`ONNI_REMOTE`) được giữ nguyên, không đụng tới.
+Ngoài ra, comment trong code cũng có chỗ lệch (đã ghi nhận, không sửa logic):
+`core/agent-runner.ts` nói "Five interchangeable backends" nhưng liệt kê sáu và `RUNNER_IDS` có
+bảy; `contract/src/health.ts` mô tả automations "off — the default" trong khi code là
+`ONNI_AUTOMATIONS !== '0'` (mặc định BẬT).
 
 ---
 
-## 11. Việc còn mở
+## 10. Việc còn mở / chưa xác minh
 
-1. **Đóng cửa sổ = ẩn xuống tray**: hành vi mới, người dùng quen "đóng là thoát" sẽ thấy app còn chạy nền.
-2. **Badge chỉ đếm run của project đang mở** (không phải toàn workspace) vì dùng `GET /api/v1/runs` của boot project.
-3. **`onni serve` từ CLI vẫn tự mở browser** (`--no-open` để tắt) — desktop đã truyền `--no-open`, nhưng CLI thuần vẫn mở.
-4. README rỗng — cần nội dung giới thiệu riêng cho Onni Work.
-5. `README.zh-CN.md`, `README.zh-TW.md` vẫn là bản dịch củan Onni Work.
+- `npm run test:e2e` chưa chạy trong đợt này (cần browser provider).
+- `npm test` chưa chạy lại trên Linux/WSL; trên Windows native có 342 test fail do môi trường
+  (xem bảng §8). CI là cổng tham chiếu.
+- `cargo check` / `cargo test` của desktop chưa chạy lại; `desktop-check.yml` là cổng CI.
+- `.ai/specs/` còn 4 link tương đối trỏ tới thư mục đã bị xoá (`.ai/runs/`, `.ai/data-model/`,
+  `.ai/prototypes/`). Specs là hồ sơ gốc, không viết lại — xem `.ai/specs/README.md`.
