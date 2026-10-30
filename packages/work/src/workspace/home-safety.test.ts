@@ -17,8 +17,9 @@ import { atomicWriteJsonSync, loadWorkspaceConfig, mergeWriteWorkspaceConfig } f
  * into the real onni home from a test process.
  */
 describe('onni home write safety', () => {
-  const originalCezHome = process.env.ONNI_HOME;
+  const originalOnniHome = process.env.ONNI_HOME;
   const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
   let pinned: string;
   let elsewhere: string;
   let fakeUserHome: string;
@@ -29,13 +30,19 @@ describe('onni home write safety', () => {
     elsewhere = mkdtempSync(join(base, 'onni-home-safety-elsewhere-'));
     fakeUserHome = mkdtempSync(join(base, 'onni-home-safety-user-'));
     process.env.ONNI_HOME = pinned;
+    // `os.homedir()` reads USERPROFILE on Windows and HOME elsewhere; pin both so these
+    // cases never resolve the developer's real home.
+    process.env.HOME = fakeUserHome;
+    process.env.USERPROFILE = fakeUserHome;
   });
 
   afterEach(() => {
-    if (originalCezHome === undefined) delete process.env.ONNI_HOME;
-    else process.env.ONNI_HOME = originalCezHome;
+    if (originalOnniHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = originalOnniHome;
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
     for (const dir of [pinned, elsewhere, fakeUserHome]) rmSync(dir, { recursive: true, force: true });
   });
 

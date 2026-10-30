@@ -34,7 +34,7 @@ npx onni                      # ...i tyle. Otwiera się przeglądarka.
      skills/                  # skille repo (bez zmian, konwencja wspólna)
      Onni Work/
        workflows/*.yaml       # chainy użytkownika (commitowalne)
-       skills/*.md            # skille tylko-cezowe (commitowalne)
+       skills/*.md            # skille tylko-onniowe (commitowalne)
        config.json            # OPCJONALNY (maxParallel, skillsRepos, model)
        runs.json              # index tasków            (gitignored)
        runs/<id>.ndjson       # eventy per task          (gitignored)

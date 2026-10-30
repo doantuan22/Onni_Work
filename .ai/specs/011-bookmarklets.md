@@ -77,7 +77,7 @@ numerów PR, zero przełączania kontekstu.
 
 - Rozszerzenie przeglądarkowe, hostowana strona bookmarkletów.
 - Wsparcie GitLab/Bitbucket (regex jest w jednym miejscu — łatwo dodać potem).
-- Zdalny dostęp do cockpitu (to zmieniłoby model bezpieczeństwa całego ceza).
+- Zdalny dostęp do cockpitu (to zmieniłoby model bezpieczeństwa całego Onni Work).
 
 ## Projekt techniczny
 

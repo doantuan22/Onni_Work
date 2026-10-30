@@ -212,15 +212,15 @@ test('team-skills cache is keyed by repoRoot — projects never see each other\'
 test('workspace org skills repos join every project\'s team skills; invalidation re-reads them', async (t) => {
   const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevHome = process.env.HOME;
-  const prevCez = process.env.ONNI_HOME;
+  const prevOnni = process.env.ONNI_HOME;
   process.env.HOME = home;
   process.env.ONNI_HOME = join(home, '.onni');
   const dirs: string[] = [home];
   t.after(() => {
     if (prevHome === undefined) delete process.env.HOME;
     else process.env.HOME = prevHome;
-    if (prevCez === undefined) delete process.env.ONNI_HOME;
-    else process.env.ONNI_HOME = prevCez;
+    if (prevOnni === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = prevOnni;
     for (const d of dirs) rmSync(d, { recursive: true, force: true });
   });
 
@@ -319,12 +319,12 @@ test('skillsDirOnly: only files under a skills/ folder are skills, at any depth'
 
 test('no team-skill source ships by default, so nothing is ever gated', async (t) => {
   const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
-  const prevCez = process.env.ONNI_HOME;
+  const prevOnni = process.env.ONNI_HOME;
   process.env.ONNI_HOME = join(home, '.onni');
   const root = mkdtempSync(join(tmpdir(), 'onni-root-'));
   t.after(() => {
-    if (prevCez === undefined) delete process.env.ONNI_HOME;
-    else process.env.ONNI_HOME = prevCez;
+    if (prevOnni === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = prevOnni;
     rmSync(home, { recursive: true, force: true });
     rmSync(root, { recursive: true, force: true });
   });
@@ -337,12 +337,12 @@ test('no team-skill source ships by default, so nothing is ever gated', async (t
 
 test('a project listing its own skillsRepos loads them ungated, and an invalid value degrades to the default', async (t) => {
   const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
-  const prevCez = process.env.ONNI_HOME;
+  const prevOnni = process.env.ONNI_HOME;
   process.env.ONNI_HOME = join(home, '.onni');
   const root = mkdtempSync(join(tmpdir(), 'onni-root-'));
   t.after(() => {
-    if (prevCez === undefined) delete process.env.ONNI_HOME;
-    else process.env.ONNI_HOME = prevCez;
+    if (prevOnni === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = prevOnni;
     rmSync(home, { recursive: true, force: true });
     rmSync(root, { recursive: true, force: true });
   });
@@ -357,15 +357,15 @@ test('a project listing its own skillsRepos loads them ungated, and an invalid v
 test('a project listing one repo at two refs keeps both; org repos only drop duplicates by identity', async (t) => {
   const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevHome = process.env.HOME;
-  const prevCez = process.env.ONNI_HOME;
+  const prevOnni = process.env.ONNI_HOME;
   process.env.HOME = home;
   process.env.ONNI_HOME = join(home, '.onni');
   const dirs: string[] = [home];
   t.after(() => {
     if (prevHome === undefined) delete process.env.HOME;
     else process.env.HOME = prevHome;
-    if (prevCez === undefined) delete process.env.ONNI_HOME;
-    else process.env.ONNI_HOME = prevCez;
+    if (prevOnni === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = prevOnni;
     for (const d of dirs) rmSync(d, { recursive: true, force: true });
   });
   const src = mkdtempSync(join(tmpdir(), 'onni-src-refs-'));

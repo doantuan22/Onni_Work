@@ -21,7 +21,7 @@ describe('the config API', () => {
   let repoRoot: string;
   let homeRoot: string;
   const savedHome = process.env.HOME;
-  const savedCezHome = process.env.ONNI_HOME;
+  const savedOnniHome = process.env.ONNI_HOME;
   const savedCodexHome = process.env.CODEX_HOME;
   const savedXdgConfigHome = process.env.XDG_CONFIG_HOME;
   const savedModelsLocked = process.env.ONNI_AGENT_MODELS_LOCKED;
@@ -49,8 +49,8 @@ describe('the config API', () => {
     rmSync(homeRoot, { recursive: true, force: true });
     if (savedHome === undefined) delete process.env.HOME;
     else process.env.HOME = savedHome;
-    if (savedCezHome === undefined) delete process.env.ONNI_HOME;
-    else process.env.ONNI_HOME = savedCezHome;
+    if (savedOnniHome === undefined) delete process.env.ONNI_HOME;
+    else process.env.ONNI_HOME = savedOnniHome;
     if (savedCodexHome === undefined) delete process.env.CODEX_HOME;
     else process.env.CODEX_HOME = savedCodexHome;
     if (savedXdgConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;

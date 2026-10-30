@@ -70,7 +70,7 @@ import { getTeamSkillsCached, materializeSkillDir, waitForTeamSkills } from '../
 import { provisionSkills } from '../skills-provision.ts';
 import { seedAgentConfigLocalLayer } from '../agent-config/seed.ts';
 import { readAgentModelProvider } from '../agent-config/models.ts';
-import { loadConfig, resolveWorktreeRetention, type CezConfig } from '../config.ts';
+import { loadConfig, resolveWorktreeRetention, type OnniConfig } from '../config.ts';
 import { isLifecycleConfigTracked } from '../worktree-lifecycle/config.ts';
 import { generateCommitMessage } from './commit-message.ts';
 import { hasUnlanded, landInPlace, landingPromptPart, READ_ONLY_PROMPT, READ_ONLY_TOOLS, type LandResult } from './landing.ts';
@@ -7764,7 +7764,7 @@ export class RunManager {
    */
   private async landingPolicy(
     run: RunRecord | undefined,
-    config: CezConfig,
+    config: OnniConfig,
     note?: (message: string) => void,
   ): Promise<ActiveRun['autoLand']> {
     if (!run || run.worktree !== false || run.readOnly || run.inPlaceBranch || config.landing !== 'auto') return undefined;

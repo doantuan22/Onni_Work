@@ -23,7 +23,7 @@ import type { FsBrowseResponse } from './fs-browse.ts';
  */
 describe('GET /api/v1/fs/browse (step 4.1)', () => {
   const savedHome = process.env.HOME;
-  const savedCezHome = process.env.ONNI_HOME;
+  const savedOnniHome = process.env.ONNI_HOME;
   const savedRemote = process.env.ONNI_REMOTE;
   const savedBrowseRoot = process.env.ONNI_BROWSE_ROOT;
   /** Stands in for the operator's `$HOME` — `os.homedir()` honors it on posix. */
@@ -65,7 +65,7 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     store.flush();
     for (const [key, value] of [
       ['HOME', savedHome],
-      ['ONNI_HOME', savedCezHome],
+      ['ONNI_HOME', savedOnniHome],
       ['ONNI_REMOTE', savedRemote],
       ['ONNI_BROWSE_ROOT', savedBrowseRoot],
     ] as const) {

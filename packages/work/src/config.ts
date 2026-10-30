@@ -158,7 +158,7 @@ const configSchema = z.object({
   askSkill: z.string().trim().min(1).max(200).optional().catch(undefined),
 });
 
-export type CezConfig = z.infer<typeof configSchema>;
+export type OnniConfig = z.infer<typeof configSchema>;
 
 /**
  * Fold the machine-wide agent defaults under a repo's own config (spec 2026-07-29-agent-profiles).
@@ -195,7 +195,7 @@ function withMachineDefaults(raw: unknown, machine: WorkspaceConfig['agentDefaul
  * cached for the same reason this one is not: `~/.onni/` is shared by every onni process on the
  * machine, so a snapshot is a staleness bug.
  */
-export async function loadConfig(repoRoot: string): Promise<CezConfig> {
+export async function loadConfig(repoRoot: string): Promise<OnniConfig> {
   const machine = (await loadWorkspaceConfig()).agentDefaults;
   let raw: string;
   try {

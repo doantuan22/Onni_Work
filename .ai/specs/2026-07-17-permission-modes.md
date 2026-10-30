@@ -194,7 +194,7 @@ Settings → Agents          /new composer                    Run thread (cockpi
 All additions are optional/additive so old files parse (BACKWARD_COMPATIBILITY
 rule on `runs.json` and `config.json`).
 
-`CezConfig` (`src/config.ts`) — new key, `.catch(undefined)` additive-safe:
+`OnniConfig` (`src/config.ts`) — new key, `.catch(undefined)` additive-safe:
 
 ```jsonc
 "permissions": {

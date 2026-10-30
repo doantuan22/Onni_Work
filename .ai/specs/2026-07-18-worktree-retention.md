@@ -80,7 +80,7 @@ Alternatives considered:
 
 **What is new:**
 
-1. **Config key** — `worktreeRetention` on `CezConfig` (`src/config.ts`):
+1. **Config key** — `worktreeRetention` on `OnniConfig` (`src/config.ts`):
    `z.number().int().min(0).max(1000).default(10).catch(10)`. Additive and
    default-safe, exactly like `maxParallel` / `memoryLimitMb`.
 
@@ -261,7 +261,7 @@ Each step leaves the app working and is unit-testable.
 
 ### Phase 1: Retention engine
 
-- 1.1 Add `worktreeRetention` to `CezConfig` (`src/config.ts`) with default 10
+- 1.1 Add `worktreeRetention` to `OnniConfig` (`src/config.ts`) with default 10
   and `.catch(10)`; extend `configAnswer` + `PUT /api/config` validation in
   `server.ts`. Tests: default when absent, clamp/catch on bad value, round-trip
   through `PUT`.

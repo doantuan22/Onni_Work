@@ -220,7 +220,7 @@ export const uiStateSchema = z.looseObject({
       }),
     )
     .optional(),
-  /** The open-mercato/skills promo banner (#391), dismissed for good. Legacy — retained so old files round-trip. */
+  /** The team-skills promo banner (#391), dismissed for good. Legacy — retained so old files round-trip. */
   dismissedSkillsBanner: z.boolean().optional(),
 });
 export type UiState = z.infer<typeof uiStateSchema>;

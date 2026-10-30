@@ -78,7 +78,7 @@ const INIT_SCRIPT: &str = r#"
     window.__ONNI_DESKTOP__ = { platform: platform, microphone: true };
     // At document start the root element may not exist yet; the flag is a convenience, the
     // rest of this script is not.
-    if (document.documentElement) document.documentElement.dataset.cezDesktop = platform;
+    if (document.documentElement) document.documentElement.dataset.onniDesktop = platform;
     if (platform !== "macos" || location.protocol !== "http:") return;
 
     // What the shell adds to the title strip of a cockpit that predates the desktop-aware build
@@ -1778,7 +1778,7 @@ mod tests {
 
     #[test]
     fn a_linked_worktree_reads_as_its_branch() {
-        assert_eq!(version_label("0.13.0", "link", Some("cez/cb28888e")), "cez/cb28888e — 0.13.0 (worktree)");
+        assert_eq!(version_label("0.13.0", "link", Some("onni/cb28888e")), "cez/cb28888e — 0.13.0 (worktree)");
         assert_eq!(version_label("0.13.0", "link", None), "0.13.0 (worktree)");
         assert_eq!(version_label("0.13.0", "local", None), "0.13.0 (local build)");
         assert_eq!(version_label("0.13.0", "registry", None), "0.13.0");

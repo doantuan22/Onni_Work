@@ -224,7 +224,7 @@ import {
   readWorktreePath,
   repoIndexContains,
 } from './git-changes.ts';
-import { gatedSkillsRepos, loadConfig, resolveWorktreeRetention, type CezConfig } from '../config.ts';
+import { gatedSkillsRepos, loadConfig, resolveWorktreeRetention, type OnniConfig } from '../config.ts';
 import { findConfigFile } from '../agent-config/catalog.ts';
 import { readConfigFile, statConfigPath, writeConfigFile } from '../agent-config/files.ts';
 import { type AgentModelDefaults, readAgentModelDefaults } from '../agent-config/models.ts';
@@ -7027,7 +7027,7 @@ export function createApp(deps: ServerDeps) {
   // Typed rather than left to `Object.fromEntries`' index signature: `configAnswer`'s return type
   // is asserted `Exact` against `configResponseSchema` (contract-parity.workspace.test.ts), and an
   // index signature leaking into the spread would widen `defaultModels` past the contract.
-  const autoModelOverrides = (auto: CezConfig['defaultModelsAuto']): AgentModelDefaults =>
+  const autoModelOverrides = (auto: OnniConfig['defaultModelsAuto']): AgentModelDefaults =>
     Object.fromEntries(
       Object.entries(auto ?? {})
         .filter(([, isAuto]) => isAuto === true)
@@ -7036,7 +7036,7 @@ export function createApp(deps: ServerDeps) {
 
   // The Settings → Agents knobs in one read (R6 Step 1.5) — an ADDITIVE
   // sibling of PUT /api/config below; /api/health keeps its protected shape.
-  const configAnswer = async (repoRoot: string, config: CezConfig) => {
+  const configAnswer = async (repoRoot: string, config: OnniConfig) => {
     const lifecycle = await readLifecycleConfigOrDefault(repoRoot, { trust: false });
     const nativeModels = await readAgentModelDefaults(repoRoot);
     const modelsLocked = agentModelsLocked(repoRoot);
