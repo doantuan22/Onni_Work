@@ -11,7 +11,7 @@
   "workspaces": [
     "packages/contract",
     "packages/api-client",
-    "packages/cezar",
+    "packages/work",
     "packages/web"
   ],
   "scripts": {

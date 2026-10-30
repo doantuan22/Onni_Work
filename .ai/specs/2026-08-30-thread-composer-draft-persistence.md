@@ -93,7 +93,7 @@ with its own spec.
 
 Three pieces, none of them new mechanisms:
 
-1. **A per-run draft store on the server** (`packages/cezar/src/runs/drafts.ts`) writing plain files
+1. **A per-run draft store on the server** (`packages/work/src/runs/drafts.ts`) writing plain files
    under `.ai/cezar/drafts/`, in the same "files, not a DB, degrade to empty, never throw" style as
    `ui-state.ts` and `runs/store.ts`.
 2. **A project-scoped route family** (`/api/v1/runs/:id/drafts…`, mounted under both the boot and
@@ -125,10 +125,10 @@ Alternatives considered and rejected:
 packages/contract/src/drafts.ts        ← every request/response shape (zod, types inferred)
         ▲                    ▲
         │                    │
-packages/cezar/src/runs/drafts.ts      ← the store: read/write/delete, caps, atomic writes
+packages/work/src/runs/drafts.ts      ← the store: read/write/delete, caps, atomic writes
         ▲                                 .ai/cezar/drafts/<runId>/draft.json + images/<imageId>
         │
-packages/cezar/src/server/server.ts    ← chained `draftRoutes` family, validated as middleware
+packages/work/src/server/server.ts    ← chained `draftRoutes` family, validated as middleware
         ▲
 packages/web/src/api/client.ts         ← typed client calls
 packages/web/src/api/queries.ts        ← useRunDrafts(runId)
@@ -212,7 +212,7 @@ Rules, all inherited from the neighbouring stores rather than invented:
   or a corrupt `draft.json` degrades that draft to absent — never a throw, never a discarded file
   for the sibling surfaces that parsed.
 - **Atomic writes.** `atomicWriteJsonSync` (tmp + rename, `0600` —
-  `packages/cezar/src/workspace/config.ts:350`), so a crash mid-write cannot leave a truncated
+  `packages/work/src/workspace/config.ts:350`), so a crash mid-write cannot leave a truncated
   draft. Image blobs are written the same way.
 - **Bounded on every axis**: text length, image count, image bytes, surfaces per run (16), and the
   whole-store backstop.
@@ -220,7 +220,7 @@ Rules, all inherited from the neighbouring stores rather than invented:
   oldest-`updatedAt` first until it fits, and log one line. Never age-based, never count-based —
   a user with 500 typed-but-unsent drafts keeps all of them.
 - **Gitignored.** `drafts/` joins the `wanted` list in `ensureDataGitignore`
-  (`packages/cezar/src/index.ts:664`) in the same commit — unsent messages and pasted screenshots
+  (`packages/work/src/index.ts:664`) in the same commit — unsent messages and pasted screenshots
   must never reach the user's git history.
 
 ## 📝 API Contracts
@@ -327,9 +327,9 @@ text is there, the caret at the end, the thumbnails intact.
    `runDraftsResponseSchema`, `setRunDraftInputSchema`, `draftSurfaceParamSchema`; export from
    `index.ts`. *Test:* the schemas' own unit tests — surface-id regex accepts `message:abc` and
    rejects `../x`; the text cap and the image-count cap reject over-limit input.
-2. **Store.** Add `packages/cezar/src/runs/drafts.ts`: `readRunDrafts`, `writeRunDraftSurface`,
+2. **Store.** Add `packages/work/src/runs/drafts.ts`: `readRunDrafts`, `writeRunDraftSurface`,
    `deleteRunDraftSurface`, `deleteRunDrafts`, and the 64 MiB backstop. Atomic writes, degrade to
-   empty on every read error. *Test:* `packages/cezar/test/unit/` — round-trip, empty-write-deletes,
+   empty on every read error. *Test:* `packages/work/test/unit/` — round-trip, empty-write-deletes,
    corrupt-file-reads-empty, unwritable-dir-does-not-throw, backstop evicts oldest first.
 3. **Routes.** Chain a `draftRoutes` family into `server.ts` (`GET` list, `PUT` upsert, `DELETE`),
    validated as middleware, mounted under both spellings. *Test:* `contract-parity`,
@@ -449,5 +449,5 @@ Smaller decisions worth recording, several of them settled in review of #940:
   one that reappeared an hour later, where the first stray click in the thread would silently
   rename the task to something they walked away from. Enter and Escape are unchanged.
 
-`ensureDataGitignore` moved out of `packages/cezar/src/index.ts` into its own module
+`ensureDataGitignore` moved out of `packages/work/src/index.ts` into its own module
 (`src/data-gitignore.ts`) so that it can be tested at all — importing `index.ts` runs the CLI.

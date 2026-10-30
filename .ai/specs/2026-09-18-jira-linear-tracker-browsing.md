@@ -18,7 +18,7 @@ or full-backlog background sync. Visible-list checks are defined by the local
 
 ## 📝 Problem Statement and Business Outcome
 
-Today `packages/cezar/src/server/forge/` and the cockpit's GitHub view let a user browse issues
+Today `packages/work/src/server/forge/` and the cockpit's GitHub view let a user browse issues
 and hand one to an agent. Teams using Jira or Linear must copy their task context manually.
 `ForgeDriver` also owns PRs, merge state and draft creation, and resolves from the git remote;
 an issue tracker has neither that anchor nor those capabilities. Keep the two seams independent.
@@ -77,7 +77,7 @@ flowchart LR
 `packages/contract/src/tracker.ts` owns all data schemas and inferred types; the api-client
 re-exports them. Server code imports the contract directly, never the private api-client at
 runtime. Contract and api-client remain Node-free. Only behavioral interfaces belong in
-`packages/cezar/src/server/tracker/types.ts`:
+`packages/work/src/server/tracker/types.ts`:
 
 ```ts
 // All argument/result/data types below are z.infer exports from the contract.
@@ -173,7 +173,7 @@ Write a header comment: "Managed by cezar. Rotate credentials in project Setting
 this file." Encode values as safely quoted dotenv literals and prove parser round trips for every
 accepted value; reject unrepresentable input before replacing the previous file. Parse with
 `dotenv.parse` only, never `config`, `source`, `eval`, or interpolation. The direct runtime dependency
-belongs to `packages/cezar/package.json`, the workspace that imports it and ships the CLI; use a
+belongs to `packages/work/package.json`, the workspace that imports it and ships the CLI; use a
 Node 20-compatible version and update the lockfile. Parsed values stay in a project-local object,
 never `process.env`. Browsing and ordinary manual handoffs do not forward them to agents.
 The separately authorized event-automation extension may pass only the captured project/source/

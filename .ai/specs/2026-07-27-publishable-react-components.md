@@ -330,7 +330,7 @@ The private reference application. Its responsibilities shrink to:
 - select the standard storage, notifications, and browser-router adapters;
 - mount `CezarCockpit`;
 - retain the static document and the pre-paint adapter that stamps the public provider boundary;
-- produce `packages/cezar/web/dist` for the server package.
+- produce `packages/work/web/dist` for the server package.
 
 Application-specific redirects and backward-compatible top-level URLs may live here or in the
 public router adapter when they are generally useful. Feature rendering cannot be duplicated
@@ -916,7 +916,7 @@ surface or a compatibility promise.
   transport or parallel DTO layer.
 - Finish packed-consumer coverage for `@open-mercato/cezar-contract`, remove its `private` gate,
   and publish it before API-client. Once the server resolves the published contract normally,
-  remove the temporary `packages/cezar/scripts/inline-contract.mjs` bundling bridge and its
+  remove the temporary `packages/work/scripts/inline-contract.mjs` bundling bridge and its
   repointing checks.
 - Move the rich request layer, `ApiError`, project-aware domain methods, run/workspace SSE, and
   the WebSocket topic bus from `packages/web/src/api` into `packages/api-client`.

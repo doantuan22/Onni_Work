@@ -19,7 +19,7 @@ holds only this file.
 
 Verified end-to-end, `spawnChildren` → `execute()` → `createWorktree`:
 
-- `spawnChildren` (`packages/cezar/src/workflows/run.ts:1607-1699`) creates each child with
+- `spawnChildren` (`packages/work/src/workflows/run.ts:1607-1699`) creates each child with
   `this.startRun(...)` and then, at **run.ts:1681-1689**, patches the new child record:
   ```
   ...(parent.branch ? { baseBranch: parent.branch } : {}),
@@ -31,7 +31,7 @@ Verified end-to-end, `spawnChildren` → `execute()` → `createWorktree`:
   than re-resolving the configured base — this is the exact mechanism the code comment at
   run.ts:1684-1686 says it is: "`execute()` already prefers a recorded `baseBranch` over the
   configured one, so seeding it here is the whole of the change."
-- `createWorktree` (`packages/cezar/src/git-worktree.ts:136-216`) forks the child's worktree with
+- `createWorktree` (`packages/work/src/git-worktree.ts:136-216`) forks the child's worktree with
   `git worktree add -b <branch> <path> <base>` (git-worktree.ts:211) — a plain `git` positional ref
   argument. `base` here is `parent.branch`, i.e. the branch's current tip **commit**, not the
   parent's live working directory. Git has no notion of "fork from that other worktree's
@@ -44,7 +44,7 @@ commit, which may be behind what the parent's own worktree currently holds. Noth
 function (run.ts:1607-1699) and the only git operation in it is the eventual `createWorktree` call
 inside `startRun`/`execute`; there is no `git status` check anywhere in the spawn path. The ONLY
 place this is enforced is prose, in the role prompts: `CHILD_BRANCH_RULE`
-(`packages/cezar/src/units/prompts.ts:31-41`), line 35: *"COMMIT your work before every
+(`packages/work/src/units/prompts.ts:31-41`), line 35: *"COMMIT your work before every
 CEZ:SPAWN. Anything you left uncommitted does not exist for your children, and they will either
 redo it or contradict it."* This is exactly the situation the same file's own doc-comment
 (prompts.ts:24-29) predicts: *"Nothing in cezar merges a child branch back: that is the
@@ -57,7 +57,7 @@ committed. → **F1**.
 run inside the parent's own worktree, one child at a time. No code performs this merge; it exists
 only as an instruction the caesar/legate prompts carry (prompts.ts:107, 134, both interpolating
 `CHILD_BRANCH_RULE`). A centurion never merges — it has no children (`CHILD_ROLE.centurion ===
-undefined`, `packages/cezar/src/units/engine.ts:21-25`).
+undefined`, `packages/work/src/units/engine.ts:21-25`).
 
 ## 2. Alternatives, judged against AGENTS.md "Changing a mechanism that already works"
 
@@ -100,11 +100,11 @@ caps this beyond `MAX_CHILDREN_IN_FLIGHT = 4` **per parent** (engine.ts:29) — 
 fan-out at each node, not the tree's total worktree count.
 
 **Cleanup/retention — what exists.** Count-based, project-wide, directory-only reclaim
-(`packages/cezar/src/runs/retention.ts`), wired at **every terminal transition** for **every**
+(`packages/work/src/runs/retention.ts`), wired at **every terminal transition** for **every**
 run in the project — `enforceRetention()` (run.ts:2171-2178) is called unconditionally from
 run.ts:1430, right after a settled run releases its slot. `selectReclaimableWorktrees`
 (retention.ts:37-43) keeps the `keep` most-recently-finished reclaimable worktrees and reclaims
-the rest; `keep` defaults to **10** (`DEFAULT_WORKTREE_RETENTION`, `packages/cezar/src/config.ts:26`)
+the rest; `keep` defaults to **10** (`DEFAULT_WORKTREE_RETENTION`, `packages/work/src/config.ts:26`)
 and is a single number for the whole project, not per mission. `isReclaimable` (retention.ts:25-27)
 only excludes runs at `review`, plus non-`done`/`failed`/`cancelled` statuses. Removal keeps the
 branch (`removeWorktree(root, path)` with no branch arg, retention.ts:112) so `git merge --no-ff`
@@ -143,7 +143,7 @@ Traced fully; nothing was found that does this automatically.
   review = hasDiff && reviewGateEnabled(config) && run.autonomous !== true;
   ```
   Every unit run is created with `autonomous: true` — the mission root at
-  `packages/cezar/src/server/server.ts:3529`, every spawned child at `run.ts:1671` — with no
+  `packages/work/src/server/server.ts:3529`, every spawned child at `run.ts:1671` — with no
   exception anywhere for the root. So `run.autonomous !== true` is `false` for every node in
   every mission, and `review` is `false` unconditionally, **even when a repository has explicitly
   turned the review gate on** (`CEZ_REVIEW_GATE`/`reviewGateEnabled`, default OFF per #489). A
@@ -156,10 +156,10 @@ Traced fully; nothing was found that does this automatically.
   repository (see §5 for the grep). It requires `!manager.isActive(id)` and an existing
   `worktreePath`/`branch` (server.ts:4349-4357) — it does NOT require `status === 'review'`, so it
   is callable on a `done` run too. I grepped every caller of `createDraftPr` — the only import is
-  `packages/cezar/src/server/pr.ts` re-exporting `packages/cezar/src/server/forge/github.ts`, and
+  `packages/work/src/server/pr.ts` re-exporting `packages/work/src/server/forge/github.ts`, and
   the only call site of the imported function is this one route. Nothing in `run.ts`, no
   automation, and no other route ever calls it. → **F3**.
-- **Which branch, targeting what**: `packages/cezar/src/server/forge/github.ts:2439-2484` — `--head
+- **Which branch, targeting what**: `packages/work/src/server/forge/github.ts:2439-2484` — `--head
   <run.branch>` against `--base <run.baseBranch>` (falling back to the repo default when
   `baseBranch` is a bare commit sha, github.ts:2481-2482). For a mission root that is NOT itself a
   spawned child, `run.branch`/`run.baseBranch` are whatever the ordinary `execute()` worktree path
@@ -191,7 +191,7 @@ silent `done` that gives no signal a PR is expected.
 Commands run, verbatim:
 
 ```
-$ grep -n "requireUnits\|/missions\|/units\b\|units/prompts" packages/cezar/src/server/server.ts
+$ grep -n "requireUnits\|/missions\|/units\b\|units/prompts" packages/work/src/server/server.ts
 53:} from '../units/prompts.ts';
 3465:  const requireUnits = async (c: Context, next: Next) => {
 3484:  // the role prompts are per-repo files under that project's `.ai/cezar/units/`.
@@ -206,10 +206,10 @@ $ grep -n "requireUnits\|/missions\|/units\b\|units/prompts" packages/cezar/src/
 ```
 
 ```
-$ grep -rn "'/missions\|\"/missions\|missions/:" packages/cezar/src/server/*.ts packages/cezar/src/**/*.ts 2>/dev/null | grep -v test
-packages/cezar/src/server/server.ts:3486:    .use('/missions', requireUnits)
-packages/cezar/src/server/server.ts:3487:    .use('/missions/*', requireUnits)
-packages/cezar/src/server/server.ts:3501:    .post('/missions', jsonZodValidator(startMissionInputSchema), async (c) => {
+$ grep -rn "'/missions\|\"/missions\|missions/:" packages/work/src/server/*.ts packages/work/src/**/*.ts 2>/dev/null | grep -v test
+packages/work/src/server/server.ts:3486:    .use('/missions', requireUnits)
+packages/work/src/server/server.ts:3487:    .use('/missions/*', requireUnits)
+packages/work/src/server/server.ts:3501:    .post('/missions', jsonZodValidator(startMissionInputSchema), async (c) => {
 ```
 
 ```
@@ -237,8 +237,8 @@ full) tests only `POST /api/v1/missions`, confirming no other route was ever mea
 **No — not for the MVP.** Verified there is none today:
 
 ```
-$ grep -rn "ledger" packages/cezar/src packages/contract/src 2>/dev/null | grep -v node_modules
-packages/cezar/src/server-install/... (all unrelated — server-install's own artifact ledger)
+$ grep -rn "ledger" packages/work/src packages/contract/src 2>/dev/null | grep -v node_modules
+packages/work/src/server-install/... (all unrelated — server-install's own artifact ledger)
 ```
 
 No hit anywhere under `units/` or `contract/src/units.ts`. And `runs.json` (via `RunStore`)
@@ -246,7 +246,7 @@ already carries everything a mission ledger would want to record on its own: `un
 `unit.parentRunId`, `unit.report`, `unit.pendingReports`, `branch`, `baseBranch`, `costUsd`,
 `diffStat` — every field the cockpit's own tree view needs, confirmed by
 `packages/web/src/routes/missions/missions.tsx:38` deriving its whole tree from `useRuns()` alone,
-nothing else. `archiveFinished()` (`packages/cezar/src/runs/store.ts:977-990`) only ever stamps
+nothing else. `archiveFinished()` (`packages/work/src/runs/store.ts:977-990`) only ever stamps
 `archived: true` — it never deletes a run record — so the "ledger" already survives indefinitely
 in the exact file the tree view reads.
 
@@ -271,11 +271,11 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
 
 ### F1 — HIGH — uncommitted parent work is silently invisible to a spawned child, and nothing checks for it
 
-- Evidence: `packages/cezar/src/workflows/run.ts:1607-1699` (`spawnChildren`, no git-status check
+- Evidence: `packages/work/src/workflows/run.ts:1607-1699` (`spawnChildren`, no git-status check
   anywhere in the function), `run.ts:1688` (`baseBranch: parent.branch`), and
-  `packages/cezar/src/git-worktree.ts:211` (`git worktree add -b <branch> <path> <base>` — a ref,
+  `packages/work/src/git-worktree.ts:211` (`git worktree add -b <branch> <path> <base>` — a ref,
   not a working-tree path). Enforcement is prose only:
-  `packages/cezar/src/units/prompts.ts:35`.
+  `packages/work/src/units/prompts.ts:35`.
 - Why it matters: a commander that forgets to commit before `CEZ:SPAWN` hands its children a
   stale fork point with no refusal, no note, and no recovery — the children "will either redo it
   or contradict it" (prompts.ts:35's own words), and the commander has no code-level signal that
@@ -283,10 +283,10 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
 
 ### F2 — CRITICAL — every unit run is unconditionally autonomous, so no mission run can ever reach the `review` gate
 
-- Evidence: `packages/cezar/src/server/server.ts:3529` (mission root, `autonomous: true`, no
-  exception), `packages/cezar/src/workflows/run.ts:1671` (every spawned child, same, no
+- Evidence: `packages/work/src/server/server.ts:3529` (mission root, `autonomous: true`, no
+  exception), `packages/work/src/workflows/run.ts:1671` (every spawned child, same, no
   exception), `run.ts:4159` (`review = hasDiff && reviewGateEnabled(config) && run.autonomous !==
-  true` — always `false` for a unit run). `packages/cezar/src/units/engine.ts:42,141-146` still
+  true` — always `false` for a unit run). `packages/work/src/units/engine.ts:42,141-146` still
   branches on `'review'` as a live settle status — dead code for units.
 - Why it matters: even a repository that has explicitly turned the review gate on
   (`CEZ_REVIEW_GATE`) gets NONE of that protection for missions specifically — the one feature
@@ -296,10 +296,10 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
 
 ### F3 — CRITICAL — nothing in the codebase ever opens the mission's draft PR; the only mechanism is a manual, non-mission-aware route with no trigger
 
-- Evidence: `packages/cezar/src/server/server.ts:4344-4382` (`POST /runs/:id/pr`, the only
+- Evidence: `packages/work/src/server/server.ts:4344-4382` (`POST /runs/:id/pr`, the only
   PR-creation route in the repo — grep-verified, `createDraftPr`'s only caller). No import of
   `createDraftPr`/`pr.ts` outside this one route (`workflows/run.ts` never imports it). The
-  intended human trigger exists only in prose: `packages/cezar/src/units/prompts.ts:41`.
+  intended human trigger exists only in prose: `packages/work/src/units/prompts.ts:41`.
 - Why it matters: combined with F2, a finished mission gives the operator literally no signal —
   no note, no distinct status, no cockpit badge — that a draft PR is expected. The plain lifecycle
   note is "run finished" (run.ts:4174), identical to any ordinary task that never had a mission
@@ -307,12 +307,12 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
 
 ### F4 — MEDIUM — worktree retention is project-wide and mission-blind, and misreports the reclaimed case to the cockpit's own read routes
 
-- Evidence: `packages/cezar/src/runs/retention.ts:37-43` (`selectReclaimableWorktrees`, no
+- Evidence: `packages/work/src/runs/retention.ts:37-43` (`selectReclaimableWorktrees`, no
   `unit.missionId` grouping, sorted purely by recency across ALL finished runs),
-  `packages/cezar/src/config.ts:26` (`DEFAULT_WORKTREE_RETENTION = 10`, one number for the whole
-  project), `packages/cezar/src/workflows/run.ts:1430` + `run.ts:2171-2178`
+  `packages/work/src/config.ts:26` (`DEFAULT_WORKTREE_RETENTION = 10`, one number for the whole
+  project), `packages/work/src/workflows/run.ts:1430` + `run.ts:2171-2178`
   (`enforceRetention()` fires on every terminal transition, for every run). The misreport:
-  `packages/cezar/src/server/server.ts:4557-4563` (`worktreeOf`/`workingDirectoryOf`, a bare
+  `packages/work/src/server/server.ts:4557-4563` (`worktreeOf`/`workingDirectoryOf`, a bare
   `existsSync` check) feeding the identical `NO_WORKTREE` string
   (server.ts:4563) into `GET /runs/:id/diff` (4186-4194), `/changes` (4196-4211), and `/commits`
   (4214+), for both "never had a worktree" and "worktree reclaimed" — `run.worktreeReclaimedAt`
@@ -337,7 +337,7 @@ over `listRuns()`) into the PR body at `createDraftPr` time, which is what **P3*
 ### F6 — LOW — no on-disk mission ledger exists; `runs.json` already serves that purpose
 
 - Evidence: grep for `ledger` under `units/`/`contract/src/units.ts` (no hits);
-  `packages/cezar/src/runs/store.ts:977-990` (`archiveFinished` never deletes a record);
+  `packages/work/src/runs/store.ts:977-990` (`archiveFinished` never deletes a record);
   `packages/web/src/routes/missions/missions.tsx:38` (tree derived from `useRuns()` alone).
 - Why it matters: recorded for completeness (§6) — building a separate ledger file would
   duplicate `runs.json`'s own fields across two write paths, the exact drift risk AGENTS.md
@@ -505,26 +505,26 @@ confusion.)
 - `git rev-parse HEAD` / `git branch --show-current` — confirmed HEAD `076cead2785891af80b9ea7440bf3be973c0bbfe`
   on `cez/a51529ee`; `git rev-parse cez/5a23b3d1` resolves to the same commit (the fork point is
   HEAD itself).
-- `grep -n "requireUnits\|/missions\|/units\b\|units/prompts" packages/cezar/src/server/server.ts`
+- `grep -n "requireUnits\|/missions\|/units\b\|units/prompts" packages/work/src/server/server.ts`
   — full route inventory quoted in §5.
-- `grep -rn "'/missions\|\"/missions\|missions/:" packages/cezar/src/server/*.ts
-  packages/cezar/src/**/*.ts | grep -v test` — only the three lines quoted in §5 (all `POST
+- `grep -rn "'/missions\|\"/missions\|missions/:" packages/work/src/server/*.ts
+  packages/work/src/**/*.ts | grep -v test` — only the three lines quoted in §5 (all `POST
   /missions` and its middleware).
 - `grep -rn "get('/missions\|get(\"/missions\|/missions/:id\|missions.*cancel\|missions.*pause\|missions.*resume" packages/ apps/ | grep -v node_modules | grep -v "\.git/"`
   — no output. Proves no GET, cancel, pause or resume route exists anywhere for missions.
-- `grep -rn "createDraftPr" packages/cezar/src` — one route caller (`server.ts:4358`), one
+- `grep -rn "createDraftPr" packages/work/src` — one route caller (`server.ts:4358`), one
   re-export (`pr.ts:6`), one implementation (`forge/github.ts`) — no automatic caller.
-- `grep -rn "rematerializeReclaimedWorktree" packages/cezar/src --include="*.ts" | grep -v test`
+- `grep -rn "rematerializeReclaimedWorktree" packages/work/src --include="*.ts" | grep -v test`
   — exactly one call site, `run.ts:2833`, inside `runContinuation`.
-- `grep -n "enforceRetention()" packages/cezar/src/workflows/run.ts` — one definition, one call
+- `grep -n "enforceRetention()" packages/work/src/workflows/run.ts` — one definition, one call
   site (`run.ts:1430`), fired unconditionally on every terminal transition.
-- `grep -n "DEFAULT_WORKTREE_RETENTION" packages/cezar/src/config.ts` — confirms the default is
+- `grep -n "DEFAULT_WORKTREE_RETENTION" packages/work/src/config.ts` — confirms the default is
   `10` (`config.ts:26`).
-- `grep -n "budgetUsd" packages/cezar/src/server/server.ts` — confirms the only write to
+- `grep -n "budgetUsd" packages/work/src/server/server.ts` — confirms the only write to
   `unit.budgetUsd` is at mission creation (`server.ts:3537`); no other route touches it.
-- `grep -rn "ledger" packages/cezar/src packages/contract/src | grep -v node_modules` — every hit
+- `grep -rn "ledger" packages/work/src packages/contract/src | grep -v node_modules` — every hit
   is in `server-install/`, unrelated to units; none under `units/` or `contract/src/units.ts`.
-- Read `packages/cezar/src/server/missions-api.test.ts` in full (215 lines) — confirms the test
+- Read `packages/work/src/server/missions-api.test.ts` in full (215 lines) — confirms the test
   suite exercises `POST /api/v1/missions` only; no test for any other mission route exists.
 
 ---

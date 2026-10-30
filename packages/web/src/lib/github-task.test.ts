@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { GithubItem } from '@open-mercato/cezar-api-client'
 
-import { extractTaskRefs } from '../../../cezar/src/runs/task-refs'
+import { extractTaskRefs } from '../../../work/src/runs/task-refs'
 
 import {
   MAX_CHAIN_STEPS,

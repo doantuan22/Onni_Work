@@ -14,7 +14,7 @@ The current implementation has several distinct transitions:
 
 | Existing transition | Evidence and load-bearing behavior |
 |---|---|
-| Task record → execution | `packages/cezar/src/workflows/run.ts:1358` creates the record before execution prepares a worktree (`:4307`). Queuing a task is not worktree creation. |
+| Task record → execution | `packages/work/src/workflows/run.ts:1358` creates the record before execution prepares a worktree (`:4307`). Queuing a task is not worktree creation. |
 | Continue after reclamation | `runs/retention.ts:55` and `workflows/run.ts:3724` recreate the directory from the retained branch and clear `worktreeReclaimedAt`. Existing prepared directories must not rerun setup merely on Continue. |
 | Finished-worktree retention | `runs/retention.ts` selects `done`, `failed`, `cancelled`; keeps branches/records; excludes review and live tasks. This bounds disk usage without losing continuation. |
 | Explicit worktree/task deletion | `server/server.ts:4938` preserves distinct branch/task outcomes. `removeWorktree` is best-effort; its return is not proof that removal succeeded. |
@@ -137,7 +137,7 @@ Building nothing remains possible with workflow commands and manual cleanup, but
 
 ### Ownership and integration
 
-Introduce `packages/cezar/src/worktree-lifecycle/` with focused modules: contract-backed config reading, template rendering, durable store, command executor and coordinator. The coordinator has structural interfaces for worktree I/O, run ownership/queue operations and redacted event delivery; it must not import the Hono server. Server/CLI/project-context code composes it. Keep low-level `git-worktree.ts` usable without a server or lifecycle singleton.
+Introduce `packages/work/src/worktree-lifecycle/` with focused modules: contract-backed config reading, template rendering, durable store, command executor and coordinator. The coordinator has structural interfaces for worktree I/O, run ownership/queue operations and redacted event delivery; it must not import the Hono server. Server/CLI/project-context code composes it. Keep low-level `git-worktree.ts` usable without a server or lifecycle singleton.
 
 | Existing owner | Integration responsibility |
 |---|---|

@@ -3,8 +3,8 @@
 Spec: `.ai/specs/2026-09-20-host-telemetry-sidebar-widget.md` (Implementation Plan step 11).
 Script: `.ai/scripts/host-telemetry-conformance.sh` (`sh .ai/scripts/host-telemetry-conformance.sh`).
 
-The script runs the REAL probe (`packages/cezar/src/core/cgroup-probe.ts`) and the REAL sampler
-(`packages/cezar/src/core/host-usage.ts`) - not a paraphrase - in four environments, printing both
+The script runs the REAL probe (`packages/work/src/core/cgroup-probe.ts`) and the REAL sampler
+(`packages/work/src/core/host-usage.ts`) - not a paraphrase - in four environments, printing both
 the cgroup files the process can see and the `container` object the sampler would put on the wire.
 It is read-only: every container mount is `:ro`, and nothing here writes into the repository.
 
@@ -75,6 +75,6 @@ picks a CPU the local Docker daemon actually accepts for the cpuset case, and sk
 explicitly (never silently) when the daemon accepts none of this shell's cores.
 
 Unit-level twins of these fixtures (the same shapes, no Docker) live in
-`packages/cezar/src/core/cgroup-probe.test.ts` and `packages/cezar/src/core/host-usage-container.test.ts`;
+`packages/work/src/core/cgroup-probe.test.ts` and `packages/work/src/core/host-usage-container.test.ts`;
 this file is the live counterpart that proves the parsing rules against a real kernel, not a
 hand-written map.

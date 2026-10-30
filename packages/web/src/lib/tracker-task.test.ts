@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractTaskRefs } from '../../../cezar/src/runs/task-refs'
+import { extractTaskRefs } from '../../../work/src/runs/task-refs'
 
 import type { TrackerItem } from '@open-mercato/cezar-api-client'
 

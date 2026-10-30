@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 // The picker is the SERVER's (it is what the design proxy injects), but it is a browser script
 // and this is the workspace with a DOM to run it in — a test-only reach across packages, by
 // relative path on purpose (AGENTS.md § Repository layout names exactly this exception).
-import { pickerScript } from '../../../../cezar/src/server/preview/picker-script.ts'
+import { pickerScript } from '../../../../work/src/server/preview/picker-script.ts'
 
 /**
  * The Design Mode picker, run for real in a framed document (spec

@@ -1,13 +1,13 @@
 # Prompt no-op audit — units role prompts
 
-Scope: `packages/cezar/src/units/prompts.ts` — the seven prompt string constants
+Scope: `packages/work/src/units/prompts.ts` — the seven prompt string constants
 (`CHILD_BRANCH_RULE`, `SPAWN_CONTRACT`, `REPORT_CONTRACT`, `GUARD_RULE`, `CAESAR_PROMPT`,
 `LEGATE_PROMPT`, `CENTURION_PROMPT`). Method: `eliminate-no-op` skill's five tests
 (inversion, ablation, specificity, counter-default, recovery), applied line by line and
-cross-checked against `packages/contract/src/units.ts` (schemas), `packages/cezar/src/workflows/run.ts`
-(`spawnChildren`, `carveChildBudgets`, `handleUnitMarkers`), `packages/cezar/src/units/engine.ts`
+cross-checked against `packages/contract/src/units.ts` (schemas), `packages/work/src/workflows/run.ts`
+(`spawnChildren`, `carveChildBudgets`, `handleUnitMarkers`), `packages/work/src/units/engine.ts`
 (`CHILD_ROLE`, `MAX_CHILDREN_IN_FLIGHT`, `unitSubagentTools`, `childSettleReport`), and
-`packages/cezar/src/units/markers.ts` (marker parsing/repair). All line numbers verified at HEAD
+`packages/work/src/units/markers.ts` (marker parsing/repair). All line numbers verified at HEAD
 `df73cfa9` (this worktree's `cez/9be2e435`, forked from `cez/d9628fff`, same commit).
 
 Analysis only — no source file touched. This file is the only artifact this task order created.
@@ -39,7 +39,7 @@ plainly rather than manufacturing cuts to hit a target.
 ## Line-by-line ledger
 
 Legend: **K**=keep, **R**=reword (exact replacement given below), **C**=cut. Test column cites
-`packages/cezar/src/units/prompts.test.ts` assertions that pin the exact text (line numbers of the
+`packages/work/src/units/prompts.test.ts` assertions that pin the exact text (line numbers of the
 `it(...)`/`expect(...)` in that file); "—" means no assertion pins the literal wording.
 
 ### `CHILD_BRANCH_RULE` (prompts.ts:31-41)
@@ -144,9 +144,9 @@ recommends merging them further.
 
 **F1 — `retry_limit` has no engine-side enforcement; the prose is the entire mechanism.**
 Severity: **high**.
-Evidence: `packages/contract/src/units.ts:144` bounds it to an int 0-3 on the wire; `packages/cezar/src/units/engine.ts:98` only *echoes* the value into the child's task-order text
+Evidence: `packages/contract/src/units.ts:144` bounds it to an int 0-3 on the wire; `packages/work/src/units/engine.ts:98` only *echoes* the value into the child's task-order text
 (`- Retry limit: ${child.retry_limit}`); nothing in `run.ts` counts how many times a given piece of
-work has actually been re-spawned against that number. `grep -rn retry packages/cezar/src/workflows/run.ts`
+work has actually been re-spawned against that number. `grep -rn retry packages/work/src/workflows/run.ts`
 turns up only an unrelated workflow-step `onFail.retry` mechanism (`run.ts:3503-3514`), not a
 unit-spawn retry counter. The only things standing between "retry limit 1" and an unbounded retry
 loop are `prompts.ts:103` (caesar), `:132` (legate), and `:160` (centurion). This is not a no-op to
@@ -156,10 +156,10 @@ three lines on the theory that "the schema already bounds it," because the schem
 
 **F2 — `CAESAR_PROMPT`'s "spawned as part of a larger structure" branch is currently unreachable.**
 Severity: **medium**.
-Evidence: `packages/cezar/src/units/prompts.ts:113` — "If you were spawned as part of a larger
+Evidence: `packages/work/src/units/prompts.ts:113` — "If you were spawned as part of a larger
 structure, emit CEZ:REPORT first". `CHILD_ROLE` (`engine.ts:21-25`) maps `caesar → legate`,
 `legate → centurion`, `centurion → undefined`; nothing maps anything `→ caesar`. The only place a
-`caesar`-role run record is created is `POST /missions` (`packages/cezar/src/server/server.ts:3501`,
+`caesar`-role run record is created is `POST /missions` (`packages/work/src/server/server.ts:3501`,
 confirmed by `missions-api.test.ts:102`: `expect(store.getRun(id)?.unit).toEqual({ role: 'caesar',
 missionId: id })` with no `parentRunId`). A caesar is always the mission root today. The sentence is
 plausibly forward-compatible with the "Legion" tier the contract already reserves a comment for
@@ -207,7 +207,7 @@ them.
 
 - **Problem:** `prompts.ts:31` ends on "so read it twice" — N2, no artifact distinguishes a model
   that read it twice from one that didn't.
-- **File:line:** `packages/cezar/src/units/prompts.ts:31`
+- **File:line:** `packages/work/src/units/prompts.ts:31`
 - **Current:**
   `Branches and merges — no code does this for you, so read it twice.`
 - **Replacement (exact, ready to paste):**
@@ -224,7 +224,7 @@ them.
 - **Problem:** `prompts.ts:49` bundles two enforced numbers (schema per-call max of 4; engine
   cumulative in-flight cap of 4) with a rationale clause the engine's own refusal note already
   supplies at the moment it matters.
-- **File:line:** `packages/cezar/src/units/prompts.ts:49`
+- **File:line:** `packages/work/src/units/prompts.ts:49`
 - **Current:**
   `- "children" — 1 to 4 entries. More than 4 in flight under one parent is refused: cez runs a small number of agents at a time, and a wider fan-out starves your own tree.`
 - **Replacement (exact, ready to paste):**
@@ -242,7 +242,7 @@ them.
 - **Problem:** `prompts.ts:54`'s second clause paraphrases `carveChildBudgets`'s own refusal
   message (`run.ts:1721-1730`), which the agent reads verbatim the moment a spawn is actually
   refused for budget.
-- **File:line:** `packages/cezar/src/units/prompts.ts:54`
+- **File:line:** `packages/work/src/units/prompts.ts:54`
 - **Current:**
   `- "max_cost" — optional, a positive number of dollars. Carved out of your own remaining budget; a spawn that asks for more than you have left is refused with a note.`
 - **Replacement (exact, ready to paste):**
@@ -260,7 +260,7 @@ them.
   (`prompts.ts:103,132,160`) never say that cezar itself keeps no count — a caesar/legate could
   plausibly assume the engine will refuse a fourth respawn the way it refuses an over-cap fan-out or
   an over-budget spawn, and stop self-policing.
-- **File:line:** best inserted immediately after `packages/cezar/src/units/prompts.ts:57` (the
+- **File:line:** best inserted immediately after `packages/work/src/units/prompts.ts:57` (the
   `retry_limit` bullet in `SPAWN_CONTRACT`, so it reaches every role that can spawn).
 - **Current:** *(nothing — this is new text)*
 - **Proposed addition (exact, ready to paste, appended to the existing bullet):**
@@ -307,7 +307,7 @@ Explicitly not addressed (per task order, owned by a sibling centurion): the `CH
 ## Byte/token estimates
 
 Composed prompt sizes at HEAD (measured by expanding the `${...}` interpolations in
-`packages/cezar/src/units/prompts.ts`, chars ≈ bytes for this ASCII-heavy text, tokens estimated at
+`packages/work/src/units/prompts.ts`, chars ≈ bytes for this ASCII-heavy text, tokens estimated at
 chars/4):
 
 | Prompt | Chars | Bytes (UTF-8) | Est. tokens |

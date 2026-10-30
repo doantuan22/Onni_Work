@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import type { PlanEntry } from '@open-mercato/cezar-api-client'
 
-import thinkingEditWriteTodo from '../../../../cezar/src/core/__fixtures__/claude/thinking-edit-write-todo.expected.json'
+import thinkingEditWriteTodo from '../../../../work/src/core/__fixtures__/claude/thinking-edit-write-todo.expected.json'
 import { PlanDock, planActiveEntry, planCounts } from './plan-dock'
 
 afterEach(cleanup)

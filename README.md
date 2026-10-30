@@ -27,7 +27,7 @@ scope) are unchanged. See `NOTICE` for attribution and `CHANGELOG.md` for this f
 
 | Path | What it is |
 | --- | --- |
-| `packages/cezar` | Service and CLI: runs, workflows, agent runners, workspace state, HTTP API |
+| `packages/work` | Service and CLI: runs, workflows, agent runners, workspace state, HTTP API |
 | `packages/contract` | HTTP contract: zod schemas with types inferred from them |
 | `packages/api-client` | Typed client over the service's route types; Node-free |
 | `packages/web` | Cockpit SPA (React 19, Vite, Tailwind v4, shadcn/ui) |

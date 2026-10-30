@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import type { RunEvent } from '@open-mercato/cezar-api-client'
 
-import subagentTask from '../../../../cezar/src/core/__fixtures__/claude/subagent-task.expected.json'
+import subagentTask from '../../../../work/src/core/__fixtures__/claude/subagent-task.expected.json'
 import { collectSubagents, subagentChildren } from './subagent-dock'
 import { SubagentSheet } from './subagent-sheet'
 import { reduceThread } from './thread-state'

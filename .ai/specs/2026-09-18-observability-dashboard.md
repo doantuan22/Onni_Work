@@ -90,7 +90,7 @@ Initial 6 rows, Show more in bounded batches,
 maximum 60 combined results; upstream/display truncation is disclosed.
 
 GitHub is discovered from project remotes and read through the existing forge-driver seam
-(`resolveForge` in `packages/cezar/src/server/forge/index.ts`) — the same host allowlist every
+(`resolveForge` in `packages/work/src/server/forge/index.ts`) — the same host allowlist every
 other forge-aware feature gates on, so a remote that merely parses but is not a known forge host
 (a self-hosted git server, GitLab today) is treated exactly like "no remote", never surfaced as a
 GitHub failure. Adding another forge (GitLab, self-hosted) is one new driver behind that seam;
@@ -155,7 +155,7 @@ definitions have distinct empty states. Links open the existing scoped automatio
 ## Architecture and implementation boundaries
 
 Contracts live in `packages/contract/src/dashboard.ts`; routes are chained in
-`packages/cezar/src/server/dashboard.ts`, mounted at `/api/v1/workspace/dashboard` with
+`packages/work/src/server/dashboard.ts`, mounted at `/api/v1/workspace/dashboard` with
 `/tasks`, `/telemetry`, `/feed`, `/overview` and `/costs`. Query validation uses route middleware.
 `workspace/dashboard.ts` owns demand-driven projections and bounded 60s snapshots; data comes
 from live RunStore or diagnostic index reads. Missing/unreadable records are exposed through

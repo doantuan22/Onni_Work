@@ -28,8 +28,8 @@ log() { printf '%s\n' "$*" >&2; }
 # container). `tsx` is already a devDependency, so this needs no build of its own and prints the
 # FINAL wire object rather than a paraphrase.
 PROBE_SNIPPET='
-import { createHostSampler } from "./packages/cezar/src/core/host-usage.ts";
-import { createCgroupProbe } from "./packages/cezar/src/core/cgroup-probe.ts";
+import { createHostSampler } from "./packages/work/src/core/host-usage.ts";
+import { createCgroupProbe } from "./packages/work/src/core/cgroup-probe.ts";
 (async () => {
   const facts = createCgroupProbe()();
   const sampler = createHostSampler({ platform: "linux" });

@@ -2,7 +2,7 @@
 
 > Slug: `host-resource-telemetry` · Status: **v2.2 — design, for specification review** · Brief:
 > `.ai/specs/briefs/2026-09-20-host-resource-telemetry.md` · Precedents: the per-run sampler
-> (`#348`, `packages/cezar/src/core/process-usage.ts`) and the WS subscription bus
+> (`#348`, `packages/work/src/core/process-usage.ts`) and the WS subscription bus
 > (`.ai/specs/2026-07-23-websocket-subscriptions.md`) · Review trail: units `906047e7`
 > (doctrine/UX) and `3baaa393` (technical), both verdict *changes*, folded into v2; the
 > specification review of PR #1035 (one major — route freshness/remote CPU — plus four smaller
@@ -41,7 +41,7 @@ no new env var, no change to `health` or any existing payload.
 
 ## 📝 Proposed Solution
 
-1. **Sampler** (`packages/cezar/src/core/host-usage.ts`): `HOST_SAMPLE_INTERVAL_MS = 2_000`, one
+1. **Sampler** (`packages/work/src/core/host-usage.ts`): `HOST_SAMPLE_INTERVAL_MS = 2_000`, one
    module-level timer that starts on the first listener (priming the CPU baseline, first tick
    after one interval) and stops on the last. It computes `cpuPct` from `os.cpus()` deltas
    (normalized 0–100, omitted until a baseline exists), `cpuCount` from
@@ -346,14 +346,14 @@ Every step leaves the app working and is covered by a test.
 
 ## 📚 Evidence
 
-- Per-run telemetry precedent: `packages/cezar/src/core/process-usage.ts` (2 s sampler, module
+- Per-run telemetry precedent: `packages/work/src/core/process-usage.ts` (2 s sampler, module
   registry, `onUsage` subscribers, fail-soft `ps`) and `packages/web/src/lib/tasks-table.ts`
   (`usageCells`, `formatMem`).
 - WS doctrine: `.ai/specs/2026-07-23-websocket-subscriptions.md` — `TopicPublisher`
   `snapshot`/`start`, demand-driven 0→1/1→0, "always return the unsubscribe", session-global vs
   per-view subscription scope, `loopbackReadable` defaults to false, remote = HTTP bootstrap + SSE
   reconcile (no WebSocket).
-- Hub implementation: `packages/cezar/src/server/ws.ts` (`registerTopic`, `start()` before
+- Hub implementation: `packages/work/src/server/ws.ts` (`registerTopic`, `start()` before
   `snapshot()` at `:161-174`, trust check `:149-157`), the `health` registration in `server.ts`
   (`:1664-1682`), and the remote-no-WS gate (`queries.ts:703-706`).
 - Host metrics absent today: `totalmem|freemem|loadavg|os.cpus|availableParallelism` → 0 hits in

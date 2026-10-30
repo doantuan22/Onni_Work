@@ -21,9 +21,9 @@ const descriptorPath = resolve(repoRoot, '.ai/qa/test-env.json')
  *
  * Exported from here rather than re-derived per spec because it is one fact about the build
  * layout, and it has already moved once: `npm run build` emits the server into the workspace
- * package (`packages/cezar/dist`), not into a root-level `dist/`.
+ * package (`packages/work/dist`), not into a root-level `dist/`.
  */
-export const cezarCli = resolve(repoRoot, 'packages/cezar/dist/index.js')
+export const cezarCli = resolve(repoRoot, 'packages/work/dist/index.js')
 
 type EnvDescriptor = {
   baseUrl: string

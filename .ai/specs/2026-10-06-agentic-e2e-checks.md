@@ -23,7 +23,7 @@ process that needs it.
 All references are to `main` @ `05471fd`.
 
 - **Check steps inherit the full server env.** `RunManager.runCheckStep` spawns
-  `bash -lc <command>` with `env: process.env` (`packages/cezar/src/workflows/run.ts` ~5530). There is no
+  `bash -lc <command>` with `env: process.env` (`packages/work/src/workflows/run.ts` ~5530). There is no
   per-step and no per-project env. `docs/e2e-verification.md` therefore tells users to "export the model
   credential your provider reads (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, …) before starting cezar".
 - **That advice leaks the key into agent sessions.** Agents get a curated env from `buildChildEnv`
@@ -73,7 +73,7 @@ All references are to `main` @ `05471fd`.
 > exactly the secrets it needs with `secrets:`. The injection, redaction and fork-head rules
 > below still hold as written.
 
-**Storage.** New store `CheckEnv` in `packages/cezar/src/workspace/check-env.ts`, one file per project at
+**Storage.** New store `CheckEnv` in `packages/work/src/workspace/check-env.ts`, one file per project at
 `~/.cezar/check-env/<projectId>.env`. Same write discipline as `TrackerConnections`: directory `0700` with a
 `*` `.gitignore`, files `0600`, `O_NOFOLLOW` reads, atomic tmp/rename writes, `assertCezarHomeWriteIsSandboxed`,
 every path through `cezarHomeDir()`. Format is `NAME=value` lines; no interpolation, no `export`, no quotes

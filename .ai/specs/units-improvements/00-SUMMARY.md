@@ -144,8 +144,8 @@ R2 already caught this mission doing once. Land in order.
 **Mission 1 — Marker/turn-end engine correctness.** *No dependency; land first, everything else
 gets easier once the transcript and the report actually reflect what happened.*
 Fixes: R1 (D1-D4), R9 (D6), R10, R4 (prompt-only, same file already in scope).
-Files it may touch: `packages/cezar/src/units/markers.ts`, `packages/cezar/src/units/prompts.ts`,
-`packages/cezar/src/workflows/run.ts` — only the turn-end handlers inside `runContinuation`
+Files it may touch: `packages/work/src/units/markers.ts`, `packages/work/src/units/prompts.ts`,
+`packages/work/src/workflows/run.ts` — only the turn-end handlers inside `runContinuation`
 (≈2900-3050) and `runAgentStep` (≈3676-3760), and `recover()`'s `waiting` branch (≈1328-1344) —
 plus their tests: `markers.test.ts`, `prompts.test.ts`, `recover-unit.test.ts`,
 `units-engine.test.ts`.
@@ -153,9 +153,9 @@ plus their tests: `markers.test.ts`, `prompts.test.ts`, `recover-unit.test.ts`,
 **Mission 2 — Budget & Guard truth.** *Depends on Mission 1 (shares `enforceUnitBudget`'s turn-end
 call site); land second.*
 Fixes: R3, R21, R17, R5.
-Files it may touch: `packages/cezar/src/units/engine.ts` (`remainingBudgetUsd` only),
-`packages/cezar/src/workflows/run.ts` (`carveChildBudgets` ≈1713-1739, `enforceUnitBudget`
-≈1578-1593 only), `packages/cezar/src/server/server.ts` (one new budget PATCH route — reconcile the
+Files it may touch: `packages/work/src/units/engine.ts` (`remainingBudgetUsd` only),
+`packages/work/src/workflows/run.ts` (`carveChildBudgets` ≈1713-1739, `enforceUnitBudget`
+≈1578-1593 only), `packages/work/src/server/server.ts` (one new budget PATCH route — reconcile the
 two proposed shapes into one, see the duplicate note in §b), `packages/web/src/lib/missions.ts`
 (`totalBudgetUsd`, `needsGuard`/`guardReason`), `packages/web/src/routes/missions/guard.tsx`, plus
 `engine.test.ts` and `missions.test.ts`.
@@ -163,10 +163,10 @@ two proposed shapes into one, see the duplicate note in §b), `packages/web/src/
 **Mission 3 — Downward context, scope integrity & mission end-state.** *Depends on Mission 2
 (shares `spawnChildren` and `engine.ts`'s other exported functions); land third.*
 Fixes: R13, R2, R19, R6, R7, R23, R24, R8 (documentation half), R22.
-Files it may touch: `packages/cezar/src/units/engine.ts` (`childTaskEnvelope` only),
-`packages/cezar/src/workflows/run.ts` (`spawnChildren` ≈1607-1699, `settleSuccess` ≈4152-4176
-only), `packages/cezar/src/units/prompts.ts` (backend-capability line, scope-overlap docs),
-`packages/cezar/src/server/server.ts` (missions `GET`/cancel routes, `worktreeOf` reclaimed
+Files it may touch: `packages/work/src/units/engine.ts` (`childTaskEnvelope` only),
+`packages/work/src/workflows/run.ts` (`spawnChildren` ≈1607-1699, `settleSuccess` ≈4152-4176
+only), `packages/work/src/units/prompts.ts` (backend-capability line, scope-overlap docs),
+`packages/work/src/server/server.ts` (missions `GET`/cancel routes, `worktreeOf` reclaimed
 messaging), plus `engine.test.ts`.
 
 **Not sequenced into these three, deliberately deferred:** R12 (escalation ladder), R14/R15
@@ -245,22 +245,22 @@ line was reopened, see "Citations opened at HEAD" below).
 
 ## Citations opened at HEAD `8ed75a05` while writing this document
 
-- `packages/cezar/src/units/prompts.ts:90-166` — full `CAESAR_PROMPT`/`LEGATE_PROMPT`/
+- `packages/work/src/units/prompts.ts:90-166` — full `CAESAR_PROMPT`/`LEGATE_PROMPT`/
   `CENTURION_PROMPT` bodies, to confirm the exact `CEZ:MONITORING` instruction wording and line
   numbers (`grep -n "CEZ:MONITORING" prompts.ts` → 99, 130, 154).
-- `packages/cezar/src/units/markers.ts` — full file (134 lines): `SPAWN_MARKER_RE`/`REPORT_MARKER_RE`
+- `packages/work/src/units/markers.ts` — full file (134 lines): `SPAWN_MARKER_RE`/`REPORT_MARKER_RE`
   vs. the looser `SPAWN_MARKER_CANDIDATE_RE`/`REPORT_MARKER_CANDIDATE_RE` (line 35), `parseMarker`'s
   non-global `.exec()`, `stripSpawnMarker`/`stripReportMarker`.
-- `packages/cezar/src/workflows/run.ts:108` — `IDLE_TIMEOUT_MS = 15 * 60_000`.
-- `packages/cezar/src/workflows/run.ts:134-175` — `appendTurnText`, `stripDoneMarker`,
+- `packages/work/src/workflows/run.ts:108` — `IDLE_TIMEOUT_MS = 15 * 60_000`.
+- `packages/work/src/workflows/run.ts:134-175` — `appendTurnText`, `stripDoneMarker`,
   `stripMonitoringMarker`, `stripUnitMarkers`, `unitMarkerRejection`.
-- `packages/cezar/src/workflows/run.ts:2900-3050` — `runContinuation`'s turn-end `onEvent` handler:
+- `packages/work/src/workflows/run.ts:2900-3050` — `runContinuation`'s turn-end `onEvent` handler:
   the per-event strip (`2928`), `handleUnitMarkers` call (`2960-2964`), `monitoring` computation
   (`2972-2980`), autonomous-nudge gating (`2988-3010`).
-- `packages/cezar/src/workflows/run.ts:3676-3760` — `runAgentStep`'s twin turn-end handler,
+- `packages/work/src/workflows/run.ts:3676-3760` — `runAgentStep`'s twin turn-end handler,
   confirmed to have no autonomous-nudge branch at all (R10) and the same `monitoring` computation
   shape as `runContinuation`.
-- `packages/cezar/src/workflows/run.ts:4250-4275` — `armIdleTimer`/`clearIdleTimer`.
+- `packages/work/src/workflows/run.ts:4250-4275` — `armIdleTimer`/`clearIdleTimer`.
 - `git log --oneline -5` and `git merge-base HEAD cez/e44f25a3` — confirmed the fork point for this
   file is `8ed75a05`, the same commit as HEAD at the start of this task.
 

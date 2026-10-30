@@ -128,11 +128,11 @@ The user authorized a simulation of the agreed scope with assumptions marked. Th
 
 ## Existing implementation evidence
 
-- `packages/cezar/src/workflows/run.ts`: record creation precedes execution; initial worktree setup and rematerialization are separate paths.
-- `packages/cezar/src/runs/retention.ts`: finished-directory reclamation retains branch/task; review/live runs excluded.
-- `packages/cezar/src/git-worktree.ts`: creation/removal and startup orphan cleanup.
-- `packages/cezar/src/config.ts`: optional project config and defaults.
-- `packages/cezar/src/server/server.ts`: configuration writes, archive, deletion and worktree operations.
+- `packages/work/src/workflows/run.ts`: record creation precedes execution; initial worktree setup and rematerialization are separate paths.
+- `packages/work/src/runs/retention.ts`: finished-directory reclamation retains branch/task; review/live runs excluded.
+- `packages/work/src/git-worktree.ts`: creation/removal and startup orphan cleanup.
+- `packages/work/src/config.ts`: optional project config and defaults.
+- `packages/work/src/server/server.ts`: configuration writes, archive, deletion and worktree operations.
 - `packages/web/src/routes/settings/settings-shell.tsx`, `settings-field.tsx`, `worktrees-section.tsx`, `worktrees-panel.tsx`: section navigation, labelled fields, explicit Save and destructive confirmation dialogs.
 - `packages/web/src/routes/task-thread/run-header.tsx`, `task-thread.tsx`: task header, status, Session tab and execution transcript.
 

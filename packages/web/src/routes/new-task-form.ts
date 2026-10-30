@@ -133,7 +133,7 @@ const NATIVE_MODEL_ID_PREFIX: Partial<Record<Runner, RegExp>> = {
  *
  *  This is the cockpit's half of the rule the server states structurally — a runner with no
  *  default provider cannot be contradicted, which is why `KNOWN_PRESETS_BY_RUNNER.pi` is empty
- *  in `packages/cezar/src/core/model-presets.ts`. Without it, adding pi's presets here would
+ *  in `packages/work/src/core/model-presets.ts`. Without it, adding pi's presets here would
  *  silently strip a pinned OpenCode model from the OpenCode picker.
  *
  *  It exempts a runner's PRESET LIST, never the vendor shapes above: those name a vendor's own

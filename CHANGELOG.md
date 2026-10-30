@@ -6,7 +6,7 @@ provenance in `NOTICE`; cezar's own release notes are not copied into it.
 ## 2026-10-30 — Cleanup: no network in the shell, local build only
 
 - **Desktop engine.** The shell no longer downloads anything. It runs the engine named by
-  `CEZ_DESKTOP_ENTRY`, else the one `node packages/cezar/dist/index.js link --use` registered
+  `CEZ_DESKTOP_ENTRY`, else the one `node packages/work/dist/index.js link --use` registered
   under `~/.cezar/versions/current`; the Versions menu still switches between linked checkouts.
   The managed Node runtime (`node_runtime.rs`, `~/.cezar/node`) and the six crates that fetched
   and unpacked it (`reqwest`, `rustls`, `sha2`, `flate2`, `tar`, `zip`) are gone — Node 20+ must
@@ -26,9 +26,9 @@ upstream services is cut, while the internal identifiers (`cez`, `.ai/cezar`, `~
 `CEZ_*`, the `@open-mercato/*` package scope) stay unchanged.
 
 - **Attribution.** `Copyright (c) 2026 DOANTUANIT` added below the original cezar copyright in
-  `LICENSE` and `packages/cezar/LICENSE`; new `NOTICE` records the derivation. Root `README.md`
+  `LICENSE` and `packages/work/LICENSE`; new `NOTICE` records the derivation. Root `README.md`
   rewritten for Onni Work; upstream `README.zh-CN.md` / `README.zh-TW.md` removed.
-- **Manifests.** `repository` metadata points at this project, `packages/cezar` and
+- **Manifests.** `repository` metadata points at this project, `packages/work` and
   `packages/api-client` are private, all `publishConfig` entries and the stale
   `api-client` repository path are gone, `packages/desktop` and the Rust crate declare their
   license, and the Arch `PKGBUILD` no longer points at the upstream repository.

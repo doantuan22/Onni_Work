@@ -116,13 +116,13 @@ jobs:
 
       - name: Run the webhook suite
         if: runner.os != 'Windows'
-        run: npm test -- packages/cezar/src/webhooks
+        run: npm test -- packages/work/src/webhooks
 
       # A cold Windows PowerShell probe is intentionally fail-closed and expensive. Serial files
       # avoid a worker-start stampede while the first successful probe populates its process cache.
       - name: Run the webhook suite on Windows
         if: runner.os == 'Windows'
-        run: npm test -- packages/cezar/src/webhooks --no-file-parallelism --testTimeout=180000 --hookTimeout=30000
+        run: npm test -- packages/work/src/webhooks --no-file-parallelism --testTimeout=180000 --hookTimeout=30000
 
       - name: Build application on macOS and Windows
         if: runner.os != 'Linux'

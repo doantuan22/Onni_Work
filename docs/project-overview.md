@@ -86,7 +86,7 @@ D:\Multi Agent
 └───────────────┬──────────────────────────────────────────────────────┘
                 │ HTTP loopback 127.0.0.1:<port>  (transport nội bộ)
 ┌───────────────▼──────────────────────────────────────────────────────┐
-│  SERVICE + ENGINE (Node 20+, TypeScript ESM)   packages/cezar        │
+│  SERVICE + ENGINE (Node 20+, TypeScript ESM)   packages/work        │
 │  • Hono HTTP API dưới /api/v1  + SSE + WebSocket                     │
 │  • RunManager, workflow runner, runner adapters cho từng CLI agent   │
 │  • git worktree per task, diff base, review gate, tạo draft PR (gh)  │
@@ -114,7 +114,7 @@ route phải được **chain vào family builder** để Hono suy ra type; vali
 không parse trong handler; mọi thứ trả lời dưới `/api/v1`.
 `contract-parity*.test.ts` kiểm tra schema và route khớp nhau cả hai chiều.
 
-### 4.3 Thành phần engine (`packages/cezar/src`)
+### 4.3 Thành phần engine (`packages/work/src`)
 
 | Thư mục / file | Chức năng |
 | --- | --- |
@@ -281,7 +281,7 @@ npm run dev                 # API + Vite (HMR), mở browser cho dev
 npm run typecheck           # contract + api-client + server + web
 npm test                    # vitest: server + cockpit unit suites
 npm run test:unit           # node:test: core module nhanh
-npm run build               # tsc → dist, vite → packages/cezar/web/dist, check:pack
+npm run build               # tsc → dist, vite → packages/work/web/dist, check:pack
 npm run test:package        # pack tarball rồi chạy CLI đã build
 npm run test:e2e            # UI smoke thật (agent-browser), CEZ_DRY_RUN=1
 ```

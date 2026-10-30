@@ -6,9 +6,9 @@ import type { ApiRun, RunEvent, UiToolItem } from '@open-mercato/cezar-api-clien
 import { createQueryClient } from '@/api/query-client'
 import { sameData } from '@/lib/same-data'
 
-import claudeSubagent from '../../../../cezar/src/core/__fixtures__/claude/subagent-task.expected.json'
-import codexReview from '../../../../cezar/src/core/__fixtures__/codex/review-mode.expected.json'
-import opencodeSubtask from '../../../../cezar/src/core/__fixtures__/opencode/subtask-nested.expected.json'
+import claudeSubagent from '../../../../work/src/core/__fixtures__/claude/subagent-task.expected.json'
+import codexReview from '../../../../work/src/core/__fixtures__/codex/review-mode.expected.json'
+import opencodeSubtask from '../../../../work/src/core/__fixtures__/opencode/subtask-nested.expected.json'
 
 import {
   SessionTranscript,

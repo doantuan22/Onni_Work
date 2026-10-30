@@ -1,8 +1,8 @@
 # Design Mode — point at an element of the task's app, and it rides the next message
 
 > Status: implemented on `main` (2026-10-13), ported from `origin/brutus` (2026-10-09/10).
-> Implementation: `packages/cezar/src/server/preview/` (proxy + picker script), the
-> `POST /api/v1/preview/design-proxy` route in `packages/cezar/src/server/server.ts`, and
+> Implementation: `packages/work/src/server/preview/` (proxy + picker script), the
+> `POST /api/v1/preview/design-proxy` route in `packages/work/src/server/server.ts`, and
 > `packages/web/src/routes/task-preview/` — the frame and toggle (`browser-view.tsx`) the task
 > workspace renders as its **Preview** view (`task-workspace/task-workspace.tsx`), the notes (`design-notes.ts`, `design-note-popup.tsx`) and
 > the pick format (`design-picks.ts`).
@@ -260,12 +260,12 @@ that needs no reporter. Back to a `pushState` entry on another path is still a l
 
 ## 8. Verification
 
-- `packages/cezar/src/server/preview/design-proxy.test.ts` — the proxy against a real loopback
+- `packages/work/src/server/preview/design-proxy.test.ts` — the proxy against a real loopback
   listener: injection, `Host` refusal, origin rewriting, redirects, WebSocket splice, 502, idle and
   LRU closing, every refused target.
-- `packages/cezar/src/server/design-proxy-api.test.ts` — route policy: 200 shape, 400, 409 for
+- `packages/work/src/server/design-proxy-api.test.ts` — route policy: 200 shape, 400, 409 for
   `CEZ_DESIGN_MODE=0` and hosted mode.
-- `packages/cezar/src/server/capabilities.test.ts` — `designMode`: on locally, off with
+- `packages/work/src/server/capabilities.test.ts` — `designMode`: on locally, off with
   `CEZ_DESIGN_MODE=0`, off on a hosted cockpit even with `=1`.
 - `packages/web/src/routes/task-preview/design-picks.test.ts` — parsing hostile input, the message
   format, the size refusals.

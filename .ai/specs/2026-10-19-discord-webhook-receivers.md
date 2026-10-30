@@ -94,7 +94,7 @@ the cezar payload for that profile does not carry.
 
 ### 5. Setup guide
 
-`packages/cezar/docs/webhooks.md`: "Send to Discord" (create webhook in channel → paste URL →
+`packages/work/docs/webhooks.md`: "Send to Discord" (create webhook in channel → paste URL →
 Test → Activate; Minimal vs Standard in Discord; URL is a secret; mentions never ping). The feature is enabled by `CEZ_WEBHOOKS=1`, documented in `.env.example`.
 
 ## Validation

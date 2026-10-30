@@ -565,7 +565,7 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
         id: 't2',
         name: 'Edit',
         toolKind: 'edit',
-        title: 'packages/cezar/src/runs/store.test.ts',
+        title: 'packages/work/src/runs/store.test.ts',
         status: 'completed',
         input: {
           new_string: "result: 'Opened a draft pull request: https://github.com/open-mercato/cezar/pull/42'",

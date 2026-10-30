@@ -154,7 +154,7 @@ here so the future spec cannot drift.**
 
 ## Affected areas (if known)
 
-- `packages/cezar/src/core/host-usage.ts` - cgroup probe (`cpu.max`, `memory.max`, `cpuset.*`),
+- `packages/work/src/core/host-usage.ts` - cgroup probe (`cpu.max`, `memory.max`, `cpuset.*`),
   injection seam (`readCgroupFile`), container sample incl. `cpuAffinityCores`.
 - `packages/contract/src/host.ts` - optional `container` (+ `cpuAffinityCores`) and gated
   `hostCpuCount`, contract comments (incl. the stale limits-not-subtracted line).

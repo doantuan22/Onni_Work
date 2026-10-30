@@ -13,7 +13,7 @@ import type { UiEvent } from './ui-events.ts';
  * never runs by default:
  *
  * ```
- * COPILOT_REAL_SMOKE=1 COPILOT_GITHUB_TOKEN=… npm test -- packages/cezar/src/core/copilot-acp-runner.smoke.test.ts
+ * COPILOT_REAL_SMOKE=1 COPILOT_GITHUB_TOKEN=… npm test -- packages/work/src/core/copilot-acp-runner.smoke.test.ts
  * ```
  *
  * (a `copilot login` already on the machine works too; `COPILOT_SMOKE_MODEL` overrides the model).

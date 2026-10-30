@@ -9,7 +9,7 @@ import { runnerSchema } from './health.ts';
  * settles, and its unspent budget returns to the parent.
  *
  *  - `dispatchSchema` is a RECORD field (`runRecordSchema.dispatch`), persisted by
- *    `packages/cezar/src/runs/store.ts` through this very value;
+ *    `packages/work/src/runs/store.ts` through this very value;
  *  - `dispatchInputSchema` and `dispatchReportSchema` are request bodies.
  */
 

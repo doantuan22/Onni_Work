@@ -40,9 +40,9 @@ duplicates.
 *Source: `01-responsibility-model.md` F1; the same wording overlap was independently noticed as
 `03-prompt-noop-audit.md` F6, which deferred it here — merged into this one finding.*
 
-- `packages/cezar/src/units/prompts.ts:38` — "For each child you accept, merge its branch into your
+- `packages/work/src/units/prompts.ts:38` — "For each child you accept, merge its branch into your
   own worktree: `git merge --no-ff <child branch>`."
-- `packages/cezar/src/units/prompts.ts:79` — "Before ANY action that is irreversible, financial, or
+- `packages/work/src/units/prompts.ts:79` — "Before ANY action that is irreversible, financial, or
   widens your scope, end the turn with CEZ:ASK and stop. That includes: pushing to a shared branch,
   **merging anything**, …"
 - Both constants are interpolated into the *same* assembled prompt for both commanding ranks:
@@ -60,11 +60,11 @@ accepted child. Resolved in full below.
 ### F2 — CRITICAL — a spawn's `scope` / `allowed_tools` brake is inert on two of four backends
 *Source: `02-validation-and-ladder.md` F1.*
 
-- `packages/cezar/src/core/codex-app-server-runner.ts:56-58` — "Codex has no per-tool allowlist, so
+- `packages/work/src/core/codex-app-server-runner.ts:56-58` — "Codex has no per-tool allowlist, so
   `spec.allowedTools` is ignored" (running `sandbox: danger-full-access`, `approvalPolicy: never`).
-- `packages/cezar/src/core/opencode-server-runner.ts:46-47` — "OpenCode has no per-tool allowlist,
+- `packages/work/src/core/opencode-server-runner.ts:46-47` — "OpenCode has no per-tool allowlist,
   so `spec.allowedTools` is ignored."
-- `packages/cezar/src/core/claude-cli-runner.ts:381-383` — `claude` is the one backend that turns
+- `packages/work/src/core/claude-cli-runner.ts:381-383` — `claude` is the one backend that turns
   `spec.allowedTools` into a real `--allowedTools` argument.
 - The fields exist and are documented as brakes: `packages/contract/src/units.ts:136,140`;
   `prompts.ts:52` ("Give every sibling a DISJOINT scope") and `:53`.
@@ -128,7 +128,7 @@ in its own context window.
   `errors[]`, `recommended_next_action`, all narrative.
 - The only trustworthy facts a parent receives are the two the *engine* appends from its own store:
   cost and `diffStat` — and `diffStat` is counts only, no paths and no sha
-  (`packages/cezar/src/runs/store.ts:124-131`: `adds`, `dels`, `files`, `repointed?`).
+  (`packages/work/src/runs/store.ts:124-131`: `adds`, `dels`, `files`, `repointed?`).
 - The design already concedes this: `prompts.ts:37` tells every parent to "read that branch's diff,
   run the tests and commands the child claims to have run" by hand.
 
@@ -186,9 +186,9 @@ though the three do work with very different cost/judgement profiles.
 - `MAX_CHILDREN_IN_FLIGHT = 4` (`engine.ts:29`), enforced at `run.ts:1626-1633`, bounds what a
   parent may have *outstanding*, not what runs at once.
 - Real concurrency is `maxParallel`, default **2**, global across all missions
-  (`packages/cezar/src/config.ts:36`).
+  (`packages/work/src/config.ts:36`).
 - Parked commanders are exempt from that count **outright** (`run.ts:682-687`; test title at
-  `packages/cezar/src/workflows/units-engine.test.ts:178`, "surrenders the commander's slot to its
+  `packages/work/src/workflows/units-engine.test.ts:178`, "surrenders the commander's slot to its
   children even past `maxMonitoringSessions`").
 
 **Why it matters.** An `army` can have 16 centurion tasks nominally in flight while 2 execute. The
@@ -228,7 +228,7 @@ strictly load-bearing and must not be trimmed as generic advice.
 - `prompts.ts:113` instructs a Caesar to emit `CEZ:REPORT` first "if you were spawned as part of a
   larger structure." `CHILD_ROLE` (`engine.ts:21-25`) maps nothing to `caesar`, and the only
   `caesar` creation path is `POST /missions` (`server.ts:3501`, `:3510`), confirmed by
-  `packages/cezar/src/server/missions-api.test.ts:102`
+  `packages/work/src/server/missions-api.test.ts:102`
   (`expect(store.getRun(id)?.unit).toEqual({ role: 'caesar', missionId: id })`, no `parentRunId`).
 
 **Why it matters.** Dead in the current build. Plausibly forward-compatible with the reserved
@@ -240,7 +240,7 @@ not be mistaken for exercised behaviour.
 
 - The comment says "`maxParallel` defaults to 2 and only two monitors are slot-exempt." That
   describes the bounded `maxMonitoringSessions` watcher exemption (default 2,
-  `packages/cezar/src/workspace/config.ts:84`), not the *unbounded* unit-parent exemption at
+  `packages/work/src/workspace/config.ts:84`), not the *unbounded* unit-parent exemption at
   `run.ts:682-687` that actually governs mission slot arithmetic.
 
 **Why it matters.** Anyone sizing a fan-out from that comment under-estimates how many commanders
@@ -274,7 +274,7 @@ finding come first (P1-P4), then the `S`-effort default-path change (P5), then t
 in ascending cost (P6-P9), then the two cheap hygiene items (P10-P11). Where two source files touch
 the same constant, composition is stated explicitly.
 
-**Composition note.** P1, P2, P4 and P10 all edit `packages/cezar/src/units/prompts.ts`. They touch
+**Composition note.** P1, P2, P4 and P10 all edit `packages/work/src/units/prompts.ts`. They touch
 disjoint lines (`79-84`, `90`/`121`, `57`, `31`/`49`/`54`) and **compose without conflict** — no
 two proposals rewrite the same line. P1's replacement `GUARD_RULE` deliberately keeps the closing
 "Open pull requests as DRAFTS. Never merge to the base branch" bullet, which is the overlap
@@ -386,7 +386,7 @@ retries" clause so a future trim cannot mistake it for boilerplate. **Effort: S.
 explicit ladder still wins. Add:
 
 ```ts
-// next to CHILD_ROLE, packages/cezar/src/units/engine.ts:21-25
+// next to CHILD_ROLE, packages/work/src/units/engine.ts:21-25
 export const DEFAULT_UNIT_LADDER: Record<UnitRole, { runner: 'claude'; model: string }> = {
   caesar: { runner: 'claude', model: 'claude-fable-5-1' },
   legate: { runner: 'claude', model: 'claude-opus-5' },
@@ -423,7 +423,7 @@ becomes visible.
 children that already finished under budget, and can be refused the spawn that would complete its
 own task order (F8).
 
-**Concrete change** — `packages/cezar/src/units/engine.ts:67-72`:
+**Concrete change** — `packages/work/src/units/engine.ts:67-72`:
 
 ```ts
 export function remainingBudgetUsd(parent: RunRecord, children: readonly RunRecord[]): number | undefined {
@@ -613,10 +613,10 @@ Self-contained; you do not need to open `01-responsibility-model.md` to act on t
 
 **The two lines, verified at `df73cfa9`:**
 
-- `packages/cezar/src/units/prompts.ts:38` —
+- `packages/work/src/units/prompts.ts:38` —
   > "For each child you accept, merge its branch into your own worktree: `git merge --no-ff <child
   > branch>`. One child at a time, re-running the repository's checks after each merge."
-- `packages/cezar/src/units/prompts.ts:79` —
+- `packages/work/src/units/prompts.ts:79` —
   > "Before ANY action that is irreversible, financial, or widens your scope, end the turn with
   > CEZ:ASK and stop. That includes: pushing to a shared branch, **merging anything**, force-pushing,
   > …"
@@ -718,7 +718,7 @@ Caesar. That is F1 observed in production, not merely in review.
 - Findings before deduplication: 16 across three files (5 + 5 + 6). After merging
   `03`-F6 into F1 as a duplicate: **16 global findings** (the merge removed one; F8 is new,
   first-hand from operating the system during this mission).
-- `03-prompt-noop-audit.md` reports `npx vitest run packages/cezar/src/units/prompts.test.ts` →
+- `03-prompt-noop-audit.md` reports `npx vitest run packages/work/src/units/prompts.test.ts` →
   18/18 passing, with no source file modified by this audit.
 - **Authorship note.** `SUMMARY.md` was written by the mission's Legate rather than delegated to a
   Centurion, contrary to `prompts.ts:121`. The spawn that would have produced it was refused for

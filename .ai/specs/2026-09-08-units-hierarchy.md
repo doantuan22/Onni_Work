@@ -36,7 +36,7 @@ and **Settings → Units** for the prompts.
 ## Data
 
 `unit` is an optional object on the run record (`packages/contract/src/runs.ts` and its persistence
-twin in `packages/cezar/src/runs/store.ts`; parity test must pass). Absent = today's behaviour.
+twin in `packages/work/src/runs/store.ts`; parity test must pass). Absent = today's behaviour.
 
 ```ts
 unitRoleSchema = z.enum(['caesar', 'legate', 'centurion'])
@@ -122,7 +122,7 @@ and the child names no cost). At both turn-end handlers, if `costUsd ≥ budgetU
 
 ## Role prompts
 
-`packages/cezar/src/units/prompts.ts`: `DEFAULT_UNIT_PROMPTS: Record<UnitRole, string>` and
+`packages/work/src/units/prompts.ts`: `DEFAULT_UNIT_PROMPTS: Record<UnitRole, string>` and
 `resolveUnitPrompt(repoRoot, role)` reading `.ai/cezar/units/<role>.md` when present. Composed
 into the step system prompt after the handoff contract and before skills. Each default prompt
 states: who you are, what you receive (a task order), how you delegate (`CEZ:SPAWN <json>` with the

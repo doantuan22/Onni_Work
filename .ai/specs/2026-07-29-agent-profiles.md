@@ -153,10 +153,10 @@ other XDG-aware tool the agent's own Bash calls touch.
 
 | Where | What |
 | --- | --- |
-| `packages/cezar/src/core/agent-profiles.ts` | `PROFILE_ENV_VAR`, `profileEnv`, `looksLikeProfileDir` — the vendor knowledge, pure. Sibling of `agent-config/catalog.ts`, which owns config-FILE knowledge. |
-| `packages/cezar/src/core/shell-env.ts` | Rendering the variable into a shell command, per platform, refusing rather than guessing. |
-| `packages/cezar/src/workspace/agent-profiles.ts` | Resolution against the workspace config. |
-| `packages/cezar/src/workspace/agent-accounts.ts` | `~/.cezar/agent-accounts.json` — the store, its house rules, and the one-time import from `config.json`. `config.json`'s own schema is untouched by this feature. |
+| `packages/work/src/core/agent-profiles.ts` | `PROFILE_ENV_VAR`, `profileEnv`, `looksLikeProfileDir` — the vendor knowledge, pure. Sibling of `agent-config/catalog.ts`, which owns config-FILE knowledge. |
+| `packages/work/src/core/shell-env.ts` | Rendering the variable into a shell command, per platform, refusing rather than guessing. |
+| `packages/work/src/workspace/agent-profiles.ts` | Resolution against the workspace config. |
+| `packages/work/src/workspace/agent-accounts.ts` | `~/.cezar/agent-accounts.json` — the store, its house rules, and the one-time import from `config.json`. `config.json`'s own schema is untouched by this feature. |
 | `packages/contract/src/agent-profiles.ts` | The wire shapes. |
 | `GET/POST /api/v1/workspace/agent-profiles`, `PATCH/DELETE …/:id` | Workspace-level, single-mount, `localHandoff`-gated. |
 | `PUT /api/v1/workspace/agent-profiles/selection` | Which account a project uses. On the accounts family, so `PATCH /api/v1/projects` and the project registry are untouched. |

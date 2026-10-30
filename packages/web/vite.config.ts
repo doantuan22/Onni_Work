@@ -7,7 +7,7 @@ import { defineConfig } from 'vite'
 const appDir = dirname(fileURLToPath(import.meta.url))
 const packagesDir = resolve(appDir, '..')
 
-// The cockpit server (packages/cezar/src/server/server.ts) owns /api and serves the built app.
+// The cockpit server (packages/work/src/server/server.ts) owns /api and serves the built app.
 // `npm run dev` (scripts/dev.mjs) picks a free port and pins both processes to it via
 // CEZ_API_PORT, so a stray cockpit already sitting on 4321 (another repo, an older install)
 // can never end up behind the proxy. Standalone `npm run dev:web` keeps the 4321 default.
@@ -46,7 +46,7 @@ export default defineConfig({
     // looks for `<pkg>/web/dist` next to its own `dist/`, and `files` puts it in the tarball.
     // A cross-package output is the honest expression of that coupling — the cockpit bundle is
     // an artifact of the service, not a separately shipped thing.
-    outDir: resolve(packagesDir, 'cezar/web/dist'),
+    outDir: resolve(packagesDir, 'work/web/dist'),
     emptyOutDir: true,
     rolldownOptions: {
       output: {

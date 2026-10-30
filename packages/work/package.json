@@ -67,7 +67,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/doantuan22/Onni_Work",
-    "directory": "packages/cezar"
+    "directory": "packages/work"
   },
   "optionalDependencies": {
     "@lydell/node-pty": "^1.2.0-beta.15",

@@ -482,7 +482,7 @@ Useful environment variables:
 | `CEZ_DESIGN_MODE=0` | Turn off Design Mode in a task's **Preview** tab (spec `.ai/specs/2026-10-09-design-mode.md`). Unset, it is on for a local cockpit: switching it on makes cezar re-serve the previewed local `http://` dev server on a second `127.0.0.1` port with an element picker injected, so you can click an element and send the agent a note about it. The port opens only on that click and closes when idle. Always off on a hosted cockpit, where a loopback port reaches nobody — there is no `=1`. |
 | `CEZ_FOLLOWUPS=1` | Turn on the global follow-up **Inbox**: agents are asked to leave follow-ups in `todos.json` when they finish, and the Inbox view appears. Off by default — each task's own **Notes** handoff journal runs either way. |
 | `CEZ_AUTOMATIONS=0` | Turn **automations** off. On by default since the automations redesign (spec `.ai/specs/2026-09-14-automations-redesign.md`): the Automations view lists GitHub-triggered and scheduled automations, and cezar polls GitHub or fires schedules on each enabled one while it is running — nothing runs until you enable an automation yourself. An agent can also **create an automation from a prompt**: type "whenever a PR is opened, review it" into New task — pick the built-in `create-cezar-automation` skill, or just ask; every task's system prompt teaches it to recognise the intent — and the agent writes the definition and creates it through `cez automation create` (paused, with a `cez automation check` preview of what it would match), then links the Automations page. Only the exact value `0` opts out (`CEZ_AUTOMATIONS=1`, the old opt-in, is accepted and changes nothing); opted out, the nav item is absent, the endpoints answer `409`, and the workspace scheduler never starts. Read at boot, so restart after changing it; definitions, receipts and high-watermarks are kept either way. |
-| `CEZ_WEBHOOKS=1` | Enable project lifecycle notifications in Settings → Webhooks. Off by default; independent of graph workflow notifications. See the [receiver guide](../packages/cezar/docs/webhooks.md). |
+| `CEZ_WEBHOOKS=1` | Enable project lifecycle notifications in Settings → Webhooks. Off by default; independent of graph workflow notifications. See the [receiver guide](../packages/work/docs/webhooks.md). |
 | `CEZ_WORKFLOW_WEBHOOKS=1` | Let a workflow graph's **`notify.webhook`** node POST to the URL it names (JSON: `text`, `run`, `node`). Off by default: a workflow file — which can be imported from anywhere — calling out to an arbitrary URL widens exposure, so it is opt-in. Off, the node leaves by `failed` with a note; under `CEZ_DRY_RUN=1` nothing is sent either way. |
 | `CEZ_TERMINAL=1` / `=0` | The task view's interactive **terminal** (spec `.ai/specs/2026-10-07-task-workspace.md` §6). Unset it is on for a local cockpit and off on a hosted one (`CEZ_REMOTE=1` or a non-loopback bind). `1` allows it there too — without a sign-in in front of cezar this hands a shell on the server to anyone your reverse proxy admits. `0` turns it off everywhere. A platform with no prebuilt PTY binary reports the terminal unavailable with a reason instead of failing. |
 | `CEZ_DISPATCH=0` | Turn OFF **task dispatch**, which is on by default: a running task may start other cezar tasks with `cez task create` — each in its OWN worktree forked off the parent's branch, with a budget carved out of the parent's — and they report back into the parent's session when they settle (`cez task report`). Children appear nested under their parent in the task lists. Tasks talk through a tree directory (`.ai/cezar/dispatch/<root>/`: the brief, each task's order/notes/report, an inbox per task) and cezar wakes a parked recipient when a file lands. A `--kind review` child judges another task's branch and answers with a verdict. ON by default (the owner-approved exception to "cost-widening features are opt-in" — see `AGENTS.md`), and only the exact value `0` turns it off; with it off the `/runs/:id/dispatch` and `/runs/:id/report` routes answer `409`, no task is told about the CLI, and the cockpit hides the "Review open PRs" template. A headless `cezar run` never dispatches either way — there is no cockpit for the CLI to reach, so no task is told about it. Read at boot, so restart after changing it. This is the widest cost-widening flag here — one task can start four more agents — so give dispatching tasks a budget. |
@@ -670,7 +670,7 @@ Parallel variants (×2/×3) of one task share that task's backend — mixing
 happens per task and per step, not inside a variant group.
 
 The seam is deliberately small: a backend is one class implementing the
-`AgentRunner` interface (`packages/cezar/src/core/agent-runner.ts`) that turns a prompt into
+`AgentRunner` interface (`packages/work/src/core/agent-runner.ts`) that turns a prompt into
 a stream of normalized events. Other CLIs — pi, aider, whatever ships next —
 can slot in the same way.
 
@@ -1006,8 +1006,8 @@ cd Onni_Work
 npm install
 ```
 
-**3. Build** — compiles the api-client and the server (`tsc → packages/cezar/dist/`) and the cockpit
-(`vite build → packages/cezar/web/dist/`), then runs the pack gate:
+**3. Build** — compiles the api-client and the server (`tsc → packages/work/dist/`) and the cockpit
+(`vite build → packages/work/web/dist/`), then runs the pack gate:
 
 ```bash
 npm run build
@@ -1016,15 +1016,15 @@ npm run build
 **4. Run it** — straight from the built checkout:
 
 ```bash
-node packages/cezar/dist/index.js          # cockpit for the current repo
-node packages/cezar/dist/index.js --help   # flags, same binary as `cezar`
+node packages/work/dist/index.js          # cockpit for the current repo
+node packages/work/dist/index.js --help   # flags, same binary as `cezar`
 ```
 
 To make this checkout the engine the **desktop app** runs, register it as a version
 (see [Point the desktop app at a worktree](#point-the-desktop-app-at-a-worktree)):
 
 ```bash
-node packages/cezar/dist/index.js link .   # a link, not a copy — rebuilds are live
+node packages/work/dist/index.js link .   # a link, not a copy — rebuilds are live
 ```
 
 **5. The change loop**
@@ -1037,7 +1037,7 @@ linked).
 
 The desktop app runs whatever `~/.cezar/versions/current` points at. A **linked checkout** puts a
 worktree there without copying it: the version entry is a symlink to the worktree's
-`packages/cezar`, so it runs straight off the worktree (and its own `node_modules`), and every
+`packages/work`, so it runs straight off the worktree (and its own `node_modules`), and every
 rebuild is live on the next restart.
 
 A worktree has to be built to run (`npm install && npm run build` in it). Then pick one of:
@@ -1061,9 +1061,9 @@ list worktrees and never link one.
 
 ```bash
 npm run dev          # server (API :4321) + Vite dev server, opens the cockpit in the browser
-npm run dev:server   # tsx packages/cezar/src/index.ts — the API server alone
+npm run dev:server   # tsx packages/work/src/index.ts — the API server alone
 npm run dev:web      # Vite dev server alone (proxies /api to :4321)
-npm run build        # tsc → packages/cezar/dist/, vite build → packages/cezar/web/dist/, then the pack gate
+npm run build        # tsc → packages/work/dist/, vite build → packages/work/web/dist/, then the pack gate
 npm run typecheck    # server + web (tsc --noEmit)
 npm test             # vitest — server + cockpit unit suites
 npm run test:unit    # node:test — fast core-module tests
@@ -1073,7 +1073,7 @@ npm run test:e2e     # real-browser cockpit suite (agent-browser)
 
 The stack is deliberately small: **TypeScript** (strict, ESM), **Hono** + SSE for
 the server, **Zod** at every boundary, **YAML** for workflows, and a **React 19 +
-Vite + Tailwind v4 + shadcn/ui** cockpit shipped pre-built in `packages/cezar/web/dist/` — the
+Vite + Tailwind v4 + shadcn/ui** cockpit shipped pre-built in `packages/work/web/dist/` — the
 published package carries the built app, so `npx` users never run a bundler.
 Every module is meant to be read in one sitting.
 

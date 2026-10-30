@@ -3,8 +3,8 @@
 > Topic: the CHILD → PARENT channel in the units hierarchy (spec `.ai/specs/2026-09-08-units-hierarchy.md`
 > §"Reports and settle" / Q7). Analysis only, verified against HEAD `df73cfa9` on `cez/3c0a1bdb`
 > (== fork point `cez/36533222`). Every line number below was re-read at that commit; where a test
-> file is cited, its line numbers were re-read too. `npx vitest run packages/cezar/src/units
-> packages/cezar/src/workflows/units-engine.test.ts packages/cezar/src/workflows/recover-unit.test.ts`
+> file is cited, its line numbers were re-read too. `npx vitest run packages/work/src/units
+> packages/work/src/workflows/units-engine.test.ts packages/work/src/workflows/recover-unit.test.ts`
 > → **5 files, 86 tests, all passing** — nothing here is a currently-red test; every finding is a gap
 > in what is tested or specified, not a regression.
 
@@ -21,8 +21,8 @@ them.**
 
 | # | Claim | Verdict | Evidence |
 |---|---|---|---|
-| a | `CEZ:ASK` parks a child at `waiting` | **Confirmed** | `packages/cezar/src/workflows/run.ts:3035-3036` (streaming/`runContinuation`) and `:3737-3738` (`runAgentStep`): `this.store.updateRun(runId, { status: 'waiting', activity: undefined })`, reached when `ask` is true (`monitoring` is false whenever `ask` is true — `!ask` at `run.ts:2978` and `:3705`). |
-| b | `waiting` is not terminal → parent never told | **Confirmed** | `TERMINAL_STATUSES` = `['done', 'review', 'failed', 'cancelled']`, `packages/cezar/src/units/engine.ts:42`. `isTerminalStatus`, `engine.ts:44-46`. Gate: `packages/cezar/src/workflows/run.ts:1762` — `if (!isTerminalStatus(child.status)) return;` inside `reportSettledChildToParent` (`run.ts:1756`). No other call site ever inspects a non-terminal child's status for reporting purposes (grepped `parentRunId` repo-wide — only `run.ts`, `engine.ts`, and their tests reference it). |
+| a | `CEZ:ASK` parks a child at `waiting` | **Confirmed** | `packages/work/src/workflows/run.ts:3035-3036` (streaming/`runContinuation`) and `:3737-3738` (`runAgentStep`): `this.store.updateRun(runId, { status: 'waiting', activity: undefined })`, reached when `ask` is true (`monitoring` is false whenever `ask` is true — `!ask` at `run.ts:2978` and `:3705`). |
+| b | `waiting` is not terminal → parent never told | **Confirmed** | `TERMINAL_STATUSES` = `['done', 'review', 'failed', 'cancelled']`, `packages/work/src/units/engine.ts:42`. `isTerminalStatus`, `engine.ts:44-46`. Gate: `packages/work/src/workflows/run.ts:1762` — `if (!isTerminalStatus(child.status)) return;` inside `reportSettledChildToParent` (`run.ts:1756`). No other call site ever inspects a non-terminal child's status for reporting purposes (grepped `parentRunId` repo-wide — only `run.ts`, `engine.ts`, and their tests reference it). |
 | c | `waiting` still counts against the in-flight cap | **Confirmed** | `IN_FLIGHT_STATUSES = ['queued', 'running', 'waiting']`, `engine.ts:37`, read by `inFlightChildren` (`engine.ts:54-56`) and enforced at the spawn refusal, `run.ts:1627`: `if (inFlight + spawn.children.length > MAX_CHILDREN_IN_FLIGHT)`. `MAX_CHILDREN_IN_FLIGHT = 4`, `engine.ts:29`. |
 | d | The autonomous nudge is deliberately disabled for a unit run that asked, in **both** turn-end handlers | **Confirmed in one handler; the other has no nudge to disable at all — see F-U2** | `runContinuation`'s turn-end (`run.ts:2955-3044`) has the guarded auto-continue block at `:3002-3018`, condition `!(unitTurn.hasUnit && Boolean(ask))` at `:3006`. `runAgentStep`'s turn-end (`run.ts:3676-3757`) has **no such block anywhere** — `AUTONOMOUS_NUDGE` (`run.ts:314-315`) is referenced exactly once in the whole file, at `run.ts:3010`, inside `runContinuation` only. |
 | e | The parent, parked as monitoring, gets nudged with `MONITORING_WAKE_NUDGE` up to `MAX_AUTO_CONTINUES` times | **Confirmed** | `MAX_AUTO_CONTINUES = 40`, `run.ts:313`. `MONITORING_WAKE_NUDGE`, `run.ts:316-317`. Bound checked twice in `armMonitoringWakeTimer` (`run.ts:4284-4328`): at entry, `run.ts:4290`, and inside the fired timeout, `run.ts:4312`. The nudge is sent via `this.deliverMessage(runId, [{ type: 'text', text: MONITORING_WAKE_NUDGE }], false)`, `run.ts:4325` — a live turn on the parent's own, still-growing session. |
@@ -52,7 +52,7 @@ them.**
   `activity: 'monitoring'` unit parent at restart — only a `waiting` **child** is (`recover-unit.test.ts:136-167`).
 
 **Cost story (e):** default wake interval is `DEFAULT_MONITORING_WAKE_MINUTES = 5`
-(`packages/cezar/src/workspace/config.ts:77`), zero-config (`config.test.ts:71` pins the 5-minute
+(`packages/work/src/workspace/config.ts:77`), zero-config (`config.test.ts:71` pins the 5-minute
 default). Worst case: **40 live model turns, ~5 minutes apart, ~3h20m of wall time**, each one a full
 turn on the parent's entire accumulated session context (every prior spawn note, every delivered
 report, every tool call) for a message that says nothing more than "re-check the downstream work…"
@@ -64,7 +64,7 @@ nothing changed is a single stuck-and-unreported child (F-U1).
 
 ## Is there any mid-flight progress channel from child to parent today?
 
-**No.** Searched exhaustively: `grep -r parentRunId` across `packages/cezar/src` returns exactly
+**No.** Searched exhaustively: `grep -r parentRunId` across `packages/work/src` returns exactly
 `run.ts`, `engine.ts`, and their test files — no SSE stream, no shared events bus, no handoff-file
 watcher, no store subscription lets a parent's *session* (as opposed to a human looking at the
 cockpit) observe a child before it settles. `handleUnitMarkers` (`run.ts:1531-1567`) stores a

@@ -52,7 +52,7 @@ What this intentionally skips: server-side transcript rendering, durable databas
 
 A page contains **100 session items**, but its `events` array may contain more than 100 source events because turn/session boundaries and paired v1 tool events are structural inputs to `reduceThread()`.
 
-`packages/cezar/src/runs/event-history.ts` defines one pure classifier, `sessionItemKey(event, turnState)`, with these rules:
+`packages/work/src/runs/event-history.ts` defines one pure classifier, `sessionItemKey(event, turnState)`, with these rules:
 
 - v2 `item.started|updated|completed` events sharing `(stepId, item.id)` are one item. The page keeps the newest persisted full snapshot at or before its boundary; `item.delta` is not a persisted page item.
 - `user-message`, `note`, `lifecycle`, `error`, `image`, `check-output`, `ask.requested`, and `provider-auth-required` each count as one standalone item because each produces a visible thread entry or bubble.
@@ -64,7 +64,7 @@ The classifier is deliberately server-owned; the service cannot runtime-import t
 
 ### 2. Bounded reverse reader
 
-`RunStore.readEvents()` remains unchanged for compatibility callers. Add async, memory-bounded helpers in `packages/cezar/src/runs/event-history.ts`:
+`RunStore.readEvents()` remains unchanged for compatibility callers. Add async, memory-bounded helpers in `packages/work/src/runs/event-history.ts`:
 
 ```ts
 const RUN_HISTORY_PAGE_ITEMS = 100
@@ -306,9 +306,9 @@ Add synthetic long-run fixtures, instrumented reader assertions, E2E performance
 
 ### Phase 1 — Server and contracts
 
-1. Add `packages/cezar/src/runs/event-history.ts` with page/live cursor zod schemas/codecs, UTF-8-safe complete-turn projection, `sessionItemKey`, and streaming `deriveRunContextEvents`; cover empty/missing/corrupt files, multibyte chunk boundaries, exact 100-item pages, a page split inside mixed v1/v2 turns and v1 tool pairs, and an active task/plan thousands of events before the tail.
-2. Add `RunHistoryPage` DTOs to `packages/api-client/src/dto/types.ts`, mirror the server zod response shape locally, and extend `packages/cezar/src/server/api-types.test.ts` plus fixture contract tests without adding a runtime service import of the private client package.
-3. Register `GET /runs/:id/history` and `/runs/:id/history-context` once in `packages/cezar/src/server/server.ts` so legacy, boot-project, and `default` aliases share handlers. Add route-parity, 400/404/409, response-order, and “tail does not await context scan” tests; update `BACKWARD_COMPATIBILITY.md` §2.
+1. Add `packages/work/src/runs/event-history.ts` with page/live cursor zod schemas/codecs, UTF-8-safe complete-turn projection, `sessionItemKey`, and streaming `deriveRunContextEvents`; cover empty/missing/corrupt files, multibyte chunk boundaries, exact 100-item pages, a page split inside mixed v1/v2 turns and v1 tool pairs, and an active task/plan thousands of events before the tail.
+2. Add `RunHistoryPage` DTOs to `packages/api-client/src/dto/types.ts`, mirror the server zod response shape locally, and extend `packages/work/src/server/api-types.test.ts` plus fixture contract tests without adding a runtime service import of the private client package.
+3. Register `GET /runs/:id/history` and `/runs/:id/history-context` once in `packages/work/src/server/server.ts` so legacy, boot-project, and `default` aliases share handlers. Add route-parity, 400/404/409, response-order, and “tail does not await context scan” tests; update `BACKWARD_COMPATIBILITY.md` §2.
 4. Extend the existing SSE handler with optional live-cursor/`afterSeq` parsing, byte-offset replay, `Last-Event-ID`, and per-data-frame `id`; preserve listener-before-replay buffering, event names/data, ping/run frames, and the no-query full-data replay branch. Add race/reconnect/watchdog tests including ephemeral sequence gaps.
 
 ### Phase 2 — Client hydration and state correctness
@@ -322,7 +322,7 @@ Add synthetic long-run fixtures, instrumented reader assertions, E2E performance
 
 9. Add deterministic long-session fixture generation to the server/web test helpers and instrument the page reader so tests prove a tail request never scans unrelated earlier turns and context retention stays bounded.
 10. Add a `packages/web/e2e/` scenario proving first-page readiness independent of context completion, no historical request before upward reader intent, one-page-per-gesture top pagination with no observer cascade, current plan/agent docks, five-page query/DOM bounds, anchored prepends, live-tail updates, and old-history→latest navigation. Capture final implementation screenshots for the PR's QA evidence.
-11. Run the full validation gate in repository order: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, and `npm run test:package`, then `npm run test:e2e` for the real-browser flow. Confirm no runtime import from `packages/cezar` to the private API-client package and no new `CEZ_*` variable/config requirement.
+11. Run the full validation gate in repository order: `npm run typecheck`, `npm test`, `npm run test:unit`, `npm run build`, and `npm run test:package`, then `npm run test:e2e` for the real-browser flow. Confirm no runtime import from `packages/work` to the private API-client package and no new `CEZ_*` variable/config requirement.
 
 ## Out of Scope
 

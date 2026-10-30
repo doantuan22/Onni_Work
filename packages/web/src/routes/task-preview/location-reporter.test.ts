@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 // A server-side browser script run in a DOM — the same test-only reach as `design-picker.test.ts`.
-import { locationReporterScript } from '../../../../cezar/src/server/preview/location-reporter.ts'
+import { locationReporterScript } from '../../../../work/src/server/preview/location-reporter.ts'
 
 /**
  * The Preview's location reporter, run for real in a page. Its own window on a real address, not an

@@ -14,11 +14,11 @@ Scope: analysis only. No source, test or other spec file was touched.
 
 ### F1 — CRITICAL — the spawn's `allowed_tools`/scope brake is enforced on exactly one of four backends
 
-- Evidence: `packages/cezar/src/core/codex-app-server-runner.ts:56-58` — "Codex has no
+- Evidence: `packages/work/src/core/codex-app-server-runner.ts:56-58` — "Codex has no
   per-tool allowlist, so `spec.allowedTools` is ignored" (codex runs with
-  `sandbox: danger-full-access` + `approvalPolicy: never`). `packages/cezar/src/core/opencode-server-runner.ts:46-47`
+  `sandbox: danger-full-access` + `approvalPolicy: never`). `packages/work/src/core/opencode-server-runner.ts:46-47`
   — "OpenCode has no per-tool allowlist, so `spec.allowedTools` is ignored" (auto-approved
-  permissions). `packages/cezar/src/core/claude-cli-runner.ts:381-383` shows `claude` is the one
+  permissions). `packages/work/src/core/claude-cli-runner.ts:381-383` shows `claude` is the one
   backend that actually turns `spec.allowedTools` into `--allowedTools` on the CLI. `pi-runner.ts:262,267-285`
   shows `pi` *does* map `allowedTools` onto its own `--tools` flag, but its tool map
   (`Read/Bash/Edit/Write/Grep/Glob`) has no sub-agent entry either.
@@ -37,19 +37,19 @@ Scope: analysis only. No source, test or other spec file was touched.
   ```
   $ grep -rn "success_criteria" --include="*.ts" packages/
   packages/contract/src/units.ts:142:            success_criteria: z.string().max(1000).optional(),
-  packages/cezar/src/units/markers.test.ts:48:      success_criteria: 'npm test is green',
-  packages/cezar/src/units/engine.ts:96:  if (child.success_criteria) lines.push(`- Success criteria: ${child.success_criteria}`);
-  packages/cezar/src/units/prompts.ts:46: ..."success_criteria":"…"...
-  packages/cezar/src/units/prompts.ts:55:- "success_criteria" — optional, ≤1000 chars. How the child knows it is done.
-  packages/cezar/src/units/prompts.test.ts:203:      for (const key of [..., 'success_criteria', 'required_evidence', ...]) {
+  packages/work/src/units/markers.test.ts:48:      success_criteria: 'npm test is green',
+  packages/work/src/units/engine.ts:96:  if (child.success_criteria) lines.push(`- Success criteria: ${child.success_criteria}`);
+  packages/work/src/units/prompts.ts:46: ..."success_criteria":"…"...
+  packages/work/src/units/prompts.ts:55:- "success_criteria" — optional, ≤1000 chars. How the child knows it is done.
+  packages/work/src/units/prompts.test.ts:203:      for (const key of [..., 'success_criteria', 'required_evidence', ...]) {
 
   $ grep -rn "required_evidence" --include="*.ts" packages/
   packages/contract/src/units.ts:143:            required_evidence: z.string().max(1000).optional(),
-  packages/cezar/src/units/markers.test.ts:49:      required_evidence: 'the test output',
-  packages/cezar/src/units/engine.ts:97:  if (child.required_evidence) lines.push(`- Required evidence: ${child.required_evidence}`);
-  packages/cezar/src/units/prompts.ts:46: ...
-  packages/cezar/src/units/prompts.ts:56:- "required_evidence" — optional, ≤1000 chars. ...
-  packages/cezar/src/units/prompts.test.ts:203: (same loop)
+  packages/work/src/units/markers.test.ts:49:      required_evidence: 'the test output',
+  packages/work/src/units/engine.ts:97:  if (child.required_evidence) lines.push(`- Required evidence: ${child.required_evidence}`);
+  packages/work/src/units/prompts.ts:46: ...
+  packages/work/src/units/prompts.ts:56:- "required_evidence" — optional, ≤1000 chars. ...
+  packages/work/src/units/prompts.test.ts:203: (same loop)
   ```
   Every hit is: the schema field itself, `childTaskEnvelope` rendering it *into the child's own
   prompt* (`engine.ts:96-97`), the shipped prompt text describing the field to the model
@@ -71,7 +71,7 @@ Scope: analysis only. No source, test or other spec file was touched.
   `errors[]`, `recommended_next_action`). `engine.ts:157-189` (`childSettleReport`) appends
   `cost ${usd(child.costUsd)}` (line 183) and `diff ${child.diffStat.files} files, +adds -dels`
   (lines 184-186) — both derived from the *store's own record*, not from anything the child typed.
-  `child.diffStat` is `{ adds, dels, files, repointed? }` (`packages/cezar/src/runs/store.ts:124-131`)
+  `child.diffStat` is `{ adds, dels, files, repointed? }` (`packages/work/src/runs/store.ts:124-131`)
   — counts only, no paths, no commit sha.
 - Why it matters: the two facts a parent can currently trust without re-deriving them itself are
   cost and a diff *count*. Everything else — what was actually done, what was tested, which files
@@ -84,9 +84,9 @@ Scope: analysis only. No source, test or other spec file was touched.
 
 - Evidence: `packages/contract/src/units.ts:52-58` — `unitLadderSchema` is `.partial()` over
   three optional `unitLadderEntrySchema` (`runner`/`model`, both `.optional()`, lines 44-47).
-  `packages/cezar/src/workflows/run.ts:1665-1668` — "the mission ladder decides the child's
+  `packages/work/src/workflows/run.ts:1665-1668` — "the mission ladder decides the child's
   backend and model; absent a rung it inherits the parent's" → `runner: rung?.runner ?? parent.runner`.
-  `packages/cezar/src/server/server.ts:3511,3515` — the root's rung lookup
+  `packages/work/src/server/server.ts:3511,3515` — the root's rung lookup
   (`body.ladder?.[role]`) and its fallback: `rung?.runner ?? (await loadConfig(repoRoot)).defaultRunner`
   — a single, global, role-blind default.
 - Why it matters: a project that has never configured a ladder runs **caesar, legate and
@@ -97,12 +97,12 @@ Scope: analysis only. No source, test or other spec file was touched.
 
 ### F5 — MEDIUM — a centurion's legionaries have no fan-out at all on codex/opencode/pi (Q8)
 
-- Evidence: `packages/cezar/src/units/engine.ts:112-120` (`unitSubagentTools`) —
+- Evidence: `packages/work/src/units/engine.ts:112-120` (`unitSubagentTools`) —
   `if (role !== 'centurion' || backend !== 'claude') return [...base];` — only `claude` gets
   `Task`/`Agent` added. Confirmed by the existing test,
-  `packages/cezar/src/units/engine.test.ts:106`: `expect(unitSubagentTools(['Read'], 'centurion', 'codex')).toEqual(['Read'])`
+  `packages/work/src/units/engine.test.ts:106`: `expect(unitSubagentTools(['Read'], 'centurion', 'codex')).toEqual(['Read'])`
   (comment on the same line: "Other backends have no sub-agent tool and ignore allowedTools
-  entirely (#430)"). The centurion prompt (`packages/cezar/src/units/prompts.ts:148,152`) is
+  entirely (#430)"). The centurion prompt (`packages/work/src/units/prompts.ts:148,152`) is
   backend-agnostic: "Your backend's own sub-agent tool... is your century" / "If this backend has
   no sub-agent tool, that is fine: do the work yourself, sequentially." Checked all three
   non-claude runners for an equivalent primitive: codex (`codex-app-server-runner.ts:45-58`, no
@@ -160,16 +160,16 @@ verified: z.array(z.object({
 
 **Where the code changes:**
 - `packages/contract/src/units.ts` — the two additions above.
-- `packages/cezar/src/units/engine.ts` — `childTaskEnvelope` (88-102) renders `verify_commands` as
+- `packages/work/src/units/engine.ts` — `childTaskEnvelope` (88-102) renders `verify_commands` as
   a task-order line, same pattern as `success_criteria` today (line 96).
-- `packages/cezar/src/workflows/run.ts` — the settle path that calls `childSettleReport`
+- `packages/work/src/workflows/run.ts` — the settle path that calls `childSettleReport`
   (mirrors the existing branch/diffStat lookup already done there) gains a step: for each
   `verify_commands` entry on the *spawn* the settling child was created from, run it in the
   child's `cwd`/branch, capture exit code + tail of output, and merge into `report.verified`
   before the report is delivered upward or persisted as a pending report. This is a stateful,
   process-spawning change, so it belongs in `run.ts`, not the pure `engine.ts` (per the module's
   own pure/stateful split, `engine.ts:1-13`).
-- `packages/cezar/src/units/prompts.ts` — extend `SPAWN_CONTRACT` (44-59) and `REPORT_CONTRACT`
+- `packages/work/src/units/prompts.ts` — extend `SPAWN_CONTRACT` (44-59) and `REPORT_CONTRACT`
   (62-75) to document the new field and that it is *engine-checked, not self-reported*.
 - Tests to pin: `engine.test.ts` (childTaskEnvelope renders `verify_commands`),
   `markers.test.ts` (schema accepts/rejects the new fields), a new integration-style test in
@@ -275,7 +275,7 @@ to re-specify.
 explicit ladder still wins):
 
 ```ts
-// New, e.g. packages/cezar/src/units/engine.ts, next to CHILD_ROLE (engine.ts:21-25):
+// New, e.g. packages/work/src/units/engine.ts, next to CHILD_ROLE (engine.ts:21-25):
 export const DEFAULT_UNIT_LADDER: Record<UnitRole, { runner: 'claude'; model: string }> = {
   caesar: { runner: 'claude', model: 'claude-fable-5-1' },
   legate: { runner: 'claude', model: 'claude-opus-5' },
@@ -283,10 +283,10 @@ export const DEFAULT_UNIT_LADDER: Record<UnitRole, { runner: 'claude'; model: st
 };
 ```
 
-- `packages/cezar/src/workflows/run.ts:1667-1668` — change
+- `packages/work/src/workflows/run.ts:1667-1668` — change
   `runner: rung?.runner ?? parent.runner` / `rung?.model ?? parent.model` to insert the role
   default between the explicit rung and the parent's own: `rung?.runner ?? DEFAULT_UNIT_LADDER[childRole].runner ?? parent.runner`.
-- `packages/cezar/src/server/server.ts:3511,3515` — same insertion for the root run:
+- `packages/work/src/server/server.ts:3511,3515` — same insertion for the root run:
   `rung?.runner ?? DEFAULT_UNIT_LADDER[role].runner ?? (await loadConfig(repoRoot)).defaultRunner`.
 
 **Default-path impact:** a mission that never touches the ladder composer today runs all three

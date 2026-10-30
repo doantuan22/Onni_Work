@@ -37,27 +37,27 @@ Claude-Session: https://claude.ai/code/session_01Htes33kPGJXohZYwtv7LYG
  BACKWARD_COMPATIBILITY.md                     |   8 +-
  README.md                                     |   2 +-
  .../src/automations/automation-cli.test.ts    | 216 +++++++++++++
- .../cezar/src/automations/automation-cli.ts   | 299 ++++++++++++++++++
- .../cezar/src/automations/builtin-skill.ts    |  44 +++
- .../cezar/src/automations/prompts.test.ts     |  91 ++++++
- packages/cezar/src/automations/prompts.ts     | 111 +++++++
- packages/cezar/src/index.ts                   |   7 +
- packages/cezar/src/server/capabilities.ts     |   7 +-
- packages/cezar/src/skills.test.ts             |  60 +++-
- packages/cezar/src/skills.ts                  |  11 +-
- packages/cezar/src/workflows/run.ts           |  29 +-
- .../cezar/src/workflows/system-prompt.test.ts |  46 ++-
+ .../work/src/automations/automation-cli.ts   | 299 ++++++++++++++++++
+ .../work/src/automations/builtin-skill.ts    |  44 +++
+ .../work/src/automations/prompts.test.ts     |  91 ++++++
+ packages/work/src/automations/prompts.ts     | 111 +++++++
+ packages/work/src/index.ts                   |   7 +
+ packages/work/src/server/capabilities.ts     |   7 +-
+ packages/work/src/skills.test.ts             |  60 +++-
+ packages/work/src/skills.ts                  |  11 +-
+ packages/work/src/workflows/run.ts           |  29 +-
+ .../work/src/workflows/system-prompt.test.ts |  46 ++-
  packages/contract/src/skills.ts               |   6 +-
  packages/web/src/lib/prompt-templates.test.ts |  28 +-
  packages/web/src/lib/prompt-templates.ts      |  35 +-
  19 files changed, 1121 insertions(+), 20 deletions(-)
  create mode 100644 .ai/runs/2026-09-13-automations-from-prompt.md
  create mode 100644 .ai/specs/2026-09-13-automations-from-prompt.md
- create mode 100644 packages/cezar/src/automations/automation-cli.test.ts
- create mode 100644 packages/cezar/src/automations/automation-cli.ts
- create mode 100644 packages/cezar/src/automations/builtin-skill.ts
- create mode 100644 packages/cezar/src/automations/prompts.test.ts
- create mode 100644 packages/cezar/src/automations/prompts.ts
+ create mode 100644 packages/work/src/automations/automation-cli.test.ts
+ create mode 100644 packages/work/src/automations/automation-cli.ts
+ create mode 100644 packages/work/src/automations/builtin-skill.ts
+ create mode 100644 packages/work/src/automations/prompts.test.ts
+ create mode 100644 packages/work/src/automations/prompts.ts
 
 diff --git a/.ai/runs/2026-09-13-automations-from-prompt.md b/.ai/runs/2026-09-13-automations-from-prompt.md
 new file mode 100644
@@ -78,17 +78,17 @@ index 0000000..3ccbd1f
 +
 +## What was built
 +
-+- `packages/cezar/src/automations/prompts.ts` — `AUTOMATIONS_PROMPT` (always-on part),
++- `packages/work/src/automations/prompts.ts` — `AUTOMATIONS_PROMPT` (always-on part),
 +  `AUTOMATION_SCHEMA_REFERENCE` (the definition shape `cez automation schema` prints),
 +  `CREATE_AUTOMATION_SKILL_BODY` (the playbook).
-+- `packages/cezar/src/automations/automation-cli.ts` — `cez automation
++- `packages/work/src/automations/automation-cli.ts` — `cez automation
 +  schema|create|update|check|list|show|enable|pause|delete`, a thin client over the existing
 +  automations routes; routed in `src/index.ts` ahead of the cockpit parser like `cez task`.
-+- `packages/cezar/src/automations/builtin-skill.ts` — `automationsReachable()` (flag AND
++- `packages/work/src/automations/builtin-skill.ts` — `automationsReachable()` (flag AND
 +  `CEZ_API_URL`), the built-in `Skill` (`source: 'builtin'`, `interactive: true`) and
 +  `builtinSkills()`; `src/skills.ts` appends it last in `discoverSkills`. `Skill.source` gains
 +  `'builtin'` in `src/skills.ts` and `packages/contract/src/skills.ts` (additive).
-+- `packages/cezar/src/workflows/run.ts` — `ActiveRun.automationsPrompt`,
++- `packages/work/src/workflows/run.ts` — `ActiveRun.automationsPrompt`,
 +  `prepareAutomationsSession` at both session construction sites, composed after the dispatch part
 +  at both `startSession` calls.
 +- `packages/web/src/lib/prompt-templates.ts` — built-in `create-automation` template assigned to
@@ -142,7 +142,7 @@ index 0000000..a623ba9
 +  agent to recognise "whenever / every time a PR or issue …" as an automation and names the CLI. An
 +  agent that reads it runs `cez automation schema` for the shape and proceeds the same way.
 +
-+Underneath: a `cez automation` CLI (`packages/cezar/src/automations/automation-cli.ts`), a thin HTTP
++Underneath: a `cez automation` CLI (`packages/work/src/automations/automation-cli.ts`), a thin HTTP
 +client over the existing `/api/v1/p/:projectId/automations*` routes, addressed by the same
 +`CEZ_API_URL` / `CEZ_PROJECT_ID` / `CEZ_BIN` variables the dispatch CLI uses. No new routes, no new
 +state, no new flag.
@@ -185,7 +185,7 @@ index 0000000..a623ba9
 +| A7 | `update` semantics | Reads the current definition, merges the patch over the six editable keys, restates `enabled` and echoes `expectedRevision`. | A partial JSON from an agent must not blank keys it did not mention; a cockpit edit in between is a 409, not a clobber. |
 +| A8 | `check` | POSTs `{mode}` and polls the workspace-level `/automation-checks/:id` every 500 ms for up to 120 s; preview prints the count and "nothing was launched". | The check is asynchronous server-side; the agent needs one command that answers. |
 +
-+## CLI (`packages/cezar/src/automations/automation-cli.ts`)
++## CLI (`packages/work/src/automations/automation-cli.ts`)
 +
 +`cez automation schema` · `create [--file <def.json> | --json '<json>'] [--enable]` (stdin when
 +neither) · `update <id> [--file | --json]` · `check <id> [--execute]` · `list` · `show <id>` ·
@@ -193,7 +193,7 @@ index 0000000..a623ba9
 +page (`<CEZ_API_URL>/p/<project>/automations/<id>`). Exit 0 ok, 1 refused/failed, 2 usage or no
 +cockpit. Routed in `index.ts` before the cockpit's own parser, like `cez task`.
 +
-+## Prompt (`packages/cezar/src/automations/prompts.ts`)
++## Prompt (`packages/work/src/automations/prompts.ts`)
 +
 +`AUTOMATIONS_PROMPT` (the short always-on part), `AUTOMATION_SCHEMA_REFERENCE` (what `schema` prints:
 +every key of `automationDefinitionSchema` with its bounds, the events, the placeholders, the paused
@@ -235,7 +235,7 @@ index fd50b46..a3f7cd7 100644
 --- a/BACKWARD_COMPATIBILITY.md
 +++ b/BACKWARD_COMPATIBILITY.md
 @@ -7,7 +7,7 @@ cezar is a published npm CLI (`@open-mercato/cezar`, currently 0.x — renamed f
- ## 1. CLI commands, flags and exit codes (`packages/cezar/src/index.ts`)
+ ## 1. CLI commands, flags and exit codes (`packages/work/src/index.ts`)
  
  - **Bins:** `cezar` and `cez` (both in `package.json` `bin`). Removing either alias is breaking.
 -- **Commands:** bare invocation = `serve` (cockpit); `cezar run "<task>"`; `cezar init`.
@@ -269,11 +269,11 @@ index a734a9f..20bbaa7 100644
  | `CEZ_DISPATCH=0` | Turn OFF **task dispatch**, which is on by default: a running task may start other cezar tasks with `cez task create` — each in its OWN worktree forked off the parent's branch, with a budget carved out of the parent's — and they report back into the parent's session when they settle (`cez task report`). Children appear nested under their parent in the task lists. Tasks talk through a tree directory (`.ai/cezar/dispatch/<root>/`: the brief, each task's order/notes/report, an inbox per task) and cezar wakes a parked recipient when a file lands. A `--kind review` child judges another task's branch and answers with a verdict. ON by default (the owner-approved exception to "cost-widening features are opt-in" — see `AGENTS.md`), and only the exact value `0` turns it off; with it off the `/runs/:id/dispatch` and `/runs/:id/report` routes answer `409`, no task is told about the CLI, and the cockpit hides the "Review open PRs" template. A headless `cezar run` never dispatches either way — there is no cockpit for the CLI to reach, so no task is told about it. Read at boot, so restart after changing it. This is the widest cost-widening flag here — one task can start four more agents — so give dispatching tasks a budget. |
  | `CEZ_AUTOSAVE=1` | Re-enable the periodic (90 s) autosave commit in task worktrees. Off by default (#471) — turn-end and pre-PR flushes always run, so branches still end complete. Every autosave names its trigger in the commit subject (`cezar autosave (periodic)` vs `(turn end)` / `(run finalize)` / `(pre-PR)`), so the flushes you keep are distinguishable from the timer you disabled. |
  | `CEZ_CLAUDE_BIN=/path/to/claude` | Override which `claude` binary is used. |
-diff --git a/packages/cezar/src/automations/automation-cli.test.ts b/packages/cezar/src/automations/automation-cli.test.ts
+diff --git a/packages/work/src/automations/automation-cli.test.ts b/packages/work/src/automations/automation-cli.test.ts
 new file mode 100644
 index 0000000..3df3c01
 --- /dev/null
-+++ b/packages/cezar/src/automations/automation-cli.test.ts
++++ b/packages/work/src/automations/automation-cli.test.ts
 @@ -0,0 +1,216 @@
 +import { describe, expect, it } from 'vitest';
 +import { runAutomationCommand, type AutomationCliIo } from './automation-cli.ts';
@@ -491,11 +491,11 @@ index 0000000..3df3c01
 +    expect(await runAutomationCommand([], env, bare.io)).toBe(2);
 +  });
 +});
-diff --git a/packages/cezar/src/automations/automation-cli.ts b/packages/cezar/src/automations/automation-cli.ts
+diff --git a/packages/work/src/automations/automation-cli.ts b/packages/work/src/automations/automation-cli.ts
 new file mode 100644
 index 0000000..3b8164c
 --- /dev/null
-+++ b/packages/cezar/src/automations/automation-cli.ts
++++ b/packages/work/src/automations/automation-cli.ts
 @@ -0,0 +1,299 @@
 +/**
 + * `cez automation …` — the CLI a running agent (or a human at a shell) uses to create and manage
@@ -796,11 +796,11 @@ index 0000000..3b8164c
 +    return 1;
 +  }
 +}
-diff --git a/packages/cezar/src/automations/builtin-skill.ts b/packages/cezar/src/automations/builtin-skill.ts
+diff --git a/packages/work/src/automations/builtin-skill.ts b/packages/work/src/automations/builtin-skill.ts
 new file mode 100644
 index 0000000..bdbf2ec
 --- /dev/null
-+++ b/packages/cezar/src/automations/builtin-skill.ts
++++ b/packages/work/src/automations/builtin-skill.ts
 @@ -0,0 +1,44 @@
 +/**
 + * The built-in `create-cezar-automation` skill (spec `.ai/specs/2026-09-13-automations-from-prompt.md`).
@@ -846,11 +846,11 @@ index 0000000..bdbf2ec
 +export function builtinSkills(env: NodeJS.ProcessEnv = process.env): Skill[] {
 +  return automationsReachable(env) ? [{ ...CREATE_AUTOMATION_SKILL }] : [];
 +}
-diff --git a/packages/cezar/src/automations/prompts.test.ts b/packages/cezar/src/automations/prompts.test.ts
+diff --git a/packages/work/src/automations/prompts.test.ts b/packages/work/src/automations/prompts.test.ts
 new file mode 100644
 index 0000000..ededf70
 --- /dev/null
-+++ b/packages/cezar/src/automations/prompts.test.ts
++++ b/packages/work/src/automations/prompts.test.ts
 @@ -0,0 +1,91 @@
 +import { describe, expect, it } from 'vitest';
 +import { automationDefinitionSchema, automationEventSchema } from './types.ts';
@@ -943,11 +943,11 @@ index 0000000..ededf70
 +    expect(CREATE_AUTOMATION_SKILL_BODY).toMatch(/do not add cron jobs, GitHub Actions, webhooks or polling scripts/);
 +  });
 +});
-diff --git a/packages/cezar/src/automations/prompts.ts b/packages/cezar/src/automations/prompts.ts
+diff --git a/packages/work/src/automations/prompts.ts b/packages/work/src/automations/prompts.ts
 new file mode 100644
 index 0000000..ce2aa66
 --- /dev/null
-+++ b/packages/cezar/src/automations/prompts.ts
++++ b/packages/work/src/automations/prompts.ts
 @@ -0,0 +1,111 @@
 +/**
 + * What a task is told about GitHub automations, and the playbook the built-in
@@ -1060,10 +1060,10 @@ index 0000000..ce2aa66
 +## Reference
 +
 +${AUTOMATION_SCHEMA_REFERENCE}`;
-diff --git a/packages/cezar/src/index.ts b/packages/cezar/src/index.ts
+diff --git a/packages/work/src/index.ts b/packages/work/src/index.ts
 index 2a40961..d227f09 100644
---- a/packages/cezar/src/index.ts
-+++ b/packages/cezar/src/index.ts
+--- a/packages/work/src/index.ts
++++ b/packages/work/src/index.ts
 @@ -36,6 +36,7 @@ import { registerProject, shouldRegisterProject } from './workspace/projects.ts'
  import { runProjectsCommand } from './workspace/projects-cli.ts';
  import { WorkspaceSemaphore } from './workspace/semaphore.ts';
@@ -1092,10 +1092,10 @@ index 2a40961..d227f09 100644
    const { values, positionals } = parseArgs({
      options: {
        port: { type: 'string', short: 'p', default: '4321' },
-diff --git a/packages/cezar/src/server/capabilities.ts b/packages/cezar/src/server/capabilities.ts
+diff --git a/packages/work/src/server/capabilities.ts b/packages/work/src/server/capabilities.ts
 index 9b828fa..b11f9a1 100644
---- a/packages/cezar/src/server/capabilities.ts
-+++ b/packages/cezar/src/server/capabilities.ts
+--- a/packages/work/src/server/capabilities.ts
++++ b/packages/work/src/server/capabilities.ts
 @@ -27,7 +27,12 @@
   * GitHub — the flag removes the behavior, not only the UI. Activation is
   * strict, like the two capabilities above. Nothing on disk is touched:
@@ -1110,10 +1110,10 @@ index 9b828fa..b11f9a1 100644
   *
   * `dispatch` (spec 2026-09-10-dispatch): a task dispatching other tasks through the `cez task`
   * CLI is **on by default** and `CEZ_DISPATCH=0` turns it off (the owner-approved exception to
-diff --git a/packages/cezar/src/skills.test.ts b/packages/cezar/src/skills.test.ts
+diff --git a/packages/work/src/skills.test.ts b/packages/work/src/skills.test.ts
 index 20eff6a..e2a064a 100644
---- a/packages/cezar/src/skills.test.ts
-+++ b/packages/cezar/src/skills.test.ts
+--- a/packages/work/src/skills.test.ts
++++ b/packages/work/src/skills.test.ts
 @@ -1,7 +1,7 @@
  import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
  import { tmpdir } from 'node:os';
@@ -1185,10 +1185,10 @@ index 20eff6a..e2a064a 100644
 +    expect(matches[0]).toMatchObject({ source: 'ai', body: 'House version' });
 +  });
 +});
-diff --git a/packages/cezar/src/skills.ts b/packages/cezar/src/skills.ts
+diff --git a/packages/work/src/skills.ts b/packages/work/src/skills.ts
 index aa81368..27bbace 100644
---- a/packages/cezar/src/skills.ts
-+++ b/packages/cezar/src/skills.ts
+--- a/packages/work/src/skills.ts
++++ b/packages/work/src/skills.ts
 @@ -4,6 +4,7 @@ import { join, resolve, basename, dirname, extname } from 'node:path';
  import { gatedSkillsRepos } from './config.ts';
  import { getTeamSkillsCached } from './skills-remote.ts';
@@ -1228,10 +1228,10 @@ index aa81368..27bbace 100644
      for (const skill of skills) {
        if (seen.has(skill.name)) continue;
        seen.add(skill.name);
-diff --git a/packages/cezar/src/workflows/run.ts b/packages/cezar/src/workflows/run.ts
+diff --git a/packages/work/src/workflows/run.ts b/packages/work/src/workflows/run.ts
 index 0e6589c..71654a9 100644
---- a/packages/cezar/src/workflows/run.ts
-+++ b/packages/cezar/src/workflows/run.ts
+--- a/packages/work/src/workflows/run.ts
++++ b/packages/work/src/workflows/run.ts
 @@ -41,6 +41,8 @@ import {
  } from '@open-mercato/cezar-contract';
  import type { AgentEvent, ContentBlock } from '../core/agent-runner.ts';
@@ -1314,10 +1314,10 @@ index 0e6589c..71654a9 100644
              extraSystemPrompt,
              followupsEnabled() && input.generateFollowups !== false
                ? HANDOFF_INSTRUCTIONS
-diff --git a/packages/cezar/src/workflows/system-prompt.test.ts b/packages/cezar/src/workflows/system-prompt.test.ts
+diff --git a/packages/work/src/workflows/system-prompt.test.ts b/packages/work/src/workflows/system-prompt.test.ts
 index a88e3ea..fb37d09 100644
---- a/packages/cezar/src/workflows/system-prompt.test.ts
-+++ b/packages/cezar/src/workflows/system-prompt.test.ts
+--- a/packages/work/src/workflows/system-prompt.test.ts
++++ b/packages/work/src/workflows/system-prompt.test.ts
 @@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
  import { join } from 'node:path';
  import { promisify } from 'node:util';

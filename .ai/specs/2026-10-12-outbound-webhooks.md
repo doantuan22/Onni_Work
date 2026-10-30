@@ -3,7 +3,7 @@
 Technical specification for project-scoped outbound task notifications. Provider-specific
 contracts: [Slack](2026-10-19-slack-webhook-receivers.md) and
 [Discord](2026-10-19-discord-webhook-receivers.md).
-Setup and operating limits: [receiver guide](../../packages/cezar/docs/webhooks.md).
+Setup and operating limits: [receiver guide](../../packages/work/docs/webhooks.md).
 
 ## Overview
 
@@ -26,7 +26,7 @@ be running to send anything.
 
 Users can connect a Slack Incoming Webhook or Discord channel Webhook
 URL directly, or send signed JSON to their own endpoint/automation workflow such as Make or n8n.
-The [receiver guide](../../packages/cezar/docs/webhooks.md) documents setup and the receiver contract.
+The [receiver guide](../../packages/work/docs/webhooks.md) documents setup and the receiver contract.
 Native destinations need no cezar bot, OAuth flow or relay; Slack setup still requires the user
 to install an Incoming Webhook app. Notifications remain one-way, with no replies or approvals
 from chat and no guarantee that a phone displays them.
@@ -107,13 +107,13 @@ the contract; UI labels, colors, pulses and `deriveAttention` rendering live in 
 
 | Integration point | Responsibility |
 |---|---|
-| `packages/cezar/src/runs/store.ts`: `updateRun`, `setArchived`, `archiveFinished`, `reconcileLoadedRun`, `deleteRun`, `pruneOldRuns`, `touch` | One before/after observer covers all these paths. `appendFileSync` is not an fsync/transaction guarantee. |
+| `packages/work/src/runs/store.ts`: `updateRun`, `setArchived`, `archiveFinished`, `reconcileLoadedRun`, `deleteRun`, `pruneOldRuns`, `touch` | One before/after observer covers all these paths. `appendFileSync` is not an fsync/transaction guarantee. |
 | `packages/web/src/lib/read-state.ts`, `routes/task-thread/task-thread.tsx` | Unread receipts cover done/failed, not waiting/review. Do not repurpose `seenAt`. |
-| `packages/cezar/src/workflows/run.ts`: `dropActive`, `scheduleAutoResumeIfLimited`, `armAutoResume`, `settleSuccess` | Resume scheduling happens after failed; autonomous runs can finish with changes and no review. |
-| `packages/cezar/src/server/project-context.ts` | Projects are lazy. Lightweight webhook startup must not instantiate managers or resume tasks in unopened projects. |
-| `packages/cezar/src/automations/store.ts`, `server-install/state.ts` | Local file-lock patterns exist; webhook ownership requires PID-reuse-safe identity and a single writer. |
-| `packages/cezar/src/server-install/state.ts`, `paths.ts` | Multiple installer records exist; never assume the default record describes the running server. |
-| `packages/web/src/routes/settings/registry.tsx`, `packages/cezar/src/server/server.ts` | Project settings and project-scoped SSE keep receiver state out of global broadcasts. |
+| `packages/work/src/workflows/run.ts`: `dropActive`, `scheduleAutoResumeIfLimited`, `armAutoResume`, `settleSuccess` | Resume scheduling happens after failed; autonomous runs can finish with changes and no review. |
+| `packages/work/src/server/project-context.ts` | Projects are lazy. Lightweight webhook startup must not instantiate managers or resume tasks in unopened projects. |
+| `packages/work/src/automations/store.ts`, `server-install/state.ts` | Local file-lock patterns exist; webhook ownership requires PID-reuse-safe identity and a single writer. |
+| `packages/work/src/server-install/state.ts`, `paths.ts` | Multiple installer records exist; never assume the default record describes the running server. |
+| `packages/web/src/routes/settings/registry.tsx`, `packages/work/src/server/server.ts` | Project settings and project-scoped SSE keep receiver state out of global broadcasts. |
 
 Headless `cezar run` neither captures webhook source events nor sends them. Its normal lifecycle
 logging is unaffected. Webhook source capture is enabled explicitly by server-owned store
@@ -562,7 +562,7 @@ Inactive or Disabled cannot use Pause → Resume to bypass activation requiremen
 ## Payload contract and data minimization
 
 One Zod discriminated union in `packages/contract/src/webhooks.ts`; inferred TypeScript types and
-JSON Schema generated with `z.toJSONSchema` into `packages/cezar/docs/webhooks.schema.json`; verify regeneration in contract tests. `schemaVersion: 1` is fixed for feature. Optional fields are omitted, never
+JSON Schema generated with `z.toJSONSchema` into `packages/work/docs/webhooks.schema.json`; verify regeneration in contract tests. `schemaVersion: 1` is fixed for feature. Optional fields are omitted, never
 invented as zero or emitted as always-present `undefined`. Event ID is a random stable
 `evt_<uuid>` assigned during source capture; test events use their own IDs. Source instance ID
 is a persisted random project-installation ID; a full reset generates a new one. Real project slugs only,
@@ -798,7 +798,7 @@ clear/unsubscribe old view state on project switch, including in-flight response
 | Screen | Required behavior / copy |
 |---|---|
 | List | Mask all URL paths; state Pill + named `endpointHealthTone` map; Suspended shows next retry of a real delivery, not a synthetic check |
-| Empty | “Get notified outside this browser”; Add webhook and link to repository-hosted `packages/cezar/docs/webhooks.md` (sample payloads, signature verification and external automation guidance) |
+| Empty | “Get notified outside this browser”; Add webhook and link to repository-hosted `packages/work/docs/webhooks.md` (sample payloads, signature verification and external automation guidance) |
 | Add receiver | Form creates nothing before Save; Destination selects Custom receiver, Slack or Discord; local preview for the selected format; “Main tasks + subtask questions”; “Skipped if you reply or the task no longer needs attention”; link to receiver guide |
 | JSON/local variants | Explicit local consent; HTTP warning; hosted rejects private addresses; metadata/link-local always denied |
 | After Save | Inactive; one-time JSON secret; Send test can transmit before activation, so do not say “Nothing is sent until activated” |

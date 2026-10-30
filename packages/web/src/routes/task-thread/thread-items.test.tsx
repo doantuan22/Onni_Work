@@ -9,11 +9,11 @@ import type { UiToolItem } from '@open-mercato/cezar-api-client'
 import { createQueryClient } from '@/api/query-client'
 import { workspaceQueryKeys } from '@/api/queries'
 
-import bashAndScreenshot from '../../../../cezar/src/core/__fixtures__/claude/bash-and-screenshot.expected.json'
-import failedAndDenied from '../../../../cezar/src/core/__fixtures__/claude/failed-and-denied.expected.json'
-import subagentTask from '../../../../cezar/src/core/__fixtures__/claude/subagent-task.expected.json'
-import thinkingEditWriteTodo from '../../../../cezar/src/core/__fixtures__/claude/thinking-edit-write-todo.expected.json'
-import opencodeToolLifecycle from '../../../../cezar/src/core/__fixtures__/opencode/tool-lifecycle.expected.json'
+import bashAndScreenshot from '../../../../work/src/core/__fixtures__/claude/bash-and-screenshot.expected.json'
+import failedAndDenied from '../../../../work/src/core/__fixtures__/claude/failed-and-denied.expected.json'
+import subagentTask from '../../../../work/src/core/__fixtures__/claude/subagent-task.expected.json'
+import thinkingEditWriteTodo from '../../../../work/src/core/__fixtures__/claude/thinking-edit-write-todo.expected.json'
+import opencodeToolLifecycle from '../../../../work/src/core/__fixtures__/opencode/tool-lifecycle.expected.json'
 import { groupThreadItems } from './thread-groups'
 import {
   AgentUpdateRequiredCard,

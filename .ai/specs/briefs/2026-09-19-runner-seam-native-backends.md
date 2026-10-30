@@ -15,7 +15,7 @@ implementation PR via `om-auto-implement-spec`.
 
 ## Context the spec must start from (verified 2026-09-19)
 
-- Runners today: `claude`, `codex`, `opencode`, `pi` (`packages/cezar/src/core/agent-runner.ts:24`).
+- Runners today: `claude`, `codex`, `opencode`, `pi` (`packages/work/src/core/agent-runner.ts:24`).
   `pi` (PR #470, merged 2026-08-11) is the worked example for `AGENT_PROTOCOL.md` §9 (`:399-447`).
 - A fifth runner, Cursor (#805 / PR #807), is open and unmerged on the same seam.
 - Codex is driven through `codex app-server` (JSON-RPC over stdio), not `codex exec`.

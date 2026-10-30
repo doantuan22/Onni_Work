@@ -6,8 +6,8 @@
 > brutus; when the rest lands, brutus's full document replaces this file.
 >
 > Implementation on main: `packages/web/src/routes/task-workspace/` (layout engine, columns, strip,
-> drawer), `packages/cezar/src/runs/layouts.ts` + `GET/PUT /api/v1/runs/:id/layouts` (persistence),
-> `packages/cezar/src/server/terminal/` + `/runs/:id/terminal` (PTY sessions).
+> drawer), `packages/work/src/runs/layouts.ts` + `GET/PUT /api/v1/runs/:id/layouts` (persistence),
+> `packages/work/src/server/terminal/` + `/runs/:id/terminal` (PTY sessions).
 >
 > **Where main deviates from the text below:**
 > - **Terminal is also a view.** Besides the bottom drawer (§6), `terminal` is a column view: it

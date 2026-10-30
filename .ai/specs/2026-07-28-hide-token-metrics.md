@@ -63,7 +63,7 @@ process.env
 
 ### Server
 
-Extend `Capabilities` in `packages/cezar/src/server/capabilities.ts` with:
+Extend `Capabilities` in `packages/work/src/server/capabilities.ts` with:
 
 ```ts
 tokenMetrics: boolean
@@ -71,7 +71,7 @@ tokenMetrics: boolean
 
 `resolveCapabilities(env)` returns `tokenMetrics: env.CEZ_HIDE_TOKEN_METRICS !== '1'`. The function already centralizes strict environment interpretation for `CEZ_REMOTE`, `CEZ_FOLLOWUPS`, and `CEZ_SINGLE_PROJECT`, so no second env parser should be introduced.
 
-The existing `healthSnapshot()` in `packages/cezar/src/server/server.ts` already publishes `capabilities` byte-identically through `/api/health`, `/api/v1/health`, and the local WebSocket `health` topic. No route, event topic, polling loop, or per-project endpoint is added.
+The existing `healthSnapshot()` in `packages/work/src/server/server.ts` already publishes `capabilities` byte-identically through `/api/health`, `/api/v1/health`, and the local WebSocket `health` topic. No route, event topic, polling loop, or per-project endpoint is added.
 
 ### Shared contract
 

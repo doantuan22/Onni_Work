@@ -80,7 +80,7 @@ export function webhookTime(value: string, zone?: string) {
 
 export function webhookGuide() {
   return {
-    href: 'https://github.com/doantuan22/Onni_Work/blob/main/packages/cezar/docs/webhooks.md',
+    href: 'https://github.com/doantuan22/Onni_Work/blob/main/packages/work/docs/webhooks.md',
     note: 'Webhook guide',
   }
 }

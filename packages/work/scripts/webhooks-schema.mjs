@@ -1,4 +1,4 @@
-// Run from the repository: node --import tsx packages/cezar/scripts/webhooks-schema.mjs
+// Run from the repository: node --import tsx packages/work/scripts/webhooks-schema.mjs
 import { writeFile } from 'node:fs/promises';
 import { z } from 'zod';
 import { webhookEventSchema } from '@open-mercato/cezar-contract';

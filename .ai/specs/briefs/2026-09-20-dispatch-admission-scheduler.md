@@ -90,10 +90,10 @@ browser loop, no held flag, no timer.**
 
 ## Affected areas (if known)
 
-- `packages/cezar/src/workspace/config.ts` — `resources.dispatchMaxConcurrent` schema (nullable int, `.catch(null)`).
-- `packages/cezar/src/workspace/semaphore.ts` — cache field + accessor + `dispatchBusy()` participant sum.
-- `packages/cezar/src/workflows/run.ts` — the per-run predicate in `pump().startable()`.
-- `packages/cezar/src/server/server.ts` — `resources` in the workspace config GET/PUT body.
+- `packages/work/src/workspace/config.ts` — `resources.dispatchMaxConcurrent` schema (nullable int, `.catch(null)`).
+- `packages/work/src/workspace/semaphore.ts` — cache field + accessor + `dispatchBusy()` participant sum.
+- `packages/work/src/workflows/run.ts` — the per-run predicate in `pump().startable()`.
+- `packages/work/src/server/server.ts` — `resources` in the workspace config GET/PUT body.
 - `packages/contract/src/workspace.ts` — response + update schemas for the new key.
 - `packages/web/src/routes/settings/resources-section.tsx` — the Settings field.
 - `docs/reference.md`, `BACKWARD_COMPATIBILITY.md` — resources documentation and §2 shape.

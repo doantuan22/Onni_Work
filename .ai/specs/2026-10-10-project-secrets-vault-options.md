@@ -31,7 +31,7 @@ decisions, and because most of PR #1291 survives either way.
   `packages/contract/src/check-env.ts` (`checkEnvNameIssue`, `checkEnvValueIssue`).
 - Phases 2–3 (run context `CEZ_*` vars, PR-head worktrees) are merged into the same branch.
 - Review: approved by `om-auto-review-pr` (self-review, not the ruleset's human approval); `needs-qa`.
-- Against today's `main` it has **one conflict**, in `packages/cezar/src/workflows/run.ts`
+- Against today's `main` it has **one conflict**, in `packages/work/src/workflows/run.ts`
   (`git merge-tree origin/main pr-1291`); everything else auto-merges.
 
 Verdict on the PR as a base: the write discipline, the never-to-agents policy, the redaction and the

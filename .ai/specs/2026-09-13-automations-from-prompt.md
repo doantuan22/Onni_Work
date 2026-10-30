@@ -18,7 +18,7 @@ the automation instead of doing the work once. Two ways in, one mechanism undern
   agent to recognise "whenever / every time a PR or issue …" as an automation and names the CLI. An
   agent that reads it runs `cez automation schema` for the shape and proceeds the same way.
 
-Underneath: a `cez automation` CLI (`packages/cezar/src/automations/automation-cli.ts`), a thin HTTP
+Underneath: a `cez automation` CLI (`packages/work/src/automations/automation-cli.ts`), a thin HTTP
 client over the existing `/api/v1/p/:projectId/automations*` routes, addressed by the same
 `CEZ_API_URL` / `CEZ_PROJECT_ID` / `CEZ_BIN` variables the dispatch CLI uses. No new routes, no new
 state, no new flag.
@@ -61,7 +61,7 @@ state, no new flag.
 | A7 | `update` semantics | Reads the current definition, merges the patch over the six editable keys, restates `enabled` and echoes `expectedRevision`. | A partial JSON from an agent must not blank keys it did not mention; a cockpit edit in between is a 409, not a clobber. |
 | A8 | `check` | POSTs `{mode}` and polls the workspace-level `/automation-checks/:id` every 500 ms for up to 120 s; preview prints the count and "nothing was launched". | The check is asynchronous server-side; the agent needs one command that answers. |
 
-## CLI (`packages/cezar/src/automations/automation-cli.ts`)
+## CLI (`packages/work/src/automations/automation-cli.ts`)
 
 `cez automation schema` · `create [--file <def.json> | --json '<json>'] [--enable]` (stdin when
 neither) · `update <id> [--file | --json]` · `check <id> [--execute]` · `list` · `show <id>` ·
@@ -69,7 +69,7 @@ neither) · `update <id> [--file | --json]` · `check <id> [--execute]` · `list
 page (`<CEZ_API_URL>/p/<project>/automations/<id>`). Exit 0 ok, 1 refused/failed, 2 usage or no
 cockpit. Routed in `index.ts` before the cockpit's own parser, like `cez task`.
 
-## Prompt (`packages/cezar/src/automations/prompts.ts`)
+## Prompt (`packages/work/src/automations/prompts.ts`)
 
 `AUTOMATIONS_PROMPT` (the short always-on part), `AUTOMATION_SCHEMA_REFERENCE` (what `schema` prints:
 every key of `automationDefinitionSchema` with its bounds, the events, the placeholders, the paused

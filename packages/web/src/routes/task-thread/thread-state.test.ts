@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest'
 import type { RunEvent } from '@open-mercato/cezar-api-client'
 import type { UiMessageItem, UiToolItem } from '@open-mercato/cezar-api-client'
 
-import bashAndScreenshot from '../../../../cezar/src/core/__fixtures__/claude/bash-and-screenshot.expected.json'
-import failedAndDenied from '../../../../cezar/src/core/__fixtures__/claude/failed-and-denied.expected.json'
-import textTurn from '../../../../cezar/src/core/__fixtures__/claude/text-turn.expected.json'
-import thinkingEditWriteTodo from '../../../../cezar/src/core/__fixtures__/claude/thinking-edit-write-todo.expected.json'
+import bashAndScreenshot from '../../../../work/src/core/__fixtures__/claude/bash-and-screenshot.expected.json'
+import failedAndDenied from '../../../../work/src/core/__fixtures__/claude/failed-and-denied.expected.json'
+import textTurn from '../../../../work/src/core/__fixtures__/claude/text-turn.expected.json'
+import thinkingEditWriteTodo from '../../../../work/src/core/__fixtures__/claude/thinking-edit-write-todo.expected.json'
 import {
   latestPlanEntries,
   reduceThread,

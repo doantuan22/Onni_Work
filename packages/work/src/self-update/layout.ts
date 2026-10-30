@@ -12,7 +12,7 @@
  *
  * A LINKED checkout (`cezar link`, source `link`) is the only way a version gets here now:
  * `versions/<version>+<branch>/node_modules/@open-mercato/cezar` is a symlink (a junction on
- * Windows) to a worktree's `packages/cezar`. Node runs the entry through its realpath, so the
+ * Windows) to a worktree's `packages/work`. Node runs the entry through its realpath, so the
  * checkout's own `node_modules` resolve, and every rebuild of that worktree is live on the next
  * restart. Anything that reads `current` — the desktop shell — runs it unchanged. Removing a
  * link removes the link, never the checkout. Everything is under `cezarHomeDir()` so `CEZ_HOME`
@@ -66,7 +66,7 @@ const manifestSchema = z
     version: z.string(),
     source: z.enum(['registry', 'local', 'link']),
     installedAt: z.string(),
-    /** `link` only: the linked package root (`<worktree>/packages/cezar`) and its branch. */
+    /** `link` only: the linked package root (`<worktree>/packages/work`) and its branch. */
     checkout: z.string().optional(),
     branch: z.string().optional(),
   })
@@ -250,7 +250,7 @@ function shortHash(value: string): string {
  *   managed     → `~/.cezar/versions/…` — a link the desktop shell switches
  *   global-npm  → `npm i -g` prefix (`…/lib/node_modules/@open-mercato/cezar/…`)
  *   npx         → the `_npx` cache
- *   checkout    → a git checkout (`packages/cezar/dist/index.js` beside `src/`) — dev mode
+ *   checkout    → a git checkout (`packages/work/dist/index.js` beside `src/`) — dev mode
  */
 export function detectInstallKind(entry: string, env: NodeJS.ProcessEnv = process.env): InstallKind {
   const normalized = resolve(entry).split(sep).join('/');

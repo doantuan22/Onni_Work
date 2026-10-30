@@ -12,7 +12,7 @@ Scope: analysis only. No source, test or other file was touched.
 
 ## 1 — How `carveChildBudgets`, `enforceUnitBudget` and `remainingBudgetUsd` actually behave
 
-`remainingBudgetUsd` (`packages/cezar/src/units/engine.ts:67-72`):
+`remainingBudgetUsd` (`packages/work/src/units/engine.ts:67-72`):
 
 ```ts
 export function remainingBudgetUsd(parent: RunRecord, children: readonly RunRecord[]): number | undefined {
@@ -143,7 +143,7 @@ which today's API cannot even do. See Finding F4 / Proposal P3.
 
 ## 4 — Cost roll-up: does a child's spend ever reach the parent's `costUsd`?
 
-**No.** `run.costUsd` is recomputed in `RunStore.updateStep` (`packages/cezar/src/runs/store.ts:938-939`)
+**No.** `run.costUsd` is recomputed in `RunStore.updateStep` (`packages/work/src/runs/store.ts:938-939`)
 strictly from that run's **own** steps:
 
 ```ts
@@ -283,7 +283,7 @@ with no work of its own yet done), and `recover()` treats every one of them iden
 
 ### F3 — HIGH — no cost roll-up: a subtree's real spend can silently exceed the root's `budgetUsd`, and a settled child's unused ceiling is never returned
 
-- Evidence: `packages/cezar/src/runs/store.ts:938-939` computes `run.costUsd` from that run's own
+- Evidence: `packages/work/src/runs/store.ts:938-939` computes `run.costUsd` from that run's own
   `steps` only, inside `updateStep`; nothing in `run.ts` or `engine.ts` adds a child's `costUsd`
   into a parent's. `remainingBudgetUsd` (`engine.ts:67-72`) subtracts `Σ children.budgetUsd` —
   the promised ceiling — over **every** child from `childrenOf` (`engine.ts:49-51`, no status
@@ -440,18 +440,18 @@ copied from the task order:
 ```
 $ git rev-parse HEAD
 076cead2785891af80b9ea7440bf3be973c0bbfe
-$ sed -n '67p' packages/cezar/src/units/engine.ts
+$ sed -n '67p' packages/work/src/units/engine.ts
 export function remainingBudgetUsd(parent: RunRecord, children: readonly RunRecord[]): number | undefined {
-$ grep -n "enforceUnitBudget|carveChildBudgets|spawnChildren" packages/cezar/src/workflows/run.ts
+$ grep -n "enforceUnitBudget|carveChildBudgets|spawnChildren" packages/work/src/workflows/run.ts
 1578: private enforceUnitBudget(...)
 1607: private spawnChildren(...)
 1713: private carveChildBudgets(...)
-$ sed -n '1394p;1314p;1756p;2252p' packages/cezar/src/workflows/run.ts   # dropActive / recover / reportSettledChildToParent / cancelOne
-$ sed -n '938,939p' packages/cezar/src/runs/store.ts                    # cost roll-up (own steps only)
-$ sed -n '3530,3540p' packages/cezar/src/server/server.ts               # POST /missions budgetUsd — no default
-$ grep -n "no agent session to resume" packages/cezar/src/workflows/run.ts
+$ sed -n '1394p;1314p;1756p;2252p' packages/work/src/workflows/run.ts   # dropActive / recover / reportSettledChildToParent / cancelOne
+$ sed -n '938,939p' packages/work/src/runs/store.ts                    # cost roll-up (own steps only)
+$ sed -n '3530,3540p' packages/work/src/server/server.ts               # POST /missions budgetUsd — no default
+$ grep -n "no agent session to resume" packages/work/src/workflows/run.ts
 2696
-$ grep -n overBudget packages/cezar/src/workflows/run.ts                # confirms: set once (1585-1586), never cleared
+$ grep -n overBudget packages/work/src/workflows/run.ts                # confirms: set once (1585-1586), never cleared
 ```
 
 All line numbers cited above (`engine.ts:67`, `run.ts:1578/1607/1713`, `dropActive`, `recover`) were

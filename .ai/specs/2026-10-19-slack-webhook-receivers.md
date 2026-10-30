@@ -78,7 +78,7 @@ can never see a field the cezar payload for that profile would not carry.
 
 ### 5. Setup guide
 
-`packages/cezar/docs/webhooks.md`: the "Send to Slack" section (create an Incoming Webhook in
+`packages/work/docs/webhooks.md`: the "Send to Slack" section (create an Incoming Webhook in
 Slack → paste URL → Test → Activate; what Minimal vs Standard shows in Slack; the URL is a secret).
 Feature flag: `CEZ_WEBHOOKS=1`, as documented in `.env.example`.
 

@@ -12,16 +12,16 @@ in that order below the findings.
 
 ### F-D1 [high] — the downward envelope carries no mission-level context
 
-`childTaskEnvelope` (`packages/cezar/src/units/engine.ts:88-101`) builds a child's entire task
+`childTaskEnvelope` (`packages/work/src/units/engine.ts:88-101`) builds a child's entire task
 text from `child.objective` plus a `## Task order` block of `scope` / `allowed_tools` /
 `max_cost` / `success_criteria` / `required_evidence` / `retry_limit` and the **immediate**
 parent's `branch` / `id` / `role` (lines 92-100). Nothing here reads `unit.missionId`, the
 mission root's own `task` text, or `constraints`. `spawnChildren`
-(`packages/cezar/src/workflows/run.ts:1607-1699`) calls
+(`packages/work/src/workflows/run.ts:1607-1699`) calls
 `childTaskEnvelope(child, { id: parentId, branch: parent.branch, role: unit.role })`
 (line 1660) — the only "parent" ever passed is the one rung directly above, never the root.
 The root's own objective+constraints text already exists as one string,
-`missionTask(objective, constraints)` (`packages/cezar/src/server/server.ts:3476-3479`,
+`missionTask(objective, constraints)` (`packages/work/src/server/server.ts:3476-3479`,
 called at line 3518) — `Objective\n\n## Constraints\n- rule\n...` — stored as that run's
 `task` and retrievable by `store.getRun(unit.missionId)`, but nothing in the spawn path reads
 it back.
@@ -43,7 +43,7 @@ child's own envelope text.
 **Why it matters**: this is the direct, uncaught cause of the exact failure the role prompts
 warn about only in prose — "Give every sibling a DISJOINT scope... two children editing the
 same file is the one failure mode this design cannot recover from"
-(`packages/cezar/src/units/prompts.ts:52`). The parent is trusted to get every scope right once,
+(`packages/work/src/units/prompts.ts:52`). The parent is trusted to get every scope right once,
 at spawn time, with no second reader and no way for a child to notice a collision before both
 have spent budget on it.
 
@@ -89,7 +89,7 @@ repeated is a coordination bug waiting for two centurions to make different "cor
 
 ### F-D6 [med] — `scope` is enforced nowhere; it is prose end to end
 
-The only two reads of `child.scope` in `packages/cezar/src` are `engine.ts:93`
+The only two reads of `child.scope` in `packages/work/src` are `engine.ts:93`
 (`if (child.scope) lines.push(...)`, into the envelope) and `prompts.ts:52` (instructing the
 parent to keep scopes disjoint). `unitSpawnSchema`'s `scope` field
 (`packages/contract/src/units.ts:136`) never reaches the spawned child's own persisted `unit`
@@ -108,17 +108,17 @@ Every occurrence in the repository (grepped fresh, source only):
 
 ```
 packages/contract/src/units.ts:144   retry_limit: z.number().int().min(0).max(3).optional(),
-packages/cezar/src/units/engine.ts:98  if (child.retry_limit !== undefined) lines.push(`- Retry limit: ${child.retry_limit}`);
-packages/cezar/src/units/prompts.ts:46   CEZ:SPAWN {"children":[{...,"retry_limit":1}]}  (schema restated in prose)
-packages/cezar/src/units/prompts.ts:57   - "retry_limit" — optional integer 0-3.
-packages/cezar/src/units/prompts.ts:103  ...respawn that piece once, within its retry_limit...
-packages/cezar/src/units/prompts.ts:132  ...respawn once, within retry_limit, on a transient failure...
-packages/cezar/src/units/prompts.ts:160  4. On a transient failure ... retry, up to the order's retry_limit and no further.
-packages/cezar/src/units/markers.test.ts:50   retry_limit: 1,               (fixture)
-packages/cezar/src/units/markers.test.ts:80   it('refuses ... a fractional retry_limit' ...)
-packages/cezar/src/units/markers.test.ts:83   ...retry_limit: 1.5 })...      (schema-bound test)
-packages/cezar/src/units/prompts.test.ts:203  for (const key of [..., 'retry_limit']) { ... }  (prompt-mentions-key test)
-packages/cezar/scripts/mock-claude.mjs:121,129  retry_limit: 1,             (test fixture script)
+packages/work/src/units/engine.ts:98  if (child.retry_limit !== undefined) lines.push(`- Retry limit: ${child.retry_limit}`);
+packages/work/src/units/prompts.ts:46   CEZ:SPAWN {"children":[{...,"retry_limit":1}]}  (schema restated in prose)
+packages/work/src/units/prompts.ts:57   - "retry_limit" — optional integer 0-3.
+packages/work/src/units/prompts.ts:103  ...respawn that piece once, within its retry_limit...
+packages/work/src/units/prompts.ts:132  ...respawn once, within retry_limit, on a transient failure...
+packages/work/src/units/prompts.ts:160  4. On a transient failure ... retry, up to the order's retry_limit and no further.
+packages/work/src/units/markers.test.ts:50   retry_limit: 1,               (fixture)
+packages/work/src/units/markers.test.ts:80   it('refuses ... a fractional retry_limit' ...)
+packages/work/src/units/markers.test.ts:83   ...retry_limit: 1.5 })...      (schema-bound test)
+packages/work/src/units/prompts.test.ts:203  for (const key of [..., 'retry_limit']) { ... }  (prompt-mentions-key test)
+packages/work/scripts/mock-claude.mjs:121,129  retry_limit: 1,             (test fixture script)
 ```
 
 `engine.ts:98` is the **only production read** in the whole repository. Nowhere does
@@ -136,7 +136,7 @@ engine to stop it short of the budget brake itself (spec Q6 i–ii) eventually f
 ### F-D8 [high] — a commander cannot intervene in a running child; its only lever is to wait
 
 The only two channels that reach a *specific* run mid-flight are `POST /runs/:id/messages`
-(`packages/cezar/src/server/server.ts:3831`, via `deliverMessage`/`sendMessage`,
+(`packages/work/src/server/server.ts:3831`, via `deliverMessage`/`sendMessage`,
 `run.ts:2582-2639`) and `POST /runs/:id/cancel` (`server.ts:3821`, via
 `cancel`/`cancelDescendants`, `run.ts:2246-2249`, `1837-1845`) — both are HTTP routes a human
 (or the cockpit) calls. `handleUnitMarkers` (`run.ts:1531-1567`) recognizes exactly two markers
@@ -206,7 +206,7 @@ no-op for every Squad exactly as today.
 **Transitions out of new state**: none — pure text composition, no new field, no new park
 state, no new timer.
 
-**Tests to pin**: extend `packages/cezar/src/units/engine.test.ts`'s `childTaskEnvelope`
+**Tests to pin**: extend `packages/work/src/units/engine.test.ts`'s `childTaskEnvelope`
 coverage — (a) the mission block appears for a rank-2+ child and is absent for a rank-1
 Squad/Army root's own children when there is nothing above the immediate parent to add; (b)
 sibling lines list every OTHER child in the batch, never the child itself; (c) at most 3 prior
@@ -285,7 +285,7 @@ human/cockpit-only.
 
 **Marker**: `CEZ:DIRECT {"child":"<runId>","action":"message"|"rescope"|"stop","text":"…"}`,
 parsed the same way `CEZ:SPAWN`/`CEZ:REPORT` are (a twin of `SPAWN_MARKER_RE` in
-`packages/cezar/src/units/markers.ts`).
+`packages/work/src/units/markers.ts`).
 
 **Schema** (`packages/contract/src/units.ts`, alongside `unitSpawnSchema`):
 
@@ -378,7 +378,7 @@ refuses.
   number` (copied from the *original* spawn's `retry_limit` once, then carried forward
   unchanged down the whole lineage) and `retryCount?: number` (0 on the original, +1 per
   retry). **Same commit must update the persistence twin in
-  `packages/cezar/src/runs/store.ts`** — this is precisely the drift AGENTS.md's own worked
+  `packages/work/src/runs/store.ts`** — this is precisely the drift AGENTS.md's own worked
   example warns about for this feature's `unit` field ("has a persistence twin... which imports
   this very value so the two cannot drift").
 - `spawnChildren` (`run.ts:1607-1699`): for a child naming `retry_of`, resolve it via
@@ -436,7 +436,7 @@ by name for this exact field, plus the prompt follow-up needed to ever make it f
 
 - `git diff --stat` against the fork point (`cez/36533222`, which resolves to the same commit as
   `HEAD`, `df73cfa9` — this branch had no prior commits of its own): only this file.
-- `npx vitest run packages/cezar/src/units` — 3 test files, 62 tests, all passing, run read-only
+- `npx vitest run packages/work/src/units` — 3 test files, 62 tests, all passing, run read-only
   (no test file was modified).
 - `retry_limit` grep — every occurrence quoted verbatim in F-D7 above.
-- `POST /runs/:id/messages` — `packages/cezar/src/server/server.ts:3831`.
+- `POST /runs/:id/messages` — `packages/work/src/server/server.ts:3831`.

@@ -17,7 +17,7 @@ export default {
       // Port 0: every run (and every parallel cezar task) gets its own free port.
       url: 'http://127.0.0.1:0',
       readyUrl: 'http://127.0.0.1:{port}/api/v1/health',
-      // The server serves the built cockpit (packages/cezar/web/dist), so build it first.
+      // The server serves the built cockpit (packages/work/web/dist), so build it first.
       command: {
         executable: 'sh',
         args: ['-c', 'npm run build:web && exec npm run dev:server -- --port "$PORT" --no-open'],

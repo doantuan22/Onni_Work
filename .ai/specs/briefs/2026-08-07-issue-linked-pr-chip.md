@@ -42,8 +42,8 @@ Source of truth is **GitHub's real issue↔PR links**, fetched per-issue via Gra
 
 - `packages/web/src/routes/github/github.tsx` — `GithubRow` meta line (add the chip); the route's windowed-hydration wiring (new query alongside `useGithubChecks`).
 - `packages/web/src/api/queries.ts` + `client.ts` — a new lazy query hook (e.g. `useGithubIssuePrs(numbers)`) and its `queryKeys` entry, mirroring `useGithubChecks`.
-- `packages/cezar/src/server/forge/github.ts` — a new forge function issuing the `timelineItems` GraphQL and returning an `issueNumber → LinkedPr[]` map; dedupe a PR that appears via both CROSS_REFERENCED and CONNECTED events.
-- `packages/cezar/src/server/server.ts` — a new `GET /api/github/issue-prs` (or similar) route, windowed like `/api/github/checks`.
+- `packages/work/src/server/forge/github.ts` — a new forge function issuing the `timelineItems` GraphQL and returning an `issueNumber → LinkedPr[]` map; dedupe a PR that appears via both CROSS_REFERENCED and CONNECTED events.
+- `packages/work/src/server/server.ts` — a new `GET /api/github/issue-prs` (or similar) route, windowed like `/api/github/checks`.
 - `packages/api-client` + `packages/contract` — the §2 response/type for the linked-PR payload.
 
 ## Watch-outs (from the challenger gate)

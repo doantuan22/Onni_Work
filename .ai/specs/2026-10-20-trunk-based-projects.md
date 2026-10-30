@@ -1,6 +1,6 @@
 # Trunk-based projects — work in the checkout, land on the base branch
 
-Status: phase 1 implemented (2026-10-20). Server: `packages/cezar/src/workflows/landing.ts`, the
+Status: phase 1 implemented (2026-10-20). Server: `packages/work/src/workflows/landing.ts`, the
 landing/read-only wiring in `workflows/run.ts`, config keys in `config.ts`. Cockpit:
 `packages/web/src/routes/settings/trunk-based-fields.tsx` (Settings → Tasks), the Ask chip and
 project defaults in `routes/new-task.tsx`.

@@ -32,7 +32,7 @@ route, no record field, no browser loop, no timer, no dead-end state.
 ## 📝 Problem Statement
 
 - **Dispatch has brakes on how much, never on when/how many at once.** 4 children in flight per
-  parent (`packages/cezar/src/dispatch/engine.ts:25` defines it, `workflows/run.ts:1990-1996`
+  parent (`packages/work/src/dispatch/engine.ts:25` defines it, `workflows/run.ts:1990-1996`
   enforces it), a per-tree `maxSubtasks` cap and a
   carved child budget (`engine.ts:62-79`) bound the blast radius, but admission is immediate:
   `dispatch()` → `startRun()` (`workflows/run.ts:1978-2086`, `:1145-1223`) → `queue.push` +
@@ -157,7 +157,7 @@ it. Nothing to subscribe to, nothing to keep alive.
 ## 📝 Data Model
 
 ```ts
-// packages/cezar/src/workspace/config.ts — resourcesSchema (additive)
+// packages/work/src/workspace/config.ts — resourcesSchema (additive)
 dispatchMaxConcurrent: z.number().int().min(0).max(16).nullable().default(null).catch(null),
 ```
 

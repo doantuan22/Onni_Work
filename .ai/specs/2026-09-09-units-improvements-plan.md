@@ -53,8 +53,8 @@ restricts the scope brake on codex/opencode (R8). Depends on Mission 3 (the revi
 envelope and settle machinery Mission 3 finishes wiring).
 
 Every citation below was verified against this worktree's HEAD (`4d2b80d1`) while writing this
-plan: `git grep` for every named function and constant in `packages/cezar/src/units/`,
-`packages/cezar/src/workflows/run.ts`, `packages/cezar/src/server/server.ts`,
+plan: `git grep` for every named function and constant in `packages/work/src/units/`,
+`packages/work/src/workflows/run.ts`, `packages/work/src/server/server.ts`,
 `packages/contract/src/units.ts` and `packages/web/src/lib/missions.ts`. Line numbers drift a
 little from the audit's own citations (the audits ran at `df73cfa9`/`8ed75a05`, this plan at
 `4d2b80d1`, all three units-focused source directories unchanged in between) — every function and
@@ -102,7 +102,7 @@ since they live in the same file already in scope.
 
 **1. Anchor marker parsing on the LAST keyword occurrence, tolerant of a trailing monitoring line.**
 *Source: `00-SUMMARY.md` R1 (= D1-D4, this mission's own empirical finding).*
-`SPAWN_MARKER_CANDIDATE_RE`/`REPORT_MARKER_CANDIDATE_RE` (`packages/cezar/src/units/markers.ts:35-36`,
+`SPAWN_MARKER_CANDIDATE_RE`/`REPORT_MARKER_CANDIDATE_RE` (`packages/work/src/units/markers.ts:35-36`,
 confirmed verbatim: `/CEZ:SPAWN[ \t]+([\s\S]*)$/` and its `REPORT` twin) are non-global regexes fed
 through `.exec()` inside `parseMarker` (`markers.ts:62`), which finds the **first** match in the
 turn and captures everything after it to end-of-text. Two failure shapes follow: (a) the prompt
@@ -184,7 +184,7 @@ pendingAsk: z.object({
   askedAt: z.string(), // ISO-8601
 }).optional(),
 ```
-**with the persistence twin in `packages/cezar/src/runs/store.ts` in the same commit** — the file
+**with the persistence twin in `packages/work/src/runs/store.ts` in the same commit** — the file
 already imports `unitSchema` directly from the contract package (`store.ts:13`,
 `unit: unitSchema.optional().catch(undefined)` at `store.ts:200`), so this is additive with no
 separate schema to keep in sync; the parity test the codebase already runs
@@ -211,13 +211,13 @@ reads this text at runtime beyond the marker parser, which is untouched by this 
 
 ### Files and functions touched
 
-`packages/cezar/src/units/markers.ts` (`parseMarker`, `SPAWN_MARKER_CANDIDATE_RE`,
-`REPORT_MARKER_CANDIDATE_RE`), `packages/cezar/src/units/prompts.ts` (`GUARD_RULE`,
-`CAESAR_PROMPT`, `LEGATE_PROMPT` — text only), `packages/cezar/src/workflows/run.ts`
+`packages/work/src/units/markers.ts` (`parseMarker`, `SPAWN_MARKER_CANDIDATE_RE`,
+`REPORT_MARKER_CANDIDATE_RE`), `packages/work/src/units/prompts.ts` (`GUARD_RULE`,
+`CAESAR_PROMPT`, `LEGATE_PROMPT` — text only), `packages/work/src/workflows/run.ts`
 (`handleUnitMarkers` at `:1531`, the turn-end blocks inside `runContinuation` at `:2900-3050` and
 `runAgentStep` at `:3676-3760`, `tryAutonomousNudge` once item 3's rebase lands it, `recover()`'s
-`waiting` branch at `:1328-1344`), `packages/cezar/src/units/engine.ts` (`childSettleReport` only),
-`packages/contract/src/units.ts` (`unitSchema` — add `pendingAsk`), `packages/cezar/src/runs/store.ts`
+`waiting` branch at `:1328-1344`), `packages/work/src/units/engine.ts` (`childSettleReport` only),
+`packages/contract/src/units.ts` (`unitSchema` — add `pendingAsk`), `packages/work/src/runs/store.ts`
 (persistence parity, no logic change beyond the schema pass-through already in place).
 
 ### Default-path statement
@@ -262,25 +262,25 @@ marker parser, which item 6 does not touch.
 
 ### Tests to pin
 
-`packages/cezar/src/units/markers.test.ts` — a spawn immediately followed by a same-turn
+`packages/work/src/units/markers.test.ts` — a spawn immediately followed by a same-turn
 `CEZ:MONITORING` line parses the spawn correctly (regression for D1); a spawn preceded by prose
 mentioning "CEZ:SPAWN" earlier in the turn still anchors on the real, later marker (D2); the
 candidate-regex change does not change any currently-passing malformed/valid case.
-`packages/cezar/src/units/prompts.test.ts` — extend the existing `/never merge/i` (`:161`) and
+`packages/work/src/units/prompts.test.ts` — extend the existing `/never merge/i` (`:161`) and
 `toContain('git merge --no-ff')` (`:179`) assertions with one asserting the Guard names the
 in-worktree exception (`toMatch(/does not cover/i)`); update the file-editing assertion
 (`:150-154`) to the narrower "does not write the mission's/task's work" claim.
-`packages/cezar/src/workflows/autonomous-nudge.test.ts` (carried over from
+`packages/work/src/workflows/autonomous-nudge.test.ts` (carried over from
 `fix/autonomous-nudge-reachability`) — extend with a unit-run case proving `tryAutonomousNudge`
 still refuses to nudge past `CEZ:ASK`/over-budget/a spawn once the three exceptions move into the
-shared helper. `packages/cezar/src/workflows/units-engine.test.ts` — extend `:474-522`'s
+shared helper. `packages/work/src/workflows/units-engine.test.ts` — extend `:474-522`'s
 `askOnContinue`-style helper (today only exercises `runContinuation`) to drive a `CEZ:ASK` through a
 child's **first** turn (`runAgentStep`), proving the Guard holds there too now that the nudge is
-reachable. `packages/cezar/src/workflows/recover-unit.test.ts` — a sibling to the existing
+reachable. `packages/work/src/workflows/recover-unit.test.ts` — a sibling to the existing
 `:136-167` fixture, seeding an unanswered `ask.requested` event and a `pendingAsk`, asserting the
 synthesized report is `status: 'blocked'` naming the question, not `done`; and an explicit assertion
 that a `waiting` run **without** `pendingAsk` still settles and reports exactly as today (the
-regression guard for the narrow gate). `packages/cezar/src/units/engine.test.ts` — `pendingAsk`
+regression guard for the narrow gate). `packages/work/src/units/engine.test.ts` — `pendingAsk`
 round-trips through the contract-parity check; `childSettleReport` produces the forced `blocked`
 report when passed a `pendingAsk` context.
 
@@ -405,7 +405,7 @@ visible `guardReason` label distinguishing them.
 
 **5. The escalation ladder proper: `CEZ:ESCALATE` / `CEZ:ANSWER`, one rank at a time.**
 *Source: `01-communication/SUMMARY.md` P5 (fixes F3 = `00-SUMMARY.md` R12, plus F15/F16).*
-A new unit-only marker **pair**, parsed in `packages/cezar/src/units/markers.ts` through the same
+A new unit-only marker **pair**, parsed in `packages/work/src/units/markers.ts` through the same
 shared generic `parseMarker` helper (`markers.ts:62`, confirmed) the spawn and report markers already
 use — deliberately **not** an extension of `ask.ts`, which is shared non-unit infrastructure carrying
 no notion of rank. Schema in `packages/contract/src/units.ts`, `.strict()` like `unitSpawnSchema`:
@@ -457,18 +457,18 @@ the marginal cost is small and the coverage gap is real.
 
 ### Files and functions touched
 
-`packages/cezar/src/units/engine.ts` (`remainingBudgetUsd`, plus a new `withBlockedChild` beside
-`withPendingReport`), `packages/cezar/src/units/markers.ts` (two new marker parsers over the existing
+`packages/work/src/units/engine.ts` (`remainingBudgetUsd`, plus a new `withBlockedChild` beside
+`withPendingReport`), `packages/work/src/units/markers.ts` (two new marker parsers over the existing
 `parseMarker` helper — no change to the spawn/report parsers Mission 1 owns),
-`packages/cezar/src/units/prompts.ts` (the escalation paragraph only — Mission 1 owns the merge/edit
+`packages/work/src/units/prompts.ts` (the escalation paragraph only — Mission 1 owns the merge/edit
 rewrite in the same file, which is why these two missions must not run in parallel),
 `packages/contract/src/units.ts` (`unitEscalationSchema`, `unitAnswerSchema`, `blockedChildren`,
-`escalationRounds`) and its `packages/cezar/src/runs/store.ts` persistence twin (the parity test must
-pass), `packages/cezar/src/workflows/run.ts` (`carveChildBudgets` and `enforceUnitBudget` only among
+`escalationRounds`) and its `packages/work/src/runs/store.ts` persistence twin (the parity test must
+pass), `packages/work/src/workflows/run.ts` (`carveChildBudgets` and `enforceUnitBudget` only among
 existing functions, plus one new escalation-delivery helper extracted from
 `reportSettledChildToParent`'s cascade and called from both turn-end sites beside
 `emitAskRequested` — no other existing function in this large file), one new route in
-`packages/cezar/src/server/server.ts` (the budget PATCH, alongside the existing
+`packages/work/src/server/server.ts` (the budget PATCH, alongside the existing
 `/missions`/`/units/prompts*` family at `:3486-3577`), `packages/web/src/lib/missions.ts`
 (`buildMissionTrees`, `nodeOf`, `MissionNode` type), `packages/web/src/routes/missions/guard.tsx`
 (`SUBTITLE`, row rendering).
@@ -519,7 +519,7 @@ already computes, with no knob and no new wake source.
 
 ### Tests to pin
 
-`packages/cezar/src/units/engine.test.ts` — `remainingBudgetUsd` with a terminal underspent child, a
+`packages/work/src/units/engine.test.ts` — `remainingBudgetUsd` with a terminal underspent child, a
 terminal overspent child, and an in-flight child, asserting only terminal ones are charged at
 actual cost; a `run.test.ts` case that a spawn refused before a child settles succeeds after.
 Server-side route test (new, alongside `missions-api.test.ts`) — "PATCH budget rejects a ceiling
@@ -533,12 +533,12 @@ caesar + $5 carved legate fixture; add a 3-level fully-carved chain case; add a 
 `unit.overBudget: true` asserting `guardReason === 'overBudget'`; add a
 `monitoringWakeCapReached: true` fixture asserting `needsGuard === true`.
 
-`packages/cezar/src/units/markers.test.ts` — round-trip the `CEZ:ESCALATE`/`CEZ:ANSWER` examples
+`packages/work/src/units/markers.test.ts` — round-trip the `CEZ:ESCALATE`/`CEZ:ANSWER` examples
 exactly as printed in the prompts (the round-trip test `02-roles/SUMMARY.md` F15 says is missing for
 `CEZ:REPORT` today, not repeated for a new marker); unknown keys rejected; a trailing
 `CEZ:MONITORING` line tolerated (Mission 1 item 1's guarantee, re-pinned for the new markers).
-`packages/cezar/src/units/engine.test.ts` — `withBlockedChild` bounds the array and is idempotent
-for the same `fromRunId`. `packages/cezar/src/workflows/units-engine.test.ts` — a centurion's
+`packages/work/src/units/engine.test.ts` — `withBlockedChild` bounds the array and is idempotent
+for the same `fromRunId`. `packages/work/src/workflows/units-engine.test.ts` — a centurion's
 escalation reaches its legate and does **not** appear in `/guard`; an `irreversible: true`
 escalation held by the Caesar reaches the human; a dead intermediate rank is skipped one hop
 further up; the round cap terminates and lands the question on the human with
@@ -733,14 +733,14 @@ the tightest of the three always wins.
 
 ### Files and functions touched
 
-`packages/cezar/src/units/engine.ts` (`childTaskEnvelope` only), `packages/cezar/src/workflows/run.ts`
+`packages/work/src/units/engine.ts` (`childTaskEnvelope` only), `packages/work/src/workflows/run.ts`
 (`spawnChildren` `:1607-1699`, `handleUnitMarkers` for `CEZ:DIRECT`, `reportSettledChildToParent`
 `:1756` for item 5's worktree check, `settleSuccess` `:4152-4176` for item 6, `pump()`/`capacity()`
-`:1090-1210` for item 8), `packages/cezar/src/units/prompts.ts` (`CAESAR_PROMPT` finishing section,
+`:1090-1210` for item 8), `packages/work/src/units/prompts.ts` (`CAESAR_PROMPT` finishing section,
 new `CEZ:DIRECT`/`retry_of` documentation), `packages/contract/src/units.ts` (`unitSpawnSchema`
 child object — `retry_of`; `unitSchema` — `retryLimit`/`retryCount`/`retryOf`/`maxParallel`;
-`startMissionInputSchema` — `maxParallel`), `packages/cezar/src/runs/store.ts` (persistence parity
-for the new `unitSchema` fields), `packages/cezar/src/server/server.ts` (missions `GET`/cancel
+`startMissionInputSchema` — `maxParallel`), `packages/work/src/runs/store.ts` (persistence parity
+for the new `unitSchema` fields), `packages/work/src/server/server.ts` (missions `GET`/cancel
 routes, alongside the existing family at `:3486-3577`), `packages/web/src/lib/missions.ts` (a
 shared grouping function extracted for the new `GET` route to reuse), `packages/web/src/routes/missions/*`
 (composer pre-fills `maxParallel: 4` for `army`, per D2).
@@ -790,10 +790,10 @@ explicitly chose `army` in the composer — never for an API-started mission tha
 
 ### Tests to pin
 
-`packages/cezar/src/units/engine.test.ts` — mission block present for a rank-2+ child, absent for a
+`packages/work/src/units/engine.test.ts` — mission block present for a rank-2+ child, absent for a
 squad's lone centurion; sibling lines never include the child itself; the learned-reports block
 bounded at 3, newest-first; a two-wave spawn where wave 2's envelope contains wave 1's settled
-result. `packages/cezar/src/workflows/run.test.ts` (or `units-engine.test.ts`) — a `CEZ:DIRECT
+result. `packages/work/src/workflows/run.test.ts` (or `units-engine.test.ts`) — a `CEZ:DIRECT
 message` delivered without disturbing the parent's own park state; `stop` cascades exactly like
 `POST /runs/:id/cancel`; a settled child is refused; a non-child run id is refused; a `CEZ:DIRECT` in
 the same turn as `CEZ:SPAWN` — both take effect. `retry_of` naming an unrelated run is refused; a
@@ -960,10 +960,10 @@ default-path change this mission's own budget does not include design review for
 ### Files and functions touched
 
 `packages/contract/src/units.ts` (`unitRoleSchema` — add `'review-centurion'`; new
-`reviewVerdictSchema`), `packages/cezar/src/units/engine.ts` (`CHILD_ROLE`, `childSettleReport` —
-`commitSha`/`filesTouched` append, review-block append), `packages/cezar/src/workflows/run.ts`
+`reviewVerdictSchema`), `packages/work/src/units/engine.ts` (`CHILD_ROLE`, `childSettleReport` —
+`commitSha`/`filesTouched` append, review-block append), `packages/work/src/workflows/run.ts`
 (`reportSettledChildToParent` — insert the review-centurion spawn before delivery, `spawnChildren`
-for the new role), `packages/cezar/src/units/prompts.ts` (new `REVIEW_CENTURION_PROMPT`, and the
+for the new role), `packages/work/src/units/prompts.ts` (new `REVIEW_CENTURION_PROMPT`, and the
 `unitSubagentTools`-derived backend line in the shared envelope helper from Mission 3 item 1),
 `packages/web/src/routes/missions/missions-new.tsx` (or wherever the composer's ladder form lives —
 pre-fill values only, plus the non-claude backend warning banner).
@@ -998,10 +998,10 @@ banner is UI-only, never a spawn refusal.
 
 ### Tests to pin
 
-`packages/cezar/src/units/engine.test.ts` — `childSettleReport` appends `commitSha`/`filesTouched` for
+`packages/work/src/units/engine.test.ts` — `childSettleReport` appends `commitSha`/`filesTouched` for
 a child with a `baseBranch`; a review-centurion role is a valid spawn target and its own further
 spawn is refused (`CHILD_ROLE['review-centurion'] === undefined`, mirroring the existing centurion
-test at `engine.test.ts:106`). `packages/cezar/src/units/markers.test.ts` — the new optional
+test at `engine.test.ts:106`). `packages/work/src/units/markers.test.ts` — the new optional
 report-derived fields parse; `unitReportSchema` staying non-`.strict()`
 (`contract/src/units.ts:70-73`, confirmed) is re-confirmed as still the right call once the schema
 carries these trust-bearing fields. A `run.ts` integration test (new, alongside

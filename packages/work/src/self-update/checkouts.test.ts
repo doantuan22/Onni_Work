@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cezarPackageRoot } from './checkouts.ts';
 import { activate, activeId, branchSlug, currentEntry, linkCheckout, linkId, listLinks, removeInstalled, versionDir, versionsDir } from './layout.ts';
 
-/** A built cezar monorepo checkout: packages/cezar with dist/index.js and web/dist/index.html. */
+/** A built cezar monorepo checkout: packages/work with dist/index.js and web/dist/index.html. */
 function fakeCheckout(root: string, version = '0.13.0', built = true): string {
   const pkg = join(root, 'packages', 'cezar');
   mkdirSync(pkg, { recursive: true });

@@ -1,6 +1,6 @@
 # Repo git sync — Source Control for the main checkout
 
-Status: implemented (2026-10-19). Server: `packages/cezar/src/server/repo-sync.ts`; cockpit:
+Status: implemented (2026-10-19). Server: `packages/work/src/server/repo-sync.ts`; cockpit:
 `packages/web/src/routes/repo-git/repo-sync-bar.tsx`.
 
 ## Problem

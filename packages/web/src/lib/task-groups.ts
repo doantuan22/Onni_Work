@@ -132,7 +132,7 @@ export function runTitle(run: RunTitleInput): string {
 
 /**
  * The `NNN: ` reference prefix `postValidateTitle` writes onto every auto-named run
- * (`packages/cezar/src/runs/auto-name.ts`), split off the display title — issue #788, option C.
+ * (`packages/work/src/runs/auto-name.ts`), split off the display title — issue #788, option C.
  *
  * RENDER-ONLY. The stored `title`/`titleSummary` keep the prefix: it is what makes a run findable
  * by number in search, in the Tasks table and in the page title, and `runs.json` field semantics

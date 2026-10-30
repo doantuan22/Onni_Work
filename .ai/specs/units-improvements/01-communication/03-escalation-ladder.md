@@ -16,7 +16,7 @@ reach a human. §3 lists ranked proposals. §4 is the state-machine table. §5 i
 
 ## 1. Current behaviour, with evidence
 
-### 1.1 `CEZ:ASK` — marker, schema, parse (`packages/cezar/src/core/ask.ts`)
+### 1.1 `CEZ:ASK` — marker, schema, parse (`packages/work/src/core/ask.ts`)
 
 - The wire shape is `askRequestSchema` (`ask.ts:43-53`): `{ questions: AskQuestion[] }`, 1-4
   questions, each `{ id?, header (≤12), question (≤400), options (2-4, unique labels),
@@ -49,7 +49,7 @@ calls `sink.handle({ type: 'ask.requested', requestId, questions: ask.questions 
 event with no persisted twin on the run record**. Nothing under `unit` or elsewhere in
 `RunRecord` stores the pending question (contrast with reports, §1.4).
 
-### 1.3 Unit-marker precedence (`packages/cezar/src/units/markers.ts`, `handleUnitMarkers`)
+### 1.3 Unit-marker precedence (`packages/work/src/units/markers.ts`, `handleUnitMarkers`)
 
 Precedence is stated once, verbatim, in three places that must agree: the spec
 (`.ai/specs/2026-09-08-units-hierarchy.md:83`), `markers.ts:19-20`, and the docstring on
@@ -86,7 +86,7 @@ autonomous unit runs). The comment at `run.ts:2998-3000` names this explicitly: 
 (Q4): an autonomous unit run must not answer its own `CEZ:ASK`. That is the whole point of asking
 before something irreversible."*
 
-### 1.5 The Guard rule text (`packages/cezar/src/units/prompts.ts:79-84`)
+### 1.5 The Guard rule text (`packages/work/src/units/prompts.ts:79-84`)
 
 ```
 The Guard rule — this one is absolute. Before ANY action that is irreversible, financial, or

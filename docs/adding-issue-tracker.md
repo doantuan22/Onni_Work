@@ -33,12 +33,12 @@ Reads begin only on user demand. Credentials stay on the server.
 | Purpose | Repository path |
 | --- | --- |
 | Boundary schemas and provider identity | `packages/contract/src/tracker.ts` |
-| Complete provider behavior | `packages/cezar/src/server/tracker/types.ts` (`TrackerProvider`) |
-| Configuration and registration | `packages/cezar/src/server/tracker/connections.ts`, `index.ts` |
-| REST and GraphQL examples | `packages/cezar/src/server/tracker/jira.ts`, `linear.ts` |
-| Timeout, failures, limits, cache, cursors | `packages/cezar/src/server/tracker/transport.ts`, `cursor.ts` |
-| Local association | `packages/cezar/src/tracker-association.ts` |
-| Generic API | `trackerCandidatesRoutes` / `trackerRoutes` in `packages/cezar/src/server/server.ts` |
+| Complete provider behavior | `packages/work/src/server/tracker/types.ts` (`TrackerProvider`) |
+| Configuration and registration | `packages/work/src/server/tracker/connections.ts`, `index.ts` |
+| REST and GraphQL examples | `packages/work/src/server/tracker/jira.ts`, `linear.ts` |
+| Timeout, failures, limits, cache, cursors | `packages/work/src/server/tracker/transport.ts`, `cursor.ts` |
+| Local association | `packages/work/src/tracker-association.ts` |
+| Generic API | `trackerCandidatesRoutes` / `trackerRoutes` in `packages/work/src/server/server.ts` |
 | Display metadata and readiness mapping | `packages/web/src/lib/tracker-providers.ts` |
 | Shared UI and task composition | `packages/web/src/routes/tracker/`, `packages/web/src/lib/tracker-task.ts` |
 
@@ -132,7 +132,7 @@ make all these behaviors tested by itself.
 Useful starting commands (from the repository root):
 
 ```sh
-TMPDIR=/tmp npx vitest run packages/cezar/src/server/tracker packages/cezar/src/server/tracker-api.test.ts packages/web/src/lib/tracker-task.test.ts packages/web/src/routes/settings/tracker-section.test.tsx
+TMPDIR=/tmp npx vitest run packages/work/src/server/tracker packages/work/src/server/tracker-api.test.ts packages/web/src/lib/tracker-task.test.ts packages/web/src/routes/settings/tracker-section.test.tsx
 TMPDIR=/tmp npm run typecheck
 TMPDIR=/tmp npm test
 TMPDIR=/tmp npm run build

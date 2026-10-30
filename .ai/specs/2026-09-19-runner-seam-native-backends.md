@@ -45,7 +45,7 @@ and carry the confirmation marker. Q12–Q15 came up while designing this spec.
 
 ## 📝 Problem Statement
 
-- **The seam still costs ~50 hand edits per runner.** `RUNNER_IDS` (`packages/cezar/src/core/agent-runner.ts:24`)
+- **The seam still costs ~50 hand edits per runner.** `RUNNER_IDS` (`packages/work/src/core/agent-runner.ts:24`)
   is meant to be the single source of truth, but the tuple is repeated by hand in
   `packages/contract/src/health.ts:4` and `:17`, `core/provider-auth.ts:7`, `core/ui-events.ts:28` and its mirror
   `packages/api-client/src/protocol/ui-events.ts:19`, `core/backend-detect.ts:7`, and eight or more per-runner
@@ -201,7 +201,7 @@ client and mapper, and each adds a runner class plus a dialect: `AGENT_PROTOCOL.
   `contract-parity*.test.ts` stays green. `health.ts:4` and `:17` import it; check names become
   `z.enum([...RUNNER_IDS, 'gh', 'git'])`.
 - `core/agent-runner.ts` re-exports `RUNNER_IDS` / `RunnerId` from the contract. The service already imports contract
-  values at runtime (`workspace/migrations.ts`), and `packages/cezar/scripts/inline-contract.mjs` folds them into the published
+  values at runtime (`workspace/migrations.ts`), and `packages/work/scripts/inline-contract.mjs` folds them into the published
   tarball. Phase 0 does not change that mechanism.
 - `PROVIDER_IDS = RUNNER_IDS` (`provider-auth.ts:7`). A provider is a runner for auth purposes today; the alias keeps the
   name for call sites. `UiBackend` stays a literal union in both `ui-events.ts` files, because the api-client mirror
@@ -223,11 +223,11 @@ client and mapper, and each adds a runner class plus a dialect: `AGENT_PROTOCOL.
   `run.ts:3644,4436` a `RunnerId`), so the `undefined` parameter type is dropped with it.
 - `resumeCommand()` (`server.ts:6230`) and `open-in-app.ts:133` move to a per-runner `Record<RunnerId, …>` table for the
   same reason: today, an unknown runner resumes as `claude --resume`. **The old `default` also carries records that
-  have no `runner` at all** (`RunRecord.runner` is optional, `packages/cezar/src/runs/store.ts:158`; `server.ts:4185` passes it through).
+  have no `runner` at all** (`RunRecord.runner` is optional, `packages/work/src/runs/store.ts:158`; `server.ts:4185` passes it through).
   That behavior is kept explicitly as `run.runner ?? 'claude'` at the call site, the way `server.ts:4291` already
   does, and a test pins "runner-less record → `claude --resume`".
 - **`runs.json` downgrade safety (BACKWARD_COMPATIBILITY.md §3).** Today `RunStore.open` parses the index as one array
-  (`packages/cezar/src/runs/store.ts:723-740`). A single record whose `runner` the running version does not know fails
+  (`packages/work/src/runs/store.ts:723-740`). A single record whose `runner` the running version does not know fails
   the whole parse, and the store starts empty, so the next save (`saveNow`, `:1442`) **overwrites every run**. After
   running a Phase 2 task, a downgrade would therefore silently discard history, which §3 calls breaking. Phase 0
   changes the load to per-record salvage:
@@ -257,7 +257,7 @@ client and mapper, and each adds a runner class plus a dialect: `AGENT_PROTOCOL.
   - `packages/web/e2e/new-task.e2e.ts:150` — `['claude', 'codex', 'opencode'].filter(…)` decides "runner pill iff the
     host offers >1 backend". It is not a deliberate subset; it is stale (it already omits `pi`). It becomes
     `RUNNER_IDS.filter(…)`.
-  - `packages/cezar/src/core/runner-model-catalog.ts:100` — `unavailableReason()` is a fall-through ternary
+  - `packages/work/src/core/runner-model-catalog.ts:100` — `unavailableReason()` is a fall-through ternary
     (`runner === 'codex' ? 'Codex' : runner === 'claude' ? 'Claude' : 'OpenCode'`) that already mislabels `pi`. It
     becomes a `Record<RunnerId, string>` display-name table (shared with the other display-name sites where one
     exists), so a new id is a type error.
@@ -273,7 +273,7 @@ client and mapper, and each adds a runner class plus a dialect: `AGENT_PROTOCOL.
 
   | Site | Rationale |
   |---|---|
-  | `packages/cezar/src/core/ui-events.ts` (`UiBackend`) | Mirror of the api-client type; kept a literal so both files stay in lock-step, and the type-exactness test pins `UiBackend` = `Runner`. |
+  | `packages/work/src/core/ui-events.ts` (`UiBackend`) | Mirror of the api-client type; kept a literal so both files stay in lock-step, and the type-exactness test pins `UiBackend` = `Runner`. |
   | `packages/api-client/src/protocol/ui-events.ts` (`UiBackend`) | The api-client protocol module must stay import-free (`:12`); same type-exactness pin. |
   | `packages/contract/src/workspace.ts` (`modelDiscoveryRunnerSchema`) | A deliberate **subset**: the runners with a live `/models` discovery path (§ API Contracts). Deriving it from `RUNNER_IDS` would be wrong. |
 
@@ -575,7 +575,7 @@ Text-only (U10). The deltas:
   line. If #807 lands first, Phase 0 absorbs `cursor` into the tuple instead, with no design change. This is a direction
   call, not a defect.
 - **Older cezar reading a newer `runs.json`** (§3). Today a downgrade after one run on a new runner wipes the whole index
-  on the next save (`packages/cezar/src/runs/store.ts:723-740`). Phase 0's per-record salvage fixes this for every later version. Versions
+  on the next save (`packages/work/src/runs/store.ts:723-740`). Phase 0's per-record salvage fixes this for every later version. Versions
   before Phase 0 keep the old behavior, and the Phase 2/3 CHANGELOG entries warn about it.
 - **Vendor churn.** Gemini's flags (`--yolo` → `--approval-mode`), auth policy, and ACP maturity in Copilot all moved
   in 2026. Every runner phase starts with a verification Step against the installed CLI, and fixtures cite the version.
@@ -584,7 +584,7 @@ Text-only (U10). The deltas:
   backend-specific prefixes and exact names only. No runner gains another runner's credentials. The Vertex unlock for `gemini` follows
   the existing toggle pattern, keyed on Gemini's own variable.
 - **Contract-package move (Phase 0).** `RUNNER_IDS` becomes a contract value the service imports at runtime. It rides
-  the existing `packages/cezar/scripts/inline-contract.mjs` path, and `npm run test:package` proves the tarball still installs.
+  the existing `packages/work/scripts/inline-contract.mjs` path, and `npm run test:package` proves the tarball still installs.
 - **Rollback.** Phases 0 and 1 revert cleanly (no persisted state). After Phase 0, reverting Phase 2 or 3 is safe too: records carrying the
   removed runner id are preserved unread by the salvage path and come back if the phase is re-applied.
 - **Out of scope:** Antigravity CLI runner (named follow-up), Grok Option B, Kimi/GLM (#510/#511), routing through
@@ -618,7 +618,7 @@ Every Step leaves `npm run typecheck && npm test && npm run test:unit` green. Ev
    `route-parity`, `typed-bodies` green.
 4. Exhaustive `createRunner`, `resumeCommand`, open-in-app tables; tests pin "unknown id is a type error" (a
    `@ts-expect-error` case), today's outputs for every current id, and "runner-less record → `claude --resume`".
-5. `RunStore.open` per-record salvage (`packages/cezar/src/runs/store.ts`). Tests:
+5. `RunStore.open` per-record salvage (`packages/work/src/runs/store.ts`). Tests:
    - a file with one unknown-runner record loads the others, and the save re-emits the unknown record
      byte-identically and in `createdAt` order. Proven red against today's loader;
    - `deleteRun(<salvaged id>)` returns `true`, removes its companions, and the record is absent after the next save;

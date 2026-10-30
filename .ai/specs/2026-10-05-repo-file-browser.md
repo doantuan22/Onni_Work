@@ -55,9 +55,9 @@ rest of this file look like?" — sends the user to another window.
 
 The machinery to answer it already exists, in the wrong scope:
 
-- `GET /runs/:id/files?path=` (`packages/cezar/src/server/server.ts:4688`) serves a directory
+- `GET /runs/:id/files?path=` (`packages/work/src/server/server.ts:4688`) serves a directory
   listing or one file's content from a **run's worktree**, delegating to `readWorktreePath()`
-  (`packages/cezar/src/server/git-changes.ts:537`).
+  (`packages/work/src/server/git-changes.ts:537`).
 - `FilesTree` (`packages/web/src/routes/task-git/files-tree.tsx:16`) renders that lazily — one
   request per folder, folders closed by default because an open-by-default tree "would fan out
   into one request per directory and defeat the lazy contract".
@@ -130,12 +130,12 @@ the content route to it.
 ## 📝 Architecture
 
 **Server** — one new family member each, both chained into the existing `repoRoutes` builder in
-`packages/cezar/src/server/server.ts:5844` (chaining, not a loose `app.get`, per AGENTS.md § The
+`packages/work/src/server/server.ts:5844` (chaining, not a loose `app.get`, per AGENTS.md § The
 HTTP API — a loose statement vanishes from `AppType` and the typed client stops seeing it):
 
 - `GET /repo/tree` → `getRepoInfo(repoRoot)`; `409 { error: 'not a git repository' }` when absent,
   matching `/repo/changes`. Then a new `listRepoPaths(root)` in
-  `packages/cezar/src/server/git.ts` (beside `getStatus`/`getBranches`, which already own the
+  `packages/work/src/server/git.ts` (beside `getStatus`/`getBranches`, which already own the
   `git` subprocess idiom) runs `git ls-files -z --cached --others --exclude-standard`, splits on
   NUL, sorts, and caps both the number of entries and the captured bytes. The helper must return a
   bounded failure rather than a partial tree when the byte cap is exceeded.
@@ -337,7 +337,7 @@ Each step leaves the application working and is verifiable by a test.
    doc comment naming the route. *Test:* the contract's existing parity suite compiles; a schema
    unit test pins `truncated` as required.
 2. **Index helper.** Add `listRepoPaths(root, cap = REPO_TREE_CAP, bytesCap = REPO_TREE_BYTES_CAP)` to
-   `packages/cezar/src/server/git.ts` — `git ls-files -z --cached --others --exclude-standard`,
+   `packages/work/src/server/git.ts` — `git ls-files -z --cached --others --exclude-standard`,
    NUL split, drop the trailing empty, sort, slice, return `{ paths, truncated }`. *Test:* a
    fixture repo with a tracked file, an untracked file, a `.gitignore`d file and a file with a
    space and a UTF-8 name; assert the ignored one is absent, ordering is stable, and `truncated`

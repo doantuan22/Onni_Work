@@ -21,17 +21,17 @@ A  .ai/specs/2026-09-13-automations-from-prompt.md
 M  .env.example
 M  BACKWARD_COMPATIBILITY.md
 M  README.md
-A  packages/cezar/src/automations/automation-cli.test.ts
-A  packages/cezar/src/automations/automation-cli.ts
-A  packages/cezar/src/automations/builtin-skill.ts
-A  packages/cezar/src/automations/prompts.test.ts
-A  packages/cezar/src/automations/prompts.ts
-M  packages/cezar/src/index.ts
-M  packages/cezar/src/server/capabilities.ts
-M  packages/cezar/src/skills.test.ts
-M  packages/cezar/src/skills.ts
-M  packages/cezar/src/workflows/run.ts
-M  packages/cezar/src/workflows/system-prompt.test.ts
+A  packages/work/src/automations/automation-cli.test.ts
+A  packages/work/src/automations/automation-cli.ts
+A  packages/work/src/automations/builtin-skill.ts
+A  packages/work/src/automations/prompts.test.ts
+A  packages/work/src/automations/prompts.ts
+M  packages/work/src/index.ts
+M  packages/work/src/server/capabilities.ts
+M  packages/work/src/skills.test.ts
+M  packages/work/src/skills.ts
+M  packages/work/src/workflows/run.ts
+M  packages/work/src/workflows/system-prompt.test.ts
 M  packages/contract/src/skills.ts
 M  packages/web/src/lib/prompt-templates.test.ts
 M  packages/web/src/lib/prompt-templates.ts
@@ -84,15 +84,15 @@ konfliktu z nowszym `main`.
 Testy, które pokrywają tę zmianę i muszą być zielone:
 
 ```bash
-npm test -- packages/cezar/src/automations packages/cezar/src/skills.test.ts \
-            packages/cezar/src/workflows/system-prompt.test.ts \
+npm test -- packages/work/src/automations packages/work/src/skills.test.ts \
+            packages/work/src/workflows/system-prompt.test.ts \
             packages/web/src/lib/prompt-templates.test.ts
 ```
 
 ### Krok 3 — smoke test na żywo (opcjonalny, 2 minuty)
 
 ```bash
-cd packages/cezar
+cd packages/work
 npx tsx src/index.ts automation schema | head          # drukuje referencję, bez serwera
 npx tsx src/index.ts automation list; echo "exit=$?"    # bez CEZ_API_URL → komunikat + exit 2
 ```
@@ -136,7 +136,7 @@ jednorazowego runu dostaje automatyzację GitHub. Dwie drogi wejścia, jeden mec
    pełny kształt definicji). Czyli „cezar sam wie, kiedy tego użyć”.
 
 Pod spodem: CLI `cez automation schema|create|update|check|list|show|enable|pause|delete`
-(`packages/cezar/src/automations/automation-cli.ts`) — cienki klient HTTP nad ISTNIEJĄCYMI
+(`packages/work/src/automations/automation-cli.ts`) — cienki klient HTTP nad ISTNIEJĄCYMI
 trasami `/api/v1/p/:projectId/automations*`, adresowany tymi samymi zmiennymi co `cez task`
 (`CEZ_API_URL`, `CEZ_PROJECT_ID`, `CEZ_BIN`). Zero nowych tras, zero nowego stanu, zero nowych
 flag.
@@ -150,21 +150,21 @@ z kodem 1.
 
 ## Co dokładnie zmienia się w istniejących plikach (do ręcznego scalania)
 
-- `packages/cezar/src/skills.ts` — import `builtinSkills` z `./automations/builtin-skill.ts`;
+- `packages/work/src/skills.ts` — import `builtinSkills` z `./automations/builtin-skill.ts`;
   union `source` dostaje `'builtin'`; w `discoverSkills` pętla scalająca iteruje po
   `[...lists, teamSkills, builtinSkills()]` (builtin OSTATNI — skill z repo o tej samej nazwie
   go przesłania).
 - `packages/contract/src/skills.ts` — enum `source` dostaje `'builtin'` (addytywne).
-- `packages/cezar/src/index.ts` — import `runAutomationCommand`; w `HELP` linia
+- `packages/work/src/index.ts` — import `runAutomationCommand`; w `HELP` linia
   `cezar automation …`; w `main()` tuż po routingu `task` analogiczny `if (process.argv[2] ===
   'automation')`.
-- `packages/cezar/src/workflows/run.ts` — importy `automationsReachable` i `AUTOMATIONS_PROMPT`;
+- `packages/work/src/workflows/run.ts` — importy `automationsReachable` i `AUTOMATIONS_PROMPT`;
   pole `automationsPrompt?: string` w `ActiveRun` (obok `dispatchPrompt`); metoda
   `prepareAutomationsSession(state)` obok `prepareDispatchSession`; wywołanie jej w OBU
   miejscach, gdzie woła się `prepareDispatchSession` (execute i runContinuation);
   `state.automationsPrompt` dodane do `composeSystemPrompt(...)` w obu `startSession` — zaraz
   po `dispatchPromptPart(...)`, przed extra system promptem.
-- `packages/cezar/src/server/capabilities.ts` — tylko komentarz dokumentacyjny.
+- `packages/work/src/server/capabilities.ts` — tylko komentarz dokumentacyjny.
 - `packages/web/src/lib/prompt-templates.ts` — nowy wbudowany szablon `create-automation`
   (`skills: ['create-cezar-automation']`); `AUTOMATIONS_TEMPLATE_IDS`;
   `availablePromptTemplates` przyjmuje `{ dispatch?, automations? }` i filtruje po obu bramkach

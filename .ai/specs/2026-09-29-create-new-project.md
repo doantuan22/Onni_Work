@@ -30,7 +30,7 @@ start a project from nothing. Starting one means leaving the cockpit to `git ini
 
 `POST /api/v1/projects/create` `{ name, github?: { owner, template? }, checkoutId? }` —
 workspace-level, same guards and target rule as `/api/v1/projects/checkout`
-(`packages/cezar/src/server/create-project.ts` reuses `checkout.ts`'s name validation, its
+(`packages/work/src/server/create-project.ts` reuses `checkout.ts`'s name validation, its
 ownership-token `mkdir`, and its guarded `cleanupCheckout`). Progress is emitted as
 `checkout-progress` events keyed by `checkoutId`; success registers through the same
 `registerFolder` (`source: checkout` when GitHub-backed, `local` otherwise).

@@ -14,7 +14,7 @@ on:
       - develop
     paths:
       - 'packages/desktop/**'
-      - 'packages/cezar/src/self-update/**'
+      - 'packages/work/src/self-update/**'
       - '.github/workflows/desktop-check.yml'
   push:
     branches:
@@ -22,7 +22,7 @@ on:
       - develop
     paths:
       - 'packages/desktop/**'
-      - 'packages/cezar/src/self-update/**'
+      - 'packages/work/src/self-update/**'
       - '.github/workflows/desktop-check.yml'
   workflow_dispatch:
 
@@ -95,4 +95,4 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Self-update layout tests
-        run: npm test -- packages/cezar/src/self-update/self-update.test.ts
+        run: npm test -- packages/work/src/self-update/self-update.test.ts

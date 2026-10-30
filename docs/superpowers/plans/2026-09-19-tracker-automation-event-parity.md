@@ -99,7 +99,7 @@ wymagałaby osobnego uzgodnienia ekspozycji — nie wchodzi automatycznie do teg
 
 ## 4. Proponowana granica adaptera
 
-Nowy plik `packages/cezar/src/automations/event-source.ts` definiuje wewnętrzne typy mechanizmu,
+Nowy plik `packages/work/src/automations/event-source.ts` definiuje wewnętrzne typy mechanizmu,
 a nie nowe ręcznie pisane typy HTTP. `TrackerAutomationEvent` i `TrackerAssociation` pochodzą
 z kontraktu. Existing `GithubCandidate` zachowuje swój payload, żeby nie zmieniać template/GitHub.
 
@@ -148,8 +148,8 @@ Każdy etap kodowy: najpierw test regresyjny → potwierdzona czerwień → mini
 
 ### Zadanie 1 — Potwierdzenie zdarzeń i fixtures
 
-**Pliki:** nowe `packages/cezar/src/server/tracker/fixtures/automation-events/` i
-`packages/cezar/src/server/tracker/event-capabilities.test.ts`; istniejące `jira.ts`, `linear.ts`
+**Pliki:** nowe `packages/work/src/server/tracker/fixtures/automation-events/` i
+`packages/work/src/server/tracker/event-capabilities.test.ts`; istniejące `jira.ts`, `linear.ts`
 na tym etapie tylko odczytać. Dokument dowodów: `.ai/qa/tracker-automation-events/capabilities.md`.
 
 - [ ] Zachować zanonimizowane fixture tworzenia, dwóch przejść statusu i add/remove label,
@@ -174,7 +174,7 @@ nie przedstawiać częściowego wyniku jako pełnego zakończenia planu.
 
 ### Zadanie 2 — Sekrety i powiązanie runa
 
-**Pliki:** `packages/cezar/src/server/tracker/agent-credentials.ts` i jego test;
+**Pliki:** `packages/work/src/server/tracker/agent-credentials.ts` i jego test;
 `runs/store.ts`, `workflows/run.ts`, `automations/task-template.ts` + testy;
 `server/project-context.ts`, `index.ts` (oba construction sites RunManager).
 
@@ -198,7 +198,7 @@ await expect(resolveTrackerAgentEnv(root, oldAssociation, isolatedEnv))
   .rejects.toThrow(/connection|scope/i); // mismatch nie może oznaczać podmiany na nowy token
 ```
 
-**Run:** `TMPDIR=/tmp npx vitest run packages/cezar/src/server/tracker/agent-credentials.test.ts packages/cezar/src/automations/task-template.test.ts packages/cezar/src/runs`
+**Run:** `TMPDIR=/tmp npx vitest run packages/work/src/server/tracker/agent-credentials.test.ts packages/work/src/automations/task-template.test.ts packages/work/src/runs`
 
 ### Zadanie 3 — Wspólny cykl pollingu bez regresji GitHuba
 
@@ -243,7 +243,7 @@ expect(store.state(id)?.revision).toBe(pausedRevision);
 To szkic testowego harnessu z `event-poll-cycle.test.ts`; `pauseAutomation` używa rzeczywistej
 ścieżki mutacji, a nie samej zmiany lokalnej zmiennej.
 
-**Run:** `TMPDIR=/tmp npx vitest run packages/cezar/src/automations`
+**Run:** `TMPDIR=/tmp npx vitest run packages/work/src/automations`
 
 ### Zadanie 4 — Adapter zdarzeń Jira
 
@@ -270,7 +270,7 @@ expect(page.candidates.filter(e => e.event === 'issue.status_changed')).toHaveLe
 expect(new Set(page.candidates.map(e => e.eventId)).size).toBe(page.candidates.length);
 ```
 
-**Run:** `TMPDIR=/tmp npx vitest run packages/cezar/src/server/tracker/jira-events.test.ts packages/cezar/src/server/tracker/jira.test.ts`
+**Run:** `TMPDIR=/tmp npx vitest run packages/work/src/server/tracker/jira-events.test.ts packages/work/src/server/tracker/jira.test.ts`
 
 ### Zadanie 5 — Adapter zdarzeń Linear
 
@@ -308,12 +308,12 @@ expect(mapLinearHistory(twoTransitions).map(e => e.change.toId)).toEqual(['progr
 `mapLinearHistory` jest helperem z `linear-events.ts`. Zapytanie włączyć po potwierdzeniu aktualnej
 sygnatury w zadaniu1; nie zakładać gwarancji retencji na podstawie samej poprawności GraphQL.
 
-**Run:** `TMPDIR=/tmp npx vitest run packages/cezar/src/server/tracker/linear-events.test.ts packages/cezar/src/server/tracker/linear.test.ts`
+**Run:** `TMPDIR=/tmp npx vitest run packages/work/src/server/tracker/linear-events.test.ts packages/work/src/server/tracker/linear.test.ts`
 
 ### Zadanie 6 — Kontrakty, API, retry i zgodność zapisanej konfiguracji
 
 **Pliki:** `packages/contract/src/automations.ts`, `tracker.ts`, `index.ts`;
-`packages/api-client/src/index.ts`/istniejące re-eksporty; `packages/cezar/src/automations/types.ts`,
+`packages/api-client/src/index.ts`/istniejące re-eksporty; `packages/work/src/automations/types.ts`,
 `task-template.ts`, `server/server.ts`, `server/project-context.ts`, `index.ts`;
 `server/automations-api.test.ts`, `server/contract-parity.automations.test.ts`,
 `server/route-parity.test.ts`, `BACKWARD_COMPATIBILITY.md`.
@@ -354,7 +354,7 @@ expect(automationDetailResponseSchema.parse(await api.getAutomation(created.id))
   .automation.trackerTrigger?.targetStatusIds).toEqual(['todo-id']);
 ```
 
-**Run:** `TMPDIR=/tmp npx vitest run packages/cezar/src/server/automations-api.test.ts packages/cezar/src/server/contract-parity.automations.test.ts packages/cezar/src/server/route-parity.test.ts`
+**Run:** `TMPDIR=/tmp npx vitest run packages/work/src/server/automations-api.test.ts packages/work/src/server/contract-parity.automations.test.ts packages/work/src/server/route-parity.test.ts`
 
 ### Zadanie 7 — Istniejący edytor, lista, CLI i dokumentacja
 
@@ -392,12 +392,12 @@ expect(createAutomation).toHaveBeenCalledWith(expect.objectContaining({ enable: 
   trackerTrigger: expect.objectContaining({ events: ['issue.status_changed'], targetStatusIds: ['todo-id'] }) }));
 ```
 
-**Run:** `TMPDIR=/tmp npx vitest run packages/web/src/routes/automations packages/cezar/src/automations/automation-cli.test.ts packages/cezar/src/automations/task-template.test.ts`
+**Run:** `TMPDIR=/tmp npx vitest run packages/web/src/routes/automations packages/work/src/automations/automation-cli.test.ts packages/work/src/automations/task-template.test.ts`
 
 ### Zadanie 8 — Odbiór całości i niezależny review
 
 **Pliki testowe:** nowy `packages/web/e2e/tracker-automations.e2e.ts` i wspólny zestaw scenariuszy
-w `packages/cezar/src/automations/event-poll-cycle.test.ts`; dowody `.ai/qa/tracker-automation-events/`.
+w `packages/work/src/automations/event-poll-cycle.test.ts`; dowody `.ai/qa/tracker-automation-events/`.
 Nie edytować pozostałych funkcji podczas bramki bez nowego odtworzonego błędu.
 
 - [ ] Fixture uruchamia osobny serwer, CEZ_HOME i repo. Zegar testowy dla30min; osobno smoke normalnego

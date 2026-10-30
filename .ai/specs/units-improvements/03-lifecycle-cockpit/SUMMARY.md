@@ -5,7 +5,7 @@
 > (`/missions`, `/guard`) reflects both — against `.ai/specs/2026-09-08-units-hierarchy.md`. All
 > three source files were audited at HEAD `076cead2785891af80b9ea7440bf3be973c0bbfe`; this summary
 > re-verified every citation at HEAD `8ed75a05` in this worktree (see Verification — no source
-> commits touch `packages/cezar/src`, `packages/web/src` or `packages/contract/src` between the two
+> commits touch `packages/work/src`, `packages/web/src` or `packages/contract/src` between the two
 > commits, so the code is identical).
 
 | detail file | topic | local ids |
@@ -73,8 +73,8 @@ worse consequence when that same mechanism runs during restart recovery against 
 `waiting` because it hit its budget ceiling, not because it finished cleanly.*
 
 - Every unit run is created `autonomous: true` with no exception — the mission root at
-  `packages/cezar/src/server/server.ts:3529`, every spawned child at
-  `packages/cezar/src/workflows/run.ts:1671` (verified: both lines are literally `autonomous:
+  `packages/work/src/server/server.ts:3529`, every spawned child at
+  `packages/work/src/workflows/run.ts:1671` (verified: both lines are literally `autonomous:
   true,`). `settleSuccess` (`run.ts:4152-4176`) computes `review = hasDiff &&
   reviewGateEnabled(config) && run.autonomous !== true` at **run.ts:4159** (verified verbatim) — the
   last conjunct is `false` for every node in every mission, so `review` is `false` unconditionally,
@@ -120,11 +120,11 @@ worse consequence when that same mechanism runs during restart recovery against 
 
 ### F3 — CRITICAL — nothing in the codebase ever opens a mission's draft PR; the only mechanism is a manual route with no trigger and no signal that one is expected
 
-- `POST /runs/:id/pr` (`packages/cezar/src/server/server.ts:4344-4382`, verified) is the only
+- `POST /runs/:id/pr` (`packages/work/src/server/server.ts:4344-4382`, verified) is the only
   PR-creation route in the repository — `createDraftPr`'s only caller, grep-verified, and it does
   not require `status === 'review'` (it is callable on a `done` run too, since F1 guarantees every
   unit run settles to `done`). The intended human trigger exists only in prose:
-  `packages/cezar/src/units/prompts.ts:41` ("a human opens the pull request"), verified. Caesar's own
+  `packages/work/src/units/prompts.ts:41` ("a human opens the pull request"), verified. Caesar's own
   finishing instructions never mention the PR route.
 - Why it matters: combined with F1, a finished mission gives the operator no signal at all — no
   note, no distinct status, no cockpit badge — that a draft PR is expected. The lifecycle note is
@@ -138,7 +138,7 @@ worse consequence when that same mechanism runs during restart recovery against 
 - `spawnChildren` (`run.ts:1607-1699`) has no git-status check anywhere in the function; it seeds
   `baseBranch: parent.branch` (**run.ts:1688**, verified — the line reads
   `...(parent.branch ? { baseBranch: parent.branch } : {}),`), and `createWorktree`
-  (`packages/cezar/src/git-worktree.ts:211`, verified: `git worktree add -b <branch> <path>
+  (`packages/work/src/git-worktree.ts:211`, verified: `git worktree add -b <branch> <path>
   <base>`) forks from that branch's last **commit**, not the parent's live working tree. Enforcement
   is prose only: `CHILD_BRANCH_RULE:35` (verified exact line and text), "COMMIT your work before
   every CEZ:SPAWN. Anything you left uncommitted does not exist for your children."
@@ -200,7 +200,7 @@ audits — `01-communication/SUMMARY.md` F4 and `02-roles/SUMMARY.md` F8, per th
 pointer. Not re-derived here; kept as its own entry because it is this doc's own local finding, with
 a cross-reference rather than a restatement of the other two audits' text.*
 
-- `run.costUsd` is recomputed strictly from a run's own steps (`packages/cezar/src/runs/store.ts:938-939`,
+- `run.costUsd` is recomputed strictly from a run's own steps (`packages/work/src/runs/store.ts:938-939`,
   verified: `const cost = run.steps.reduce((sum, s) => sum + (s.costUsd ?? 0), 0); run.costUsd = cost
   > 0 ? cost : undefined;`) — nothing sums a child's cost into its parent's. `remainingBudgetUsd`
   (`engine.ts:67-72`, verified) subtracts `Σ children.budgetUsd` — the **promised ceiling** — over
@@ -219,9 +219,9 @@ a cross-reference rather than a restatement of the other two audits' text.*
 
 ### F9 — MEDIUM — worktree retention is project-wide and mission-blind, and the reclaimed case is misreported to only two of the three cockpit read routes
 
-- `selectReclaimableWorktrees` (`packages/cezar/src/runs/retention.ts:37-43`, verified) sorts ALL
+- `selectReclaimableWorktrees` (`packages/work/src/runs/retention.ts:37-43`, verified) sorts ALL
   finished runs project-wide by recency and keeps the top `keep` (default **10**,
-  `DEFAULT_WORKTREE_RETENTION`, `packages/cezar/src/config.ts:26`, verified), with no grouping by
+  `DEFAULT_WORKTREE_RETENTION`, `packages/work/src/config.ts:26`, verified), with no grouping by
   `unit.missionId`. Because every unit child settles to a reclaim-eligible status the instant it
   finishes (F1), a single busy army can push its own not-yet-merged siblings' worktrees past the
   default `keep=10` while the mission is still in flight.
@@ -248,7 +248,7 @@ a cross-reference rather than a restatement of the other two audits' text.*
 
 ### F10 — MEDIUM — the missions API has one route: no `GET`, no mission-scoped cancel, no pause/resume
 
-- Full route inventory (re-verified: `packages/cezar/src/server/server.ts:3486-3577` has exactly
+- Full route inventory (re-verified: `packages/work/src/server/server.ts:3486-3577` has exactly
   four handlers total — `POST /missions`, `GET /units/prompts`, `PUT /units/prompts/:role`,
   `DELETE /units/prompts/:role`; none of the last three touch a mission's lifecycle).
   `missions-api.test.ts` (215 lines) tests only `POST /api/v1/missions`.
@@ -306,7 +306,7 @@ a cross-reference rather than a restatement of the other two audits' text.*
 ### F14 — LOW — no on-disk mission ledger exists; `runs.json` already serves that purpose
 
 - Grep for `ledger` under `units/`/`contract/src/units.ts` returns no hits.
-  `packages/cezar/src/runs/store.ts:977-990` (`archiveFinished`) only ever stamps `archived: true` —
+  `packages/work/src/runs/store.ts:977-990` (`archiveFinished`) only ever stamps `archived: true` —
   it never deletes a run record — so the "ledger" already survives indefinitely in the file the tree
   view reads (`missions.tsx:38`, deriving the whole tree from `useRuns()` alone).
 - Why it matters: recorded for completeness. Building a separate ledger file would duplicate
@@ -670,7 +670,7 @@ second half; ship the cancel half alone first if P9 is deferred.
 
 - Re-checked at HEAD `8ed75a05b23d32277a57df3e933eaf648089f208` in this worktree (confirmed via `git
   rev-parse HEAD`); confirmed via `git log --oneline
-  076cead2785891af80b9ea7440bf3be973c0bbfe..HEAD -- packages/cezar/src packages/web/src
+  076cead2785891af80b9ea7440bf3be973c0bbfe..HEAD -- packages/work/src packages/web/src
   packages/contract/src` (no output) that no source commit separates that HEAD from the one all
   three source audits were performed against — the code is identical to what they read.
 - Re-opened and confirmed exact, verbatim: `server.ts:3529` (`autonomous: true,`), `run.ts:1671`,

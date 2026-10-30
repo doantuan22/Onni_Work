@@ -4,7 +4,7 @@ import type { WorkflowGraph, WorkflowGraphNode, WorkflowStepDef } from '@open-me
 /**
  * Pure model helpers for the workflow node editor (spec 2026-09-30-workflow-node-editor, phase 2).
  *
- * The server owns the rules (`packages/cezar/src/workflows/graph.ts`) and validates every edit
+ * The server owns the rules (`packages/work/src/workflows/graph.ts`) and validates every edit
  * through `POST /workflows/validate`; what lives here is only what the canvas needs locally and
  * instantly: ports per node, edge normalization, opening v1 files as graphs, layout, the path
  * simulator and the YAML preview. `advance`/`compileSteps` mirror the server's `advance`/

@@ -222,7 +222,7 @@ limits are ignored are rewritten in the same commit (F9): the BC §2 sentence
 (`BACKWARD_COMPATIBILITY.md:38`), the contract comment (`packages/contract/src/host.ts:18-19`),
 the reference paragraph (`docs/reference.md:516-519`) and the card copy
 (`machine-card.tsx:196-201`). §3 (state files) is untouched. Parity lives in
-`packages/cezar/src/server/contract-parity.workspace.test.ts`; WS frame branches need
+`packages/work/src/server/contract-parity.workspace.test.ts`; WS frame branches need
 fixture-driven topic tests (the live-machine test never exercises a container on CI).
 
 **Client.** `HostUsageProvider` (context) owns the store instance; `useHostUsage()` /

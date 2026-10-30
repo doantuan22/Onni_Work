@@ -49,7 +49,7 @@ describe('project webhook settings', () => {
     expect(screen.getByLabelText('Task finished')).toBeTruthy(); expect(screen.getByLabelText('Task cancelled')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Receiver URL'), { target: { value: 'https://hooks.slack.com/services/private-value' } })
     expect(screen.getByText(/This is a Slack webhook/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'How to build a receiver' }).getAttribute('href')).toBe('https://github.com/doantuan22/Onni_Work/blob/main/packages/cezar/docs/webhooks.md#external-automation-receivers')
+    expect(screen.getByRole('link', { name: 'How to build a receiver' }).getAttribute('href')).toBe('https://github.com/doantuan22/Onni_Work/blob/main/packages/work/docs/webhooks.md#external-automation-receivers')
     expect(screen.getByLabelText('Allow a receiver on this computer or private network').closest('details')).toBeNull()
     expect(screen.getByText(/This is a Slack webhook/).textContent).not.toContain('private-value')
   })

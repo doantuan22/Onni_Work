@@ -12,7 +12,7 @@ Background: `.ai/specs/2026-09-08-units-hierarchy.md`.
 
 ### The evidence
 
-`packages/cezar/src/units/prompts.ts`:
+`packages/work/src/units/prompts.ts`:
 
 - `CHILD_BRANCH_RULE` (declared 31-41) tells a commander, unconditionally, at **line 38**:
   > "For each child you accept, merge its branch into your own worktree: `git merge --no-ff <child branch>`. One child at a time, re-running the repository's checks after each merge."
@@ -46,7 +46,7 @@ Background: `.ai/specs/2026-09-08-units-hierarchy.md`.
 
 - The test suite currently **encodes the contradiction as two separate, both-passing
   assertions**, which is why it has shipped unnoticed:
-  `packages/cezar/src/units/prompts.test.ts:161` — inside "carries the Guard rule in every
+  `packages/work/src/units/prompts.test.ts:161` — inside "carries the Guard rule in every
   role" — asserts `expect(prompt).toMatch(/never merge/i)` for every role including
   caesar/legate; `prompts.test.ts:179` — inside "states the filled-in child-branch rule in
   both commanding prompts" — asserts `expect(prompt).toContain('git merge --no-ff')` for the
@@ -135,7 +135,7 @@ no-editing sentence are what needed the fix.
 
 ### The evidence
 
-`childTaskEnvelope` (`packages/cezar/src/units/engine.ts:88-102`) builds exactly:
+`childTaskEnvelope` (`packages/work/src/units/engine.ts:88-102`) builds exactly:
 
 ```
 ${child.objective}
@@ -157,14 +157,14 @@ at `engine.test.ts:75-92` (`describe('childTaskEnvelope', …)`) pins exactly th
 scope, allowed_tools, max_cost, success_criteria, required_evidence, retry_limit, parent
 branch, ordered-by — and none of them is mission-level.
 
-`spawnChildren` (`packages/cezar/src/workflows/run.ts:1607-1699`) confirms the child's task is
+`spawnChildren` (`packages/work/src/workflows/run.ts:1607-1699`) confirms the child's task is
 this envelope and nothing else — **line 1660**: `task: childTaskEnvelope(child, { id:
 parentId, branch: parent.branch, role: unit.role })`. It has `unit.missionId` in scope
 (`unit.missionId` is read at line 1674 to stamp the child's own record) but never reads the
 mission ROOT record to pull its objective/constraints/budget into the envelope.
 
 The mission's objective and the user's `## Constraints` block are assembled exactly once, by
-`missionTask` (`packages/cezar/src/server/server.ts:3476-3480`), and used exactly once, at
+`missionTask` (`packages/work/src/server/server.ts:3476-3480`), and used exactly once, at
 **line 3518**: `const task = missionTask(body.objective, body.constraints);` — which becomes
 the **root** run's task (line 3522-3523, `manager.startRun(workflow, { task, … })`). Nothing
 downstream of the root ever reads `body.objective` or `body.constraints` again. `budgetUsd`
@@ -248,16 +248,16 @@ correctly when `mission` is absent (root-run spawns before it has a missionId to
 
 - `MAX_CHILDREN_IN_FLIGHT = 4` (`engine.ts:29`) — per parent, enforced in `spawnChildren`
   (`run.ts:1626-1633`).
-- `maxParallel` defaults to **2**, confirmed at `packages/cezar/src/config.ts:36`:
+- `maxParallel` defaults to **2**, confirmed at `packages/work/src/config.ts:36`:
   `maxParallel: z.number().int().min(1).max(16).default(2)`. This is a **global**,
   cross-mission concurrency cap on actually-running agent turns (`WorkspaceSemaphore`,
-  `packages/cezar/src/workspace/semaphore.ts`), not a per-parent one.
+  `packages/work/src/workspace/semaphore.ts`), not a per-parent one.
 - A parked commander (Caesar or Legate waiting on its own children) does **not** consume a
   `maxParallel` slot at all — it is exempt outright. `run.ts:682-687`:
   > "These are exempt from the slot count OUTRIGHT — `maxMonitoringSessions` does not bound
   them (see `busySlots`)… A parked commander's process is idle; the runs it waits for are the
   ones that need the capacity."
-  Confirmed by the test title at `packages/cezar/src/workflows/units-engine.test.ts:178`:
+  Confirmed by the test title at `packages/work/src/workflows/units-engine.test.ts:178`:
   *"surrenders the commander's slot to its children even past `maxMonitoringSessions`"*.
   (Bonus finding, F5 below: `engine.ts:27-29`'s own comment — *"only two monitors are
   slot-exempt"* — is stale against this; it describes the separate, bounded

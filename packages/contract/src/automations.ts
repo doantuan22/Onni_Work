@@ -13,7 +13,7 @@ import { automationScheduleSchema } from './automation-schedule.ts';
  * state, the manual "test filter" checks and the execution log.
  *
  * These shapes exist twice on purpose and only once as a DEFINITION of what the wire carries.
- * `packages/cezar/src/automations/types.ts` owns the STORAGE schemas: they are `.passthrough()`,
+ * `packages/work/src/automations/types.ts` owns the STORAGE schemas: they are `.passthrough()`,
  * because a definitions/state/log file written by a newer cezar must survive a round trip through
  * an older one rather than lose keys it has never heard of. The schemas here are the CLOSED wire
  * half of those files — every key the routes actually answer with, and no index signature, so a

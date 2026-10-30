@@ -53,7 +53,7 @@ The reference inputs ride **verbatim** rather than pre-resolved into a `{kind, n
 
 Note `workflow` here is the raw name — the display refinement `workflowLabel()` needs `steps[]` to resolve a `(planned)` chain to its first agent, so a `(planned)` run reads as itself on this page.
 
-**2. Registry (`packages/cezar/src/workspace/config.ts`, `projects.ts`).** One optional field on `workspaceProjectSchema`, bounds imported from the contract so a value the PATCH route accepts can never be degraded away by the next load's `.catch`. Normalization is one exported function, `normalizeProjectTags`, shared by the route and the CLI:
+**2. Registry (`packages/work/src/workspace/config.ts`, `projects.ts`).** One optional field on `workspaceProjectSchema`, bounds imported from the contract so a value the PATCH route accepts can never be degraded away by the next load's `.catch`. Normalization is one exported function, `normalizeProjectTags`, shared by the route and the CLI:
 
 - trim, drop empties, truncate over-long, cap the list;
 - **dedupe case-insensitively, first spelling wins** — this is the load-bearing rule. Tags exist to be a grouping key, and `API` beside `api` splitting one group in two is the exact failure the feature would otherwise ship with;

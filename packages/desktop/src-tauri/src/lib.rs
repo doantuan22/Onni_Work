@@ -170,7 +170,7 @@ const INIT_SCRIPT: &str = r#"
 /// Runs in every frame; acts only in a DIRECT child of the cockpit — the task Preview's page. It
 /// reports where that page is after it moves without a load (`pushState`, `replaceState`, a hash
 /// change), so the Preview's address bar and Reload follow it. Same protocol as the Design Mode
-/// picker's copy (`packages/cezar/src/server/preview/location-reporter.ts`); it only reports,
+/// picker's copy (`packages/work/src/server/preview/location-reporter.ts`); it only reports,
 /// to the parent's own origin, and only when that parent is a cockpit origin.
 const FRAME_SCRIPT: &str = r#"
   (function () {
@@ -911,8 +911,8 @@ fn engine_missing(window: &WebviewWindow) {
         window,
         "No cezar engine found",
         "In this repository run npm install once, then npm run build, and register the build with \
-         node packages/cezar/dist/index.js link --use. Alternatively set CEZ_DESKTOP_ENTRY to \
-         packages/cezar/dist/index.js and CEZ_DESKTOP_CWD to the repository. Then press Restart.",
+         node packages/work/dist/index.js link --use. Alternatively set CEZ_DESKTOP_ENTRY to \
+         packages/work/dist/index.js and CEZ_DESKTOP_CWD to the repository. Then press Restart.",
         "",
     );
 }
@@ -1240,7 +1240,7 @@ fn shell_quote(value: &str) -> String {
 
 // ---- the managed layout --------------------------------------------------------------------
 //
-// The same layout and rules as packages/cezar/src/self-update/layout.ts. Written against the
+// The same layout and rules as packages/work/src/self-update/layout.ts. Written against the
 // filesystem rather than as a shell script, so one implementation — and one set of tests —
 // serves macOS, Linux and Windows.
 
@@ -1600,7 +1600,7 @@ fn cezar_home() -> PathBuf {
     std::env::var_os("CEZ_HOME").filter(|value| !value.is_empty()).map(PathBuf::from).unwrap_or_else(|| home_dir().join(".cezar"))
 }
 
-/// `CEZ_DESKTOP_ENTRY` (a checkout's `packages/cezar/dist/index.js` while developing), else the
+/// `CEZ_DESKTOP_ENTRY` (a checkout's `packages/work/dist/index.js` while developing), else the
 /// `current` entry `cezar link --use` registered under `~/.cezar/versions`.
 fn resolve_entry() -> Option<PathBuf> {
     if let Some(explicit) = std::env::var_os("CEZ_DESKTOP_ENTRY").map(PathBuf::from) {

@@ -19,7 +19,7 @@ owner asked for a live, visual view of "jak wyglądają zasoby maszyny, na któr
 **v1 is one server sampler, one demand-driven WS topic, one workspace route, and one UI surface:
 the "Machine" card at the top of Settings → Resources.**
 
-1. **Sampler** (`packages/cezar/src/core/host-usage.ts`): a module-level timer every
+1. **Sampler** (`packages/work/src/core/host-usage.ts`): a module-level timer every
    `HOST_SAMPLE_INTERVAL_MS = 2_000`. CPU % is a delta of `os.cpus()` times normalized to 0–100;
    memory uses `os.totalmem()`/`os.freemem()` (on Linux libuv ≥1.45 already prefers `MemAvailable`);
    `/proc/meminfo` is parsed **only for swap**, which Node does not expose; `loadAvg` comes from
@@ -89,9 +89,9 @@ returned *changes* and converged on this cut):
 
 ## Affected areas (if known)
 
-- `packages/cezar/src/core/host-usage.ts` (new) + tests.
+- `packages/work/src/core/host-usage.ts` (new) + tests.
 - `packages/contract/src/host.ts` (new schema) — route/WS payload.
-- `packages/cezar/src/server/server.ts` — the workspace route + the `host` topic registration.
+- `packages/work/src/server/server.ts` — the workspace route + the `host` topic registration.
 - `packages/web/src/api/` — host-usage cache/hook, the card's subscription, the reconcile key.
 - `packages/web/src/routes/settings/resources-section.tsx` — the Machine card.
 - `docs/reference.md`, `BACKWARD_COMPATIBILITY.md` §2.

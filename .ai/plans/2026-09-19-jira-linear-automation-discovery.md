@@ -9,13 +9,13 @@ issue (e.g. status = "To Do"), launch an agent task, and optionally report back 
 
 ## 1. What already exists and is reusable
 
-- **Read-only tracker access** (`packages/cezar/src/server/tracker/{jira,linear,index}.ts`):
+- **Read-only tracker access** (`packages/work/src/server/tracker/{jira,linear,index}.ts`):
   `createTrackerService` builds a per-project `TrackerProvider` from credentials stored privately
   per project (`connection-env.ts`, plaintext, 0600, never in `process.env`, never sent to an
   agent). `TrackerDriver.listIssues`/`searchItems`/`getItem` are full read paths — including
   Jira's `status` field and both vendors' `labels`/`updatedAt`.
 - **Automations engine with an extensible `kind` discriminator**
-  (`packages/cezar/src/automations/types.ts`): today `'github'` (event polling: `issue.opened`,
+  (`packages/work/src/automations/types.ts`): today `'github'` (event polling: `issue.opened`,
   `issue.labeled`, `issue.unlabeled`, `pull_request.opened`, driven by `GithubPoller`, which shells
   out to `gh` CLI) and `'schedule'` (cron-like, ≥60s, no external dedup). The 2026-09-14
   automations-redesign spec explicitly designed `kind` as the axis for adding trigger types
@@ -25,10 +25,10 @@ issue (e.g. status = "To Do"), launch an agent task, and optionally report back 
 - **`WorkspaceAutomationScheduler`**: one process-wide timer over the earliest due item across
   both kinds; adding a third branch (`isTrackerAutomation`) is a small, well-precedented change.
 - **A structured post-launch signal**: `RunRecord.pullRequestUrl`
-  (`packages/cezar/src/runs/store.ts:253`) is set once the run's git state shows a created PR
+  (`packages/work/src/runs/store.ts:253`) is set once the run's git state shows a created PR
   (`updateRun(runId, { pullRequestUrl: created })`, `store.ts:1131`). This is a real hook a
   server-side write-back could watch, without ever handing Jira/Linear credentials to the agent.
-- **Least-privilege agent env** (`packages/cezar/src/core/agent-env.ts`): only `GITHUB_TOKEN` /
+- **Least-privilege agent env** (`packages/work/src/core/agent-env.ts`): only `GITHUB_TOKEN` /
   `GH_TOKEN` (host env) are forwarded into agent child processes today, specifically so the agent
   can use `gh` for the PR handoff. Jira/Linear credentials are NOT on this path — by design, per
   `connection-env.ts`'s own comment ("do not source this file").
@@ -161,24 +161,24 @@ The user answered the open questions live, choosing speed over the safer design 
 
 Implemented and green (full typecheck + 2198 cezar tests + 3880 web tests):
 
-- `packages/cezar/src/automations/types.ts` — `kind: 'tracker'`, `filters.status`,
+- `packages/work/src/automations/types.ts` — `kind: 'tracker'`, `filters.status`,
   `TrackerAutomationDefinition`, `isTrackerAutomation`.
-- `packages/cezar/src/automations/tracker-poller.ts` (new) — `TrackerPoller`: one page of the
+- `packages/work/src/automations/tracker-poller.ts` (new) — `TrackerPoller`: one page of the
   project's active items via the EXISTING read-only `TrackerDriver.listIssues`, filtered
   client-side on `status`. Deliberately no persisted poll cursor (unlike GitHub's): eventId is
   `provider:key:status:updatedAt`, so the automation store's own receipt dedup is the only guard —
   documented as a simplification, not a bug (an item edited again while still in the target status
   can refire).
-- `packages/cezar/src/automations/scheduler.ts` — `ProjectTrackerAutomationScheduler` (new,
+- `packages/work/src/automations/scheduler.ts` — `ProjectTrackerAutomationScheduler` (new,
   parallel to the GitHub one, not a generalization of it — lower regression risk), third
   `WorkspaceAutomationScheduler.schedule()` branch, `ProjectAutomationHandle.tracker`.
-- `packages/cezar/src/automations/task-template.ts` — `{{tracker.*}}` placeholders,
+- `packages/work/src/automations/task-template.ts` — `{{tracker.*}}` placeholders,
   `renderTrackerTask` (names the available credential env vars in the untrusted-context block,
   never their values), `launchTrackerAutomationRun`.
-- `packages/cezar/src/runs/store.ts` — `automationTracker` provenance (own key, same pattern as
+- `packages/work/src/runs/store.ts` — `automationTracker` provenance (own key, same pattern as
   `automationTrigger`): `provider`/`key`/`url` only, never a secret.
 - **Credential forwarding** (the actual "agent gets the token" mechanism):
-  `packages/cezar/src/server/tracker/agent-credentials.ts` (new) reads the project's EXISTING
+  `packages/work/src/server/tracker/agent-credentials.ts` (new) reads the project's EXISTING
   private tracker connection (same store/format the browsing feature already uses) and maps it to
   `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN` or `LINEAR_API_KEY`. Wired into
   `RunManager.agentEnvForStep` (`workflows/run.ts`) via a new optional constructor dependency,
@@ -187,7 +187,7 @@ Implemented and green (full typecheck + 2198 cezar tests + 3880 web tests):
   `connection-env.ts`'s "never sourced into agent env" rule, called out at every one of these
   sites as known debt to revisit (the server-side-only / privileged-CLI design discussed earlier
   in this file remains the safer alternative if tightened later).
-- Server wiring: `packages/cezar/src/server/server.ts` (scheduler's `tracker` handle +
+- Server wiring: `packages/work/src/server/server.ts` (scheduler's `tracker` handle +
   `launchTracker`), `project-context.ts` + `index.ts` (both `RunManager` construction sites get
   `resolveTrackerEnv`).
 - Contract (`packages/contract/src/automations.ts`): `automationKindSchema` widened to include

@@ -59,9 +59,9 @@ function makeFixture(withSetsid: boolean): { root: string; path: string } {
     // the workspace layout rather than invent its own.
     `#!/bin/sh
 set -eu
-mkdir -p node_modules/zod packages/cezar/dist packages/cezar/web/dist
+mkdir -p node_modules/zod packages/work/dist packages/work/web/dist
 printf '{"name":"zod"}' > node_modules/zod/package.json
-cat > packages/cezar/dist/index.js <<'EOF'
+cat > packages/work/dist/index.js <<'EOF'
 const http = require('node:http');
 const port = Number(process.argv[process.argv.indexOf('--port') + 1]);
 http.createServer((req, res) => {
@@ -69,7 +69,7 @@ http.createServer((req, res) => {
   res.end(req.url === '/api/health' ? '{"ok":true}' : '<!doctype html>');
 }).listen(port, '127.0.0.1');
 EOF
-printf '<!doctype html>' > packages/cezar/web/dist/index.html
+printf '<!doctype html>' > packages/work/web/dist/index.html
 `,
     { mode: 0o755 },
   );
