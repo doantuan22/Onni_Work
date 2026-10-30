@@ -4,7 +4,7 @@ Status: ZAIMPLEMENTOWANE 2026-07-10 · Fala: 3 · Zależy od: 005 · Wzorzec: w�
 
 ## Cel
 
-User wpisuje **jeden prompt**, a Cez sam proponuje łańcuch kroków ze
+User wpisuje **jeden prompt**, a Onni Work sam proponuje łańcuch kroków ze
 skilli, które ma pod ręką (np. *spec → code → review → PR*). User zatwierdza
 lub poprawia jednym gestem i patrzy, jak chain jedzie przez ogniwa.
 

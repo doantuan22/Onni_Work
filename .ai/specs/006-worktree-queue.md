@@ -55,7 +55,7 @@ pracę ("agent robi, ja dalej koduję u siebie").
 ## Poza zakresem
 
 - Bare clone + multi-repo (janitorowy model "controller dla wielu repo") —
-  Cez to narzędzie "wchodzisz w repo i odpalasz jak edytor".
+  Onni Work to narzędzie "wchodzisz w repo i odpalasz jak edytor".
 - Automatyczny merge do brancha usera.
 
 ## Projekt techniczny

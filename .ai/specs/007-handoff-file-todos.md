@@ -42,7 +42,7 @@ jednego inboxa, z którego kolejny task odpala się jednym klikiem.
    - agent dostaje ścieżkę przez env `ONNI_HANDOFF_FILE` + instrukcję w
      `--append-system-prompt`: „czytaj na starcie, dopisuj wpis po każdym
      milestone (najnowsze na górze), przed pauzą uzupełnij Resume notes",
-   - heartbeat od Ceza po każdej turze: `- <ts> — turn complete — status=…
+   - heartbeat od Onni Work po każdej turze: `- <ts> — turn complete — status=…
      ($koszt)` (plik aktualny nawet gdy agent zapomni — wzorzec janitora),
    - `GET /api/runs/:id/handoff` (markdown) + karta w GUI.
 2. **Globalny inbox**: `.ai/onni/todos.json`:

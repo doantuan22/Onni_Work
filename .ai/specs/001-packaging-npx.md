@@ -72,7 +72,7 @@ npx onni                      # ...i tyle. Otwiera się przeglądarka.
 
 ## Kryteria akceptacji
 
-- Na maszynie bez klonu Ceza: `npx <paczka>` w dowolnym repo → cockpit otwarty,
+- Na maszynie bez klonu Onni Work: `npx <paczka>` w dowolnym repo → cockpit otwarty,
   chipy statusu poprawne, task da się odpalić.
 - Dwa cockpity w dwóch repo jednocześnie → drugi sam bierze inny port.
 - `git status` w repo użytkownika po sesji: tylko `.ai/onni/` (z poprawnym

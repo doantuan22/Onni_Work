@@ -123,7 +123,7 @@ Contract types move (not a persisted change): response/domain types from `web/ap
 
 **Type contract:**
 - New type-only export `@onni/work/app-type` → `AppType`.
-- New package `@onni/api-client` exporting `createCezClient({ baseUrl?, token? })`, DTO types, protocol types, helpers. The client attaches `Authorization` when a token is set.
+- New package `@onni/api-client` exporting `createOnniClient({ baseUrl?, token? })`, DTO types, protocol types, helpers. The client attaches `Authorization` when a token is set.
 - `web/app/src/api/types.ts` and `src/server/api-types.test.ts` **deleted** once the shared source + `AppType` inference cover the surface.
 - Phase 6: `GET /api/openapi.json` (language-neutral public contract), drift-tested against the route manifest.
 
@@ -187,7 +187,7 @@ With routes chained, layer `hono-openapi` (or `@hono/zod-openapi` per family) to
 - **Auth:** login issues a valid JWT; protected route rejects missing/invalid/expired token (`401`) and accepts a valid one; `/api/health` stays open; **local mode registers no auth middleware** (assert byte-identical behavior); secret file is `0600`; SSE auth works via the chosen mechanism.
 - **One-command run:** `npm run dev` boots server + Vite on one pinned port; browser loads live data over the same-origin `/api` proxy.
 - **CLI bundles both:** `npm run build` + `npm pack --dry-run --json` — `check:pack` passes, tarball has `web/dist/index.html` + assets; cold `node dist/index.js` boot serves the SPA.
-- **Headless/independent:** run `dev:server` alone and drive the API through `createCezClient()` from a throwaway consumer (no web app) — proves independent usability; verify a same-origin reverse-proxy topology and (remote mode) a cross-origin + JWT topology.
+- **Headless/independent:** run `dev:server` alone and drive the API through `createOnniClient()` from a throwaway consumer (no web app) — proves independent usability; verify a same-origin reverse-proxy topology and (remote mode) a cross-origin + JWT topology.
 - **Security invariants:** cross-origin writes still rejected in local mode; only `/api/health` CORS-open unless remote CORS configured.
 
 ## Out of scope

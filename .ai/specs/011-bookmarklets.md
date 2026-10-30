@@ -27,7 +27,7 @@ numerów PR, zero przełączania kontekstu.
 
 ## Fajniej niż janitor (nasze dwa ulepszenia)
 
-1. **Auto-discovery portu i repo.** Janitor ma stały host. Cez wybiera wolny
+1. **Auto-discovery portu i repo.** Janitor ma stały host. Onni Work wybiera wolny
    port (4321+) i może działać w kilku repo naraz. Bookmarklet zamiast
    sztywnego portu **skanuje `http://localhost:4321..4330/api/health`**
    (fetch z krótkim timeoutem) i wybiera cockpit, którego `repo.remote`

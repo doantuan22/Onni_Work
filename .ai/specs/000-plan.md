@@ -1,4 +1,4 @@
-# 000 — Plan implementacji Cez
+# 000 — Plan implementacji Onni Work
 
 Status: aktywny · Aktualizowany przy każdej zmianie zakresu
 
@@ -17,7 +17,7 @@ Status: aktywny · Aktualizowany przy każdej zmianie zakresu
    NDJSON + Markdown. Wszystko da się przeczytać `cat`-em i naprawić edytorem.
 5. **CLI hosta jest źródłem mocy.** `claude` (auth przez subskrypcję), `gh`
    (auth przez `gh auth login`), `git`. Nie trzymamy żadnych sekretów.
-6. **DEV UX = repo UX.** Kod Ceza sam ma być prosty: zero build stepu w GUI
+6. **DEV UX = repo UX.** Kod Onni Work sam ma być prosty: zero build stepu w GUI
    (vanilla JS), jeden pakiet, `npm run dev` i działa. Każdy moduł czytelny
    w jedno posiedzenie.
 7. **Degradacja zamiast błędu.** Brak `gh`? Działa bez PR-ów. Brak sieci? Działają

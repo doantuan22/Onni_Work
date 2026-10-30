@@ -92,7 +92,7 @@ pretty distinguished"):
 
 ## Test plan
 
-- `task-markers` matrix: report lines parse; CEZ outranks report outranks
+- `task-markers` matrix: report lines parse; ONNI outranks report outranks
   legacy within a turn; last-wins; line-anchoring (prose mentions, list
   markers, decorated/suffixed lines, skill-doc placeholders are inert);
   CRLF tolerance; strip leaves report lines visible.
