@@ -226,9 +226,6 @@ type GraphParkOutcome =
   | { kind: 'cancelled' };
 
 /** Most recent graph transitions kept on the record — loops are bounded, but a record is not a log. */
-/** Runs a restart interrupts — the self-update dialog's "N tasks are running" (#1524). */
-const RESTART_SENSITIVE: ReadonlySet<RunRecord['status']> = new Set<RunRecord['status']>(['queued', 'waiting', 'running']);
-
 const GRAPH_TAKEN_CAP = 500;
 
 /** Tail of an agent node's last turn kept as `{{nodes.<id>.summary}}`. */
@@ -1396,7 +1393,6 @@ export class RunManager {
       oldestQueuedAt: () => this.oldestQueuedAt(),
       accountHolds: () => this.accountHolds(),
       refreshQueueReasons: () => this.refreshQueueReasons(),
-      activeRuns: () => this.store.listRuns().filter((r) => RESTART_SENSITIVE.has(r.status)).length,
     });
     this.lifecycle = new WorktreeLifecycleCoordinator(repoRoot, store, {
       semaphore: this.semaphore,

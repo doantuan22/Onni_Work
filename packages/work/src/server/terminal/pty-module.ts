@@ -2,10 +2,9 @@
  * The optional PTY binding (spec `.ai/specs/2026-10-07-task-workspace.md` §6, Milestone 2).
  *
  * `@lydell/node-pty` is an `optionalDependency`, and that choice is load-bearing rather than
- * incidental. onni ships with ZERO native dependencies and zero install scripts today, and its
- * self-update path runs `npm install` on the user's own machine without `--ignore-scripts`
- * (`src/self-update/installer.ts`). Upstream `node-pty` would compile there through
- * `node-gyp rebuild`, on whatever Node the user has (`engines: >=20`, no upper bound), across
+ * incidental. onni ships with ZERO native dependencies and zero install scripts today, and a
+ * user's `npm install` runs on their own machine without `--ignore-scripts`. Upstream `node-pty`
+ * would compile there through `node-gyp rebuild`, on whatever Node the user has (`engines: >=20`, no upper bound), across
  * four platforms — a broken toolchain would then break the whole cockpit, not just the terminal.
  * The fork ships per-platform prebuilt binaries and declares no install script at all, so there
  * is nothing to compile; and `optional` means a platform it has no binary for simply resolves to
