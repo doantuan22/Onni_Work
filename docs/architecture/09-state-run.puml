@@ -1,0 +1,63 @@
+@startuml 09-state-run
+title run and step status machines — every arrow is a real `status:` write in packages/work/src
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 130
+skinparam state {
+  FontSize 13
+  ArrowFontSize 11
+}
+
+state "RUN — runStatusSchema (contract/src/runs.ts:50)" as RUN {
+  [*] --> queued : createRun\nstore.ts:1347
+  queued --> running : pump 1910\nexecute 5320
+  queued --> cancelled : cancelOne 3813
+  queued --> queued : re-queue\n2180 / 3259 / 4578
+  running --> running : monitoring\n6649 / 6685
+  running --> waiting : park\n6648 / 4935\n7360 / 8601\n3910
+  waiting --> running : deliverMessage\n4350
+  running --> review : settleSuccess\n7714 / 7740
+  running --> done : settleSuccess 7740\ndropActive 2370
+  running --> failed : 5191 / 5499\n7678 / 2026
+  running --> cancelled : 5177 / 5628
+  review --> done : finishReview\n8005 / 8031
+  review --> running : continueRun 4443
+  done --> running : continueRun 4443
+  failed --> running : continueRun 4443
+  cancelled --> running : continueRun 4443
+  done --> [*]
+}
+
+state "STEP — stepStatusSchema (contract/src/runs.ts:69)" as STEP {
+  [*] --> pending : seed 5778 / 6005
+  pending --> s_running : enter 5802 / 6143
+  s_running --> s_waiting : park 4936 / 6650\n7361 / 7875 / 8602
+  s_waiting --> s_running : 4352 / 6686
+  s_running --> s_done : 5198 (+step-end 5199)
+  s_running --> s_failed : 5189 / 5209 / 7667
+  s_running --> s_cancelled : 5176 / 5625
+  s_done --> [*]
+  s_failed --> [*]
+  s_cancelled --> [*]
+}
+
+note right of RUN
+  Guards, in words (same file, workflows/run.ts):
+  * -> review: settleSuccess() 7701 parks only when reviewGateApplies()
+    8065 is true — gate ON (config.reviewGate else ONNI_REVIEW_GATE='1')
+    AND run.autonomous != true AND the worktree diff is non-empty.
+    Otherwise the same call writes -> done 7740.
+  * -> waiting: an ask, an idle session close, a monitoring park, or a
+    blocked worktree-lifecycle operation (parkLifecycle 3904).
+  * -> failed: check retries spent (5191), a worktree/setup error (5499),
+    an unanswered park (settleUnansweredPark 7662), pump/revive errors (2026).
+  * -> running from a settled state: continueRun() 4443 is open for
+    done/failed/cancelled/review (CONTINUABLE_STATUSES 491) and adds a NEW
+    step `name #2`; it never reopens an old step.
+  * picking a variant winner flips a settled run to review directly:
+    server.ts:5829.
+  * `review` and `skipped` exist in stepStatusSchema but no engine path
+    ever writes them — see docs/FEATURES.md.
+  Bare numbers are lines in workflows/run.ts.
+end note
+
+@enduml

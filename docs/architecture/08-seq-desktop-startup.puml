@@ -1,0 +1,47 @@
+@startuml 08-seq-desktop-startup
+title desktop shell: launch, sidecar engine, health gate, tray and badge
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+autonumber
+skinparam maxMessageSize 240
+
+participant "Windows / macOS" as OS
+participant "Tauri shell\nlib.rs:532 run()" as TAURI
+participant "Sidecar Supervisor\nthread (lib.rs:666 loop)" as SUP
+participant "node process\nonni serve" as NODE
+participant "WebView\n(main window)" as WV
+
+OS -> TAURI : Onni Work.exe
+TAURI -> TAURI : ctrlc handler -> kill sidecar, exit(0)\nlib.rs:552
+TAURI -> TAURI : single-instance plugin: second launch\nonly shows the existing window (lib.rs:563)
+TAURI -> TAURI : build_main_window visible:false\nuntil geometry restored (lib.rs:219)
+TAURI -> TAURI : build_tray: Open / Quit\nlib.rs:352-362
+TAURI -> SUP : std::thread::spawn(supervisor)\nlib.rs:576
+
+SUP -> SUP : require_node(): node on PATH, >= 20\nlib.rs:890 / else engine_missing page lib.rs:909
+SUP -> SUP : resolve_entry(): ONNI_DESKTOP_ENTRY else\n$HOME/.onni/versions/current/node_modules/@onni/work/dist/index.js\nlib.rs:1605
+SUP -> SUP : pick_port(): first free 4321..4330 (lib.rs:1502)
+SUP -> NODE : spawn_sidecar: `node <entry> serve <port>`\nenv ONNI_DESKTOP=1, ONNI_SUPERVISED=1,\nONNI_SUPERVISOR_PID, ONNI_DISCLAIM_EXEC (lib.rs:922)
+NODE --> SUP : stdout/stderr tail -> log VecDeque
+loop every 300ms, up to HEALTH_TIMEOUT 60s (lib.rs:1487,40)
+  SUP -> NODE : GET http://127.0.0.1:<port>/api/v1/health
+end
+alt healthy
+  SUP -> WV : window.navigate("http://127.0.0.1:<port>") (lib.rs:718)
+  note right of WV : navigation is allowed only to the shell's\nown origin (is_own_origin) +\ncapabilities remote.urls 127.0.0.1:*
+  SUP -> SUP : monitor_badge thread (lib.rs:1390):\nrunning_run_count via GET /api/v1/runs (lib.rs:1378)
+  SUP -> OS : set_badge_count (cap 99) / Windows\noverlay icon (lib.rs:1410-1413)
+else timeout
+  SUP -> NODE : child.kill(); fail() page with log tail
+end
+
+== lifetime ==
+OS -> WV : user closes window
+WV -> TAURI : WindowEvent::CloseRequested -> api.prevent_close()\nhide to tray (lib.rs:627/636)
+WV -> SUP : window move/resize -> geometry writer\ncoalesced to $HOME/.onni/desktop-window.json (lib.rs:577,1520)
+NODE -> SUP : child exits (try_wait Some(status))
+SUP -> SUP : restart the loop (new port + entry)
+TAURI -> SUP : RunEvent::Exit -> stop_sidecar (lib.rs:466/651)
+note over TAURI : restart_app (lib.rs:873) re-runs the boot loop;\nno updater, no deep-links, no auto-start plugin
+
+@enduml

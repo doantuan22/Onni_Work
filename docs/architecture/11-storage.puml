@@ -1,0 +1,51 @@
+@startuml 11-storage
+title state on disk: .ai/onni (per project), $HOME/.onni (per user), $HOME/.cache/onni
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam ArrowFontSize 11
+skinparam FontSize 13
+
+package "<project repo>" as REPO {
+  folder ".ai/onni/  (dataDir)" as D {
+    artifact "config.json\nworkspace settings, review gate,\nlanding policy" as CFG
+    artifact "runs.json  index (store.ts:1212)\n+ runs/<id>.ndjson transcript\n+ runs/<id>.handoff.md, -images/" as RUNS
+    artifact "worktrees/<runId>/  branch onni/<id8>\n(git-worktree.ts:20)" as WT
+    artifact "dispatch/<rootRunId>/\norder, notes, brief, ledger.jsonl" as DISP
+    artifact "lifecycle/ layouts/ drafts/\nwebhooks/ automations.json\ntodos.json tracker.json launch-key\ntmp/ attachments/ mcp.local.json" as MISC
+    artifact "ui-state.json\npinned runs, templates, columns" as UIS
+  }
+  artifact ".ai/onni/workflows/*.yml\n.ai/onni/skills/  (COMMITTABLE)" as WF
+}
+
+package "<user home>  onniHomeDir() paths.ts:16\nONNI_HOME overrides" as HOME {
+  artifact "config.json  project registry\n+ config.json.bak (restore)" as HCFG
+  artifact "ui-state.json  agent-accounts.json\nusage-windows.json  uploads/\nsecrets/ (AES-256-GCM)\ntracker-connections/<sha256>.env" as HSTATE
+  artifact "versions/<ver>/ + current/ junction\ncache/e2e  server.json\ndesktop-window.json" as HVER
+}
+artifact "$HOME/.cache/onni/skills/\n<owner>__<name> checkout" as SCACHE
+
+RUNS -[hidden]right-> WT
+CFG --> RUNS : RunStore (runs/store.ts:1153)\nread-modify-write, Lamport index 1063
+UIS --> RUNS : cockpit prefs only, never run truth
+DISP --> RUNS : dispatch/tree-fs.ts\nwrites files, engine.ts reads back
+WF --> DISP : workflow + skill definitions\nare committed, runtime state is not
+HCFG --> CFG : registry knows the repo,\nrepo config knows the project
+HSTATE --> DISP : tracker creds stay out of process.env
+HVER --> WT : desktop resolves the engine\nfrom versions/current
+SCACHE --> WF : skills-remote.ts:14 cache\ndistinct from committed skills
+
+note bottom of D
+  every JSON write is tmp + rename, mode 0600
+  (workspace/config.ts:421, 433, 455) — the tmp name carries pid+random so two
+  processes never collide on `$HOME/.onni`.
+  Lock files (proper-lockfile) exist only for automations and usage-windows.
+  Delete any of it: the cockpit rebuilds what it needs (runs.json is rebuilt
+  from the ndjson transcripts).
+  Retention: index keeps ONNI_RUNS_KEEP=300 live +
+  ONNI_ARCHIVED_RUNS_KEEP=500 archived (store.ts:504-505);
+  live runs and active dispatch trees are never pruned.
+end note
+
+@enduml

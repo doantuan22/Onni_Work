@@ -1,0 +1,51 @@
+@startuml 01-layers
+' Onni Work — deployment layers. Built from code only (2026-10-30).
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam ArrowThickness 1.3
+skinparam ActorFontStyle bold
+title Onni Work — deployment layers and communication channels
+
+node "Developer machine (loopback only)" {
+  artifact "Desktop shell (Tauri 2, Rust)\npackages/desktop/src-tauri/src/lib.rs:532" as DESKTOP #LightBlue
+
+  node "WebView (window 'main')" {
+    artifact "Cockpit SPA (React 19 + Vite)\npackages/web/src/app.tsx" as WEB
+  }
+
+  node "Node 20 engine process\npackages/work/src/index.ts:230 (serve)" as ENGPROC {
+    artifact "Service + engine\npackages/work/src/server/server.ts:629 (/api/v1)" as SERVER
+    artifact "HTTP contract (zod, Node-free)\npackages/contract/src/index.ts:5" as CONTRACT
+    artifact "Typed client + WS/SSE protocol\npackages/api-client/src" as APICLIENT
+    artifact "Local state\n.ai/onni + $HOME/.onni\npackages/work/src/paths.ts:16" as STATE
+    artifact "git worktrees\n.ai/onni/worktrees/<runId>\npackages/work/src/git-worktree.ts:20" as WT
+  }
+
+  queue "Agent CLIs (7 backends)\nclaude | codex | opencode | cursor | pi | junie | copilot\npackages/work/src/core/runner-factory.ts:19" as AGENTS #Orange
+  queue "External processes\ngh (PR/merge), git, npx skills" as GH
+}
+
+DESKTOP -right-> WEB : "navigate http://127.0.0.1:<port>\nlib.rs:714 (pick_port 4321-4330, lib.rs:1502)"
+DESKTOP -down-> ENGPROC : "spawn: node <entry> serve --no-open --port N\nlib.rs:922 + health probe GET /api/v1/health\nlib.rs:1366 (300 ms x 60 s)"
+DESKTOP ..> ENGPROC : "raw GET /api/v1/runs for the badge\nlib.rs:1378"
+
+WEB -down-> SERVER : "HTTP REST /api/v1 (+/api/v1/p/:projectId)\nserver.ts:7785-7787"
+WEB -down-> SERVER : "SSE 3 streams: /runs/:id/events :6092,\n/events :6177, /workspace/events :6225"
+WEB -down-> SERVER : "WS one socket /api/v1/ws (topics)\npackages/work/src/server/ws.ts:30"
+SERVER -up-> CONTRACT : "request/response zod + contract-parity tests"
+WEB -up-> APICLIENT : "AppType typed client\npackages/web/src/api/client.ts:192"
+APICLIENT .. CONTRACT : "same schemas, browser bundle"
+
+SERVER -down-> STATE : "atomic JSON/NDJSON/MD writes"
+SERVER -down-> WT : "one worktree per task\nbranch onni/<id8>"
+SERVER -right-> AGENTS : "spawn + stdio / JSON-RPC / HTTP+SSE / ACP\npackages/work/src/core/*-runner.ts"
+AGENTS -left-> SERVER : "AgentEvent v1 + UiEvent v2 streams\ncore/agent-runner.ts:161, core/ui-events.ts:392"
+SERVER -right-> GH : "child_process: gh, git, npx\nserver/forge/github.ts, git-worktree.ts"
+
+note bottom of DESKTOP
+  No cloud, no account, no DB. Bind default 127.0.0.1
+  (server.ts:7850); host/origin guards at server.ts:1647,1642.
+end note
+@enduml

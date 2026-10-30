@@ -1,0 +1,55 @@
+@startuml 06-seq-dispatch
+' Parent delegates a child. Verified in a dry run: dispatch route + CLI + ledger + report back.
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam ArrowThickness 1.2
+title 06 — dispatch: parent task delegates a child and gets the report back
+
+autonumber
+participant "parent agent session\n(CLI in its shell)" as PA
+participant "onni task create\nsrc/dispatch/task-cli.ts:89" as CLI
+participant "POST /runs/:id/dispatch\nserver.ts:4539" as API
+participant "RunManager.dispatch\nrun.ts:2856" as RM
+participant "dispatch/engine.ts" as EN
+participant "RunStore" as ST
+participant "child RunManager\ncycle (queue->execute)" as CH
+participant "tree files\n.ai/onni/dispatch/<root>/" as FS
+
+PA -> CLI : node $ONNI_BIN task create "<objective>" ~--budget ~--kind
+note right of PA
+  engine injects ONNI_TASK_ID (run.ts:1555),
+  ONNI_API_URL (:1561), ONNI_BIN (:1565),
+  ONNI_TREE_DIR (:1567) — only when
+  capabilities.dispatch and the URL is reachable
+  (dispatchReachable run.ts:2588)
+end note
+CLI -> API : POST scope/runs/<parentId>/dispatch [task-cli.ts:124]
+API -> RM : dispatch(parentId, input)
+RM -> EN : in-flight check: < DISPATCH_MAX_IN_FLIGHT (4)\n[contract dispatch.ts:57, enforced run.ts:2874]
+RM -> EN : tree total: < DISPATCH_MAX_SUBTASKS (50)\n[dispatch.ts:59, run.ts:2881]
+RM -> EN : remainingBudgetUsd(parent, children) [engine.ts:62]\ncarveChildBudget [run.ts:3004]
+RM -> ST : child record: dispatch{parentRunId, rootRunId, budgetUsd}\nstatus=queued
+RM -> FS : order.md, notes.md seed, brief.md, ledger.jsonl "dispatch"\n[tree-fs.ts:111/131/87/163]
+RM --> CLI : {id, branch}
+RM -> CH : startRun(child) — same queue + semaphore as any task
+...child works (steps, checks)...
+CH -> ST : child settles done|review|failed|cancelled
+CH -> EN : isTerminalStatus [engine.ts:39] -> reportSettledChildToParent [run.ts:3037]
+CH -> FS : report.md + ledger "settle" [tree-fs.ts:154, run.ts:3063]
+CH -> EN : withPendingReport(parent.dispatch) [engine.ts:210, run.ts:3058]
+alt parent session still open
+  CH -> PA : deliverMessage [run.ts:4230] -> ackPendingReport
+else parent idle with a live process
+  CH -> PA : enqueueMessage into the queued prompt stack [run.ts:4080]
+else parent already settled
+  CH -> PA : continueRun(reopened session) [run.ts:3114]
+end
+CH -> PA : else: pendingReportsBlock injected at next session open\n[flushPendingReports run.ts:2640, engine.ts:220]
+CH -> PA : wake watchers: notifyTreeInboxes (running+monitoring only)\n[run.ts:2733]
+note over PA
+  Parent may itself be a parent: no depth cap exists —
+  only the per-parent 4 in flight and maxParallel(2).
+  retry_limit is accepted and printed but never enforced
+  (contract dispatch.ts:151).
+end note
+@enduml

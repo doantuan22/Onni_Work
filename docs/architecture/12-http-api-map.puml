@@ -1,0 +1,51 @@
+@startuml 12-http-api-map
+title the /api/v1 surface: families, counts, mount points and guards
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam ArrowFontSize 11
+skinparam FontSize 12
+
+package "Hono app  createApp() server.ts:629\nbound 127.0.0.1 (server.ts:7850)" as APP {
+  rectangle "RUNS + transcripts\nruns 95 (contract/src/runs.ts)\ndispatch 4 (dispatch.ts)\nSSE events 4 (events.ts)\nterminal 16 (terminal.ts)\nlaunch-key 1, open-in 2,\nopen-targets 1" as R
+  rectangle "WORKSPACE + config\nworkspace 63 (workspace.ts:\nprojects, accounts, profiles,\nbranding, uploads, costs)\nprojects 11, config 3, ui-state 3\n(workspace/config.ts, ui-state.ts)" as W
+  rectangle "WORKFLOWS + skills\nworkflows 11 (workflows.ts)\nskills 5 (skills.ts)\nplan 2, e2e 3, preview 2" as F
+  rectangle "AUTOMATIONS + webhooks\nautomations 14 + log 3\n+ checks 1 (automations.ts)\nwebhooks 40 (webhooks.ts)\ndeferred-start 7, start-app 3" as A
+  rectangle "GIT + worktrees\nworktree-lifecycle 16\n(worktree-lifecycle.ts)\nworktrees 3, repo 15 (repo.ts)\ngroups 3" as G
+  rectangle "FORGE\ngithub 19 (github.ts)\ntracker 26 (tracker.ts)" as H
+  rectangle "AGENT + secrets\nproviders 12, models 2\nagent-config 4 (agent-config.ts)\nsecrets 6 (secrets.ts)" as P
+  rectangle "OPS\nhealth 1 (health.ts)\nfs 2, todos 5" as O
+}
+
+node "Cockpit SPA\npackages/web/src/api" as CLI
+node "typed client\n@onni/api-client" as TC
+collections "WS hub /api/v1/ws\nserver.ts:8009 verifyWsUpgrade\nws.ts:30" as WS
+collections "static: /assets/:file 1806,\n/icon.svg 1820, /onni.svg 1822,\nSPA catch-all '*' 7797" as SPASTAT
+
+CLI --> TC : fetch
+TC --> R
+TC --> W
+TC --> F
+TC --> A
+TC --> G
+TC --> H
+TC --> P
+TC --> O
+TC ..> WS : subscribe(topic)
+CLI ..> R : EventSource /runs/:id/events
+
+note bottom of APP
+  MOUNT (server.ts:7785-7787): `.route(V1_SCOPED_PREFIX, v1)` then
+  `.route(V1_PREFIX, v1)` then `.route(V1_PREFIX, workspaceV1)`.
+  => 164 project-scoped paths, each ALSO reachable unscoped against the
+  boot project; 216 distinct routes answer at the root prefix; 380 registered.
+  GUARDS, in order: bodyLimit 32 MiB (server.ts:1107/1606), ui-state 128 KiB
+  (3622/3706), Host allowlist + loopback anchor (1646), Origin check
+  (/health is the one CORS-open route, 1839), per-route requireAutomations /
+  requireDispatch, zod validators (server/validators.ts) on every body,
+  param and query. Nothing is registered outside /api/v1 except the static
+  and SPA routes at right.
+end note
+
+@enduml

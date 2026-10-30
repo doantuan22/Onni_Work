@@ -1,0 +1,64 @@
+@startuml 10-flow-review-land
+title review gate: park, inspect the diff, land it (commit / draft PR / merge) or keep going
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam ActivityFontSize 13
+skinparam ArrowFontSize 11
+
+start
+:settleSuccess() on a SUCCESSFUL run\n(workflows/run.ts:7701);
+if (worktree !== false AND auto-land policy set\nAND unlanded changes?) then (yes)
+  :landBeforeSettle() run.ts:8040;
+  if (autonomous OR finishRequested?) then (yes)
+    :landNow: autosave commit -> rebase -> push\n(runs/landing.ts);
+    if (land failed?) then (yes)
+      :status = failed\n"auto-land failed (<stage>)" run.ts:8047;
+      stop
+    else (no)
+    endif
+  else (no)
+    :'rest at review' run.ts:8051;
+  endif
+else (no)
+endif
+if (review gate applies? run.ts:8065 ->\nreviewGateEnabled (runs/review-gate.ts:16-21)\nconfig.reviewGate else ONNI_REVIEW_GATE == '1') then (on + not autonomous\n+ non-empty diff)
+  :status = 'review' (run.ts:7714 / 7740)\ncurrentStepId cleared, finishedAt set;
+  note right
+    gate OFF (default) => straight to `done`
+    and the diff simply stays in the worktree
+  end note
+else (off / autonomous / no diff)
+  :status = 'done' (run.ts:7740);
+  stop
+endif
+
+partition "cockpit review surface" {
+  :GET /runs/:id/diff (server.ts:5253)\nshows the worktree diff vs resolveTaskDiffBase;
+  fork
+    :POST /runs/:id/git/commit (5426)\ncommitAll(worktree, message) -> sha;
+    :POST /runs/:id/git/push (5440);
+    :POST /runs/:id/pr (5486) -> createDraftPr\n(server/forge/github.ts:2694): gh pr create --draft;
+    :POST /github/prs/:n/merge (6725)\nexplicit click only — nothing merges itself;
+  fork again
+    :POST /runs/:id/messages (4846) or /continue (4992)\nfeedback back to the agent;
+  fork again
+    :POST /runs/:id/land (4978) manager.land()\nin-place task commits to the base branch;
+  fork again
+    :POST /runs/:id/cancel (4825)\nstatus = cancelled (run.ts:5177);
+  end fork
+}
+
+if (user finished?) then (Finish / accept)
+  if (auto-land policy?) then (yes)
+    :finishReview() run.ts:8000 -> landNow();
+    :status = 'done' "review accepted — changes landed" (run.ts:8031);
+  else (no)
+    :status = 'done' "finished without a PR" (run.ts:8005);
+  endif
+  stop
+else (Continue)
+  :continueRun() run.ts:4443\nnew synthetic step, session resumed;
+  :status = 'running';
+  detach
+endif
+@enduml

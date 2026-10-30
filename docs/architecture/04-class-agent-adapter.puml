@@ -1,0 +1,102 @@
+@startuml 04-class-agent-adapter
+' Runner seam + the seven backends. Protocol text = core/agent-runner.ts:8-18.
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+title agent adapter: the runner seam, seven backends, two event protocols
+
+interface AgentRunner <<core/agent-runner.ts:230>> {
+  + backend: AgentBackend
+  + run(spec, onEvent): Promise<AgentRunResult>
+  + startSession(spec, onEvent, opts): AgentSession
+  + interrupt(): Promise<void>
+}
+
+interface AgentSession <<core/agent-runner.ts:211>> {
+  + result: Promise<AgentRunResult>
+  + pid?: number
+  + sendMessage(content): boolean
+  + end() / interrupt() / hardStop?()
+  + open: boolean
+}
+
+class AgentRunSpec <<core/agent-runner.ts:44>> {
+  systemPrompt / userPrompt / images
+  cwd / additionalDirectories
+  allowedTools / bashAllowlist
+  model / sessionId / resume
+  timeoutMs (inactivity kill switch)
+  env (ONNI_TASK_ID, ONNI_TREE_DIR)
+  mcpServers (private project MCP)
+}
+
+class AgentEvent <<union, core/agent-runner.ts:161>> {
+  v1 wire: text | tool-call | tool-result |
+  image | token-usage | cost | session |
+  turn-end | note | done | error
+}
+
+class UiEvent <<union, core/ui-events.ts:392>> {
+  v2 wire: session.started/ended/error,
+  turn.started/completed,
+  item.started/delta/updated/completed,
+  plan.updated, permission.requested/resolved,
+  ask.requested, usage.updated, image
+}
+
+class "createRunner(backend)\n+ guardWorkingDirectory()" as FACTORY <<core/runner-factory.ts:19>>
+
+package "stdio, stream-json (NDJSON)" {
+  class ClaudeCliRunner <<core/claude-cli-runner.ts:100>> {
+    claude -p --output-format stream-json
+    ~--append-system-prompt, ~--resume
+    mock bin under ONNI_DRY_RUN (:85)
+  }
+  class CursorAgentRunner <<core/cursor-agent-runner.ts:147>> {
+    agent print mode, stream-json
+  }
+}
+
+package "JSON-RPC 2 over stdio (JSONL)\ncodex-app-server-transport:44" {
+  class CodexAppServerRunner <<core/codex-app-server-runner.ts:70>>
+  class PiRunner <<core/pi-runner.ts:39>> {
+    pi RPC JSONL, model = provider/model
+  }
+}
+
+package "ACP (Agent Client Protocol)\nacp-client:52, junie-acp-transport:72" {
+  class JunieRunner <<core/junie-runner.ts:74>> {
+    junie --acp=true
+  }
+  class CopilotAcpRunner <<core/copilot-acp-runner.ts:65>> {
+    copilot --acp
+  }
+}
+
+package "HTTP + SSE (own port, session API)\nopencode-http:53" {
+  class OpencodeServerRunner <<core/opencode-server-runner.ts:96>>
+}
+
+class "ui mappers, one per backend\nclaude:126  codex:153  cursor:55\npi:46  acp:133  copilot:126\nopencode:169" as MAPPERS <<core/*-ui-mapper.ts>>
+
+FACTORY ..> AgentRunner : returns one implementation
+ClaudeCliRunner ..|> AgentRunner
+CursorAgentRunner ..|> AgentRunner
+CodexAppServerRunner ..|> AgentRunner
+PiRunner ..|> AgentRunner
+JunieRunner ..|> AgentRunner
+CopilotAcpRunner ..|> AgentRunner
+OpencodeServerRunner ..|> AgentRunner
+AgentRunSpec --> FACTORY : input
+ClaudeCliRunner ..> AgentSession : startSession
+ClaudeCliRunner ..> MAPPERS : native -> UiEvent
+CodexAppServerRunner ..> MAPPERS
+PiRunner ..> MAPPERS
+CursorAgentRunner ..> MAPPERS
+JunieRunner ..> MAPPERS
+CopilotAcpRunner ..> MAPPERS
+OpencodeServerRunner ..> MAPPERS
+MAPPERS ..> UiEvent : v2 sink (SSE ui-event)
+AgentRunner ..> AgentEvent : v1 onEvent
+@enduml

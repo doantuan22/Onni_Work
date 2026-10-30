@@ -1,0 +1,64 @@
+@startuml 02-engine-components
+' packages/work/src module map — dependencies read from imports (2026-10-30).
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 120
+skinparam ArrowThickness 1.2
+title Onni Work — components of packages/work/src
+
+frame "entry" {
+  component "index.ts — CLI + boot\nsrc/index.ts:131 (parseArgs), :230 serve" as CLI
+}
+
+frame "HTTP edge" {
+  component "server.ts — 216 routes, guards\nsrc/server/server.ts:629" as SRV
+  component "ws.ts — topic hub /api/v1/ws\nsrc/server/ws.ts:30" as WS
+  component "sse-subscriptions.ts / run-frames.ts\nsrc/server/sse-subscriptions.ts:19" as SSE
+}
+
+frame "run engine" {
+  component "workflows/run.ts — RunManager\nsrc/workflows/run.ts:1245 (8.9k lines)" as RM
+  component "workflows/load.ts + graph.ts + templates.ts\nsrc/workflows/load.ts:15" as WF
+  component "workflows/landing.ts — commit/rebase/push\nsrc/workflows/landing.ts:99" as LAND
+  component "runs/store.ts — RunRecord + NDJSON\nsrc/runs/store.ts:1153" as STORE
+}
+
+frame "process layer" {
+  component "core/runner-factory.ts + 7 runners\nsrc/core/runner-factory.ts:19" as RUNNERS
+  component "core/ui-events.ts + *-ui-mapper.ts\nsrc/core/ui-events.ts:392" as UIMAP
+}
+
+frame "resource layer" {
+  component "workspace/semaphore.ts — maxParallel, memory\nsrc/workspace/semaphore.ts:160" as SEM
+  component "worktree-lifecycle/coordinator.ts\nsrc/worktree-lifecycle/coordinator.ts:165" as WTL
+  component "git-worktree.ts + git-diff-base.ts\nsrc/git-worktree.ts:20" as GIT
+}
+
+frame "feature modules" {
+  component "dispatch/ — engine.ts + tree-fs.ts\nsrc/dispatch/engine.ts:25" as DISP
+  component "automations/ — scheduler + pollers\nsrc/automations/scheduler.ts:351" as AUTO
+  component "webhooks/ — outbox + delivery\nsrc/webhooks/service.ts:52" as WH
+  component "skills*.ts + agent-config/ + server/tracker\nsrc/skills.ts:50" as SKILL
+}
+
+component "workspace/config.ts + projects.ts ($HOME/.onni)\nsrc/workspace/config.ts:195" as CFG
+
+CLI --> SRV : createApp + serve
+CLI --> RM : onni run (no server)
+SRV --> RM : startRun/cancel/continue/land/dispatch
+SRV --> WS : registerTopic(health, host, terminal)
+SRV --> SSE : onRunEvent / onRunFrames
+SRV --> STORE : list/read runs
+SRV --> CFG : loadConfig / registry
+RM --> STORE : updateRun/updateStep/appendEvent
+RM --> RUNNERS : startSession(spec)
+RUNNERS --> UIMAP : backend JSON -> UiEvent
+RM --> SEM : busy()/maxParallel()/pump()
+RM --> WTL : prepare()/acquireAgentLease()
+WTL --> GIT : createWorktreeWithOutcome
+RM --> LAND : landNow()
+RM --> DISP : dispatch()/recordReport()
+RM --> SKILL : discoverSkills + provision
+SRV --> AUTO : scheduler tick + receipts
+SRV --> WH : endpoints + outbox
+STORE ..> SEM : release slot at terminal state
+@enduml

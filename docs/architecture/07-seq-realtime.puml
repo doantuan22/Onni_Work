@@ -1,0 +1,42 @@
+@startuml 07-seq-realtime
+title realtime: SSE replay + WebSocket bus between service and cockpit
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+autonumber
+
+participant "Cockpit\n(web/src)" as WEB
+participant "run-events.ts\nSSE client" as RE
+participant "api/ws.ts\nbus client" as WSC
+participant "GET /runs/:id/events\nserver.ts:6094" as SSE
+participant "GET /api/v1/ws\nws.ts:30" as BUS
+participant "RunStore\nruns/store.ts:1153" as STORE
+
+WEB -> RE : open transcript\nnew EventSource(url)
+RE -> SSE : GET (with Last-Event-ID / ?afterSeq / ?cursor)
+note right of SSE : streamSSENoBuffer: proxy must not\nbuffer the replay burst
+SSE -> STORE : streamRunEvents(runs/<id>.ndjson)
+SSE --> RE : seq 1..N as id: field\nname "run-event" (v1) / "ui-event" (v2)
+SSE -> STORE : onRunEvent(store, id, cb)\nsse-subscriptions.ts:19
+note right of SSE : live events arriving DURING replay\nare pushed to `buffered[]`, flushed\nafter the replay tail, only if seq > maxSeq
+SSE --> RE : dedup: `if (event.seq <= maxSeq) continue`
+SSE --> RE : event "run" (final record) + "ping" every 15_000ms
+
+RE -> RE : coalesceLiveDeltas + seenSeqs set\n(MAX_SEEN_SEQS 10_000, run-events.ts:35)
+RE -> RE : RUN_EVENT_BATCH_MS=50 batches frames\n(run-events.ts:32)
+
+WSC -> BUS : WebSocket /api/v1/ws\nverifyWsUpgrade server.ts:8009
+WSC -> BUS : {action:"subscribe", topic}
+note right of BUS : untrusted (non-loopback) socket is\nrefused topics not flagged\nloopbackReadable (ws.ts:150, default false)
+BUS -> BUS : publisher starts on 0->1 subscribers,\nstops on 1->0 (demand-driven)
+BUS --> WSC : topic snapshot, then push only on change
+BUS --> WSC : ping every HEARTBEAT_MS=30_000\n(ws.ts:36); maxPayload 4_096 (ws.ts:40)
+
+== reconnect ==
+RE -> RE : onerror -> EventSource reconnects itself,\nnext GET carries Last-Event-ID
+RE -> RE : compaction (retention) failure -> retry\nbase 1_000ms backoff, max 60_000ms\n(run-events.ts:33-34)
+WSC -> BUS : on close: RECONNECT_DELAY_MS=3_000\n(ws.ts:29) then re-subscribe held topics
+note over WSC,BUS : never `new WebSocket` per feature; one socket\nper cockpit, add a topic instead
+
+@enduml

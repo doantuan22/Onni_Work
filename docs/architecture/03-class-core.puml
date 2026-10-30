@@ -1,0 +1,138 @@
+@startuml 03-class-core
+' Core classes — members taken from the declarations, 2026-10-30.
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam classAttributeIconSize 0
+skinparam ArrowThickness 1.2
+title Onni Work — core engine classes and their seams
+
+class RunManager {
+  <<src/workflows/run.ts:1245>>
+  - store: RunStore
+  - semaphore: WorkspaceSemaphore
+  - lifecycle: WorktreeLifecycleCoordinator
+  - active: Map<runId, ActiveRun>
+  - waiting: Set<runId>
+  - startNowRequested: Set<runId>
+  --
+  + startRun(workflow, input): RunRecord  <<:1678>>
+  + startVariants(workflow, input, 1..3)  <<:1808>>
+  - pump(): dequeue under maxParallel      <<:1910>>
+  + recover(): settle orphans after boot   <<:2134>>
+  + dispatch(parentId, input): child       <<:2856>>
+  + recordReport(id, report): boolean      <<:2987>>
+  + startNow(id): started|not-queued|held  <<:3774>>
+  + cancel(id) / cancelAndWait(id)         <<:3797 / :3882>>
+  + sendMessage / enqueueMessage           <<:4230 / :4080>>
+  + editTask(id, task): boolean            <<:4163>>
+  + finish(id): boolean                    <<:4363>>
+  + continueRun(id, opts)                  <<:4443>>
+  - execute(runId, wf, input)              <<:5240>>
+  - executeGraph(runId, wf, graph, ctx)    <<:5671>>
+  - runAgentStep(...)                      <<:6788>>
+  - runCheckStep(...)                      <<:8739>>
+  - settleSuccess(runId, owner)            <<:7701>>
+  - reviewGateApplies(runId): boolean      <<:8065>>
+  + land(runId): LandAnswer                <<:7937>>
+  - landBeforeSettle(runId)                <<:8040>>
+  - enforceMemoryLimit(snapshot)            <<:1496>>
+  + accountHolds(now): AccountHolds        <<:3558>>
+}
+
+class RunStore <<EventEmitter>> {
+  <<src/runs/store.ts:1153>>
+  - runs: RunRecord[]
+  - dataDir: .ai/onni
+  --
+  + createRun(input)                <<:1312>>
+  + getRun(id) / listRuns()         <<:1308 / :1294>>
+  + updateRun(id, patch)            <<:1369>>
+  + addStep / updateStep            <<:1463 / :1484>>
+  + appendEvent(id, e): RunEvent    <<:1678>>
+  + emitEphemeral(id, e)            <<:1891>>
+  + readEvents(id): RunEvent[]      <<:1956>>
+  + redactRunText(id, text)         <<:1930>>
+  + archiveFinished()               <<:1553>>
+  + deleteRun(id)                   <<:1975>>
+  + flush(opts)                     <<:1998>>
+  + setLifecycleObserver(obs)       <<:1159>>
+}
+
+class WorkspaceSemaphore {
+  <<src/workspace/semaphore.ts:160>>
+  - participants: Set<SemaphoreParticipant>
+  - cached: WorkspaceResourceLimits
+  --
+  + register(p): () => void          <<:177>>
+  + busy(): number                   <<:194>>
+  + idle(): boolean                  <<:209>>
+  + maxParallel(): number  (def 2)   <<:217>>
+  + projectMaxParallel(root)         <<:327>>
+  + accountHolds(): AccountHolds     <<:261>>
+  + notifyAccountHoldsChanged()      <<:185>>
+}
+
+class WorktreeLifecycleCoordinator {
+  <<src/worktree-lifecycle/coordinator.ts>>
+  + prepare(runId, base, why, signal, opts) <<:165>>
+  + acquireAgentLease(runId)                <<:374>>
+  + startRemoval(...)                       <<:422>>
+  + reclaim(...)                            <<:466>>
+  + action(...)  retry|start-anyway|...     <<:596>>
+  + list() / detail()                       <<:711 / :749>>
+  + reconcile()                             <<:793>>
+}
+
+class DispatchEngine <<functions>> {
+  <<src/dispatch/engine.ts>>
+  MAX_CHILDREN_IN_FLIGHT = 4        <<:25>>
+  MAX_PENDING_REPORTS = 20          <<:30>>
+  TERMINAL_STATUSES                 <<:37>>
+  + remainingBudgetUsd(parent, kids) <<:62>>
+  + childTaskEnvelope(...)           <<:97>>
+  + childSettleReport(...)           <<:156>>
+  + withPendingReport(disp, entry)   <<:210>>
+  + pendingReportsBlock(reports)     <<:220>>
+}
+
+class RunRecord {
+  <<contract/src/runs.ts:161>>
+  id, title, task, workflow
+  status: queued|running|waiting|
+          review|done|failed|cancelled  <<:50>>
+  activity: 'monitoring'             <<:66>>
+  steps: StepState[]
+  dispatch: DispatchRecord
+  budgetUsd / costUsd / tokensUsed
+  worktreePath / branch / baseBranch
+  error / finishedAt / archived / pinned
+}
+
+class StepState {
+  <<contract/src/runs.ts:84>>
+  id, name, kind: agent|check
+  status: pending|running|waiting|review|
+          done|failed|cancelled|skipped  <<:69>>
+  iterations, retriesUsed
+  sessionId, backend, profileId
+  tokensUsed, costUsd, error
+}
+
+interface AgentRunner {
+  <<src/core/agent-runner.ts:230>>
+  + backend: AgentBackend
+  + run(spec, onEvent): Promise<AgentRunResult>
+  + startSession(spec, onEvent, opts): AgentSession
+  + interrupt(): Promise<void>
+}
+
+RunManager --> RunStore : writes every state change
+RunManager --> WorkspaceSemaphore : capacity + account holds
+RunManager --> WorktreeLifecycleCoordinator : worktree prepare/lease
+RunManager --> DispatchEngine : budget, reports, envelope
+RunManager --> AgentRunner : spawns one session per step
+RunManager --> RunRecord : owns lifecycle
+RunRecord *-- StepState
+RunStore --> RunRecord : persists runs.json
+WorktreeLifecycleCoordinator --> RunRecord : projection on record
+@enduml

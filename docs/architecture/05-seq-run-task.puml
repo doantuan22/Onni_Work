@@ -1,0 +1,58 @@
+@startuml 05-seq-run-task
+' Create -> queue -> worktree -> steps -> check retry -> settle. Statuses verified in a dry run.
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 150
+skinparam ArrowThickness 1.2
+skinparam ParticipantPadding 6
+title 05 — task run: create to settlement (dry-run verified, ONNI_REVIEW_GATE=1)
+
+autonumber
+actor User
+participant "POST /runs\nserver.ts:4666" as API
+participant "RunManager\nrun.ts:1245" as RM
+participant "WorkspaceSemaphore\nsemaphore.ts:160" as SEM
+participant "RunStore\nstore.ts:1153" as ST
+participant "WorktreeLifecycle\ncoordinator.ts:165" as WTL
+participant "AgentRunner\nrunner-factory.ts:19" as AR
+
+User -> API : create run (workflow or inline steps)
+API -> RM : startRun(workflow, input) [run.ts:1678]
+RM -> ST : createRun -> status=queued [store.ts:1312]
+RM -> RM : snapshot workflowDef, persist attachments\nrefresh catalog if file changed [run.ts:2303]
+RM -> SEM : pump(): busy() < maxParallel(2)? [run.ts:1910]
+SEM --> RM : slot free (else stays queued)
+RM -> ST : updateRun status=running [run.ts:5320]
+RM -> WTL : prepare(runId, base, initial) [run.ts:5418]
+WTL --> RM : worktree path + branch onni/<id8>
+RM -> ST : worktreePath/branch/baseBranch + step-start
+RM -> AR : startSession(spec) stdio/JSON-RPC/ACP/HTTP
+AR --> RM : UiEvent stream -> appendEvent / emitEphemeral
+
+loop each graph node (v1 steps compile to a graph: run.ts:5570)
+  alt agent node
+    AR -> AR : turn runs; markers ONNI:DONE / ASK / MONITORING
+    RM -> ST : step done [run.ts:5198] or waiting [run.ts:7087]\nor running+activity=monitoring [run.ts:7078]
+  else check node
+    RM -> RM : runCheckStep(command) [run.ts:8739]
+    alt exit 0
+      RM -> ST : step done, port=pass [run.ts:5979]
+    else non-zero and retryOn allows
+      RM -> ST : step failed, port=fail [run.ts:5998]
+      RM -> RM : loop node repeat -> back to earlier agent\n(retriesUsed committed, run.ts:5754)
+    else non-zero, retryOn excludes it
+      RM -> ST : hard fail, no retry [run.ts:5988]
+    end
+  end
+end
+
+RM -> RM : classify turn end (ask / monitoring / idle close)\nidleClosedFails [run.ts:8080]
+RM -> RM : landBeforeSettle (auto-land, in-place only) [run.ts:8040]
+alt review gate ON + worktree has diff + not autonomous
+  RM -> ST : status=review [run.ts:7714]
+else normal
+  RM -> ST : status=done + completionReason [run.ts:7740]
+end
+RM -> SEM : release slot -> pump next queued
+RM -> AR : session end() -> SIGTERM/SIGKILL watchdog
+ST --> User : SSE run/ui-event frames + WS topics
+@enduml
