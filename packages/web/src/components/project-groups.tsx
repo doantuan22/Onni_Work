@@ -118,7 +118,6 @@ export function ProjectGroups({
   inboxAvailable = false,
   automationsAvailable = false,
   inboxCount = null,
-  skillsUpdateAvailable = false,
 }: {
   projects: ProjectListEntry[]
   /** The project a flat, unprefixed URL resolves to — so the boot project is the one that
@@ -129,7 +128,6 @@ export function ProjectGroups({
    *  the opt-in is one env var on the one server that serves every group. */
   automationsAvailable?: boolean
   inboxCount?: number | null
-  skillsUpdateAvailable?: boolean
 }) {
   const { pathname } = useLocation()
   // The shell renders outside the routes, so there is no `ProjectScopeProvider` above it — the
@@ -246,7 +244,6 @@ export function ProjectGroups({
       inboxAvailable={inboxAvailable}
       automationsAvailable={automationsAvailable}
       inboxCount={inboxCount}
-      skillsUpdateAvailable={skillsUpdateAvailable}
       showTokens={metricVisibility.tokens}
       showCost={metricVisibility.cost}
       sortable={sortable}
@@ -352,7 +349,6 @@ function ProjectGroup({
   inboxAvailable,
   automationsAvailable,
   inboxCount,
-  skillsUpdateAvailable,
   showTokens,
   showCost,
   sortable,
@@ -377,7 +373,6 @@ function ProjectGroup({
   inboxAvailable: boolean
   automationsAvailable: boolean
   inboxCount: number | null
-  skillsUpdateAvailable: boolean
   showTokens: boolean
   showCost: boolean
   /** The registry holds more than one project AND the ui-state cache is populated, so a drag has
@@ -691,12 +686,6 @@ function ProjectGroup({
                       className="ml-auto rounded-full bg-violet px-1.5 py-px text-[10.5px] font-semibold text-violet-foreground"
                     >
                       {inboxCount}
-                    </span>
-                  ) : null}
-                  {item.badge === 'skills-update' && active && skillsUpdateAvailable ? (
-                    <span data-slot="nav-update-marker" className="ml-auto flex items-center">
-                      <span className="size-1.5 rounded-full bg-violet" aria-hidden="true" />
-                      <span className="sr-only">Skills update available</span>
                     </span>
                   ) : null}
                 </Link>

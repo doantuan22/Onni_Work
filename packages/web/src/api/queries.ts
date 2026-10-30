@@ -66,9 +66,6 @@ import {
   getWorkflowNodes,
   getWorkspaceConfig,
   getWorkspaceUiState,
-  getSkillsUpdate,
-  checkSkillsUpdate,
-  applySkillsUpdate,
   getWorktrees,
   editQueuedMessage,
   markRunSeen,
@@ -440,8 +437,6 @@ export const workspaceQueryKeys = {
   /** One account's auth state — a child of `agentProfiles`, so removing an account drops it too. */
   agentAccountStatus: (routeId: string) =>
     ['workspace', 'agent-profiles', 'status', routeId] as const,
-  skillsUpdateAll: ['workspace', 'skills-update'] as const,
-  skillsUpdate: (projectId: string) => ['workspace', 'skills-update', projectId] as const,
   /** One directory listing from `GET /api/fs/browse` (step 4.2's folder picker). Keyed by the
    *  browsed path — `null` is the browse root, whose absolute location only the server knows.
    *  Not scope-led: there is one filesystem behind the workspace, not one per project. */
@@ -1555,48 +1550,6 @@ export function useAgentProfiles() {
     queryKey: workspaceQueryKeys.agentProfiles,
     queryFn: ({ signal }) => getAgentProfiles({ signal }),
   })
-}
-
-/** Idle reads a skills snapshot gets before its poll stands down — five minutes at the cadence
- *  below, enough to cover a check queued behind a handful of others. */
-const SKILLS_UPDATE_IDLE_READ_LIMIT = 6
-
-export function useSkillsUpdate(projectId: string, enabled = true) {
-  return useQuery({
-    queryKey: workspaceQueryKeys.skillsUpdate(projectId),
-    queryFn: ({ signal }) => getSkillsUpdate(projectId, { signal }),
-    enabled,
-    // GET deliberately answers the current snapshot and starts a stale check in the
-    // background. Retry only while that snapshot is transient so an initial `idle`
-    // response converges. Checks may legitimately take tens of seconds, so a one-minute cadence
-    // avoids repeatedly challenging authenticated remote sessions while still converging after
-    // a long-running operation. The initial mount remains the session's one automatic check.
-    // `idle` means no check has completed yet (`checkedAt` null), and the check the first GET
-    // started can queue behind another project's on the server, so a single follow-up read is not
-    // enough to catch it. Idle reads are capped rather than unbounded: after that the reconcile
-    // on reconnect and on tab return owns the update, so the poll cannot run all session.
-    refetchInterval: (query) => {
-      const status = query.state.data?.status
-      if (status === undefined || status === 'checking' || status === 'updating') return 60_000
-      if (status !== 'idle') return false
-      return query.state.dataUpdateCount < SKILLS_UPDATE_IDLE_READ_LIMIT ? 60_000 : false
-    },
-  })
-}
-
-export function useCheckSkillsUpdate(projectId: string) {
-  const queryClient = useQueryClient()
-  const key = workspaceQueryKeys.skillsUpdate(projectId)
-  return useMutation({
-    mutationFn: () => checkSkillsUpdate(projectId),
-    onSuccess: (state) => queryClient.setQueryData(key, state),
-  })
-}
-
-export function useApplySkillsUpdate(projectId: string) {
-  const queryClient = useQueryClient()
-  const key = workspaceQueryKeys.skillsUpdate(projectId)
-  return useMutation({ mutationFn: () => applySkillsUpdate(projectId), onSuccess: (state) => queryClient.setQueryData(key, state) })
 }
 
 /** Rename a run (#389): `PATCH /api/runs/:id`. Invalidates `runs.*` so the list and the detail

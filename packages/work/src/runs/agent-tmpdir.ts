@@ -84,7 +84,7 @@ export class AgentTempDirError extends Error {
 }
 
 /** Opt-out spelling matches the house style for default-on behaviour
- *  (`ONNI_AUTONAME=0`, `ONNI_SKILLS_AUTO_UPDATE=0`): only an exact `0` disables. */
+ *  (`ONNI_AUTONAME=0`): only an exact `0` disables. */
 export function agentTmpDirEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.ONNI_AGENT_TMPDIR !== '0';
 }

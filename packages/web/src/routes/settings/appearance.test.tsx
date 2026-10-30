@@ -23,7 +23,7 @@ function serve(uiState: Record<string, unknown> = {}) {
   requests = []
   let workspaceConfig = {
     branding: { name: 'onni', logoUrl: null as string | null },
-    browseRoot: '~/', projectsDir: '~/onni/projects', skillsAutoUpdate: null, effectiveSkillsAutoUpdate: true,
+    browseRoot: '~/', projectsDir: '~/onni/projects',
     composerDefaults: { autonomous: null, worktree: null, inheritedAutonomous: 'source-dependent', inheritedWorktree: true },
     resources: { maxParallel: 2, maxMonitoringSessions: 2, idleTimeoutMinutes: 15, monitoringWakeIntervalMinutes: 5, autoResumeOnUsageLimit: true, memoryLimitMb: null, worktreeRetentionDefault: 10 },
     agentDefaults: {},

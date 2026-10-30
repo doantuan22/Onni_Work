@@ -59,7 +59,6 @@ export type AppShellProps = {
    *  the container derives it from the run list via `unreadDoneCount`. */
   unreadCount?: number | null
   /** A quiet, accessible marker on Skills when a checked update remains actionable. */
-  skillsUpdateAvailable?: boolean
   /** onni version for the footer chip. Null until Step 3.1 reads it from `/api/health`. */
   version?: string | null
   /** Step 3.3's grouped task quick-list. */
@@ -162,7 +161,6 @@ export const AppShell = React.memo(function AppShell({
   repo = null,
   inboxCount = null,
   unreadCount = null,
-  skillsUpdateAvailable = false,
   version = null,
   taskQuickList,
   hostWidget,
@@ -243,7 +241,6 @@ export const AppShell = React.memo(function AppShell({
     // The badge belongs to the Inbox item — with the item gone there is nothing to badge.
     inboxCount: inboxAvailable ? inboxCount : null,
     unreadCount,
-    skillsUpdateAvailable,
     version,
     taskQuickList,
     hostWidget,
@@ -324,7 +321,6 @@ type NavProps = {
   repo: RepoChip | null
   inboxCount: number | null
   unreadCount: number | null
-  skillsUpdateAvailable: boolean
   version: string | null
   taskQuickList?: ReactNode
   hostWidget?: ReactNode
@@ -372,7 +368,6 @@ function SidebarContent({
   repo,
   inboxCount,
   unreadCount,
-  skillsUpdateAvailable,
   version,
   taskQuickList,
   hostWidget,
@@ -516,15 +511,6 @@ function SidebarContent({
                       className="ml-auto rounded-full bg-violet px-1.5 py-px text-[10.5px] font-semibold text-violet-foreground"
                     >
                       {unreadCount}
-                    </span>
-                  ) : null}
-                  {item.badge === 'skills-update' && skillsUpdateAvailable ? (
-                    <span
-                      data-slot="nav-update-marker"
-                      className="ml-auto flex items-center"
-                    >
-                      <span className="size-1.5 rounded-full bg-violet" aria-hidden="true" />
-                      <span className="sr-only">Skills update available</span>
                     </span>
                   ) : null}
                 </Link>

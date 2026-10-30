@@ -148,7 +148,6 @@ import {
 } from '../workflows/types.ts';
 import { planChain, slugify } from '../planner.ts';
 import { discoverSkills } from '../skills.ts';
-import { SkillsUpdateConflictError, SkillsUpdateCoordinator, SkillsUpdateService, type SkillsUpdateState } from '../skills-update.ts';
 import { DesignProxies } from './preview/design-proxy.ts';
 import { getTeamSkillsCached, isSafeRef, refreshTeamSkills, safeRemoteFor, waitForTeamSkills } from '../skills-remote.ts';
 import { appendHandoffHeartbeat, handoffProgressExcerpt, readHandoff } from '../handoff.ts';
@@ -234,7 +233,6 @@ import { readAccountIdentity } from '../agent-config/account-identity.ts';
 import {
   PROJECT_ID_RE,
   defaultWorkspaceConfig,
-  effectiveSkillsAutoUpdate,
   loadWorkspaceConfig,
   mergeWriteWorkspaceConfig,
   effectiveComposerDefault,
@@ -398,9 +396,6 @@ export interface ServerDeps {
    *  reaches `openInTerminal`. Injected for the same reason as the two above: a test that reaches
    *  this for real opens a window on the developer's machine (#820). */
   openApp?: typeof openInApp;
-  /** Process-wide Open Mercato skills update detector. Injected in tests and
-   * shared by every workspace route/project; createApp owns the default. */
-  skillsUpdate?: SkillsUpdateService;
   /** The project/workspace secret store (spec 2026-10-10-project-secrets-vault-options). Tests
    *  inject one with a fake keychain; the default reads the OS keychain or a key file. */
   secrets?: SecretStore;
@@ -1416,7 +1411,6 @@ export function createApp(deps: ServerDeps) {
   const openTerminal = deps.openTerminal ?? openInTerminal;
   const openFile = deps.openFile ?? openFileInDefaultApp;
   const openApp = deps.openApp ?? openInApp;
-  const skillsUpdate = deps.skillsUpdate ?? new SkillsUpdateService();
 
   // ---- workspace boot-project identity (multi-project spec) ----------------
   // The boot flow (`initWorkspace` in src/index.ts) registers the boot repo
@@ -3302,60 +3296,6 @@ export function createApp(deps: ServerDeps) {
     return ctx.store.listRuns().filter((run) => ACTIVE_RUN_STATUSES.has(run.status)).length;
   };
 
-  // Workspace-level by design: update state spans project and global installs,
-  // but the selected registered project supplies the safe, server-owned cwd.
-  const skillsUpdateInputSchema = z.object({ projectId: projectIdSchema }).strict();
-  const resolveSkillsUpdateRoot = async (raw: string): Promise<
-    { root: string } | { status: 404 | 409; error: string }
-  > => {
-    if (!projectIdSchema.safeParse(raw).success) return { status: 404, error: `unknown project: ${raw}` };
-    const bootId = await resolveBootProject();
-    if (raw === 'default' || raw === bootId) return { root: bootRoot };
-    const project = (await loadWorkspaceConfig()).projects.find((entry) => entry.id === raw);
-    if (!project) return { status: 404, error: `unknown project: ${raw}` };
-    if ((await probeProjectStatus(project.root)).status === 'missing') {
-      return { status: 409, error: `project folder not found: ${raw}` };
-    }
-    return { root: project.root };
-  };
-
-  const skillsUpdateResponse = async (state: SkillsUpdateState): Promise<SkillsUpdateState> => {
-    const config = await loadWorkspaceConfig();
-    return { ...state, autoUpdateEnabled: effectiveSkillsAutoUpdate(config), inherited: config.skillsAutoUpdate === undefined };
-  };
-
-  // ---- chained family: skills updates (workspace-level) ----
-  const skillsUpdateRoutes = new Hono<ProjectApiEnv>()
-    .get('/workspace/skills-update', queryZodValidator(skillsUpdateInputSchema, { message: 'projectId is required' }), async (c) => {
-      const parsed = { data: c.req.valid('query') };
-      const resolved = await resolveSkillsUpdateRoot(parsed.data.projectId);
-      if ('error' in resolved) return c.json({ error: resolved.error }, resolved.status);
-      const state: SkillsUpdateState = skillsUpdate.snapshot(resolved.root);
-      void skillsUpdate.check(resolved.root).catch(() => {});
-      return c.json(await skillsUpdateResponse(state));
-    })
-
-    .post('/workspace/skills-update/check', jsonZodValidator(skillsUpdateInputSchema, { message: 'body must contain only projectId' }), async (c) => {
-      const parsed = { data: c.req.valid('json') };
-      const resolved = await resolveSkillsUpdateRoot(parsed.data.projectId);
-      if ('error' in resolved) return c.json({ error: resolved.error }, resolved.status);
-      return c.json(await skillsUpdateResponse(await skillsUpdate.check(resolved.root, true)));
-    })
-
-    .post('/workspace/skills-update/apply', jsonZodValidator(skillsUpdateInputSchema, { message: 'body must contain only projectId' }), async (c) => {
-      const parsed = { data: c.req.valid('json') };
-      const resolved = await resolveSkillsUpdateRoot(parsed.data.projectId);
-      if ('error' in resolved) return c.json({ error: resolved.error }, resolved.status);
-      try {
-        return c.json(await skillsUpdateResponse(await skillsUpdate.update(resolved.root, true)));
-      } catch (error) {
-        if (error instanceof SkillsUpdateConflictError) {
-          return c.json({ error: 'another skills update operation is running', state: await skillsUpdateResponse(skillsUpdate.snapshot(resolved.root)) }, 409);
-        }
-        throw error;
-      }
-    });
-
   // ---- chained family: Design Mode (workspace-level) -----------------------
   // Spec `.ai/specs/2026-10-09-design-mode.md`. Single-mount: the proxy mirrors a loopback dev
   // server, which belongs to the machine, not to a project. The request's own `Host` is passed
@@ -3402,8 +3342,6 @@ export function createApp(deps: ServerDeps) {
     },
     browseRoot: config.browseRoot,
     projectsDir: config.projectsDir,
-    skillsAutoUpdate: config.skillsAutoUpdate ?? null,
-    effectiveSkillsAutoUpdate: effectiveSkillsAutoUpdate(config),
     orgSkillsRepos: config.orgSkillsRepos ?? [],
     systemPrompt: config.systemPrompt ?? null,
     composerDefaults: {
@@ -3456,7 +3394,7 @@ export function createApp(deps: ServerDeps) {
 
     .put('/workspace/config', jsonZodValidator(() => setWorkspaceConfigInputSchema), async (c) => {
       const parsed = { data: c.req.valid('json') };
-      const { browseRoot, projectsDir, skillsAutoUpdate, orgSkillsRepos, systemPrompt, composerDefaults, resources, agentDefaults, branding } = parsed.data;
+      const { browseRoot, projectsDir, orgSkillsRepos, systemPrompt, composerDefaults, resources, agentDefaults, branding } = parsed.data;
       for (const src of orgSkillsRepos ?? []) {
         if (safeRemoteFor(src.repo) === null || !isSafeRef(src.ref)) {
           return c.json({ error: `unsafe skills repo: ${src.repo}@${src.ref}` }, 400);
@@ -3502,8 +3440,6 @@ export function createApp(deps: ServerDeps) {
           // Roots are stored as written (`~` kept); only the probe expands them.
           if (browseRoot !== undefined) config.browseRoot = browseRoot;
           if (projectsDir !== undefined) config.projectsDir = projectsDir;
-          if (skillsAutoUpdate === null) delete config.skillsAutoUpdate;
-          else if (skillsAutoUpdate !== undefined) config.skillsAutoUpdate = skillsAutoUpdate;
           if (orgSkillsRepos !== undefined) {
             if (orgSkillsRepos.length === 0) delete config.orgSkillsRepos;
             else config.orgSkillsRepos = orgSkillsRepos;
@@ -7760,7 +7696,6 @@ export function createApp(deps: ServerDeps) {
     .route('/', providersRoutes)
     .route('/', projectsRoutes)
     .route('/', agentProfilesRoutes)
-    .route('/', skillsUpdateRoutes)
     .route('/', previewRoutes)
     .route('/', workspaceConfigRoutes)
     .route('/', workspaceSecretsRoutes)
@@ -7802,7 +7737,6 @@ export function createApp(deps: ServerDeps) {
 export function startServer(deps: ServerDeps, port: number): ServerType & { shutdownLifecycle(): Promise<void> } {
   let shutdownPromise: Promise<void> | undefined;
   const workspaceEvents = deps.workspaceEvents ?? new WorkspaceEventBus();
-  const skillsUpdate = deps.skillsUpdate ?? new SkillsUpdateService({ invalidateCatalog: refreshTeamSkills });
   // The subscription hub rides the same HTTP server (one port, zero config):
   // createApp registers the topics, the `upgrade` hook below owns the socket.
   const socketHub = deps.socketHub ?? createSocketHub();
@@ -7835,7 +7769,6 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
     webhookPort: port,
     automationStore: bootAutomationStore,
     workspaceEvents,
-    skillsUpdate,
     socketHub,
     automationsChanged: () => rescheduleAutomations(),
   });
@@ -7850,8 +7783,6 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
     hostname: deps.bindHost ?? '127.0.0.1',
   });
   applyKeepAlive(server);
-  const coordinator = new SkillsUpdateCoordinator(skillsUpdate, async () =>
-    effectiveSkillsAutoUpdate(await loadWorkspaceConfig()));
   // Every registered project gets a handle (spec 2026-09-14): `github` only when the remote is
   // on GitHub (github.com or Enterprise) — a project without one still fires its scheduled automations.
   const automationProjects = new Map<string, { root: string; github?: { owner: string; repo: string; host: string } }>();
@@ -7918,12 +7849,10 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
     if (event === 'project-added') {
       const project = (data as { project?: { id?: unknown; root?: unknown; status?: unknown } }).project;
       if (project && typeof project.id === 'string' && typeof project.root === 'string' && project.status !== 'missing') {
-        coordinator.add(project.id, project.root);
         void registerAutomationProject(project.id, project.root).then(() => rescheduleAutomations());
       }
     } else if (event === 'project-removed') {
       const id = (data as { id?: unknown }).id;
-      if (typeof id === 'string') coordinator.remove(id);
       if (typeof id === 'string') {
         automationCoordinator.remove(id);
         automationProjects.delete(id);
@@ -7936,10 +7865,8 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
       if (shutdownPromise) return;
       const all = projects.some((project) => project.root === deps.repoRoot)
         ? projects : [{ id: deps.bootProjectId ?? 'default', root: deps.repoRoot, status: 'ok' as const }, ...projects];
-      coordinator.start(all);
       // #801: with automations off there is nothing to warm — no remote to resolve, no receipts
-      // to reconcile, and above all no scheduler to start. The skills-update coordinator above is
-      // a separate feature and starts either way.
+      // to reconcile, and above all no scheduler to start.
       if (!automationsEnabled()) return;
       void Promise.all(all.map(async (project) => {
         await registerAutomationProject(project.id, project.root);
@@ -7952,14 +7879,13 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
       })).then(() => { if (!shutdownPromise) automationScheduler.start(); }).catch(() => undefined);
     }).catch(() => undefined);
   });
-  server.once('close', () => { for (const cleanup of appCleanups) cleanup(); unsubscribe(); coordinator.stop(); automationScheduler.stop(); });
+  server.once('close', () => { for (const cleanup of appCleanups) cleanup(); unsubscribe(); automationScheduler.stop(); });
   socketHub.attach(server, (req) => verifyWsUpgrade(req, deps.bindHost));
   return Object.assign(server, {
     shutdownLifecycle(): Promise<void> {
       if (shutdownPromise) return shutdownPromise;
       // Stop HTTP admission and automatic task sources before draining detached scripts.
       server.close();
-      coordinator.stop();
       automationScheduler.stop();
       shutdownPromise = (async () => {
         const results = await Promise.allSettled([deps.manager.lifecycle.shutdown(), sharedContexts.shutdownAll()]);
