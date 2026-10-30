@@ -1778,7 +1778,7 @@ mod tests {
 
     #[test]
     fn a_linked_worktree_reads_as_its_branch() {
-        assert_eq!(version_label("0.13.0", "link", Some("onni/cb28888e")), "cez/cb28888e — 0.13.0 (worktree)");
+        assert_eq!(version_label("0.13.0", "link", Some("onni/cb28888e")), "onni/cb28888e — 0.13.0 (worktree)");
         assert_eq!(version_label("0.13.0", "link", None), "0.13.0 (worktree)");
         assert_eq!(version_label("0.13.0", "local", None), "0.13.0 (local build)");
         assert_eq!(version_label("0.13.0", "registry", None), "0.13.0");
