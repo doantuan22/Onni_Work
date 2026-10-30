@@ -30,8 +30,7 @@ resetting it.
 - Anything that widens exposure or cost (network, other processes) is opt-in behind a `ONNI_*`
   flag that is OFF by default — the safe default is also the zero-config default.
 - Owner-approved default-on exceptions, each with an off switch and brakes in the engine:
-  dispatch (`ONNI_DISPATCH=0`), automations (`ONNI_AUTOMATIONS=0`), Open Mercato skill updates
-  (`ONNI_SKILLS_AUTO_UPDATE=0`), the GitHub fork-parent lookup (`ONNI_DRY_RUN=1` skips it), and
+  dispatch (`ONNI_DISPATCH=0`), automations (`ONNI_AUTOMATIONS=0`), the GitHub fork-parent lookup (`ONNI_DRY_RUN=1` skips it), and
   Design Mode (`ONNI_DESIGN_MODE=0`, always off on a hosted cockpit).
 - A missing dependency, an absent peer or a read-only home degrades to a smaller cockpit — never
   a failed boot.
@@ -193,7 +192,8 @@ example). One socket per local cockpit — never `new WebSocket` for a feature; 
 
 ## Deliberately removed — do not reintroduce
 
-These were deleted on purpose (see `docs/adr/0002-remove-self-update-telemetry-publish.md`).
+These were deleted on purpose (see `docs/adr/0002-remove-self-update-telemetry-publish.md` and
+`docs/adr/0004-remove-leftover-update-and-slack-discord.md`).
 Adding one back needs an owner decision, not a PR.
 
 - **Self-update / npm updates.** Nothing checks a registry, downloads a release or signs an
@@ -208,6 +208,10 @@ Adding one back needs an owner decision, not a PR.
   and the promo banner are gone. Nothing asks github.com for a count.
 - **npm publishing.** The root and every workspace are `private`. `check:pack` exists only to
   keep the packable package honest. No publish workflow, no dist-tags, no `npx` install path.
+- **Skills auto-update.** No `npx skills` check/apply, no coordinator, no `/workspace/skills-update*`
+  routes, no `ONNI_SKILLS_AUTO_UPDATE` (ADR 0004). Skills install and update by hand.
+- **Slack and Discord webhook formats.** Only the signed `onni.json.v1` receiver exists; chat
+  destinations go through your own endpoint (ADR 0004).
 - **Docs site and release workflow.** No docs site build; `docs/` is read in the repo. No tag
   push and no release workflow — `v*` tags are never created.
 

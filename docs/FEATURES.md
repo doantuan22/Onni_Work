@@ -84,7 +84,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | Editor workflow trên UI | trang `/workflows/new`, `/workflows/:name` | `packages/web/src/routes/workflows*.tsx` | UI | CÓ TRONG CODE | `routes.tsx` |
 | Skill discovery | 7 thư mục repo + 2 global + team + builtin, sâu 4 | `packages/work/src/skills.ts:50,64,91,170` | UI `/skills` | ĐÃ XÁC MINH | `skills.test.ts` pass |
 | Skill từ repo từ xa | clone vào `~/.cache/onni/skills/<owner>__<name>/` | `skills-remote.ts:149,157` · TTL 6h `:448` | UI `/settings/skills` | ĐÃ XÁC MINH | `skills-remote.test.ts`, `org-skills-repos-api.test.ts` pass |
-| Auto-update skill (Open Mercato) | `npx --yes skills check` rồi apply | `skills-update.ts:57,196,272` · coordinator `server.ts:7853` | `ONNI_SKILLS_AUTO_UPDATE=0` | ĐÃ XÁC MINH | `skills-update.test.ts`, `skills-update-api.test.ts` pass |
+| ~~Auto-update skill (Open Mercato)~~ | ~~`npx --yes skills check` rồi apply~~ | ~~`skills-update.ts`, coordinator trong `server.ts`, 3 route `/workspace/skills-update*`, `skillsAutoUpdate`, thẻ cập nhật + toggle trong UI~~ | ~~`ONNI_SKILLS_AUTO_UPDATE=0`~~ | ĐÃ VÔ HIỆU | **ĐÃ XOÁ 2026-10-31** (ADR 0004). `skillsAutoUpdate` cũ trong `config.json` được giữ như khoá lạ, không đọc |
 | Slash-skill expand | `/<skill>` trong prompt được nội dung hoá | `run.ts:8964,8979` (dùng `:4321,5082,6848`) | UI composer | ĐÃ XÁC MINH | `run.ts:8964` + batch tests pass |
 | Provision skill khi init | `onni init` đổ bộ skill mặc định | `packages/work/src/skills-provision.ts` | CLI `onni init` | ĐÃ XÁC MINH | `skills-provision.test.ts` pass |
 | Planner (tạo workflow từ prompt) | model `sonnet`, 1–5 steps, 60s, **chỉ backend Claude** | `packages/work/src/workflows/planner.ts:19,21,56,69` | API `POST /api/v1/plan` (`server.ts:3869`) | NỬA VỜI | không có nút UI; plan không lưu — xem §16 |
@@ -165,7 +165,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | Admission + giới hạn | 8 MiB payload, hết hạn 72h, 10 token, 3 test/phút, 10 manual fail/60s | `admission.ts:40,156,158` · `limits.ts:7,62,63` | tự động | ĐÃ XÁC MINH | `webhooks/limits.test.ts`, `admission.test.ts` pass |
 | `notify.webhook` trong workflow | node riêng, cần `ONNI_WORKFLOW_WEBHOOKS=1` | `graph.ts:232` · `run.ts:6437` | YAML | ĐÃ XÁC MINH | `contract-parity.automations.test.ts` pass |
 | Attention request payload | `requestId/askedAt/questions 1..20` | `contract/webhooks.ts:20` · sinh `run.ts:2766,2805` · render `payload.ts:63` | API | CÓ TRONG CODE | `webhooks/contract.test.ts` pass |
-| Slack/Discord | không ký, chỉ POST | `webhooks/slack.ts` · `discord.ts` | UI | ĐÃ XÁC MINH | `webhooks/discord.test.ts` pass |
+| ~~Slack/Discord~~ | ~~không ký, chỉ POST~~ | ~~`webhooks/slack.ts` · `discord.ts`, format `slack.v1`/`discord.v1`, bộ chọn Destination + preview trong UI~~ | ~~UI~~ | ĐÃ VÔ HIỆU | **ĐÃ XOÁ 2026-10-31** (ADR 0004). Receiver Slack/Discord đã lưu bị bỏ khi load và để lại 1 dòng history; webhook `onni.json.v1` (HMAC, outbox, retry) giữ nguyên |
 | Tracker: chỉ Jira + Linear | 2 vendor, không có Asana/Shortcut… | `contract/tracker.ts:4` | UI `/tracker` | ĐÃ XÁC MINH | `tracker/jira.test.ts`, `linear.test.ts` pass |
 | Credential tracker | `~/.onni/tracker-connections/<sha256(realpath)>.env`, 0600/0700 | `server/tracker/connections.ts:16,20` | Settings | CÓ TRONG CODE | `connections.test.ts`: assertion mode fail trên Win |
 | Xoá connection | `onni tracker-connections list` / `remove <64hex>`; **không revoke phía vendor** | `connections-cli.ts:9` | CLI | ĐÃ XÁC MINH | `connections-cli.test.ts` pass |
@@ -233,8 +233,8 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | Workspace config atomic | tmp + rename 0600, `mergeWriteWorkspaceConfig` | `workspace/config.ts:421,433,455` | Settings | CÓ TRONG CODE | chmod assertion fail trên Win |
 | `ONNI_HOME` / `ONNI_DATA_DIR` | dời state về thư mục khác | `paths.ts:84,122` | env | ĐÃ XÁC MINH | `work/src/paths.test.ts` pass phần lớn; 13 fail còn lại là so chuỗi đường dẫn POSIX (`\tmp\…` vs `/tmp/…`) |
 | State per-instance | `server-instances/<slug>.json` khi chạy nhiều instance | `paths.ts:63,84` · `index.ts:597-619` | env | CÓ TRONG CODE | `server-install/state.test.ts` 4 fail (1 chmod + 3 khoá `wx` — Windows không có ngữ nghĩa đó) → chưa kết luận được, cần CI |
-| 62 biến `ONNI_*` có tài liệu | tất cả đều comment trong `.env.example`, mặc định 0 dòng đang bật | `.env.example:1-314` | env | ĐÃ XÁC MINH | `.env.example` (0 dòng không comment) |
-| Feature off switches | `ONNI_DISPATCH=0`, `ONNI_AUTOMATIONS=0`, `ONNI_SKILLS_AUTO_UPDATE=0`, `ONNI_DESIGN_MODE=0`, `ONNI_REVIEW_GATE=1` (bật mới có) | `capabilities.ts:205,244,246-248` · `review-gate.ts:16-21` | env | ĐÃ XÁC MINH | dry-run gate ON/OFF + `review-gate.test.ts` pass |
+| 61 biến `ONNI_*` có tài liệu (62 trước khi xoá `ONNI_SKILLS_AUTO_UPDATE`) | tất cả đều comment trong `.env.example`, mặc định 0 dòng đang bật | `.env.example:1-314` | env | ĐÃ XÁC MINH | `.env.example` (0 dòng không comment) |
+| Feature off switches | `ONNI_DISPATCH=0`, `ONNI_AUTOMATIONS=0`, ~~`ONNI_SKILLS_AUTO_UPDATE=0`~~ (đã xoá, ADR 0004), `ONNI_DESIGN_MODE=0`, `ONNI_REVIEW_GATE=1` (bật mới có) | `capabilities.ts:205,244,246-248` · `review-gate.ts:16-21` | env | ĐÃ XÁC MINH | dry-run gate ON/OFF + `review-gate.test.ts` pass |
 | Tri-state `ONNI_TERMINAL` | local: ON; hosted: cần `=1` | `capabilities.ts:229-232` · `server.ts:7323` | env | ĐÃ XÁC MINH | `terminal-routes.test.ts`, `capabilities.test.ts` pass |
 | `ONNI_DRY_RUN=1` | mock mọi agent CLI | mọi runner | env | ĐÃ XÁC MINH | toàn bộ dry-run ở đầu file |
 | `ONNI_REDACT_SECRETS=0` | tắt che secret trong log | `core/secret-redaction.ts:28` | env | ĐÃ XÁC MINH | `secret-redaction.test.ts` pass |
@@ -280,7 +280,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | `disclaim-exec` spawn | bỏ cờ exec tự động trên Windows | `core/disclaim-spawn.test.ts` | tự động | ĐÃ XÁC MINH | `disclaim-spawn.test.ts` pass (guard skip) |
 | fs browse privacy | chặn duyệt ra ngoài repo | `server/fs-browse-privacy.ts` | API | ĐÃ XÁC MINH | `fs-browse-privacy.test.ts` pass |
 | Telemetry | **đã xoá hẳn**, không phải tắt | ADR 0002 | — | ĐÃ VÔ HIỆU | không còn route `/telemetry` nào |
-| Self-update từ registry | **đã xoá**; `self-update/` chỉ còn version layout | `packages/work/src/self-update/` | `onni link` | ĐÃ VÔ HIỆU | `self-update.test.ts` pass |
+| Self-update từ registry | **đã xoá**; `self-update/` chỉ còn version layout (5 file đều phục vụ layout/link: `layout.ts`, `checkouts.ts`, `cli.ts`, `semver.ts`; `self-update.test.ts` test layout). 2026-10-31: bỏ nốt `WorkspaceSemaphore.activeRuns()/idle()` chỉ phục vụ dialog update-when-idle | `packages/work/src/self-update/` | `onni link` | ĐÃ VÔ HIỆU | `self-update.test.ts` pass |
 | Token/cost cap | run thường **không có** trần chi phí; `ONNI_HIDE_*` chỉ ẩn số liệu. Chỉ run dispatch mới có brake (`budgetUsd`) | `capabilities.ts:236-238` · xem §5 | Settings | NỬA VỜI | `run.ts:2827-2842` |
 
 ---
@@ -329,7 +329,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | Loại node workflow mới | `graph.ts:50` schema + `:175 NODE_PORTS` + `:212 NODE_CATALOG` + executor trong `workflows/run.ts` | `graph.ts` (đủ 4 chỗ) |
 | Loại automation mới | `automations/github-poller.ts` + `event-poll-cycle.ts:10` | `automations/types.ts:110` (kind enum) + `scheduler.ts:313` |
 | Vendor tracker mới | `server/tracker/jira.ts` + `jira-events.ts` | `contract/tracker.ts:4` (union) + `tracker-poller.ts` |
-| Webhook channel mới | `webhooks/discord.ts` | `webhooks/transport.ts:120` + `endpoints.ts` |
+| ~~Webhook channel mới~~ | ~~`webhooks/discord.ts`~~ — đã xoá (ADR 0004); format chỉ còn `onni.json.v1` | `webhooks/transport.ts` + `endpoints.ts` |
 | Platform cài server mới | `server-install/platforms/ubuntu-vps.ts:22` | `server-install/index.ts:637` |
 | Route mới | `packages/contract/src/runs.ts` (schema) + `server/validators.ts` | chain vào family ở `server.ts`; `route-parity.test.ts` + `contract-parity.runs.test.ts` (15 file `contract-parity*`) bắt đủ 2 mount point |
 | Trang cockpit mới | `packages/web/src/routes/dashboard/state.ts` | `packages/web/src/routes.tsx` |
