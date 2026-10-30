@@ -72,31 +72,9 @@ export function validWebhookDestinationHost(value: string): boolean {
   const host = authority?.replace(/:[0-9]+$/, '');
   return !!host && host.length <= 255;
 }
-export const webhookFormatSchema = z.enum(['onni.json.v1', 'slack.v1', 'discord.v1']);
+/** Only the signed custom receiver remains; `slack.v1`/`discord.v1` were removed (ADR 0004). */
+export const webhookFormatSchema = z.enum(['onni.json.v1']);
 export type WebhookFormat = z.infer<typeof webhookFormatSchema>;
-const discordHosts = new Set(['discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com']);
-function chatDestination(value: { format: WebhookFormat; url?: string; allowLocalNetwork: boolean }, ctx: z.RefinementCtx): void {
-  const fail = (message: string, path = 'url') => ctx.addIssue({ code: 'custom', message, path: [path] });
-  if (value.format !== 'onni.json.v1' && value.allowLocalNetwork) fail('Chat destinations cannot use local networks', 'allowLocalNetwork');
-  if (!value.url) return; // The registry validates again after restoring the private URL.
-  // Syntax is already checked by z.url. Keep the shared contract Node/DOM-free.
-  const parts = /^https?:\/\/([^/?#]+)([^?#]*)(.*)$/i.exec(value.url);
-  if (!parts) return;
-  const authority = parts[1]!.toLowerCase();
-  const host = authority.replace(/:[0-9]+$/, '');
-  if (value.format === 'onni.json.v1') {
-    if (host === 'hooks.slack.com') fail('Choose Slack as the destination type');
-    if (discordHosts.has(host)) fail('Choose Discord as the destination type');
-    return;
-  }
-  // Raw authority preserves explicit :443, which URL normalization removes.
-  const validPath = value.format === 'slack.v1'
-    ? authority === 'hooks.slack.com' && /^\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[A-Za-z0-9_-]+$/.test(parts[2]!)
-    : discordHosts.has(authority) && /^\/api\/(?:v10\/)?webhooks\/[0-9]{17,20}\/[A-Za-z0-9_-]{60,80}$/.test(parts[2]!);
-  if (!/^https:\/\//i.test(value.url) || parts[3] || !validPath) {
-    fail(value.format === 'slack.v1' ? 'Paste the full Slack Incoming Webhook URL, like https://hooks.slack.com/services/…' : 'Paste the full Discord webhook URL, like https://discord.com/api/webhooks/…');
-  }
-}
 const settings = {
   format: webhookFormatSchema.default('onni.json.v1'),
   name: z.string().trim().min(1).max(100), url: destination,
@@ -112,11 +90,11 @@ export const webhookStoredSettingsSchema = z.strictObject(settings).refine(
   value => value.preset !== 'custom' || value.events.length > 0, { message: 'Select at least one event', path: ['events'] },
 ).refine(value => new Set(value.events).size === value.events.length, { message: 'Duplicate event', path: ['events'] });
 const boundedDestination = destination.refine(validWebhookDestinationHost, 'Invalid destination host');
-export const createWebhookSchema = webhookStoredSettingsSchema.safeExtend({ url: boundedDestination }).superRefine(chatDestination);
+export const createWebhookSchema = webhookStoredSettingsSchema.safeExtend({ url: boundedDestination });
 // Edits are full settings submissions (omit URL to preserve its private value); service compares fields so a rename preserves deliveryRevision.
 export const updateWebhookSchema = z.strictObject({ ...settings, expectedRevision: revision, url: boundedDestination.optional() }).refine(
   value => value.preset !== 'custom' || value.events.length > 0, { message: 'Select at least one event', path: ['events'] },
-).refine(value => new Set(value.events).size === value.events.length, { message: 'Duplicate event', path: ['events'] }).superRefine(chatDestination);
+).refine(value => new Set(value.events).size === value.events.length, { message: 'Duplicate event', path: ['events'] });
 export const webhookRevisionSchema = z.strictObject({ expectedRevision: revision });
 export const webhookActivationSchema = z.strictObject({ expectedRevision: revision, confirmed: z.literal(true) });
 export const webhookRotationSchema = z.strictObject({ expectedRevision: revision, mode: z.enum(['graceful', 'revoke_now']) });

@@ -19,13 +19,11 @@ const policyHints: Record<string, string> = {
   dns_not_found: 'The receiver hostname does not resolve. Check the URL.',
   invalid_url: 'The receiver URL is not allowed. Use a plain http(s) URL without credentials or a fragment.',
 }
-export type PendingWebhookTest = { deliveryId: string; receiverId: string; receiverName: string; initialState: WebhookReceiver['state']; deliveryRevision: number; format?: WebhookReceiver['format'] }
+export type PendingWebhookTest = { deliveryId: string; receiverId: string; receiverName: string; initialState: WebhookReceiver['state']; deliveryRevision: number }
 export function WebhookTestFeedback({ projectId, test, openHistory }: { projectId: string; test: PendingWebhookTest; openHistory: (receiverId: string) => void }) {
   const result = useQuery({ queryKey: [...webhookKey(projectId), 'test-result', test.receiverId, test.deliveryId], queryFn: () => webhookApi.deliveries(projectId, test.receiverId), retry: false })
   const row = result.data?.items.find(item => item.deliveryId === test.deliveryId)
   const receiver = result.data?.receiver
-  // Retain the tested format even if history now describes a deleted receiver.
-  const format = test.format ?? (receiver?.kind === 'live' ? receiver.format : undefined)
   const finished = row && ['delivered', 'failed', 'cancelled', 'superseded', 'dropped'].includes(row.status)
   // Only the current explicit test is retained; query refreshes cannot repeat its toast.
   const announced = useRef<string | undefined>(undefined)
@@ -46,9 +44,7 @@ export function WebhookTestFeedback({ projectId, test, openHistory }: { projectI
     : `Test ${row.status === 'failed' ? 'failed' : row.status}${row.reason ? `: ${reasonLabel(row.reason)}` : ''}.`
   const hint = !finished || delivered || unknown ? undefined
     : row.reason === 'timeout' || row.reason === 'connection_failed' ? 'Check that your receiver is reachable and responds within 10 seconds.'
-    : /^http_(401|403)$/.test(row.reason ?? '') ? format === 'slack.v1' || format === 'discord.v1'
-      ? 'Check the webhook URL in Slack or Discord. If it was revoked or replaced, edit this receiver with the current URL and send a new test.'
-      : 'Check the receiver’s authentication and the signing key in its verifier.'
+    : /^http_(401|403)$/.test(row.reason ?? '') ? 'Check the receiver’s authentication and the signing key in its verifier.'
     : row.reason === 'http_404' || row.reason === 'http_410' ? 'Check the URL and that the endpoint still exists.'
     : policyHints[row.reason ?? ''] ? `${policyHints[row.reason!]} Activation stays blocked until a test passes.`
     : 'Fix the receiver, then send a new test. Tests are not retried automatically.'

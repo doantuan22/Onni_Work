@@ -171,31 +171,6 @@ describe('webhook endpoint configuration and activation fences', () => {
 
 });
 
-describe('chat receiver persistence', () => {
-  it('normalizes Discord URLs, persists format and provides no signing key', async () => {
-    const { registry, dir } = await setup();
-    const url = `https://canary.discord.com/api/v10/webhooks/123456789012345678/${'x'.repeat(68)}`;
-    const created = await registry.create({ name: 'Chat', format: 'discord.v1', url });
-    expect(created.secret).toBe('');
-    expect(created.receiver.format).toBe('discord.v1');
-    expect(registry.privateReceiver(created.receiver.id)?.url).toBe(url.replace('canary.discord.com/api/v10', 'discord.com/api'));
-    expect(registry.signingKeys(created.receiver.id)).toEqual([]);
-    await expect(registry.rotate(created.receiver.id, 1, 'graceful')).rejects.toThrow('do not use a signing key');
-    const reopened = await endpoints.EndpointRegistry.open(dir, { installationId: 'inst_test', highWater: () => 0, now: () => Date.now(), assertOwner() {} });
-    expect(reopened.list().receivers[0]?.format).toBe('discord.v1');
-    expect(JSON.stringify(reopened.list())).not.toContain('x'.repeat(68));
-  });
-  it('revalidates retained URLs and resets delivery state when changing format', async () => {
-    const { registry } = await setup();
-    const created = await registry.create({ name: 'Custom', url: 'https://example.com' });
-    const active = await registry.activate(created.receiver.id, 1);
-    await expect(registry.update(active.id, { name: 'Chat', format: 'slack.v1', expectedRevision: active.revision })).rejects.toThrow('selected destination type');
-    const edited = await registry.update(active.id, { name: 'Chat', format: 'slack.v1', url: 'https://hooks.slack.com/services/T1/B1/test', expectedRevision: active.revision });
-    expect(edited).toMatchObject({ format: 'slack.v1', state: 'inactive', deliveryRevision: 2, lastTest: 'none' });
-    expect(registry.privateReceiver(active.id)?.secret).toBe('');
-  });
-});
-
 describe('chat review regressions', () => {
   it('opens legacy custom chat-host rows without losing the registry', async () => {
     const { registry, dir } = await setup();
@@ -207,14 +182,15 @@ describe('chat review regressions', () => {
     expect(reopened.list().receivers[0]).toMatchObject({ name: 'Legacy', format: 'onni.json.v1' });
     await reopened.activate(reopened.list().receivers[0]!.id, 1);
   });
-  it('redacts original Discord aliases and bare tokens after normalization', async () => {
-    const { registry } = await setup();
-    const token = 's'.repeat(68);
-    const original = `https://discordapp.com/api/v10/webhooks/123456789012345678/${token}`;
-    const { receiver } = await registry.create({ name: 'Discord', format: 'discord.v1', url: original });
-    const values = endpoints.receiverSecretValues(registry.privateReceiver(receiver.id)!);
-    expect(values).toContain(token);
-    const created = await registry.create({ name: token, url: 'https://example.com/hook' });
-    expect(created.receiver.name).not.toContain(token);
+  it('drops a stored slack/discord receiver instead of failing the registry', async () => {
+    const { registry, dir } = await setup();
+    const kept = await registry.create({ name: 'Kept', url: 'https://example.com/hook' });
+    const removed = await registry.create({ name: 'Old Slack', url: 'https://example.com/other' });
+    const path = join(dir, 'endpoints.json'); const state = JSON.parse(readFileSync(path, 'utf8'));
+    state.receivers.find((receiver: { id: string }) => receiver.id === removed.receiver.id).format = 'slack.v1';
+    writeFileSync(path, JSON.stringify(state));
+    const reopened = await endpoints.EndpointRegistry.open(dir, { installationId: 'inst_test', highWater: () => 0, now: () => Date.now(), assertOwner() {} });
+    expect(reopened.list().receivers.map(receiver => receiver.id)).toEqual([kept.receiver.id]);
+    expect(reopened.list().history).toEqual(expect.arrayContaining([expect.objectContaining({ id: removed.receiver.id, name: 'Old Slack' })]));
   });
 });

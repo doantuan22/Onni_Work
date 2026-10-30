@@ -1,6 +1,4 @@
 import { validWebhookDestinationHost } from '@onni/contract';
-import { renderSlackMessage } from './slack.ts';
-import { renderDiscordMessage } from './discord.ts';
 import { readTrackerAssociation } from '../tracker-association.ts';
 import { canonicalTrackerLink } from './links.ts';
 import { WebhookHistory, pageRecords } from './history.ts';
@@ -497,13 +495,6 @@ export class WebhookService extends EventEmitter {
     }
     const body = delivery.body ?? (admission.source ? renderPayload(admission.source, delivery.profile, this.endpoints.live().flatMap(receiverSecretValues), disposition, this.options.repository) : undefined);
     if (!body) { await this.status(admission, delivery.id, 'failed', 'payload_invalid'); return; }
-    let wireBody: string;
-    try {
-      wireBody = delivery.format === 'slack.v1' ? renderSlackMessage(body, { receiverName: delivery.receiverName })
-        : delivery.format === 'discord.v1' ? renderDiscordMessage(body, { receiverName: delivery.receiverName }) : body;
-    } catch {
-      await this.status(admission, delivery.id, 'failed', 'payload_invalid'); return;
-    }
     const token = randomUUID();
     await this.admissions.update(admission.id, record => {
       const item = record.deliveries.find(item => item.id === delivery.id)!;
@@ -511,7 +502,7 @@ export class WebhookService extends EventEmitter {
       item.claim = { token, revision: receiver.revision, until: new Date(this.now() + 10000).toISOString() };
     });
     return { ...candidate, token, revision: receiver.revision, diagnosticSequence: this.endpoints.list().changeSequence, request: { url: receiver.url, format: delivery.format ?? 'onni.json.v1',
-      body: wireBody, eventId: admission.id, secrets: this.endpoints.signingKeys(receiver.id), diagnosticSecrets: this.diagnosticSecrets(),
+      body, eventId: admission.id, secrets: this.endpoints.signingKeys(receiver.id), diagnosticSecrets: this.diagnosticSecrets(),
       policy: { mode: admission.source?.mode === 'hosted' || receiver.activation?.mode === 'hosted' ? 'hosted' : this.options.mode, allowLocalNetwork: receiver.allowLocalNetwork, serverPorts: this.options.serverPorts() }, signal: this.abort.signal } };
   }
   private diagnosticSecrets(): string[] {
@@ -528,10 +519,7 @@ export class WebhookService extends EventEmitter {
       || claim.diagnosticSequence !== this.endpoints.list().changeSequence;
     result = redactWebhookDiagnostics(result, [...(claim.request.diagnosticSecrets ?? []), ...this.diagnosticSecrets()], omitText);
     const success = result.kind === 'http' && result.status >= 200 && result.status < 300;
-    const gone = result.kind === 'http' && (result.status === 410
-      || (claim.request.format === 'discord.v1' && (
-        (result.status === 404 && result.providerCode === 10015)
-        || (result.status === 401 && result.providerCode === 50027))));
+    const gone = result.kind === 'http' && result.status === 410;
     const outcome = success ? 'success' : result.kind === 'policy' ? 'policy' : gone ? 'gone'
       : result.kind === 'http' && result.status === 429 ? 'rate_limited' : result.kind === 'transient' || (result.kind === 'http' && (result.status === 408 || result.status >= 500)) ? 'transient' : 'permanent';
     await this.admissions.update(admission.id, record => {

@@ -1,26 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { createWebhookSchema, updateWebhookSchema } from '@onni/contract';
-const slack = 'https://hooks.slack.com/services/T1/B1/test';
-const discord = `https://discord.com/api/webhooks/123456789012345678/${'x'.repeat(68)}`;
-describe('chat receiver contract', () => {
+import { dropLegacyChatReceivers } from './endpoints.ts';
+describe('removed chat formats', () => {
   it('preserves the old custom default', () => {
     expect(createWebhookSchema.parse({ name: 'Old', url: 'http://localhost/hook' }).format).toBe('onni.json.v1');
   });
-  it.each([['slack.v1', slack], ['discord.v1', discord]])('accepts %s and rejects mismatches', (format, url) => {
-    expect(createWebhookSchema.safeParse({ name: 'Chat', format, url }).success).toBe(true);
-    for (const invalid of [url + '?wait=true', url + '#x', url.replace('https:', 'http:'), url.replace('.com/', '.com:443/'), url.replace('.com/', '.com.evil/'), url + '/slack']) {
-      expect(createWebhookSchema.safeParse({ name: 'Chat', format, url: invalid }).success, invalid).toBe(false);
-    }
-    expect(createWebhookSchema.safeParse({ name: 'Chat', format, url, allowLocalNetwork: true }).success).toBe(false);
-    expect(createWebhookSchema.safeParse({ name: 'Chat', url }).success).toBe(false);
+  it.each(['slack.v1', 'discord.v1'])('rejects %s on create and update', format => {
+    expect(createWebhookSchema.safeParse({ name: 'Chat', format, url: 'https://example.com/hook' }).success).toBe(false);
+    expect(updateWebhookSchema.safeParse({ name: 'Chat', format, expectedRevision: 1 }).success).toBe(false);
   });
-  it('accepts supported Discord aliases and versioned paths', () => {
-    for (const host of ['discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com']) {
-      expect(createWebhookSchema.safeParse({ name: 'Chat', format: 'discord.v1', url: discord.replace('discord.com', host).replace('/api/', '/api/v10/') }).success).toBe(true);
-    }
-  });
-  it('permits edits retaining the private URL but validates explicit URLs', () => {
-    expect(updateWebhookSchema.safeParse({ name: 'Chat', format: 'slack.v1', expectedRevision: 1 }).success).toBe(true);
-    expect(updateWebhookSchema.safeParse({ name: 'Chat', format: 'discord.v1', url: slack, expectedRevision: 1 }).success).toBe(false);
+  it('drops stored slack/discord receivers on read and leaves a history row for each', () => {
+    const custom = { id: 'c', name: 'Custom', format: 'onni.json.v1' };
+    const state = { version: 1, receivers: [{ id: 's', name: 'Slack', format: 'slack.v1' }, custom, { id: 'd', name: 'Discord', format: 'discord.v1' }], history: [], changeSequence: 3 };
+    const next = dropLegacyChatReceivers(state) as typeof state & { history: Array<{ kind: string; id: string; name: string }> };
+    expect(next.receivers).toEqual([custom]);
+    expect(next.history.map(({ kind, id, name }) => ({ kind, id, name }))).toEqual([{ kind: 'history', id: 's', name: 'Slack' }, { kind: 'history', id: 'd', name: 'Discord' }]);
+    expect(dropLegacyChatReceivers({ ...state, receivers: [custom] })).toEqual({ ...state, receivers: [custom] });
   });
 });

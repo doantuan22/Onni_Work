@@ -26,10 +26,27 @@ export const privateReceiverSchema = webhookStoredSettingsSchema.safeExtend({
   pauseReason: z.enum(['user', 'project_removal']).optional(),
 });
 export type PrivateReceiver = z.infer<typeof privateReceiverSchema>;
-const stateSchema = z.strictObject({
+const stateObjectSchema = z.strictObject({
   version: z.literal(1), receivers: z.array(privateReceiverSchema), history: z.array(webhookHistoricalReceiverSchema),
   changeSequence: counter, notice: webhookNoticeSchema.optional(),
 });
+/** Slack and Discord receivers (`slack.v1`/`discord.v1`) were removed (ADR 0004). Dropping them
+ *  on read keeps one legacy entry from failing the whole registry; each leaves a history row. */
+export function dropLegacyChatReceivers(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { receivers?: unknown }).receivers)) return raw;
+  const state = raw as { receivers: unknown[]; history?: unknown };
+  const legacy = state.receivers.filter(isLegacyChatReceiver);
+  if (!legacy.length || !Array.isArray(state.history)) return raw;
+  const deletedAt = new Date().toISOString();
+  return {
+    ...state,
+    receivers: state.receivers.filter(receiver => !isLegacyChatReceiver(receiver)),
+    history: [...state.history, ...legacy.map(({ id, name }) => ({ kind: 'history', id, name, deletedAt }))],
+  };
+}
+const isLegacyChatReceiver = (receiver: unknown): receiver is { id: unknown; name: unknown } =>
+  !!receiver && typeof receiver === 'object' && ['slack.v1', 'discord.v1'].includes((receiver as { format?: string }).format ?? '');
+const stateSchema = z.preprocess(dropLegacyChatReceivers, stateObjectSchema);
 type State = z.infer<typeof stateSchema>;
 export class WebhookStateError extends Error {
   constructor(readonly status: 404 | 409 | 429 | 503, message: string, readonly retryAt?: number) { super(message); }
@@ -130,7 +147,6 @@ export class EndpointRegistry {
   live(): PrivateReceiver[] { return structuredClone(this.state.receivers); }
   signingKeys(id: string): string[] {
     const receiver = this.get(id);
-    if (receiver.format !== 'onni.json.v1') return [];
     return [receiver.secret, ...(receiver.retired && Date.parse(receiver.retired.expiresAt) > this.deps.now() ? [receiver.retired.secret] : [])];
   }
   hasCapturingReceivers(): boolean { return this.state.receivers.some(receiver => receiver.state === 'active' || receiver.state === 'suspended'); }
@@ -143,8 +159,7 @@ export class EndpointRegistry {
   create(input: unknown): Promise<{ receiver: WebhookReceiver; secret: string }> {
     return this.serial(async () => {
       const settings = createWebhookSchema.parse(input); settings.name = redactSecrets(settings.name, [...this.secrets(), ...receiverSecretValues(settings)]);
-      settings.url = normalizeChatUrl(settings.url, settings.format);
-      const receiver: PrivateReceiver = { ...settings, id: randomUUID(), secret: settings.format === 'onni.json.v1' ? generateSigningKey() : '', state: 'inactive', revision: 1, deliveryRevision: 1,
+      const receiver: PrivateReceiver = { ...settings, id: randomUUID(), secret: generateSigningKey(), state: 'inactive', revision: 1, deliveryRevision: 1,
         createdAt: this.time(), updatedAt: this.time(), consecutiveFailures: 0, activationBlocked: false, lastTest: 'none' };
       const next = structuredClone(this.state); next.receivers.push(receiver);
       await this.commit(next, 'created', receiver.id, receiver.revision);
@@ -159,14 +174,9 @@ export class EndpointRegistry {
       if (!checked.success) throw new WebhookStateError(409, 'The saved destination does not match this configuration; enter a URL for the selected destination type');
       const settings = checked.data;
       settings.name = redactSecrets(settings.name, [...this.secrets(), ...receiverSecretValues(settings)]);
-      settings.url = normalizeChatUrl(settings.url, settings.format);
       const fields = (['format', 'name', 'url', 'profile', 'preset', 'events', 'includeScheduledFailures', 'scope', 'graceSeconds', 'allowLocalNetwork'] as const).filter(key => JSON.stringify(settings[key]) !== JSON.stringify(old[key]));
       const changed = fields.some(key => key !== 'name');
       const receiver = { ...old, ...settings, revision: old.revision + 1, updatedAt: this.time() };
-      if (settings.format !== old.format) {
-        receiver.secret = settings.format === 'onni.json.v1' ? generateSigningKey() : '';
-        receiver.retired = undefined;
-      }
       if (changed) {
         receiver.state = 'inactive'; receiver.deliveryRevision++; receiver.activation = undefined;
         receiver.activationBlocked = false; receiver.lastTest = 'none'; receiver.consecutiveFailures = 0; receiver.nextProbeAt = undefined;
@@ -206,7 +216,6 @@ export class EndpointRegistry {
   rotate(id: string, expectedRevision: number, mode: 'graceful' | 'revoke_now'): Promise<{ receiver: WebhookReceiver; secret: string }> {
     return this.serial(async () => {
       const old = this.get(id, expectedRevision);
-      if (old.format !== 'onni.json.v1') throw new WebhookStateError(409, 'Chat receivers do not use a signing key');
       if (mode === 'graceful' && old.retired && Date.parse(old.retired.expiresAt) > this.deps.now()) throw new WebhookStateError(409, 'A key overlap is already active');
       const receiver: PrivateReceiver = { ...old, secret: generateSigningKey(), retired: mode === 'graceful' ? { secret: old.secret, expiresAt: new Date(this.deps.now() + 86400000).toISOString() } : undefined, revision: old.revision + 1, updatedAt: this.time() };
       const next = structuredClone(this.state); next.receivers = next.receivers.map(item => item.id === id ? receiver : item);
@@ -266,15 +275,7 @@ export class EndpointRegistry {
   }
 }
 
-/** Accepted legacy Discord hosts and v10 paths share one destination and limiter bucket. */
-function normalizeChatUrl(url: string, format: PrivateReceiver['format']): string {
-  if (format !== 'discord.v1') return url;
-  return `https://discord.com${new URL(url).pathname.replace('/api/v10/', '/api/')}`;
-}
-
 /** Include the credential itself so aliases/normalization cannot bypass redaction. */
-export function receiverSecretValues(receiver: { url: string; format: PrivateReceiver['format']; secret?: string; retired?: { secret: string } }): string[] {
-  const values = [receiver.url, receiver.secret ?? '', receiver.retired?.secret ?? ''];
-  if (receiver.format !== 'onni.json.v1') values.push(new URL(receiver.url).pathname.split('/').at(-1) ?? '');
-  return values.filter(Boolean);
+export function receiverSecretValues(receiver: { url: string; secret?: string; retired?: { secret: string } }): string[] {
+  return [receiver.url, receiver.secret ?? '', receiver.retired?.secret ?? ''].filter(Boolean);
 }

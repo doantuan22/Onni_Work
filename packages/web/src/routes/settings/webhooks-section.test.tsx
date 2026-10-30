@@ -41,41 +41,14 @@ describe('project webhook settings', () => {
     mount(); expect(screen.getByText('Webhooks are off')).toBeTruthy()
     expect(screen.getByText(/ONNI_WEBHOOKS=1/)).toBeTruthy(); expect(mocks.list).not.toHaveBeenCalled()
   })
-  it('offers full Custom selection and keeps destination secrets out of warnings', async () => {
+  it('offers full Custom selection', async () => {
     mocks.enabled = true; mocks.list.mockResolvedValue({ receivers: [], history: [], historyCount: 0, changeSequence: 0, webhookHealth: { status: 'ready' } })
     mount(); await screen.findByText(/No receivers yet/); expect(screen.getByText(/Send a test, then activate it/)).toBeTruthy(); fireEvent.click(screen.getByRole('button', { name: 'Add receiver' }))
     expect(screen.getByText('Attention, review and results')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Events'), { target: { value: 'custom' } })
     expect(screen.getByLabelText('Task finished')).toBeTruthy(); expect(screen.getByLabelText('Task cancelled')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Receiver URL'), { target: { value: 'https://hooks.slack.com/services/private-value' } })
-    expect(screen.getByText(/This is a Slack webhook/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'How to build a receiver' }).getAttribute('href')).toBe('https://github.com/doantuan22/Onni_Work/blob/main/packages/work/docs/webhooks.md#external-automation-receivers')
     expect(screen.getByLabelText('Allow a receiver on this computer or private network').closest('details')).toBeNull()
-    expect(screen.getByText(/This is a Slack webhook/).textContent).not.toContain('private-value')
-  })
-  it.each(['slack.v1', 'discord.v1'])('hides signing key actions for %s receivers', async format => {
-    mocks.enabled = true
-    mocks.list.mockResolvedValue({ receivers: [{ kind: 'live', id: 'chat', name: 'Chat alerts', format, destination: 'https://example.com/[redacted]', state: 'active', revision: 1, profile: 'minimal', pendingCount: 0, inFlightCount: 0, consecutiveFailures: 0, lastTest: 'none' }], history: [], historyCount: 0, changeSequence: 0, webhookHealth: { status: 'ready' } })
-    mount()
-    await screen.findByText('Chat alerts')
-    expect(screen.getByText(format === 'slack.v1' ? 'Slack' : 'Discord')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Send test' })).toBeTruthy()
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'More actions for Chat alerts' }), { button: 0, ctrlKey: false })
-    const menu = await screen.findByRole('menu')
-    expect(within(menu).getAllByRole('menuitem').map(item => item.textContent)).toEqual(['Delete'])
-  })
-  it('does not reveal a key after creating a chat receiver', async () => {
-    mocks.enabled = true
-    mocks.list.mockResolvedValue({ receivers: [], history: [], historyCount: 0, changeSequence: 0, webhookHealth: { status: 'ready' } })
-    mocks.create.mockResolvedValue({ receiver: { id: 'chat', format: 'slack.v1' }, secret: 'UNEXPECTED_CHAT_SECRET' })
-    mount(); await screen.findByText(/No receivers yet/)
-    fireEvent.click(screen.getByRole('button', { name: 'Add receiver' }))
-    fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'slack.v1' } })
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Chat alerts' } })
-    fireEvent.change(screen.getByLabelText('Webhook URL'), { target: { value: 'https://hooks.slack.com/services/T1/B1/test' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save receiver' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(screen.queryByText('Save your signing key')).toBeNull()
   })
   it('never retains a returned key in the shared mutation cache', async () => {
     mocks.enabled = true; mocks.list.mockResolvedValue({ receivers: [], history: [], historyCount: 0, changeSequence: 0, webhookHealth: { status: 'ready' } })

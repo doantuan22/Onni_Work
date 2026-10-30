@@ -50,27 +50,9 @@ it('editing delivery settings warns an in-flight request may still arrive', asyn
  expect(dialog.textContent).toMatch(/already sending|in.flight|may still arrive/i)
 })
 
-it.each(['slack.v1', 'discord.v1'].flatMap(format => ['http_401', 'http_403'].map(reason => ({ format, reason }))))('native $format $reason gives URL repair advice', async({format, reason})=>{
- api.list.mockResolvedValue({receivers:[{...receiver,format}],history:[],historyCount:0,changeSequence:0,webhookHealth:{status:'ready'}})
- api.test.mockResolvedValue({deliveryId:'test-auth'})
- api.deliveries.mockResolvedValue({receiver:{...receiver,format,state:'disabled'},items:[{deliveryId:'test-auth',status:'failed',reason}],total:1,timezone:'UTC'})
- mount('');fireEvent.click(await screen.findByRole('button',{name:'Send test'}))
- expect(await screen.findByText(/Check.*webhook URL/)).toBeTruthy()
- expect(screen.queryByText(/signing key in its verifier/)).toBeNull()
-})
-
 it('custom receiver authentication failure retains signing-key repair advice', async()=>{
  api.test.mockResolvedValue({deliveryId:'test-auth'})
  api.deliveries.mockResolvedValue({receiver:{...receiver,format:'onni.json.v1'},items:[{deliveryId:'test-auth',status:'failed',reason:'http_401'}],total:1,timezone:'UTC'})
  mount('');fireEvent.click(await screen.findByRole('button',{name:'Send test'}))
  expect(await screen.findByText(/signing key in its verifier/)).toBeTruthy()
-})
-
-it('retains native URL advice after the tested receiver is deleted', async()=>{
- api.list.mockResolvedValue({receivers:[{...receiver,format:'discord.v1'}],history:[],historyCount:0,changeSequence:0,webhookHealth:{status:'ready'}})
- api.test.mockResolvedValue({deliveryId:'test-auth'})
- api.deliveries.mockResolvedValue({receiver:{kind:'history',id:'r',name:'Alerts',deletedAt:'2026-10-01T00:00:00Z'},items:[{deliveryId:'test-auth',status:'failed',reason:'http_403'}],total:1,timezone:'UTC'})
- mount('');fireEvent.click(await screen.findByRole('button',{name:'Send test'}))
- expect(await screen.findByText(/Check.*webhook URL/)).toBeTruthy()
- expect(screen.queryByText(/signing key in its verifier/)).toBeNull()
 })
