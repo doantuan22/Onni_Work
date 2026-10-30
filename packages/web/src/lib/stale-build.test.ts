@@ -29,14 +29,14 @@ describe('reloadForStaleBuild (telemetry c66965f8)', () => {
 
   it('does not loop: a chunk still missing right after a reload is a real failure', () => {
     const reload = vi.fn()
-    const storage = memoryStorage({ 'cez:stale-build-reload-at': String(1_000_000) })
+    const storage = memoryStorage({ 'onni:stale-build-reload-at': String(1_000_000) })
     expect(reloadForStaleBuild(storage, reload, 1_030_000)).toBe(false)
     expect(reload).not.toHaveBeenCalled()
   })
 
   it('tries again once the previous reload is long past', () => {
     const reload = vi.fn()
-    const storage = memoryStorage({ 'cez:stale-build-reload-at': String(1_000_000) })
+    const storage = memoryStorage({ 'onni:stale-build-reload-at': String(1_000_000) })
     expect(reloadForStaleBuild(storage, reload, 1_000_000 + 61_000)).toBe(true)
     expect(reload).toHaveBeenCalledTimes(1)
   })

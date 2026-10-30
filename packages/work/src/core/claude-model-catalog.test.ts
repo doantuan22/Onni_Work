@@ -72,7 +72,7 @@ function fakeChild(): {
   };
 }
 
-const answer = (models: unknown[], requestId = 'cez-list-models-1') => ({
+const answer = (models: unknown[], requestId = 'onni-list-models-1') => ({
   type: 'control_response',
   response: { subtype: 'success', request_id: requestId, response: { models } },
 });
@@ -110,11 +110,11 @@ describe('discoverClaudeModels', () => {
       { id: 'haiku', label: 'Haiku', description: '' },
     ]);
     expect(fake.requests).toEqual([
-      { type: 'control_request', request_id: 'cez-list-models-1', request: { subtype: 'list_models' } },
+      { type: 'control_request', request_id: 'onni-list-models-1', request: { subtype: 'list_models' } },
     ]);
   });
 
-  it('drops the CLI\'s own "default" row, which cezar already spells `auto`', async () => {
+  it('drops the CLI\'s own "default" row, which onni already spells `auto`', async () => {
     const { promise } = run((f) =>
       f.write(answer([
         { value: 'default', displayName: 'Default (recommended)' },
@@ -155,7 +155,7 @@ describe('discoverClaudeModels', () => {
         type: 'control_response',
         response: {
           subtype: 'error',
-          request_id: 'cez-list-models-1',
+          request_id: 'onni-list-models-1',
           error: 'Unsupported control request subtype: list_models',
         },
       }),

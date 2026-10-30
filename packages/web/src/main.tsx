@@ -12,19 +12,19 @@ import './styles/index.css'
  * whole split was for, a cockpit talking to a service somewhere else:
  *
  * - `VITE_CEZ_API_BASE` bakes it in at build time, for a bundle shipped separately.
- * - `<meta name="cez-api-base" content="…">` sets it at RUN time, so an operator can point a
+ * - `<meta name="onni-api-base" content="…">` sets it at RUN time, so an operator can point a
  *   deployed bundle at a different service without rebuilding it. It wins, because the HTML is
  *   served per deployment while the bundle is baked once.
  */
 function resolveApiBase(): string {
-  const meta = document.querySelector('meta[name="cez-api-base"]')?.getAttribute('content')
+  const meta = document.querySelector('meta[name="onni-api-base"]')?.getAttribute('content')
   return meta?.trim() || import.meta.env.VITE_CEZ_API_BASE || ''
 }
 
 setApiBaseUrl(resolveApiBase())
 
 const container = document.getElementById('root')
-if (!container) throw new Error('cezar: #root container is missing from index.html')
+if (!container) throw new Error('onni: #root container is missing from index.html')
 
 createRoot(container).render(
   <StrictMode>

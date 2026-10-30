@@ -350,7 +350,7 @@ export interface UiAskQuestion {
 
 /**
  * The agent asked the user a structured multiple-choice question via a
- * `CEZ:ASK` marker (spec `2026-07-18-askuser-across-runners`). Emitted by the
+ * `ONNI:ASK` marker (spec `2026-07-18-askuser-across-runners`). Emitted by the
  * RunManager off the assembled turn text — uniform across claude/codex/opencode
  * with no per-backend mapper work. The run parks `waiting`; the cockpit renders
  * clickable option chips. Resolution is client-side — the next user message for
@@ -360,7 +360,7 @@ export interface UiAskRequestedEvent {
   type: 'ask.requested';
   requestId: string;
   questions: UiAskQuestion[];
-  /** Who asks: absent = the agent (a `CEZ:ASK` marker); `'workflow'` = a graph gate or
+  /** Who asks: absent = the agent (a `ONNI:ASK` marker); `'workflow'` = a graph gate or
    *  question node (spec 2026-09-30-workflow-node-editor) — the card says so. */
   source?: 'workflow';
 }

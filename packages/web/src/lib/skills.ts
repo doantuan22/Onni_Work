@@ -11,7 +11,7 @@ import type { Skill, WorkflowDef } from '@onni/api-client'
  *  so they belong with project skills. Only `global` comes from the user's home catalog. */
 const PROJECT_SKILL_SOURCES: ReadonlySet<Skill['source']> = new Set([
   'ai',
-  'cezar',
+  'onni',
   'agents',
   'team',
 ])

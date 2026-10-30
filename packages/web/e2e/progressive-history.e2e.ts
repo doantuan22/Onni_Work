@@ -85,7 +85,7 @@ async function waitForHealth(baseUrl: string): Promise<void> {
     }
     await new Promise((resolveWait) => setTimeout(resolveWait, 250))
   }
-  throw new Error(`cezar e2e: fixture server never answered at ${baseUrl}`)
+  throw new Error(`onni e2e: fixture server never answered at ${baseUrl}`)
 }
 
 let browser: AgentBrowser
@@ -112,7 +112,7 @@ function navigateAndSampleArrival(runId: string): ArrivalSample[] {
   browser.evaluate(`(() => {
     const link = document.querySelector(${JSON.stringify(`a[href="${href}"]`)})
     if (!link) throw new Error('missing task navigation link: ${href}')
-    window.__cezArrivalSamples = []
+    window.__onniArrivalSamples = []
     let attempts = 0
     const sample = () => {
       attempts += 1
@@ -122,18 +122,18 @@ function navigateAndSampleArrival(runId: string): ArrivalSample[] {
       )
       const ready = destination?.querySelector('[data-slot="thread-rows"]')
       if (main && ready) {
-        window.__cezArrivalSamples.push({
+        window.__onniArrivalSamples.push({
           top: main.scrollTop,
           maxTop: main.scrollHeight - main.clientHeight,
         })
       }
-      if (window.__cezArrivalSamples.length < 6 && attempts < 120) requestAnimationFrame(sample)
+      if (window.__onniArrivalSamples.length < 6 && attempts < 120) requestAnimationFrame(sample)
     }
     requestAnimationFrame(sample)
     link.click()
   })()`)
-  browser.waitForFunction(`window.__cezArrivalSamples?.length >= 6`)
-  return browser.evaluate(`window.__cezArrivalSamples`) as ArrivalSample[]
+  browser.waitForFunction(`window.__onniArrivalSamples?.length >= 6`)
+  return browser.evaluate(`window.__onniArrivalSamples`) as ArrivalSample[]
 }
 
 function parkCurrentThread(): number {
@@ -147,12 +147,12 @@ function parkCurrentThread(): number {
 }
 
 beforeAll(async () => {
-  dataRoot = mkdtempSync(join(tmpdir(), 'cezar-e2e-progressive-history-'))
-  mkdirSync(join(dataRoot, '.ai/cezar/runs'), { recursive: true })
-  writeFileSync(join(dataRoot, '.ai/cezar/runs.json'), JSON.stringify([RUN, RUN_B], null, 2), 'utf8')
+  dataRoot = mkdtempSync(join(tmpdir(), 'onni-e2e-progressive-history-'))
+  mkdirSync(join(dataRoot, '.ai/onni/runs'), { recursive: true })
+  writeFileSync(join(dataRoot, '.ai/onni/runs.json'), JSON.stringify([RUN, RUN_B], null, 2), 'utf8')
   for (const runId of [RUN_ID, RUN_B_ID]) {
     writeFileSync(
-      join(dataRoot, '.ai/cezar/runs', `${runId}.ndjson`),
+      join(dataRoot, '.ai/onni/runs', `${runId}.ndjson`),
       events.map((event) => JSON.stringify(event)).join('\n') + '\n',
       'utf8',
     )

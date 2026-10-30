@@ -13,7 +13,7 @@ const step = (id: string, name: string, kind: 'agent' | 'check', status: string)
 
 function run(status: ApiRun['status'], over: Partial<ApiRun> = {}): ApiRun {
   return {
-    id: 'run-1', workflow: 'e2e-setup', status, branch: 'cez/abcd1234', title: 't', task: 't',
+    id: 'run-1', workflow: 'e2e-setup', status, branch: 'onni/abcd1234', title: 't', task: 't',
     createdAt: '2026-10-10T00:00:00Z', updatedAt: '2026-10-10T00:00:00Z',
     steps: [step('setup', 'Set up e2e', 'agent', 'done'), step('e2e-list', 'e2e config loads', 'check', 'done'), step('e2e-smoke', 'e2e smoke test', 'check', 'done')],
     ...over,
@@ -30,7 +30,7 @@ describe('e2e setup verdict', () => {
   it('says e2e works and names the branch left to merge', async () => {
     show(run('done'))
     expect(screen.getByText('e2e works')).toBeTruthy()
-    expect(screen.getByText('cez/abcd1234')).toBeTruthy()
+    expect(screen.getByText('onni/abcd1234')).toBeTruthy()
     expect(document.querySelector('[data-slot="e2e-setup-verdict"]')?.getAttribute('data-verdict')).toBe('works')
   })
 

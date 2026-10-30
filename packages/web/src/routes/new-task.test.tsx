@@ -161,10 +161,10 @@ const CONFIG: ConfigResponse = {
 }
 
 const WORKSPACE_CONFIG: WorkspaceConfigResponse = {
-  branding: { name: 'cezar', logoUrl: null },
+  branding: { name: 'onni', logoUrl: null },
   agentDefaults: {},
   browseRoot: '~/',
-  projectsDir: '~/cezar/projects',
+  projectsDir: '~/onni/projects',
   skillsAutoUpdate: null,
   effectiveSkillsAutoUpdate: true,
   orgSkillsRepos: [],
@@ -606,7 +606,7 @@ describe('picker data flows', () => {
     expect(document.querySelector('[data-slot="base-pill"]')).toBeNull()
   })
 
-  // #791: health is bound to the boot folder, so a cezar booted outside a git repo answered
+  // #791: health is bound to the boot folder, so a onni booted outside a git repo answered
   // `repo: null` for EVERY project. Reading git state from the project-scoped `/repo` instead is
   // what keeps the worktree controls alive for a git project under a non-git boot root.
   it('gates variants on the project repo, not the boot folder: boot without git still offers worktrees', async () => {
@@ -1963,7 +1963,7 @@ describe('the composer runner pill carries the account', () => {
       'claude · Default/home/u/.claude'.replace(/\s+/g, ' '),
       'claude · Klaudiusz~/.claude-klaudiusz'.replace(/\s+/g, ' '),
     ])
-    // Each row names its folder: the labels are cezar's invention, the folder is the account.
+    // Each row names its folder: the labels are onni's invention, the folder is the account.
     expect(options[1]?.textContent).toContain('~/.claude-klaudiusz')
   })
 
@@ -2397,7 +2397,7 @@ describe('trunk-based projects (spec 2026-10-20-trunk-based-projects)', () => {
   })
 
   it('lets the project default win over a Worktree choice remembered from before it changed', async () => {
-    localStorage.setItem('cez-new-task-draft', JSON.stringify({ worktree: true }))
+    localStorage.setItem('onni-new-task-draft', JSON.stringify({ worktree: true }))
     serve({ config: TRUNK_CONFIG, skills: TRUNK_SKILLS })
     renderNewTask()
     await pillReady('ingest')
@@ -2615,7 +2615,7 @@ it.each([
   expect(screen.queryByText(/Earliest start:/)).toBeNull()
   expect((screen.getByLabelText('Date') as HTMLInputElement).value).toBe('2099-01-01')
   expect(screen.queryByRole('button', { name: 'Recover original schedule' })).toBeNull()
-  expect(sessionStorage.getItem('cez-pending-schedule:default')).toBeNull()
+  expect(sessionStorage.getItem('onni-pending-schedule:default')).toBeNull()
   fireEvent.keyDown(textarea(), { key: 'Enter', ctrlKey: true })
   expect(postedBody()).toBeUndefined()
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
@@ -2633,7 +2633,7 @@ it('restores a frozen schedule from tab storage before a bookmarklet can start a
     previewRevision: 'original-revision',
     idempotencyKey: 'b76aee2a-0067-4410-bfd1-67096e0e6a14',
   }
-  sessionStorage.setItem('cez-pending-schedule:default', JSON.stringify(frozen))
+  sessionStorage.setItem('onni-pending-schedule:default', JSON.stringify(frozen))
   serve()
   renderNewTask('/new?skill=om-fix&ref=123&auto=1&key=k-real')
   await screen.findByRole('button', { name: 'Recover original schedule' })
@@ -2642,7 +2642,7 @@ it('restores a frozen schedule from tab storage before a bookmarklet can start a
   fireEvent.click(screen.getByRole('button', { name: 'Recover original schedule' }))
   await waitFor(() => expect(location()).toBe('/'))
   expect(requests.find(r => r.url.endsWith('/deferred-start'))?.body).toEqual(frozen)
-  expect(sessionStorage.getItem('cez-pending-schedule:default')).toBeNull()
+  expect(sessionStorage.getItem('onni-pending-schedule:default')).toBeNull()
   expect(postedBody()).toBeUndefined()
 })
 
@@ -2652,7 +2652,7 @@ it.each(['launched', 'cancelled'] as const)('recovers a terminal %s result witho
     start: { kind: 'usage-reset' }, previewRevision: 'original-revision',
     idempotencyKey: 'b76aee2a-0067-4410-bfd1-67096e0e6a14',
   }
-  sessionStorage.setItem('cez-pending-schedule:default', JSON.stringify(frozen))
+  sessionStorage.setItem('onni-pending-schedule:default', JSON.stringify(frozen))
   serve()
   const originalFetch = globalThis.fetch
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -2666,7 +2666,7 @@ it.each(['launched', 'cancelled'] as const)('recovers a terminal %s result witho
   await screen.findByRole('button', { name: 'Recover original schedule' })
   fireEvent.click(screen.getByRole('button', { name: 'Recover original schedule' }))
   await waitFor(() => expect(location()).toBe(outcome === 'launched' ? '/tasks/started-run' : '/'))
-  expect(sessionStorage.getItem('cez-pending-schedule:default')).toBeNull()
+  expect(sessionStorage.getItem('onni-pending-schedule:default')).toBeNull()
   expect(requests.filter(r => r.url.endsWith('/deferred-start'))).toHaveLength(1)
   expect(postedBody()).toBeUndefined()
 })

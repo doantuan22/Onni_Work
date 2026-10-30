@@ -21,12 +21,12 @@ describe('workspace skills update API', () => {
   let app: Hono;
 
   beforeEach(async () => {
-    home = mkdtempSync(join(tmpdir(), 'cez-skills-update-api-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-skills-update-api-'));
     process.env.CEZ_HOME = home;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-skills-update-repo-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-skills-update-repo-'));
     missingRoot = join(home, 'gone');
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     await mergeWriteWorkspaceConfig((config) => {
       config.projects = [
         { id: 'repo', name: 'Repo', root: repoRoot, addedAt: '', lastOpenedAt: '', source: 'local' },

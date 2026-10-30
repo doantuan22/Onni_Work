@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { runStatusSchema } from './runs.ts';
 
 /**
- * One-click browser e2e setup (spec `2026-10-10-e2e-one-click-setup`): cezar installs and
+ * One-click browser e2e setup (spec `2026-10-10-e2e-one-click-setup`): onni installs and
  * configures TesterArmy's `e2e` in a project as an ordinary task whose branch the user merges,
  * so the user never runs `npx e2e init`, edits a config or writes a workflow by hand.
  */
@@ -27,7 +27,7 @@ export type E2eCredentialName = z.infer<typeof e2eCredentialNameSchema>;
 export const e2eStatusSchema = z.object({
   /** The `e2e.config.*` file at the repository root, or `null`. */
   configFile: z.string().nullable(),
-  /** `.ai/cezar/workflows/implement-and-e2e.yaml` exists. */
+  /** `.ai/onni/workflows/implement-and-e2e.yaml` exists. */
   workflow: z.boolean(),
   /** Which of `E2E_CREDENTIAL_NAMES` the project's check steps can read (project or workspace secrets). */
   credentials: z.array(e2eCredentialNameSchema),

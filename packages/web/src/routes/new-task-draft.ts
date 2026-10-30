@@ -38,7 +38,7 @@ export interface NewTaskDraft {
   /** With the worktree off: fork the checkout onto a new branch from base first (spec
    *  2026-10-19-repo-git-sync). Sticky; ignored while the worktree is on. */
   newBranch?: boolean
-  /** The branch `newBranch` creates; empty → the namer's answer, else `cez/<id8>`. */
+  /** The branch `newBranch` creates; empty → the namer's answer, else `onni/<id8>`. */
   branchName?: string
   /** Autonomous (#autonomous): true never pauses for the user. null → remembered
    *  `lastAutonomous` / default (off). */
@@ -187,13 +187,13 @@ const EMPTY: NewTaskDraft = {
   dispatch: null,
 }
 
-const STORAGE_KEY = 'cez-new-task-draft'
+const STORAGE_KEY = 'onni-new-task-draft'
 
 /**
- * The per-project storage key (multi-project spec, "New task": `cez-new-task-draft:<projectId>`).
+ * The per-project storage key (multi-project spec, "New task": `onni-new-task-draft:<projectId>`).
  *
  * Drafts are project state — a half-typed task for the shop frontend must not surface in the
- * cezar composer when the project pill swaps scope — so each project gets its own key.
+ * onni composer when the project pill swaps scope — so each project gets its own key.
  *
  * `null` (the argument's default) keeps the BARE legacy key. That is the same "unscoped means
  * byte-identical" invariant the rest of step 3.1 keeps (`apiPath`, `queryScope`): the boot
@@ -348,7 +348,7 @@ export function writeAttachments(
  * Switching project while composing takes the composition with you (#1018).
  *
  * The per-project draft keys exist so a half-typed task for the shop frontend does not surface
- * in the cezar composer — and they should. But that rule was being applied to the one case it
+ * in the onni composer — and they should. But that rule was being applied to the one case it
  * was never about: the user did not NAVIGATE away, they changed their mind about where this
  * task belongs, mid-sentence, with a screenshot already pasted. The prompt and its attachments
  * are the thing being moved, so they move with it.

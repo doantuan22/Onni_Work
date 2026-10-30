@@ -45,8 +45,8 @@ it('re-derives queue reasons only when a hold input changes, not on every token 
 
 it('uses the configured Codex default for omitted-runner queue reasons and refreshes config changes', async () => {
   const root = mkdtempSync(join(tmpdir(), 'deferred-default-'));
-  mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-  const config = join(root, '.ai/cezar/config.json');
+  mkdirSync(join(root, '.ai/onni'), { recursive: true });
+  const config = join(root, '.ai/onni/config.json');
   writeFileSync(config, JSON.stringify({ defaultRunner: 'codex' }));
   const semaphore = new WorkspaceSemaphore();
   const a = RunStore.open(join(root, 'a'));

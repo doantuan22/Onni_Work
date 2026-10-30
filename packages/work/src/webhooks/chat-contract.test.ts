@@ -4,7 +4,7 @@ const slack = 'https://hooks.slack.com/services/T1/B1/test';
 const discord = `https://discord.com/api/webhooks/123456789012345678/${'x'.repeat(68)}`;
 describe('chat receiver contract', () => {
   it('preserves the old custom default', () => {
-    expect(createWebhookSchema.parse({ name: 'Old', url: 'http://localhost/hook' }).format).toBe('cezar.json.v1');
+    expect(createWebhookSchema.parse({ name: 'Old', url: 'http://localhost/hook' }).format).toBe('onni.json.v1');
   });
   it.each([['slack.v1', slack], ['discord.v1', discord]])('accepts %s and rejects mismatches', (format, url) => {
     expect(createWebhookSchema.safeParse({ name: 'Chat', format, url }).success).toBe(true);

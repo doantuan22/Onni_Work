@@ -31,13 +31,13 @@ import {
 
 /**
  * The React half of the saved layouts (spec `.ai/specs/2026-10-07-task-workspace.md` §5.3): the
- * pure transitions in `layout-state.ts`, bound to one task and mirrored to THE CEZAR THAT OWNS
- * THE TASK — §5.3: "Persist named layouts per task on the Cezar host that owns the task."
+ * pure transitions in `layout-state.ts`, bound to one task and mirrored to THE ONNI THAT OWNS
+ * THE TASK — §5.3: "Persist named layouts per task on the Onni host that owns the task."
  *
  * Host-side, not browser-side, and the difference is observable: the same task opened from a
- * second browser, a second profile or another machine against the same cezar is the same task and
+ * second browser, a second profile or another machine against the same onni is the same task and
  * shows the same layouts, and "Layouts are removed only when the task itself is permanently
- * deleted" becomes a promise something can actually keep. A local cezar and a VPS remain separate
+ * deleted" becomes a promise something can actually keep. A local onni and a VPS remain separate
  * stores because they are separate hosts, which is the rest of what §5.3 asks for.
  *
  * Switching tasks must never carry run A's columns into run B (§5.3). The read is asynchronous
@@ -231,7 +231,7 @@ export function useWorkspaceLayouts(taskId: string): WorkspaceLayouts {
           // A 400 is the host refusing THIS document; sending it again cannot go differently.
           if ((error as { status?: number } | null)?.status === 400) return report(true)
           // One refusal is not yet a fact about the host: a save that lands while the server is
-          // restarting, or loses a rename to another cezar on the same repo, succeeds a moment
+          // restarting, or loses a rename to another onni on the same repo, succeeds a moment
           // later. Without the second try that blip left "could not be saved" on screen — and the
           // layout really unsaved — until the user happened to change something else.
           if (retriesLeft > 0) {

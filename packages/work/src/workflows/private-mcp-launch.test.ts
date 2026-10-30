@@ -57,12 +57,12 @@ describe('private MCP servers at launch', { timeout: 20_000 }, () => {
 
   beforeEach(async () => {
     captured.specs.length = 0;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-private-mcp-launch-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-private-mcp-launch-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -74,7 +74,7 @@ describe('private MCP servers at launch', { timeout: 20_000 }, () => {
   });
 
   function writePrivateMcp(servers: Record<string, unknown>): void {
-    mkdirSync(join(repoRoot, '.ai', 'cezar'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai', 'onni'), { recursive: true });
     writeFileSync(privateMcpPath(repoRoot), JSON.stringify({ mcpServers: servers }));
   }
 
@@ -102,7 +102,7 @@ describe('private MCP servers at launch', { timeout: 20_000 }, () => {
     const opening = await specAt(0);
     expect(opening.mcpServers?.map((s) => s.name)).toEqual(['tracker']);
     await settled(record.id);
-    expect(notes(record.id)).toContain('private MCP servers from .ai/cezar/mcp.local.json: tracker');
+    expect(notes(record.id)).toContain('private MCP servers from .ai/onni/mcp.local.json: tracker');
 
     // An edit between sessions applies to the next one — no restart, no cache.
     writePrivateMcp({ tracker: { command: 'tracker-mcp' }, docs: { type: 'http', url: 'https://mcp.example.com/mcp' } });
@@ -128,7 +128,7 @@ describe('private MCP servers at launch', { timeout: 20_000 }, () => {
   });
 
   it('a broken file is a note, never a failed run', async () => {
-    mkdirSync(join(repoRoot, '.ai', 'cezar'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai', 'onni'), { recursive: true });
     writeFileSync(privateMcpPath(repoRoot), '{not json');
     const record = manager!.startRun(TASK, { task: 'do it', worktree: false, runner: 'claude' });
     expect((await specAt(0)).mcpServers).toBeUndefined();

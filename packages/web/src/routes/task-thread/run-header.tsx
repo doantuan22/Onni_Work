@@ -764,7 +764,7 @@ function MetaRow({
    *  plain text, because the route it used to link to is disabled. */
   automationsAvailable: boolean
 }) {
-  // #526: the issue chip may be synthesized from the CEZ:ISSUE marker, and the only repository
+  // #526: the issue chip may be synthesized from the ONNI:ISSUE marker, and the only repository
   // such a link may name is the one on screen — never the transcript's.
   const repoBase = useProjectRepoBase()
   // `workflowLabel` so an inline chain shows its first step's name, not the bare "(planned)"
@@ -848,7 +848,7 @@ function MetaRow({
 /** The task's references, resolved once for the whole header so every chip — the PR chips by the
  *  git button, the issue chip in the details row — is answered by the same status batch. */
 export function useRunReferences(run: ApiRun) {
-  // #526: a chip may be synthesized from a CEZ:PR / CEZ:ISSUE marker, and the only repository
+  // #526: a chip may be synthesized from a ONNI:PR / ONNI:ISSUE marker, and the only repository
   // such a link may name is the one on screen — never the transcript's.
   const repoBase = useProjectRepoBase()
   // At most a handful of references here, so this is a small batch rather than a table's — but it
@@ -878,7 +878,7 @@ function prChipNodes(run: ApiRun, references: ReturnType<typeof taskReferences>)
   // follow-up of its own is about both; the first is on the row and all of them are one hover away.
   //
   // A reference with no URL still gets its chip, exactly as All tasks paints it: a number-only
-  // reference is what a `CEZ:PR` declaration looks like before any link is scraped, and the two
+  // reference is what a `ONNI:PR` declaration looks like before any link is scraped, and the two
   // pages read their repository from DIFFERENT places (this one from health's remote, All tasks
   // from the project registry's `repoUrl`) — so "no URL here" never means "nothing to show".
   // `ReferenceChip` degrades such a chip to inert text on its own.
@@ -887,7 +887,7 @@ function prChipNodes(run: ApiRun, references: ReturnType<typeof taskReferences>)
   )
   // The one PR `taskReferences` cannot express: a forge URL whose last segment is not a number
   // (`taskPrUrl`'s own tolerance — an unrecognized forge still gets a working link, just without
-  // a number cezar would be inventing). Gated on that URL not being listed already, NOT on there
+  // a number onni would be inventing). Gated on that URL not being listed already, NOT on there
   // being no PRs at all: a forge whose PR URLs do not end in a number (#847's GitLab adapter)
   // would otherwise have a `prNumber` chip standing in front of a link that never rendered.
   const prUrl = taskPrUrl(run)
@@ -1405,7 +1405,7 @@ function ResumeHintLine({ hint }: { hint: string }) {
   )
 }
 
-const HEADER_COLLAPSED_KEY = 'cez:run-header-collapsed'
+const HEADER_COLLAPSED_KEY = 'onni:run-header-collapsed'
 
 /** Whether the desktop header is folded — one answer for every task, kept in this browser. */
 function useHeaderCollapsed(): [boolean, (next: boolean) => void] {

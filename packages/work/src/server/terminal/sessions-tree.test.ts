@@ -79,7 +79,7 @@ describe('stopping a session signals every process group under its shell', () =>
     sessions.dispose();
   });
 
-  it('never signals a group the shell does not own, nor cezar’s own', async () => {
+  it('never signals a group the shell does not own, nor onni’s own', async () => {
     const { sessions } = await open(tree);
     sessions.closeAll();
     const touched = signals.map(([pid]) => pid);
@@ -89,7 +89,7 @@ describe('stopping a session signals every process group under its shell', () =>
     sessions.dispose();
   });
 
-  it('walks nothing when the pid is not cezar’s own child (a recycled pid)', async () => {
+  it('walks nothing when the pid is not onni’s own child (a recycled pid)', async () => {
     const recycled = tree().map((row) => (row.pid === SHELL ? { ...row, ppid: 1 } : row));
     const { sessions } = await open(() => recycled);
     sessions.closeAll();

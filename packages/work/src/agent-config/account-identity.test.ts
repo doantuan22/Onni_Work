@@ -15,7 +15,7 @@ describe('readAccountIdentity', () => {
   let home: string;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-identity-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-identity-'));
   });
 
   afterEach(() => {
@@ -156,10 +156,10 @@ describe('readAccountIdentity', () => {
   });
 
   it.each([
-    ['opencode', 'OpenCode keeps its login outside its config folder, so cezar cannot read it.'],
-    ['pi', 'cezar does not yet read Pi account details from its config folder.'],
-    ['junie', 'cezar does not yet read Junie account details from its config folder.'],
-    ['copilot', 'cezar does not yet read Copilot account details from its config folder.'],
+    ['opencode', 'OpenCode keeps its login outside its config folder, so onni cannot read it.'],
+    ['pi', 'onni does not yet read Pi account details from its config folder.'],
+    ['junie', 'onni does not yet read Junie account details from its config folder.'],
+    ['copilot', 'onni does not yet read Copilot account details from its config folder.'],
   ] as const)('%s gets its own unsupported-provider reason without a CLI read', async (provider, reason) => {
     const identity = await readAccountIdentity(provider, home);
     expect(identity).toEqual({ available: false, reason, fields: [] });

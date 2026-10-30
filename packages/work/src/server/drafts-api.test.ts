@@ -58,8 +58,8 @@ describe('/api/v1/runs/:id/drafts', () => {
   const png = 'iVBORw0KGgoAAAANSUhEUg==';
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-drafts-api-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-drafts-api-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,
@@ -164,11 +164,11 @@ describe('/api/v1/runs/:id/drafts', () => {
 
   it('deleting the run deletes its drafts — an unreachable draft is not kept', async () => {
     await put('composer', { text: 'never sent' });
-    expect(existsSync(join(repoRoot, '.ai/cezar', 'drafts', run.id))).toBe(true);
+    expect(existsSync(join(repoRoot, '.ai/onni', 'drafts', run.id))).toBe(true);
 
     const res = await apiRequest(app, `/api/v1/runs/${run.id}`, { method: 'DELETE' });
     expect(res.status).toBe(200);
-    expect(existsSync(join(draftsRoot(join(repoRoot, '.ai/cezar')), run.id))).toBe(false);
+    expect(existsSync(join(draftsRoot(join(repoRoot, '.ai/onni')), run.id))).toBe(false);
   });
 
   describe('attachments', () => {

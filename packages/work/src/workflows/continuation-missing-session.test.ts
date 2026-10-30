@@ -61,12 +61,12 @@ describe('Continue on a Claude session whose transcript is gone', { timeout: 20_
     captured.specs.length = 0;
     captured.resumeError = 'No conversation found with session ID: old-session';
     captured.freshError = '';
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-missing-session-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-missing-session-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 

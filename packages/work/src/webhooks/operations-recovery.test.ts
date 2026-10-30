@@ -22,7 +22,7 @@ async function setup(action: 'test' | 'retry' | 'replay' = 'test') {
   vi.stubEnv('CEZ_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-recovery-')); roots.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const dataDir = join(root, '.ai/cezar'), directory = join(dataDir, 'webhooks');
+  const dataDir = join(root, '.ai/onni'), directory = join(dataDir, 'webhooks');
   const send = vi.fn(async () => ({ kind: 'http' as const, status: 204 }));
   const options = { root, dataDir, projectId: 'fixture', mode: 'local' as const, serverPorts: () => [], scheduler: new WebhookScheduler(), now: () => now, send };
   const open = async () => { const service = (await WebhookService.open(options))!; services.push(service); return service; };

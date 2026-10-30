@@ -11,7 +11,7 @@ import { join } from 'node:path';
  * and another in a `Makefile`, and a user about to hand a shell a command deserves to see which
  * one they are about to run.
  *
- * Zero config, like everything else cezar discovers: no manifest, no list to maintain, and a
+ * Zero config, like everything else onni discovers: no manifest, no list to maintain, and a
  * project with none of these files simply offers nothing and lets the user type their own.
  */
 

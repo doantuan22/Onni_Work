@@ -31,7 +31,7 @@ const GIVE_UP_INSTALLING_MS = 600_000
 const START_SCRIPTS = ['dev', 'start', 'serve', 'preview', 'run']
 
 /** The command this browser last started the app with, per project — a convenience, never config. */
-export const rememberedCommandKey = (projectId: string | null) => `cez:preview-run:${projectId ?? 'default'}`
+export const rememberedCommandKey = (projectId: string | null) => `onni:preview-run:${projectId ?? 'default'}`
 
 function readRemembered(projectId: string | null): string | null {
   try {

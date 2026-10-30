@@ -7,7 +7,7 @@ import { onTodosChanged, todosPath, todosWatchActive } from './todos.ts';
 
 /**
  * Per-dataDir todos watch (multi-project spec, step 2.3): each project's
- * `.ai/cezar` gets its own fs watcher + emitter, created on first
+ * `.ai/onni` gets its own fs watcher + emitter, created on first
  * subscription and torn down when the last subscriber leaves — so with N
  * projects open, A's todos.json writes fire A's subscribers only.
  */
@@ -33,9 +33,9 @@ describe('per-dataDir todos watch (step 2.3)', () => {
   const cleanups: Array<() => void> = [];
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-todos-watch-'));
-    dirA = join(root, 'project-a', '.ai/cezar');
-    dirB = join(root, 'project-b', '.ai/cezar');
+    root = mkdtempSync(join(tmpdir(), 'onni-todos-watch-'));
+    dirA = join(root, 'project-a', '.ai/onni');
+    dirB = join(root, 'project-b', '.ai/onni');
   });
 
   afterEach(() => {

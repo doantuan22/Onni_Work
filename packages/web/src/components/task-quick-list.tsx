@@ -445,7 +445,7 @@ const RunRow = React.memo(function RunRow({
   // The strongest tracker reference the run knows about — the PR once one exists, else the issue
   // it was opened on. It is the row's leading chip AND the reason the title may drop its `NNN: `
   // prefix (#788, option C): the number is painted once, as a link, instead of twice as digits.
-  // With the row's project repo, so a PR known only by number (`CEZ:PR=…`) is still a link.
+  // With the row's project repo, so a PR known only by number (`ONNI:PR=…`) is still a link.
   const reference = taskReference(run, React.useContext(RepoBaseContext))
   const title = runTitle(run)
   // Only when the two numbers are the same number — see `refPrefixMatches`. A run opened on issue

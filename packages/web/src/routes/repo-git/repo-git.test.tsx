@@ -892,7 +892,7 @@ describe('the repo view sync strip', () => {
     })
     renderAt('/git')
     await waitFor(() => expect(document.querySelector('[data-action="repo-pull"]')).not.toBeNull())
-    // git's verdict, not a cezar failure: shown, never an error report (telemetry 9202a06a).
+    // git's verdict, not a onni failure: shown, never an error report (telemetry 9202a06a).
     const reported: string[] = []
     const off = onDangerToast((message) => reported.push(message))
     fireEvent.click(document.querySelector('[data-action="repo-pull"]')!)

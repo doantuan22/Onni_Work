@@ -108,7 +108,7 @@ import { parseNewTaskParams } from './new-task-params'
 // the memory copy still protects navigation within the running cockpit.
 const pendingSchedules = new Map<string, DeferredCreateInput>()
 function scheduleRecoveryKey(projectId: string | null) {
-  return `cez-pending-schedule:${projectId ?? 'default'}`
+  return `onni-pending-schedule:${projectId ?? 'default'}`
 }
 function readScheduleRecovery(key: string): DeferredCreateInput | null {
   const cached = pendingSchedules.get(key)

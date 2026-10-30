@@ -13,7 +13,7 @@ function containsRunnerToken(text: string, runner: string): boolean {
   return new RegExp(`(?:^|[^A-Za-z0-9_-])${runner}(?=$|[^A-Za-z0-9_-])`).test(text);
 }
 
-/** The prompts are the ONLY place an agent learns the `cez automation` CLI and the definition
+/** The prompts are the ONLY place an agent learns the `onni automation` CLI and the definition
  *  shape, so they must name every command, every event and every key the storage schema accepts. */
 describe('the automations prompt part', () => {
   it('teaches the CLI through the cockpit’s own entrypoint, and the create → check → enable order', () => {
@@ -120,10 +120,10 @@ describe('the definition reference', () => {
 
 describe('the built-in skill body', () => {
   it('walks the create → preview → report path and embeds the reference', () => {
-    expect(CREATE_AUTOMATION_SKILL_NAME).toBe('create-cezar-automation');
+    expect(CREATE_AUTOMATION_SKILL_NAME).toBe('create-onni-automation');
     expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$CEZ_BIN" automation create --file');
     expect(CREATE_AUTOMATION_SKILL_BODY).toContain('node "$CEZ_BIN" automation check <id>');
-    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('cez automation update <id> --file');
+    expect(CREATE_AUTOMATION_SKILL_BODY).toContain('onni automation update <id> --file');
     expect(CREATE_AUTOMATION_SKILL_BODY).toContain(AUTOMATION_SCHEMA_REFERENCE);
     expect(CREATE_AUTOMATION_SKILL_BODY).toMatch(/created PAUSED/);
     expect(CREATE_AUTOMATION_SKILL_BODY).toMatch(/ask one precise question and stop/);

@@ -12,7 +12,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 
 /**
  * Global settings → Resources (step 3.5): `maxParallel` and `memoryLimitMb` moved out of the
- * per-repo config into `~/.cezar/config.json` (spec §"Resource governance" — they protect the
+ * per-repo config into `~/.onni/config.json` (spec §"Resource governance" — they protect the
  * host, not a repo). What this pins is the store: every read and write goes to
  * `/api/v1/workspace/config`, and the per-repo `/api/v1/config` is never touched from here — a
  * regression there would silently re-introduce a value the engine no longer reads.
@@ -26,10 +26,10 @@ let requests: Array<{ method: string; url: string; body?: unknown }> = []
 function serve(resources: Partial<WorkspaceConfigResponse['resources']> = {}) {
   requests = []
   const state: WorkspaceConfigResponse = {
-    branding: { name: 'cezar', logoUrl: null },
+    branding: { name: 'onni', logoUrl: null },
     agentDefaults: {},
     browseRoot: '~/',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
     skillsAutoUpdate: null,
     effectiveSkillsAutoUpdate: true,
     orgSkillsRepos: [],
@@ -78,7 +78,7 @@ function gateSeededClient() {
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: [],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   return client
 }

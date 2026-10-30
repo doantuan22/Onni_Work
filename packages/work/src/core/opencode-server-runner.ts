@@ -45,7 +45,7 @@ export interface OpencodeRunnerOptions {
 export const SERVER_START_TIMEOUT_MS = 30_000;
 /** Hard cap on startup however chatty the server is. */
 export const SERVER_START_MAX_MS = 180_000;
-/** How often the port cezar asked for is probed while waiting for the URL line. */
+/** How often the port onni asked for is probed while waiting for the URL line. */
 export const SERVER_PROBE_INTERVAL_MS = 500;
 /** Spawns per session before a taken port is fatal (see `listen()`). */
 export const SERVER_PORT_ATTEMPTS = 3;
@@ -136,7 +136,7 @@ class OpencodeStatusError extends Error {
 export function unsupportedServerMessage(status: number): string {
   return (
     `this OpenCode server has no POST /session route (HTTP ${status}). ` +
-    'OpenCode 2.x replaced the server API cezar drives and is not supported yet — ' +
+    'OpenCode 2.x replaced the server API onni drives and is not supported yet — ' +
     'install OpenCode 1.x (npm install -g opencode-ai@1) to run OpenCode tasks.'
   );
 }
@@ -425,7 +425,7 @@ class OpencodeSession implements AgentSession {
 
   /**
    * Resolve the server's base URL from whichever comes first: the URL line on
-   * stdout or stderr, or the port cezar asked for answering `GET /path` with
+   * stdout or stderr, or the port onni asked for answering `GET /path` with
    * this run's own directory (#1179 made a missing line fatal; a slow or
    * differently-worded start must not be). Fails only on exit, on
    * `SERVER_START_TIMEOUT_MS` of silence, or at `SERVER_START_MAX_MS`.
@@ -506,7 +506,7 @@ class OpencodeSession implements AgentSession {
   private async bootstrap(): Promise<void> {
     let created: Record<string, unknown>;
     try {
-      created = await this.http('POST', '/session', { title: 'cezar task' });
+      created = await this.http('POST', '/session', { title: 'onni task' });
     } catch (err) {
       // OpenCode 2.x moved its whole server API under `/api` with new payloads
       // and events, so its server refuses the 1.x route (telemetry dc1a91a6).
@@ -598,7 +598,7 @@ class OpencodeSession implements AgentSession {
    * exited — produces exactly one.
    *
    * `fromIdle` marks the one exit that is the session's own word for "the turn
-   * is over". Every other exit is cezar synthesizing a boundary, and if the
+   * is over". Every other exit is onni synthesizing a boundary, and if the
    * POST also dropped during this turn that drop was never explained: report it
    * then, so a server that really did die does not go quiet just because #897
    * stopped a live one from being parked.
@@ -895,7 +895,7 @@ function textOf(content: ContentBlock[]): string {
  * The reply to one OpenCode permission prompt. Only this run's own state
  * outside the worktree is granted: its handoff file (`CEZ_HANDOFF_FILE`), the
  * files in its pasted-attachments folder (`runs/<CEZ_TASK_ID>-images/`), and
- * its scratch directory when cezar set `TMPDIR` to it (#785). A config rule
+ * its scratch directory when onni set `TMPDIR` to it (#785). A config rule
  * cannot do this — OpenCode matches rules against the whole parent directory
  * (`runs/*`), which would expose every other task's transcript. Paths are
  * compared after following symlinks. Everything else is refused, `once` so no

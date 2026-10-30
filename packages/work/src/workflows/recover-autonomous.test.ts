@@ -28,13 +28,13 @@ describe('recover() and the autonomous flag (#489)', () => {
   let store: RunStore;
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-recover-auto-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-auto-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   const frozen = () => new WorkspaceSemaphore({ initial: { maxParallel: 0 } });

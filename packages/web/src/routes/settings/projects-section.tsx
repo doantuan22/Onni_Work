@@ -134,7 +134,7 @@ function ProjectsPane({
         value={config.projectsDir}
         title="Default checkout folder"
         hint="Where “Clone from GitHub” and “New project” put new projects: <folder>/<project name>."
-        placeholder="~/cezar/projects"
+        placeholder="~/onni/projects"
         slot="checkout"
         savedLabel="Checkout folder"
         footer="Only affects new checkouts; projects already registered keep their location."
@@ -270,7 +270,7 @@ function RegistryTable({
   return (
     <SettingsField
       title="Registered projects"
-      hint={`The folders you have added. While this list is empty the folder cezar is serving is listed as “not registered” with an Add button; once you have projects, starting cezar somewhere new neither registers nor lists that folder — use “Add project” when you want to keep it. “Tags” group connected repositories — give the API, the web app and the design system a shared “storefront” tag and the global Tasks page can show all three as one piece of work. “Max parallel” caps how many of that project's tasks run at once (leave it empty to inherit the workspace limit); the workspace limit (${workspaceMax}) still applies as an overall ceiling, so a per-project value above it has no extra effect until the workspace limit is raised. Removing a project only unregisters it — no files on disk are deleted.`}
+      hint={`The folders you have added. While this list is empty the folder onni is serving is listed as “not registered” with an Add button; once you have projects, starting onni somewhere new neither registers nor lists that folder — use “Add project” when you want to keep it. “Tags” group connected repositories — give the API, the web app and the design system a shared “storefront” tag and the global Tasks page can show all three as one piece of work. “Max parallel” caps how many of that project's tasks run at once (leave it empty to inherit the workspace limit); the workspace limit (${workspaceMax}) still applies as an overall ceiling, so a per-project value above it has no extra effect until the workspace limit is raised. Removing a project only unregisters it — no files on disk are deleted.`}
     >
       {/* Defensive: `GET /api/v1/projects` names at least the folder this server is serving
           whenever the registry is empty (the unregistered row), and the registry's own rows
@@ -283,7 +283,7 @@ function RegistryTable({
       ) : (
         <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
-            {/* Not "registered": this table also renders the folder cezar is serving without
+            {/* Not "registered": this table also renders the folder onni is serving without
                 having saved it, whose only action is Add project. A screen-reader user was told
                 the list was registered projects and then met a row that is the opposite. */}
             <caption className="sr-only">Projects in this workspace</caption>
@@ -430,7 +430,7 @@ function ProjectRow({
             aria-label={`Remove ${project.name} from the workspace — unregisters it, no files are deleted`}
             // The boot project is refused server-side too (this server runs out of it);
             // disabling here means the user gets the explanation before the click, not after.
-            title={isBoot ? 'cezar is serving this project — stop it and use `cezar projects remove`' : undefined}
+            title={isBoot ? 'onni is serving this project — stop it and use `onni projects remove`' : undefined}
             disabled={disabled || isBoot}
             onClick={onRemove}
           >
@@ -443,7 +443,7 @@ function ProjectRow({
 }
 
 /**
- * The one gesture an unregistered boot row can offer: save the folder cezar is currently serving.
+ * The one gesture an unregistered boot row can offer: save the folder onni is currently serving.
  * It goes through the ordinary `POST /api/v1/projects` — same guards, same 409 on a folder
  * already registered — so a root the server refuses (`$HOME`, a task worktree, which can also be
  * boot roots) answers with its own explanation and this button surfaces it verbatim rather than
@@ -474,8 +474,8 @@ export function AddBootProjectButton({
       aria-label={`Add ${name} to your projects`}
       title={
         notAddable
-          ? 'Your home directory or a cezar task worktree cannot be a project — start cezar in a project folder, or use Open local folder'
-          : 'cezar is serving this folder — save it to your projects'
+          ? 'Your home directory or a onni task worktree cannot be a project — start onni in a project folder, or use Open local folder'
+          : 'onni is serving this folder — save it to your projects'
       }
       disabled={disabled || notAddable || register.isPending}
       onClick={() =>
@@ -495,7 +495,7 @@ export function AddBootProjectButton({
  *
  * The point is cross-repo work: tag the API, the web app and the design system `storefront` and
  * the global Tasks page (`/tasks`) can show all three as one list, or split every project's tasks
- * by tag. Nothing else in cezar reads them, deliberately — a tag is a lens, not a permission, a
+ * by tag. Nothing else in onni reads them, deliberately — a tag is a lens, not a permission, a
  * queue or a routing rule.
  *
  * Bound to the server value with no local mirror of the list: the chips render `project.tags`

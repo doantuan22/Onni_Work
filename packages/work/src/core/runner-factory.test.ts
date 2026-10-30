@@ -15,7 +15,7 @@ vi.mock('../disk-space.ts', async (importOriginal) => {
 
 /** 27d2e432: an agent spawned in a task worktree that no longer exists. */
 describe('createRunner refuses a working directory that is gone', () => {
-  const gone = join(tmpdir(), 'cez-gone-worktree-27d2e432', 'never-created');
+  const gone = join(tmpdir(), 'onni-gone-worktree-27d2e432', 'never-created');
 
   it.each(RUNNER_IDS)('%s: startSession throws an actionable error before spawning', (id) => {
     const runner = createRunner(id);
@@ -56,7 +56,7 @@ describe('createRunner refuses a volume below the free-space floor', () => {
 
   it('a gone directory still reports as gone, not as a full disk', () => {
     disk.space = { freeBytes: 0, totalBytes: 500 * GIB };
-    const gone = join(tmpdir(), 'cez-gone-worktree-27d2e432', 'never-created');
+    const gone = join(tmpdir(), 'onni-gone-worktree-27d2e432', 'never-created');
     expect(() => createRunner('claude').startSession({ userPrompt: 'hi', cwd: gone })).toThrow(/does not exist/);
   });
 

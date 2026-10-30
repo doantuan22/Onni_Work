@@ -50,7 +50,7 @@ function seed(
 function renderContainer(client: QueryClient) {
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/p/cezar/']}>
+      <MemoryRouter initialEntries={['/p/onni/']}>
         <ProviderBannerContainer />
         <Toaster />
       </MemoryRouter>

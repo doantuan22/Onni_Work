@@ -32,7 +32,7 @@ describe('agentTmpEnv — per-run temp directory (#785)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(realpathSync(tmpdir()), 'cez-agent-tmpdir-'));
+    dataDir = mkdtempSync(join(realpathSync(tmpdir()), 'onni-agent-tmpdir-'));
   });
 
   afterEach(() => {
@@ -100,7 +100,7 @@ describe('agentTmpEnv — per-run temp directory (#785)', () => {
 
   describe('CEZ_AGENT_TMPDIR=0 opt-out', () => {
     it('leaves the host TMPDIR in force and mints no directory', () => {
-      const host = mkdtempSync(join(realpathSync(tmpdir()), 'cez-host-tmp-'));
+      const host = mkdtempSync(join(realpathSync(tmpdir()), 'onni-host-tmp-'));
       try {
         const env = agentTmpEnv(dataDir, 'run-f', { CEZ_AGENT_TMPDIR: '0', TMPDIR: host });
         expect(env).toEqual({});
@@ -140,7 +140,7 @@ describe('reaping the per-run temp directories (#785)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(realpathSync(tmpdir()), 'cez-agent-tmpdir-reap-'));
+    dataDir = mkdtempSync(join(realpathSync(tmpdir()), 'onni-agent-tmpdir-reap-'));
   });
 
   afterEach(() => {
@@ -188,7 +188,7 @@ describe('reaping the per-run temp directories (#785)', () => {
     expect(existsSync(agentTmpDir(dataDir, 'orphan-1'))).toBe(false);
   });
 
-  // BACKWARD_COMPATIBILITY §3: `.ai/cezar/` is a protected surface. The sweep is
+  // BACKWARD_COMPATIBILITY §3: `.ai/onni/` is a protected surface. The sweep is
   // confined to its own `tmp/` subtree and must never see a sibling.
   it('never touches sibling run state', () => {
     agentTmpEnv(dataDir, 'orphan', {});

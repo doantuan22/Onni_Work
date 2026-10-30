@@ -9,8 +9,8 @@ let home: string;
 let env: NodeJS.ProcessEnv;
 
 beforeEach(() => {
-  repo = realpathSync(mkdtempSync(join(tmpdir(), 'cez-repo-')));
-  home = realpathSync(mkdtempSync(join(tmpdir(), 'cez-home-')));
+  repo = realpathSync(mkdtempSync(join(tmpdir(), 'onni-repo-')));
+  home = realpathSync(mkdtempSync(join(tmpdir(), 'onni-home-')));
   env = { HOME: home } as NodeJS.ProcessEnv;
 });
 afterEach(() => {
@@ -95,7 +95,7 @@ describe('writeConfigFile', () => {
 
   it('writes THROUGH a symlink instead of replacing it', async () => {
     // ~/.claude → a dotfiles dir; writing claude.user.settings must not clobber the link
-    const dotfiles = realpathSync(mkdtempSync(join(tmpdir(), 'cez-dot-')));
+    const dotfiles = realpathSync(mkdtempSync(join(tmpdir(), 'onni-dot-')));
     symlinkSync(dotfiles, join(home, '.claude'));
     const out = await writeConfigFile('claude.user.settings', '{"x":1}', null, repo, env);
     expect(out).toMatchObject({ ok: true });

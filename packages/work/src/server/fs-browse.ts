@@ -72,7 +72,7 @@ const MAX_ENTRIES = 1000;
 /**
  * Home folders macOS guards with a privacy prompt (Files & Folders, Media & Apple Music,
  * Photos, Full Disk Access). Opening the picker at `~` must not LOOK INSIDE them: the `.git`
- * probe below is a read inside the folder, and in the desktop app it made macOS ask "Cezar
+ * probe below is a read inside the folder, and in the desktop app it made macOS ask "Onni
  * would like to access Apple Music…" (and Documents, Desktop, Downloads…) before the user
  * clicked anything. They are still listed; opening one is the user's choice, and so is the
  * prompt that follows. Their `isRepo` is simply `false`.
@@ -80,7 +80,7 @@ const MAX_ENTRIES = 1000;
 const PRIVACY_PROTECTED_HOME_DIRS = new Set(['Desktop', 'Documents', 'Downloads', 'Library', 'Movies', 'Music', 'Pictures']);
 
 /** The 403 a macOS privacy denial answers with; the picker offers System Settings beside it. */
-export const MACOS_PRIVACY_BLOCKED = 'macOS privacy settings do not allow cezar to read this folder.';
+export const MACOS_PRIVACY_BLOCKED = 'macOS privacy settings do not allow onni to read this folder.';
 
 /**
  * Expand the configured browse root. The workspace owns this independently

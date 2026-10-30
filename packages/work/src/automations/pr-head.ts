@@ -10,7 +10,7 @@ import { GITHUB_COM, isSafeHostname } from '../github-hosts.ts';
  *
  * A `checkout: 'pr-head'` automation verifies the PR it matched, not the base branch: before the
  * run starts, the PR is read from GitHub, its head is fetched into a NAMESPACED ref
- * (`refs/cezar/pr/<n>` — never a branch, so nothing appears in the user's branch list), and the
+ * (`refs/onni/pr/<n>` — never a branch, so nothing appears in the user's branch list), and the
  * run forks its worktree from the fetched sha. Every outcome ends somewhere: a closed PR and an
  * unadmitted fork are skipped, an unreachable head fails the launch, and only a resolved head
  * starts a run.
@@ -26,7 +26,7 @@ export interface PrHead {
   /** The FETCHED sha — what is tested and recorded, even if the API said otherwise. */
   headSha: string;
   baseRef: string;
-  /** `refs/cezar/pr/<n>`. */
+  /** `refs/onni/pr/<n>`. */
   ref: string;
   /** The PR's web page, for the run's PR reference. */
   url: string;
@@ -61,7 +61,7 @@ const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 /** The one ref a PR head is fetched into. */
 export function prHeadRef(number: number): string {
-  return `refs/cezar/pr/${number}`;
+  return `refs/onni/pr/${number}`;
 }
 
 export const runCommand: CommandRunner = (command, args, cwd) =>
@@ -157,7 +157,7 @@ export async function resolvePrHead(options: {
 }
 
 /**
- * Delete every `refs/cezar/pr/<n>` no remaining run still needs. Idempotent, never throws: a
+ * Delete every `refs/onni/pr/<n>` no remaining run still needs. Idempotent, never throws: a
  * stale ref is harmless, leaking one per PR forever is not, so every worktree removal path
  * sweeps rather than tracking which removal was the last.
  */
@@ -166,10 +166,10 @@ export async function prunePrHeadRefs(
   stillNeeded: ReadonlySet<number>,
   run: CommandRunner = runCommand,
 ): Promise<void> {
-  const listed = await run('git', ['for-each-ref', '--format=%(refname)', 'refs/cezar/pr/'], root);
+  const listed = await run('git', ['for-each-ref', '--format=%(refname)', 'refs/onni/pr/'], root);
   if (!listed.ok) return;
   for (const name of listed.stdout.split('\n').map((line) => line.trim()).filter(Boolean)) {
-    const match = /^refs\/cezar\/pr\/([1-9][0-9]*)$/.exec(name);
+    const match = /^refs\/onni\/pr\/([1-9][0-9]*)$/.exec(name);
     if (!match || stillNeeded.has(Number(match[1]))) continue;
     await run('git', ['update-ref', '-d', name], root);
   }

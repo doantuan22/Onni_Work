@@ -88,7 +88,7 @@ describe('chat transport', () => {
     expect(result).not.toHaveProperty('response');
     expect(JSON.stringify(result)).not.toContain('private');
   });
-  it.each([['slack.v1', slack], ['cezar.json.v1', discord], ['cezar.json.v1', 'https://example.com/hook?wait=false']] as const)('preserves the URL for %s', async (format, url) => {
+  it.each([['slack.v1', slack], ['onni.json.v1', discord], ['onni.json.v1', 'https://example.com/hook?wait=false']] as const)('preserves the URL for %s', async (format, url) => {
     wire.request.mockResolvedValue(response('ok'));
     await transport.sendWebhook({ ...input(), url, format }, { lookup });
     expect(String(wire.request.mock.calls[0]![0])).toBe(url);

@@ -26,7 +26,7 @@ const endMessageParts = (...parts: string[]) => ({
 describe('PiRunner whole-block v1 text', () => {
   let cwd: string;
   beforeEach(() => {
-    cwd = mkdtempSync(join(tmpdir(), 'cez-pi-text-'));
+    cwd = mkdtempSync(join(tmpdir(), 'onni-pi-text-'));
     vi.stubEnv('CEZ_REDACT_SECRETS', '1');
   });
   afterEach(() => {
@@ -120,9 +120,9 @@ for await (const line of readline.createInterface({ input: process.stdin })) {
   });
 
   it.each([
-    ['CEZ:ASK ', '{"questions":[{"header":"Pick","question":"Which?","options":[{"label":"A"},{"label":"B"}]}]}'],
-    ['CEZ:D', 'ONE'],
-    ['CEZ:MONITOR', 'ING'],
+    ['ONNI:ASK ', '{"questions":[{"header":"Pick","question":"Which?","options":[{"label":"A"},{"label":"B"}]}]}'],
+    ['ONNI:D', 'ONE'],
+    ['ONNI:MONITOR', 'ING'],
   ])('keeps control markers adjacent when Pi splits message content parts (%s)', async (left, right) => {
     const events: AgentEvent[] = [];
     await peer([endMessageParts(`Progress.\n\n${left}`, right), { type: 'agent_settled' }]).run(
@@ -131,9 +131,9 @@ for await (const line of readline.createInterface({ input: process.stdin })) {
     );
     const text = events.find((event): event is Extract<AgentEvent, { type: 'text' }> => event.type === 'text')?.text;
     expect(text).toBe(`Progress.\n\n${left}${right}`);
-    if (left === 'CEZ:ASK ') expect(parseAskMarkerResult(text!).kind).toBe('valid');
-    if (left === 'CEZ:D') expect(text!.endsWith('CEZ:DONE')).toBe(true);
-    if (left === 'CEZ:MONITOR') expect(/CEZ:MONITORING\s*$/.test(text!)).toBe(true);
+    if (left === 'ONNI:ASK ') expect(parseAskMarkerResult(text!).kind).toBe('valid');
+    if (left === 'ONNI:D') expect(text!.endsWith('ONNI:DONE')).toBe(true);
+    if (left === 'ONNI:MONITOR') expect(/ONNI:MONITORING\s*$/.test(text!)).toBe(true);
   });
 
   it('coalesces token prose across an interleaved tool event while v2 remains delta-streamed', async () => {

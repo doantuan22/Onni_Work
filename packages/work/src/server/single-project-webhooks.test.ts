@@ -12,7 +12,7 @@ import { ProjectContexts } from './project-context.ts';
 import { startServer } from './server.ts';
 
 it.each(['0', '1'])('production single-project resolver rejects hidden webhook scope before opening it (remote=%s)', async remote => {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-single-webhooks-'));
+  const dir = mkdtempSync(join(tmpdir(), 'onni-single-webhooks-'));
   const root = join(dir, 'boot'), otherRoot = join(dir, 'hidden');
   for (const path of [root, otherRoot]) { mkdirSync(path); execFileSync('git', ['init', '-q'], { cwd: path }); }
   vi.stubEnv('CEZ_HOME', join(dir, 'home'));
@@ -20,7 +20,7 @@ it.each(['0', '1'])('production single-project resolver rejects hidden webhook s
   vi.stubEnv('CEZ_SINGLE_PROJECT', '1'); vi.stubEnv('CEZ_REMOTE', remote);
   vi.stubEnv('CEZ_AUTOMATIONS', '0'); vi.stubEnv('CEZ_SKILLS_AUTO_UPDATE', '0');
   const boot = await registerProject(root), hidden = await registerProject(otherRoot);
-  const store = RunStore.open(join(root, '.ai/cezar'));
+  const store = RunStore.open(join(root, '.ai/onni'));
   const webhooks = new WebhookCoordinator({ mode: () => remote === '1' ? 'hosted' : 'local', ports: () => [], projects: async () => [], dryRun: true });
   const context = vi.spyOn(ProjectContexts.prototype, 'context');
   const server = startServer({ repoRoot: root, store, manager: { isActive: () => false } as unknown as RunManager, version: 'test', webhooks }, 0);
@@ -35,7 +35,7 @@ it.each(['0', '1'])('production single-project resolver rejects hidden webhook s
     const write = await fetch(`${url}/p/${hidden.id}/webhooks/00000000-0000-4000-8000-000000000000`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: 1, name: 'must not write' }) });
     expect(write.status).toBe(404);
     expect(context).not.toHaveBeenCalled();
-    expect(existsSync(join(otherRoot, '.ai/cezar/webhooks'))).toBe(false);
+    expect(existsSync(join(otherRoot, '.ai/onni/webhooks'))).toBe(false);
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     await webhooks.dispose(); store.flush(); vi.restoreAllMocks(); vi.unstubAllEnvs(); rmSync(dir, { recursive: true, force: true });

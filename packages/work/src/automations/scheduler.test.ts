@@ -9,7 +9,7 @@ import type { GithubAutomationDefinition } from './types.ts';
 const dirs: string[] = [];
 afterEach(async () => Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))));
 async function setup() {
-  const dir = await mkdtemp(join(tmpdir(), 'cezar-scheduler-')); dirs.push(dir);
+  const dir = await mkdtemp(join(tmpdir(), 'onni-scheduler-')); dirs.push(dir);
   const store = AutomationStore.open(dir);
   const definition = store.create({ name: 'Issues', enabled: true, events: ['issue.opened'], intervalSeconds: 300, filters: { lookbackDays: 7, maxRecords: 25 }, task: { prompt: 'Review' } }, 'one') as GithubAutomationDefinition;
   return { store, definition };
@@ -481,7 +481,7 @@ describe('WorkspaceAutomationScheduler — both kinds (spec 2026-09-14)', () => 
   const T0 = Date.parse('2026-09-14T03:59:00Z');
 
   async function workspace(withGithub: boolean) {
-    const dir = await mkdtemp(join(tmpdir(), 'cezar-scheduler-kinds-')); dirs.push(dir);
+    const dir = await mkdtemp(join(tmpdir(), 'onni-scheduler-kinds-')); dirs.push(dir);
     const store = AutomationStore.open(dir);
     store.create({ name: 'Nightly', enabled: true, kind: 'schedule', schedule: { type: 'daily', hour: 4, minute: 0 }, task: { prompt: 'Bump' } }, 'nightly');
     store.create({ name: 'Issues', enabled: true, events: ['issue.opened'], intervalSeconds: 300, filters: { lookbackDays: 7, maxRecords: 25 }, task: { prompt: 'Review' } }, 'issues');
@@ -549,7 +549,7 @@ describe('WorkspaceAutomationScheduler — a rejected check never re-arms at zer
    * a `Math.max(0, past - now) === 0` spin.
    */
   async function project(id: string, dueAt: number, options: { persist?: boolean } = {}) {
-    const dir = await mkdtemp(join(tmpdir(), `cezar-scheduler-retry-${id}-`)); dirs.push(dir);
+    const dir = await mkdtemp(join(tmpdir(), `onni-scheduler-retry-${id}-`)); dirs.push(dir);
     const store = AutomationStore.open(dir);
     const definition = store.create({ name: 'Issues', enabled: true, events: ['issue.opened'], intervalSeconds: 300, filters: { lookbackDays: 7, maxRecords: 25 }, task: { prompt: 'Review' } }, `${id}-issues`) as GithubAutomationDefinition;
     store.setState(definition.id, (current) => ({ ...current, nextCheckAt: new Date(dueAt).toISOString() }));

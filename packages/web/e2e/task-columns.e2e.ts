@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { AgentBrowser, bootProjectId, cezarCli, fixtureServeEnv, stopFixtureServer } from './agent-browser'
+import { AgentBrowser, bootProjectId, onniCli, fixtureServeEnv, stopFixtureServer } from './agent-browser'
 
 /**
  * The desktop Tasks table's foldable columns (#743), in a real browser (#822).
@@ -21,13 +21,13 @@ import { AgentBrowser, bootProjectId, cezarCli, fixtureServeEnv, stopFixtureServ
  * Why this boots its OWN server instead of attaching to the shared test env, which is what the
  * issue's step 1 literally asks for — two reasons, both load-bearing:
  *
- *   1. The run store reads `.ai/cezar/runs.json` ONCE, at startup (`RunStore.open`), so the task
+ *   1. The run store reads `.ai/onni/runs.json` ONCE, at startup (`RunStore.open`), so the task
  *      rich enough to render every column (branch, diff stat, reference, directional usage, cost)
  *      can only be seeded BEFORE boot. Writing it under the running shared instance would change
  *      nothing — the same reason `quick-list.e2e.ts` boots its own.
  *   2. This suite READS AND MUTATES `ui-state.json`. `fixtureServeEnv` pins `CEZ_HOME` inside the
  *      throwaway `dataRoot`, which is a stronger form of the issue's "isolated CEZ_HOME" than the
- *      shared `.ai/qa/cez-home`: it cannot collide with `settings-appearance.e2e.ts`, which
+ *      shared `.ai/qa/onni-home`: it cannot collide with `settings-appearance.e2e.ts`, which
  *      save/restores that very file, and it is removed with the `dataRoot` in `afterAll`.
  *
  * NOT covered here, deliberately: the issue's scenario point 6 (a queued run present while CPU and
@@ -46,7 +46,7 @@ const now = Date.now()
 const ago = (ms: number) => new Date(now - ms).toISOString()
 
 /**
- * A `RunRecord[]` — cezar's on-disk run index. One run, deliberately carrying something for EVERY
+ * A `RunRecord[]` — onni's on-disk run index. One run, deliberately carrying something for EVERY
  * foldable column: without a value the cell renders an em dash, and a table of dashes would let a
  * fold that broke real content still pass.
  */
@@ -61,7 +61,7 @@ const FIXTURE = [
     createdAt: ago(40 * 60_000),
     startedAt: ago(39 * 60_000),
     finishedAt: ago(26 * 60_000),
-    branch: 'cez/fold-columns-fixture',
+    branch: 'onni/fold-columns-fixture',
     diffStat: { adds: 128, dels: 14, files: 6 },
     pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/743',
     tokensUsed: 128_400,
@@ -94,13 +94,13 @@ async function waitForHealth(url: string): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: the task-columns fixture server never answered at ${url}`)
+  throw new Error(`onni e2e: the task-columns fixture server never answered at ${url}`)
 }
 
 let browser: AgentBrowser
 let server: ChildProcess
 let dataRoot: string
-let cezHome: string
+let onniHome: string
 let uiStateFile: string
 let baseUrl: string
 let bootProject: string
@@ -131,7 +131,7 @@ async function waitForUiState(check: (state: UiState) => boolean, what: string):
     if (state && check(state)) return state
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: ${uiStateFile} never showed ${what}`)
+  throw new Error(`onni e2e: ${uiStateFile} never showed ${what}`)
 }
 
 /**
@@ -219,19 +219,19 @@ function cardText(): string {
 }
 
 beforeAll(async () => {
-  dataRoot = mkdtempSync(join(tmpdir(), 'cezar-e2e-task-columns-'))
-  mkdirSync(join(dataRoot, '.ai/cezar'), { recursive: true })
-  writeFileSync(join(dataRoot, '.ai/cezar/runs.json'), JSON.stringify(FIXTURE, null, 2), 'utf8')
+  dataRoot = mkdtempSync(join(tmpdir(), 'onni-e2e-task-columns-'))
+  mkdirSync(join(dataRoot, '.ai/onni'), { recursive: true })
+  writeFileSync(join(dataRoot, '.ai/onni/runs.json'), JSON.stringify(FIXTURE, null, 2), 'utf8')
 
   // Mirrors `fixtureServeEnv`, which pins CEZ_HOME here — change one, change the other.
-  cezHome = resolve(dataRoot, '.cez-home')
-  uiStateFile = join(cezHome, 'ui-state.json')
+  onniHome = resolve(dataRoot, '.onni-home')
+  uiStateFile = join(onniHome, 'ui-state.json')
 
   const port = await freePort()
   baseUrl = `http://localhost:${port}`
   server = spawn(
     process.execPath,
-    [cezarCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
+    [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
     { env: fixtureServeEnv(dataRoot), stdio: 'ignore' },
   )
   await waitForHealth(baseUrl)
@@ -247,7 +247,7 @@ afterAll(async () => {
   await stopFixtureServer(server, dataRoot)
 })
 
-describe('foldable Tasks-table columns against a live cezar (#822)', () => {
+describe('foldable Tasks-table columns against a live onni (#822)', () => {
   it('ships with Branch folded, every other foldable column expanded, and no toggle in Status or Task', () => {
     openTasks()
 
@@ -347,7 +347,7 @@ describe('foldable Tasks-table columns against a live cezar (#822)', () => {
     expect(browser.count('[data-slot="task-card"]')).toBe(1)
     expect(browser.evaluate(`getComputedStyle(document.querySelector('${TABLE}')).display`)).toBe('none')
     // Folding is a DESKTOP density choice; the card must still carry the run's real fields.
-    expect(withFolds).toContain('cez/fold-columns-fixture')
+    expect(withFolds).toContain('onni/fold-columns-fixture')
     expect(withFolds).toContain('128')
     browser.screenshot(`${artifactsDir}/task-columns-mobile-cards.png`)
 

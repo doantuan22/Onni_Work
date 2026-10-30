@@ -1104,7 +1104,7 @@
             },
             "format": {
               "type": "string",
-              "const": "cezar.json.v1"
+              "const": "onni.json.v1"
             }
           },
           "required": [

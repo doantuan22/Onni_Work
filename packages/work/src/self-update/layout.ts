@@ -1,21 +1,21 @@
 /**
- * The managed layout that decides which engine the desktop shell (and `cezar link`) runs:
+ * The managed layout that decides which engine the desktop shell (and `onni link`) runs:
  *
- *   ~/.cezar/versions/<id>/                       one cezar build per id
- *   ~/.cezar/versions/<id>/.cezar-install.json    manifest: version, source, installedAt
- *   ~/.cezar/versions/<id>/node_modules/@onni/work/dist/index.js   the entry
- *   ~/.cezar/versions/current  →  <id>            the active version (a symlink; a junction on
+ *   ~/.onni/versions/<id>/                       one onni build per id
+ *   ~/.onni/versions/<id>/.onni-install.json    manifest: version, source, installedAt
+ *   ~/.onni/versions/<id>/node_modules/@onni/work/dist/index.js   the entry
+ *   ~/.onni/versions/current  →  <id>            the active version (a symlink; a junction on
  *                                                 Windows)
  *
  * `<id>` is the version string, plus `+<branch>` for a linked checkout so two worktrees never
  * collide.
  *
- * A LINKED checkout (`cezar link`, source `link`) is the only way a version gets here now:
+ * A LINKED checkout (`onni link`, source `link`) is the only way a version gets here now:
  * `versions/<version>+<branch>/node_modules/@onni/work` is a symlink (a junction on
  * Windows) to a worktree's `packages/work`. Node runs the entry through its realpath, so the
  * checkout's own `node_modules` resolve, and every rebuild of that worktree is live on the next
  * restart. Anything that reads `current` — the desktop shell — runs it unchanged. Removing a
- * link removes the link, never the checkout. Everything is under `cezarHomeDir()` so `CEZ_HOME`
+ * link removes the link, never the checkout. Everything is under `onniHomeDir()` so `CEZ_HOME`
  * keeps tests off the real home. Delete the whole directory and it is simply gone — state,
  * never configuration.
  */
@@ -24,23 +24,23 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpat
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { z } from 'zod';
 
-import { cezarHomeDir } from '../paths.ts';
+import { onniHomeDir } from '../paths.ts';
 
 export const PACKAGE_NAME = '@onni/work';
 export const CURRENT_LINK = 'current';
-const MANIFEST_FILE = '.cezar-install.json';
+const MANIFEST_FILE = '.onni-install.json';
 
 export type InstallKind = 'managed' | 'global-npm' | 'npx' | 'checkout' | 'unknown';
 
 export function versionsDir(env: NodeJS.ProcessEnv = process.env): string {
-  return join(cezarHomeDir(env), 'versions');
+  return join(onniHomeDir(env), 'versions');
 }
 
 /**
  * A version id becomes a DIRECTORY NAME under `versions/`, and an id is also a `git branch`
  * slug source — so an id that can climb out of `versions/` would point the layout at whatever it
  * lands on. Require a leading alphanumeric and forbid `..` outright: every real version id
- * (`0.12.0`, `0.12.0+cez-abc12345`) passes untouched.
+ * (`0.12.0`, `0.12.0+onni-abc12345`) passes untouched.
  */
 export function assertSafeId(id: string): string {
   if (!/^[0-9A-Za-z][0-9A-Za-z.+-]*$/.test(id) || id.includes('..')) throw new Error(`invalid version id: ${id}`);
@@ -153,7 +153,7 @@ export function removeInstalled(id: string, env: NodeJS.ProcessEnv = process.env
   rmSync(versionDir(id, env), { recursive: true, force: true });
 }
 
-/** Build metadata for a branch name: `cez/cb28888e` → `cez-cb28888e`. */
+/** Build metadata for a branch name: `onni/cb28888e` → `onni-cb28888e`. */
 export function branchSlug(branch: string): string {
   return branch
     .replace(/[^0-9A-Za-z-]+/g, '-')
@@ -247,7 +247,7 @@ function shortHash(value: string): string {
 
 /**
  * How the running entry file was installed:
- *   managed     → `~/.cezar/versions/…` — a link the desktop shell switches
+ *   managed     → `~/.onni/versions/…` — a link the desktop shell switches
  *   global-npm  → `npm i -g` prefix (`…/lib/node_modules/@onni/work/…`)
  *   npx         → the `_npx` cache
  *   checkout    → a git checkout (`packages/work/dist/index.js` beside `src/`) — dev mode

@@ -30,8 +30,8 @@ describe('queued prompt stack routes (#472)', () => {
   let rung: 'live' | 'queued' | 'starting' | 'closed';
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-472-routes-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-472-routes-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     record = store.createRun({ title: 't', workflow: '(planned)', task: 'the task', steps: [] });
     // The record's own status now gates the early bounds checks (a finished run gets 409
     // rather than a bounds 400), so the fixture must look queued as well as answer on that rung.
@@ -251,7 +251,7 @@ describe('queued prompt stack routes (#472)', () => {
    *  per-message image budget is held across them — files travel as paths and never count. */
   describe('the image budget across the opening turn', () => {
     const onDisk = (name: string, bytes: number): string => {
-      const dir = join(repoRoot, '.ai/cezar', 'runs', `${record.id}-images`);
+      const dir = join(repoRoot, '.ai/onni', 'runs', `${record.id}-images`);
       mkdirSync(dir, { recursive: true });
       const fd = openSync(join(dir, name), 'w');
       ftruncateSync(fd, bytes);
@@ -413,7 +413,7 @@ describe('queued prompt stack routes (#472)', () => {
     });
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: 'run already started' });
-    expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/cezar')))).toBe(false);
+    expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/onni')))).toBe(false);
   });
 
   it('applies the folded bound to an edit too', async () => {

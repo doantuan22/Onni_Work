@@ -17,7 +17,7 @@ import {
 import type { ThreadAsk } from './thread-state'
 import type { UiAskQuestion } from '@onni/api-client'
 
-/** What "Need more info" sends; the CEZ:ASK instructions (`handoff.ts`) tell the agent to
+/** What "Need more info" sends; the ONNI:ASK instructions (`handoff.ts`) tell the agent to
  *  explain the question and ask it again. */
 export const ASK_MORE_INFO_ANSWER =
   'I need more information to answer this — please explain the context and ask again.'
@@ -40,7 +40,7 @@ function formatAnswer(question: UiAskQuestion, answer: AskQuestionAnswer): strin
 
 /**
  * The AskUser card (#473): the agent asked one or more structured multiple-choice
- * questions via `CEZ:ASK`; render each with clickable option chips. A single
+ * questions via `ONNI:ASK`; render each with clickable option chips. A single
  * single-select question resolves on one tap; any other shape (multiple
  * questions, or a multi-select question) collects every answer and resolves on
  * one **Send** that posts a single combined message — the reducer resolves the
@@ -368,7 +368,7 @@ function AskChoice({
   )
 }
 
-/** The two answers cezar adds to every question — smaller than the agent's own options. */
+/** The two answers onni adds to every question — smaller than the agent's own options. */
 function AskExtraChoice({
   slot,
   selected,

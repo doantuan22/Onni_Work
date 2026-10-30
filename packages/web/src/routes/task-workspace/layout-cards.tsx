@@ -37,9 +37,9 @@ const NO_SAVED: readonly SavedLayout[] = []
 const MORE_BUTTON_WIDTH = 30
 
 /** The drag payload a view tab carries; the workspace's drop zones accept only this. */
-export const VIEW_DRAG_TYPE = 'text/cez-view'
+export const VIEW_DRAG_TYPE = 'text/onni-view'
 /** The payload a column header's grip carries (`workspace-columns.tsx`). */
-const COLUMN_DRAG_TYPE = 'text/cez-column'
+const COLUMN_DRAG_TYPE = 'text/onni-column'
 
 /**
  * The task's tab row (spec `2026-10-07-task-workspace` §5.2) — the row that REPLACES the header's

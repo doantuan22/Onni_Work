@@ -20,7 +20,7 @@ import { ThemeProvider } from '@/components/theme-provider'
  */
 
 const ROOT = '/Users/me/code/demo-project'
-const BOOT_ROOT = '/Users/me/code/cezar'
+const BOOT_ROOT = '/Users/me/code/onni'
 
 let requests: Array<{ method: string; url: string; body?: unknown }> = []
 
@@ -51,7 +51,7 @@ function project(id: 'boot' | 'demo') {
   return id === 'boot'
     ? {
         id: 'boot',
-        name: 'cezar',
+        name: 'onni',
         root: BOOT_ROOT,
         addedAt: '2026-01-05T10:00:00.000Z',
         lastOpenedAt: '2026-07-31T10:00:00.000Z',
@@ -91,11 +91,11 @@ function seededClient({
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: registry ?? [project('boot'), project('demo')],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   client.setQueryData(workspaceQueryKeys.config, {
     browseRoot: '~/',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
     skillsAutoUpdate: null,
     effectiveSkillsAutoUpdate: true,
     composerDefaults: {
@@ -198,20 +198,20 @@ describe('the General page', () => {
 
   it('refuses to remove the boot project before the click, with the reason', async () => {
     renderAt('/p/boot/settings')
-    const remove = await screen.findByRole('button', { name: /^Remove cezar from the workspace/ })
+    const remove = await screen.findByRole('button', { name: /^Remove onni from the workspace/ })
     expect(remove.hasAttribute('disabled')).toBe(true)
     expect(document.querySelector('[data-slot="project-general-remove-boot"]')?.textContent).toContain(
-      'cezar is serving this project',
+      'onni is serving this project',
     )
   })
 
-  it('offers to add — not manage — the folder cezar is serving but has not saved', async () => {
+  it('offers to add — not manage — the folder onni is serving but has not saved', async () => {
     // The ordinary state since boot registration became seed-once: the server lists the folder
     // it is serving so the cockpit can reach it, flagged because there is no registry row behind
     // it. Max parallel is stored ON that row and Remove would 404, so neither is offered.
     const unregistered: ProjectListEntry = {
       id: 'boot',
-      name: 'cezar',
+      name: 'onni',
       root: BOOT_ROOT,
       addedAt: '',
       lastOpenedAt: '',
@@ -223,12 +223,12 @@ describe('the General page', () => {
 
     await waitFor(() => expect(general()).not.toBeNull())
     expect(document.querySelector('[data-slot="project-general-unregistered"]')?.textContent).toContain(
-      'served because cezar was started here',
+      'served because onni was started here',
     )
     expect(document.querySelector('[data-action="project-general-remove"]')).toBeNull()
     expect(document.querySelector('[data-slot="project-max-parallel"]')).toBeNull()
 
-    fireEvent.click(await screen.findByRole('button', { name: /^Add cezar to your projects/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Add onni to your projects/ }))
     await waitFor(() =>
       expect(requests.filter((r) => r.method === 'POST')).toEqual([
         { method: 'POST', url: '/api/v1/projects', body: { root: BOOT_ROOT } },
@@ -245,7 +245,7 @@ describe('the General page', () => {
     expect(document.querySelector('[data-slot="project-general-unregistered"]')).not.toBeNull()
     expect(general()?.querySelector('[data-slot="project-location-path"]')?.textContent).toBe(BOOT_ROOT)
 
-    fireEvent.click(await screen.findByRole('button', { name: /^Add cezar to your projects/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Add onni to your projects/ }))
     await waitFor(() =>
       expect(requests.filter((r) => r.method === 'POST')).toEqual([
         { method: 'POST', url: '/api/v1/projects', body: { root: BOOT_ROOT } },
@@ -286,7 +286,7 @@ describe('the General page', () => {
     })
     expect(document.querySelector('[data-slot="project-facts"]')).not.toBeNull()
     expect(document.querySelector('[data-slot="project-location-path"]')?.textContent).toBe(BOOT_ROOT)
-    expect(screen.queryByLabelText('Max parallel tasks for cezar')).toBeNull()
+    expect(screen.queryByLabelText('Max parallel tasks for onni')).toBeNull()
     expect(document.querySelector('[data-action="project-general-remove"]')).toBeNull()
   })
 

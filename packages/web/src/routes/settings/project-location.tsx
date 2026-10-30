@@ -23,7 +23,7 @@ import { writeClipboard } from '@/lib/clipboard'
  *    (seeing all of it is the point), plus the two things a user wants it for — Copy, and
  *    "Open with" (this machine's editors, file manager and terminal, via `POST /api/v1/open-in`);
  *  - `ProjectLocationNav` — the desktop section nav's footer, the project-scope twin of the
- *    global nav's "Stored in ~/.cezar": one truncated line that keeps the answer on every section.
+ *    global nav's "Stored in ~/.onni": one truncated line that keeps the answer on every section.
  *
  * Both render NOTHING when the root is unknown (registry still loading, or an unscoped mount): a
  * placeholder path is worse than no path, and the registry answer arrives within a tick anyway.

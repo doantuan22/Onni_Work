@@ -1,7 +1,7 @@
 // Count-based worktree retention (#483). A busy cockpit leaves one full repo
-// checkout per finished task under `.ai/cezar/worktrees/<runId>`; nothing bounds
+// checkout per finished task under `.ai/onni/worktrees/<runId>`; nothing bounds
 // the total, so disk saturates. This module decides *which* finished worktrees
-// to reclaim (directory only — the `cez/<id8>` branch is kept, so the work stays
+// to reclaim (directory only — the `onni/<id8>` branch is kept, so the work stays
 // recoverable) and the thin I/O enforcer that performs the reclaim. The selector
 // is pure and unit-testable; the enforcer never throws (helper discipline).
 import { existsSync } from 'node:fs';
@@ -78,7 +78,7 @@ function claimedForResume(runId: string, now = Date.now()): boolean {
 /**
  * If retention (#483) reclaimed this run's worktree — branch kept, directory
  * gone, `worktreeReclaimedAt` stamped — re-materialize the directory (via the
- * idempotent `createWorktree`, which reattaches the surviving `cez/<id8>`
+ * idempotent `createWorktree`, which reattaches the surviving `onni/<id8>`
  * branch) and CLEAR the stamp. Called on the resume/continue path so a resumed
  * run regains its isolated tree and becomes eligible for retention again;
  * without it the run would keep a directory on disk while staying invisible to
@@ -95,7 +95,7 @@ export async function rematerializeReclaimedWorktree(
   const run = store.getRun(runId);
   if (!run?.worktreePath || existsSync(run.worktreePath)) return false;
   try {
-    // A directory removed outside cezar comes back the same way, but only onto its own surviving
+    // A directory removed outside onni comes back the same way, but only onto its own surviving
     // branch: a fresh tree off the base would silently stand in for the task's work (27d2e432).
     if (!run.worktreeReclaimedAt && !await localBranchExists(repoRoot, run.branch ?? branchFor(runId))) return false;
     await createWorktree(repoRoot, runId, run.baseBranch ?? 'HEAD', { branch: run.branch });
@@ -161,7 +161,7 @@ export async function reclaimWorktrees(
       settle();
     }
   }
-  // A reclaimed pull-request head run no longer needs its `refs/cezar/pr/<n>` (spec
+  // A reclaimed pull-request head run no longer needs its `refs/onni/pr/<n>` (spec
   // 2026-10-06-agentic-e2e-checks Phase 3). Swept here because this runs at startup (after the
   // orphan prune) and after every terminal transition — the paths a worktree disappears by.
   // Unconditional (one `for-each-ref`): a ref whose every run was deleted is found here too.

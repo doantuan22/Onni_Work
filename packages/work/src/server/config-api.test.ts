@@ -29,16 +29,16 @@ describe('the config API', () => {
   let app: Hono;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-configapi-'));
-    homeRoot = mkdtempSync(join(tmpdir(), 'cez-configapi-home-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-configapi-'));
+    homeRoot = mkdtempSync(join(tmpdir(), 'onni-configapi-home-'));
     process.env.HOME = homeRoot;
-    process.env.CEZ_HOME = join(homeRoot, '.cezar');
+    process.env.CEZ_HOME = join(homeRoot, '.onni');
     process.env.CODEX_HOME = join(homeRoot, '.codex');
     process.env.XDG_CONFIG_HOME = join(homeRoot, '.config');
     delete process.env.CEZ_AGENT_MODELS_LOCKED;
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    mkdirSync(join(homeRoot, '.cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    mkdirSync(join(homeRoot, '.onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     // The config routes never touch the manager — an empty stub is honest.
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test' });
   });
@@ -59,7 +59,7 @@ describe('the config API', () => {
     else process.env.CEZ_AGENT_MODELS_LOCKED = savedModelsLocked;
   });
 
-  const configPath = () => join(repoRoot, '.ai/cezar', 'config.json');
+  const configPath = () => join(repoRoot, '.ai/onni', 'config.json');
   const rawFile = () => JSON.parse(readFileSync(configPath(), 'utf8')) as Record<string, unknown>;
 
   const get = () => apiRequest(app, '/api/v1/config');
@@ -114,11 +114,11 @@ describe('the config API', () => {
     expect((await getBody()).modelsLocked).toBe(false);
   });
 
-  it('locks native defaults and rejects Cezar model overrides', async () => {
+  it('locks native defaults and rejects Onni model overrides', async () => {
     process.env.CEZ_AGENT_MODELS_LOCKED = '1';
     mkdirSync(join(homeRoot, '.codex'), { recursive: true });
     writeFileSync(join(homeRoot, '.codex', 'config.toml'), 'model = "gpt-5-codex"\n');
-    writeFileSync(configPath(), JSON.stringify({ defaultModels: { codex: 'cezar-codex' } }), 'utf8');
+    writeFileSync(configPath(), JSON.stringify({ defaultModels: { codex: 'onni-codex' } }), 'utf8');
 
     const body = await getBody();
     expect(body.modelsLocked).toBe(true);
@@ -127,7 +127,7 @@ describe('the config API', () => {
     const res = await put({ defaultModels: { codex: 'other-model' } });
     expect(res.status).toBe(409);
     expect(((await res.json()) as { error: string }).error).toContain('models are locked');
-    expect(rawFile().defaultModels).toEqual({ codex: 'cezar-codex' });
+    expect(rawFile().defaultModels).toEqual({ codex: 'onni-codex' });
   });
 
   it('supports the same lock through the optional repository config key', async () => {
@@ -135,7 +135,7 @@ describe('the config API', () => {
     writeFileSync(join(homeRoot, '.codex', 'config.toml'), 'model = "native-codex"\n');
     writeFileSync(
       configPath(),
-      JSON.stringify({ modelsLocked: true, defaultModels: { codex: 'cezar-codex' } }),
+      JSON.stringify({ modelsLocked: true, defaultModels: { codex: 'onni-codex' } }),
       'utf8',
     );
 
@@ -147,7 +147,7 @@ describe('the config API', () => {
 
   it('supports a global workspace config lock across repositories', async () => {
     writeFileSync(
-      join(homeRoot, '.cezar', 'config.json'),
+      join(homeRoot, '.onni', 'config.json'),
       JSON.stringify({ modelsLocked: true }),
       'utf8',
     );
@@ -326,9 +326,9 @@ describe('liveTitleUpdates round-trip (task auto-naming spec)', () => {
   let app: Hono;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-configapi-title-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-configapi-title-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test' });
   });
 
@@ -344,7 +344,7 @@ describe('liveTitleUpdates round-trip (task auto-naming spec)', () => {
       body: JSON.stringify(body),
     });
   const rawFile = () =>
-    JSON.parse(readFileSync(join(repoRoot, '.ai/cezar', 'config.json'), 'utf8')) as Record<string, unknown>;
+    JSON.parse(readFileSync(join(repoRoot, '.ai/onni', 'config.json'), 'utf8')) as Record<string, unknown>;
 
   it('sets, answers and clears the key (null → env default decides)', async () => {
     const off = (await (await put({ liveTitleUpdates: false })).json()) as Record<string, unknown>;
@@ -363,9 +363,9 @@ describe('branchNaming round-trip (spec 2026-10-11-branch-naming-instructions)',
   let app: Hono;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-configapi-branch-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-configapi-branch-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test' });
   });
 
@@ -381,7 +381,7 @@ describe('branchNaming round-trip (spec 2026-10-11-branch-naming-instructions)',
       body: JSON.stringify(body),
     });
   const rawFile = () =>
-    JSON.parse(readFileSync(join(repoRoot, '.ai/cezar', 'config.json'), 'utf8')) as Record<string, unknown>;
+    JSON.parse(readFileSync(join(repoRoot, '.ai/onni', 'config.json'), 'utf8')) as Record<string, unknown>;
 
   it('stores the instructions trimmed, answers them, and clears on null or ""', async () => {
     const set = (await (await put({ branchNaming: '  start with feature/  ' })).json()) as Record<string, unknown>;
@@ -411,9 +411,9 @@ describe('reviewGate round-trip (optional review gate, #489)', () => {
   let app: Hono;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-configapi-gate-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-configapi-gate-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test' });
   });
 
@@ -429,7 +429,7 @@ describe('reviewGate round-trip (optional review gate, #489)', () => {
       body: JSON.stringify(body),
     });
   const rawFile = () =>
-    JSON.parse(readFileSync(join(repoRoot, '.ai/cezar', 'config.json'), 'utf8')) as Record<string, unknown>;
+    JSON.parse(readFileSync(join(repoRoot, '.ai/onni', 'config.json'), 'utf8')) as Record<string, unknown>;
 
   it('PUT round-trips the trunk-based keys and clears them on null (spec 2026-10-20-trunk-based-projects)', async () => {
     const on = (await (await put({

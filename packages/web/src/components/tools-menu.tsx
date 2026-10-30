@@ -76,10 +76,10 @@ export function diskNote(health: HealthResponse): string | null {
   return `Only ${formatFree(disk.freeBytes)} free on the disk holding task worktrees.${used}${effect} Reclaim finished tasks' worktrees (branches are kept) or delete old tasks.`
 }
 
-/** The trigger's hover tooltip: the cezar version, then the blocker if there is one — else
+/** The trigger's hover tooltip: the onni version, then the blocker if there is one — else
  *  the optional tools still worth knowing about. Exported for the tests. */
 export function toolsTooltip(health: HealthResponse): string {
-  const base = `cezar v${health.version}`
+  const base = `onni v${health.version}`
   const blocker = toolsBlocker(health)
   if (blocker) return `${base} · ${blocker}`
   const low = health.disk?.level === 'low' ? ` · low disk space (${formatFree(health.disk.freeBytes)} free)` : ''
@@ -109,7 +109,7 @@ export function ToolsMenu({ health, forge }: { health: HealthResponse | undefine
   if (!health) return null
   const note = forgeNote(forge)
 
-  // Green when cez can actually work: at least one agent CLI is present and the default runner
+  // Green when onni can actually work: at least one agent CLI is present and the default runner
   // is among them. `pending` (amber), not `danger`, otherwise — per-row dots are where red lives.
   const blocker = toolsBlocker(health)
   const disk = diskNote(health)

@@ -54,7 +54,7 @@ describe('nginxVhost', () => {
     const v = nginxVhost(4321);
     expect(v).toContain('proxy_pass http://127.0.0.1:4321;');
     expect(v).toContain('proxy_buffering off;');
-    expect(v).toContain('auth_basic_user_file /etc/cezar/htpasswd;');
+    expect(v).toContain('auth_basic_user_file /etc/onni/htpasswd;');
     // HTTP/2 is spelled per installed nginx version — ubuntu-vps.test.ts owns
     // that (#910); with no version given the output must stay 1.24-parseable.
     expect(v).not.toMatch(/^\s*http2\s/m);
@@ -65,7 +65,7 @@ describe('ubuntu-vps dry-run', () => {
   let home: string;
   const original = process.env.CEZ_HOME;
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-ubuntu-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-ubuntu-'));
     process.env.CEZ_HOME = home;
   });
   afterEach(() => {
@@ -95,10 +95,10 @@ describe('ubuntu-vps dry-run', () => {
   });
 
   /**
-   * #913 — two cezar instances on one host, owned by two different unix users.
+   * #913 — two onni instances on one host, owned by two different unix users.
    *
-   * The second user's `~/.cezar` is EMPTY (it is their own home), while the
-   * first user's cezar really holds a loopback port. The recorded-state scan
+   * The second user's `~/.onni` is EMPTY (it is their own home), while the
+   * first user's onni really holds a loopback port. The recorded-state scan
    * alone therefore handed instance two the port instance one was already on,
    * and nginx then authenticated the second user against their own htpasswd and
    * forwarded them into the FIRST user's cockpit — their projects, their run
@@ -109,7 +109,7 @@ describe('ubuntu-vps dry-run', () => {
    * bind are the same number, and it is never the first instance's.
    */
   it("a second instance's vhost never points at the first instance's port", async () => {
-    // The first user's cezar: an actual listening socket this test does not own
+    // The first user's onni: an actual listening socket this test does not own
     // through any registry, exactly like another unix account's service.
     const firstInstance = createServer();
     await new Promise<void>((listening) => firstInstance.listen(0, '127.0.0.1', listening));
@@ -137,7 +137,7 @@ describe('ubuntu-vps dry-run', () => {
       expect(res.status).toBe('complete');
 
       // The vhost as the install would actually write it to disk.
-      const vhost = writtenFileContent(messages, '/etc/nginx/sites-available/cezar-b-example-com');
+      const vhost = writtenFileContent(messages, '/etc/nginx/sites-available/onni-b-example-com');
       expect(vhost).toContain(`proxy_pass http://127.0.0.1:${port};`);
       expect(vhost).not.toContain(`127.0.0.1:${firstPort}`);
 
@@ -145,8 +145,8 @@ describe('ubuntu-vps dry-run', () => {
       // while the third differs is this bug.
       const recorded = loadServerState('b-example-com').primaryPort;
       expect(recorded).toBe(port);
-      expect(vhost).toBe(nginxVhost(recorded, 'b.example.com', '/etc/cezar/htpasswd-b-example-com'));
-      expect(systemdUnit('/repo', recorded, 'user', '/usr/local/bin/cezar')).toContain(`--port ${port}`);
+      expect(vhost).toBe(nginxVhost(recorded, 'b.example.com', '/etc/onni/htpasswd-b-example-com'));
+      expect(systemdUnit('/repo', recorded, 'user', '/usr/local/bin/onni')).toContain(`--port ${port}`);
     } finally {
       await new Promise<void>((closed) => firstInstance.close(() => closed()));
     }

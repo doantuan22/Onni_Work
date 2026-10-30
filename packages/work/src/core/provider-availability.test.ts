@@ -35,7 +35,7 @@ describe('provider availability', () => {
     expect(isProviderUsable({ provider: 'claude', status: 'disconnected', enabled: true })).toBe(false);
   });
 
-  it('ignores Cezar provider-disable preferences under the explicit model lock', () => {
+  it('ignores Onni provider-disable preferences under the explicit model lock', () => {
     process.env.CEZ_AGENT_MODELS_LOCKED = '1';
 
     expect(applyProviderEnablement(response, ['claude', 'codex', 'opencode', 'cursor'])).toEqual({

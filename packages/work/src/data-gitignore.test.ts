@@ -7,10 +7,10 @@ import { DATA_GITIGNORE_ENTRIES, ensureDataGitignore } from './data-gitignore.ts
 
 describe('ensureDataGitignore', () => {
   let repoRoot: string;
-  const gitignore = () => readFileSync(join(repoRoot, '.ai/cezar', '.gitignore'), 'utf8');
+  const gitignore = () => readFileSync(join(repoRoot, '.ai/onni', '.gitignore'), 'utf8');
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-gitignore-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-gitignore-'));
   });
 
   afterEach(() => {
@@ -45,8 +45,8 @@ describe('ensureDataGitignore', () => {
   });
 
   it('appends what is missing and keeps what the user added', () => {
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(repoRoot, '.ai/cezar', '.gitignore'), 'runs.json\nmy-own-scratch/\n', 'utf8');
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    writeFileSync(join(repoRoot, '.ai/onni', '.gitignore'), 'runs.json\nmy-own-scratch/\n', 'utf8');
 
     ensureDataGitignore(repoRoot);
 
@@ -70,10 +70,10 @@ describe('ensureDataGitignore', () => {
  * has a sharp consequence: anything NOT named there is covered by nothing, and shows up in the
  * user's `git status`.
  *
- * The failure is invisible from inside this repository — cezar's own root `.gitignore` ignores
- * `.ai/cezar/` wholesale — and invisible to typecheck. So it needs a test rather than care.
+ * The failure is invisible from inside this repository — onni's own root `.gitignore` ignores
+ * `.ai/onni/` wholesale — and invisible to typecheck. So it needs a test rather than care.
  */
-describe('DATA_GITIGNORE_ENTRIES covers everything cezar writes under .ai/cezar/', () => {
+describe('DATA_GITIGNORE_ENTRIES covers everything onni writes under .ai/onni/', () => {
   const SRC = dirname(fileURLToPath(import.meta.url));
 
   /** Every non-test `.ts` file in the service. */
@@ -117,7 +117,7 @@ describe('DATA_GITIGNORE_ENTRIES covers everything cezar writes under .ai/cezar/
       .filter((name) => !wanted.includes(name) && !wanted.includes(`${name}/`));
     expect(
       missing,
-      `these are written under .ai/cezar/ but are not in DATA_GITIGNORE_ENTRIES, so they will ` +
+      `these are written under .ai/onni/ but are not in DATA_GITIGNORE_ENTRIES, so they will ` +
         `appear in the user's git status: ${missing.join(', ')}`,
     ).toEqual([]);
   });

@@ -7,7 +7,7 @@ import { WebhooksSection } from '@/routes/settings/webhooks-section'
 const api = vi.hoisted(() => ({ list: vi.fn(), deliveries: vi.fn(), activity: vi.fn(), test: vi.fn(), retry: vi.fn(), replay: vi.fn(), pause: vi.fn() }))
 vi.mock('@/api/client', () => ({ webhookApi: api }))
 vi.mock('@/api/queries', () => ({ useHealth: () => ({ data: { capabilities: { webhooks: true } } }) }))
-const receiver = { kind: 'live', id: 'r', name: 'Alerts', format: 'cezar.json.v1', destination: 'https://example.com/', state: 'active', revision: 1, deliveryRevision: 1, profile: 'minimal', preset: 'attention', events: [], scope: 'every_task', graceSeconds: 180, allowLocalNetwork: false, includeScheduledFailures: false, pendingCount: 0, inFlightCount: 0, consecutiveFailures: 0, lastTest: 'none', activationBlocked: false }
+const receiver = { kind: 'live', id: 'r', name: 'Alerts', format: 'onni.json.v1', destination: 'https://example.com/', state: 'active', revision: 1, deliveryRevision: 1, profile: 'minimal', preset: 'attention', events: [], scope: 'every_task', graceSeconds: 180, allowLocalNetwork: false, includeScheduledFailures: false, pendingCount: 0, inFlightCount: 0, consecutiveFailures: 0, lastTest: 'none', activationBlocked: false }
 function mount(search: string) { render(<QueryClientProvider client={createQueryClient()}><MemoryRouter initialEntries={['/p/alpha/settings/webhooks'+search]}><WebhooksSection /></MemoryRouter></QueryClientProvider>) }
 beforeEach(() => {
  vi.stubGlobal('EventSource', undefined)
@@ -42,7 +42,7 @@ it('retry Cancel restores focus inside the still-open history', async () => {
 })
 
 it('editing delivery settings warns an in-flight request may still arrive', async()=>{
- api.list.mockResolvedValue({receivers:[{...receiver,format:'cezar.json.v1',pendingCount:1,inFlightCount:1}],history:[],historyCount:0,changeSequence:0,webhookHealth:{status:'ready'}})
+ api.list.mockResolvedValue({receivers:[{...receiver,format:'onni.json.v1',pendingCount:1,inFlightCount:1}],history:[],historyCount:0,changeSequence:0,webhookHealth:{status:'ready'}})
  mount('?endpoint=r&tab=settings');
  fireEvent.change(await screen.findByLabelText('Receiver URL'),{target:{value:'https://new.example.com/hook'}})
  fireEvent.click(screen.getByRole('button',{name:'Review changes'}))
@@ -61,7 +61,7 @@ it.each(['slack.v1', 'discord.v1'].flatMap(format => ['http_401', 'http_403'].ma
 
 it('custom receiver authentication failure retains signing-key repair advice', async()=>{
  api.test.mockResolvedValue({deliveryId:'test-auth'})
- api.deliveries.mockResolvedValue({receiver:{...receiver,format:'cezar.json.v1'},items:[{deliveryId:'test-auth',status:'failed',reason:'http_401'}],total:1,timezone:'UTC'})
+ api.deliveries.mockResolvedValue({receiver:{...receiver,format:'onni.json.v1'},items:[{deliveryId:'test-auth',status:'failed',reason:'http_401'}],total:1,timezone:'UTC'})
  mount('');fireEvent.click(await screen.findByRole('button',{name:'Send test'}))
  expect(await screen.findByText(/signing key in its verifier/)).toBeTruthy()
 })

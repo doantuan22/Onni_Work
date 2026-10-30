@@ -37,7 +37,7 @@ export const resolveDeferredReset: ResetResolver = async execution => {
     await saveUsageWindows(binding, result.observation);
   }
   const snapshot = loadUsageWindows(binding);
-  if (!snapshot) return { reason: 'no-data', message: account.runner === 'claude' ? 'No reset observed for this Claude account. Cezar learns reset times from Claude tasks run here; checking only reloads saved observations and never starts a model. Choose a date and time instead.' : 'No upcoming reset is available for this Codex account. Refresh usage data or choose a date and time.' };
+  if (!snapshot) return { reason: 'no-data', message: account.runner === 'claude' ? 'No reset observed for this Claude account. Onni learns reset times from Claude tasks run here; checking only reloads saved observations and never starts a model. Choose a date and time instead.' : 'No upcoming reset is available for this Codex account. Refresh usage data or choose a date and time.' };
   const windows = selectResetWindows(snapshot, execution.models.map(m => m.model));
   if (!windows) return { reason: 'no-data', message: 'A required usage window is missing, expired or cannot be matched to every selected model. Choose a date and time.' };
   const latest = Math.max(...windows.map(w => w.resetsAt!));

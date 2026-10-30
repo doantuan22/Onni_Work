@@ -45,7 +45,7 @@ describe('RunStore — uncreatable data dir (telemetry 5af5aec6)', () => {
   let parent: string;
 
   beforeEach(() => {
-    parent = mkdtempSync(join(tmpdir(), 'cez-store-ro-'));
+    parent = mkdtempSync(join(tmpdir(), 'onni-store-ro-'));
   });
 
   afterEach(() => {
@@ -58,7 +58,7 @@ describe('RunStore — uncreatable data dir (telemetry 5af5aec6)', () => {
     // A FILE where `.ai` should be: mkdir fails on every platform and as root, like EPERM did.
     const blocker = join(parent, '.ai');
     writeFileSync(blocker, '');
-    const dataDir = join(blocker, 'cezar');
+    const dataDir = join(blocker, 'onni');
 
     const store = RunStore.open(dataDir);
     expect(error).toHaveBeenCalledWith(expect.stringContaining('task history in this project will not be saved'));
@@ -79,7 +79,7 @@ describe('RunStore — uncreatable data dir (telemetry 5af5aec6)', () => {
 
   it.skipIf(!canDenyWrites)('degrades to live-only when an event file stops being writable mid-session (telemetry 73c6e796)', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const dataDir = join(parent, 'cezar');
+    const dataDir = join(parent, 'onni');
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'quick-task', task: 't', steps: [] });
     const eventsFile = join(dataDir, 'runs', `${run.id}.ndjson`);
@@ -101,7 +101,7 @@ describe('RunStore — uncreatable data dir (telemetry 5af5aec6)', () => {
   });
 
   it('still throws when the project itself is gone — only a refused write degrades (#1105)', () => {
-    const dataDir = join(parent, 'cezar');
+    const dataDir = join(parent, 'onni');
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'quick-task', task: 't', steps: [] });
     rmSync(dataDir, { recursive: true, force: true });
@@ -114,7 +114,7 @@ describe('RunStore — directional usage persistence', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -193,7 +193,7 @@ describe('RunStore — workflow retry accounting (#1300)', () => {
   };
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -243,7 +243,7 @@ describe('RunStore — titleSummary + diffStat (#389)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -450,7 +450,7 @@ describe('RunStore — titleSummary + diffStat (#389)', () => {
 describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -584,9 +584,9 @@ describe('RunStore — PR auto-link only on real creation (#fake-pr)', () => {
         id: 't3',
         name: 'Bash',
         toolKind: 'execute',
-        title: 'Ran gh pr create --repo open-mercato/cezar --base main --head cez/x --title "fix…',
+        title: 'Ran gh pr create --repo open-mercato/onni --base main --head onni/x --title "fix…',
         status: 'completed',
-        input: { command: 'gh pr create --repo open-mercato/cezar --base main' },
+        input: { command: 'gh pr create --repo open-mercato/onni --base main' },
         output: 'https://github.com/open-mercato/cezar/pull/901',
       },
     });
@@ -600,7 +600,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
   let dataDir: string;
   const saved = { GITHUB_TOKEN: process.env.GITHUB_TOKEN, CEZ_REDACT_SECRETS: process.env.CEZ_REDACT_SECRETS };
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -626,7 +626,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
     expect(raw).toContain('[REDACTED]');
   });
 
-  it('scrubs a token shape even when it never lived in cezar’s env', () => {
+  it('scrubs a token shape even when it never lived in onni’s env', () => {
     delete process.env.CEZ_REDACT_SECRETS;
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
@@ -816,7 +816,7 @@ describe('RunStore — secret redaction before persistence (#427)', () => {
 describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodiscovery)', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -966,7 +966,7 @@ describe('RunStore — referenced-PR discovery (#407, spec 2026-07-16-pr-autodis
 describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-markers)', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -1218,7 +1218,7 @@ describe('RunStore — agent-declared marker refs (spec 2026-07-18-task-ref-mark
 describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-discovery)', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -1334,7 +1334,7 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
     );
   });
 
-  it('a declared CEZ:ISSUE filters the candidates and owns issueNumber', () => {
+  it('a declared ONNI:ISSUE filters the candidates and owns issueNumber', () => {
     const { store, run } = freshRun();
     store.appendEvent(run.id, {
       type: 'result',
@@ -1361,13 +1361,13 @@ describe('RunStore — referenced-issue discovery (spec 2026-07-21-report-ref-di
 describe("RunStore — a task never adopts another repository's ref (#945)", () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-repo-scope-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-repo-scope-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
   });
 
-  const HANDLE = { owner: 'open-mercato', name: 'cezar' };
+  const HANDLE = { owner: 'acme', name: 'widgets' };
 
   /** A store that already knows which repository it is, as the background arming leaves it. */
   const scopedRun = (task = 'task', handle: typeof HANDLE | null = HANDLE) => {
@@ -1434,21 +1434,21 @@ describe("RunStore — a task never adopts another repository's ref (#945)", () 
     const { store, run } = scopedRun();
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'Reviewed https://github.com/open-mercato/cezar/pull/407 — looks good.',
+      result: 'Reviewed https://github.com/acme/widgets/pull/407 — looks good.',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/407',
+      'https://github.com/acme/widgets/pull/407',
     );
   });
 
   it('matches the handle case-insensitively', () => {
-    const { store, run } = scopedRun('task', { owner: 'Open-Mercato', name: 'Cezar' });
+    const { store, run } = scopedRun('task', { owner: 'Acme', name: 'Widgets' });
     store.appendEvent(run.id, {
       type: 'result',
-      result: 'See https://github.com/open-mercato/cezar/pull/407.',
+      result: 'See https://github.com/acme/widgets/pull/407.',
     });
     expect(store.getRun(run.id)?.referencedPullRequestUrl).toBe(
-      'https://github.com/open-mercato/cezar/pull/407',
+      'https://github.com/acme/widgets/pull/407',
     );
   });
 
@@ -1477,7 +1477,7 @@ describe("RunStore — a task never adopts another repository's ref (#945)", () 
     );
   });
 
-  it('vetoes a foreign URL a CEZ:PR marker declared', () => {
+  it('vetoes a foreign URL a ONNI:PR marker declared', () => {
     // The marker owns the resolution, but it can only ever pick from the candidate list — and a
     // foreign candidate is not adoptable, so the chip stays empty rather than pointing away.
     const { store, run } = scopedRun('task');
@@ -1534,9 +1534,9 @@ describe("RunStore — a task never adopts another repository's ref (#945)", () 
     it("keeps a stored URL from the project's own repo", () => {
       const { after } = reopenArmed({
         task: 'task',
-        referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/407',
+        referencedPullRequestUrl: 'https://github.com/acme/widgets/pull/407',
       });
-      expect(after?.referencedPullRequestUrl).toBe('https://github.com/open-mercato/cezar/pull/407');
+      expect(after?.referencedPullRequestUrl).toBe('https://github.com/acme/widgets/pull/407');
     });
 
     it('revokes an issueNumber this janitor seeded from the dropped URL', () => {
@@ -1552,7 +1552,7 @@ describe("RunStore — a task never adopts another repository's ref (#945)", () 
     });
 
     it('leaves an issueNumber it did NOT seed alone', () => {
-      // The prompt, the namer or a CEZ:ISSUE marker owns that number — dropping the foreign URL
+      // The prompt, the namer or a ONNI:ISSUE marker owns that number — dropping the foreign URL
       // must not take it with them.
       const { after } = reopenArmed({
         task: 'fix issue 42',
@@ -1622,7 +1622,7 @@ describe('RunStore — seq survives a restart (#424 symptom class)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-seq-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-seq-'));
   });
 
   afterEach(() => {
@@ -1656,7 +1656,7 @@ describe('RunStore — provider authorization callouts', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-provider-auth-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-provider-auth-'));
   });
 
   afterEach(() => {
@@ -1691,7 +1691,7 @@ describe('RunStore — queuedMessages (#472)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -1758,7 +1758,7 @@ describe('RunStore — read receipts (#unread-done-items)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -1938,7 +1938,7 @@ describe('RunStore — read receipts (#unread-done-items)', () => {
 });
 
 /**
- * `awaitingAnswerSince`: a `failed` run whose session closed on an unanswered `CEZ:ASK`. The
+ * `awaitingAnswerSince`: a `failed` run whose session closed on an unanswered `ONNI:ASK`. The
  * cockpit keeps it under "needs you", so the store owns the invariant that only a `failed` run
  * carries it — a Continue, a Finish, a cancel, an archive and a reload all retire it on their own.
  */
@@ -1947,7 +1947,7 @@ describe('RunStore — awaitingAnswerSince', () => {
   const AT = '2026-10-05T10:00:00.000Z';
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-awaiting-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-awaiting-'));
   });
 
   afterEach(() => {
@@ -2038,7 +2038,7 @@ describe('RunStore — the legacy `claude-cli` runner id (#547)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -2177,7 +2177,7 @@ describe('RunStore — pinned tasks (#935)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -2202,7 +2202,7 @@ describe('RunStore — pinned tasks (#935)', () => {
 
   it('unpinning DELETES both keys rather than writing pinned:false', () => {
     // The compatibility promise (BACKWARD_COMPATIBILITY.md §3): an unpinned record is
-    // byte-identical to one written by a cezar that never heard of pins.
+    // byte-identical to one written by a onni that never heard of pins.
     const store = RunStore.open(dataDir);
     const id = newRun(store);
     store.setPinned(id, true);
@@ -2276,7 +2276,7 @@ describe('RunStore — a save never drops another process’s runs', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-'));
   });
 
   afterEach(() => {
@@ -2294,9 +2294,9 @@ describe('RunStore — a save never drops another process’s runs', () => {
       (r) => r.id === id,
     );
 
-  it('keeps the run a second process started — the cockpit-plus-`cezar run` case', () => {
+  it('keeps the run a second process started — the cockpit-plus-`onni run` case', () => {
     // The reported symptom exactly: a cockpit is already open (store A) when a headless
-    // `cezar run` (store B) opens the same data directory and starts a task. A's next save
+    // `onni run` (store B) opens the same data directory and starts a task. A's next save
     // used to serialize its own map over the whole file, so B's run left an .ndjson behind
     // with nothing in the index pointing at it.
     const cockpit = RunStore.open(dataDir);
@@ -2304,7 +2304,7 @@ describe('RunStore — a save never drops another process’s runs', () => {
     cockpit.flush();
 
     const headless = RunStore.open(dataDir);
-    const fromHeadless = newRun(headless, 'started by cezar run');
+    const fromHeadless = newRun(headless, 'started by onni run');
     headless.flush();
 
     cockpit.updateRun(fromCockpit, { status: 'running' });
@@ -2423,7 +2423,7 @@ const SAVE_DEBOUNCE_WINDOW_MS = 1_000;
 describe('RunStore — seq rehydration from the persisted high-water mark', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-lastseq-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-lastseq-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -2512,7 +2512,7 @@ describe('RunStore — seq rehydration from the persisted high-water mark', () =
 describe('RunStore — runs.json encoding', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-encoding-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-encoding-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -2552,7 +2552,7 @@ describe('RunStore — runs.json encoding', () => {
 describe('RunStore — janitor cost once its answer is settled (#540)', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-janitor-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-janitor-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });
@@ -2594,7 +2594,7 @@ describe('RunStore — janitor cost once its answer is settled (#540)', () => {
     store.appendEvent(run.id, { type: 'text', text: `working on ${issue(3)}` });
     expect(store.getRun(run.id)).toMatchObject({ referencedIssueUrl: issue(3), issueNumber: 3 });
 
-    store.setRepoHandle({ owner: 'open-mercato', name: 'cezar' });
+    store.setRepoHandle({ owner: 'open-mercato', name: 'onni' });
     store.appendEvent(run.id, { type: 'text', text: `still on ${issue(3)}` });
 
     expect(store.getRun(run.id)?.referencedIssueUrl).toBeUndefined();
@@ -2620,7 +2620,7 @@ describe('RunStore — janitor cost once its answer is settled (#540)', () => {
 describe('RunStore — pruning spares live runs (telemetry 73c6e796)', () => {
   let dataDir: string;
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-store-prune-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-prune-'));
     vi.useFakeTimers({ toFake: ['Date'] });
   });
   afterEach(() => {
@@ -2670,7 +2670,7 @@ describe('RunStore — pruning spares live runs (telemetry 73c6e796)', () => {
 
 describe('RunStore — index lock failures', () => {
   let dataDir: string;
-  beforeEach(() => { dataDir = mkdtempSync(join(tmpdir(), 'cez-store-lock-')); });
+  beforeEach(() => { dataDir = mkdtempSync(join(tmpdir(), 'onni-store-lock-')); });
   afterEach(() => { vi.restoreAllMocks(); rmSync(dataDir, { recursive: true, force: true }); });
 
   it('fails closed on a malformed live ticket, retaining ordinary writes and rolling back strict creation', () => {
@@ -2757,7 +2757,7 @@ describe('RunStore — index lock failures', () => {
     } finally { other.kill('SIGKILL'); }
   });
 
-  // PIDs mean nothing in another process view: another container's PID 1 is not this cezar's.
+  // PIDs mean nothing in another process view: another container's PID 1 is not this onni's.
   it.each<[string, () => string]>([
     ['another host', () => ticketFor(process.pid, threadId, { host: `not-${hostname()}` })],
     ...(ns ? [['another PID namespace on this hostname', () => ticketFor(process.pid, threadId, { ns: 'pid:[1]' })] as [string, () => string]] : []),

@@ -24,7 +24,7 @@ describe('createWorktree on a near-full disk (9cdcedc3)', () => {
   });
 
   async function fixture(): Promise<string> {
-    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'cez-wt-disk-')));
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'onni-wt-disk-')));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: dir });
     writeFileSync(join(dir, 'a.txt'), 'a\n');
     await run('git', ['add', '-A'], { cwd: dir });

@@ -20,12 +20,12 @@ describe('tracker API boundaries and isolation', () => {
   let root: string;
   let store: RunStore;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-tracker-api-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-tracker-api-'));
     vi.stubEnv('CEZ_HOME', join(root, 'home'));
     vi.stubEnv('CEZ_DRY_RUN', '1');
     vi.stubEnv('CEZ_SINGLE_PROJECT', '0');
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(root, '.ai/cezar'));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(root, '.ai/onni'));
   });
   afterEach(() => { store.flush(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); rmSync(root, { recursive: true, force: true }); });
   const app = (workspaceEvents?: WorkspaceEventBus) => createApp({
@@ -132,9 +132,9 @@ describe('tracker API boundaries and isolation', () => {
     bus.on((name, payload) => { if (name === 'tracker-changed') events.push(trackerChangedEventSchema.parse(payload)); });
     const instance = app(bus);
     await apiRequest(instance, '/api/v1/tracker/association', put(selection));
-    const saved = readFileSync(join(root, '.ai/cezar/tracker.json'), 'utf8');
+    const saved = readFileSync(join(root, '.ai/onni/tracker.json'), 'utf8');
     await apiRequest(instance, '/api/v1/tracker/association', put({ ...selection, sourceId: 'wrong' }));
-    expect(readFileSync(join(root, '.ai/cezar/tracker.json'), 'utf8')).toBe(saved);
+    expect(readFileSync(join(root, '.ai/onni/tracker.json'), 'utf8')).toBe(saved);
     expect(events).toHaveLength(1);
     vi.stubEnv('CEZ_DRY_RUN', '0');
     vi.stubEnv('JIRA_API_TOKEN', '');
@@ -155,9 +155,9 @@ describe('tracker API boundaries and isolation', () => {
     const instance = app();
     await apiRequest(instance, '/api/v1/tracker/association', put(selection));
     // A directory at the atomic destination reliably fails even when tests run as root.
-    rmSync(join(root, '.ai/cezar/tracker.json'));
-    mkdirSync(join(root, '.ai/cezar/tracker.json'));
-    writeFileSync(join(root, '.ai/cezar/tracker.json/keep'), 'keep');
+    rmSync(join(root, '.ai/onni/tracker.json'));
+    mkdirSync(join(root, '.ai/onni/tracker.json'));
+    writeFileSync(join(root, '.ai/onni/tracker.json/keep'), 'keep');
     expect((await apiRequest(instance, '/api/v1/tracker/association', put(selection))).status).toBe(409);
     expect((await apiRequest(instance, '/api/v1/tracker/association', { method: 'DELETE' })).status).toBe(409);
   });
@@ -177,8 +177,8 @@ it('keeps credential HTTP responses write-only and aliases connection routes to 
   const root = mkdtempSync(join(tmpdir(), 'tracker-credentials-api-'));
   vi.stubEnv('CEZ_HOME', join(root, 'home'));
   vi.stubEnv('CEZ_DRY_RUN', '0');
-  mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-  const store = RunStore.open(join(root, '.ai/cezar'));
+  mkdirSync(join(root, '.ai/onni'), { recursive: true });
+  const store = RunStore.open(join(root, '.ai/onni'));
   const fetcher = vi.fn(() => { throw new Error('No vendor access during credential storage'); });
   vi.stubGlobal('fetch', fetcher);
   try {

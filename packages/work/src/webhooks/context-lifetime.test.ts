@@ -29,7 +29,7 @@ it('delivers a durable failure through disk fallback after lazy context recovery
   });
   contexts.onContextBuilt(context => coordinator.ready(context.root, context));
   contexts.onBeforeRecover(async () => () => { throw new Error('optional rollback failure'); });
-  const store = RunStore.open(join(root, '.ai/cezar'));
+  const store = RunStore.open(join(root, '.ai/onni'));
   try {
     const service = await coordinator.get('fixture', root, true);
     service.attach(store, { isActive: () => false }, true);
@@ -99,7 +99,7 @@ it('fences delayed attachment, readiness and teardown against a newer context', 
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'context-identity-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
   const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [], dryRun: true });
-  const dataDir = join(root, '.ai/cezar');
+  const dataDir = join(root, '.ai/onni');
   const oldStore = RunStore.open(dataDir), newStore = RunStore.open(dataDir);
   const old = { root, store: oldStore, manager: { isActive: () => false } } as unknown as ProjectContext;
   const replacement = { root, store: newStore, manager: { isActive: () => false } } as unknown as ProjectContext;

@@ -12,7 +12,7 @@ import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 
-describe('CEZ:MONITORING on a non-final workflow step (#1076)', () => {
+describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
@@ -29,13 +29,13 @@ describe('CEZ:MONITORING on a non-final workflow step (#1076)', () => {
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-1076-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-1076-'));
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     currentId = undefined;
   });
@@ -119,7 +119,7 @@ describe('CEZ:MONITORING on a non-final workflow step (#1076)', () => {
 
     manager.dispose();
     store.flush();
-    const reopened = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    const reopened = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     store = reopened;
     manager = new RunManager(reopened, repoRoot);
     await manager.recover();

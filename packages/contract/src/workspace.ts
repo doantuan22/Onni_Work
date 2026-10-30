@@ -4,7 +4,7 @@ import { type Runner, runnerSchema } from './health.ts';
 import { MAX_SAVED_WORKSPACE_LAYOUTS, savedWorkspaceLayoutSchema } from './workspace-layouts.ts';
 
 /**
- * The workspace + settings families: `~/.cezar/config.json`'s settings slice, both GUI-pref bags
+ * The workspace + settings families: `~/.onni/config.json`'s settings slice, both GUI-pref bags
  * (per-repo and workspace), the per-repo agent knobs, provider auth status, the host model
  * catalog, the skills-update state, and the "Open in…" targets.
  *
@@ -14,7 +14,7 @@ import { MAX_SAVED_WORKSPACE_LAYOUTS, savedWorkspaceLayoutSchema } from './works
 // ---- workspace settings (`GET/PUT /api/v1/workspace/config`) --------------------------------
 
 /**
- * `GET/PUT /api/v1/workspace/config` — the settings slice of `~/.cezar/config.json` (step 2.7).
+ * `GET/PUT /api/v1/workspace/config` — the settings slice of `~/.onni/config.json` (step 2.7).
  *
  * Global knobs only: the registry itself is `GET /api/v1/projects`, and `schemaVersion` (a
  * migration cursor, not a setting) is deliberately absent. `resources` is the workspace's
@@ -67,7 +67,7 @@ export const workspaceConfigResponseSchema = z.object({
    * Both keys are OPTIONAL on the wire, and that is load-bearing rather than lax: absent means
    * "this machine has no opinion, the built-in default applies", and it has to stay distinguishable
    * from a value someone chose or the fallback collapses into "always claude". Consulted only where
-   * the repo's own `.ai/cezar/config.json` is silent — a repo that chose is never overruled.
+   * the repo's own `.ai/onni/config.json` is silent — a repo that chose is never overruled.
    */
   agentDefaults: z.object({
     runner: runnerSchema.optional(),
@@ -98,7 +98,7 @@ export const setWorkspaceConfigInputSchema = z.object({
   browseRoot: z.string().trim().min(1).max(4096).optional(),
   projectsDir: z.string().trim().min(1).max(4096).optional(),
   skillsAutoUpdate: z.boolean().nullable().optional(),
-  /** Replaces the whole list; entries keep unknown keys (a newer cezar's metadata). The server
+  /** Replaces the whole list; entries keep unknown keys (a newer onni's metadata). The server
    *  rejects an unsafe `repo`/`ref` with a 400. */
   orgSkillsRepos: z
     .array(z.object({ repo: z.string().trim().min(1).max(500), ref: z.string().trim().min(1).max(200).default('main') }).passthrough())
@@ -163,7 +163,7 @@ const taskTableUiStateSchema = z.looseObject({
 });
 
 /**
- * `GET/PUT /api/v1/ui-state` — the per-repo GUI prefs in `.ai/cezar/ui-state.json`.
+ * `GET/PUT /api/v1/ui-state` — the per-repo GUI prefs in `.ai/onni/ui-state.json`.
  *
  * An OPEN bag on purpose (BACKWARD_COMPATIBILITY.md §3): unknown keys round-trip untouched, so a
  * newer cockpit's prefs survive an older server and a future pref needs no server change. Hence
@@ -205,7 +205,7 @@ export const uiStateSchema = z.looseObject({
   githubView: z.enum(['issues', 'prs']).optional(),
   /** The GitHub tab's list order. Absent → newest first, which is what `gh` already returns. */
   githubSort: z.enum(['newest', 'oldest']).optional(),
-  /** Settings → Appearance. The theme itself stays in localStorage (`cez-theme`) — it must
+  /** Settings → Appearance. The theme itself stays in localStorage (`onni-theme`) — it must
    *  pre-paint, and it is per-browser by design. */
   appearance: appearanceSchema.optional(),
   /** Follow-up prompt templates (#413). Absent → the built-in defaults; present (even `[]`) is
@@ -234,7 +234,7 @@ export type UiState = z.infer<typeof uiStateSchema>;
 export const PROMPT_TEMPLATE_TEXT_MAX = 20_000;
 
 /**
- * `GET/PUT /api/v1/workspace/ui-state` — cross-project GUI prefs in `~/.cezar/ui-state.json`
+ * `GET/PUT /api/v1/workspace/ui-state` — cross-project GUI prefs in `~/.onni/ui-state.json`
  * (multi-project spec, step 2.7).
  *
  * The same open bag as its per-repo twin above, and open for the same reason. The PUT merges
@@ -429,7 +429,7 @@ export const configResponseSchema = z.object({
   defaultRunner: runnerSchema,
   systemPrompt: z.string().nullable(),
   /** Free-text branch naming instructions (spec 2026-10-11-branch-naming-instructions); null =
-   *  task branches stay `cez/<id8>`. */
+   *  task branches stay `onni/<id8>`. */
   branchNaming: z.string().nullable(),
   defaultModels: runnerModelsSchema,
   /** True when native coding-agent settings are authoritative and model picks are read-only. */

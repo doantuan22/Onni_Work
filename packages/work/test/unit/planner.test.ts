@@ -32,7 +32,7 @@ test('parseStructured reads the optional planner title alongside the steps', () 
 });
 
 test('detectVerifyCommands offers the repo\'s end-to-end suite, after the cheap checks', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'cez-planner-detect-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'onni-planner-detect-'));
   try {
     writeFileSync(
       join(repoRoot, 'package.json'),
@@ -50,7 +50,7 @@ test('detectVerifyCommands offers the repo\'s end-to-end suite, after the cheap 
 });
 
 test('detectVerifyCommands falls back to `npx e2e run` on a config with no script', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'cez-planner-detect-cfg-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'onni-planner-detect-cfg-'));
   try {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ scripts: { lint: 'eslint .' } }));
     writeFileSync(join(repoRoot, 'e2e.config.ts'), 'export default {};\n');
@@ -62,7 +62,7 @@ test('detectVerifyCommands falls back to `npx e2e run` on a config with no scrip
 });
 
 test('detectVerifyCommands names nothing when the repo has no suite', async () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'cez-planner-detect-none-'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'onni-planner-detect-none-'));
   try {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ scripts: {} }));
     assert.deepEqual(await detectVerifyCommands(repoRoot), []);

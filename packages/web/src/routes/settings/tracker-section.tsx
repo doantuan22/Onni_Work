@@ -147,7 +147,7 @@ export function TrackerSection() {
 
       {savedAssociation && currentConnection && !connection.isError && !connection.data?.demo && !scopeConnected ? <p className="text-sm text-warning">This scope needs reconnection with this project's credentials. Configure a connection, then browse and select its scope again.</p> : null}
       {connection.data?.error ? <p role="alert" className="text-sm text-danger">{connection.data.error}</p> : null}
-      <p className="text-xs text-muted-foreground">For local credential cleanup, run <code>cez tracker-connections list</code>, then <code>cez tracker-connections remove &lt;id&gt;</code>. Local deletion does not revoke the vendor token.</p>
+      <p className="text-xs text-muted-foreground">For local credential cleanup, run <code>onni tracker-connections list</code>, then <code>onni tracker-connections remove &lt;id&gt;</code>. Local deletion does not revoke the vendor token.</p>
       {connection.isError ? <p className="text-sm text-danger">Could not load project connection. <button onClick={() => void connection.refetch()}>Retry</button></p> : null}
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-semibold">Connect a provider</h2>

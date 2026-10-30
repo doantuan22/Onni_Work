@@ -17,7 +17,7 @@ import { providerIdSchema, providerStatusSchema } from './workspace.ts';
 /**
  * The id of the DISCOVERED account — the one `agentHomePaths()` finds from the environment.
  *
- * Reserved: never allocated to a stored account, never written to `~/.cezar/agent-accounts.json`.
+ * Reserved: never allocated to a stored account, never written to `~/.onni/agent-accounts.json`.
  * It is a real, meaningful value on the wire in two places, and they are not the same thing:
  * `PUT …/agent-profiles/selection` takes it (like `null`) to CLEAR a repo back to the discovered
  * account, and `POST /api/v1/runs` takes it as `agentProfile` to mean "this task uses the
@@ -48,7 +48,7 @@ export type AgentAccountFile = z.infer<typeof agentAccountFileSchema>;
  *
  * A CLOSED object, on the same terms as `projectListEntrySchema`: `.passthrough()` on the
  * persistence side (`src/workspace/agent-accounts.ts`) is a durability promise about
- * `~/.cezar/agent-accounts.json`, not a promise that the API answers arbitrary keys.
+ * `~/.onni/agent-accounts.json`, not a promise that the API answers arbitrary keys.
  */
 export const agentProfileSchema = z.object({
   /** `default` for the discovered profile, else the stored slug. */
@@ -65,7 +65,7 @@ export const agentProfileSchema = z.object({
   /** Whether the dir carries this agent's own marker files. ADVISORY: an unrecognised dir is
    *  still accepted, because "add profile → Connect → the CLI creates it" is the real flow. */
   looksValid: z.boolean(),
-  /** True for the profile cezar discovers from the environment. Never stored, never deletable. */
+  /** True for the profile onni discovers from the environment. Never stored, never deletable. */
   isDefault: z.boolean(),
   /** This account's own authentication state — two Claude logins answer independently.
    *
@@ -123,8 +123,8 @@ export const agentProfilesResponseSchema = z.object({
   /** Which account each project uses, keyed by the project's realpath'd ROOT.
    *
    *  Served here rather than on `GET /api/v1/projects` because it is stored beside the accounts it
-   *  names (`~/.cezar/agent-accounts.json`) — one file, so deleting an account and scrubbing every
-   *  reference to it is one atomic write, and neither can be dropped by a cezar version that never
+   *  names (`~/.onni/agent-accounts.json`) — one file, so deleting an account and scrubbing every
+   *  reference to it is one atomic write, and neither can be dropped by a onni version that never
    *  heard of accounts. Empty when remote account management is withheld. */
   selections: z.record(z.string(), agentAccountSelectionSchema),
   /** The machine-wide fallback account per provider, used by any repo that has chosen none. */

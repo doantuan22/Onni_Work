@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { lifecycleCommandFingerprint, renderLifecycleCommand, validateLifecycleCommand } from './templates.ts';
 
-const context = { root_path: '/tmp/project', worktree_path: '/tmp/task', worktree_id: 'cez-123', task_id: '123' };
+const context = { root_path: '/tmp/project', worktree_path: '/tmp/task', worktree_id: 'onni-123', task_id: '123' };
 describe('lifecycle command rendering', () => {
   it('round-trips adversarial values as a single shell word with static suffixes', () => {
     const path = '/tmp/space \' " $HOME; $(echo INJECTED) `echo bad` 雪 {{task_id}}';
@@ -27,7 +27,7 @@ describe('lifecycle command rendering', () => {
   });
   it('consumes literal-brace escape in quoted Docker formats', () => {
     expect(renderLifecycleCommand("docker inspect --format '\\{{ .Name }}' {{worktree_id}}", context))
-      .toBe("docker inspect --format '{{ .Name }}' 'cez-123'");
+      .toBe("docker inspect --format '{{ .Name }}' 'onni-123'");
   });
   it.each(['echo {{unknown}}', 'echo {{root_path', '   '])('validates malformed input: %s', command => {
     expect(() => validateLifecycleCommand(command)).toThrow();

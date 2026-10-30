@@ -59,7 +59,7 @@ describe('nginx configuration diagnostics', () => {
                   code: 1,
                   stdout: '',
                   stderr:
-                    '2026/08/20 [emerg] unknown directive "http2" in /etc/nginx/sites-enabled/cezar:12\n' +
+                    '2026/08/20 [emerg] unknown directive "http2" in /etc/nginx/sites-enabled/onni:12\n' +
                     'nginx: configuration file /etc/nginx/nginx.conf test failed',
                 }
               : { code: 0, stdout: '', stderr: '' },
@@ -110,7 +110,7 @@ describe('ubuntu-vps ssl step', () => {
   let home: string;
   const original = process.env.CEZ_HOME;
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-ssl-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-ssl-'));
     process.env.CEZ_HOME = home;
   });
   afterEach(() => {
@@ -123,7 +123,7 @@ describe('ubuntu-vps ssl step', () => {
     const ids = ubuntuVps.steps(ctxWith({})).map((s) => s.id);
     expect(ids).toEqual(['deps', 'nginx-proxy', 'ssl', 'autostart', 'identity']);
     expect(stepById('ssl').optional).toBe(true);
-    // The service step is required now — after install cezar must actually run.
+    // The service step is required now — after install onni must actually run.
     expect(stepById('autostart').optional).toBeFalsy();
     expect(stepById('identity').optional).toBeFalsy();
   });
@@ -135,7 +135,7 @@ describe('ubuntu-vps ssl step', () => {
     expect(ids).not.toContain('ssl');
   });
 
-  it('external-proxy verify passes when cezar answers on the bound host', async () => {
+  it('external-proxy verify passes when onni answers on the bound host', async () => {
     const seen: string[] = [];
     const runner: Runner = {
       capture: async (program, args) => {
@@ -161,13 +161,13 @@ describe('ubuntu-vps ssl step', () => {
   });
 
   it('dry-run records the cert as a shared artifact and sets publicUrl', async () => {
-    const ui = { ...createAutoUi(), text: async (o: { message: string }) => (o.message.includes('Domain') ? 'cezar.example.com' : 'you@example.com') } as Ui;
+    const ui = { ...createAutoUi(), text: async (o: { message: string }) => (o.message.includes('Domain') ? 'onni.example.com' : 'you@example.com') } as Ui;
     const ctx = ctxWith({ dryRun: true, ui });
     const created = await stepById('ssl').run(ctx);
     const cert = created?.artifacts.find((a) => a.type === 'cert');
     expect(cert?.kind).toBe('shared');
-    expect(cert?.name).toBe('cezar.example.com');
-    expect(ctx.state.publicUrl).toBe('https://cezar.example.com');
+    expect(cert?.name).toBe('onni.example.com');
+    expect(ctx.state.publicUrl).toBe('https://onni.example.com');
   });
 
   it('undo does NOT remove the cert — it only lists it', async () => {
@@ -210,13 +210,13 @@ describe('nginxVhost', () => {
   it('defaults to a catch-all server_name and can target a domain', () => {
     expect(nginxVhost(4321)).toContain('server_name _;');
     // The SSL step rewrites server_name to the domain so certbot --nginx can find it.
-    expect(nginxVhost(4321, 'cezar.example.com')).toContain('server_name cezar.example.com;');
+    expect(nginxVhost(4321, 'onni.example.com')).toContain('server_name onni.example.com;');
   });
 
   it('defaults to the legacy htpasswd path but accepts an instance-scoped one', () => {
-    expect(nginxVhost(4321)).toContain('auth_basic_user_file /etc/cezar/htpasswd;');
-    expect(nginxVhost(4322, 'shop.example.com', '/etc/cezar/htpasswd-shop-example-com')).toContain(
-      'auth_basic_user_file /etc/cezar/htpasswd-shop-example-com;',
+    expect(nginxVhost(4321)).toContain('auth_basic_user_file /etc/onni/htpasswd;');
+    expect(nginxVhost(4322, 'shop.example.com', '/etc/onni/htpasswd-shop-example-com')).toContain(
+      'auth_basic_user_file /etc/onni/htpasswd-shop-example-com;',
     );
   });
 
@@ -280,7 +280,7 @@ describe('HTTP/2 syntax per nginx version (#910)', () => {
     return {
       ...createAutoUi(),
       text: async (o: { message: string }) =>
-        o.message.includes('Domain') ? 'cezar.example.com' : o.message.includes('Email') ? 'ops@example.com' : 'ops',
+        o.message.includes('Domain') ? 'onni.example.com' : o.message.includes('Email') ? 'ops@example.com' : 'ops',
       password: async () => 'longenough',
     } as Ui;
   }
@@ -304,7 +304,7 @@ describe('HTTP/2 syntax per nginx version (#910)', () => {
   });
 
   it('emits no standalone http2 directive for an nginx that cannot parse one', () => {
-    const v = nginxVhost(4321, 'cezar.example.com', '/etc/cezar/htpasswd', '1.24.0');
+    const v = nginxVhost(4321, 'onni.example.com', '/etc/onni/htpasswd', '1.24.0');
     expect(v).not.toMatch(standaloneHttp2);
     // …and nothing else in the pre-certbot :80 block that 1.24 rejects either:
     // every directive it emits predates 1.24 by years.
@@ -313,8 +313,8 @@ describe('HTTP/2 syntax per nginx version (#910)', () => {
   });
 
   it('emits the standalone http2 directive on nginx >= 1.25.1', () => {
-    expect(nginxVhost(4321, 'cezar.example.com', '/etc/cezar/htpasswd', '1.25.1')).toMatch(standaloneHttp2);
-    expect(nginxVhost(4321, 'cezar.example.com', '/etc/cezar/htpasswd', '1.26.0')).toContain('http2 on;');
+    expect(nginxVhost(4321, 'onni.example.com', '/etc/onni/htpasswd', '1.25.1')).toMatch(standaloneHttp2);
+    expect(nginxVhost(4321, 'onni.example.com', '/etc/onni/htpasswd', '1.26.0')).toContain('http2 on;');
   });
 
   it('defaults to the syntax every nginx understands when the version is unknown', () => {
@@ -328,7 +328,7 @@ describe('HTTP/2 syntax per nginx version (#910)', () => {
     ] as const) {
       const { runner, sudo } = nginxRunner(version);
       await stepById('nginx-proxy').run({ ...ctxWith({ ui: installerUi(), runner }), assumeYes: true });
-      const vhost = writtenFile(sudo, '/etc/nginx/sites-available/cezar');
+      const vhost = writtenFile(sudo, '/etc/nginx/sites-available/onni');
       expect(standaloneHttp2.test(vhost), `nginx ${version}`).toBe(wantsDirective);
     }
   });
@@ -338,7 +338,7 @@ describe('HTTP/2 syntax per nginx version (#910)', () => {
     await stepById('ssl').run({ ...ctxWith({ ui: installerUi(), runner }), assumeYes: true });
 
     // The pre-certbot vhost must still be parseable by 1.24 …
-    expect(writtenFile(sudo, '/etc/nginx/sites-available/cezar')).not.toMatch(standaloneHttp2);
+    expect(writtenFile(sudo, '/etc/nginx/sites-available/onni')).not.toMatch(standaloneHttp2);
     // … and HTTP/2 is switched on afterwards, on the TLS listener certbot made.
     const certbot = sudo.findIndex((c) => c.startsWith('certbot'));
     const http2 = sudo.findIndex((c) => c.includes('http2;'));
@@ -351,7 +351,7 @@ describe('HTTP/2 syntax per nginx version (#910)', () => {
     const { runner, sudo } = nginxRunner('1.25.3');
     await stepById('ssl').run({ ...ctxWith({ ui: installerUi(), runner }), assumeYes: true });
 
-    expect(writtenFile(sudo, '/etc/nginx/sites-available/cezar')).toMatch(standaloneHttp2);
+    expect(writtenFile(sudo, '/etc/nginx/sites-available/onni')).toMatch(standaloneHttp2);
     expect(sudo.some((c) => c.startsWith('sed -i -E'))).toBe(false);
   });
 });
@@ -370,10 +370,10 @@ describe('the sed that adds http2 to certbot’s TLS listener (#910)', () => {
 
   // Exactly what `certbot --nginx … --redirect` leaves behind.
   const certbotVhost = `server {
-    server_name cezar.example.com;
+    server_name onni.example.com;
     listen [::]:443 ssl ipv6only=on; # managed by Certbot
     listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/cezar.example.com/fullchain.pem; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/onni.example.com/fullchain.pem; # managed by Certbot
 }
 server {
     listen 80;
@@ -383,7 +383,7 @@ server {
 `;
 
   it.runIf(gnuSed)('adds http2 to the TLS listeners only, and stays idempotent', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-http2-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-http2-'));
     try {
       const path = join(dir, 'vhost.conf');
       writeFileSync(path, certbotVhost);
@@ -420,9 +420,9 @@ describe('ubuntu-vps multi-instance artifact paths', () => {
     const ctx = { ...ctxWith({ ui, dryRun: true }), assumeYes: true } as InstallContext;
     const created = await stepById('nginx-proxy').run(ctx);
     const paths = (created?.artifacts ?? []).map((a) => a.path).filter(Boolean);
-    expect(paths).toContain('/etc/nginx/sites-available/cezar');
-    expect(paths).toContain('/etc/nginx/sites-enabled/cezar');
-    expect(paths).toContain('/etc/cezar/htpasswd');
+    expect(paths).toContain('/etc/nginx/sites-available/onni');
+    expect(paths).toContain('/etc/nginx/sites-enabled/onni');
+    expect(paths).toContain('/etc/onni/htpasswd');
   });
 
   it('a named instance suffixes the nginx site + htpasswd with its slug', async () => {
@@ -431,15 +431,15 @@ describe('ubuntu-vps multi-instance artifact paths', () => {
     ctx.ui = { ...createAutoUi(), text: async () => 'ops', password: async () => 'longenough' } as Ui;
     const created = await stepById('nginx-proxy').run(ctx);
     const paths = (created?.artifacts ?? []).map((a) => a.path).filter(Boolean);
-    expect(paths).toContain('/etc/nginx/sites-available/cezar-shop-example-com');
-    expect(paths).toContain('/etc/nginx/sites-enabled/cezar-shop-example-com');
-    expect(paths).toContain('/etc/cezar/htpasswd-shop-example-com');
+    expect(paths).toContain('/etc/nginx/sites-available/onni-shop-example-com');
+    expect(paths).toContain('/etc/nginx/sites-enabled/onni-shop-example-com');
+    expect(paths).toContain('/etc/onni/htpasswd-shop-example-com');
   });
 
-  it("a named instance's systemd unit is cezar-<slug>.service", async () => {
+  it("a named instance's systemd unit is onni-<slug>.service", async () => {
     const created = await stepById('autostart').run(namedCtx());
     const svc = created?.artifacts.find((a) => a.type === 'service');
-    expect(svc?.name).toBe('cezar-shop-example-com.service');
+    expect(svc?.name).toBe('onni-shop-example-com.service');
   });
 });
 
@@ -469,21 +469,21 @@ describe('ubuntu-vps nginx-proxy identity (interactive, dry-run)', () => {
 });
 
 describe('systemdUnit', () => {
-  it('runs cezar serve loopback with CEZ_REMOTE=1 and the port', () => {
-    const unit = systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/cezar');
+  it('runs onni serve loopback with CEZ_REMOTE=1 and the port', () => {
+    const unit = systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/onni');
     expect(unit).toContain('Environment=CEZ_REMOTE=1');
-    expect(unit).toContain('ExecStart=/usr/local/bin/cezar serve --no-open --port 4321');
+    expect(unit).toContain('ExecStart=/usr/local/bin/onni serve --no-open --port 4321');
     expect(unit).toContain('WorkingDirectory=/srv/app');
     expect(unit).toContain('WantedBy=default.target');
   });
 
   it('passes the install identity to the service environment', () => {
-    expect(systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/cezar', undefined, 'install-a')).toContain(
+    expect(systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/onni', undefined, 'install-a')).toContain(
       'Environment=CEZ_INSTANCE_ID=install-a',
     );
   });
   it('system scope pins User= and multi-user.target', () => {
-    const unit = systemdUnit('/srv/app', 5000, 'system', '/usr/local/bin/cezar');
+    const unit = systemdUnit('/srv/app', 5000, 'system', '/usr/local/bin/onni');
     expect(unit).toContain('User=');
     expect(unit).toContain('WantedBy=multi-user.target');
   });
@@ -494,13 +494,13 @@ describe('systemdUnit', () => {
   });
 
   it('passes --bind-host when an external-proxy install needs a reachable interface', () => {
-    const unit = systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/cezar', '172.17.0.1');
-    expect(unit).toContain('ExecStart=/usr/local/bin/cezar serve --no-open --port 4321 --bind-host 172.17.0.1');
+    const unit = systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/onni', '172.17.0.1');
+    expect(unit).toContain('ExecStart=/usr/local/bin/onni serve --no-open --port 4321 --bind-host 172.17.0.1');
   });
 
   it('stays flag-free for loopback so existing units are unchanged', () => {
-    const plain = systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/cezar');
-    expect(systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/cezar', '127.0.0.1')).toBe(plain);
+    const plain = systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/onni');
+    expect(systemdUnit('/srv/app', 4321, 'user', '/usr/local/bin/onni', '127.0.0.1')).toBe(plain);
     expect(plain).not.toContain('--bind-host');
   });
 });
@@ -525,7 +525,7 @@ describe('ubuntu-vps identity verification (#1008)', () => {
     return { ctx, messages };
   }
 
-  it('rejects a different cezar instance answering on the expected port', async () => {
+  it('rejects a different onni instance answering on the expected port', async () => {
     const errors: string[] = [];
     const ui = { ...createAutoUi(), error: (message: string) => errors.push(message) } as Ui;
     let curl = 0;
@@ -570,25 +570,25 @@ describe('serviceExecStart', () => {
   });
 
   it('uses the official npx alias when launched from the ephemeral _npx cache', () => {
-    expect(serviceExecStart({ ...base, pkgRoot: '/home/u/.npm/_npx/abcd/node_modules/cezar-cli', entryExists: false }))
-      .toBe('/n/npx --yes cezar-cli');
+    expect(serviceExecStart({ ...base, pkgRoot: '/home/u/.npm/_npx/abcd/node_modules/onni-cli', entryExists: false }))
+      .toBe('/n/npx --yes onni-cli');
   });
 
   it('falls back to a resolved global bin when the entry is missing', () => {
-    expect(serviceExecStart({ ...base, pkgRoot: '/pkg', entryExists: false, globalBin: '/usr/bin/cezar-cli' }))
-      .toBe('/n/node /usr/bin/cezar-cli');
+    expect(serviceExecStart({ ...base, pkgRoot: '/pkg', entryExists: false, globalBin: '/usr/bin/onni-cli' }))
+      .toBe('/n/node /usr/bin/onni-cli');
   });
 });
 
 describe('isNpxExecStart (#696)', () => {
   it('is true for the unpinned npx launch form', () => {
-    expect(isNpxExecStart('/home/u/.nvm/versions/node/v24/bin/npx --yes cezar-cli serve --no-open --port 4321')).toBe(true);
+    expect(isNpxExecStart('/home/u/.nvm/versions/node/v24/bin/npx --yes onni-cli serve --no-open --port 4321')).toBe(true);
   });
   it('is false for a checkout (<node> dist/index.js) unit', () => {
-    expect(isNpxExecStart('/usr/bin/node /home/cezar/cezar/dist/index.js serve --no-open --port 4321')).toBe(false);
+    expect(isNpxExecStart('/usr/bin/node /home/onni/onni/dist/index.js serve --no-open --port 4321')).toBe(false);
   });
   it('is false for a global bin unit (no npx)', () => {
-    expect(isNpxExecStart('/usr/bin/node /usr/bin/cezar-cli serve --no-open --port 4321')).toBe(false);
+    expect(isNpxExecStart('/usr/bin/node /usr/bin/onni-cli serve --no-open --port 4321')).toBe(false);
   });
 });
 
@@ -605,27 +605,27 @@ describe('ubuntu-vps redeploy npx-cache refresh (#696)', () => {
   }
 
   it('reports clearing the npx cache before restarting an npx-based unit', async () => {
-    const { ctx, infos } = recordingCtx('/n/npx --yes cezar-cli serve --no-open --port 4321');
+    const { ctx, infos } = recordingCtx('/n/npx --yes onni-cli serve --no-open --port 4321');
     await ubuntuVps.redeploy!(ctx);
-    expect(infos.some((message) => /clear cached cezar-cli|npx refetch/i.test(message))).toBe(true);
+    expect(infos.some((message) => /clear cached onni-cli|npx refetch/i.test(message))).toBe(true);
   });
 
   it('does NOT touch the npx cache for a checkout-based unit', async () => {
-    const { ctx, infos } = recordingCtx('/usr/bin/node /home/cezar/cezar/dist/index.js serve --no-open --port 4321');
+    const { ctx, infos } = recordingCtx('/usr/bin/node /home/onni/onni/dist/index.js serve --no-open --port 4321');
     await ubuntuVps.redeploy!(ctx);
     expect(infos.some((message) => /npx/i.test(message))).toBe(false);
   });
 
-  it('really deletes only the cezar-cli entries in the npx cache', () => {
-    const cache = mkdtempSync(join(tmpdir(), 'cez-npx-'));
+  it('really deletes only the onni-cli entries in the npx cache', () => {
+    const cache = mkdtempSync(join(tmpdir(), 'onni-npx-'));
     const prev = process.env.npm_config_cache;
     process.env.npm_config_cache = cache;
     try {
-      mkdirSync(join(cache, '_npx', 'aaaa', 'node_modules', 'cezar-cli'), { recursive: true });
-      writeFileSync(join(cache, '_npx', 'aaaa', 'node_modules', 'cezar-cli', 'x'), '');
+      mkdirSync(join(cache, '_npx', 'aaaa', 'node_modules', 'onni-cli'), { recursive: true });
+      writeFileSync(join(cache, '_npx', 'aaaa', 'node_modules', 'onni-cli', 'x'), '');
       mkdirSync(join(cache, '_npx', 'bbbb', 'node_modules', 'prettier'), { recursive: true });
 
-      refreshNpxCacheForRedeploy(ctxWith({}), '/n/npx --yes cezar-cli serve --port 4321');
+      refreshNpxCacheForRedeploy(ctxWith({}), '/n/npx --yes onni-cli serve --port 4321');
 
       expect(existsSync(join(cache, '_npx', 'aaaa'))).toBe(false);
       expect(existsSync(join(cache, '_npx', 'bbbb'))).toBe(true);
@@ -637,13 +637,13 @@ describe('ubuntu-vps redeploy npx-cache refresh (#696)', () => {
   });
 
   it('aborts before restart when the npx cache cannot be read', async () => {
-    const cache = mkdtempSync(join(tmpdir(), 'cez-npx-'));
+    const cache = mkdtempSync(join(tmpdir(), 'onni-npx-'));
     const previousCache = process.env.npm_config_cache;
     process.env.npm_config_cache = cache;
     writeFileSync(join(cache, '_npx'), 'not a directory');
     const capture = vi.fn(async () => ({
       code: 0,
-      stdout: '/n/npx --yes cezar-cli serve --port 4321',
+      stdout: '/n/npx --yes onni-cli serve --port 4321',
       stderr: '',
     }));
     const interactive = vi.fn(async () => 0);
@@ -716,7 +716,7 @@ describe('ubuntu-vps redeploy restart verification (#912)', () => {
         externalProxy: true,
         // Pin the scope the way a real install records it (otherwise it falls
         // back to "does the unit file exist on this machine").
-        steps: { autostart: { status: 'done', created: { artifacts: [{ kind: 'owned', type: 'service', name: 'cezar.service', scope: over.scope ?? 'user', path: '/tmp/cezar.service' }] } } },
+        steps: { autostart: { status: 'done', created: { artifacts: [{ kind: 'owned', type: 'service', name: 'onni.service', scope: over.scope ?? 'user', path: '/tmp/onni.service' }] } } },
       },
     });
     return { ctx, warns, pid: () => current?.pid ?? null };
@@ -790,7 +790,7 @@ describe('ubuntu-vps autostart step (dry-run)', () => {
     const svc = created?.artifacts.find((a) => a.type === 'service');
     expect(svc?.kind).toBe('owned');
     expect(svc?.scope).toBe('user');
-    expect(svc?.name).toBe('cezar.service');
+    expect(svc?.name).toBe('onni.service');
   });
 });
 
@@ -810,7 +810,7 @@ describe('ubuntu-vps identity step (end-to-end verify)', () => {
     };
   }
 
-  it('passes when cezar is up, anon is 401, and an authed request reaches it', async () => {
+  it('passes when onni is up, anon is 401, and an authed request reaches it', async () => {
     const ctx = { ...ctxWith({ runner: curlRunner('200', '401') }), assumeYes: false } as InstallContext;
     ctx.prefs.cockpit = { user: 'ops', password: 'hunter2!' };
     // authed request (curl -K -) must return 2xx/3xx — model that by returning 200
@@ -830,7 +830,7 @@ describe('ubuntu-vps identity step (end-to-end verify)', () => {
     await expect(stepById('identity').run(ctx)).resolves.toEqual({ artifacts: [] });
   });
 
-  it('fails the run when cezar is down (nginx would 502)', async () => {
+  it('fails the run when onni is down (nginx would 502)', async () => {
     const ctx = { ...ctxWith({ runner: curlRunner('000', '401') }), assumeYes: false } as InstallContext;
     await expect(stepById('identity').run(ctx)).rejects.toBeInstanceOf(StepAborted);
   });
@@ -946,7 +946,7 @@ describe('ubuntu-vps review fixes (PR #423)', () => {
   it('SSL re-run with TLS already configured updates server_name in place (no plain-HTTP rewrite)', async () => {
     const ui = {
       ...createAutoUi(),
-      text: async (o: { message: string }) => (o.message.includes('Domain') ? 'cezar.example.com' : 'you@example.com'),
+      text: async (o: { message: string }) => (o.message.includes('Domain') ? 'onni.example.com' : 'you@example.com'),
     } as Ui;
     const commands: string[] = [];
     const ctx = {
@@ -982,7 +982,7 @@ describe('ubuntu-vps review fixes (PR #423)', () => {
     const ctx = { ...ctxWith({ runner }) } as InstallContext;
     await stepById('autostart').undo(ctx, {
       artifacts: [
-        { kind: 'owned', type: 'service', name: 'cezar.service', scope: 'user', path: '/tmp/does-not-exist.service' },
+        { kind: 'owned', type: 'service', name: 'onni.service', scope: 'user', path: '/tmp/does-not-exist.service' },
         { kind: 'owned', type: 'linger', name: 'ops' },
       ],
     });
@@ -990,7 +990,7 @@ describe('ubuntu-vps review fixes (PR #423)', () => {
     // and without the linger artifact, it is left alone
     commands.length = 0;
     await stepById('autostart').undo(ctx, {
-      artifacts: [{ kind: 'owned', type: 'service', name: 'cezar.service', scope: 'user', path: '/tmp/does-not-exist.service' }],
+      artifacts: [{ kind: 'owned', type: 'service', name: 'onni.service', scope: 'user', path: '/tmp/does-not-exist.service' }],
     });
     expect(commands.some((c) => c.includes('disable-linger'))).toBe(false);
   });

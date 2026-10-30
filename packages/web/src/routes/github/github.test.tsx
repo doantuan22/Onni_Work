@@ -1672,7 +1672,7 @@ describe('the hand-to-agent backend pills (#401)', () => {
    */
   it('drops a remembered runner this host cannot honour instead of posting it (#906)', async () => {
     // Remembered from elsewhere: a backend that is not connected on this host.
-    localStorage.setItem('cez-followup-selection', '{"runner":"codex","model":null}')
+    localStorage.setItem('onni-followup-selection', '{"runner":"codex","model":null}')
     const sent = stubFetch({
       'GET /api/v1/health': SINGLE_BACKEND,
       'GET /api/v1/config': () => jsonResponse({ defaultRunner: 'claude', defaultModels: {} }),
@@ -1695,7 +1695,7 @@ describe('the hand-to-agent backend pills (#401)', () => {
   it('drops a remembered model that belongs to a different backend (#906)', async () => {
     // `opus` is a claude preset; the remembered runner is codex. Both are valid somewhere, which
     // is exactly how this arrives — one localStorage key is shared across repos.
-    localStorage.setItem('cez-followup-selection', '{"runner":"codex","model":"opus"}')
+    localStorage.setItem('onni-followup-selection', '{"runner":"codex","model":"opus"}')
     stubFetch({
       'GET /api/v1/health': MULTI_BACKEND,
       'GET /api/v1/providers/status': () => jsonResponse(PROVIDERS_MULTI),
@@ -1717,7 +1717,7 @@ describe('the hand-to-agent backend pills (#401)', () => {
    * degradation path, not a licence to discard user state.
    */
   it('keeps the remembered pick when no provider has answered — absence of status is not absence of a backend (#906)', async () => {
-    localStorage.setItem('cez-followup-selection', '{"runner":"codex","model":"opus"}')
+    localStorage.setItem('onni-followup-selection', '{"runner":"codex","model":"opus"}')
     stubFetch({ 'GET /api/v1/providers/status': () => jsonResponse(PROVIDERS_NONE) })
     await openDetail()
 

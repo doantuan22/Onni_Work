@@ -93,7 +93,7 @@ export function ProjectGeneral({ capabilities }: { capabilities?: Partial<Pick<C
       {project.unregistered ? (
         <SettingsField
           title="Add to your projects"
-          hint="cezar is serving this folder because you started it here — starting cezar somewhere new never adds it to your project list for you. Adding it keeps it in the sidebar between runs and gives it a registry entry to hold settings like the task cap. Nothing on disk changes either way."
+          hint="onni is serving this folder because you started it here — starting onni somewhere new never adds it to your project list for you. Adding it keeps it in the sidebar between runs and gives it a registry entry to hold settings like the task cap. Nothing on disk changes either way."
         >
           <AddBootProjectButton root={project.root} name={project.name} notAddable={project.notAddable === true} />
         </SettingsField>
@@ -123,7 +123,7 @@ export function ProjectGeneral({ capabilities }: { capabilities?: Partial<Pick<C
   )
 }
 
-/** The registry entry, read out: what cezar probed about this folder the last time it looked.
+/** The registry entry, read out: what onni probed about this folder the last time it looked.
  *  `canRemove` is whether the Remove field is rendered below — the missing-folder hint points at
  *  it, and must not point at a field single-project mode took away. */
 function ProjectFacts({ project, canRemove }: { project: ProjectListEntry; canRemove: boolean }) {
@@ -160,13 +160,13 @@ function ProjectFacts({ project, canRemove }: { project: ProjectListEntry; canRe
           </>
         ) : null}
 
-        {/* A folder cezar is serving but has never registered has no registry dates to read out
+        {/* A folder onni is serving but has never registered has no registry dates to read out
             — inventing them (or dashing two rows) would say less than naming the state once. */}
         {project.unregistered ? (
           <>
             <dt className="text-muted-foreground">In your projects</dt>
             <dd data-slot="project-general-unregistered" className="text-foreground">
-              No — served because cezar was started here
+              No — served because onni was started here
             </dd>
           </>
         ) : (
@@ -195,7 +195,7 @@ function ProjectFacts({ project, canRemove }: { project: ProjectListEntry; canRe
  * The boot project cannot be removed from the cockpit: this server is serving that folder, and
  * dropping its registry row would break the session's own sidebar, so the server 409s. Disabling
  * here means the explanation arrives before the click rather than as an error toast after it —
- * and the offline gesture (`cezar projects remove`, which has no such refusal) is what the
+ * and the offline gesture (`onni projects remove`, which has no such refusal) is what the
  * message points at.
  *
  * On success the URL this page lives at (`/p/<id>/settings`) has just stopped resolving, so the
@@ -225,7 +225,7 @@ function RemoveProject({ project, bootProject }: { project: ProjectListEntry; bo
           // reach it, then says what "Remove" actually does — the row context that makes a bare
           // "Remove" safe-sounding isn't read out with it.
           aria-label={`Remove ${project.name} from the workspace — unregisters it, no files are deleted`}
-          title={isBoot ? 'cezar is serving this project — stop it and use `cezar projects remove`' : undefined}
+          title={isBoot ? 'onni is serving this project — stop it and use `onni projects remove`' : undefined}
           disabled={isBoot || remove.isPending}
           onClick={() => setConfirming(project)}
           className="text-danger"
@@ -234,7 +234,7 @@ function RemoveProject({ project, bootProject }: { project: ProjectListEntry; bo
         </Button>
         {isBoot ? (
           <span data-slot="project-general-remove-boot" className="text-[11px] text-soft-foreground">
-            cezar is serving this project — stop cezar and run `cezar projects remove` to drop it.
+            onni is serving this project — stop onni and run `onni projects remove` to drop it.
           </span>
         ) : null}
       </div>

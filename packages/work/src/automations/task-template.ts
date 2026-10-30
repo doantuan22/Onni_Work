@@ -40,7 +40,7 @@ export function validateAutomationPrompt(prompt: string, kind: AutomationDefinit
  * The prompt suffix for an automation whose dispatch setting asks for a review child (spec
  * 2026-09-14 Q4): the instruction lives in the prompt, the dispatch intent gains no field.
  */
-export const REVIEW_CHILD_SUFFIX = 'When your own work is done, dispatch ONE final review task (`cez task create --kind review --review-of <your branch>`) and wait for its verdict before you report; merge nothing you did not have reviewed.';
+export const REVIEW_CHILD_SUFFIX = 'When your own work is done, dispatch ONE final review task (`onni task create --kind review --review-of <your branch>`) and wait for its verdict before you report; merge nothing you did not have reviewed.';
 
 /** The launched run's dispatch intent, from the automation's own setting — or none. */
 export function dispatchIntentOf(task: AutomationDefinition['task']): DispatchIntent | undefined {
@@ -387,7 +387,7 @@ export function reconcileAutomationReceipts(automationStore: import('./store.js'
       ...receipt,
       status: runId ? 'launched' : 'launch-error',
       runId,
-      error: runId ? undefined : 'Cezar restarted before run creation completed; explicit retry is available.',
+      error: runId ? undefined : 'Onni restarted before run creation completed; explicit retry is available.',
       updatedAt: new Date().toISOString(),
     });
     reconciled++;

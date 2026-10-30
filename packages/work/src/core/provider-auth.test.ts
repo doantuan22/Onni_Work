@@ -1036,7 +1036,7 @@ describe('ProviderAuthService', () => {
     });
 
     it('re-checks a NOT-connected answer sooner, so a terminal login is noticed on its own', async () => {
-      // cezar cannot see `claude auth login` happen, so a card that says disconnected has to find
+      // onni cannot see `claude auth login` happen, so a card that says disconnected has to find
       // out for itself. A minute, not seconds: every expiry costs a background probe now that
       // reading revalidates behind the answer, and a polling cockpit would turn a five-second
       // window into a spawn every five seconds forever.
@@ -1981,7 +1981,7 @@ describe('inconclusive probe reports', () => {
     }
   });
 
-  // Telemetry 298c2e1f: exit 0, a short non-JSON answer, and no version cezar could read.
+  // Telemetry 298c2e1f: exit 0, a short non-JSON answer, and no version onni could read.
   it('names the fix when `copilot` on PATH never started an ACP server', async () => {
     const service = new ProviderAuthService({
       runCommand: async (executable, args) => {
@@ -2109,7 +2109,7 @@ describe('inconclusive probe reports', () => {
     const row = (await service.status({ refresh: true })).providers.find((p) => p.provider === 'copilot');
     expect(row?.status).toBe('connected');
         expect(Date.now() - started).toBeLessThan(6_000);
-    // cezar's own linger kill is not an interruption: no `signal` for wasInterrupted() to re-ask over.
+    // onni's own linger kill is not an interruption: no `signal` for wasInterrupted() to re-ask over.
     expect(results.at(-1)).toMatchObject({ timedOut: false });
     expect(results.at(-1)?.signal).toBeUndefined();
   }, 20_000);
@@ -2148,7 +2148,7 @@ describe('inconclusive probe reports', () => {
   it.each([
     ['held open', copilotAcpAnswered],
     ['closed at once', undefined],
-  ])('never lets a payload a CLI did not read crash cezar (stdin %s)', async (_label, closeWhen) => {
+  ])('never lets a payload a CLI did not read crash onni (stdin %s)', async (_label, closeWhen) => {
     const result = await defaultRunProviderCommand(
       process.execPath,
       ['-e', 'process.exit(3)'],
@@ -2160,9 +2160,9 @@ describe('inconclusive probe reports', () => {
   });
 
   // Telemetry 35838a52 + b82b92cf: claude and codex both failed before answering, `claude
-  // --version` too — cezar's own cwd was unusable (deleted, or a folder the macOS app can't read).
-  it('runs a probe from the home directory when cezar\'s own cwd is unusable', async () => {
-    const gone = join(tmpdir(), `cez-gone-${process.pid}-${Date.now()}`);
+  // --version` too — onni's own cwd was unusable (deleted, or a folder the macOS app can't read).
+  it('runs a probe from the home directory when onni\'s own cwd is unusable', async () => {
+    const gone = join(tmpdir(), `onni-gone-${process.pid}-${Date.now()}`);
     const cwd = vi.spyOn(process, 'cwd').mockReturnValue(gone);
     try {
       expect(probeCwdFallback()).toBe(homedir());

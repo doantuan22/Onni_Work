@@ -12,7 +12,7 @@ import {
 
 /**
  * Design Mode picks (spec `.ai/specs/2026-10-09-design-mode.md`): what a framed page may hand the
- * cockpit, and what the agent is then told. The sender is a page cezar does not control, so the
+ * cockpit, and what the agent is then told. The sender is a page onni does not control, so the
  * cases that matter are the hostile and the malformed ones.
  */
 

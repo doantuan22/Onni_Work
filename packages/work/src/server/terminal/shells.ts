@@ -40,7 +40,7 @@ const WINDOWS_CANDIDATES = [
  * Every shell this host is willing to open, default first, deduplicated.
  *
  * Total: a missing or unreadable `/etc/shells` degrades to just the default, which is what every
- * cezar did before this existed. Never throws — a terminal that cannot enumerate shells must
+ * onni did before this existed. Never throws — a terminal that cannot enumerate shells must
  * still open one.
  */
 export function discoverShells(readShellsFile: () => string = defaultReader): string[] {

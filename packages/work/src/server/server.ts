@@ -283,7 +283,7 @@ import { fetchRepo, pullRepo, pushRepo, repoSyncStatus, syncRepo, type SyncActio
 import type { RepoSync } from '@onni/contract';
 import { reviewGateEnabled } from '../runs/review-gate.ts';
 import { readUiState, uiStatePath } from '../ui-state.ts';
-import { agentHomePaths, cezarHomeDir, expandTilde, isAbsolutePath } from '../paths.ts';
+import { agentHomePaths, onniHomeDir, expandTilde, isAbsolutePath } from '../paths.ts';
 import { renameWithRetry } from '../fs-rename.ts';
 import { agentAccountsEnabled, isLoopbackHostHeader, normalizeHostname, resolveCapabilities } from './capabilities.ts';
 import { createSocketHub, type SocketHub, type WsUpgradeVerdict } from './ws.ts';
@@ -499,7 +499,7 @@ const hostedProfileRefusal = {
 };
 
 const hostedProfileOpenRefusal = {
-  error: 'opening account files is disabled in hosted mode; open them directly on the machine hosting cezar',
+  error: 'opening account files is disabled in hosted mode; open them directly on the machine hosting onni',
 };
 
 /**
@@ -691,7 +691,7 @@ export interface RegisterProjectResponse {
 
 /** `DELETE /api/projects/:projectId` (multi-project spec, step 4.4) — the
  *  Projects settings pane's Remove. DEREGISTRATION ONLY: the entry leaves
- *  `~/.cezar/config.json` and nothing under the project root is read, moved or
+ *  `~/.onni/config.json` and nothing under the project root is read, moved or
  *  deleted. `removed` is always true on a 200 (the failure paths are 404/409). */
 export interface RemoveProjectResponse {
   removed: true;
@@ -864,7 +864,7 @@ const parseWorkflowSchema = z.object({
   yaml: z.string().min(1).max(100_000),
 });
 
-// Small GUI preferences persisted in `.ai/cezar/ui-state.json` (files, not a
+// Small GUI preferences persisted in `.ai/onni/ui-state.json` (files, not a
 // DB): today just the last-used task source, so the form preselects what you
 // actually run. Unknown keys pass through — future prefs won't need a schema
 // dance.
@@ -881,8 +881,8 @@ const UI_STATE_MAX_KEYS = 200;
 
 /** Settings → Appearance (redesign R6): accent + density + reading width. ONE
  *  schema for both ui-state files — per-repo (the legacy home, kept so an older
- *  cezar in the same repo still honours it) and workspace
- *  (`~/.cezar/ui-state.json`, its post-migration home — multi-project spec,
+ *  onni in the same repo still honours it) and workspace
+ *  (`~/.onni/ui-state.json`, its post-migration home — multi-project spec,
  *  Data Model).
  *
  *  Every key is `.optional()` so an older ui-state.json parses unchanged, but
@@ -957,7 +957,7 @@ const uiStateSchema = z
     // client-side, so this key changes presentation only, never what `GET /github` fetches.
     githubSort: z.enum(['newest', 'oldest']).optional(),
     // Settings → Appearance (redesign R6): accent + density. ADDITIVE — the theme itself
-    // stays in the browser (`cez-theme` localStorage, pre-paint). The cockpit always PUTs
+    // stays in the browser (`onni-theme` localStorage, pre-paint). The cockpit always PUTs
     // the whole object because the top-level merge below is shallow.
     appearance: appearanceSchema.optional(),
     // Follow-up prompt templates (#413): reusable snippets insertable into the GitHub hand-over
@@ -1169,7 +1169,7 @@ export const brandingLogoUploadSchema = z.object({
 
 function logoAssetUrl(): string | null {
   for (const filename of [BRANDING_LOGO_FILE, ...BRANDING_LOGO_EXTENSIONS.map((ext) => `${BRANDING_LOGO_FILE}${ext}`)]) {
-    const path = join(cezarHomeDir(), filename);
+    const path = join(onniHomeDir(), filename);
     if (!existsSync(path)) continue;
     try {
       const bytes = readFileSync(path);
@@ -1318,7 +1318,7 @@ const FILE_FORMATS = ['application/json', 'image/*'] as const;
  *  can lie (e.g. a read-only mount still reports writable permission bits).
  *  Returns the failure message, or null when the directory is usable. */
 async function probeWritableDir(dir: string, create: boolean): Promise<string | null> {
-  const probe = join(dir, `.cez-write-probe-${process.pid}-${Date.now().toString(36)}`);
+  const probe = join(dir, `.onni-write-probe-${process.pid}-${Date.now().toString(36)}`);
   try {
     if (create) await mkdir(dir, { recursive: true });
     const info = await stat(dir);
@@ -1345,7 +1345,7 @@ export function createApp(deps: ServerDeps) {
   // handler body would silently pin it to the boot project, which the rename
   // turns into a compile error instead.
   const bootRoot = deps.repoRoot;
-  const bootDataDir = join(bootRoot, '.ai/cezar');
+  const bootDataDir = join(bootRoot, '.ai/onni');
   const modelCatalog = deps.modelCatalog ?? new RunnerModelCatalog({
     adapters: {
       claude: { discover: () => discoverClaudeModels({ cwd: bootRoot }) },
@@ -1378,19 +1378,19 @@ export function createApp(deps: ServerDeps) {
    * The gate: why a run cannot start against `required`, or null when it can.
    *
    * VERIFY BEFORE YOU REFUSE. Auth state is served stale-while-revalidate (see
-   * `ProviderAuthService.status`), so a cached "disconnected" may predate a login cezar could not
+   * `ProviderAuthService.status`), so a cached "disconnected" may predate a login onni could not
    * observe — someone running `claude auth login` in a terminal. Refusing on that would lock a user
    * out of their own cockpit with no way back but waiting. So a believed-unavailable provider is
    * re-probed, and only a refusal that survives the fresh answer is returned.
    *
    * The cost lands where it belongs: the common path (connected, warm) pays nothing at all, and the
-   * probe is only spawned when cezar is about to say no — a rare, interactive moment. This is also
+   * probe is only spawned when onni is about to say no — a rare, interactive moment. This is also
    * what lets the cache hold a negative for a minute instead of five seconds, which is what made
    * every reader of `GET /providers/status` periodically pay for a CLI spawn.
    *
    * A runtime auth latch is deliberately NOT escaped by this: `withRuntimeFailures` keeps forcing
    * the row disconnected until the user acknowledges that exact incident, so the re-probe cannot
-   * talk cezar out of a rejection it actually observed.
+   * talk onni out of a rejection it actually observed.
    */
   const providerActionError = async (
     required: readonly ProviderId[],
@@ -1441,7 +1441,7 @@ export function createApp(deps: ServerDeps) {
   // slug below is what keeps those two the same string.
   //
   // Sticky, but never at the cost of correctness: a pinned fallback that some
-  // OTHER root has since taken (an out-of-band `cezar projects add ~/other/beta`
+  // OTHER root has since taken (an out-of-band `onni projects add ~/other/beta`
   // from a second process, where the reservation cannot reach) is dropped and
   // re-allocated. That gives back the visible `<slug>-2` move instead of
   // shadowing — the scope resolver binds `/p/<bootProject>/` to the boot
@@ -1520,7 +1520,7 @@ export function createApp(deps: ServerDeps) {
   // The boot project's context is SEEDED from the deps the caller already
   // built (src/index.ts `serveCommand` did the recover/prune/launch-key work
   // at startup — observable boot behavior unchanged); it never enters the
-  // lazy map, so its `.ai/cezar` state is never double-opened. `id` starts as
+  // lazy map, so its `.ai/onni` state is never double-opened. `id` starts as
   // the reserved alias when registration was suppressed — handlers never read
   // it; API payloads name the boot project via `resolveBootProject` instead.
   const bootContext: ProjectContext = {
@@ -1787,7 +1787,7 @@ export function createApp(deps: ServerDeps) {
       // page instead of the app — the legacy fallback UI was deleted in R7.
       if (!hintLogged) {
         hintLogged = true;
-        console.log('cezar: web/dist is missing — run `npm run build:web` to build the cockpit');
+        console.log('onni: web/dist is missing — run `npm run build:web` to build the cockpit');
       }
       return new Response(BUILD_HINT_HTML, {
         headers: { 'content-type': HTML_TYPE, 'cache-control': SHELL_CACHE_CONTROL },
@@ -1900,7 +1900,7 @@ export function createApp(deps: ServerDeps) {
   // decides how often a revalidation is kicked off; on its own it bounds nothing,
   // because the revalidation is fire-and-forget. While a cockpit holds the
   // `health` topic the publisher's interval keeps the cache warm and the two are
-  // the same number — but the normal state of a background `cezar serve` is NO
+  // the same number — but the normal state of a background `onni serve` is NO
   // subscriber, and then nothing refreshes the cache at all: the next `GET
   // /api/health`, an hour later, would answer with the boot pre-warm's payload
   // and only the request AFTER it would see the truth. That endpoint is the
@@ -2001,7 +2001,7 @@ export function createApp(deps: ServerDeps) {
     start: (publish) => hostSampler.onHostUsage(publish),
   });
   /**
-   * Warm the whole of cezar's agent knowledge — the three discovered defaults AND every extra
+   * Warm the whole of onni's agent knowledge — the three discovered defaults AND every extra
    * account — so no reader ever pays the first shell-out.
    *
    * Which login each agent is signed into is operating knowledge, not a settings-page detail: the
@@ -2195,7 +2195,7 @@ export function createApp(deps: ServerDeps) {
       const provider = body.data.provider as ProviderId;
       // A NAMED account is refused in hosted mode unless the operator opted in. This happens
       // before resolution, exactly like every sibling route in the agent-profiles family; checking
-      // later would already have read `~/.cezar/agent-accounts.json`, built a command carrying the
+      // later would already have read `~/.onni/agent-accounts.json`, built a command carrying the
       // account's absolute path (which both the success body and the hosted 409 echo), and — for a
       // stored account — spawned a probe. It would also answer `unknown account: <id>` for a wrong
       // id, which is an enumeration oracle for the very ids the hosted listing withholds. The
@@ -2224,7 +2224,7 @@ export function createApp(deps: ServerDeps) {
       // a connected answer there stands for CONNECTED_TTL_MS. Without this, Connect after a
       // `claude /logout` answers "already connected", opens nothing, and the user is stuck — and it
       // would contradict this module's own invariant that opening a login is one of the things
-      // cezar CAN observe and therefore invalidates explicitly rather than waiting out a window.
+      // onni CAN observe and therefore invalidates explicitly rather than waiting out a window.
       if (!profile.isDefault) providerAuth.forgetProfileStatus(provider, profile.id);
       const row = profile.isDefault
         ? (await providerAuth.status({ refresh: true })).providers.find(
@@ -2245,7 +2245,7 @@ export function createApp(deps: ServerDeps) {
       // `disconnected`: the CLI is installed, and its own login is the one surface that can say
       // what is wrong. Refusing here left Connect a dead end that "Try again" re-probed into.
       if (!capabilities().localHandoff) {
-        return c.json({ error: 'Run this command on the machine hosting cezar.', command }, 409);
+        return c.json({ error: 'Run this command on the machine hosting onni.', command }, 409);
       }
       let opened = false;
       try {
@@ -2275,7 +2275,7 @@ export function createApp(deps: ServerDeps) {
           return c.json({ error: 'This agent has no update command of its own. Update it the way you installed it.' }, 409);
         }
         if (!capabilities().localHandoff) {
-          return c.json({ error: 'Run this command on the machine hosting cezar.', command }, 409);
+          return c.json({ error: 'Run this command on the machine hosting onni.', command }, 409);
         }
         let opened = false;
         try {
@@ -2710,7 +2710,7 @@ export function createApp(deps: ServerDeps) {
 
     // Which account a PROJECT uses. On the accounts family rather than `PATCH /api/v1/projects`
     // because the selection is stored beside the accounts it names — one file, one atomic write,
-    // and nothing about it can be dropped by a cezar version that never heard of accounts.
+    // and nothing about it can be dropped by a onni version that never heard of accounts.
     .put(
       '/workspace/agent-profiles/selection',
       jsonZodValidator(() => selectAgentProfileSchema),
@@ -2781,7 +2781,7 @@ export function createApp(deps: ServerDeps) {
             removed = store.accounts.length < before;
             if (!removed) return;
             // Scrub every reference IN THE SAME MUTATOR — the reason selections share this file.
-            // A two-call delete-then-scrub can be observed mid-way by another cezar process on
+            // A two-call delete-then-scrub can be observed mid-way by another onni process on
             // this machine, which would then resolve a dangling id; harmless today (it degrades
             // to the default) but only by luck.
             for (const [root, selection] of Object.entries(store.selections)) {
@@ -2851,14 +2851,14 @@ export function createApp(deps: ServerDeps) {
       // beats an empty sidebar — that also covers the unreadable workspace,
       // where nothing is registered as far as this process can tell.
       //
-      // Once the user HAS projects, starting cezar somewhere else is opening
+      // Once the user HAS projects, starting onni somewhere else is opening
       // the cockpit from a folder, not adding it: listing that folder put a row
       // in the sidebar, the ⌘K palette and Settings that the user never asked
       // for and has to clean up. The folder is still served — the boot context
       // answers `/p/<bootProject>/…` and the unscoped alias, and the scope gate
       // treats `bootProject` as known — so a legacy bookmark still resolves; it
       // simply is not a project. Saving it stays the explicit gesture it is
-      // everywhere else: Settings → Add project, or `cezar projects add`.
+      // everywhere else: Settings → Add project, or `onni projects add`.
       //
       // It is marked `unregistered` rather than merged in silently, so Settings
       // offers to add it instead of offering Remove/Max parallel it cannot
@@ -2921,13 +2921,13 @@ export function createApp(deps: ServerDeps) {
       // The boot project is refused, not removed: this server is serving that
       // repo right now, and dropping its registry row would break the session's
       // own sidebar while the process keeps running out of it. Offline removal
-      // is the honest gesture — `cezar projects remove` has no such refusal
+      // is the honest gesture — `onni projects remove` has no such refusal
       // because it runs with no server. The pane disables the button and says
       // the same thing.
       if (id === bootId) {
         return c.json(
           {
-            error: `cezar is serving ${entry.name} right now — stop it and run \`cezar projects remove ${id}\` to drop the registry entry`,
+            error: `onni is serving ${entry.name} right now — stop it and run \`onni projects remove ${id}\` to drop the registry entry`,
           },
           409,
         );
@@ -2951,7 +2951,7 @@ export function createApp(deps: ServerDeps) {
         // e.g. a read-only home — nothing was persisted (atomic tmp+rename).
         return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
       }
-      // Lost a race with another writer (or another cezar process): the entry is
+      // Lost a race with another writer (or another onni process): the entry is
       // gone, which is what the caller wanted, but say it honestly.
       if (!removed) return c.json({ error: `unknown project: ${id}` }, 404);
       // Stop capture only after the registry commit; failed removal must leave
@@ -2980,7 +2980,7 @@ export function createApp(deps: ServerDeps) {
     // never be degraded away by the next load's `.catch`.
     //
     // Deliberately NOT the home of the agent-account selection: that lives in
-    // `~/.cezar/agent-accounts.json` beside the accounts it names, so a cezar version that has
+    // `~/.onni/agent-accounts.json` beside the accounts it names, so a onni version that has
     // never heard of accounts cannot drop it (see workspace/agent-accounts.ts).
     .patch('/projects/:projectId', jsonZodValidator(updateProjectInputSchema), async (c) => {
       if (capabilities().singleProject) {
@@ -3171,7 +3171,7 @@ export function createApp(deps: ServerDeps) {
     }
     // Hosted mode: the same root the picker is narrowed to, re-checked — see
     // `isInsideBrowseRoot`. Local mode deliberately has NO containment: a
-    // project under `/srv/code` is a normal local setup and `cezar serve`
+    // project under `/srv/code` is a normal local setup and `onni serve`
     // registers it today.
     //
     // Containment is asked in two halves, around the stat, and the split is
@@ -3213,15 +3213,15 @@ export function createApp(deps: ServerDeps) {
       };
     }
     // The boot-time auto-registration guard, applied to the manual gesture
-    // too: `$HOME` and cezar's own task worktrees are exactly as wrong a
-    // project root when a human clicks "Add project" as when `cezar serve`
+    // too: `$HOME` and onni's own task worktrees are exactly as wrong a
+    // project root when a human clicks "Add project" as when `onni serve`
     // would have registered them. Reachable from the dialog, which starts at
     // `~` and can add the folder it is showing.
     if (!(await shouldRegisterProject(requested))) {
       return {
         status: 400,
         body: {
-          error: `not a project folder: ${spelled} is your home directory or a cezar task worktree`,
+          error: `not a project folder: ${spelled} is your home directory or a onni task worktree`,
         },
       };
     }
@@ -3270,8 +3270,8 @@ export function createApp(deps: ServerDeps) {
   // Deregister a project (multi-project spec, step 4.4 — Settings → Projects,
   // the per-row "Remove"). READ THIS BEFORE TOUCHING THE HANDLER: the ONLY
   // durable effect allowed here is dropping one entry from
-  // `~/.cezar/config.json`. There is deliberately no `rm`, no `rmdir`, no
-  // `RunStore.open` (which would `mkdir` `<root>/.ai/cezar/runs` and therefore
+  // `~/.onni/config.json`. There is deliberately no `rm`, no `rmdir`, no
+  // `RunStore.open` (which would `mkdir` `<root>/.ai/onni/runs` and therefore
   // WRITE into a folder the user just asked us to forget) anywhere below —
   // `removeProject` is a registry filter and `contexts.dispose` only tears down
   // in-process handles. Re-registering the same root later finds every task,
@@ -3392,12 +3392,12 @@ export function createApp(deps: ServerDeps) {
   // ---- workspace settings (multi-project spec, step 2.7) -------------------
   // WORKSPACE-level routes: single-mount (never mirrored under /api/p/),
   // same-origin. The config routes carry the settings UI's slice of
-  // `~/.cezar/config.json` — global knobs only; the registry stays on
+  // `~/.onni/config.json` — global knobs only; the registry stays on
   // /api/projects above, and schemaVersion (a migration cursor, not a
   // setting) is deliberately omitted.
   const workspaceConfigBody = (config: WorkspaceConfig): WorkspaceConfigResponse => ({
     branding: {
-      name: config.branding.name ?? 'cezar',
+      name: config.branding.name ?? 'onni',
       logoUrl: logoAssetUrl(),
     },
     browseRoot: config.browseRoot,
@@ -3565,7 +3565,7 @@ export function createApp(deps: ServerDeps) {
     .get('/workspace/branding-logo', async (c) => {
       for (const filename of [BRANDING_LOGO_FILE, ...BRANDING_LOGO_EXTENSIONS.map((ext) => `${BRANDING_LOGO_FILE}${ext}`)]) {
         try {
-          const bytes = await readFile(join(cezarHomeDir(), filename));
+          const bytes = await readFile(join(onniHomeDir(), filename));
           const imageType = brandingLogoType(bytes);
           if (!imageType) continue;
           const [mime] = imageType;
@@ -3577,8 +3577,8 @@ export function createApp(deps: ServerDeps) {
     .post('/workspace/branding-logo', multipartZodValidator(() => brandingLogoUploadSchema), async (c) => {
       const { file } = c.req.valid('form');
       const bytes = Buffer.from(await file.arrayBuffer());
-      await mkdir(cezarHomeDir(), { recursive: true, mode: 0o700 });
-      const path = join(cezarHomeDir(), BRANDING_LOGO_FILE);
+      await mkdir(onniHomeDir(), { recursive: true, mode: 0o700 });
+      const path = join(onniHomeDir(), BRANDING_LOGO_FILE);
       const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`;
       try {
         await writeFile(tmp, bytes, { mode: 0o600, flag: 'wx' });
@@ -3591,7 +3591,7 @@ export function createApp(deps: ServerDeps) {
     })
     .delete('/workspace/branding-logo', async (c) => {
       await Promise.all([BRANDING_LOGO_FILE, ...BRANDING_LOGO_EXTENSIONS.map((ext) => `${BRANDING_LOGO_FILE}${ext}`)]
-        .map((filename) => unlink(join(cezarHomeDir(), filename)).catch(() => {})));
+        .map((filename) => unlink(join(onniHomeDir(), filename)).catch(() => {})));
       return c.json(workspaceBrandingLogoResponseSchema.parse({ logoUrl: null }));
     })
 
@@ -3609,7 +3609,7 @@ export function createApp(deps: ServerDeps) {
       return c.json(deleteUploadResponseSchema.parse({ deleted: true }));
     })
 
-    // Global GUI state (`~/.cezar/ui-state.json`) — same parse/key-cap/shallow-
+    // Global GUI state (`~/.onni/ui-state.json`) — same parse/key-cap/shallow-
     // merge semantics as the per-repo /api/v1/ui-state route below (the shared half
     // is `uiStateBodySchema`), but backed by the workspace file.
     .get('/workspace/ui-state', async (c) => c.json(await readWorkspaceUiState()))
@@ -3729,7 +3729,7 @@ export function createApp(deps: ServerDeps) {
     .get('/workflows', async (c) => c.json(await loadWorkflows(c.get('project').root)))
 
     // Save an approved plan as a reusable chain (spec 008): YAML in
-    // `.ai/cezar/workflows/<slug>.yaml` — from then on it's in the dropdown
+    // `.ai/onni/workflows/<slug>.yaml` — from then on it's in the dropdown
     // like any other workflow.
     .post('/workflows', jsonZodValidator(saveWorkflowSchema), async (c) => {
       const { root: repoRoot } = c.get('project');
@@ -4527,7 +4527,7 @@ export function createApp(deps: ServerDeps) {
   };
 
   // ---- chained family: dispatch (project-scoped) ----
-  // A task dispatching other tasks (spec 2026-09-10-dispatch). Both routes are what the `cez task`
+  // A task dispatching other tasks (spec 2026-09-10-dispatch). Both routes are what the `onni task`
   // CLI calls from inside a running agent, with CEZ_API_URL / CEZ_PROJECT_ID / CEZ_TASK_ID from
   // its environment; nothing stops a human or a script from calling them too.
   const dispatchRoutes = new Hono<ProjectApiEnv>()
@@ -4574,10 +4574,10 @@ export function createApp(deps: ServerDeps) {
   const noteTodoStarted = async (dataDir: string, todoId: string, taskId: string): Promise<void> => {
     try {
       if (!(await markStarted(dataDir, todoId, taskId))) {
-        console.warn(`[cezar] inbox entry ${todoId} not marked started (unknown or already started)`);
+        console.warn(`[onni] inbox entry ${todoId} not marked started (unknown or already started)`);
       }
     } catch (err) {
-      console.warn(`[cezar] could not mark inbox entry ${todoId} started: ${String(err)}`);
+      console.warn(`[onni] could not mark inbox entry ${todoId} started: ${String(err)}`);
     }
   };
 
@@ -4706,7 +4706,7 @@ export function createApp(deps: ServerDeps) {
           return c.json(
             {
               error:
-                'parallel variants need a git repository (each variant runs in its own worktree) — run ×1 here, or start cezar inside a git repo',
+                'parallel variants need a git repository (each variant runs in its own worktree) — run ×1 here, or start onni inside a git repo',
             },
             400,
           );
@@ -5272,7 +5272,7 @@ export function createApp(deps: ServerDeps) {
         runStartedAt: run.startedAt,
         // A read-only GET against the user's real checkout must never modify its index.
         intentToAdd: run.worktreePath ? undefined : false,
-        excludeCezarData: !run.worktreePath,
+        excludeOnniData: !run.worktreePath,
       });
       if (!result.ok) return c.json({ error: result.error }, 409);
       return c.json(result.changes);
@@ -5352,7 +5352,7 @@ export function createApp(deps: ServerDeps) {
         });
       }
       // A worktree-off run browses the REAL checkout: apply `/repo/files`' index guard so ignored
-      // files (`.env`, `.ai/cezar/` state and webhook keys) stay unreadable here too.
+      // files (`.env`, `.ai/onni/` state and webhook keys) stay unreadable here too.
       let indexed: { files: Set<string>; dirs: Set<string> } | undefined;
       if (run.worktree === false) {
         const index = await listRepoPaths(workingDirectory, Number.MAX_SAFE_INTEGER);
@@ -5519,7 +5519,7 @@ export function createApp(deps: ServerDeps) {
           );
           if (!outcome.ok) return outcome;
           // A number the cockpit asked about BEFORE the pull request existed is cached as "this
-          // repository has no such number" — which is exactly what a `CEZ:PR=901` marker declared
+          // repository has no such number" — which is exactly what a `ONNI:PR=901` marker declared
           // ahead of the push looks like. It exists now.
           const createdNumber = refNumberFromUrl(outcome.url);
           if (createdNumber !== null) forgetRefStatus(repoRoot, createdNumber);
@@ -5551,7 +5551,7 @@ export function createApp(deps: ServerDeps) {
     })
 
     // Create PR by the task's agent: once its turn ends, the PR it opened is found by branch and
-    // recorded, even if the agent never declared `CEZ:PR`. Best-effort; the status stays.
+    // recorded, even if the agent never declared `ONNI:PR`. Best-effort; the status stays.
     .post('/runs/:id/pr/adopt', async (c) => {
       const { root: repoRoot, store } = c.get('project');
       const id = c.req.param('id');
@@ -5603,7 +5603,7 @@ export function createApp(deps: ServerDeps) {
           deleteRunLayouts(dataDir, id);
           if (run.worktreePath) await removeWorktree(repoRoot, run.worktreePath, run.branch);
           const deleted = store.deleteRun(id);
-          // The run's `refs/cezar/pr/<n>` goes with the last run that needed it (Phase 3).
+          // The run's `refs/onni/pr/<n>` goes with the last run that needed it (Phase 3).
           if (deleted && run.prHead) await manager.sweepPrHeadRefs();
           if (!deleted) return c.json({ error: 'not found' }, 404);
           return c.json({ deleted: true });
@@ -5616,7 +5616,7 @@ export function createApp(deps: ServerDeps) {
    * Unsent composer text and attachments, per run and per surface (#939, spec
    * `.ai/specs/2026-08-30-thread-composer-draft-persistence.md`).
    *
-   * Its own family and its own files (`.ai/cezar/drafts/`) rather than a key in `ui-state.json`:
+   * Its own family and its own files (`.ai/onni/drafts/`) rather than a key in `ui-state.json`:
    * that PUT is capped at 128 KiB, merges shallowly, and is read whole on every cockpit load —
    * none of which survives a 20 MB attachment draft. `runs/drafts.ts` owns the files; this owns
    * the status codes. Every route 404s on an unknown run, so a draft can never outlive its task
@@ -5627,9 +5627,9 @@ export function createApp(deps: ServerDeps) {
    */
   /**
    * A task's saved workspace layouts (spec `.ai/specs/2026-10-07-task-workspace.md` §5.3:
-   * "Persist named layouts per task ON THE CEZAR HOST THAT OWNS THE TASK").
+   * "Persist named layouts per task ON THE ONNI HOST THAT OWNS THE TASK").
    *
-   * Its own family and its own files (`.ai/cezar/layouts/`), for the same reason drafts got
+   * Its own family and its own files (`.ai/onni/layouts/`), for the same reason drafts got
    * theirs: this is per-run state whose lifetime is the run's, so deleting a task is one `rm`
    * rather than a key to find in a shared bag. Both routes 404 on an unknown run, so layouts can
    * never outlive their task through this surface.
@@ -6483,7 +6483,7 @@ export function createApp(deps: ServerDeps) {
     });
 
   // ---- chained family: workspace secrets (workspace-level) ------------------
-  // The user's own secrets, shared by every project — an LLM key for cezar's own features, a
+  // The user's own secrets, shared by every project — an LLM key for onni's own features, a
   // token every project's checks need. Single-mount like every workspace family.
   const workspaceSecretsRoutes = new Hono()
     .get('/workspace/secrets', async (c) => c.json(await secretsList({ kind: 'workspace' }), 200))
@@ -6786,7 +6786,7 @@ export function createApp(deps: ServerDeps) {
     overrideRules: z.boolean().optional().default(false),
   }).strict();
 
-  // Task branches are never a base: hide the named ones (no `cez/` prefix) by record. An in-place
+  // Task branches are never a base: hide the named ones (no `onni/` prefix) by record. An in-place
   // run's branch is the user's own checkout, so it stays listed.
   const taskOwnedBranches = (store: ProjectContext['store']): Set<string> =>
     new Set(store.listRuns().flatMap((r) => (r.branch && r.worktree !== false ? [r.branch] : [])));
@@ -7045,7 +7045,7 @@ export function createApp(deps: ServerDeps) {
       defaultRunner: config.defaultRunner,
       systemPrompt: config.systemPrompt ?? null,
       branchNaming: config.branchNaming ?? null,
-      // Native defaults seed each runner independently. A Cezar preset remains
+      // Native defaults seed each runner independently. A Onni preset remains
       // selectable unless the operator opts into the fixed-model policy.
       // An explicit auto override (#906) answers `''` for that runner — the one
       // way to say "ignore the agent's own configured default" without editing
@@ -7076,7 +7076,7 @@ export function createApp(deps: ServerDeps) {
       landing: config.landing ?? null,
       landingBlocked:
         config.landing === 'auto' && (await isLifecycleConfigTracked(repoRoot).catch(() => true))
-          ? 'auto-land is not honored: .ai/cezar/config.json is tracked by git, and only local configuration can grant it'
+          ? 'auto-land is not honored: .ai/onni/config.json is tracked by git, and only local configuration can grant it'
           : null,
       requiredChecks: config.requiredChecks ?? [],
       defaultSkill: config.defaultSkill ?? null,
@@ -7143,7 +7143,7 @@ export function createApp(deps: ServerDeps) {
             }
           }
           if (parsed.data.branchNaming !== undefined) {
-            // Same clearing rule as systemPrompt: an emptied textarea means `cez/<id8>` again.
+            // Same clearing rule as systemPrompt: an emptied textarea means `onni/<id8>` again.
             if (parsed.data.branchNaming === null || parsed.data.branchNaming === '') {
               delete raw.branchNaming;
             } else {
@@ -7673,7 +7673,7 @@ export function createApp(deps: ServerDeps) {
       // lazy `/github/ref-status` route fills it in.
       const referenceStatuses: RunsIndexResponse['referenceStatuses'] = {};
       for (const project of projects) {
-        // No folder, no runs to read. `not-git` still has an `.ai/cezar` worth indexing.
+        // No folder, no runs to read. `not-git` still has an `.ai/onni` worth indexing.
         if (project.status === 'missing') continue;
         const owned = project.id === bootId ? bootContext : contexts.peek(project.id);
         // Sorted by last activity, not creation: the cap must keep a weeks-old task finished
@@ -7684,7 +7684,7 @@ export function createApp(deps: ServerDeps) {
         // is findable while you stand in its project and vanishes the moment you leave — the
         // exact asymmetry a cross-project finder exists to remove.
         const recent = (
-          owned ? owned.store.listRuns() : readRunIndexFromDisk(join(project.root, '.ai/cezar'))
+          owned ? owned.store.listRuns() : readRunIndexFromDisk(join(project.root, '.ai/onni'))
         ).sort(byLastActivityDesc);
         if (recent.length > RUNS_INDEX_PER_PROJECT) truncated.push(project.id);
         const mentioned: number[] = [];
@@ -7885,7 +7885,7 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
         // by `getDriver()` — a project with none simply fails that call and the scheduler backs off.
         tracker: {
           poller: new TrackerPoller(),
-          getDriver: () => automationTrackers.driver(project.root, join(project.root, '.ai/cezar')),
+          getDriver: () => automationTrackers.driver(project.root, join(project.root, '.ai/onni')),
         },
         onChange: (automationId, revision) =>
           workspaceEvents.emit('automation-change', { project: projectId, automationId, revision }),

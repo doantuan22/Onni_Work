@@ -6,9 +6,9 @@
  * so the clamp and the two restore rules below are table-testable.
  */
 
-/** One key per task, namespaced `cez-` like every other browser-local preference here. */
+/** One key per task, namespaced `onni-` like every other browser-local preference here. */
 export function drawerStorageKey(taskId: string): string {
-  return `cez-task-terminal:${taskId}`
+  return `onni-task-terminal:${taskId}`
 }
 
 /** Pixel bounds for the drawer. `MIN` still shows a tab strip and a few lines — below that it is

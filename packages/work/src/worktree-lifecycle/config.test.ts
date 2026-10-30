@@ -9,9 +9,9 @@ import { worktreeLifecycleConfigSchema } from '@onni/contract';
 let root: string;
 let path: string;
 beforeEach(async () => {
-  root = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'cez-lifecycle-config-')));
-  path = join(root, '.ai', 'cezar', 'config.json');
-  await fs.mkdir(join(root, '.ai', 'cezar'), { recursive: true });
+  root = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'onni-lifecycle-config-')));
+  path = join(root, '.ai', 'onni', 'config.json');
+  await fs.mkdir(join(root, '.ai', 'onni'), { recursive: true });
 });
 afterEach(async () => { await fs.rm(root, { recursive: true, force: true }); });
 const entry = () => ({ id: randomUUID(), command: '  printf hello\n' });

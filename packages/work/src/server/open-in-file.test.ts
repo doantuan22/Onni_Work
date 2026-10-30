@@ -30,12 +30,12 @@ describe("POST /api/v1/runs/:id/open-in — target 'default' (local-mode file op
 
   beforeEach(() => {
     vi.clearAllMocks();
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-openfile-'));
-    worktree = mkdtempSync(join(tmpdir(), 'cez-openfile-wt-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-openfile-'));
+    worktree = mkdtempSync(join(tmpdir(), 'onni-openfile-wt-'));
     writeFileSync(join(worktree, 'logo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     mkdirSync(join(worktree, 'sub'), { recursive: true });
     writeFileSync(join(worktree, 'sub', 'nested.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     runId = store.createRun({ title: 't', workflow: 'quick-task', task: 'do it', steps: [] }).id;
     store.updateRun(runId, { worktreePath: worktree });
     delete process.env.CEZ_REMOTE;
@@ -87,7 +87,7 @@ describe("POST /api/v1/runs/:id/open-in — target 'default' (local-mode file op
   });
 
   it('rejects an absolute path outside the worktree', async () => {
-    const outside = mkdtempSync(join(tmpdir(), 'cez-openfile-outside-'));
+    const outside = mkdtempSync(join(tmpdir(), 'onni-openfile-outside-'));
     try {
       writeFileSync(join(outside, 'secret.png'), 'x');
       const res = await post({ target: 'default', path: join(outside, 'secret.png') });
@@ -99,7 +99,7 @@ describe("POST /api/v1/runs/:id/open-in — target 'default' (local-mode file op
   });
 
   it('rejects a symlink pointing outside the worktree', async () => {
-    const outside = mkdtempSync(join(tmpdir(), 'cez-openfile-link-'));
+    const outside = mkdtempSync(join(tmpdir(), 'onni-openfile-link-'));
     try {
       writeFileSync(join(outside, 'real.png'), 'x');
       symlinkSync(join(outside, 'real.png'), join(worktree, 'link.png'));

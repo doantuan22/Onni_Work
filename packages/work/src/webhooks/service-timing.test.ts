@@ -16,7 +16,7 @@ it.each(['retry', 'grace', 'probe'] as const)(
     vi.stubEnv('CEZ_WEBHOOKS', '1');
     const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-timing-'));
     execFileSync('git', ['init', '-q'], { cwd: root });
-    const dataDir = join(root, '.ai/cezar');
+    const dataDir = join(root, '.ai/onni');
     const start = Date.parse('2026-10-15T00:00:00Z');
     let now = start;
     const send = vi.fn(async (_input: WebhookSend): Promise<SendResult> => ({ kind: 'http', status: 204 }));
@@ -89,7 +89,7 @@ it('keeps a live test claim past its lease and records the actual result across 
   vi.stubEnv('CEZ_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-slow-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const dataDir = join(root, '.ai/cezar');
+  const dataDir = join(root, '.ai/onni');
   let now = Date.parse('2026-10-15T00:00:00Z');
   let finish!: (result: SendResult) => void;
   let entered!: () => void;

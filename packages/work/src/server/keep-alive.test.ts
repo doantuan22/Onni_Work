@@ -20,10 +20,10 @@ describe('keep-alive (telemetry 7adbfbd7)', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-keep-alive-'));
-    home = mkdtempSync(join(tmpdir(), 'cez-keep-alive-home-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-keep-alive-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-keep-alive-home-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     process.env.CEZ_HOME = home;
     process.env.CEZ_DRY_RUN = '1';
   });

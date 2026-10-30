@@ -23,7 +23,7 @@ describe('recent tasks', () => {
   })
 
   it('a corrupt entry reads as empty instead of throwing', () => {
-    localStorage.setItem('cezar:recent-tasks:v1', '{nope')
+    localStorage.setItem('onni:recent-tasks:v1', '{nope')
     expect(readRecentTasks()).toEqual([])
   })
 

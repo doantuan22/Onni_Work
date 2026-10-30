@@ -157,7 +157,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
         <p className="mt-1 text-[13px] text-muted-foreground">{unsupportedPlatform
           ? 'Delivery needs an OS-verified process identity to keep a single sender. Linux, macOS and Windows provide one; this platform does not.'
           : 'Send task updates to Slack, Discord or your own endpoint when a task needs you, is ready for review or finishes.'}</p></div>
-      {!unsupportedPlatform && <p className="text-[13px]">Start cezar with <code>CEZ_WEBHOOKS=1</code>, then reload this page. If someone else runs this server, ask them to turn webhooks on.</p>}
+      {!unsupportedPlatform && <p className="text-[13px]">Start onni with <code>CEZ_WEBHOOKS=1</code>, then reload this page. If someone else runs this server, ask them to turn webhooks on.</p>}
       <a className="w-fit text-[13px] underline underline-offset-2 hover:text-foreground" href={guide.href} target="_blank" rel="noreferrer">{guide.note}</a>
     </section>
   </div>
@@ -182,7 +182,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
     <section className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         <h2 className="text-sm font-semibold">Receivers</h2>
-        <p className="text-[13px] text-muted-foreground">Each receiver gets the task updates you choose while cezar is running. New receivers stay Inactive until you test and activate them. <a className="underline underline-offset-2 hover:text-foreground" href={guide.href} target="_blank" rel="noreferrer">{guide.note}</a></p>
+        <p className="text-[13px] text-muted-foreground">Each receiver gets the task updates you choose while onni is running. New receivers stay Inactive until you test and activate them. <a className="underline underline-offset-2 hover:text-foreground" href={guide.href} target="_blank" rel="noreferrer">{guide.note}</a></p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Button variant="ghost" size="icon" aria-label="Refresh" title="Refresh" disabled={list.isFetching} onClick={() => void list.refetch()}><RefreshCwIcon /></Button>
@@ -233,7 +233,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
             <DropdownMenuContent align="end" className="w-[220px]">
               {custom && <>
                 <DropdownMenuItem disabled={!!row.retiredKeyExpiresAt && Date.parse(row.retiredKeyExpiresAt) > Date.now()} onSelect={() => openConfirmation({ title: 'Rotate signing key?', text: 'Old and new keys both sign deliveries for 24 hours. Install the new key in your receiver within that time.', run: () => webhookApi.rotate(projectId, row.id, row.revision, 'graceful') }, menuTriggers.current.get(row.id))}><KeyRoundIcon />Rotate key</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => openConfirmation({ title: 'Revoke old signing keys now?', text: 'Old keys stop signing immediately, and deliveries fail until your receiver uses the new key. Also remove old keys from your receiver — cezar can’t revoke keys it still accepts.', run: () => webhookApi.rotate(projectId, row.id, row.revision, 'revoke_now') }, menuTriggers.current.get(row.id))}><ShieldOffIcon />Revoke old keys</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => openConfirmation({ title: 'Revoke old signing keys now?', text: 'Old keys stop signing immediately, and deliveries fail until your receiver uses the new key. Also remove old keys from your receiver — onni can’t revoke keys it still accepts.', run: () => webhookApi.rotate(projectId, row.id, row.revision, 'revoke_now') }, menuTriggers.current.get(row.id))}><ShieldOffIcon />Revoke old keys</DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>}
               <DropdownMenuItem variant="destructive" onSelect={() => openConfirmation(deleteConfirmation(row), menuTriggers.current.get(row.id))}><Trash2Icon />Delete</DropdownMenuItem>
@@ -253,7 +253,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
     </section>}
     <Dialog open={form !== undefined && !confirmation} onOpenChange={open => { if (!open && !mutation.isPending) { setForm(undefined); setDraft(webhookDraft()); setStale(false); if (endpoint) navigateReceiver() } }}><DialogContent onCloseAutoFocus={event => restoreFocus(event, formFocusTarget.current)} className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{form === 'new' ? 'Add receiver' : 'Edit receiver'}</DialogTitle><DialogDescription>New and changed receivers stay Inactive until you test and activate them.</DialogDescription></DialogHeader>{form && <WebhookForm key={form === 'new' ? 'new' : `${form.id}-${form.revision}`} receiver={form === 'new' ? undefined : form} guideHref={guide.href} draft={draft} setDraft={setDraft} pending={mutation.isPending} blocked={stale} save={value => {
       if (form === 'new') mutation.mutate(() => webhookApi.create(projectId, value as CreateWebhook))
-      else { const row = form; openConfirmation({ title: 'Save changes?', text: `Changing where or what ${row.name} sends makes it Inactive again${row.pendingCount ? ` and cancels ${plural(row.pendingCount, 'pending delivery', 'pending deliveries')}` : ''}. A delivery already sending may still arrive. Renaming alone keeps it active.${row.format !== 'cezar.json.v1' && value.format === 'cezar.json.v1' ? ' After saving, use Rotate key and copy the new signing key into your receiver before testing.' : ''}`, run: () => webhookApi.update(projectId, row.id, value as UpdateWebhook) }) }
+      else { const row = form; openConfirmation({ title: 'Save changes?', text: `Changing where or what ${row.name} sends makes it Inactive again${row.pendingCount ? ` and cancels ${plural(row.pendingCount, 'pending delivery', 'pending deliveries')}` : ''}. A delivery already sending may still arrive. Renaming alone keeps it active.${row.format !== 'onni.json.v1' && value.format === 'onni.json.v1' ? ' After saving, use Rotate key and copy the new signing key into your receiver before testing.' : ''}`, run: () => webhookApi.update(projectId, row.id, value as UpdateWebhook) }) }
     }} />}{reconciliation}{error && <p role="alert" className="text-sm text-danger">{error}</p>}</DialogContent></Dialog>
     <Dialog open={!!confirmation} onOpenChange={open => { if (!open && !mutation.isPending) setConfirmation(undefined) }}><DialogContent onCloseAutoFocus={event => restoreFocus(event, confirmationFocusTarget.current)} className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>{confirmation?.title}</DialogTitle><DialogDescription>{confirmation?.text}</DialogDescription></DialogHeader>
       {confirmation?.receiver && <ActivationSummary receiver={confirmation.receiver} projectId={projectId} />}
@@ -270,7 +270,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
 }
 
 const chassis = 'mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-6 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6'
-const isChat = (row: Pick<WebhookReceiver, 'format'>) => (row.format ?? 'cezar.json.v1') !== 'cezar.json.v1'
+const isChat = (row: Pick<WebhookReceiver, 'format'>) => (row.format ?? 'onni.json.v1') !== 'onni.json.v1'
 const cancelled = (count: number) => count ? ` ${plural(count, 'pending delivery', 'pending deliveries')} will be cancelled; one already sending may still arrive.` : ''
 
 function ActivationSummary({ receiver, projectId }: { receiver: WebhookReceiver; projectId: string }) {
@@ -281,14 +281,14 @@ function ActivationSummary({ receiver, projectId }: { receiver: WebhookReceiver;
   return <div className="flex min-w-0 flex-col gap-2 text-[13px]">
     <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 rounded-md border border-border bg-card p-3 [overflow-wrap:anywhere]">
       <dt className={term}>Receiver</dt><dd>{receiver.name}</dd>
-      <dt className={term}>Destination</dt><dd>{receiver.format === 'cezar.json.v1' ? 'Custom receiver (signed cezar JSON)' : `${formatLabels[receiver.format]} channel`}</dd>
+      <dt className={term}>Destination</dt><dd>{receiver.format === 'onni.json.v1' ? 'Custom receiver (signed onni JSON)' : `${formatLabels[receiver.format]} channel`}</dd>
       <dt className={term}>URL</dt><dd>{receiver.destination}</dd>
       <dt className={term}>Project</dt><dd>{projectId}</dd>
       <dt className={term}>Message content</dt><dd>{profileLabels[receiver.profile]}</dd>
       <dt className={term}>Events</dt><dd>{presetLabels[receiver.preset]}: {events.map(type => eventLabels[type]).join(', ')}</dd>
       <dt className={term}>Tasks</dt><dd>{scopeLabels[receiver.scope]}</dd>
       <dt className={term}>Waiting and review delay</dt><dd>{graceLabels[receiver.graceSeconds]}</dd>
-      {receiver.format === 'cezar.json.v1' && <><dt className={term}>Private network</dt><dd>{receiver.allowLocalNetwork ? 'Allowed' : 'Not allowed'}</dd></>}
+      {receiver.format === 'onni.json.v1' && <><dt className={term}>Private network</dt><dd>{receiver.allowLocalNetwork ? 'Allowed' : 'Not allowed'}</dd></>}
       <dt className={term}>Failures that resume automatically</dt><dd>{receiver.preset === 'all' || receiver.includeScheduledFailures ? 'Included' : 'Excluded'}</dd>
     </dl>
     {receiver.destination.startsWith('http:') && <p role="alert" className="text-warning">HTTP is unencrypted — others on the network may read these messages. Use HTTPS where possible.</p>}

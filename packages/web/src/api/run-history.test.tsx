@@ -598,7 +598,7 @@ describe('useRunHistory', () => {
     process.on('unhandledRejection', unhandled)
     mockHistory
       .mockResolvedValueOnce(page(100))
-      .mockRejectedValue(new Error('the cezar server answered /runs/run-1/history with an unexpected body'))
+      .mockRejectedValue(new Error('the onni server answered /runs/run-1/history with an unexpected body'))
     mockContext.mockResolvedValue(context())
     const { wrapper } = harness()
     const { result } = renderHook(() => useRunHistory('run-1'), { wrapper })

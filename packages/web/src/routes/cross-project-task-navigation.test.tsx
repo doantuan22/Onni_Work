@@ -34,23 +34,23 @@ const RUN_ID = 'r1'
 
 const HEALTH = {
   version: '0.0.0-test',
-  repoRoot: '/home/u/cezar',
+  repoRoot: '/home/u/onni',
   repo: null,
   checks: [],
   defaultRunner: 'claude',
   forge: null,
   capabilities: { localHandoff: true, terminal: false, followups: true, singleProject: false, automations: false },
-  projects: [{ id: BOOT, name: 'cezar' }],
+  projects: [{ id: BOOT, name: 'onni' }],
   bootProject: BOOT,
 }
 
 const REGISTRY: ProjectsResponse = {
   projects: [
-    { id: BOOT, name: 'cezar', root: '/home/u/cezar', addedAt: '', lastOpenedAt: '', source: 'local', status: 'ok' },
+    { id: BOOT, name: 'onni', root: '/home/u/onni', addedAt: '', lastOpenedAt: '', source: 'local', status: 'ok' },
     { id: 'other', name: 'other-repo', root: '/home/u/other', addedAt: '', lastOpenedAt: '', source: 'local', status: 'ok' },
   ],
   bootProject: BOOT,
-  projectsDir: '~/cezar/projects',
+  projectsDir: '~/onni/projects',
 }
 
 /** The row the global Tasks page renders, and the record its thread then reads. */

@@ -1,18 +1,18 @@
 /**
  * macOS privacy prompts name the RESPONSIBLE process, and every process the desktop app starts
  * inherits the app as its responsible process. Left alone, an agent that lists `~/Documents`
- * raises "Cezar would like to access files in your Documents folder" — and an Allow there hands
+ * raises "Onni would like to access files in your Documents folder" — and an Allow there hands
  * every agent, forever, what one of them asked for.
  *
  * The desktop shell exports `CEZ_DISCLAIM_EXEC`: its own executable, which, run as
- * `<exe> --cez-disclaim-exec <program> <args…>`, replaces itself (same pid, same stdio) with
+ * `<exe> --onni-disclaim-exec <program> <args…>`, replaces itself (same pid, same stdio) with
  * `program` as its own responsible process. Agent backends are started through it, so the prompt
  * names the agent (`claude`, `codex`, …) and a grant covers that agent only. The cockpit server
- * itself stays the app's — the folder picker's prompts are still Cezar's, which they should be.
+ * itself stays the app's — the folder picker's prompts are still Onni's, which they should be.
  *
  * The prompt names the executable's REAL file, past symlinks: Claude Code's native install links
  * `claude` to `versions/2.1.295`, so it asked as "2.1.295". A Mach-O whose file name is not the
- * agent's runs from an APFS clone named after it (`~/.cache/cez/agent-exec/`) — no extra disk,
+ * agent's runs from an APFS clone named after it (`~/.cache/onni/agent-exec/`) — no extra disk,
  * same code signature, so a grant still follows the agent's identity. No clone, no rename.
  * A Node script (an npm install) would ask as "node", so it runs on a clone of its `node` named
  * after the agent; a bash launcher stays as it is unless its runner unwraps it (`cursor-agent`).
@@ -40,14 +40,14 @@ import { homedir } from 'node:os';
 import { basename, delimiter, isAbsolute, join } from 'node:path';
 import { spawnableCommand } from './windows-shim.ts';
 
-export const DISCLAIM_EXEC_FLAG = '--cez-disclaim-exec';
+export const DISCLAIM_EXEC_FLAG = '--onni-disclaim-exec';
 
 export interface DisclaimOptions {
   /** Defaults to `process.platform`. */
   platform?: NodeJS.Platform;
   /** Where `CEZ_DISCLAIM_EXEC` is read from; defaults to `process.env`. */
   hostEnv?: NodeJS.ProcessEnv;
-  /** Where agent-named clones live; defaults to `~/.cache/cez/agent-exec`. */
+  /** Where agent-named clones live; defaults to `~/.cache/onni/agent-exec`. */
   cloneDir?: string;
   /** The name a privacy prompt should show; defaults to `program`'s file name. */
   name?: string;
@@ -72,7 +72,7 @@ export function disclaimedCommand(
   const resolved = resolveProgram(program, path);
   if (!resolved) return [program, [...args]];
   const name = opts.name ?? basename(program);
-  const cloneDir = opts.cloneDir ?? join(homedir(), '.cache', 'cez', 'agent-exec');
+  const cloneDir = opts.cloneDir ?? join(homedir(), '.cache', 'onni', 'agent-exec');
   const shebang = nodeShebang(resolved);
   const node = shebang && resolveProgram(shebang[0]!, path);
   if (shebang && node && isRealNode(node)) {

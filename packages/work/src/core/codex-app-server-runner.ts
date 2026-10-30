@@ -62,7 +62,7 @@ const RESUME_LOCK_RETRY_MS: readonly number[] = [250, 500, 1_000, 2_000, 4_000, 
  *
  * Auth = the host's logged-in ChatGPT/Codex session (or CODEX_API_KEY). The
  * agent runs autonomously via `sandbox: danger-full-access` +
- * `approvalPolicy: never`, matching cezar's default auto permission mode
+ * `approvalPolicy: never`, matching onni's default auto permission mode
  * (spec 2026-07-17-permission-modes). Codex has no per-tool allowlist, so
  * `spec.allowedTools` is ignored. `CEZ_CODEX_NETWORK=0` retains the previous
  * network-blocked `workspace-write` sandbox as an explicit restriction.
@@ -150,7 +150,7 @@ class CodexSession implements AgentSession {
   /** Set the moment WE signal the child (EOF watchdog, cancel, kill switch).
    *  codex handles the signal and exits 143, so without this the runner reads
    *  its own teardown as a codex failure (#703). */
-  private terminatedByCezar = false;
+  private terminatedByOnni = false;
   /** "Has the app-server really terminated?" — the question `child.killed`
    *  does not answer: it flips on signal delivery, so the SIGTERM this runner
    *  sends would otherwise veto its own SIGKILL escalation (#844). */
@@ -192,7 +192,7 @@ class CodexSession implements AgentSession {
       this.child.stdout.destroy();
       killTimer = setTimeout(() => {
         if (!this.hasExited()) {
-          this.terminatedByCezar = true;
+          this.terminatedByOnni = true;
           this.child.kill('SIGKILL');
         }
       }, KILL_GRACE_MS);
@@ -274,11 +274,11 @@ class CodexSession implements AgentSession {
       }
 
       // Our own EOF watchdog / cancel signal coming back as 143/137 — the
-      // teardown cezar asked for, not a codex failure (#703).
-      if (this.terminatedByCezar && isSignalTerminationExit(exitCode)) {
+      // teardown onni asked for, not a codex failure (#703).
+      if (this.terminatedByOnni && isSignalTerminationExit(exitCode)) {
         this.emit({
           type: 'note',
-          message: `codex app-server did not exit on its own after close; terminated by cezar (code ${exitCode})`,
+          message: `codex app-server did not exit on its own after close; terminated by onni (code ${exitCode})`,
         });
         this.emit({ type: 'done' });
         return base;
@@ -344,7 +344,7 @@ class CodexSession implements AgentSession {
    *
    * Two failures deliberately stay notes, because neither leaves a zombie behind:
    *
-   *  - a failure cezar itself caused. Once stdin is closed or we have signalled the child,
+   *  - a failure onni itself caused. Once stdin is closed or we have signalled the child,
    *    every request still in flight is rejected by `rejectPending` as part of an ordinary
    *    teardown, and escalating those would make every cancel a failed run — the
    *    self-inflicted failure #703 removed.
@@ -356,7 +356,7 @@ class CodexSession implements AgentSession {
    */
   private asyncTurnFailure(detail: string): AgentEvent {
     // Read in the order of the two exceptions above, then the rule.
-    if (!this.stdinOpen || this.terminatedByCezar || this.timedOut) {
+    if (!this.stdinOpen || this.terminatedByOnni || this.timedOut) {
       return { type: 'note', message: `codex: turn failed: ${detail}` };
     }
     if (this.activeTurnId) {
@@ -381,7 +381,7 @@ class CodexSession implements AgentSession {
           this.eofKillTimer = kill;
         },
         () => {
-          this.terminatedByCezar = true;
+          this.terminatedByOnni = true;
         },
       );
     } catch {
@@ -400,7 +400,7 @@ class CodexSession implements AgentSession {
       );
     }
     if (!this.hasExited()) {
-      this.terminatedByCezar = true;
+      this.terminatedByOnni = true;
       this.child.kill('SIGTERM');
     }
   }
@@ -410,7 +410,7 @@ class CodexSession implements AgentSession {
     if (this.hardKillTimer || this.hasExited()) return;
     this.hardKillTimer = setTimeout(() => {
       if (!this.hasExited()) {
-        this.terminatedByCezar = true;
+        this.terminatedByOnni = true;
         this.child.kill('SIGKILL');
       }
     }, KILL_GRACE_MS);
@@ -457,7 +457,7 @@ class CodexSession implements AgentSession {
 
   /**
    * `thread/resume`, tolerating another live app-server that still holds the thread's writer
-   * lock — the previous session draining its turn after a Continue or a cezar restart. Wait
+   * lock — the previous session draining its turn after a Continue or a onni restart. Wait
    * for it to let go; if it never does, fork the stored thread (forking takes no writer lock)
    * so the run keeps its history instead of failing on a lock it cannot break.
    */
@@ -631,7 +631,7 @@ class CodexSession implements AgentSession {
         const turnError = codexTurnError(method, params);
         const compacted = turnError === undefined && this.compactionEndedTurn;
         this.compactionEndedTurn = false;
-        if (turnError !== undefined && !this.terminatedByCezar) {
+        if (turnError !== undefined && !this.terminatedByOnni) {
           this.emit({ type: 'error', message: explainCodexModelError(turnError, this.spec.model) });
         }
         // The bare event when there is nothing extra to say, so every existing consumer

@@ -24,12 +24,12 @@ describe('recover() contains backend session failures (#562)', () => {
     process.env.CEZ_CODEX_BIN = MOCK_CODEX;
     process.env.CEZ_ENV_PASSTHROUGH = 'MOCK_CODEX_REJECT_RESUME';
     process.env.MOCK_CODEX_REJECT_RESUME = '1';
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-recover-session-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-session-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   afterEach(() => {

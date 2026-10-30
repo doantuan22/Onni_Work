@@ -174,7 +174,7 @@ export const workflowGraphSchema = z.object({
 });
 export type WorkflowGraph = z.infer<typeof workflowGraphSchema>;
 
-/** One catalog entry: the built-in `quick-task`, or a `.ai/cezar/workflows/*.yaml` file. */
+/** One catalog entry: the built-in `quick-task`, or a `.ai/onni/workflows/*.yaml` file. */
 export const workflowDefSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
@@ -202,7 +202,7 @@ export const workflowsResponseSchema = z.object({
 export type WorkflowsResponse = z.infer<typeof workflowsResponseSchema>;
 
 /**
- * `POST /workflows` body: save a chain as `.ai/cezar/workflows/<slug>.yaml`.
+ * `POST /workflows` body: save a chain as `.ai/onni/workflows/<slug>.yaml`.
  *
  * Exactly one of `steps` / the portable `skills` shorthand — the refinement below is the same
  * XOR the server enforces. Without `overwrite` an existing file answers 409 (`exists: true`).
@@ -237,7 +237,7 @@ export const parsedWorkflowSchema = z.object({
 });
 export type ParsedWorkflow = z.infer<typeof parsedWorkflowSchema>;
 
-/** `POST /workflows/graph` body: save a `version: 2` graph as `.ai/cezar/workflows/<slug>.yaml`.
+/** `POST /workflows/graph` body: save a `version: 2` graph as `.ai/onni/workflows/<slug>.yaml`.
  *  Same 201 / 409 (`exists: true`) contract as `POST /workflows`. */
 export const saveWorkflowGraphInputSchema = z.object({
   name: z.string().trim().min(1).max(80),

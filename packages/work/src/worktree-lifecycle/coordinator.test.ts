@@ -17,10 +17,10 @@ const roots: string[] = [];
 const coordinators: WorktreeLifecycleCoordinator[] = [];
 const entry = (command: string): ScriptEntry => ({id: randomUUID(), command});
 async function project(semaphore = new WorkspaceSemaphore({initial: {maxParallel: 1}})) {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'cez-lifecycle-git-'))); roots.push(root);
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'onni-lifecycle-git-'))); roots.push(root);
   const git = (...args: string[]) => execFileSync('git', args, {cwd: root, encoding: 'utf8'});
   git('init', '-q', '-b', 'main');
-  await writeFile(join(root, '.gitignore'), '.ai/cezar/\n');
+  await writeFile(join(root, '.gitignore'), '.ai/onni/\n');
   git('add', '.gitignore');
   git('-c', 'user.name=Lifecycle Test', '-c', 'user.email=lifecycle@example.invalid', 'commit', '-qm', 'fixture');
   const id = randomUUID();
@@ -78,7 +78,7 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
     const p = await project();
     await p.config([entry('sleep 120 & child=$!; printf "%s" "$child" > child.pid; wait')]);
     const preparing = p.prepare();
-    const childFile = join(p.root, '.ai/cezar/worktrees', p.id, 'child.pid');
+    const childFile = join(p.root, '.ai/onni/worktrees', p.id, 'child.pid');
     await vi.waitFor(() => expect(existsSync(childFile)).toBe(true), {timeout: 5000});
     const pid = Number(await readFile(childFile, 'utf8'));
     expect(() => process.kill(pid, 0)).not.toThrow();
@@ -100,7 +100,7 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
     await p.config([entry('touch started; while [ ! -f release ]; do sleep 0.02; done; echo ready > result')]);
     const preparing = p.prepare();
     const outcome = preparing.then(value => ({value}), error => ({error}));
-    const path = join(p.root, '.ai/cezar/worktrees', p.id);
+    const path = join(p.root, '.ai/onni/worktrees', p.id);
     await vi.waitFor(() => expect(existsSync(join(path, 'started'))).toBe(true), {timeout: 5000});
     const record = await p.coordinator.store.readWorktree(p.id);
     const before = await p.coordinator.store.readOperation(record!.activeOperationId!);
@@ -312,13 +312,13 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
     expect(onTaskDeleted).toHaveBeenCalledWith(p.id);
   });
 
-  it('falls back to cez/<id8> when git refuses a generated branch, with or without scripts', async () => {
+  it('falls back to onni/<id8> when git refuses a generated branch, with or without scripts', async () => {
     for (const scripts of [false, true]) {
       const p = await project(); if (scripts) await p.config([entry('true')]);
       const onFallback = vi.fn();
       // `main` exists, so `main/child` cannot be created as a ref.
       const prepared = await p.coordinator.prepare(p.id, 'main', {kind: 'initial', runId: p.id}, undefined, {branch: 'main/child', generated: true, onFallback});
-      expect(prepared).toMatchObject({ready: true, branch: `cez/${p.id.slice(0, 8)}`});
+      expect(prepared).toMatchObject({ready: true, branch: `onni/${p.id.slice(0, 8)}`});
       expect(onFallback).toHaveBeenCalledOnce();
     }
   });
@@ -350,8 +350,8 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
 
   it('a malformed config.json with no record takes the zero-config path', async () => {
     const p = await project();
-    await mkdir(join(p.root, '.ai/cezar'), {recursive: true});
-    await writeFile(join(p.root, '.ai/cezar/config.json'), '{broken');
+    await mkdir(join(p.root, '.ai/onni'), {recursive: true});
+    await writeFile(join(p.root, '.ai/onni/config.json'), '{broken');
     expect(await p.coordinator.requiresGate(p.id)).toBe(false);
     const prepared = await p.prepare();
     expect(prepared.ready).toBe(true); expect(prepared.operationId).toBeUndefined();
@@ -359,11 +359,11 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
 
   it('Retry leaves a setup that failed on configuration once the file is fixed', async () => {
     const p = await project();
-    await mkdir(join(p.root, '.ai/cezar'), {recursive: true});
-    await writeFile(join(p.root, '.ai/cezar/config.json'), JSON.stringify({worktreeLifecycle: {afterCreate: 'not a list'}}));
+    await mkdir(join(p.root, '.ai/onni'), {recursive: true});
+    await writeFile(join(p.root, '.ai/onni/config.json'), JSON.stringify({worktreeLifecycle: {afterCreate: 'not a list'}}));
     const failed = await p.prepare();
     expect(failed.ready).toBe(false);
-    await writeFile(join(p.root, '.ai/cezar/config.json'), '{}');
+    await writeFile(join(p.root, '.ai/onni/config.json'), '{}');
     await p.action(failed.operationId!, 'retry');
     await vi.waitFor(() => expect(p.resume).toHaveBeenCalled());
     const started = await p.prepare();
@@ -394,10 +394,10 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
 
   it('boot reconcile leaves a symlinked .ai alone when no lifecycle state exists', async () => {
     const p = await project();
-    const elsewhere = await realpath(await mkdtemp(join(tmpdir(), 'cez-lifecycle-ai-'))); roots.push(elsewhere);
+    const elsewhere = await realpath(await mkdtemp(join(tmpdir(), 'onni-lifecycle-ai-'))); roots.push(elsewhere);
     await rm(join(p.root, '.ai'), {recursive: true, force: true});
     execFileSync('ln', ['-s', elsewhere, join(p.root, '.ai')]);
-    Object.assign(p.records.get(p.id)!, {status: 'done', worktreePath: join(p.root, '.ai/cezar/worktrees', p.id)});
+    Object.assign(p.records.get(p.id)!, {status: 'done', worktreePath: join(p.root, '.ai/onni/worktrees', p.id)});
     await p.coordinator.reconcile();
     expect(p.records.get(p.id)).toMatchObject({status: 'done'}); expect(p.records.get(p.id)?.worktreeLifecycle).toBeUndefined();
     expect(await p.coordinator.requiresGate(p.id)).toBe(false);
@@ -477,7 +477,7 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
     const first = entry('touch started; sleep 0.2; printf first >> order');
     await p.config([first]);
     const preparing = p.prepare();
-    const path = join(p.root, '.ai/cezar/worktrees', p.id);
+    const path = join(p.root, '.ai/onni/worktrees', p.id);
     await vi.waitFor(() => expect(existsSync(join(path, 'started'))).toBe(true));
     await p.config([first, entry('printf second >> order')]);
     expect((await preparing).ready).toBe(true);
@@ -504,7 +504,7 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
 
   it('surfaces corrupt and missing orphan context as attention without authorizing removal', async () => {
     const p = await project(); await p.config([entry('true')]); await p.prepare();
-    await writeFile(join(p.root, '.ai/cezar/lifecycle/worktrees', `${p.id}.json`), '{broken');
+    await writeFile(join(p.root, '.ai/onni/lifecycle/worktrees', `${p.id}.json`), '{broken');
     expect(await p.coordinator.allowOrphanPrune(p.id)).toBe(false);
     const listed = await p.coordinator.list();
     expect(listed.worktrees).toHaveLength(1);

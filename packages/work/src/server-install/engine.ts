@@ -25,7 +25,7 @@ import {
 /**
  * The engine — pure control flow over a strategy's ordered steps. It never
  * knows what a step *does*, only `check`/`run`/`undo`. `runInstall` resumes
- * from `~/.cezar/server.json` (skips resolved steps unless `--reconfigure`
+ * from `~/.onni/server.json` (skips resolved steps unless `--reconfigure`
  * names them); `runUninstall` walks completed steps in reverse. Both hold the
  * single-writer lock for their whole run.
  */
@@ -43,8 +43,8 @@ export interface RunOptions {
   runner?: Runner;
   /**
    * Instance id (slug) to act on. Omit / `default` for the original
-   * single-cockpit host (legacy `~/.cezar/server.json`); a domain-derived slug
-   * targets a named instance under `~/.cezar/server-instances/`.
+   * single-cockpit host (legacy `~/.onni/server.json`); a domain-derived slug
+   * targets a named instance under `~/.onni/server-instances/`.
    */
   instance?: string;
   /** Public domain for this instance — recorded up front so instance selection
@@ -53,14 +53,14 @@ export interface RunOptions {
   /** Loopback port for this instance. For a NEW named instance the caller
    * passes an auto-picked free port; a resume keeps the recorded one. */
   port?: number;
-  /** `--external-proxy`: an existing reverse proxy fronts cezar, so the
+  /** `--external-proxy`: an existing reverse proxy fronts onni, so the
    * platform installs no nginx/SSL of its own. */
   externalProxy?: boolean;
   /** `--bind-host`: interface the cockpit binds so that proxy can reach it. */
   bindHost?: string;
   /** Seam for "is this port bindable on this host" — a real socket by default.
    * Unit tests stub it rather than dropping the check, which is the check that
-   * keeps an install off a port another unix user's cezar already holds (#913). */
+   * keeps an install off a port another unix user's onni already holds (#913). */
   portProbe?: PortProbe;
 }
 
@@ -198,7 +198,7 @@ export async function runInstall(strategy: PlatformStrategy, opts: RunOptions): 
     // usually this instance's own service, and refusing a resume the operator
     // needs would be a worse failure than the narrow case it would catch (an
     // install that died before it ever started a service, whose port was taken
-    // in the meantime — which still surfaces, loudly, at the "cezar is not
+    // in the meantime — which still surfaces, loudly, at the "onni is not
     // answering on 127.0.0.1:<port>" wait). A dry run touches no sockets.
     if (!opts.dryRun && isFirstInstallAttempt(state)) {
       const conflict = await instancePortConflict(state.primaryPort, {
@@ -330,7 +330,7 @@ export async function runUninstall(strategy: PlatformStrategy, opts: RunOptions)
     const registeredProjects = (await loadWorkspaceConfig()).projects.length;
     if (registeredProjects > 0) {
       ctx.ui.warn(
-        `${registeredProjects} ${registeredProjects === 1 ? 'project is' : 'projects are'} registered in ~/.cezar/config.json.`,
+        `${registeredProjects} ${registeredProjects === 1 ? 'project is' : 'projects are'} registered in ~/.onni/config.json.`,
       );
       const proceed = await ctx.ui.confirm({
         message: 'Removing this server will make them unavailable. Continue?',
@@ -362,7 +362,7 @@ export async function runUninstall(strategy: PlatformStrategy, opts: RunOptions)
     }
 
     // Drop entries that never had a system effect; anything left was recorded
-    // by a step id this binary doesn't know (a newer cezar) and was NOT
+    // by a step id this binary doesn't know (a newer onni) and was NOT
     // reversed — keep its ledger and say so instead of silently erasing it.
     for (const id of Object.keys(state.steps)) {
       if (!needsUndo(state.steps[id])) delete state.steps[id];
@@ -372,8 +372,8 @@ export async function runUninstall(strategy: PlatformStrategy, opts: RunOptions)
     state.updatedAt = opts.now;
     if (leftover.length > 0) {
       ctx.ui.warn(
-        `Not reversed (recorded by a different cezar version): ${leftover.join(', ')}. ` +
-          'Their record is kept — re-run server-uninstall with the cezar version that installed them.',
+        `Not reversed (recorded by a different onni version): ${leftover.join(', ')}. ` +
+          'Their record is kept — re-run server-uninstall with the onni version that installed them.',
       );
       await ctx.save();
       return { status: 'failed', state };
@@ -397,7 +397,7 @@ export async function runUninstall(strategy: PlatformStrategy, opts: RunOptions)
 }
 
 /**
- * Reload the running cockpit to pick up a new cezar version — the standardized
+ * Reload the running cockpit to pick up a new onni version — the standardized
  * `server-deploy` flow. Delegates to the platform's `redeploy` (restart service
  * + re-verify); holds the single-writer lock for the whole run.
  */

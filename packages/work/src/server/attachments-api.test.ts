@@ -36,8 +36,8 @@ describe('attachment routes (#950)', () => {
   const PDF_B64 = Buffer.from('%PDF-1.4 fake\n').toString('base64');
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-attachments-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-attachments-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     captured = undefined;
     delivered = undefined;
     accept = true;
@@ -84,7 +84,7 @@ describe('attachment routes (#950)', () => {
       text: 'test', images: [{ mediaType: 'image/png', data: PNG_B64, name: 'rejected.png' }],
     });
     expect(res.status).toBe(409);
-    expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/cezar')))).toBe(false);
+    expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/onni')))).toBe(false);
   });
 
   describe('POST /api/v1/runs', () => {
@@ -137,7 +137,7 @@ describe('attachment routes (#950)', () => {
       expect(captured?.images).toEqual([
         { type: 'image', source: { type: 'base64', media_type: 'image/png', data: PNG_B64 } },
       ]);
-      const libraryPath = join(attachmentLibraryDir(join(repoRoot, '.ai/cezar')), 'diagram.png');
+      const libraryPath = join(attachmentLibraryDir(join(repoRoot, '.ai/onni')), 'diagram.png');
       expect(existsSync(libraryPath)).toBe(false);
     });
 
@@ -146,7 +146,7 @@ describe('attachment routes (#950)', () => {
     it('never files a nameless (pasted) image', async () => {
       const res = await post('/api/v1/runs', { ...base, images: [{ mediaType: 'image/png', data: PNG_B64 }] });
       expect(res.status).toBe(201);
-      expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/cezar')))).toBe(false);
+      expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/onni')))).toBe(false);
     });
 
     /** The allowlist is what keeps `text/html` and SVG-as-a-document out of a folder this server
@@ -190,7 +190,7 @@ describe('attachment routes (#950)', () => {
         images: [{ mediaType: 'image/png', data: PNG_B64, name: 'diagram.png' }],
       });
       expect(res.status).toBe(400);
-      expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/cezar')))).toBe(false);
+      expect(existsSync(attachmentLibraryDir(join(repoRoot, '.ai/onni')))).toBe(false);
     });
   });
 
@@ -216,7 +216,7 @@ describe('attachment routes (#950)', () => {
 
   describe('GET /api/v1/runs/:id/images/:file', () => {
     const seed = (id: string, name: string, body: string) => {
-      const dir = join(repoRoot, '.ai/cezar', 'runs', `${id}-images`);
+      const dir = join(repoRoot, '.ai/onni', 'runs', `${id}-images`);
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, name), body);
     };

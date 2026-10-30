@@ -5,12 +5,12 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { AgentBrowser, cezarCli, fixtureServeEnv, stopFixtureServer } from './agent-browser'
+import { AgentBrowser, onniCli, fixtureServeEnv, stopFixtureServer } from './agent-browser'
 import record from './fixtures/subagents-run.record.json'
 
 /**
  * The grouped sub-agent display (spec `.ai/specs/2026-07-20-grouped-subagent-display.md`,
- * #474) in a real browser, against a real cezar serving a run whose transcript is a REAL
+ * #474) in a real browser, against a real onni serving a run whose transcript is a REAL
  * NDJSON file — `fixtures/subagents-run.ndjson`, the verbatim output of a `mock:subagents`
  * dry run (two parallel `Task` spawns whose children carry `parent_tool_use_id`).
  *
@@ -51,7 +51,7 @@ async function waitForHealth(url: string): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: the agents-dock server never answered at ${url}`)
+  throw new Error(`onni e2e: the agents-dock server never answered at ${url}`)
 }
 
 let browser: AgentBrowser
@@ -60,9 +60,9 @@ let dataRoot: string
 let baseUrl: string
 
 beforeAll(async () => {
-  dataRoot = mkdtempSync(join(tmpdir(), 'cezar-e2e-agents-'))
-  mkdirSync(join(dataRoot, '.ai/cezar/runs'), { recursive: true })
-  writeFileSync(join(dataRoot, '.ai/cezar/runs.json'), JSON.stringify([RUN], null, 2), 'utf8')
+  dataRoot = mkdtempSync(join(tmpdir(), 'onni-e2e-agents-'))
+  mkdirSync(join(dataRoot, '.ai/onni/runs'), { recursive: true })
+  writeFileSync(join(dataRoot, '.ai/onni/runs.json'), JSON.stringify([RUN], null, 2), 'utf8')
   // Derive a long attributed child stream from the real `mock:subagents` recording. The
   // source fixture stays verbatim; this test adds scale without pretending the runner emitted
   // data it cannot currently attribute (notably images, whose persisted v1 line has no parent).
@@ -103,14 +103,14 @@ beforeAll(async () => {
       }),
     )
     .join('\n')
-  writeFileSync(join(dataRoot, '.ai/cezar/runs', `${RUN_ID}.ndjson`), `${scaled}\n`, 'utf8')
+  writeFileSync(join(dataRoot, '.ai/onni/runs', `${RUN_ID}.ndjson`), `${scaled}\n`, 'utf8')
 
   const port = await freePort()
   baseUrl = `http://localhost:${port}`
   server = spawn(
     process.execPath,
     [
-      cezarCli,
+      onniCli,
       'serve',
       '--repo',
       dataRoot,

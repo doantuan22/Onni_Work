@@ -61,9 +61,9 @@ describe('opencode-http', () => {
       });
     });
 
-    const res = await opencodeRequest(`${base}/session`, { method: 'POST', body: { title: 'cezar task' } });
+    const res = await opencodeRequest(`${base}/session`, { method: 'POST', body: { title: 'onni task' } });
 
-    expect(seen).toBe('{"title":"cezar task"}');
+    expect(seen).toBe('{"title":"onni task"}');
     expect(seenType).toBe('application/json');
     expect(res).toEqual({ status: 200, body: '{"id":"ses_1"}' });
   });

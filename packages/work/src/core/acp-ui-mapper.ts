@@ -72,7 +72,7 @@ export interface AcpUiMapperState {
    * True from an outbound `session/load` until the agent's replay of that session's history is over.
    * Gemini replays every past message, thought and tool call as `session/update` frames — some
    * before, some after the load result — and ends with `available_commands_update`
-   * (`__fixtures__/gemini/load-replay.ndjson`). cezar already has that history in its own NDJSON,
+   * (`__fixtures__/gemini/load-replay.ndjson`). onni already has that history in its own NDJSON,
    * so the replay must not become a second copy of every item. Only that marker ends it — or the
    * runner, through `endAcpReplay`, when it gives up waiting for one. An early `session/prompt` does
    * NOT: in the captured transcript the client prompted mid-replay, and the rest of the replay (old
@@ -116,7 +116,7 @@ export function endAcpReplay(state: AcpUiMapperState): AcpUiMapperState {
 /**
  * A turn the transport lost: the agent died or was stopped mid-prompt, so no answer frame will
  * ever come. With a `message` it settles exactly as an error answer would (`session.error`, then
- * `turn.completed{error}`); without one it settles with `stopReason` — `cancelled` for a stop cezar
+ * `turn.completed{error}`); without one it settles with `stopReason` — `cancelled` for a stop onni
  * asked for, `timeout` for the run's own deadline.
  */
 export function abortAcpTurn(
@@ -138,7 +138,7 @@ export function mapAcpFrame(input: AcpFrame | unknown, state: AcpUiMapperState, 
   const hasId = typeof id === 'number' || typeof id === 'string';
 
   if (input.dir === 'out') {
-    // Only requests cezar sends matter here; its answers to inbound requests and its notifications
+    // Only requests onni sends matter here; its answers to inbound requests and its notifications
     // (`session/cancel`) change nothing the cockpit renders.
     if (!method || !hasId) return NONE(state);
     const params = isRecord(frame.params) ? frame.params : {};
@@ -194,7 +194,7 @@ function startSession(
   state: AcpUiMapperState,
   dialect: AcpDialect,
 ): AcpUiMapping {
-  // `session/new` mints the id; `session/load` answers without one — it is the id cezar asked for.
+  // `session/new` mints the id; `session/load` answers without one — it is the id onni asked for.
   const sessionId = string(result.sessionId) ?? string(request.params.sessionId);
   if (!sessionId || sessionId === state.sessionId) return NONE(state);
   const models = isRecord(result.models) ? result.models : undefined;

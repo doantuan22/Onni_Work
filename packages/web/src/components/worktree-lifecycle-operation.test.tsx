@@ -10,7 +10,7 @@ vi.mock('@/api/client', () => client)
 let operation: LifecycleOperationView
 const operationId = '11111111-1111-4111-8111-111111111111'
 function view() {
-  return render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><LifecycleOperationCard operationId={operationId} worktreePath="/project/.ai/cezar/worktrees/task" taskTitle="Lifecycle task" /></QueryClientProvider></MemoryRouter>)
+  return render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><LifecycleOperationCard operationId={operationId} worktreePath="/project/.ai/onni/worktrees/task" taskTitle="Lifecycle task" /></QueryClientProvider></MemoryRouter>)
 }
 beforeEach(() => {
   vi.clearAllMocks()

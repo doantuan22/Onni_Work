@@ -9,18 +9,18 @@ import { atomicWriteJsonSync } from '../workspace/config.ts';
 
 /**
  * The per-run workspace layout store (spec `.ai/specs/2026-10-07-task-workspace.md` §5.3:
- * "Persist named layouts per task **on the Cezar host that owns the task**").
+ * "Persist named layouts per task **on the Onni host that owns the task**").
  *
  * ```
- * .ai/cezar/layouts/<runId>.json    { layouts: [{ name, columns: [...] }], active }
+ * .ai/onni/layouts/<runId>.json    { layouts: [{ name, columns: [...] }], active }
  * ```
  *
  * On the HOST, not in the browser, and that is the requirement rather than an implementation
- * taste: §5.3 also says "Local Cezar and a VPS each keep their own layouts" — which a file beside
- * the run satisfies exactly, since the file lives with the cezar that owns the worktree — and
+ * taste: §5.3 also says "Local Onni and a VPS each keep their own layouts" — which a file beside
+ * the run satisfies exactly, since the file lives with the onni that owns the worktree — and
  * "Layouts are removed only when the task itself is permanently deleted", which browser storage
  * cannot promise at all (clearing site data, a second browser, another machine). The same task
- * opened from a different browser against the same cezar is the same task, and now shows the same
+ * opened from a different browser against the same onni is the same task, and now shows the same
  * layouts.
  *
  * House style, inherited from `runs/drafts.ts` and `workspace/ui-state.ts`: reads NEVER throw —

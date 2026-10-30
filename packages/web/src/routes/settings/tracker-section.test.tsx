@@ -271,8 +271,8 @@ it('shows local storage diagnostics and credential cleanup commands', async () =
   client.setQueryData(queryKeys.tracker.association(), { association: null })
   render(<MemoryRouter><QueryClientProvider client={client}><TrackerSection /></QueryClientProvider></MemoryRouter>)
   expect((await screen.findByRole('alert')).textContent).toContain('Cannot read project credentials')
-  expect(screen.getByText('cez tracker-connections list')).toBeTruthy()
-  expect(screen.getByText('cez tracker-connections remove <id>')).toBeTruthy()
+  expect(screen.getByText('onni tracker-connections list')).toBeTruthy()
+  expect(screen.getByText('onni tracker-connections remove <id>')).toBeTruthy()
   expect((screen.getByRole('button', { name: 'Configure Linear credentials' }) as HTMLButtonElement).disabled).toBe(false)
 })
 

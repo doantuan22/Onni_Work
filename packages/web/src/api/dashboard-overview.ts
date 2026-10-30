@@ -3,7 +3,7 @@ import {
   dashboardOverviewSchema,
   type DashboardOverviewQuery,
 } from '@onni/api-client'
-import { cez, unwrap } from './client'
+import { onni, unwrap } from './client'
 import { workspaceQueryKeys } from './queries'
 
 export function useDashboardOverview(options: Partial<DashboardOverviewQuery>, enabled = true) {
@@ -17,7 +17,7 @@ export function useDashboardOverview(options: Partial<DashboardOverviewQuery>, e
     queryFn: async ({ signal }) =>
       dashboardOverviewSchema.parse(
         await unwrap(
-          await cez.api.v1.workspace.dashboard.overview.$get(
+          await onni.api.v1.workspace.dashboard.overview.$get(
             {
               query: {
                 period: options.period ?? '7d',

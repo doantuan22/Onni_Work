@@ -4,9 +4,9 @@
  * the whole model is table-testable.
  *
  * WHERE IT IS STORED is not this module's business and deliberately not its decision: §5.3 says
- * layouts live "on the Cezar host that owns the task", and `use-workspace-layouts.ts` does that
+ * layouts live "on the Onni host that owns the task", and `use-workspace-layouts.ts` does that
  * over `GET/PUT /api/v1/runs/:id/layouts`. What stays here is the repair path — `reviveState`
- * takes whatever the host sends, including something a later cezar wrote, and returns a workspace
+ * takes whatever the host sends, including something a later onni wrote, and returns a workspace
  * this build can paint.
  */
 
@@ -336,13 +336,13 @@ function reviveLayout(entry: unknown, taken: readonly WorkspaceLayout[]): Worksp
   if (typeof source.name !== 'string' || source.name.trim() === '') return null
   if (!Array.isArray(source.columns)) return null
 
-  // Drop columns naming a view this build does not have — a layout saved by a later cezar must
+  // Drop columns naming a view this build does not have — a layout saved by a later onni must
   // still open here, minus that column, rather than failing the whole file.
   const views: ViewId[] = []
   const widths: number[] = []
   const browsers: Array<BrowserState | undefined> = []
   // The cap is applied to what SURVIVES, not to what arrived. Slicing first meant a layout saved
-  // by a later cezar whose first three columns named views this build lacks lost the two valid
+  // by a later onni whose first three columns named views this build lacks lost the two valid
   // ones behind them — and then, having no columns left, was dropped whole by the guard below.
   for (const column of source.columns) {
     if (views.length >= MAX_COLUMNS) break
@@ -377,7 +377,7 @@ function reviveLayout(entry: unknown, taken: readonly WorkspaceLayout[]): Worksp
 /**
  * What this BROWSER remembers about a task, now that the layouts themselves do not live here.
  *
- * The layouts are the owning cezar's (spec §5.3) and go with the run-delete route. What is left
+ * The layouts are the owning onni's (spec §5.3) and go with the run-delete route. What is left
  * in the browser is the drawer's own open/height preference, which is per screen rather than per
  * task-on-a-host — and a task id is never reused, so leaving it behind would be a leak nothing
  * ever cleans up.

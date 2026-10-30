@@ -6,7 +6,7 @@ import { AutomationStore } from './store.ts';
 /**
  * The editor's "From your other projects" palette (spec 2026-09-14-automations-redesign Q7):
  * every OTHER registered project's automation definitions, read as templates. Read-only, from
- * each project's own `.ai/cezar/automations.json`; a project whose root is gone, has no
+ * each project's own `.ai/onni/automations.json`; a project whose root is gone, has no
  * definitions file, or whose file cannot be read is simply absent from the answer — a broken
  * neighbour must never take the palette down.
  */
@@ -17,7 +17,7 @@ export function automationTemplatesOf(
   const templates: AutomationTemplate[] = [];
   for (const project of projects) {
     if (project.id === exclude || project.status === 'missing') continue;
-    const dataDir = join(project.root, '.ai/cezar');
+    const dataDir = join(project.root, '.ai/onni');
     if (!existsSync(join(dataDir, 'automations.json'))) continue;
     let definitions;
     try {

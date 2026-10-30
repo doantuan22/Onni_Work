@@ -61,8 +61,8 @@ describe('Discord rendering', () => {
     expect(JSON.parse(renderDiscordMessage(JSON.stringify(value))).embeds[0].url).toBe('https://cockpit.example/task');
   });
   it('renders a named test with mentions disabled', () => {
-    const result = JSON.parse(renderDiscordMessage(JSON.stringify({ id: 'evt_11111111-1111-4111-8111-111111111111', schemaVersion: 1, occurredAt: at, type: 'webhook.test', data: { test: true, format: 'cezar.json.v1' } }), { receiverName: '@everyone' }));
-    expect(result.content).toContain('cezar is connected to this channel');
+    const result = JSON.parse(renderDiscordMessage(JSON.stringify({ id: 'evt_11111111-1111-4111-8111-111111111111', schemaVersion: 1, occurredAt: at, type: 'webhook.test', data: { test: true, format: 'onni.json.v1' } }), { receiverName: '@everyone' }));
+    expect(result.content).toContain('onni is connected to this channel');
     expect(result.content).toContain('@\u200beveryone'); expect(result.allowed_mentions).toEqual({ parse: [] });
   });
 });
@@ -79,7 +79,7 @@ it('suppresses content URL previews without escaping URL syntax', () => {
 
 it('never truncates a suppression wrapper or exceeds the content limit', () => {
   const test = JSON.stringify({ id: 'evt_11111111-1111-4111-8111-111111111111', schemaVersion: 1,
-    occurredAt: at, type: 'webhook.test', data: { test: true, format: 'cezar.json.v1' } });
+    occurredAt: at, type: 'webhook.test', data: { test: true, format: 'onni.json.v1' } });
   for (const count of [1900, 1946, 1950, 2000]) {
     const result = JSON.parse(renderDiscordMessage(test, { receiverName: 'a'.repeat(count) + ' https://example.test/' + 'x'.repeat(100) }));
     expect(result.content.length).toBeLessThanOrEqual(2000);
@@ -105,15 +105,15 @@ it.each([
   value.task.title = input;
   const task = JSON.parse(renderDiscordMessage(JSON.stringify(value)));
   const test = JSON.parse(renderDiscordMessage(JSON.stringify({ id: 'evt_11111111-1111-4111-8111-111111111111', schemaVersion: 1,
-    occurredAt: at, type: 'webhook.test', data: { test: true, format: 'cezar.json.v1' } }), { receiverName: input }));
+    occurredAt: at, type: 'webhook.test', data: { test: true, format: 'onni.json.v1' } }), { receiverName: input }));
   expect(task.content).toBe(`Task finished · ${expected}`);
-  expect(test.content).toBe(`Test message · cezar is connected to this channel · ${expected}`);
+  expect(test.content).toBe(`Test message · onni is connected to this channel · ${expected}`);
   for (const result of [task, test]) expect(result.allowed_mentions).toEqual({ parse: [] });
 });
 
 it('drops a complete balanced URL atomically when only its prefix fits', () => {
   const test = JSON.stringify({ id: 'evt_11111111-1111-4111-8111-111111111111', schemaVersion: 1,
-    occurredAt: at, type: 'webhook.test', data: { test: true, format: 'cezar.json.v1' } });
+    occurredAt: at, type: 'webhook.test', data: { test: true, format: 'onni.json.v1' } });
   const result = JSON.parse(renderDiscordMessage(test, { receiverName: 'a'.repeat(1900) + ' https://example.test/(' + 'x'.repeat(100) + ')' }));
   expect(result.content.length).toBeLessThanOrEqual(2000);
   expect(result.content).not.toContain('https://');

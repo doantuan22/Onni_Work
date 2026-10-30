@@ -340,17 +340,17 @@ describe('DEFAULT_PROMPT_TEMPLATES', () => {
 
   // Every other built-in tells ONE task how to do its own work. This is the worked example of a
   // task that fans work out to dispatched children and then waits for their reports (spec
-  // `.ai/specs/2026-09-10-dispatch.md`), so its shape is load-bearing: the `cez task create`
-  // invocation, the concurrency ceiling, and the CEZ:MONITORING end that makes the waiting work.
+  // `.ai/specs/2026-09-10-dispatch.md`), so its shape is load-bearing: the `onni task create`
+  // invocation, the concurrency ceiling, and the ONNI:MONITORING end that makes the waiting work.
   it('ships the dispatching example, with the CLI call and the monitoring end intact', () => {
     const template = DEFAULT_PROMPT_TEMPLATES.find((t) => t.id === 'review-open-prs')
     expect(template?.label).toBe('Review open PRs')
     expect(template?.text).toContain('gh pr list --state open')
-    expect(template?.text).toContain('cez task create --kind review --review-of <headRefName>')
+    expect(template?.text).toContain('onni task create --kind review --review-of <headRefName>')
     // The cap is the contract's, not a literal: the engine enforces it and DISPATCH_PROMPT states
     // it, so a template that named its own number would be a fourth copy free to drift.
     expect(template?.text).toContain(`at most ${DISPATCH_MAX_IN_FLIGHT} at a time`)
-    expect(template?.text).toContain('CEZ:MONITORING')
+    expect(template?.text).toContain('ONNI:MONITORING')
   })
 
   it('survives its own normalizer unchanged — the built-ins must round-trip', () => {
@@ -385,7 +385,7 @@ describe('availablePromptTemplates', () => {
 
   it('the automation template is assigned to the built-in skill, so picking it pre-fills the box', () => {
     const template = DEFAULT_PROMPT_TEMPLATES.find((t) => t.id === 'create-automation')
-    expect(template?.skills).toEqual(['create-cezar-automation'])
+    expect(template?.skills).toEqual(['create-onni-automation'])
     expect(template?.text).toContain('Trigger:')
     expect(template?.text).toContain('Task for each run:')
     expect(template?.text).toContain('Leave it paused')

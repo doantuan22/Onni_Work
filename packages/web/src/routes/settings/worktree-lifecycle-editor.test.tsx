@@ -21,7 +21,7 @@ beforeEach(() => {
     if (path.startsWith('/api/v1/worktree-lifecycle?')) return json({ worktrees: [] })
     if (path === '/api/v1/worktree-lifecycle/preview') {
       if (invalidPreview) return json({ error: 'Unknown template variable at position 8: unknown' }, 400)
-      return json({ renderedCommand: body?.command, variables: { root_path: '/example/project', worktree_path: '/example/worktree', worktree_id: 'cez-example', task_id: 'example' }, cwd: '/example/worktree', illustrative: true })
+      return json({ renderedCommand: body?.command, variables: { root_path: '/example/project', worktree_path: '/example/worktree', worktree_id: 'onni-example', task_id: 'example' }, cwd: '/example/worktree', illustrative: true })
     }
     if (path === '/api/v1/config' && method === 'PUT') {
       if (conflict) return json({ error: 'Worktree scripts changed; reload settings before saving' }, 409)

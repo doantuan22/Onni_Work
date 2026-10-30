@@ -9,7 +9,7 @@ import {
   type DashboardGroup,
   type DashboardFeed,
 } from '@onni/api-client'
-import { cez, unwrap } from './client'
+import { onni, unwrap } from './client'
 import { workspaceQueryKeys } from './queries'
 import { dashboardLive } from './dashboard-live'
 
@@ -24,7 +24,7 @@ export async function getDashboard(signal?: AbortSignal) {
   const revision = dashboardTruthRevision()
   const snapshot = dashboardSnapshotSchema.parse(
     await unwrap(
-      await cez.api.v1.workspace.dashboard.$get({}, { init: { signal } }),
+      await onni.api.v1.workspace.dashboard.$get({}, { init: { signal } }),
       '/workspace/dashboard',
     ),
   )
@@ -50,7 +50,7 @@ export async function getDashboardTasks(
 ) {
   const result = dashboardTasksPageSchema.parse(
     await unwrap(
-      await cez.api.v1.workspace.dashboard.tasks.$get(
+      await onni.api.v1.workspace.dashboard.tasks.$get(
         { query: { snapshotId, group, offset: String(offset), limit: String(limit) } },
         { init: { signal } },
       ),
@@ -81,7 +81,7 @@ export function useDashboardTelemetry(enabled: boolean) {
     queryFn: async ({ signal }) => {
       const result = dashboardTelemetrySchema.parse(
         await unwrap(
-          await cez.api.v1.workspace.dashboard.telemetry.$get({}, { init: { signal } }),
+          await onni.api.v1.workspace.dashboard.telemetry.$get({}, { init: { signal } }),
           '/workspace/dashboard/telemetry',
         ),
       )
@@ -98,7 +98,7 @@ function useFeedSource(filter: DashboardFeed['filter'], enabled: boolean) {
       const revision = dashboardTruthRevision()
       const result = dashboardFeedSchema.parse(
         await unwrap(
-          await cez.api.v1.workspace.dashboard.feed.$get(
+          await onni.api.v1.workspace.dashboard.feed.$get(
             { query: { filter } },
             { init: { signal } },
           ),

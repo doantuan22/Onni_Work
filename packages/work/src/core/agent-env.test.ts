@@ -4,7 +4,7 @@ import { BACKEND_ALLOW_PREFIXES, buildChildEnv, isClaudeBackend, looksSecret } f
 /**
  * #427: the spawned backend must NOT inherit the full host environment. It
  * gets a curated allowlist — safe shell/toolchain vars + the backend's own
- * auth + gh + cezar's `CEZ_*` — and nothing else.
+ * auth + gh + onni's `CEZ_*` — and nothing else.
  */
 describe('buildChildEnv — least-privilege child env (#427)', () => {
   const HOST: NodeJS.ProcessEnv = {
@@ -319,7 +319,7 @@ describe('agent-profile config dirs reach the child', () => {
       }).CLAUDE_CONFIG_DIR,
     ).toBe('/home/u/.claude-klaudiusz');
     // The `CLAUDE_` prefix means a host-level override also rides in, which is what makes it the
-    // DEFAULT profile's dir rather than something cezar has to re-export.
+    // DEFAULT profile's dir rather than something onni has to re-export.
     expect(
       buildChildEnv({
         backend: 'claude',

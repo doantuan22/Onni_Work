@@ -24,10 +24,10 @@ describe('the dispatch routes', () => {
   const savedFlag = process.env.CEZ_DISPATCH;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-dispatch-api-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-dispatch-api-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     calls = [];
-    outcome = { id: 'child-1', branch: 'cez/child1' };
+    outcome = { id: 'child-1', branch: 'onni/child1' };
     reportOk = true;
     process.env.CEZ_DISPATCH = '1';
     const manager = {
@@ -55,7 +55,7 @@ describe('the dispatch routes', () => {
   it('creates a child through the manager and answers its id and branch', async () => {
     const res = await apiRequest(app, '/api/v1/runs/parent-1/dispatch', json({ objective: 'take the flank', max_cost: 2 }));
     expect(res.status).toBe(201);
-    expect(await res.json()).toEqual({ id: 'child-1', branch: 'cez/child1' });
+    expect(await res.json()).toEqual({ id: 'child-1', branch: 'onni/child1' });
     expect(calls).toEqual([{ kind: 'dispatch', runId: 'parent-1', body: { objective: 'take the flank', max_cost: 2 } }]);
   });
 

@@ -318,7 +318,7 @@ export function ThreadView({
     }
     return actions
   }, [edit, run.queuedMessages])
-  // #526: the footer's issue link may be synthesized from the CEZ:ISSUE marker, and the only
+  // #526: the footer's issue link may be synthesized from the ONNI:ISSUE marker, and the only
   // repository it may ever name is the one on screen — never the transcript's.
   const issueUrl = taskIssueUrl(run, useProjectRepoBase())
   const { search } = useLocation()

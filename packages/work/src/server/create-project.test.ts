@@ -40,7 +40,7 @@ function recordingRunner(overrides: (call: Call) => Awaited<ReturnType<CommandRu
 describe('createProject', () => {
   let root: string;
   beforeEach(() => {
-    root = join(mkdtempSync(join(realpathSync(tmpdir()), 'cez-create-')), 'projects');
+    root = join(mkdtempSync(join(realpathSync(tmpdir()), 'onni-create-')), 'projects');
   });
   afterEach(() => rmSync(join(root, '..'), { recursive: true, force: true }));
 
@@ -240,13 +240,13 @@ describe('POST /api/v1/projects/create', () => {
   let store: RunStore;
 
   beforeEach(async () => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-create-home-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-create-boot-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-create-home-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-create-boot-'));
     checkoutRoot = join(home, 'projects');
     process.env.CEZ_HOME = home;
     process.env.CEZ_DRY_RUN = '1';
     delete process.env.CEZ_PROJECTS_DIR;
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     clearProjectProbeCache();
     await mergeWriteWorkspaceConfig((config) => {
       config.projectsDir = checkoutRoot;

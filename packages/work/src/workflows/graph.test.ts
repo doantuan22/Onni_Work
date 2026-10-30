@@ -251,11 +251,11 @@ describe('verdicts (D10/D17)', () => {
   });
 
   it('parses only a trailing, declared verdict', () => {
-    expect(parseVerdict('looks good\n\nCEZ:VERDICT approve\n', ['approve', 'changes'])).toBe('approve');
-    expect(parseVerdict('CEZ:VERDICT: changes', ['approve', 'changes'])).toBe('changes');
-    expect(parseVerdict('CEZ:VERDICT maybe', ['approve'])).toBeNull();
-    expect(parseVerdict('CEZ:VERDICT approve\nthen more text', ['approve'])).toBeNull();
-    expect(stripVerdictMarker('done.\n\nCEZ:VERDICT approve')).toBe('done.');
+    expect(parseVerdict('looks good\n\nONNI:VERDICT approve\n', ['approve', 'changes'])).toBe('approve');
+    expect(parseVerdict('ONNI:VERDICT: changes', ['approve', 'changes'])).toBe('changes');
+    expect(parseVerdict('ONNI:VERDICT maybe', ['approve'])).toBeNull();
+    expect(parseVerdict('ONNI:VERDICT approve\nthen more text', ['approve'])).toBeNull();
+    expect(stripVerdictMarker('done.\n\nONNI:VERDICT approve')).toBe('done.');
   });
 
   it('rejects reserved and repeated verdict names', () => {

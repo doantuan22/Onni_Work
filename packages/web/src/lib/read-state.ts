@@ -39,7 +39,7 @@ function isScheduledResume(run: ReadStateInput): boolean {
 }
 
 /**
- * A run whose session closed on an unanswered `CEZ:ASK`. Like a scheduled resume it is `failed` on
+ * A run whose session closed on an unanswered `ONNI:ASK`. Like a scheduled resume it is `failed` on
  * the record without being a done item: it sits under "needs you" (`lib/attention.ts`), so the
  * question is its signal — never an unread outcome, never a dimmed read row.
  */
@@ -86,7 +86,7 @@ export function canBeUnread(run: ReadStateInput): boolean {
  * "Mark unread" (#775) takes the other road: it *clears* the receipt, and an absent one is
  * unread by this same clause.
  *
- * ISO-8601 strings compare lexicographically because every timestamp cezar writes is UTC
+ * ISO-8601 strings compare lexicographically because every timestamp onni writes is UTC
  * (`toISOString()` → trailing `Z`), so `<` on the strings is `<` on the instants.
  */
 export function isUnread(run: ReadStateInput): boolean {

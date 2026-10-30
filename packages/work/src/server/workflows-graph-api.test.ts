@@ -14,9 +14,9 @@ describe('the workflow graph API', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-graph-api-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-graph-api-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
   afterEach(() => {
     store.flush();
@@ -85,7 +85,7 @@ describe('the workflow graph API', () => {
     const created = await post('/api/v1/workflows/graph', { name: 'Review Flow', graph: GRAPH });
     expect(created.status).toBe(201);
     const { path } = (await created.json()) as { path: string };
-    expect(path.endsWith('.ai/cezar/workflows/review-flow.yaml')).toBe(true);
+    expect(path.endsWith('.ai/onni/workflows/review-flow.yaml')).toBe(true);
     expect(parseYaml(readFileSync(path, 'utf8'))).toMatchObject({ version: 2, name: 'Review Flow', layout: GRAPH.layout });
 
     const again = await post('/api/v1/workflows/graph', { name: 'Review Flow', graph: GRAPH });

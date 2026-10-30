@@ -357,7 +357,7 @@ describe('useDeliverPrompt', () => {
       'GET /api/v1/runs/r1': () => jsonResponse(landed),
     })
 
-    await expect(deliver('one more fix')).rejects.toThrow('cannot reach the cezar server')
+    await expect(deliver('one more fix')).rejects.toThrow('cannot reach the onni server')
     expect(posts(sent, '/api/v1/runs/r1/continue')).toHaveLength(1)
     expect(posts(sent, '/api/v1/runs/r1/messages')).toHaveLength(0)
   })
@@ -368,7 +368,7 @@ describe('useDeliverPrompt', () => {
       'GET /api/v1/runs/r1': unreachable,
     })
 
-    await expect(deliver('one more fix')).rejects.toThrow('cannot reach the cezar server')
+    await expect(deliver('one more fix')).rejects.toThrow('cannot reach the onni server')
     expect(posts(sent, '/api/v1/runs/r1/continue')).toHaveLength(1)
   })
 
@@ -391,7 +391,7 @@ describe('useDeliverPrompt', () => {
       'GET /api/v1/runs/r1': () => jsonResponse(run('waiting')),
     })
 
-    await expect(deliver('hello')).rejects.toThrow('cannot reach the cezar server')
+    await expect(deliver('hello')).rejects.toThrow('cannot reach the onni server')
     expect(posts(sent, '/api/v1/runs/r1/messages')).toHaveLength(MESSAGE_RETRY_DELAYS_MS.length + 1)
     expect(sent.filter((r) => r.method === 'GET' && r.path === '/api/v1/runs/r1')).toHaveLength(0)
   })

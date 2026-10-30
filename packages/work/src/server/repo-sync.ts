@@ -76,7 +76,7 @@ async function branchTracking(root: string, hide: ReadonlySet<string>): Promise<
       const [name = '', upstream = '', track = ''] = line.split('\0');
       return { name, upstream: upstream || null, ...parseTrack(track, Boolean(upstream)) };
     })
-    .filter((b) => b.name && !b.name.startsWith('cez/') && !hide.has(b.name))
+    .filter((b) => b.name && !b.name.startsWith('onni/') && !hide.has(b.name))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

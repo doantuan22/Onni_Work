@@ -26,13 +26,13 @@ const entry = (id: string, extra: Partial<ProjectListEntry> = {}): ProjectListEn
 /** One cloned GitHub project — a single-entry registry, so the shell renders the FLAT nav. */
 const ONE_CLONE: ProjectsResponse = {
   bootProject: 'home',
-  projectsDir: '~/cezar/projects',
-  projects: [entry('cezar', { forge: 'github' })],
+  projectsDir: '~/onni/projects',
+  projects: [entry('onni', { forge: 'github' })],
 }
 
 describe('activeForgeOf', () => {
   it('a cloned GitHub project served from a non-repo boot folder has a forge', () => {
-    expect(activeForgeOf(HOME_HEALTH, ONE_CLONE, 'cezar')).toEqual({ kind: 'github', available: true })
+    expect(activeForgeOf(HOME_HEALTH, ONE_CLONE, 'onni')).toEqual({ kind: 'github', available: true })
   })
 
   it('a non-boot project without a forge remote is null — the "no remote" note is true there', () => {
@@ -43,7 +43,7 @@ describe('activeForgeOf', () => {
 
   it('a non-boot GitHub project is unavailable, with a gh reason, when the host gh check fails', () => {
     const health = { ...HOME_HEALTH, checks: [{ name: 'gh', available: false }] } as HealthResponse
-    expect(activeForgeOf(health, ONE_CLONE, 'cezar')).toEqual({ kind: 'github', available: false, reason: forgeCliUnavailableReason('gh') })
+    expect(activeForgeOf(health, ONE_CLONE, 'onni')).toEqual({ kind: 'github', available: false, reason: forgeCliUnavailableReason('gh') })
     expect(forgeCliUnavailableReason('gh')).toContain('`gh auth login`')
   })
 
@@ -51,7 +51,7 @@ describe('activeForgeOf', () => {
     expect(cliFor('github')).toBe('gh')
     // Another probed tool failing says nothing about GitHub.
     const health = { ...HOME_HEALTH, checks: [GH_OK, { name: 'git', available: false }] } as HealthResponse
-    expect(activeForgeOf(health, ONE_CLONE, 'cezar')).toEqual({ kind: 'github', available: true })
+    expect(activeForgeOf(health, ONE_CLONE, 'onni')).toEqual({ kind: 'github', available: true })
   })
 
   // Review on #1465: a fork with a second forge (GitLab via `glab`, #847 / #1226) hit this.
@@ -65,7 +65,7 @@ describe('activeForgeOf', () => {
 
   it('a server that never probed gh leaves a non-boot project\'s availability unknown', () => {
     const health = { ...HOME_HEALTH, checks: [] } as unknown as HealthResponse
-    expect(activeForgeOf(health, ONE_CLONE, 'cezar')).toEqual({ kind: 'github' })
+    expect(activeForgeOf(health, ONE_CLONE, 'onni')).toEqual({ kind: 'github' })
   })
 
   it('the boot project — by id, by the `default` alias, or unscoped — keeps health\'s answer', () => {
@@ -76,13 +76,13 @@ describe('activeForgeOf', () => {
   })
 
   it('never throws on a partial registry or health answer', () => {
-    expect(activeForgeOf(HOME_HEALTH, {} as ProjectsResponse, 'cezar')).toBeUndefined()
+    expect(activeForgeOf(HOME_HEALTH, {} as ProjectsResponse, 'onni')).toBeUndefined()
     const noChecks = { bootProject: 'home', forge: null } as unknown as HealthResponse
-    expect(activeForgeOf(noChecks, ONE_CLONE, 'cezar')).toEqual({ kind: 'github' })
+    expect(activeForgeOf(noChecks, ONE_CLONE, 'onni')).toEqual({ kind: 'github' })
   })
 
   it('is unknown, not "no remote", while the registry or health has not answered', () => {
-    expect(activeForgeOf(HOME_HEALTH, undefined, 'cezar')).toBeUndefined()
-    expect(activeForgeOf(undefined, ONE_CLONE, 'cezar')).toBeUndefined()
+    expect(activeForgeOf(HOME_HEALTH, undefined, 'onni')).toBeUndefined()
+    expect(activeForgeOf(undefined, ONE_CLONE, 'onni')).toBeUndefined()
   })
 })

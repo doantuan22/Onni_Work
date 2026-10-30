@@ -289,7 +289,7 @@ describe('AskCard — picks survive the row unmounting', () => {
   })
 })
 
-// The question outlives its session: an idle timeout, a cezar restart, Finish or a cancel
+// The question outlives its session: an idle timeout, a onni restart, Finish or a cancel
 // closes the session with the card still unanswered. Before this, every tap posted to
 // `POST /messages` and died on its `409 session closed` — silently.
 describe('AskCard — answering after the session has ended', () => {

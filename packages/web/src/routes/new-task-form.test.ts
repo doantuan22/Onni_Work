@@ -184,7 +184,7 @@ describe('model option resolution', () => {
   })
 
   it('copilot stays OUT of discovery: free text plus its own presets, and no /models request', () => {
-    // Copilot's catalog is fetched from GitHub per account, so cezar cannot list it truthfully and
+    // Copilot's catalog is fetched from GitHub per account, so onni cannot list it truthfully and
     // `GET /models?runner=copilot` would 400. The picker therefore offers Copilot's own documented
     // `auto` and whatever the user types (#582; spec § API Contracts, same rule as pi).
     expect(runnerDiscoversModels('copilot')).toBe(false)

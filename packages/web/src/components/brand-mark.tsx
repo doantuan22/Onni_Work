@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
 /**
- * The cezar mark and its lockup with the name — the brand guideline's "Znak z nazwą".
+ * The onni mark and its lockup with the name — the brand guideline's "Znak z nazwą".
  *
  * THE MARK is the white geometric C of `public/icon.svg` WITHOUT its black tile: beside the
  * name it stands on the surface it is placed on, in the text colour (`currentColor`), so it is
@@ -51,7 +51,7 @@ export function BrandMark({ height = BRAND_LOCKUP.mark, className }: { height?: 
 }
 
 /** The mark beside the name, at the navigation sizes. */
-export function BrandLockup({ className, name = 'cezar', logoUrl = null }: { className?: string; name?: string; logoUrl?: string | null }) {
+export function BrandLockup({ className, name = 'onni', logoUrl = null }: { className?: string; name?: string; logoUrl?: string | null }) {
   return (
     <span
       data-slot="brand-lockup"
@@ -61,7 +61,7 @@ export function BrandLockup({ className, name = 'cezar', logoUrl = null }: { cla
       {logoUrl ? <img data-slot="brand-logo" src={logoUrl} alt="" className="size-[26px] shrink-0 object-contain" /> : <BrandMark />}
       <span
         data-slot="brand-name"
-        className={cn('max-w-full truncate leading-none font-semibold tracking-normal', name === 'cezar' && 'lowercase')}
+        className={cn('max-w-full truncate leading-none font-semibold tracking-normal', name === 'onni' && 'lowercase')}
         style={{ fontFamily: 'var(--brand)', fontSize: BRAND_LOCKUP.name }}
       >
         {name}

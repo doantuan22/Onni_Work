@@ -44,7 +44,7 @@ describe('tabLabel', () => {
 })
 
 describe('isLoopback', () => {
-  it('recognises the addresses that mean "the machine cezar runs on"', () => {
+  it('recognises the addresses that mean "the machine onni runs on"', () => {
     for (const url of ['http://localhost:3000', 'http://127.0.0.1:8080', 'http://0.0.0.0:5000', 'http://mac.local:1234']) {
       expect(isLoopback(url)).toBe(true)
     }

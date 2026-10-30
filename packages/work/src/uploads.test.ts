@@ -9,7 +9,7 @@ describe('staged uploads (telemetry 7054e5f2)', () => {
   const savedHome = process.env.CEZ_HOME;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-uploads-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-uploads-'));
     process.env.CEZ_HOME = home;
   });
 

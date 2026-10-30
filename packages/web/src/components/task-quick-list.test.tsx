@@ -14,7 +14,7 @@ const NOW = Date.parse('2026-07-14T12:00:00.000Z')
 const ago = (ms: number) => new Date(NOW - ms).toISOString()
 const HEALTH: HealthResponse = {
   version: '0.0.0-test',
-  repoRoot: '/home/u/cezar',
+  repoRoot: '/home/u/onni',
   repo: null,
   checks: [],
   defaultRunner: 'claude',
@@ -31,7 +31,7 @@ const HEALTH: HealthResponse = {
     tokenUsageMetrics: true,
     costMetrics: true,
   },
-  projects: [{ id: 'boot', name: 'cezar' }],
+  projects: [{ id: 'boot', name: 'onni' }],
   bootProject: 'boot',
 }
 

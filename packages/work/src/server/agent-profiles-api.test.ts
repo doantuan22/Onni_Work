@@ -50,15 +50,15 @@ describe('agent profiles API', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-profiles-home-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-profiles-repo-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profiles-home-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profiles-repo-'));
     process.env.CEZ_HOME = home;
     process.env.CEZ_BROWSE_ROOT = home;
     delete process.env.CEZ_REMOTE;
     delete process.env.CEZ_REMOTE_AGENT_ACCOUNTS;
     // Deterministic on any machine: no real agent CLIs are probed.
     process.env.CEZ_DRY_RUN = '1';
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     clearProjectProbeCache();
   });
 
@@ -446,7 +446,7 @@ describe('agent profiles API', () => {
     // Telemetry d81f8db7: booted into a non-empty registry, the repo is served under a fallback
     // slug with no registry row — the scope resolver accepts it, so this route must too.
     it('accepts the boot project\'s id when the boot repo is not in the registry', async () => {
-      const other = mkdtempSync(join(realpathSync(tmpdir()), 'cez-profiles-other-'));
+      const other = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profiles-other-'));
       try {
         await registerProject(other);
         const account = await create('work');
@@ -756,7 +756,7 @@ describe('agent profiles API', () => {
     it('allows a terminal for the FOLDER, which is the case it does apply to', async () => {
       const account = await create('work', signedIn('claude-klaudiusz'));
       // #820: this reached the REAL launcher and opened a Terminal on whoever ran the suite,
-      // sitting in a `cez-profiles-home-*` fixture that `afterEach` had already deleted. Inject
+      // sitting in a `onni-profiles-home-*` fixture that `afterEach` had already deleted. Inject
       // the launcher instead — which also lets the assertion say what it means: `not.toBe(400)`
       // passed whether the target was accepted OR the launcher blew up behind it.
       const launched: Array<[string, string]> = [];
@@ -1010,7 +1010,7 @@ describe('agent profiles API', () => {
         configDir: claudeDir('claude-klaudiusz'),
       });
       const warmed = spawns;
-      loggedIn = false; // …then log out behind cezar's back, as a terminal would.
+      loggedIn = false; // …then log out behind onni's back, as a terminal would.
 
       const res = await apiRequest(app, '/api/v1/providers/connect', {
         method: 'POST',

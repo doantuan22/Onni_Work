@@ -3,7 +3,7 @@
  * says isn't there, and the matching endpoints refuse as defense in depth.
  *
  * `localHandoff` (cockpit-ui redesign spec §"Deployment modes — local vs
- * hosted"): the default deployment is `npx cezar-cli` on localhost, where
+ * hosted"): the default deployment is `npx onni-cli` on localhost, where
  * handing a session off to a local terminal/editor makes sense. On a VPS/remote
  * box it doesn't: `CEZ_REMOTE=1` (or binding a non-loopback host) switches to
  * hosted mode — the UI hides every local-machine affordance and the open-in-*
@@ -15,7 +15,7 @@
  * `CEZ_TODOS_FILE`), the Inbox nav item is gone and the inbox endpoints refuse.
  * The per-task handoff journal is independent and runs either way.
  *
- * `singleProject` (spec 2026-07-21-cez-single-project): the workspace is
+ * `singleProject` (spec 2026-07-21-onni-single-project): the workspace is
  * deliberately constrained to the launch project when `CEZ_SINGLE_PROJECT=1`.
  * Like the other opt-in capabilities, activation is strict: no other spelling
  * enables it.
@@ -29,16 +29,16 @@
  * definitions, receipts and high-watermarks survive the flag being off, so
  * unsetting it and restarting restores the feature wholesale. On, and with a
  * cockpit to reach (`CEZ_API_URL`), a task may also CREATE automations from a
- * prompt (spec 2026-09-13-automations-from-prompt): the `cez automation` CLI,
+ * prompt (spec 2026-09-13-automations-from-prompt): the `onni automation` CLI,
  * an automations part in every task's system prompt, the built-in
- * `create-cezar-automation` skill and the composer's "Create an automation"
+ * `create-onni-automation` skill and the composer's "Create an automation"
  * template all hang off this one capability.
  *
  * `agentAccountsEnabled` keeps account folders local by default. An operator may explicitly set
  * `CEZ_REMOTE_AGENT_ACCOUNTS=1` for an authenticated remote deployment; this does not change
  * `localHandoff`, so desktop-only actions remain unavailable.
  *
- * `dispatch` (spec 2026-09-10-dispatch): a task dispatching other tasks through the `cez task`
+ * `dispatch` (spec 2026-09-10-dispatch): a task dispatching other tasks through the `onni task`
  * CLI is **on by default** and `CEZ_DISPATCH=0` turns it off (the owner-approved exception to
  * AGENTS.md § Zero config, recorded there: the brakes live in the engine — four children in
  * flight, a child's budget carved out of its parent's — and a default-off dispatch left the
@@ -215,7 +215,7 @@ function designModeEnabled(env: NodeJS.ProcessEnv, bindHost?: string): boolean {
  *  per request too, but flipping it ON at runtime is only half a switch: the per-dataDir
  *  todos watch (step 2.3) is created by an SSE subscription, so connections opened while the
  *  flag was off never subscribed and get no live inbox updates until they reconnect. Hence
- *  the UI's "set CEZ_FOLLOWUPS=1 and restart cezar" wording — treat it as a boot-time flag.
+ *  the UI's "set CEZ_FOLLOWUPS=1 and restart onni" wording — treat it as a boot-time flag.
  *
  *  `automations` carries the same caveat and for the same reason: the workspace scheduler is
  *  started once, on the server's `listening` event, so flipping the flag on afterwards gates

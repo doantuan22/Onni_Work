@@ -1,6 +1,6 @@
 /**
  * The backend-agnostic seam for running one agent task. Adapted from
- * @cezar/core's `agents/agent-runner.ts`, trimmed for single-user local use:
+ * @onni/core's `agents/agent-runner.ts`, trimmed for single-user local use:
  * no token-budget circuit breaker, no zod response schemas — one run is one
  * agent-CLI session streaming normalized events.
  *
@@ -62,7 +62,7 @@ export interface AgentRunSpec {
   /** Extra env vars for the agent process (merged over `process.env`) —
    *  e.g. CEZ_HANDOFF_FILE / CEZ_TODOS_FILE / CEZ_TASK_ID (spec 007). */
   env?: Record<string, string>;
-  /** The project's private MCP servers (`.ai/cezar/mcp.local.json`), injected at launch through
+  /** The project's private MCP servers (`.ai/onni/mcp.local.json`), injected at launch through
    *  each backend's own channel — never written into `cwd` (spec 2026-10-07-private-project-mcp). */
   mcpServers?: PrivateMcpServer[];
   model?: string;
@@ -98,7 +98,7 @@ export function prependSystemPrompt(systemPrompt: string | undefined, userPrompt
  * `interrupt()` (#703): the CLIs install their own handlers, so a session the
  * runner tore down on purpose comes back as a NON-ZERO exit. Paired with a
  * "we sent the signal" flag, this predicate keeps that teardown out of the
- * error path — an exit cezar caused is never an agent failure.
+ * error path — an exit onni caused is never an agent failure.
  */
 export function isSignalTerminationExit(exitCode: number | null): boolean {
   return exitCode === 130 || exitCode === 137 || exitCode === 143;

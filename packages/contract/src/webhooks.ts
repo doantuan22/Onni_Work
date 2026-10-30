@@ -51,7 +51,7 @@ export const webhookEventSchema = z.discriminatedUnion('type', [
     ]) }),
   z.strictObject({ ...lifecycle, type: z.literal('task.cancelled'), task: z.strictObject({ ...task, status: z.literal('cancelled') }),
     data: z.strictObject({ at: timestamp, reason: z.enum(['user', 'parent', 'budget', 'shutdown', 'unknown']).optional() }) }),
-  z.strictObject({ ...envelope, type: z.literal('webhook.test'), data: z.strictObject({ test: z.literal(true), format: z.literal('cezar.json.v1') }) }),
+  z.strictObject({ ...envelope, type: z.literal('webhook.test'), data: z.strictObject({ test: z.literal(true), format: z.literal('onni.json.v1') }) }),
 ]);
 export type WebhookEvent = z.infer<typeof webhookEventSchema>;
 export type WebhookTaskEventType = z.infer<typeof webhookTaskEventTypeSchema>;
@@ -72,19 +72,19 @@ export function validWebhookDestinationHost(value: string): boolean {
   const host = authority?.replace(/:[0-9]+$/, '');
   return !!host && host.length <= 255;
 }
-export const webhookFormatSchema = z.enum(['cezar.json.v1', 'slack.v1', 'discord.v1']);
+export const webhookFormatSchema = z.enum(['onni.json.v1', 'slack.v1', 'discord.v1']);
 export type WebhookFormat = z.infer<typeof webhookFormatSchema>;
 const discordHosts = new Set(['discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com']);
 function chatDestination(value: { format: WebhookFormat; url?: string; allowLocalNetwork: boolean }, ctx: z.RefinementCtx): void {
   const fail = (message: string, path = 'url') => ctx.addIssue({ code: 'custom', message, path: [path] });
-  if (value.format !== 'cezar.json.v1' && value.allowLocalNetwork) fail('Chat destinations cannot use local networks', 'allowLocalNetwork');
+  if (value.format !== 'onni.json.v1' && value.allowLocalNetwork) fail('Chat destinations cannot use local networks', 'allowLocalNetwork');
   if (!value.url) return; // The registry validates again after restoring the private URL.
   // Syntax is already checked by z.url. Keep the shared contract Node/DOM-free.
   const parts = /^https?:\/\/([^/?#]+)([^?#]*)(.*)$/i.exec(value.url);
   if (!parts) return;
   const authority = parts[1]!.toLowerCase();
   const host = authority.replace(/:[0-9]+$/, '');
-  if (value.format === 'cezar.json.v1') {
+  if (value.format === 'onni.json.v1') {
     if (host === 'hooks.slack.com') fail('Choose Slack as the destination type');
     if (discordHosts.has(host)) fail('Choose Discord as the destination type');
     return;
@@ -98,7 +98,7 @@ function chatDestination(value: { format: WebhookFormat; url?: string; allowLoca
   }
 }
 const settings = {
-  format: webhookFormatSchema.default('cezar.json.v1'),
+  format: webhookFormatSchema.default('onni.json.v1'),
   name: z.string().trim().min(1).max(100), url: destination,
   profile: webhookProfileSchema.default('minimal'),
   preset: z.enum(['attention', 'all', 'custom']).default('attention'),

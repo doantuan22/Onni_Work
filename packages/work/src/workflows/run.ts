@@ -8,7 +8,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { mkdir, realpath, access } from 'node:fs/promises';
-import { assertCezarHomeWriteIsSandboxed, cezarHomeDir } from '../paths.ts';
+import { assertOnniHomeWriteIsSandboxed, onniHomeDir } from '../paths.ts';
 import { basename, dirname, join, resolve as resolvePath } from 'node:path';
 import {
   parseAskMarker,
@@ -254,34 +254,34 @@ const DEFERRED_MARKER_SUFFIX = '.deferred-messages';
 /** How long a fork waits for the namer's branch (spec 2026-10-11-branch-naming-instructions).
  *  On an idle cockpit a task starts the instant it is created, so the wait begins together with
  *  the namer call — and a cold `claude -p` alone takes more than five seconds (run 269606ac
- *  forked on `cez/` with "not ready in time"). Sized to the namer's own timeout plus a margin. */
+ *  forked on `onni/` with "not ready in time"). Sized to the namer's own timeout plus a margin. */
 const BRANCH_NAME_WAIT_MS = NAMER_TIMEOUT_MS + 10_000;
 /**
  * Task-completion marker from the agent contract (HANDOFF_INSTRUCTIONS): a
- * turn whose text ends with `CEZ:DONE` means "goal achieved, nothing to ask" —
+ * turn whose text ends with `ONNI:DONE` means "goal achieved, nothing to ask" —
  * the session is closed right away instead of parking at `waiting` (#347).
  * Detection runs on the accumulated turn text so delta-streaming backends
  * (codex, opencode) can't split the marker across text events.
  */
-const DONE_MARKER_RE = /CEZ:DONE\s*$/;
+const DONE_MARKER_RE = /ONNI:DONE\s*$/;
 /**
  * Still-working marker from the agent contract (spec
  * 2026-07-18-subagent-monitoring-status, #490): a turn whose text ends with
- * `CEZ:MONITORING` means "I ended this turn but I'm still working on my own
+ * `ONNI:MONITORING` means "I ended this turn but I'm still working on my own
  * downstream work (a sub-agent / a command I'm monitoring), not waiting on the
- * user" — cezar parks it as `running`/`activity:'monitoring'` instead of
- * `waiting`, so the cockpit shows a non-attention state. `CEZ:DONE` wins if both
- * appear. Detected on accumulated turn text (like `CEZ:DONE`) so delta-streaming
+ * user" — onni parks it as `running`/`activity:'monitoring'` instead of
+ * `waiting`, so the cockpit shows a non-attention state. `ONNI:DONE` wins if both
+ * appear. Detected on accumulated turn text (like `ONNI:DONE`) so delta-streaming
  * backends can't split the marker across text events.
  */
-const MONITORING_MARKER_RE = /CEZ:MONITORING\s*$/;
+const MONITORING_MARKER_RE = /ONNI:MONITORING\s*$/;
 /**
- * Trailing task-reference marker lines — `CEZ:PR=` / `CEZ:ISSUE=` / `CEZ:TITLE=`
+ * Trailing task-reference marker lines — `ONNI:PR=` / `ONNI:ISSUE=` / `ONNI:TITLE=`
  * (spec 2026-07-18-task-ref-markers), whole lines, at the very end of the turn.
  *
  * #933: the handoff contract asks for those "as soon as you know which PR or issue
  * this task is ABOUT", and until now said nothing about where they sit relative to
- * the turn-end markers. An agent that declared its PR right AFTER `CEZ:MONITORING`
+ * the turn-end markers. An agent that declared its PR right AFTER `ONNI:MONITORING`
  * buried the marker behind them, the `$`-anchored test below failed, and a turn that
  * was only waiting on its own sub-agents parked as `waiting` — "needs you", the
  * "paused, waiting for your reply" footer, and a browser notification for work
@@ -296,7 +296,7 @@ const MONITORING_MARKER_RE = /CEZ:MONITORING\s*$/;
  * on purpose: a mistyped reference line is still the agent talking protocol, and the
  * failure it must not cause is burying the turn-end marker behind it.
  */
-const TRAILING_TASK_MARKER_LINES_RE = /(?:(?:^|\n)[ \t]*CEZ:(?:PR|ISSUE|TITLE)=[^\n]*)+$/;
+const TRAILING_TASK_MARKER_LINES_RE = /(?:(?:^|\n)[ \t]*ONNI:(?:PR|ISSUE|TITLE)=[^\n]*)+$/;
 /**
  * The text a turn-end marker is matched against: the accumulated turn text with
  * trailing whitespace and trailing task-reference lines removed.
@@ -314,7 +314,7 @@ export function turnEndMarkerText(turnText: string): string {
  * Did this turn end on the still-working marker? Strictly a SUPERSET of the old
  * `MONITORING_MARKER_RE.test(turnText.trimEnd())` — anything that parked as
  * `monitoring` before still does, which is what keeps #933 additive under
- * `BACKWARD_COMPATIBILITY.md` §8 (an already-emitted `CEZ:MONITORING` keeps
+ * `BACKWARD_COMPATIBILITY.md` §8 (an already-emitted `ONNI:MONITORING` keeps
  * meaning exactly what it meant).
  */
 export function endsWithMonitoringMarker(turnText: string): boolean {
@@ -325,7 +325,7 @@ export function endsWithDoneMarker(turnText: string): boolean {
   return DONE_MARKER_RE.test(turnEndMarkerText(turnText));
 }
 /**
- * The follow-up cezar sends when a turn ended on nothing but the backend compacting its own
+ * The follow-up onni sends when a turn ended on nothing but the backend compacting its own
  * context (#955). Not a user message: it never enters the transcript as one, and it is written
  * to be read by an agent that has just lost its working memory — so it points at the durable
  * state (the handoff file, the notes) rather than restating a task it can no longer see.
@@ -335,9 +335,9 @@ export function endsWithDoneMarker(turnText: string): boolean {
  * one, so a `mock:` arm keyed on this text would be dead code.
  */
 const COMPACTION_CONTINUE_NUDGE =
-  'Your context was automatically compacted, which ended your turn before the work was finished. Nothing is being asked of you. Re-read your handoff file and notes for where you got to, then carry on — and end the turn with CEZ:DONE, CEZ:ASK or CEZ:MONITORING when you genuinely need to stop.';
+  'Your context was automatically compacted, which ended your turn before the work was finished. Nothing is being asked of you. Re-read your handoff file and notes for where you got to, then carry on — and end the turn with ONNI:DONE, ONNI:ASK or ONNI:MONITORING when you genuinely need to stop.';
 /**
- * How many CONSECUTIVE compaction-ended turns cezar continues before it parks the run for the
+ * How many CONSECUTIVE compaction-ended turns onni continues before it parks the run for the
  * user (#955). The anti-spin bound: a session that compacts, is continued, and compacts again
  * with nothing in between is not making progress, and the alternative to a bound is a run that
  * burns its budget in a loop. Reset to zero by any turn that ends for another reason — that is
@@ -348,7 +348,7 @@ const MAX_COMPACTION_CONTINUES = 3;
  * Preserve boundaries between complete assistant text blocks while a turn is
  * accumulated for marker parsing. The runners join these same v1 blocks with
  * newlines in `AgentRunResult`; matching that contract here prevents a
- * trailing `CEZ:TITLE=` block from absorbing later commentary (#623).
+ * trailing `ONNI:TITLE=` block from absorbing later commentary (#623).
  */
 export function appendTurnText(current: string, next: string): string {
   if (!current) return next;
@@ -359,12 +359,12 @@ export function appendTurnText(current: string, next: string): string {
  *  protocol noise. Delta backends may split the marker across events — then
  *  it stays visible; detection above is unaffected. */
 function stripDoneMarker(text: string): string {
-  return text.replace(/\s*CEZ:DONE\s*$/, '');
+  return text.replace(/\s*ONNI:DONE\s*$/, '');
 }
-/** Strip a trailing `CEZ:MONITORING` marker from one text event (see
+/** Strip a trailing `ONNI:MONITORING` marker from one text event (see
  *  `stripDoneMarker`; same delta-backend caveat). */
 function stripMonitoringMarker(text: string): string {
-  return text.replace(/\s*CEZ:MONITORING\s*$/, '');
+  return text.replace(/\s*ONNI:MONITORING\s*$/, '');
 }
 /**
  * What one finished turn decided about dispatch (spec 2026-09-10-dispatch) — the facts the park
@@ -395,12 +395,12 @@ function emitAskRequested(sink: UiEventSink, ask: AskRequest): string {
  * thread. Older events carry no `tone` and keep rendering dim. */
 function askMarkerRejection(result: AskMarkerParseResult): string | undefined {
   if (result.kind === 'invalid-json') {
-    return 'structured question ignored — CEZ:ASK payload is not valid JSON';
+    return 'structured question ignored — ONNI:ASK payload is not valid JSON';
   }
   if (result.kind !== 'invalid-structure') return undefined;
   const issue = result.issues[0];
   const location = issue?.path.length ? ` at ${issue.path.join('.')}` : '';
-  return `structured question ignored — CEZ:ASK payload failed validation${location}${issue ? `: ${issue.message}` : ''}`;
+  return `structured question ignored — ONNI:ASK payload failed validation${location}${issue ? `: ${issue.message}` : ''}`;
 }
 /** A persisted, auditable trace for a card that only rendered because the
  * payload's missing closers were appended (#936) — a repair can only lose what
@@ -411,10 +411,10 @@ function askMarkerRejection(result: AskMarkerParseResult): string | undefined {
  * is stripped along with the card, so a dim footnote could not be acted on. */
 function askMarkerRecovery(result: AskMarkerParseResult): string | undefined {
   return result.kind === 'valid' && result.repaired
-    ? 'structured question recovered from an unbalanced CEZ:ASK payload — check the options, and how many you may pick, match what was asked'
+    ? 'structured question recovered from an unbalanced ONNI:ASK payload — check the options, and how many you may pick, match what was asked'
     : undefined;
 }
-/** What a turn's trailing `CEZ:ASK` marker resolves to: the card to raise, and
+/** What a turn's trailing `ONNI:ASK` marker resolves to: the card to raise, and
  * the notes to persist alongside it. */
 type AskTurnOutcome = {
   ask: AskRequest | null;
@@ -426,7 +426,7 @@ type AskTurnOutcome = {
  * they are hand-duplicated, and `AGENTS.md` warns that a lifecycle change
  * applied to only one of them ships half a fix — the notes and their tones are
  * exactly that kind of change. `enabled` is the caller's own precondition (the
- * session is open, the turn is not a `CEZ:DONE`, and for an agent step, the run
+ * session is open, the turn is not a `ONNI:DONE`, and for an agent step, the run
  * is interactive); when false there is no marker to look for. */
 function resolveAskTurn(turnText: string, enabled: boolean): AskTurnOutcome {
   if (!enabled) return { ask: null, notes: [] };
@@ -439,35 +439,35 @@ function resolveAskTurn(turnText: string, enabled: boolean): AskTurnOutcome {
   return { ask: result.kind === 'valid' ? result.request : null, notes };
 }
 /**
- * Did this turn end WITHOUT any explicit cezar marker (#955)? The precondition for the
+ * Did this turn end WITHOUT any explicit onni marker (#955)? The precondition for the
  * compaction continuation, shared by both turn-end handlers so neither can drift on which
  * markers outrank it.
  *
  * Deliberately independent of the `done`/`ask`/`monitoring` decisions the callers compute:
  * those are gated on `interactive`, on the session still being open, and on whether the turn
  * dispatched, and every one of those gates can turn a marker the agent DID emit into a falsy
- * flag. "Did the agent say something" and "did cezar act on it" are different questions, and
+ * flag. "Did the agent say something" and "did onni act on it" are different questions, and
  * only the first one may authorize continuing a turn on the agent's behalf. A marker that
- * merely FAILED to parse still counts as spoken: `CEZ:ASK` with a malformed payload is a
+ * merely FAILED to parse still counts as spoken: `ONNI:ASK` with a malformed payload is a
  * question the user needs to see, not an invitation to keep going.
  */
 function markerlessTurn(turnText: string): boolean {
   // Through `turnEndMarkerText` (#933), the same reading the monitoring decision uses: a turn
-  // that ends `CEZ:MONITORING` followed by a `CEZ:PR=` line spoke, and must not be continued.
+  // that ends `ONNI:MONITORING` followed by a `ONNI:PR=` line spoke, and must not be continued.
   const markerText = turnEndMarkerText(turnText);
   if (DONE_MARKER_RE.test(markerText) || MONITORING_MARKER_RE.test(markerText)) return false;
   // `parseAskMarkerResult`, not `ASK_MARKER_RE`: the strict regex only matches a marker whose
-  // payload is a complete `{…}`, so `CEZ:ASK not-json` — a question the user still needs to
+  // payload is a complete `{…}`, so `ONNI:ASK not-json` — a question the user still needs to
   // see — would read as ordinary prose and authorize a continuation. The parser's looser
   // `none` test is the right question here, and its known over-reach (an earlier PROSE mention
   // of the keyword also counts as spoken) errs towards parking, which is today's behavior.
   return parseAskMarkerResult(markerText).kind === 'none';
 }
-/** Periodic "cezar autosave" commit in the task worktree (spec 006). */
+/** Periodic "onni autosave" commit in the task worktree (spec 006). */
 export const AUTOSAVE_INTERVAL_MS = 90_000;
 
 /** The periodic autosave timer is opt-in (#471): off, a task branch carries only the
- *  agent's own commits plus the turn-end/pre-PR flushes — no mid-run "cezar autosave"
+ *  agent's own commits plus the turn-end/pre-PR flushes — no mid-run "onni autosave"
  *  noise interleaving PR history. The flushes (`autosaveCommit` at turn end and before
  *  a draft PR) are NOT gated: the branch must still end holding the finished state. */
 export function periodicAutosaveEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -565,7 +565,7 @@ interface ActiveRun {
    *  the session is working again. See `tryCompactionContinue`. */
   compactionContinues?: number;
   /**
-   * A NON-FINAL agent step emitted `CEZ:ASK` or `CEZ:MONITORING`, so the workflow
+   * A NON-FINAL agent step emitted `ONNI:ASK` or `ONNI:MONITORING`, so the workflow
    * is parked on that step instead of advancing into its next check (#917, #1076).
    * Two values, because
    * the park has two endings and they settle differently:
@@ -584,9 +584,9 @@ interface ActiveRun {
    * `tryAutonomousNudge` and the park in `runAgentStep`'s turn-end.
    */
   askPark?: 'waiting' | 'abandoned';
-  /** The `waiting` park is a monitor handed to the user, not a `CEZ:ASK` question. */
+  /** The `waiting` park is a monitor handed to the user, not a `ONNI:ASK` question. */
   monitorHandoff?: boolean;
-  /** The last `CEZ:ASK` the autonomous nudge overrode, as its joined question text. An agent
+  /** The last `ONNI:ASK` the autonomous nudge overrode, as its joined question text. An agent
    *  that asks the SAME thing again right after being nudged is blocked on something the nudge
    *  cannot answer (a disabled capability, a missing credential), and parks instead of burning
    *  the remaining nudges — the live-session lesson behind `tryAutonomousNudge`. */
@@ -609,7 +609,7 @@ interface ActiveRun {
    * The GitHub-automations prompt part this session runs under (spec
    * 2026-09-13-automations-from-prompt), resolved by `prepareAutomationsSession` at the SAME two
    * construction sites as `dispatchPrompt`, for the same reason. Present ⇔ automations are on and
-   * the cockpit is reachable — a task that could not run `cez automation` is never told about it.
+   * the cockpit is reachable — a task that could not run `onni automation` is never told about it.
    */
   automationsPrompt?: string;
   /** Set by `dispatch()` during a turn, read and cleared at that turn's end: the run parks as a
@@ -658,7 +658,7 @@ export interface LandAnswer {
 }
 
 function landFailurePrompt(outcome: Extract<LandResult, { result: 'failed' }>): string {
-  return `cezar could not land your changes — ${outcome.stage} failed:\n\n${outcome.error}\n\nFix this, then end your turn with CEZ:DONE again.`;
+  return `onni could not land your changes — ${outcome.stage} failed:\n\n${outcome.error}\n\nFix this, then end your turn with ONNI:DONE again.`;
 }
 
 function landAnswer(outcome: LandResult, base: string, withAgent: boolean): LandAnswer {
@@ -677,7 +677,7 @@ function landAnswer(outcome: LandResult, base: string, withAgent: boolean): Land
   };
 }
 /** The turn-end nudge text for `#autonomous`. Exported because `scripts/mock-claude.mjs`
- *  RECOGNISES this string to answer a nudge with `CEZ:DONE` (it matches the opening words, since
+ *  RECOGNISES this string to answer a nudge with `ONNI:DONE` (it matches the opening words, since
  *  the nudge carries no `mock:` marker of its own). Rewording it without updating that mock does
  *  not fail loudly at the seam — the nudge still fires and the mock simply never finishes, so the
  *  autonomous tests time out with an unhelpful "condition not met in time". `autonomous-nudge.test.ts`
@@ -685,7 +685,7 @@ function landAnswer(outcome: LandResult, base: string, withAgent: boolean): Land
 export const AUTONOMOUS_NUDGE =
   'Continue working autonomously until the task is fully complete. Do not ask me for confirmation or clarification — make reasonable assumptions and proceed. When everything is done, end the session with your done signal.';
 const MONITORING_WAKE_NUDGE =
-  'Re-check the downstream work you were monitoring. Continue toward the task goal; emit CEZ:MONITORING again only if it is still pending.';
+  'Re-check the downstream work you were monitoring. Continue toward the task goal; emit ONNI:MONITORING again only if it is still pending.';
 /**
  * Handed to a dispatch-tree run that ran IN the repository working tree, parked, gave the
  * exclusive lease back (`parkRepoRoot`) and had to WAIT to get it again — meaning another in-place
@@ -833,7 +833,7 @@ function autoResumeCap(reason: AutoResumeReason | undefined): number {
  * The wake instant as a human reads it — local, to the SECOND, with the zone named. The
  * transcript line is what someone scanning a stalled task actually reads, and "18:41" is not
  * enough to tell a wait that is nearly over from one that just started; the machine-readable ISO
- * copy lives on `RunRecord.autoResumeAt`. Server-side formatting is honest here because cezar is
+ * copy lives on `RunRecord.autoResumeAt`. Server-side formatting is honest here because onni is
  * local-first: the process and the browser reading it are the same machine.
  */
 function formatWakeInstant(at: Date): string {
@@ -866,7 +866,7 @@ export interface StartRunInput {
    *  default per-task worktree. Ignored for variants (they always isolate). */
   worktree?: boolean;
   /** With `worktree: false`: switch the repo checkout to a branch forked from the base first
-   *  (spec 2026-10-19-repo-git-sync). `branch` names it; else the namer, else `cez/<id8>`. */
+   *  (spec 2026-10-19-repo-git-sync). `branch` names it; else the namer, else `onni/<id8>`. */
   newBranch?: boolean;
   branch?: string;
   /** A read-only Ask task (spec 2026-10-20-trunk-based-projects): in place, read-only tools,
@@ -912,7 +912,7 @@ export interface StartRunInput {
  * the per-run override (`POST /api/runs` `systemPrompt`) REPLACES the
  * `config.json` default — they are the same knob at two scopes, so the more
  * specific one wins outright; they never concatenate. The global instructions
- * (`~/.cezar/config.json` `systemPrompt`) are a different knob: they always
+ * (`~/.onni/config.json` `systemPrompt`) are a different knob: they always
  * ride along, placed FIRST and labelled as yielding to the project's. Whichever
  * wins is ADDITIVE to the skill body and the handoff contract (see
  * `composeSystemPrompt`). Blank strings count as unset.
@@ -1000,7 +1000,7 @@ export function agentDirectories(
  * transcript already used, plus the absolute path that lets the agent
  * operate on the file itself — save it, `cp` it, attach it to a GitHub
  * issue/PR (#357). `path` is only ever an absolute path under
- * `.ai/cezar/runs/<runId>-images/` (see `RunManager.persistAttachment`).
+ * `.ai/onni/runs/<runId>-images/` (see `RunManager.persistAttachment`).
  */
 /** Inverse of `attachmentExtension` (#472) — a persisted attachment is re-encoded from disk at
  *  dequeue and needs its media type back. Only ever asked about IMAGE names (a file reaches the
@@ -1059,7 +1059,7 @@ const MAX_LIBRARY_COLLISION_ATTEMPTS = 100;
  * the user the library entry and nothing else.
  *
  * Concurrency note: the exclusive create plus content compare below is exact within one process,
- * because these writes are synchronous and cannot interleave. Two cezar processes on the same
+ * because these writes are synchronous and cannot interleave. Two onni processes on the same
  * repository can have the second read a partially written file, miss the dedupe and keep a
  * redundant `-2` copy. That is the best-effort contract doing its job, not a bug to fix here.
  */
@@ -1200,7 +1200,7 @@ export const VARIANT_HINTS: Record<string, string | undefined> = {
 };
 
 const RESTART_CONTINUATION_PROMPT =
-  'The cezar process restarted while you were working on this task. Read the handoff file (CEZ_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
+  'The onni process restarted while you were working on this task. Read the handoff file (CEZ_HANDOFF_FILE) to recover context, then continue the task from where you left off.';
 
 interface PendingContinuation {
   stepId: string;
@@ -1236,7 +1236,7 @@ interface PreparedUserMessage {
  * stays open for follow-ups (`waiting`) until "finish", idle timeout, or
  * cancel. Runs queue behind the workspace-wide `maxParallel` slots (the shared
  * `WorkspaceSemaphore`, spec 2026-07-20 step 2.5) and each run executes in its
- * own git worktree on a `cez/<id8>` branch (spec 006), autosave-committed at
+ * own git worktree on a `onni/<id8>` branch (spec 006), autosave-committed at
  * turn end and before a draft PR — plus every 90 s when opted in via
  * CEZ_AUTOSAVE=1 (#471). Each autosave records its trigger in the commit
  * subject, so the always-on flushes are not mistaken for the opt-in timer.
@@ -1320,7 +1320,7 @@ export class RunManager {
    *  synchronously (`claimFreeRepoRoot`) instead of round-tripping through a promise. */
   private repoRootBusy = 0;
 
-  /** `.ai/cezar` — where the per-task handoff files and todos.json live. */
+  /** `.ai/onni` — where the per-task handoff files and todos.json live. */
   private readonly dataDir: string;
 
   /** Runs currently being paused by the memory guard — dedupes the ~2 s samples so one breach
@@ -1354,7 +1354,7 @@ export class RunManager {
    *  dispose() so a torn-down project stops counting against the cap. */
   private readonly offSemaphore: () => void;
 
-  /** The workspace-registry id of this manager's project — what a dispatched agent's `cez task`
+  /** The workspace-registry id of this manager's project — what a dispatched agent's `onni task`
    *  CLI needs to address the right project over the API (spec 2026-09-10-dispatch). */
   private readonly projectId: string | undefined;
 
@@ -1384,7 +1384,7 @@ export class RunManager {
       branchNameWaitMs?: number;
     } = {},
   ) {
-    this.dataDir = join(repoRoot, '.ai/cezar');
+    this.dataDir = join(repoRoot, '.ai/onni');
     this.branchNameWaitMs = options.branchNameWaitMs ?? BRANCH_NAME_WAIT_MS;
     this.projectId = options.projectId;
     this.resolveTrackerEnv = options.resolveTrackerEnv;
@@ -1536,7 +1536,7 @@ export class RunManager {
    *  `CEZ_TODOS_FILE` is set to `''` rather than omitted when follow-ups are
    *  off: runners spawn with `{ ...process.env, ...spec.env }`, so omitting the
    *  key would let a value inherited from *this* process through — a nested
-   *  cezar (an agent running `cez serve`/`cez run`/the test suite) would then
+   *  onni (an agent running `onni serve`/`onni run`/the test suite) would then
    *  write follow-ups into the parent's inbox despite the opt-out. Empty is the
    *  established "absent" spelling — consumers guard with `if (todosFile)`.
    *
@@ -1555,13 +1555,13 @@ export class RunManager {
       CEZ_TASK_ID: runId,
       CEZ_TODOS_FILE: generateFollowups ? todosPath(this.dataDir) : '',
       ...agentTmpEnv(this.dataDir, runId),
-      // Task dispatch (spec 2026-09-10-dispatch): where the `cez task` CLI reaches this server and
+      // Task dispatch (spec 2026-09-10-dispatch): where the `onni task` CLI reaches this server and
       // which project the run belongs to. Absent (not empty) while the feature is off, so the env
       // is byte-for-byte as before.
       ...(apiUrl ? { CEZ_API_URL: apiUrl } : {}),
       ...(apiUrl && this.projectId ? { CEZ_PROJECT_ID: this.projectId } : {}),
       // The cockpit's OWN entrypoint, so an agent runs `node "$CEZ_BIN" task …` and never an older
-      // `cez` that happens to be on its PATH without the command (observed on the first live run).
+      // `onni` that happens to be on its PATH without the command (observed on the first live run).
       ...(apiUrl && process.env.CEZ_BIN ? { CEZ_BIN: process.env.CEZ_BIN } : {}),
       // The tree directory — brief, notes, inbox — for a run in a dispatch tree only.
       ...(dispatch ? { CEZ_TREE_DIR: treeDir(this.dataDir, dispatch.rootRunId) } : {}),
@@ -1586,7 +1586,7 @@ export class RunManager {
       onEvent({ type: 'note', message: skippedServersNote(backend, names, `${backend} has no launch-time MCP channel`) });
       return undefined;
     }
-    onEvent({ type: 'note', message: `private MCP servers from .ai/cezar/${PRIVATE_MCP_FILE}: ${names.join(', ')}` });
+    onEvent({ type: 'note', message: `private MCP servers from .ai/onni/${PRIVATE_MCP_FILE}: ${names.join(', ')}` });
     return servers;
   }
 
@@ -1603,7 +1603,7 @@ export class RunManager {
    *   2. the run's composer override, but only for steps on the run's own runner;
    *   3. the project's stored selection, and failing that the discovered default.
    *
-   * Read fresh every time. `~/.cezar/config.json` is shared by every cezar process on this
+   * Read fresh every time. `~/.onni/config.json` is shared by every onni process on this
    * machine, so a cached snapshot is a staleness bug, and one small JSON read is free next to
    * spawning a CLI. Never throws: an unreadable home degrades to the default profile, which is
    * exactly the behaviour that predates profiles.
@@ -1705,7 +1705,7 @@ export class RunManager {
       // so a queued run picks it up at dequeue and every later resume reads the same answer.
       agentProfile: input.agentProfile,
       // The global inbox is the ceiling on the per-run flag (#471). Enforced here rather than
-      // at the HTTP route because `cezar run`, the inbox's own "▶ Run" and variants all reach
+      // at the HTTP route because `onni run`, the inbox's own "▶ Run" and variants all reach
       // startRun directly — a route-level gate would leave those writing todos.json.
       generateFollowups: followupsEnabled() ? input.generateFollowups : false,
       // Persist autonomy on the record (#489) so the terminal review gate
@@ -1787,7 +1787,7 @@ export class RunManager {
     // also answers the task branch when instructions are set; `execute` waits
     // for that part, bounded, before it forks.
     // An attachment-only task gives the namer nothing to read; the turn-end refresh names it instead
-    // (under `branchNaming` its branch keeps the default `cez/<id8>`).
+    // (under `branchNaming` its branch keeps the default `onni/<id8>`).
     this.pendingBranchNames.set(
       run.id,
       input.task.trim() ? this.autoNameRun(run.id, skillHint, input.task) : Promise.resolve(undefined),
@@ -1847,7 +1847,7 @@ export class RunManager {
    * construction site of a shared in-memory object").
    *
    * `spawnParked` says WHY it parked: `true` only when this turn dispatched children.
-   * A commander that parks again on a plain `CEZ:MONITORING` after its children reported is an
+   * A commander that parks again on a plain `ONNI:MONITORING` after its children reported is an
    * ordinary watcher again, which is why the flag is rewritten on every park, never OR-ed.
    */
   private enterMonitoring(runId: string, spawnParked: boolean): void {
@@ -2119,7 +2119,7 @@ export class RunManager {
 
   /**
    * Startup recovery (#367) — re-adopt runs that were live when the previous
-   * cezar process exited (requires the store opened with `keepLive`):
+   * onni process exited (requires the store opened with `keepLive`):
    *  - `queued`  → back into the queue (FIFO by createdAt), from the persisted
    *    workflowDef (or the catalog by name for older records);
    *  - `waiting` → the turn was over and the ball was in the user's court —
@@ -2142,7 +2142,7 @@ export class RunManager {
     // Startup is the one moment we know which runs are still live, so sweep every other
     // per-run directory here — bounded to `<dataDir>/tmp`, never a sibling.
     sweepAgentTmpDirs(this.dataDir, live.map((r) => r.id));
-    // Same moment for processes (#1411): a run that settled while cezar was down, or whose
+    // Same moment for processes (#1411): a run that settled while onni was down, or whose
     // session crashed, never reached `dropActive`'s reap.
     const liveIds = new Set(live.map((r) => r.id));
     this.reapLeftoverProcesses(
@@ -2156,7 +2156,7 @@ export class RunManager {
         continue;
       }
       if (run.status === 'queued') {
-        await this.reviveQueuedRun(run, 'cezar restarted');
+        await this.reviveQueuedRun(run, 'onni restarted');
         continue;
       }
       // A graph walk that was mid-node — running, or parked at a gate/question — goes back to the
@@ -2166,7 +2166,7 @@ export class RunManager {
       //
       // NOT for an agent node: its interrupted session keeps the Continue path below (#1076's
       // guarantee — a parked agent resumes in its session and the graph does not walk past it on
-      // a markerless restart turn). Resuming the walk is for nodes cezar itself runs.
+      // a markerless restart turn). Resuming the walk is for nodes onni itself runs.
       const cursor = run.graphState?.cursor;
       const walkedGraph = run.workflowDef ? (run.workflowDef.graph ?? compileV1(run.workflowDef.steps)) : undefined;
       const cursorNode = walkedGraph?.nodes.find((n) => n.id === cursor);
@@ -2184,20 +2184,20 @@ export class RunManager {
           activity: undefined,
         });
         const requeued = this.store.getRun(run.id);
-        if (requeued) await this.reviveQueuedRun(requeued, `cezar restarted — resuming the workflow at "${cursor}"`);
+        if (requeued) await this.reviveQueuedRun(requeued, `onni restarted — resuming the workflow at "${cursor}"`);
         continue;
       }
       if (run.status === 'waiting') {
         // Two different parks wear this status. The final interactive step's
         // session was open for follow-ups and the workflow had already run to
         // its end, so settling it as a success is right. A mid-workflow park on
-        // a `CEZ:ASK` (#917) or native backend question had NOT run to its end.
+        // a `ONNI:ASK` (#917) or native backend question had NOT run to its end.
         // Later steps may still be `pending`, so the same settlement would report a workflow that
         // stopped at its first question as a finished one. It ends the way any
         // interrupted run ends instead: `failed`, with the Continue button that
         // reopens the session so the question can still be answered. No
         // automatic resume here, unlike the `running` branch below: the agent
-        // asked for a decision, and nudging it onward would be cezar making
+        // asked for a decision, and nudging it onward would be onni making
         // that decision on the user's behalf. A monitor handed to the user
         // (`parkMonitorAsWaiting`) carries the same marker for the same reason:
         // the agent said its work was still pending.
@@ -2210,7 +2210,7 @@ export class RunManager {
           }
           this.store.updateRun(run.id, {
             status: 'failed',
-            error: 'interrupted — cezar process exited while the task was waiting for an answer',
+            error: 'interrupted — onni process exited while the task was waiting for an answer',
             finishedAt: interruptedAt,
             currentStepId: undefined,
             // A restart does not answer the question: the task stays under "needs you".
@@ -2218,7 +2218,7 @@ export class RunManager {
           });
           this.store.appendEvent(run.id, {
             type: 'lifecycle',
-            message: 'cezar restarted — the task was waiting for your answer; continue it to reply',
+            message: 'onni restarted — the task was waiting for your answer; continue it to reply',
           });
           // Same as the settled branch below: this terminal transition never passes through
           // `dropActive`, so a handed-off child still owes its parent a report.
@@ -2232,7 +2232,7 @@ export class RunManager {
         }
         this.store.appendEvent(run.id, {
           type: 'lifecycle',
-          message: 'cezar restarted — the open session was settled',
+          message: 'onni restarted — the open session was settled',
         });
         await this.settleSuccess(run.id);
         // A terminal transition that never passes through `dropActive`: this run was live in the
@@ -2255,7 +2255,7 @@ export class RunManager {
         }
         this.store.updateRun(run.id, { status: 'queued', startedAt: undefined, currentStepId: undefined });
         const requeued = this.store.getRun(run.id);
-        if (requeued) await this.reviveQueuedRun(requeued, 'cezar restarted — the task had not reached its agent session');
+        if (requeued) await this.reviveQueuedRun(requeued, 'onni restarted — the task had not reached its agent session');
         continue;
       }
       // `running`: the process died mid-turn. Mark it interrupted (the state
@@ -2268,7 +2268,7 @@ export class RunManager {
       }
       this.store.updateRun(run.id, {
         status: 'failed',
-        error: 'interrupted — cezar process exited during the run',
+        error: 'interrupted — onni process exited during the run',
         finishedAt,
         currentStepId: undefined,
       });
@@ -2282,12 +2282,12 @@ export class RunManager {
       this.store.appendEvent(run.id, {
         type: 'lifecycle',
         message: resumed.ok
-          ? 'cezar restarted — resuming the interrupted task from its last session'
-          : `cezar restarted — could not resume the interrupted task (${resumed.error ?? 'unknown'})`,
+          ? 'onni restarted — resuming the interrupted task from its last session'
+          : `onni restarted — could not resume the interrupted task (${resumed.error ?? 'unknown'})`,
       });
     }
     // Re-arm usage-limit resumes (spec 2026-08-03-auto-resume-after-usage-limit): the wait is
-    // routinely longer than a cezar session, so the deadline is durable and the timer is rebuilt
+    // routinely longer than a onni session, so the deadline is durable and the timer is rebuilt
     // from it. `pump()` reconciles again on every sweep, so this is the fast path, not the only
     // one — see `reconcileAutoResumes`.
     this.reconcileAutoResumes();
@@ -2524,7 +2524,7 @@ export class RunManager {
       if (this.store.getRun(runId)) {
         this.store.appendEvent(runId, {
           type: 'lifecycle',
-          message: `${count === 1 ? 'a message' : `${count} messages`} sent while the session was closing could not be delivered — cezar restarted; send it again`,
+          message: `${count === 1 ? 'a message' : `${count} messages`} sent while the session was closing could not be delivered — onni restarted; send it again`,
         });
       }
       try {
@@ -2575,12 +2575,12 @@ export class RunManager {
 
   /**
    * Can a task actually REACH the dispatch routes? The flag being on is not enough: `CEZ_API_URL`
-   * and `CEZ_BIN` are set by `serveCommand`, so a headless `cezar run` has neither — no cockpit to
+   * and `CEZ_BIN` are set by `serveCommand`, so a headless `onni run` has neither — no cockpit to
    * call, and no entrypoint to call it with.
    *
    * The gate for everything an agent is TOLD about dispatch (the prompt), as opposed to what the
    * engine does with a `dispatch` record it already has. A headless run that was taught the CLI
-   * would take `cez task create`'s refusal as its instruction — "stop and report that dispatch is
+   * would take `onni task create`'s refusal as its instruction — "stop and report that dispatch is
    * unavailable" — and abandon work it could have done itself. Same reason
    * `availablePromptTemplates` hides the dispatching template when the capability is off: a
    * capability an agent cannot use must not be described to it.
@@ -2624,7 +2624,7 @@ export class RunManager {
   /**
    * The automations twin of `prepareDispatchSession` (spec 2026-09-13-automations-from-prompt):
    * the short prompt part that lets a task recognise "whenever a PR is opened, do X" as an
-   * automation and create one with `cez automation`. Gated on `automationsReachable` — the flag
+   * automation and create one with `onni automation`. Gated on `automationsReachable` — the flag
    * AND the transport — so a headless run, or a cockpit with `CEZ_AUTOMATIONS` unset, composes
    * nothing and behaves exactly as it did before the feature existed.
    */
@@ -2679,7 +2679,7 @@ export class RunManager {
     const overBudget = this.enforceDispatchBudget(runId, note);
     const rePrompted = !dispatched && !overBudget && this.deliverOwnInbox(runId, ctx.state, ctx.stepId, turnText);
     // The filesystem channel's SIGNAL: this turn may have written into a sibling's or the root's
-    // inbox. Wake every parked recipient now — the writer's turn end is the one moment cezar
+    // inbox. Wake every parked recipient now — the writer's turn end is the one moment onni
     // knows something may have changed on disk without watching it.
     this.notifyTreeInboxes(dispatch.rootRunId, runId);
     return { hasDispatch: true, dispatched, overBudget, rePrompted };
@@ -2694,7 +2694,7 @@ export class RunManager {
    * The ask is read through `turnEndMarkerText` (#997), the same normalization `resolveAskTurn`
    * uses: this guard runs BEFORE the ask is resolved, and a delivery sets `rePrompted` — which
    * auto-continues the turn and suppresses the ask card entirely. Reading the raw text here
-   * would let a question with a trailing `CEZ:PR=` line be answered by a sibling's message
+   * would let a question with a trailing `ONNI:PR=` line be answered by a sibling's message
    * instead of by the human, which is exactly what this guard exists to prevent.
    */
   private deliverOwnInbox(runId: string, state: ActiveRun, stepId: string, turnText: string): boolean {
@@ -2752,7 +2752,7 @@ export class RunManager {
   }
 
   /**
-   * Surface a `CEZ:ASK` as the ask card (#473) and, for a dispatched run, persist it as the pending
+   * Surface a `ONNI:ASK` as the ask card (#473) and, for a dispatched run, persist it as the pending
    * question: a restart-forced settle reports it `blocked` instead of `done`. Cleared by
    * `deliverMessage` when an answer reaches the session. A child parked on the Guard is told to its
    * parent through the inbox — the parent cannot answer for the human, but it can re-plan.
@@ -2760,7 +2760,7 @@ export class RunManager {
    * A card may carry up to `ASK_MAX_QUESTIONS` questions, but the RECORD carries at most
    * `PENDING_ASK_MAX_QUESTIONS` of their texts plus a count of the rest: that field is read back
    * by an all-or-nothing index parser, and an over-long list in a newly written `runs.json` would
-   * cost an older cezar its entire project index. The inbox message below is a markdown file under
+   * cost an older onni its entire project index. The inbox message below is a markdown file under
    * no schema, so the parent still reads every question.
    */
   private recordAsk(runId: string, sink: UiEventSink, ask: AskRequest): WebhookAttentionRequest {
@@ -2790,7 +2790,7 @@ export class RunManager {
           `Your task "${run?.title ?? runId}" (${runId}) has parked on a question only the human can answer:`,
           ...questions.map((question) => `- ${question}`),
           '',
-          "It holds one of your children-in-flight slots until it is answered in the cockpit. You cannot answer on the human's behalf; you can re-plan around it, wait, or raise the decision yourself with CEZ:ASK if your own work depends on it.",
+          "It holds one of your children-in-flight slots until it is answered in the cockpit. You cannot answer on the human's behalf; you can re-plan around it, wait, or raise the decision yourself with ONNI:ASK if your own work depends on it.",
         ].join('\n'),
       });
       appendLedger(this.dataDir, dispatch.rootRunId, { type: 'guard-ask', runId, parentRunId: dispatch.parentRunId, questions });
@@ -2801,7 +2801,7 @@ export class RunManager {
     return attention;
   }
 
-  /** Snapshot all attention sources; only explicit CEZ:ASK carries dispatch Guard semantics. */
+  /** Snapshot all attention sources; only explicit ONNI:ASK carries dispatch Guard semantics. */
   private recordAttention(requestId: string, input: readonly { question: string; options?: readonly { label: string; description?: string }[] }[]): WebhookAttentionRequest {
     const attention: WebhookAttentionRequest = {
       requestId, askedAt: new Date().toISOString(),
@@ -2843,7 +2843,7 @@ export class RunManager {
 
   /**
    * `POST /runs/:id/dispatch` — create ONE child of `parentId` (spec 2026-09-10-dispatch), usually
-   * called by the parent's own agent through `cez task create`.
+   * called by the parent's own agent through `onni task create`.
    *
    * Every refusal is a transcript note on the parent and NO state change — the caller gets the
    * reason back as the route's 409 body. A parent that had no `dispatch` record becomes a root the
@@ -2980,7 +2980,7 @@ export class RunManager {
   }
 
   /**
-   * `POST /runs/:id/report` — a dispatched task records its own report (the `cez task report`
+   * `POST /runs/:id/report` — a dispatched task records its own report (the `onni task report`
    * CLI). Last one wins. Delivered to the parent when the run SETTLES, not now: the run is still
    * working, and its parent hears from it once, with the branch and the cost attached.
    */
@@ -3041,7 +3041,7 @@ export class RunManager {
       if (!child || !parentId) return;
       if (!this.dispatchEnabled()) return;
       if (!isTerminalStatus(child.status)) return;
-      // A closed session can leave an unanswered CEZ:ASK as terminal `failed` while the
+      // A closed session can leave an unanswered ONNI:ASK as terminal `failed` while the
       // question remains under the user's control (`awaitingAnswerSince`). That is a hold, not
       // an outcome: reporting it now would make the parent plan around work that may still be
       // resumed. The existing status transition that answers or explicitly retires the question
@@ -3168,7 +3168,7 @@ export class RunManager {
 
   /**
    * A transient provider failure (an overload, no response, the OAuth refresh race between two of
-   * cezar's own Claude processes): resume the same session after a short backoff, at most
+   * onni's own Claude processes): resume the same session after a short backoff, at most
    * `MAX_TRANSIENT_RETRIES` times per streak, through the usage-limit resume's timer and exits.
    */
   private scheduleTransientRetry(run: RunRecord): void {
@@ -3349,7 +3349,7 @@ export class RunManager {
     if (!this.semaphore.autoResumeOnUsageLimit()) {
       // Sweep the RECORDS, not the timer map. A record promising a resume that no timer is
       // holding is the exact population this method exists for, and it is also the one the
-      // setting can be switched off in front of: cezar restarted while it was off, the config
+      // setting can be switched off in front of: onni restarted while it was off, the config
       // was hand-edited, or the project context was disposed mid-wait. Retiring only the armed
       // timers leaves such a record with a live `autoResumeAt`, which `accountHolds()` reads as
       // a deadline hold — so nothing new starts on that account, `rescueStalledQueue` treats the
@@ -3475,7 +3475,7 @@ export class RunManager {
       if (this.active.has(run.id) || this.starting.has(run.id)) continue;
       if (this.pendingJobs.has(run.id) || this.pendingContinuations.has(run.id)) continue;
       if (this.queue.includes(run.id)) continue;
-      console.warn(`[cez] queue watchdog: re-adopting queued run ${run.id} the engine had lost`);
+      console.warn(`[onni] queue watchdog: re-adopting queued run ${run.id} the engine had lost`);
       await this.reviveQueuedRun(run, 'queue watchdog');
     }
     if (this.queue.length === 0) return;
@@ -3494,7 +3494,7 @@ export class RunManager {
       return;
     }
     console.warn(
-      '[cez] queue watchdog: work is queued, nothing is running, and the usage-limit hold has no'
+      '[onni] queue watchdog: work is queued, nothing is running, and the usage-limit hold has no'
       + ' deadline behind it — starting the next task anyway',
     );
     this.forceNextPump = true;
@@ -3615,7 +3615,7 @@ export class RunManager {
   }
 
   /** Reclaim finished worktrees beyond the keep-limit (#483) — directory only,
-   *  `cez/<id8>` branch kept. Best-effort; a failure never affects run
+   *  `onni/<id8>` branch kept. Best-effort; a failure never affects run
    *  lifecycle. `review`/live runs are excluded by the selector. */
   /** The latest terminal retention pass — tests await it before pinning refs it may sweep. */
   private retentionPass: Promise<void> = Promise.resolve();
@@ -3660,7 +3660,7 @@ export class RunManager {
    * a real weakening of #438: the parked session stays live, and its context still describes the
    * files as they were, so it can edit over work another task did while it sat. A dispatch tree
    * has no alternative — its commander parks for as long as its children take, and that is the
-   * deadlock above — but an ordinary in-place run parking on `CEZ:ASK` does: keep the lease, as it
+   * deadlock above — but an ordinary in-place run parking on `ONNI:ASK` does: keep the lease, as it
    * always has. That is also what makes "a run with no dispatch is untouched" true of this path.
    * `resumeRepoRoot` tells the resuming agent the tree may have moved.
    */
@@ -4035,7 +4035,7 @@ export class RunManager {
         }
         attachments.push({ name, url, path });
       } catch {
-        // Degrade, never fail the boot (AGENTS.md): the user deleted `.ai/cezar/`
+        // Degrade, never fail the boot (AGENTS.md): the user deleted `.ai/onni/`
         // or the file is unreadable — start with the text and say which attachment went.
         this.store.appendEvent(runId, {
           type: 'note',
@@ -4393,7 +4393,7 @@ export class RunManager {
       // and is racing the session-result settlement. Do not let stale inactivity
       // evidence turn an explicit Finish into the conservative failure fallback.
       state.idleClosed = undefined;
-      // Finish on a run parked mid-workflow on `CEZ:ASK` or `CEZ:MONITORING`
+      // Finish on a run parked mid-workflow on `ONNI:ASK` or `ONNI:MONITORING`
       // (#917, #1076) is an explicit "stop here" — so it settles like every
       // other Finish (`done`, or `review` when the worktree holds changes)
       // instead of the `failed` an abandoned live park would settle as.
@@ -4657,7 +4657,7 @@ export class RunManager {
     }
     const record = this.store.getRun(runId);
     // A provider/account switch cannot resume the old provider-owned session. Reconstruct the
-    // portable context from Cezar's durable record + redacted event stream before this new turn's
+    // portable context from Onni's durable record + redacted event stream before this new turn's
     // user-message is appended. This works even when the interrupted agent never wrote HANDOFF.md.
     const portableContext = record && sessionId === undefined
       ? freshContinuationContext(record, this.store.readEvents(runId), this.attachmentsDir(runId))
@@ -4806,9 +4806,9 @@ export class RunManager {
       }
       if (event.type === 'text') {
         turnText = appendTurnText(turnText, event.text);
-        // `stripTaskMarkers` runs INNERMOST (#933): it deletes whole `CEZ:PR=`/`CEZ:ISSUE=`/
-        // `CEZ:TITLE=` lines, so running it first lets the two trailing-marker strippers see a
-        // `CEZ:MONITORING` / `CEZ:DONE` that an agent put ABOVE its task references. Outside-in
+        // `stripTaskMarkers` runs INNERMOST (#933): it deletes whole `ONNI:PR=`/`ONNI:ISSUE=`/
+        // `ONNI:TITLE=` lines, so running it first lets the two trailing-marker strippers see a
+        // `ONNI:MONITORING` / `ONNI:DONE` that an agent put ABOVE its task references. Outside-in
         // they saw those references and left the protocol marker in the transcript.
         const text = stripAskMarker(stripMonitoringMarker(stripDoneMarker(stripTaskMarkers(event.text))));
         if (text) this.store.appendEvent(runId, { type: 'text', text, stepId });
@@ -4859,14 +4859,14 @@ export class RunManager {
           stepId,
           done: Boolean(done),
         });
-        // `CEZ:ASK` → the user is genuinely blocked; wins over `CEZ:MONITORING`
-        // (a pending question is always attention), loses to `CEZ:DONE` (#473)
+        // `ONNI:ASK` → the user is genuinely blocked; wins over `ONNI:MONITORING`
+        // (a pending question is always attention), loses to `ONNI:DONE` (#473)
         // and to a turn that dispatched, which parks as a monitor.
         const { ask, notes: askNotes } = resolveAskTurn(
           turnText,
           Boolean(sessionOpen) && !done && !dispatchTurn.dispatched,
         );
-        // A spawn parks the parent exactly as `CEZ:MONITORING` does — it is waiting on its
+        // A spawn parks the parent exactly as `ONNI:MONITORING` does — it is waiting on its
         // children, not on the user, and it has to surrender its slot to them. An over-budget run
         // parks `waiting` instead, whatever it asked for (Q6 ii).
         const monitoring =
@@ -4913,8 +4913,8 @@ export class RunManager {
         const autoContinued = nudged || compactionContinued;
         if (sessionOpen) {
           if (!autoContinued) {
-            // `CEZ:ASK` → park `waiting` (attention) AND surface the structured
-            // question as an ask card (#473). `CEZ:MONITORING` → non-attention
+            // `ONNI:ASK` → park `waiting` (attention) AND surface the structured
+            // question as an ask card (#473). `ONNI:MONITORING` → non-attention
             // `running`/`activity:'monitoring'` (#490). Both share the waiting
             // lifecycle (free the slot), while only plain waiting keeps the idle timer. Monitoring is
             // checked before the autonomous nudge, so it remains non-attention.
@@ -5326,7 +5326,7 @@ export class RunManager {
     emit({ type: 'lifecycle', message: `run ${resumeStep ? 'resumed' : 'started'} — workflow "${workflow.name}" (runner: ${taskBackend})` });
 
     // Worktree per task (spec 006): the agent works on its own branch in
-    // `.ai/cezar/worktrees/<id>`, never in the user's working tree. A Git task
+    // `.ai/onni/worktrees/<id>`, never in the user's working tree. A Git task
     // that requests isolation fails closed if the worktree cannot be
     // established; only explicit opt-out and non-Git modes run in place.
     const repo = await getRepoInfo(this.repoRoot);
@@ -5414,13 +5414,13 @@ export class RunManager {
         const preparationController = new AbortController();
         state.interrupt = () => preparationController.abort();
         // A generated name git still refuses (ref race, an exotic conflict) degrades to
-        // `cez/<id8>`, never fails the task. A recorded branch is the run's own: no fallback.
+        // `onni/<id8>`, never fails the task. A recorded branch is the run's own: no fallback.
         const wt = await this.lifecycle.prepare(runId, base, {kind: 'initial', runId}, preparationController.signal, {
           branch,
           generated: branch !== undefined && recordedRun?.branch === undefined,
           onFallback: (reason) => emit({
             type: 'note',
-            message: `generated branch "${branch}" could not be created (${reason}) — using the default cez/ branch`,
+            message: `generated branch "${branch}" could not be created (${reason}) — using the default onni/ branch`,
           }),
         });
         if (state.cancelled) { this.dropActive(runId, state); return; }
@@ -5666,7 +5666,7 @@ export class RunManager {
    *
    * Semantics kept from v1: a failing check's output is handed to the next agent it reaches
    * (the retry prompt); an agent node whose `done` ends the run is the interactive tail; a
-   * mid-graph `CEZ:ASK` park ends the walk and the settlement in `execute` owns the outcome.
+   * mid-graph `ONNI:ASK` park ends the walk and the settlement in `execute` owns the outcome.
    */
   private async executeGraph(
     runId: string,
@@ -5834,7 +5834,7 @@ export class RunManager {
         this.finishStep(runId, node.id, 'failed', 'a join can only be reached from a fork', emit);
         port = 'failed';
       } else if (node.type !== 'agent' && node.type !== 'check') {
-        // Nodes cezar runs itself: gates, questions, dispatch, git and GitHub (phase 1c).
+        // Nodes onni runs itself: gates, questions, dispatch, git and GitHub (phase 1c).
         const outcome = await this.runSystemNode(runId, state, node, outputs, input.task, emit, persistWalk, resuming);
         if (state.cancelled) return null;
         // Finish on a parked gate/question is "stop here and accept" — the same settlement a
@@ -5932,7 +5932,7 @@ export class RunManager {
           agentFailure = failure;
           port = 'failed';
         } else if (verdicts.length && !verdict) {
-          const error = `no verdict — expected one of ${verdicts.map((v) => `CEZ:VERDICT ${v}`).join(', ')}`;
+          const error = `no verdict — expected one of ${verdicts.map((v) => `ONNI:VERDICT ${v}`).join(', ')}`;
           this.finishStep(runId, node.id, 'failed', error, emit);
           agentFailure = error;
           port = 'failed';
@@ -6178,7 +6178,7 @@ export class RunManager {
   }
 
   /**
-   * Run a node cezar executes itself (phase 1c) and return the port it leaves by — or
+   * Run a node onni executes itself (phase 1c) and return the port it leaves by — or
    * `'finished'` when the user pressed Finish while it waited. Never throws: every failure is a
    * note on the rail plus the node's failure port.
    */
@@ -6252,7 +6252,7 @@ export class RunManager {
         else note(`dispatched subtask ${spawned.id}`);
         outputs.set(node.id, { runId: spawned.id });
         onOutputs();
-        // It may even have settled while cezar was down.
+        // It may even have settled while onni was down.
         const settledWhileDown = existing && isTerminalStatus(existing.status) ? existing.status : undefined;
         if (settledWhileDown) {
           outputs.set(node.id, { runId: spawned.id, status: settledWhileDown, summary: '' });
@@ -6449,7 +6449,7 @@ export class RunManager {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
-              text: render(node.body ?? 'cezar: {{task}}'),
+              text: render(node.body ?? 'onni: {{task}}'),
               run: { id: runId, title: run?.title, status: run?.status, pullRequestUrl: run?.pullRequestUrl },
               node: node.id,
             }),
@@ -6832,7 +6832,7 @@ export class RunManager {
         emit({
           type: 'note',
           stepId: step.id,
-          message: `skill "${step.skill}" not found in .ai/cezar/skills, .ai/skills or the team skills repo — running with the plain prompt`,
+          message: `skill "${step.skill}" not found in .ai/onni/skills, .ai/skills or the team skills repo — running with the plain prompt`,
         });
       }
     }
@@ -6842,7 +6842,7 @@ export class RunManager {
     // `deliverMessage`, so — like the continuation seam above (#811) — it needs the same
     // delivery-only `/skill` rewrite. Without it a task STARTED with `/om-...` as its first
     // message leaks the raw slash to the backend, which answers "Unknown command" even though
-    // Cezar lists the skill (#278). `state.skills` was populated by `discoverSkills` earlier in
+    // Onni lists the skill (#278). `state.skills` was populated by `discoverSkills` earlier in
     // `execute`. Expand before the chain/check/attachment prefixes so the leading slash still
     // matches; a leading `/name` that is not a known skill passes through byte-for-byte.
     userPrompt = expandRegistrySlashSkillText(userPrompt, state.skills ?? []);
@@ -6910,9 +6910,9 @@ export class RunManager {
       }
       if (event.type === 'text') {
         turnText = appendTurnText(turnText, event.text);
-        // `stripTaskMarkers` runs INNERMOST (#933): it deletes whole `CEZ:PR=`/`CEZ:ISSUE=`/
-        // `CEZ:TITLE=` lines, so running it first lets the two trailing-marker strippers see a
-        // `CEZ:MONITORING` / `CEZ:DONE` that an agent put ABOVE its task references. Outside-in
+        // `stripTaskMarkers` runs INNERMOST (#933): it deletes whole `ONNI:PR=`/`ONNI:ISSUE=`/
+        // `ONNI:TITLE=` lines, so running it first lets the two trailing-marker strippers see a
+        // `ONNI:MONITORING` / `ONNI:DONE` that an agent put ABOVE its task references. Outside-in
         // they saw those references and left the protocol marker in the transcript.
         const text = stripVerdictMarker(
           stripAskMarker(stripMonitoringMarker(stripDoneMarker(stripTaskMarkers(event.text)))),
@@ -6953,21 +6953,21 @@ export class RunManager {
         const done = interactive && sessionOpen && endsWithDoneMarker(turnText);
         // The dispatch facts, through the same ONE helper `runContinuation` calls (spec
         // 2026-09-10-dispatch A5). Not gated on `interactive`: a report and a dispatch
-        // are the agent telling cezar what it did, and a chained workflow's non-final step that
+        // are the agent telling onni what it did, and a chained workflow's non-final step that
         // reported would otherwise be heard by nobody. The PARK below is no longer
         // interactive-only either (#1076): a non-final step that dispatched, or that emitted
-        // `CEZ:MONITORING`, is waiting on work it started, so it holds the workflow at that step
-        // exactly as a non-final `CEZ:ASK` does (#917) instead of closing and running the next check.
+        // `ONNI:MONITORING`, is waiting on work it started, so it holds the workflow at that step
+        // exactly as a non-final `ONNI:ASK` does (#917) instead of closing and running the next check.
         const dispatchTurn = this.handleDispatchTurn(runId, turnText, {
           state,
           stepId: step.id,
           done: Boolean(done),
         });
-        // `CEZ:ASK` → the user is blocked; wins over `CEZ:MONITORING`, loses to
-        // `CEZ:DONE` (#473) and to a turn that dispatched.
+        // `ONNI:ASK` → the user is blocked; wins over `ONNI:MONITORING`, loses to
+        // `ONNI:DONE` (#473) and to a turn that dispatched.
         //
         // No longer gated on `interactive` (#917). `interactive` is only true for
-        // the final step, so a `CEZ:ASK` from an implementation or review step was
+        // the final step, so a `ONNI:ASK` from an implementation or review step was
         // ignored outright and the workflow advanced into its next check — which
         // then failed, marking the whole run failed while the question was still on
         // the user's screen. Every agent step may need user input. The
@@ -6989,7 +6989,7 @@ export class RunManager {
         // is untouched by this: it parks at `waiting` whatever the marker looked
         // like, where the prose fallback is still answerable and nothing
         // downstream is being blocked (#473).
-        // A spawn parks the commander like `CEZ:MONITORING` does — it waits on its children and
+        // A spawn parks the commander like `ONNI:MONITORING` does — it waits on its children and
         // gives them its slot. The budget brake (Q6 ii) overrides both and parks `waiting`.
         const monitoring =
           sessionOpen &&
@@ -7001,7 +7001,7 @@ export class RunManager {
         // A turn that does not park retires a park an earlier turn left standing. The park is
         // otherwise cleared only by `sendMessage`, and a parked session can wake without one:
         // Claude Code re-invokes the model itself when a background command or sub-agent it
-        // started finishes. Left in place, a later `CEZ:DONE` settled the step as a question
+        // started finishes. Left in place, a later `ONNI:DONE` settled the step as a question
         // nobody answered and the workflow never reached its next step (live run 2c2d2e34).
         // `abandoned` is Finish's and stays — it must still stop the workflow here.
         if (!parksWorkflow && state.askPark === 'waiting') {
@@ -7056,9 +7056,9 @@ export class RunManager {
         const continued = autoContinued || compactionContinued;
         if (waiting && !continued) {
           // Turn over, session open. Either the ball is in the user's court
-          // (`waiting`) — optionally with a structured `CEZ:ASK` question the
+          // (`waiting`) — optionally with a structured `ONNI:ASK` question the
           // cockpit renders as an ask card (#473) — or the agent declared it is
-          // still working on its own downstream work with `CEZ:MONITORING`, which
+          // still working on its own downstream work with `ONNI:MONITORING`, which
           // parks as `running`/`activity:'monitoring'`, a non-attention state,
           // instead of raising "needs you" (#490). Lifecycle is identical: the
           // run frees its slot; only plain waiting keeps the idle timer. The autonomous nudge
@@ -7078,7 +7078,7 @@ export class RunManager {
             this.store.updateRun(runId, { status: 'running', activity: 'monitoring' });
             this.store.updateStep(runId, step.id, { status: 'running' });
             // The twin of `runContinuation`'s park: a spawn-caused park is slot-exempt outright
-            // (`enterMonitoring` / `busySlots`), a plain `CEZ:MONITORING` one is capped.
+            // (`enterMonitoring` / `busySlots`), a plain `ONNI:MONITORING` one is capped.
             this.enterMonitoring(runId, dispatchTurn.dispatched);
             this.clearIdleTimer(state);
             this.armMonitoringWakeTimer(runId, state);
@@ -7103,7 +7103,7 @@ export class RunManager {
         }
         // One-shot close for an ordinary intermediate step — the behavior the
         // runners' `autoEndAfterFirstTurn` used to provide, moved here so a step
-        // that parks on a `CEZ:ASK` can keep its session open for the answer
+        // that parks on a `ONNI:ASK` can keep its session open for the answer
         // instead of having the runner close it first (#917).
         //
         // The delay reproduces the runners' own `AUTO_END_DELAY_MS`, which they
@@ -7130,7 +7130,7 @@ export class RunManager {
         if (this.store.getRun(runId)?.autoResumeAttempts !== undefined) {
           this.store.updateRun(runId, { autoResumeAttempts: undefined, autoResumeReason: undefined });
         }
-        // Cez's own heartbeat — the handoff stays current even when the
+        // Onni's own heartbeat — the handoff stays current even when the
         // agent forgets to write (spec 007).
         // A nudged turn did NOT park — see the twin in `runContinuation` for why the handoff
         // file must not claim otherwise.
@@ -7241,7 +7241,7 @@ export class RunManager {
           //
           // A non-final step keeps the runner's timeout (`DEFAULT_RUN_TIMEOUT_MS`
           // of silence, with a hard ceiling behind it — cf2191f1) even though it
-          // may now park on a `CEZ:ASK` and sit open waiting for an answer (#917).
+          // may now park on a `ONNI:ASK` and sit open waiting for an answer (#917).
           // Dropping it for every intermediate step is the
           // wrong trade: it would leave a runaway step with nothing to stop it,
           // to buy a park that is bounded by the 15-minute idle timer first in
@@ -7255,7 +7255,7 @@ export class RunManager {
         {
           // Ordinary intermediate sessions are closed explicitly at turn-end
           // instead (with the same delay the runners apply). That is what lets
-          // the turn-end handler hold an intermediate `CEZ:ASK` session open for
+          // the turn-end handler hold an intermediate `ONNI:ASK` session open for
           // the user's answer rather than have the runner close it first (#917).
           autoEndAfterFirstTurn: false,
           onUiEvent: (event) => {
@@ -7522,7 +7522,7 @@ export class RunManager {
    * The branch a fresh fork should use (spec 2026-10-11-branch-naming-instructions): the
    * namer's answer, made unique against existing branches, awaited for at most
    * `BRANCH_NAME_WAIT_MS` and only when instructions are set — the zero-config fork stays
-   * instant. Undefined means `cez/<id8>`; a late answer is dropped, never applied as a rename.
+   * instant. Undefined means `onni/<id8>`; a late answer is dropped, never applied as a rename.
    */
   private async awaitGeneratedBranch(
     runId: string,
@@ -7539,16 +7539,16 @@ export class RunManager {
     });
     const wanted = await Promise.race([pending, timeout]).finally(() => clearTimeout(timer));
     if (wanted === TIMED_OUT) {
-      note('branch name not ready in time — using the default cez/ branch');
+      note('branch name not ready in time — using the default onni/ branch');
       return undefined;
     }
     if (!wanted) {
-      note('the namer answered no branch name — using the default cez/ branch');
+      note('the namer answered no branch name — using the default onni/ branch');
       return undefined;
     }
     const unique = await uniqueBranchName(this.repoRoot, wanted, runId);
     if (!unique) {
-      note(`generated branch name "${wanted}" is not usable — using the default cez/ branch`);
+      note(`generated branch name "${wanted}" is not usable — using the default onni/ branch`);
       return undefined;
     }
     return unique;
@@ -7564,7 +7564,7 @@ export class RunManager {
       this.applyTurnMarkers(runId, run, turnText);
       // Titles are the namer's job (task auto-naming spec) — turn text is
       // deliberately NEVER a title source; see maybeRefreshTitle below. The
-      // one exception is an explicit CEZ:TITLE declaration (applied above).
+      // one exception is an explicit ONNI:TITLE declaration (applied above).
       if (run.worktreePath && existsSync(run.worktreePath)) {
         // `taskBranch` + `runStartedAt` are what keep this number *this task's* (#751): a
         // review/QA run repoints the worktree onto the branch under review, and without the
@@ -7587,9 +7587,9 @@ export class RunManager {
 
   /**
    * In-band declarations from the finished turn (spec
-   * 2026-07-18-task-ref-markers): the main thread's own `CEZ:PR=` /
-   * `CEZ:ISSUE=` / `CEZ:TITLE=` lines, parsed from the accumulated turn text
-   * like `CEZ:DONE` — never from tool output. Declared numbers overwrite the
+   * 2026-07-18-task-ref-markers): the main thread's own `ONNI:PR=` /
+   * `ONNI:ISSUE=` / `ONNI:TITLE=` lines, parsed from the accumulated turn text
+   * like `ONNI:DONE` — never from tool output. Declared numbers overwrite the
    * regex/namer display tier (the store re-resolves the referenced-PR chip);
    * a declared title takes `titleOrigin: 'marker'`, which beats the namer but
    * never a user rename, and silences the live refresh below.
@@ -7615,7 +7615,7 @@ export class RunManager {
    * Live title refresh (task auto-naming spec, step 3): re-run the namer with
    * the turn's context. Skips: toggle off (`liveTitleUpdates` config over
    * `CEZ_TITLE_UPDATES` env, default ON), user-owned title, marker-owned title
-   * (the agent declares via `CEZ:TITLE` — the token-saving fast path), dry-run
+   * (the agent declares via `ONNI:TITLE` — the token-saving fast path), dry-run
    * mocks (canned answers add nothing), empty turn text, unchanged namer inputs.
    */
   private async maybeRefreshTitle(runId: string, turnText: string): Promise<void> {
@@ -7655,7 +7655,7 @@ export class RunManager {
 
   /**
    * Settle a run whose session closed while it was parked for a reply that never came — a
-   * mid-workflow `CEZ:ASK` (#917) or a monitor handed to the user. `settleSuccess` would put a
+   * mid-workflow `ONNI:ASK` (#917) or a monitor handed to the user. `settleSuccess` would put a
    * finished badge on work the agent said was still open; `failed` says what happened and keeps
    * the Continue button, which reopens the session so the reply can still be given.
    */
@@ -7771,7 +7771,7 @@ export class RunManager {
     const repo = await getRepoInfo(this.repoRoot);
     if (!repo) return undefined;
     if (await isLifecycleConfigTracked(this.repoRoot).catch(() => true)) {
-      note?.('auto-land is off — .ai/cezar/config.json is tracked by git, and only local configuration can grant it');
+      note?.('auto-land is off — .ai/onni/config.json is tracked by git, and only local configuration can grant it');
       return undefined;
     }
     return { checks: config.requiredChecks ?? [], baseBranch: config.baseBranch, baseLabel: config.baseBranch ?? repo.branch, attempts: 0 };
@@ -7850,7 +7850,7 @@ export class RunManager {
   }
 
   /**
-   * `CEZ:DONE` on an auto-land run. An autonomous run lands before its session closes; an
+   * `ONNI:DONE` on an auto-land run. An autonomous run lands before its session closes; an
    * interactive one parks for review instead, and the user's Finish lands it (`finish`). True
    * when it took the turn over. Both turn-end handlers call it.
    */
@@ -8033,7 +8033,7 @@ export class RunManager {
   }
 
   /**
-   * The settle-time half of auto-land: a run that ends without a `CEZ:DONE` landing (Finish, an
+   * The settle-time half of auto-land: a run that ends without a `ONNI:DONE` landing (Finish, an
    * idle close) still lands what it left, and a landing that never succeeded fails the run rather
    * than wearing a success badge. Answers the failure message, or undefined.
    */
@@ -8217,7 +8217,7 @@ export class RunManager {
    * Agent screenshot (an image block inside a tool result) or a user attachment —
    * a pasted screenshot, or since #950 a PDF/TXT/MD file: the base64 data never
    * enters the NDJSON event log — it lands as a file under
-   * `.ai/cezar/runs/<id>-images/` and the transcript event carries only the name +
+   * `.ai/onni/runs/<id>-images/` and the transcript event carries only the name +
    * serving URL. `namePrefix` distinguishes the two origins on disk
    * (`screenshot-<n>.<ext>` for agent tool screenshots, `pasted-<n>.<ext>` for user
    * attachments, #357) and the absolute `path` lets the agent operate on the file
@@ -8285,9 +8285,9 @@ export class RunManager {
    * too, because that site's `ActiveRun` never carried `autonomous`.
    *
    * Every exit of a nudged run — the loop is bounded, it is not a new dead end:
-   *  - the NEXT turn-end: `CEZ:DONE` closes the session and the run settles (`done`, or `review`
-   *    for a non-autonomous run with changes); a plain turn nudges again; `CEZ:ASK` and
-   *    `CEZ:MONITORING` are OVERRIDDEN while budget remains (the nudge deliberately wins over
+   *  - the NEXT turn-end: `ONNI:DONE` closes the session and the run settles (`done`, or `review`
+   *    for a non-autonomous run with changes); a plain turn nudges again; `ONNI:ASK` and
+   *    `ONNI:MONITORING` are OVERRIDDEN while budget remains (the nudge deliberately wins over
    *    both) and take effect on the first turn after the cap;
    *  - the cap: at `MAX_AUTO_CONTINUES` this returns `false` and the turn parks exactly as a
    *    non-autonomous one does today — `waiting` (or `monitoring`), idle timer armed, slot freed;
@@ -8299,7 +8299,7 @@ export class RunManager {
    *  - a NATIVE `ask.requested` (Claude's AskUser, Codex's `requestUserInput` bridge — #473,
    *    #565) still parks the run at `waiting` MID-turn through `handleRunnerUiEvent`, which
    *    carries no autonomous guard. That is the one exit the nudge does not currently cover:
-   *    the portable `CEZ:ASK` marker is a turn-end signal this helper can outrank, a native ask
+   *    the portable `ONNI:ASK` marker is a turn-end signal this helper can outrank, a native ask
    *    is not. Named here so the gap is recorded where someone reasoning about autonomous
    *    liveness will look for it.
    */
@@ -8316,7 +8316,7 @@ export class RunManager {
     // turn-end handlers call, so neither site can drift from the other:
     //  - a turn that SPAWNED is waiting on its children; nudging it would keep the commander
     //    working while holding the slot its children need;
-    //  - the Guard: an autonomous dispatched run must not answer its own `CEZ:ASK` — that is the
+    //  - the Guard: an autonomous dispatched run must not answer its own `ONNI:ASK` — that is the
     //    whole point of asking before something irreversible. A NON-dispatch autonomous run keeps
     //    the override below, pinned by its own test;
     //  - the budget brake (Q6 ii): a run that has spent its ceiling stops spending.
@@ -8325,7 +8325,7 @@ export class RunManager {
     if ((state.autoContinues ?? 0) >= MAX_AUTO_CONTINUES) return false;
     if (state.cancelled) return false;
     // A question repeated verbatim after a nudge is not a preference the agent can settle on
-    // its own — it is a blocker (the cockpit refused `cez task create`, a login is missing) that
+    // its own — it is a blocker (the cockpit refused `onni task create`, a login is missing) that
     // the nudge would merely make it work around, at full cost, until the cap. Park the run on
     // the question instead, so the operator sees it now rather than after 40 more turns.
     const askKey = ask ? ask.questions.map((question) => question.question).join(' | ') : undefined;
@@ -8344,7 +8344,7 @@ export class RunManager {
       stepId,
       message: `autonomous — continuing without pausing (${state.autoContinues}/${MAX_AUTO_CONTINUES})`,
     });
-    // The nudge deliberately outranks a valid `CEZ:ASK` while budget remains — but
+    // The nudge deliberately outranks a valid `ONNI:ASK` while budget remains — but
     // `stripAskMarker` has already removed the question from the turn's visible text, and
     // `resolveAskTurn` only produces notes for a MALFORMED marker. Without this the question
     // an agent actually asked leaves no trace anywhere in the transcript, so whoever opens the
@@ -8371,10 +8371,10 @@ export class RunManager {
    *
    * The precedence this sits UNDER, and why each one wins (`BACKWARD_COMPATIBILITY.md` §8 —
    * an emitted marker means what it meant when the session started):
-   *  - `CEZ:DONE` — already returned before this is reached, at both sites;
-   *  - `CEZ:ASK` — the agent has a question on the user's screen; continuing would answer it
+   *  - `ONNI:DONE` — already returned before this is reached, at both sites;
+   *  - `ONNI:ASK` — the agent has a question on the user's screen; continuing would answer it
    *    for them;
-   *  - `CEZ:MONITORING` — the agent said it is still working on its OWN downstream work, which
+   *  - `ONNI:MONITORING` — the agent said it is still working on its OWN downstream work, which
    *    is a park it chose, not one compaction imposed;
    *  - a turn that DISPATCHED — it waits on its children and owes them its slot;
    *  - the budget brake, cancellation, a closed session;
@@ -8389,7 +8389,7 @@ export class RunManager {
    * kept the bug.
    *
    * The exits, so this is not another state with no way out: the continued turn either
-   * finishes (`CEZ:DONE`), parks (any marker, or a markerless boundary-free turn), fails, or
+   * finishes (`ONNI:DONE`), parks (any marker, or a markerless boundary-free turn), fails, or
    * compacts again — and `MAX_COMPACTION_CONTINUES` consecutive compactions park the run with
    * a note. `sendMessage` answering false (a session that closed under us) parks it too.
    */
@@ -8589,7 +8589,7 @@ export class RunManager {
 
   /**
    * Turn a monitoring park into a `waiting` park: attention raised, idle timer armed if enabled,
-   * session left open so a reply still lands in it. Parked like a `CEZ:ASK` (`askPark`), so a
+   * session left open so a reply still lands in it. Parked like a `ONNI:ASK` (`askPark`), so a
    * hand-off nobody answers settles `failed` with Continue when the idle timer closes it.
    */
   private parkMonitorAsWaiting(runId: string, state: ActiveRun, message: string): void {
@@ -8663,7 +8663,7 @@ export class RunManager {
           step.secrets,
         );
     // A store that exists and was not used, or a bound name that is not there, is what the user
-    // cannot diagnose alone: the value is write-only, so `cezar secrets list` and Settings show
+    // cannot diagnose alone: the value is write-only, so `onni secrets list` and Settings show
     // the same list whether this run read it or ignored it. Say which, once each, on the step.
     for (const note of resolved.notes) emit({ type: 'note', stepId: step.id, message: note });
     this.store.registerRunSecrets(
@@ -8671,17 +8671,17 @@ export class RunManager {
       Object.values(resolved.values).filter((value) => value.length >= MIN_SECRET_LEN),
     );
     // The run context wins last (Phase 2). Its names are first removed from what the server
-    // inherited — a cezar started inside another cezar task carries that task's `CEZ_*` — so a
+    // inherited — a onni started inside another onni task carries that task's `CEZ_*` — so a
     // variable this run does not set is absent, never a stale value from somewhere else. The
     // login shell `runCheckStep` spawns sources the user's profile after this, so the guarantee
     // is about the server's environment, not about a profile that exports one of these names.
     const base: NodeJS.ProcessEnv = { ...process.env };
     for (const name of CHECK_CONTEXT_VARS) {
       // `CEZ_PROJECT_ID` is the one context name that is ALSO a documented CLI input
-      // (BACKWARD_COMPATIBILITY.md §1 — `cez task`/`cez automation` address a cockpit with it),
-      // so it is replaced, never stripped. A headless `cezar run` builds its manager without a
+      // (BACKWARD_COMPATIBILITY.md §1 — `onni task`/`onni automation` address a cockpit with it),
+      // so it is replaced, never stripped. A headless `onni run` builds its manager without a
       // projectId, and deleting the operator's value there would leave `CEZ_API_URL` in place
-      // while `cez task create` silently fell back to the cockpit's boot project.
+      // while `onni task create` silently fell back to the cockpit's boot project.
       if (name === 'CEZ_PROJECT_ID' && !this.projectId) continue;
       delete base[name];
     }
@@ -8690,7 +8690,7 @@ export class RunManager {
 
   /**
    * What a check step knows about the run it verifies (spec 2026-10-06-agentic-e2e-checks
-   * Phase 2). Cezar-set outputs, not knobs: every value is a string, and a value this run does
+   * Phase 2). Onni-set outputs, not knobs: every value is a string, and a value this run does
    * not have is omitted rather than set empty, so `[ -n "$CEZ_GITHUB_NUMBER" ]` means what it
    * says. `CEZ_SHARED_CACHE_DIR` is one directory per project, shared by its tasks, so a
    * replay cache recorded in one worktree is warm in the next.
@@ -8725,7 +8725,7 @@ export class RunManager {
   }
 
   /**
-   * Delete the `refs/cezar/pr/<n>` refs no run with a live worktree still needs (Phase 3).
+   * Delete the `refs/onni/pr/<n>` refs no run with a live worktree still needs (Phase 3).
    * Called after every worktree-removal path; idempotent and never throws.
    */
   async sweepPrHeadRefs(): Promise<void> {
@@ -8826,22 +8826,22 @@ export function parseGithubItemUrl(url: string): { repo: string; number: number 
 }
 
 /**
- * `~/.cezar/cache/<projectId>`, created `0700` on first use — the shared replay cache of a
+ * `~/.onni/cache/<projectId>`, created `0700` on first use — the shared replay cache of a
  * project's check steps. `undefined` when the home cannot hold it: the check then runs with a
  * cold cache, exactly as before this variable existed. Nothing prunes it — `removeProject` is
  * unregister-only — so `docs/e2e-verification.md` says how to reclaim the space.
  *
  * `projectId` is re-validated here even though every caller's id is already slug-shaped, for the
  * same reason `workspace/secrets.ts` re-validates before building
- * `~/.cezar/secrets/<projectId>.json`: this is where the value becomes a path, and a
+ * `~/.onni/secrets/<projectId>.json`: this is where the value becomes a path, and a
  * `recursive` mkdir is the wrong place to find out the guard moved upstream.
  */
 async function sharedCheckCacheDir(projectId: string): Promise<string | undefined> {
   if (!PROJECT_ID_RE.test(projectId)) return undefined;
   try {
     // Inside the `try` with the write: resolving the home is part of "the home cannot hold it".
-    const dir = join(cezarHomeDir(), 'cache', projectId);
-    assertCezarHomeWriteIsSandboxed(dir);
+    const dir = join(onniHomeDir(), 'cache', projectId);
+    assertOnniHomeWriteIsSandboxed(dir);
     await mkdir(dir, { recursive: true, mode: 0o700 });
     return dir;
   } catch {

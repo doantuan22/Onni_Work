@@ -16,10 +16,10 @@ describe('POST /runs/:id/pr on a pull-request head run', () => {
   let root: string;
   let store: RunStore;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-pr-head-publish-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-pr-head-publish-'));
     vi.stubEnv('CEZ_HOME', join(root, 'home'));
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(root, '.ai/cezar'));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(root, '.ai/onni'));
   });
   afterEach(() => {
     store.flush();
@@ -34,7 +34,7 @@ describe('POST /runs/:id/pr on a pull-request head run', () => {
     const run = store.createRun({ title: 't', workflow: 'w', task: 'x', steps: [] });
     store.updateRun(run.id, {
       status: 'review',
-      prHead: { number: 42, repo: 'acme/shop', headRepo: 'acme/shop', headRef: 'f', headSha: 'a'.repeat(40), baseRef: 'main', ref: 'refs/cezar/pr/42' },
+      prHead: { number: 42, repo: 'acme/shop', headRepo: 'acme/shop', headRef: 'f', headSha: 'a'.repeat(40), baseRef: 'main', ref: 'refs/onni/pr/42' },
     });
     const response = await apiRequest(app(), `/api/v1/runs/${run.id}/pr`, { method: 'POST' });
     expect(response.status).toBe(409);

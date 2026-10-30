@@ -2,14 +2,14 @@ import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import lockfile from 'proper-lockfile';
 import { usageWindowsSnapshotSchema, type UsageAccountBinding, type UsageWindowsObservation, type UsageWindowsSnapshot, type UsageWindow } from '@onni/contract';
-import { assertCezarHomeWriteIsSandboxed, cezarHomeDir } from '../paths.ts';
+import { assertOnniHomeWriteIsSandboxed, onniHomeDir } from '../paths.ts';
 import { atomicWriteJsonSync } from './config.ts';
 
 const warned = new Set<string>();
 function warn(path: string): void {
   if (warned.has(path)) return;
   warned.add(path);
-  console.warn('[cezar] Usage metadata unavailable; continuing without usage reset data.');
+  console.warn('[onni] Usage metadata unavailable; continuing without usage reset data.');
 }
 function read(path: string): UsageWindowsSnapshot[] {
   try {
@@ -27,7 +27,7 @@ function sameLocation(a: UsageAccountBinding, b: UsageAccountBinding): boolean {
 
 /** Exact account/location/identity match. Never falls back to another account or old login. */
 export function loadUsageWindows(binding: UsageAccountBinding): UsageWindowsSnapshot | null {
-  const path = join(cezarHomeDir(), 'usage-windows.json');
+  const path = join(onniHomeDir(), 'usage-windows.json');
   return read(path).find((s) => sameLocation(s.binding, binding) && s.binding.identity === binding.identity) ?? null;
 }
 
@@ -48,8 +48,8 @@ export function mergeUsageWindows(previous: UsageWindowsSnapshot | null, incomin
 
 /** Cross-process read/merge/atomic-write. Resolve CEZ_HOME once, including its sandbox guard. */
 export async function saveUsageWindows(binding: UsageAccountBinding, observation: UsageWindowsObservation): Promise<boolean> {
-  const path = join(cezarHomeDir(), 'usage-windows.json');
-  assertCezarHomeWriteIsSandboxed(path);
+  const path = join(onniHomeDir(), 'usage-windows.json');
+  assertOnniHomeWriteIsSandboxed(path);
   let release: (() => Promise<void>) | undefined;
   try {
     const incoming = usageWindowsSnapshotSchema.parse({ ...observation, binding });

@@ -17,7 +17,7 @@ describe('spawnJunieAcp on Windows', () => {
   afterEach(() => Object.defineProperty(process, 'platform', { value: platform }));
 
   it('runs a junie.cmd shim as node <script>', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-junie-shim-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-junie-shim-'));
     try {
       const script = join(dir, 'node_modules', '@jetbrains', 'junie', 'bin', 'junie.js');
       mkdirSync(join(script, '..'), { recursive: true });

@@ -42,8 +42,8 @@ describe('e2e setup workflow (spec 2026-10-10-e2e-one-click-setup)', () => {
     const workflow = e2eSetupWorkflow([]);
     const prompt = workflow.steps[0]!.prompt!;
     expect(prompt).not.toContain('{{task}}');
-    expect(prompt).toContain(E2E_WORKFLOW_TEMPLATE.replaceAll('{{task}}', '__CEZAR_TASK_TOKEN__'));
-    expect(workflow.steps.find((s) => s.id === 'e2e-list')!.command).toContain("grep -qF '{{task}}' .ai/cezar/workflows/implement-and-e2e.yaml");
+    expect(prompt).toContain(E2E_WORKFLOW_TEMPLATE.replaceAll('{{task}}', '__ONNI_TASK_TOKEN__'));
+    expect(workflow.steps.find((s) => s.id === 'e2e-list')!.command).toContain("grep -qF '{{task}}' .ai/onni/workflows/implement-and-e2e.yaml");
   });
 
   it('names the provider of the first stored key, in preference order', () => {

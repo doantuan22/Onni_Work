@@ -115,7 +115,7 @@ function serve({
 } = {}) {
   requests = []
   let providerStatusReads = 0
-  // The selection store, keyed by repo root exactly as `~/.cezar/agent-accounts.json` is.
+  // The selection store, keyed by repo root exactly as `~/.onni/agent-accounts.json` is.
   const selections: Record<string, Record<string, string>> = {
     ...(agentProfiles?.selections as Record<string, Record<string, string>>),
   }
@@ -197,7 +197,7 @@ function serve({
         return json({ selections })
       }
       if (url === '/api/v1/projects' && method === 'GET') {
-        return json({ projects: [PROJECT], bootProject: 'boot', projectsDir: '~/cezar/projects' })
+        return json({ projects: [PROJECT], bootProject: 'boot', projectsDir: '~/onni/projects' })
       }
       // One catalog per discovery runner (#794): this screen renders a row per runner, so it
       // asks each host CLI separately rather than reusing Codex's answer everywhere.
@@ -226,7 +226,7 @@ function gateSeededClient() {
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: [PROJECT],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   return client
 }
@@ -582,7 +582,7 @@ describe('the agents form', () => {
       })
       // claude was ALREADY the default runner, so nothing needed saying to the repo config…
       expect(puts()).toHaveLength(0)
-      // …nor to the project registry, whose schema a downgraded cezar would rewrite.
+      // …nor to the project registry, whose schema a downgraded onni would rewrite.
       expect(requests.some((r) => r.url.startsWith('/api/v1/projects/'))).toBe(false)
     })
 

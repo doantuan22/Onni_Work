@@ -53,7 +53,7 @@ export interface ThreadImage {
 }
 
 /**
- * A structured AskUser question the agent posed via `CEZ:ASK` (#473, v2
+ * A structured AskUser question the agent posed via `ONNI:ASK` (#473, v2
  * `ask.requested`). The cockpit renders it as clickable option chips. Resolution
  * is client-side: the next `user-message` for the run flips `resolved` and
  * records the reply as `answer`, so a reloaded thread reconstructs the same
@@ -69,7 +69,7 @@ export interface ThreadAsk {
   fromWorkflow?: boolean
 }
 
-/** A persisted, cezar-owned recovery marker for a provider's runtime authentication failure. */
+/** A persisted, onni-owned recovery marker for a provider's runtime authentication failure. */
 export interface ThreadProviderAuthRequired {
   kind: 'provider-auth-required'
   id: string
@@ -258,27 +258,27 @@ function providerId(value: unknown): ThreadProviderAuthRequired['provider'] | un
 const isAskQuestion = (value: unknown): value is UiAskQuestion =>
   isRecord(value) && typeof value.header === 'string' && Array.isArray(value.options)
 
-/** The engine's turn-end markers (`CEZ:DONE`, `CEZ:MONITORING` from #490) plus the in-band
- *  task-reference marker lines (`CEZ:PR=` / `CEZ:ISSUE=` / `CEZ:TITLE=`, spec
+/** The engine's turn-end markers (`ONNI:DONE`, `ONNI:MONITORING` from #490) plus the in-band
+ *  task-reference marker lines (`ONNI:PR=` / `ONNI:ISSUE=` / `ONNI:TITLE=`, spec
  *  2026-07-18-task-ref-markers). v1 `text` lines arrive pre-stripped by the server; v2 message
  *  items carry the raw text, so display strips them here. Named `stripDoneMarker` for
  *  continuity — it now strips every protocol marker. Mirrors `stripTaskMarkers` in
  *  `src/runs/task-markers.ts`.
  *
- *  `stripAsk` gates the `CEZ:ASK` strip on the turn actually holding an ask card (#473): the
+ *  `stripAsk` gates the `ONNI:ASK` strip on the turn actually holding an ask card (#473): the
  *  card is the only other place the questions exist, so a marker whose card never materialized
  *  (invalid payload, or the session died before turn-end) must stay visible as raw text — the
  *  user can still read the question and answer via the composer. Hiding it would delete the
  *  question from the thread entirely. */
 function stripDoneMarker(text: string, stripAsk: boolean): string {
   let trailing = text
-    .replace(/\s*CEZ:DONE\s*$/, '')
-    .replace(/\s*CEZ:MONITORING\s*$/, '')
-  if (stripAsk) trailing = trailing.replace(/\s*CEZ:ASK[ \t]+\{[\s\S]*\}\s*$/, '')
-  if (!trailing.includes('CEZ:')) return trailing
+    .replace(/\s*ONNI:DONE\s*$/, '')
+    .replace(/\s*ONNI:MONITORING\s*$/, '')
+  if (stripAsk) trailing = trailing.replace(/\s*ONNI:ASK[ \t]+\{[\s\S]*\}\s*$/, '')
+  if (!trailing.includes('ONNI:')) return trailing
   return trailing
     .split('\n')
-    .filter((line) => !/^CEZ:(?:PR=\d+|ISSUE=\d+|TITLE=.+)\s*$/.test(line))
+    .filter((line) => !/^ONNI:(?:PR=\d+|ISSUE=\d+|TITLE=.+)\s*$/.test(line))
     .join('\n')
 }
 
@@ -291,7 +291,7 @@ function stripDoneMarker(text: string, stripAsk: boolean): string {
  * concatenation reassembles a v2 message of the turn (or all of them in order, when v1 tool
  * suppression made several messages adjacent) is dropped as a whole; the v2 twin renders.
  * The comparison ignores whitespace — the server dropped whitespace-only deltas at persist
- * time — and strips markers on the CONCATENATION, catching `CEZ:DONE` split across tokens,
+ * time — and strips markers on the CONCATENATION, catching `ONNI:DONE` split across tokens,
  * which per-event stripping let through. A run that reassembles nothing is kept untouched.
  */
 function dropLegacyDeltaRuns(draft: DraftTurn): void {
@@ -666,7 +666,7 @@ export function reduceThread(events: RunEvent[], options: ThreadReduceOptions = 
         break
       }
       case 'provider-auth-required': {
-        // Cezar-owned persisted metadata: accept only the closed provider set and an opaque,
+        // Onni-owned persisted metadata: accept only the closed provider set and an opaque,
         // bounded incident id. A malformed historical/future line costs itself, never a turn.
         const provider = providerId(event.provider)
         const authFailureId = str(event.authFailureId)
@@ -734,7 +734,7 @@ export function reduceThread(events: RunEvent[], options: ThreadReduceOptions = 
         break
       }
 
-      // ---- THE v1 VOCABULARY SWEEP (cezar-code-map §3.2) — deliberate suppressions ---------
+      // ---- THE v1 VOCABULARY SWEEP (onni-code-map §3.2) — deliberate suppressions ---------
       // Every persisted v1 type is either rendered above or named here with the surface that
       // owns it instead, so an old transcript reads complete without transcript noise:
       //  - `step-start` / non-failed `step-end`: the run header's step rail (step-rail.tsx)
@@ -766,7 +766,7 @@ export function reduceThread(events: RunEvent[], options: ThreadReduceOptions = 
   // `text` line is a duplicate exactly when some v2 message item in the same turn carries the
   // same prose — which is the normal claude/codex/opencode path, where the v2 item lands first
   // and its v1 twin one line later. Comparison is on marker-stripped, trimmed text because the
-  // two arrive differently normalized: the server strips `CEZ:` markers from v1 `text` before
+  // two arrive differently normalized: the server strips `ONNI:` markers from v1 `text` before
   // persisting, while v2 items carry the raw text and are stripped below at render time.
   // Anything left unmatched is prose that exists ONLY in v1 — it renders rather than vanishing.
   for (const draft of turns) {

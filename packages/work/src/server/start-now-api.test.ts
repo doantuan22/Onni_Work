@@ -18,8 +18,8 @@ describe('POST /runs/:id/start-now', () => {
   let asked: string[];
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-start-now-api-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-start-now-api-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     asked = [];
     outcome = 'started';
     app = createApp({

@@ -733,7 +733,7 @@ describe('global tasks page', () => {
 
   it('paints no PR chip for a number another repo demonstrably owns (#854)', async () => {
     // Same record, PR half: an `om-auto-fix-pr` task driving open-mercato's #1977 from inside the
-    // cezar project seeds that number here, and this is the surface that has a repo for every row
+    // onni project seeds that number here, and this is the surface that has a repo for every row
     // — so without the guard it is the one that would link `acme/api/pull/1977` and 404.
     stubFetch({
       runs: [

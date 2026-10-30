@@ -24,10 +24,10 @@ import { pageTitleContext } from '@/routes'
  * Derive the sidebar's repo chip from `/api/health`.
  *
  * Null — the chip renders nothing — whenever there is nothing true to say: health hasn't
- * answered yet, or cezar is running outside a git repository (`repo: null`), which is a
+ * answered yet, or onni is running outside a git repository (`repo: null`), which is a
  * supported way to run it. An empty chip is honest; "loading…" or a guessed folder name is not.
  *
- * The name is the repo root's basename: `/home/me/Projects/cezar` → `cezar`. Both separators,
+ * The name is the repo root's basename: `/home/me/Projects/onni` → `onni`. Both separators,
  * because the server sends whatever path git gave it, and a trailing one is stripped first so
  * `/repo/` doesn't chip as an empty string.
  */
@@ -168,7 +168,7 @@ export const AppShellContainer = memo(function AppShellContainer({ children }: {
     <ListViewProvider>
       <AppShell
         repo={repo}
-        brandName={workspaceConfig.data?.branding.name ?? 'cezar'}
+        brandName={workspaceConfig.data?.branding.name ?? 'onni'}
         brandLogoUrl={workspaceConfig.data?.branding.logoUrl ?? null}
         version={health.data?.version ?? null}
         // `?? null` rather than `?? 0`: no badge while the inbox is unknown, and no badge when it

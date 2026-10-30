@@ -6,13 +6,13 @@ import { runSecretsCommand } from './secrets-cli.ts';
 import { SecretStore } from './secrets.ts';
 import { registerProject } from './projects.ts';
 
-describe('cezar secrets (spec 2026-10-10-project-secrets-vault-options)', () => {
+describe('onni secrets (spec 2026-10-10-project-secrets-vault-options)', () => {
   let root: string;
   let lines: string[];
   let errors: string[];
   let store: SecretStore;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-secrets-cli-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-secrets-cli-'));
     vi.stubEnv('CEZ_HOME', join(root, 'home'));
     lines = [];
     errors = [];
@@ -33,7 +33,7 @@ describe('cezar secrets (spec 2026-10-10-project-secrets-vault-options)', () => 
   it('sets from stdin, lists names with audiences and the key backend, and unsets — never a value', async () => {
     await registerProject(root);
     expect(await cli(['set', 'E2E_KEY'], 'cli-secret-value')).toBe(0);
-    expect(await cli(['set', 'LLM_KEY', '--audience', 'cezar,checks'], 'cli-llm-value')).toBe(0);
+    expect(await cli(['set', 'LLM_KEY', '--audience', 'onni,checks'], 'cli-llm-value')).toBe(0);
     expect(await cli(['list'])).toBe(0);
     expect(await cli(['unset', 'E2E_KEY'])).toBe(0);
     expect(await cli(['list'])).toBe(0);
@@ -48,7 +48,7 @@ describe('cezar secrets (spec 2026-10-10-project-secrets-vault-options)', () => 
     expect(lines).toEqual(['SHARED', 'SHARED\tchecks']);
     expect((await store.read({ kind: 'workspace' })).values.SHARED?.value).toBe('workspace-value');
     expect(await cli(['list'])).toBe(1);
-    expect(errors.at(-1)).toContain('not a registered cezar project');
+    expect(errors.at(-1)).toContain('not a registered onni project');
   });
 
   it('never takes a value from argv, and refuses any other operand or flag shape', async () => {

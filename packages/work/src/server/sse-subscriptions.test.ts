@@ -16,9 +16,9 @@ describe('shared SSE subscriptions (#1222)', () => {
   const bodies: ReadableStream<Uint8Array>[] = [];
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-sse-subscriptions-'));
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(root, '.ai/cezar'));
+    root = mkdtempSync(join(tmpdir(), 'onni-sse-subscriptions-'));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(root, '.ai/onni'));
     app = createApp({ repoRoot: root, store, manager: {} as RunManager, version: 'test' });
   });
 

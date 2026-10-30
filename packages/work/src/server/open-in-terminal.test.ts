@@ -6,13 +6,13 @@ import { createLaunchScript, openInTerminal, refuseSpawnUnderTest, wslTerminalLa
 
 describe('wslTerminalLaunchers (#361 WSL support)', () => {
   it('tries Windows Terminal first, re-entering the distro through wsl.exe', () => {
-    const [first] = wslTerminalLaunchers('/tmp/cez-term-abc/launch.sh', 'Ubuntu');
-    expect(first).toEqual(['wt.exe', ['wsl.exe', '-d', 'Ubuntu', '--', '/tmp/cez-term-abc/launch.sh']]);
+    const [first] = wslTerminalLaunchers('/tmp/onni-term-abc/launch.sh', 'Ubuntu');
+    expect(first).toEqual(['wt.exe', ['wsl.exe', '-d', 'Ubuntu', '--', '/tmp/onni-term-abc/launch.sh']]);
   });
 
   it('falls back to a classic console window, same wsl.exe re-entry', () => {
-    const [, second] = wslTerminalLaunchers('/tmp/cez-term-abc/launch.sh', 'Ubuntu');
-    expect(second).toEqual(['conhost.exe', ['wsl.exe', '-d', 'Ubuntu', '--', '/tmp/cez-term-abc/launch.sh']]);
+    const [, second] = wslTerminalLaunchers('/tmp/onni-term-abc/launch.sh', 'Ubuntu');
+    expect(second).toEqual(['conhost.exe', ['wsl.exe', '-d', 'Ubuntu', '--', '/tmp/onni-term-abc/launch.sh']]);
   });
 
   // Regression guard for the BatBadBut class (CVE-2024-27980) that #459 fixed in the sibling
@@ -33,7 +33,7 @@ describe('wslTerminalLaunchers (#361 WSL support)', () => {
 });
 
 /**
- * #785: this opener used to `mkdtemp` a `cez-term-*` directory per launch and never
+ * #785: this opener used to `mkdtemp` a `onni-term-*` directory per launch and never
  * remove it. On a host whose `/tmp` is a tmpfs that never reboots, that litter is part
  * of what exhausts the directory the agents' output capture depends on — the failure
  * this issue is really about. Asserted on `createLaunchScript` rather than through
@@ -54,7 +54,7 @@ describe('launch-script cleanup (#785)', () => {
     const scriptPath = createLaunchScript('/some/worktree', 'claude --resume abc', 5);
     expect(existsSync(scriptPath)).toBe(true);
     expect(readFileSync(scriptPath, 'utf8')).toContain('claude --resume abc');
-    expect(dirname(scriptPath)).toMatch(/cez-term-/);
+    expect(dirname(scriptPath)).toMatch(/onni-term-/);
 
     expect(await waitGone(dirname(scriptPath))).toBe(true);
     expect(existsSync(scriptPath)).toBe(false);

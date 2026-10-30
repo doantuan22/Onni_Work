@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import {
   DEFAULT_SERVER_INSTANCE,
   agentHomePaths,
-  cezarHomeDir,
+  onniHomeDir,
   claudeStateFilePath,
   instanceSlug,
   isAbsolutePath,
@@ -22,42 +22,42 @@ describe('paths', () => {
     else process.env.CEZ_HOME = original;
   });
 
-  it('defaults cezarHomeDir to ~/.cezar', () => {
+  it('defaults onniHomeDir to ~/.onni', () => {
     delete process.env.CEZ_HOME;
-    expect(cezarHomeDir()).toBe(join(homedir(), '.cezar'));
+    expect(onniHomeDir()).toBe(join(homedir(), '.onni'));
   });
 
   it('honors the CEZ_HOME override', () => {
-    process.env.CEZ_HOME = '/tmp/cez-home-test';
-    expect(cezarHomeDir()).toBe('/tmp/cez-home-test');
-    expect(serverStatePath()).toBe('/tmp/cez-home-test/server.json');
-    expect(serverLockPath()).toBe('/tmp/cez-home-test/server.install.lock');
+    process.env.CEZ_HOME = '/tmp/onni-home-test';
+    expect(onniHomeDir()).toBe('/tmp/onni-home-test');
+    expect(serverStatePath()).toBe('/tmp/onni-home-test/server.json');
+    expect(serverLockPath()).toBe('/tmp/onni-home-test/server.install.lock');
   });
 
   it('the default instance keeps the legacy un-suffixed paths', () => {
-    process.env.CEZ_HOME = '/tmp/cez-home-test';
-    expect(serverStatePath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/cez-home-test/server.json');
-    expect(serverLockPath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/cez-home-test/server.install.lock');
+    process.env.CEZ_HOME = '/tmp/onni-home-test';
+    expect(serverStatePath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/onni-home-test/server.json');
+    expect(serverLockPath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/onni-home-test/server.install.lock');
   });
 
-  it('workspace config/ui-state live directly under the cezar home', () => {
+  it('workspace config/ui-state live directly under the onni home', () => {
     delete process.env.CEZ_HOME;
-    expect(workspaceConfigPath()).toBe(join(homedir(), '.cezar', 'config.json'));
-    expect(workspaceUiStatePath()).toBe(join(homedir(), '.cezar', 'ui-state.json'));
+    expect(workspaceConfigPath()).toBe(join(homedir(), '.onni', 'config.json'));
+    expect(workspaceUiStatePath()).toBe(join(homedir(), '.onni', 'ui-state.json'));
   });
 
   it('workspace paths honor the CEZ_HOME override', () => {
-    process.env.CEZ_HOME = '/tmp/cez-home-test';
-    expect(workspaceConfigPath()).toBe('/tmp/cez-home-test/config.json');
-    expect(workspaceUiStatePath()).toBe('/tmp/cez-home-test/ui-state.json');
+    process.env.CEZ_HOME = '/tmp/onni-home-test';
+    expect(workspaceConfigPath()).toBe('/tmp/onni-home-test/config.json');
+    expect(workspaceUiStatePath()).toBe('/tmp/onni-home-test/ui-state.json');
   });
 
   it('a named instance lives under server-instances/, keyed by slug', () => {
-    process.env.CEZ_HOME = '/tmp/cez-home-test';
-    expect(serverInstancesDir()).toBe('/tmp/cez-home-test/server-instances');
-    expect(serverStatePath('shop-example-com')).toBe('/tmp/cez-home-test/server-instances/shop-example-com.json');
+    process.env.CEZ_HOME = '/tmp/onni-home-test';
+    expect(serverInstancesDir()).toBe('/tmp/onni-home-test/server-instances');
+    expect(serverStatePath('shop-example-com')).toBe('/tmp/onni-home-test/server-instances/shop-example-com.json');
     expect(serverLockPath('shop-example-com')).toBe(
-      '/tmp/cez-home-test/server-instances/shop-example-com.install.lock',
+      '/tmp/onni-home-test/server-instances/shop-example-com.install.lock',
     );
   });
 });
@@ -73,7 +73,7 @@ describe('isAbsolutePath', () => {
     expect(isAbsolutePath('projects\\ProjectName', 'win32')).toBe(false);
     expect(isAbsolutePath('..\\repo', 'win32')).toBe(false);
     expect(isAbsolutePath('C:repo', 'win32')).toBe(false);
-    expect(isAbsolutePath('~/cezar/projects', 'win32')).toBe(false);
+    expect(isAbsolutePath('~/onni/projects', 'win32')).toBe(false);
   });
 
   it('keeps the POSIX rule on POSIX — a Windows spelling is not absolute there', () => {
@@ -102,8 +102,8 @@ it('an EMPTY CEZ_HOME falls back to the default instead of a relative cwd path',
   const original = process.env.CEZ_HOME;
   process.env.CEZ_HOME = '';
   try {
-    expect(cezarHomeDir().startsWith('/')).toBe(true);
-    expect(cezarHomeDir().endsWith('/.cezar')).toBe(true);
+    expect(onniHomeDir().startsWith('/')).toBe(true);
+    expect(onniHomeDir().endsWith('/.onni')).toBe(true);
   } finally {
     if (original === undefined) delete process.env.CEZ_HOME;
     else process.env.CEZ_HOME = original;
@@ -162,10 +162,10 @@ describe('claudeStateFilePath', () => {
     expect(claudeStateFilePath('/home/u/.claude-klaudiusz', env)).toBe('/home/u/.claude-klaudiusz/.claude.json');
   });
 
-  it('reads an account\'s OWN state file when the cezar process carries an override', () => {
-    // Review case: cezar started with CLAUDE_CONFIG_DIR=/opt/work, and `~/.claude` added as a NAMED
+  it('reads an account\'s OWN state file when the onni process carries an override', () => {
+    // Review case: onni started with CLAUDE_CONFIG_DIR=/opt/work, and `~/.claude` added as a NAMED
     // account (legal — the discovered account is /opt/work, so it is not a duplicate). The answer is
-    // the file INSIDE it, because that is the one the CLI will read when cezar runs that account as
+    // the file INSIDE it, because that is the one the CLI will read when onni runs that account as
     // `CLAUDE_CONFIG_DIR=~/.claude claude`. The sibling would describe a login it never uses.
     const env = { HOME: '/home/u', CLAUDE_CONFIG_DIR: '/opt/work' } as NodeJS.ProcessEnv;
     expect(claudeStateFilePath('/home/u/.claude', env)).toBe('/home/u/.claude/.claude.json');

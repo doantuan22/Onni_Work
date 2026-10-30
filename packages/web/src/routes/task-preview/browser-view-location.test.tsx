@@ -52,7 +52,7 @@ function report(url: string, how: string, { origin = 'http://localhost:5173', so
   act(() => {
     window.dispatchEvent(
       new MessageEvent('message', {
-        data: { source: 'cezar-preview', type: 'location', url, how },
+        data: { source: 'onni-preview', type: 'location', url, how },
         origin,
         source: source as MessageEventSource,
       }),

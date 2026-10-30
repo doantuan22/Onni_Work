@@ -141,7 +141,7 @@ describe('webhook filesystem privacy', () => {
     const item = source();
     item.snapshot.title = 'Review CI/CD and https://example.com/docs/page';
     item.trackerIssueUrl = 'https://tracker.example.com/issues/123';
-    item.mode = 'hosted'; item.cockpitUrl = 'https://cezar.example.com/p/project/tasks/1';
+    item.mode = 'hosted'; item.cockpitUrl = 'https://onni.example.com/p/project/tasks/1';
     const durable = payload.redactSource(item, []);
     expect(durable.snapshot.title).toBe(item.snapshot.title);
     expect(JSON.parse(payload.renderPayload(durable, 'standard', [])).links).toEqual({ issue: item.trackerIssueUrl, cockpit: item.cockpitUrl });

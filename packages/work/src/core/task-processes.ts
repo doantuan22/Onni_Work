@@ -2,7 +2,7 @@
  * Processes a task leaves running after it settles (#1411). Every agent is spawned with
  * `CEZ_TASK_ID` in its environment and every descendant inherits it — re-parented, `setsid`ed and
  * double-forked ones included — so the marker finds what a process-tree walk misses, and never a
- * user's own shell in the worktree. It also finds orphans of cezar versions that predate this.
+ * user's own shell in the worktree. It also finds orphans of onni versions that predate this.
  *
  * Linux reads `/proc/<pid>/environ`; macOS parses `ps -E`; anything else finds nothing. Every
  * failure degrades to "found nothing" — this must never affect a run.
@@ -64,7 +64,7 @@ function capCommand(command: string): string {
   return trimmed.length > 120 ? `${trimmed.slice(0, 119)}…` : trimmed;
 }
 
-/** cezar itself and every ancestor — never signalled, whatever they inherited (a nested cezar). */
+/** onni itself and every ancestor — never signalled, whatever they inherited (a nested onni). */
 function excludedPids(parents: (pid: number) => number | undefined): Set<number> {
   const out = new Set<number>();
   let pid: number | undefined = process.pid;
@@ -123,7 +123,7 @@ function listDarwin(): Promise<TaskProcess[]> {
   });
 }
 
-/** Every live process carrying a `CEZ_TASK_ID`, cezar's own ancestry excluded. Never throws. */
+/** Every live process carrying a `CEZ_TASK_ID`, onni's own ancestry excluded. Never throws. */
 export async function listTaskProcesses(): Promise<TaskProcess[]> {
   try {
     if (process.platform === 'linux') return await listLinux();

@@ -428,7 +428,7 @@ function AccountAuthRequiredCard({
   )
 }
 
-/** The CLIs with a self-update cezar can run (`updateArgs` in `provider-auth.ts`); the rest
+/** The CLIs with a self-update onni can run (`updateArgs` in `provider-auth.ts`); the rest
  *  update the way they were installed, so the card says so instead of offering a 409. */
 const SELF_UPDATING = new Set<ThreadProviderAuthRequired['provider']>(['claude', 'opencode', 'cursor'])
 

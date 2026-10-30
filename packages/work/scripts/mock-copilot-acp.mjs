@@ -30,7 +30,7 @@ const unauthenticated = process.env.CEZ_MOCK_COPILOT_UNAUTHENTICATED === '1';
  *  `--allow-all-tools`, but "should never" is exactly the assumption that strands a run, so the
  *  auto-answer path needs to be exercisable. */
 const askPermission = process.env.CEZ_MOCK_COPILOT_ASK_PERMISSION === '1';
-/** Inbound requests cezar answers, keyed by the id this mock sent them under. */
+/** Inbound requests onni answers, keyed by the id this mock sent them under. */
 const pendingRequests = new Map();
 let nextRequestId = 1000;
 
@@ -42,7 +42,7 @@ if (process.env.CEZ_MOCK_COPILOT_ARGS_FILE) {
 }
 
 /**
- * Handling a frame must NEVER block the read loop: a `session/prompt` that waits for cezar's
+ * Handling a frame must NEVER block the read loop: a `session/prompt` that waits for onni's
  * answer to an inbound `session/request_permission` can only get that answer off stdin, so
  * awaiting it inline deadlocks the whole mock. Frames are therefore dispatched without awaiting;
  * the runner serializes prompts on its own side, so nothing races.
@@ -141,7 +141,7 @@ async function handle(frame) {
         },
       });
       const reply = await answered;
-      // Echo what cezar picked, so the test can assert the choice reached the agent.
+      // Echo what onni picked, so the test can assert the choice reached the agent.
       update(sessionId, {
         sessionUpdate: 'agent_message_chunk',
         content: { type: 'text', text: `[permission:${reply?.result?.outcome?.optionId ?? 'none'}] ` },

@@ -41,7 +41,7 @@ export interface ProviderCommandResult {
   exitCode: number | null;
   errorCode?: string;
   timedOut?: boolean;
-  /** The signal that killed the CLI, when one did and it was not cezar's own timeout. */
+  /** The signal that killed the CLI, when one did and it was not onni's own timeout. */
   signal?: string;
 }
 
@@ -72,7 +72,7 @@ const STDIN_CLOSE_MARGIN_MS = 2_000;
 
 /**
  * The explicit environment lock delegates model and credential configuration
- * to each native coding agent. In that mode Cezar must not second-guess the
+ * to each native coding agent. In that mode Onni must not second-guess the
  * agent's own credentials through the provider checks introduced by #652.
  *
  * Config-file model locks intentionally do not disable the checks: this bypass
@@ -136,7 +136,7 @@ const RETRY_TIMEOUT_MS = 30_000;
  * certainly not changed. So a CONNECTED answer is kept for minutes.
  *
  * A NOT-CONNECTED answer is re-checked sooner, for ONE reason: display self-healing. If you log in
- * from a terminal, cezar cannot see it happen, so a card that says "disconnected" must eventually
+ * from a terminal, onni cannot see it happen, so a card that says "disconnected" must eventually
  * find out on its own. The window is a minute rather than seconds because reading is now
  * stale-while-revalidate (see `status`): every expiry costs a background probe, and a cockpit
  * polling this endpoint would turn a five-second window into a spawn every five seconds, forever,
@@ -152,7 +152,7 @@ const RETRY_TIMEOUT_MS = 30_000;
  * gone bad surfaces as a runtime auth failure, which is latched and overrides this cache on the spot
  * (`withRuntimeFailures`).
  *
- * Anything cezar CAN observe invalidates explicitly instead of waiting for either window: opening a
+ * Anything onni CAN observe invalidates explicitly instead of waiting for either window: opening a
  * login (`POST /providers/connect`), repointing or removing an account (`forgetProfileStatus`), and
  * a runtime rejection.
  */
@@ -574,7 +574,7 @@ function cursorUnrecognizedHint(result: ProviderCommandResult): string | undefin
 }
 
 /**
- * Where a probe runs when cezar's own working directory is unusable — deleted, or a folder the
+ * Where a probe runs when onni's own working directory is unusable — deleted, or a folder the
  * macOS app may not read — and `undefined` (inherit, as always) otherwise. Every CLI then failed
  * before answering, `claude --version` included (telemetry 35838a52, b82b92cf).
  */
@@ -635,12 +635,12 @@ export function defaultRunProviderCommand(
           exitCode: typeof code === 'number' ? code : error ? null : 0,
           errorCode: typeof code === 'string' ? code : undefined,
           timedOut,
-          // The linger kill after an answer is cezar's own cleanup, not an interruption to re-ask over.
+          // The linger kill after an answer is onni's own cleanup, not an interruption to re-ask over.
           ...(!timedOut && !answered && commandError?.signal ? { signal: commandError.signal } : {}),
         });
       },
     );
-    // A CLI that exits before reading its payload must not crash cezar with an unhandled EPIPE.
+    // A CLI that exits before reading its payload must not crash onni with an unhandled EPIPE.
     child.stdin?.on('error', () => {});
     // Closing stdin is what makes a stdin-driven probe terminate at all: the Copilot ACP server
     // reads until EOF. A probe with no payload closes it immediately, exactly as before.
@@ -661,7 +661,7 @@ export function defaultRunProviderCommand(
       if (!closeWhen(seen)) return;
       answered = true;
       close();
-      // Copilot 1.0.103 on Windows answered session/new and then outlived EOF until cezar's
+      // Copilot 1.0.103 on Windows answered session/new and then outlived EOF until onni's
       // timeout killed it, twice, and the answer was reported as a hang (telemetry 5f52beba).
       lingerTimer = setTimeout(() => child.kill(), STDIN_CLOSE_MARGIN_MS);
     };
@@ -740,7 +740,7 @@ export function versionManagerShimMiss(result: ProviderCommandResult): string | 
 
 /**
  * A probe stopped by a signal from outside — Ctrl-C reaches the whole foreground process group, so
- * the CLI exits 130 while cezar shuts down (telemetry ce0c5d1f). Says nothing about the CLI.
+ * the CLI exits 130 while onni shuts down (telemetry ce0c5d1f). Says nothing about the CLI.
  */
 function wasInterrupted(result: ProviderCommandResult): boolean {
   return !result.timedOut && (result.signal !== undefined || isSignalTerminationExit(result.exitCode));
@@ -918,7 +918,7 @@ export class ProviderAuthService {
   }
 
   /** The user pressed Check again on this account: a probe started from now on may lift even a
-   *  definitive incident. Their click, not cezar's own probing, is the evidence of a fresh login. */
+   *  definitive incident. Their click, not onni's own probing, is the evidence of a fresh login. */
   recheckProfileAuthFailure(provider: ProviderId, profileId: string): void {
     const failure = this.profileRuntimeFailures.get(profileCacheKey(provider, profileId));
     if (failure) failure.recheckedAt = ++this.nextRuntimeFailureGeneration;
@@ -1273,7 +1273,7 @@ export class ProviderAuthService {
       };
       // A shim `spawnableCommand` could not unwrap: say which setting to change, not "try again".
       const hint = /\.(?:cmd|bat|ps1)$/i.test(executable)
-        ? `\`${executable}\` is a Windows script shim cezar cannot start without a shell. Point ${descriptor.overrideEnv} at the CLI's .exe or its .js entry point.`
+        ? `\`${executable}\` is a Windows script shim onni cannot start without a shell. Point ${descriptor.overrideEnv} at the CLI's .exe or its .js entry point.`
         : UNKNOWN_HINT;
       return { provider: descriptor.id, status: 'unknown', hint };
     }

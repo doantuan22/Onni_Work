@@ -1,4 +1,4 @@
-/* cezar cockpit — Tailwind v4 entry point and the Mercato design-token definition site.
+/* onni cockpit — Tailwind v4 entry point and the Mercato design-token definition site.
  *
  * Ported verbatim from the mockup token sheet (.ai/analysis/cockpit-ui-redesign/mercato-visuals.md §1).
  * Dark is the default theme; `.light` on <html> flips it.
@@ -85,7 +85,7 @@
 
 /* The wordmark's face (brand guideline, "Znak z nazwą"): Chakra Petch SemiBold, whose chamfered
  * corners repeat the angles of the mark. ONE weight, latin only — it sets five letters, the
- * name `cezar`, and nothing else in the cockpit. Vendored from @fontsource/chakra-petch v5.3.0
+ * name `onni`, and nothing else in the cockpit. Vendored from @fontsource/chakra-petch v5.3.0
  * (SIL OFL 1.1, licence beside the binary). */
 @font-face {
   font-family: 'Chakra Petch';

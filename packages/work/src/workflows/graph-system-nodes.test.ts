@@ -30,7 +30,7 @@ const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 
 /**
- * Phase-1c nodes end to end (spec 2026-09-30-workflow-node-editor): nodes cezar runs itself,
+ * Phase-1c nodes end to end (spec 2026-09-30-workflow-node-editor): nodes onni runs itself,
  * with a real RunManager, the bundled mock agent and `CEZ_DRY_RUN=1` GitHub fakes.
  */
 describe('graph system nodes', () => {
@@ -40,17 +40,17 @@ describe('graph system nodes', () => {
   let savedDryRun: string | undefined;
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-graph-sys-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-graph-sys-'));
     savedDryRun = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
-    // A real repo gets `.ai/cezar/.gitignore` from `ensureDataGitignore`; this bare one must not
-    // let `git.commit` sweep cezar's own run state into the branch.
+    // A real repo gets `.ai/onni/.gitignore` from `ensureDataGitignore`; this bare one must not
+    // let `git.commit` sweep onni's own run state into the branch.
     writeFileSync(join(repoRoot, '.gitignore'), '.ai/\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -99,7 +99,7 @@ describe('graph system nodes', () => {
     const id = manager.startRun(def(GATE), { task: 'the fix', worktree: false }).id;
     const parked = await until(id, parkedAt('gate'));
     expect(parked.askParked).toBe(true);
-    const events = readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`), 'utf8');
+    const events = readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.ndjson`), 'utf8');
     expect(events).toContain('"ask.requested"');
     expect(events).toContain('Ship the fix?');
 
@@ -196,7 +196,7 @@ describe('graph system nodes', () => {
     // The process goes away with the run parked at the gate…
     manager.dispose();
     store.flush();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     manager = new RunManager(store, repoRoot);
     await manager.recover();
 
@@ -400,7 +400,7 @@ describe('graph system nodes', () => {
     const id = manager.startRun(def(FORK), { task: 'x', worktree: true }).id;
     const final = await until(id, terminal, 60_000);
     const { stdout } = await run('git', ['log', '--format=%s', final.branch as string], { cwd: repoRoot });
-    expect(stdout).toContain('cezar autosave (pre-dispatch)');
+    expect(stdout).toContain('onni autosave (pre-dispatch)');
     // The child's worktree starts from the task branch as it stood at the fork.
     const child = store.listRuns().find((r) => r.dispatch?.parentRunId === id);
     const shown = await run('git', ['show', `${child?.branch}:made.txt`], { cwd: repoRoot });
@@ -417,7 +417,7 @@ describe('graph system nodes', () => {
     const tests = before.find((c) => c.title === 'tests')!;
 
     // Roll the parent back to the exact crash window the fix closes: `correctness` was
-    // dispatched and its own output recorded, but cezar died before the fork's AGGREGATE
+    // dispatched and its own output recorded, but onni died before the fork's AGGREGATE
     // `runIds` output (which used to persist only once, after the whole dispatch loop) ever
     // saw the second branch — so `tests` never happened at all.
     store.deleteRun(tests.id);
@@ -570,7 +570,7 @@ describe('graph system nodes', () => {
         { id: 'start', type: 'start' },
         { id: 'push', type: 'git.push' },
         { id: 'pr', type: 'github.draft-pr' },
-        { id: 'update', type: 'github.pr-update', ready: true, addLabels: ['cezar'], reviewers: ['octocat'] },
+        { id: 'update', type: 'github.pr-update', ready: true, addLabels: ['onni'], reviewers: ['octocat'] },
         { id: 'issue', type: 'github.issue-comment', issue: 7, body: 'Fixed in {{nodes.pr.url}}' },
         { id: 'ok', type: 'end', status: 'success' },
       ],

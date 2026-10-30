@@ -31,14 +31,14 @@ const rl = createInterface({ input: process.stdin });
  *   mock:compaction-hold     turn 1 compaction-ends; turn 2 opens and never ends
  *   mock:compaction-repeat   EVERY turn compaction-ends (the spin the bound exists for)
  *   mock:compaction-reject   turn 1 compaction-ends; the next `turn/start` is REFUSED
- *   mock:compaction-done     the turn emits CEZ:DONE and THEN compacts
- *   mock:compaction-monitor  the turn emits CEZ:MONITORING and THEN compacts
- *   mock:compaction-monitor-ref  as above, with a CEZ:PR= line AFTER the marker (#933)
- *   mock:compaction-badask   the turn emits a MALFORMED CEZ:ASK and THEN compacts
+ *   mock:compaction-done     the turn emits ONNI:DONE and THEN compacts
+ *   mock:compaction-monitor  the turn emits ONNI:MONITORING and THEN compacts
+ *   mock:compaction-monitor-ref  as above, with a ONNI:PR= line AFTER the marker (#933)
+ *   mock:compaction-badask   the turn emits a MALFORMED ONNI:ASK and THEN compacts
  *   mock:child-compaction    a CHILD thread compacts and ends its turn; the parent works on
  *   mock:steer-reject        the turn stays open, so a follow-up steers — and is REFUSED
  *
- * The continuation cezar sends after a boundary carries no `mock:` marker, so
+ * The continuation onni sends after a boundary carries no `mock:` marker, so
  * the scenario is latched from the opening turn rather than re-read per turn.
  */
 // `monitor-ref` before `monitor`: `find` takes the first substring hit.
@@ -48,11 +48,11 @@ let turnSeq = 0;
 
 /** The prose (if any) this scenario emits BEFORE the compaction item. */
 function compactionPrelude(kind) {
-  if (kind === 'done') return 'Everything is in place.\n\nCEZ:DONE';
-  if (kind === 'monitor') return 'Kicked the build off.\n\nCEZ:MONITORING';
-  if (kind === 'monitor-ref') return 'Kicked the build off.\n\nCEZ:MONITORING\nCEZ:PR=1010';
+  if (kind === 'done') return 'Everything is in place.\n\nONNI:DONE';
+  if (kind === 'monitor') return 'Kicked the build off.\n\nONNI:MONITORING';
+  if (kind === 'monitor-ref') return 'Kicked the build off.\n\nONNI:MONITORING\nONNI:PR=1010';
   // Malformed on purpose: it raises no card, so a continuation would bury the question.
-  if (kind === 'badask') return 'Which database should I use?\n\nCEZ:ASK not-json';
+  if (kind === 'badask') return 'Which database should I use?\n\nONNI:ASK not-json';
   return 'Halfway through the refactor — three files still to go.';
 }
 
@@ -71,7 +71,7 @@ function emitCompactionTurn(turnId, kind) {
 
 /** The recovered turn: real work after the boundary, ending on the completion marker. */
 function emitRecoveredTurn(turnId) {
-  const text = 'Refactor finished and the suite is green.\n\nCEZ:DONE';
+  const text = 'Refactor finished and the suite is green.\n\nONNI:DONE';
   const messageId = `item_m_${turnId}`;
   emit({ method: 'item/started', params: { threadId: 'th_mock_1', turnId, item: { type: 'agentMessage', id: messageId, text: '' } } });
   emit({ method: 'item/agentMessage/delta', params: { threadId: 'th_mock_1', turnId, itemId: messageId, delta: text } });
@@ -139,7 +139,7 @@ rl.on('line', (line) => {
     // A follow-up delivered INTO a live turn. `mock:steer-reject` refuses it after stdin
     // already accepted the message — the second half of #955's silent-zombie shape.
     // `mock:steer-silent` never answers at all, so the request is still in flight when
-    // cezar tears the session down and `rejectPending` settles it.
+    // onni tears the session down and `rejectPending` settles it.
     if (scenario === 'steer-silent') return;
     if (scenario === 'steer-reject') {
       emit({ id: msg.id, error: { code: -32602, message: 'expectedTurnId does not match the active turn' } });

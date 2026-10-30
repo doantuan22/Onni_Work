@@ -20,7 +20,7 @@ export interface BackendCheck {
 }
 
 /**
- * Probe the host for everything cez leans on: the agent CLIs (`claude`, and
+ * Probe the host for everything onni leans on: the agent CLIs (`claude`, and
  * the optional `codex` / `opencode` / `cursor` / `pi` / `junie` / `copilot`
  * alternatives), `gh` (GitHub auth for PR creation) and `git`. Nothing is required except at
  * least one agent CLI — the GUI degrades gracefully, only offers the
@@ -72,7 +72,7 @@ async function probeClaude(): Promise<BackendCheck> {
     return {
       name: 'claude',
       available: false,
-      // npm, to match what cezar's own installer runs (`server-install/steps.ts`, `NPM_GLOBAL`)
+      // npm, to match what onni's own installer runs (`server-install/steps.ts`, `NPM_GLOBAL`)
       // and what the cockpit's accounts panel tells users — and because it is the one route
       // that works on every platform this runs on.
       hint: 'install Claude Code (npm i -g @anthropic-ai/claude-code) and log in',

@@ -53,7 +53,7 @@ const num = (value: unknown): number => (typeof value === 'number' && Number.isF
 /**
  * A pick out of whatever arrived — from the framed page's `postMessage` or from the draft store.
  *
- * Defensive on purpose and bounded on every field: the sender is a page cezar does not control,
+ * Defensive on purpose and bounded on every field: the sender is a page onni does not control,
  * and what it sends ends up in a prompt. Anything that is not recognisably an element answers
  * `null`.
  */

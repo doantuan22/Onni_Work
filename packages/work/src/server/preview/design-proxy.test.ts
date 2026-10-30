@@ -106,7 +106,7 @@ describe('the Design Mode proxy', () => {
   it('injects the picker into HTML, with a correct length, and into nothing else', async () => {
     const origin = await open();
     const page = await get(`${origin}/`);
-    expect(page.body).toContain(`<head><script src="${PICKER_PATH}" data-cezar-design></script><title>`);
+    expect(page.body).toContain(`<head><script src="${PICKER_PATH}" data-onni-design></script><title>`);
     expect(Number(page.headers['content-length'])).toBe(Buffer.byteLength(page.body));
     const script = await get(`${origin}/app.js`);
     expect(script.body).toBe('console.log("<head>")');
@@ -228,11 +228,11 @@ describe('the Design Mode proxy', () => {
   });
 
   it('refuses a cockpit that is not local', async () => {
-    const opened = await proxies.open({ target: upstreamOrigin, parentOrigin: 'https://cezar.example.com' });
+    const opened = await proxies.open({ target: upstreamOrigin, parentOrigin: 'https://onni.example.com' });
     expect(opened.ok).toBe(false);
   });
 
-  it('refuses to mirror cezar itself, under any loopback spelling', async () => {
+  it('refuses to mirror onni itself, under any loopback spelling', async () => {
     for (const target of ['http://localhost:4321', 'http://127.0.0.1:4321']) {
       expect((await proxies.open({ target, parentOrigin: COCKPIT })).ok).toBe(false);
     }
@@ -250,7 +250,7 @@ describe('parseDesignTarget', () => {
 });
 
 describe('injectPicker', () => {
-  const tag = `<script src="${PICKER_PATH}" data-cezar-design></script>`;
+  const tag = `<script src="${PICKER_PATH}" data-onni-design></script>`;
   it.each([
     ['<html><head lang="en"><meta></head></html>', `<html><head lang="en">${tag}<meta></head></html>`],
     ['<!DOCTYPE html><html><body>x</body></html>', `<!DOCTYPE html><html>${tag}<body>x</body></html>`],
@@ -264,7 +264,7 @@ describe('injectPicker', () => {
 describe('pickerScript', () => {
   it('is syntactically valid JavaScript with the config inlined', () => {
     const source = pickerScript({ parentOrigin: COCKPIT, upstreamOrigin: 'http://localhost:5173' });
-    expect(source).not.toContain('__CEZAR_DESIGN_CONFIG__');
+    expect(source).not.toContain('__ONNI_DESIGN_CONFIG__');
     expect(() => new Function(source)).not.toThrow();
   });
 

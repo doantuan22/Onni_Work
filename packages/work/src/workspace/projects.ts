@@ -17,7 +17,7 @@ import {
 } from './config.ts';
 
 /**
- * Project registry operations over `~/.cezar/config.json` (spec
+ * Project registry operations over `~/.onni/config.json` (spec
  * 2026-07-20-multi-project-workspace, "Project identity" + "Boot flow"):
  *
  * - `shouldRegisterProject(root)` / `shouldAutoRegisterProject(root)` — the
@@ -26,12 +26,12 @@ import {
  * - `registerProject(root)` — realpath-normalize, dedupe by realpath, allocate
  *   a human-readable slug from `basename(root)`. Registration is additive and
  *   goes through the read-modify-write merge, so the worst race outcome
- *   between concurrent `cezar serve` processes is a lost `lastOpenedAt` bump —
+ *   between concurrent `onni serve` processes is a lost `lastOpenedAt` bump —
  *   never a lost project.
  * - `listProjects()` — registry entries + a cheap per-root status/branch probe
  *   behind a short TTL cache, so a sidebar render never shells `git` N times.
  * - `removeProject(id)` — unregister only. It never touches any file inside
- *   the repo (a project's own state stays in `<repo>/.ai/cezar/`).
+ *   the repo (a project's own state stays in `<repo>/.ai/onni/`).
  */
 
 /**
@@ -100,9 +100,9 @@ async function normalizeRoot(root: string): Promise<string> {
   }
 }
 
-/** True when `path` sits inside a cezar task worktree (`…/.ai/cezar/worktrees/…`). */
+/** True when `path` sits inside a onni task worktree (`…/.ai/onni/worktrees/…`). */
 function isInsideTaskWorktree(path: string): boolean {
-  const marker = `${sep}.ai${sep}cezar${sep}worktrees${sep}`;
+  const marker = `${sep}.ai${sep}onni${sep}worktrees${sep}`;
   return `${path}${sep}`.includes(marker);
 }
 
@@ -112,8 +112,8 @@ function isInsideTaskWorktree(path: string): boolean {
  * normally, it just doesn't pollute the registry — when the resolved
  * `repoRoot` is:
  *
- * - inside any `…/.ai/cezar/worktrees/…` path (task worktrees and nested
- *   `cez` invocations — the same nesting reality the `CEZ_TODOS_FILE=''`
+ * - inside any `…/.ai/onni/worktrees/…` path (task worktrees and nested
+ *   `onni` invocations — the same nesting reality the `CEZ_TODOS_FILE=''`
  *   guard in `workflows/run.ts` acknowledges), checked on both the raw and
  *   realpath'd spelling so neither a symlinked prefix nor a literal one
  *   slips through; or
@@ -132,19 +132,19 @@ export async function shouldRegisterProject(repoRoot: string): Promise<boolean> 
 
 /**
  * The BOOT-time guard: `shouldRegisterProject` plus the "seed once" rule.
- * Starting cezar inside a folder is only an implicit "this is my project"
+ * Starting onni inside a folder is only an implicit "this is my project"
  * when the user has no projects yet — once the registry has any entry, the
  * cwd is a place the cockpit is being *opened from*, not a project the user
  * asked to add. Booting in an unregistered repo then serves it exactly as
  * before; it just never lands in the sidebar behind the user's back. Adding
- * a project stays an explicit gesture (`cezar projects add`, the cockpit's
+ * a project stays an explicit gesture (`onni projects add`, the cockpit's
  * Add project dialog) — both go through `shouldRegisterProject` directly.
  *
  * An already-registered root still passes, so booting a known project keeps
  * bumping its `lastOpenedAt` and keeps handing the server its registry id.
  *
  * Single-project mode is exempt: there the launch context IS the project
- * (`cezar projects list` reads its identity back out of the registry), so
+ * (`onni projects list` reads its identity back out of the registry), so
  * suppressing the boot write would leave that deployment with no project at
  * all.
  */
@@ -170,7 +170,7 @@ export async function shouldAutoRegisterProject(
  * so handing the same slug to a newly added `~/other/beta` would silently
  * shadow the served folder. The registry file is the only cross-process truth,
  * so this closes the collision for the server that knows about it, not for a
- * concurrent `cezar projects add` — which is the same last-writer-wins window
+ * concurrent `onni projects add` — which is the same last-writer-wins window
  * every registry write already lives with.
  */
 export async function registerProject(
@@ -311,7 +311,7 @@ async function probeRoot(root: string): Promise<RootProbe & { tracker?: TrackerK
     probe = await computeProbe(root);
     probeCache.set(root, { at: Date.now(), probe });
   }
-  const association = await readTrackerAssociation(join(root, '.ai/cezar'));
+  const association = await readTrackerAssociation(join(root, '.ai/onni'));
   const connection = association && process.env.CEZ_DRY_RUN !== '1'
     ? await new TrackerConnections().read(root) : null;
   const connected = process.env.CEZ_DRY_RUN === '1' || (connection
@@ -357,7 +357,7 @@ export async function listProjects(selector?: ProjectListSelector): Promise<Proj
 
 /**
  * Remove `id` from the registry. Returns false when no such entry exists.
- * Pure unregistration: nothing inside the repo (worktrees, `.ai/cezar/`,
+ * Pure unregistration: nothing inside the repo (worktrees, `.ai/onni/`,
  * run history) is touched — re-registering the same root later gets a fresh
  * slug but finds all its state intact.
  */

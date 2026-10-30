@@ -16,7 +16,7 @@ const PR = 'https://github.com/acme/demo/pull/7'
 const base: GitActionState = {
   status: 'review',
   hasWorktree: true,
-  branch: 'cez/abc12345',
+  branch: 'onni/abc12345',
   uncommitted: 3,
   unpushed: null,
   remote: 'git@github.com:acme/demo.git',

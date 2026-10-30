@@ -54,7 +54,7 @@ describe('real undici webhook response disposal', () => {
 });
 
 describe('real chat wire headers', () => {
-  it.each(['slack.v1', 'discord.v1'])('posts %s without cezar signature headers', async format => {
+  it.each(['slack.v1', 'discord.v1'])('posts %s without onni signature headers', async format => {
     let headers: Record<string, unknown> = {};
     const server = createServer((request, response) => {
       headers = request.headers;

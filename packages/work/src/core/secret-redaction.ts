@@ -3,7 +3,7 @@
  * (#427). Tool-result output is written verbatim to disk and served back over
  * the API, so the moment an agent runs a command whose output contains a
  * secret (`printenv`, `cat ~/.aws/credentials`, …) that secret would land in
- * `.ai/cezar/` — violating the "No secrets in state files" invariant
+ * `.ai/onni/` — violating the "No secrets in state files" invariant
  * (AGENTS.md / CODE_REVIEW.md).
  *
  * Two complementary strategies:
@@ -11,7 +11,7 @@
  *      vars (GITHUB_TOKEN, ANTHROPIC_API_KEY, AWS_SECRET_ACCESS_KEY, …). If
  *      any of them appears in event text, it is scrubbed.
  *   2. Pattern-based — well-known token shapes (gh*, sk-*, AKIA*, AIza*,
- *      xox*-*) so secrets that never lived in cezar's own env are still caught.
+ *      xox*-*) so secrets that never lived in onni's own env are still caught.
  *
  * Zero-config: redaction is on by default; `CEZ_REDACT_SECRETS=0` opts out.
  */

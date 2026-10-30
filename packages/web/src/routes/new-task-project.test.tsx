@@ -62,8 +62,8 @@ afterEach(() => {
 
 const HEALTH: HealthResponse = {
   version: '0.1.3',
-  repoRoot: '/home/u/cezar',
-  repo: { root: '/home/u/cezar', branch: 'main' },
+  repoRoot: '/home/u/onni',
+  repo: { root: '/home/u/onni', branch: 'main' },
   defaultRunner: 'claude',
   checks: [
     { name: 'claude', available: true, version: '2.0.44' },
@@ -72,7 +72,7 @@ const HEALTH: HealthResponse = {
   forge: null,
   capabilities: { localHandoff: true, terminal: false, designMode: false, tokenMetrics: true, tokenUsageMetrics: true, costMetrics: true, followups: true, singleProject: false, automations: false, webhooks: false, dispatch: false },
   projects: [
-    { id: BOOT, name: 'cezar' },
+    { id: BOOT, name: 'onni' },
     { id: OTHER, name: 'shop-frontend' },
   ],
   bootProject: BOOT,
@@ -82,8 +82,8 @@ const REGISTRY: ProjectsResponse = {
   projects: [
     {
       id: BOOT,
-      name: 'cezar',
-      root: '/home/u/cezar',
+      name: 'onni',
+      root: '/home/u/onni',
       addedAt: '',
       lastOpenedAt: '2026-07-20T10:00:00.000Z',
       source: 'local',
@@ -102,7 +102,7 @@ const REGISTRY: ProjectsResponse = {
     },
   ],
   bootProject: BOOT,
-  projectsDir: '~/cezar/projects',
+  projectsDir: '~/onni/projects',
 }
 
 const PROVIDERS: ProviderStatusResponse = {
@@ -132,7 +132,7 @@ const OTHER_WORKFLOWS: WorkflowsResponse = {
 }
 
 const REPO: RepoResponse = {
-  info: { root: '/home/u/cezar', branch: 'main' },
+  info: { root: '/home/u/onni', branch: 'main' },
   status: [],
   log: [],
   branches: ['main'],
@@ -335,7 +335,7 @@ describe('switching project', () => {
    *
    * This used to assert the opposite: the arriving composer started empty and the typed text
    * stayed behind under the departing project's key. The per-project keys are still right — a
-   * half-typed task for the shop frontend must not SURFACE in the cezar composer — but they
+   * half-typed task for the shop frontend must not SURFACE in the onni composer — but they
    * were being applied to the one case they were never about. Changing the project pill is not
    * navigating away; it is deciding, mid-sentence, where the task you are writing belongs. So
    * the prompt moves with it, and the isolation invariant holds because it is a MOVE: the
@@ -345,20 +345,20 @@ describe('switching project', () => {
     serve()
     renderAt(`/p/${BOOT}/new`)
     await composerReady()
-    fireEvent.change(textarea(), { target: { value: 'fix the cezar flake' } })
+    fireEvent.change(textarea(), { target: { value: 'fix the onni flake' } })
 
     await switchProject(OTHER)
     await composerReady()
-    expect(textarea().value).toBe('fix the cezar flake')
+    expect(textarea().value).toBe('fix the onni flake')
     expect(document.querySelector('[data-slot="toast"]')).toBeNull()
 
     // The boot project keeps the bare legacy key (unscoped invariant); the second project gets
     // the spec's suffixed one — and the text is under exactly one of them.
     await waitFor(() => {
-      expect(JSON.parse(localStorage.getItem(`cez-new-task-draft:${OTHER}`)!).text).toBe(
-        'fix the cezar flake',
+      expect(JSON.parse(localStorage.getItem(`onni-new-task-draft:${OTHER}`)!).text).toBe(
+        'fix the onni flake',
       )
-      expect(JSON.parse(localStorage.getItem('cez-new-task-draft')!).text).toBe('')
+      expect(JSON.parse(localStorage.getItem('onni-new-task-draft')!).text).toBe('')
     })
   })
 
@@ -366,34 +366,34 @@ describe('switching project', () => {
     serve()
     // `other` already holds a task somebody started writing there and walked away from.
     localStorage.setItem(
-      `cez-new-task-draft:${OTHER}`,
+      `onni-new-task-draft:${OTHER}`,
       JSON.stringify({ text: 'ship the storefront' }),
     )
     renderAt(`/p/${BOOT}/new`)
     await composerReady()
-    fireEvent.change(textarea(), { target: { value: 'fix the cezar flake' } })
+    fireEvent.change(textarea(), { target: { value: 'fix the onni flake' } })
 
     await switchProject(OTHER)
     await composerReady()
     // Their work in progress wins …
     expect(textarea().value).toBe('ship the storefront')
     expect(document.querySelector('[data-slot="toast"]')?.textContent).toContain(
-      'Kept your draft in cezar; shop-frontend already has an unsent draft.',
+      'Kept your draft in onni; shop-frontend already has an unsent draft.',
     )
 
-    // … and nothing was lost: switching back finds the cezar draft exactly where it was typed.
+    // … and nothing was lost: switching back finds the onni draft exactly where it was typed.
     await switchProject(BOOT)
     await waitFor(() => expect(pathname()).toBe(`/p/${BOOT}/new`))
     await composerReady()
-    expect(textarea().value).toBe('fix the cezar flake')
+    expect(textarea().value).toBe('fix the onni flake')
   })
 
   it('warns with the destination display name when its attachment-only draft wins', async () => {
     serve()
     renderAt(`/p/${BOOT}/new`)
     await composerReady()
-    fireEvent.change(textarea(), { target: { value: 'fix the cezar flake' } })
-    paste(textarea(), [pngFile('cezar.png')])
+    fireEvent.change(textarea(), { target: { value: 'fix the onni flake' } })
+    paste(textarea(), [pngFile('onni.png')])
     await waitFor(() => expect(attachmentChips()).toHaveLength(1))
 
     // Attachments are deliberately memory-only, so seed the destination through the store.
@@ -412,7 +412,7 @@ describe('switching project', () => {
     expect(textarea().value).toBe('')
     expect(attachmentChips().map((node) => node.getAttribute('aria-label'))).toEqual(['Remove shop.png'])
     expect(document.querySelector('[data-slot="toast"]')?.textContent).toContain(
-      'Kept your draft in cezar; shop-frontend already has an unsent draft.',
+      'Kept your draft in onni; shop-frontend already has an unsent draft.',
     )
   })
 
@@ -444,13 +444,13 @@ describe('switching project', () => {
 
   it('submits to the SELECTED project and clears only that project’s draft text', async () => {
     serve()
-    // `other` already holds an unsent draft, so the switch below declines to hand the cezar
-    // composition over (#1018) and the cezar draft genuinely stays behind — which is what makes
+    // `other` already holds an unsent draft, so the switch below declines to hand the onni
+    // composition over (#1018) and the onni draft genuinely stays behind — which is what makes
     // the last assertion here about the SUBMIT rather than about the switch.
-    localStorage.setItem(`cez-new-task-draft:${OTHER}`, JSON.stringify({ text: 'a storefront idea' }))
+    localStorage.setItem(`onni-new-task-draft:${OTHER}`, JSON.stringify({ text: 'a storefront idea' }))
     renderAt(`/p/${BOOT}/new`)
     await composerReady()
-    fireEvent.change(textarea(), { target: { value: 'left behind in cezar' } })
+    fireEvent.change(textarea(), { target: { value: 'left behind in onni' } })
 
     await switchProject(OTHER)
     await composerReady()
@@ -467,7 +467,7 @@ describe('switching project', () => {
 
     // Started runs land on the selected project's thread URL, and the other draft is intact.
     await waitFor(() => expect(pathname()).toBe(`/p/${OTHER}/tasks/run-1`))
-    expect(JSON.parse(localStorage.getItem('cez-new-task-draft')!).text).toBe('left behind in cezar')
-    expect(JSON.parse(localStorage.getItem(`cez-new-task-draft:${OTHER}`)!).text).toBe('')
+    expect(JSON.parse(localStorage.getItem('onni-new-task-draft')!).text).toBe('left behind in onni')
+    expect(JSON.parse(localStorage.getItem(`onni-new-task-draft:${OTHER}`)!).text).toBe('')
   })
 })

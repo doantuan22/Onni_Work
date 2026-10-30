@@ -155,7 +155,7 @@ describe('AgentConfigSection', () => {
     expect(block).toBeTruthy()
     expect(block.textContent).toContain('github')
     expect(block.textContent).toContain('sentry')
-    expect(block.textContent).toContain('cezar does not edit')
+    expect(block.textContent).toContain('onni does not edit')
     // the block belongs to Claude's pane only
     fireEvent.click(agentTab('codex'))
     await waitFor(() => expect(document.querySelector('[data-slot="agent-config-user-mcp"]')).toBeNull())
@@ -271,8 +271,8 @@ describe('AgentConfigSection', () => {
       editable: true,
       files: [
         fileOf({
-          id: 'cezar.private.mcp',
-          label: '.ai/cezar/mcp.local.json',
+          id: 'onni.private.mcp',
+          label: '.ai/onni/mcp.local.json',
           kind: 'mcp',
           scope: 'local',
           tracked: 'gitignored',
@@ -291,12 +291,12 @@ describe('AgentConfigSection', () => {
         const url = String(input)
         if (url.endsWith('/api/v1/health')) return json(HEALTH)
         if (url.endsWith('/api/v1/agent-config')) return json(listing)
-        return json({ id: 'cezar.private.mcp', path: '/repo/.ai/cezar/mcp.local.json', exists: false, content: '', version: null })
+        return json({ id: 'onni.private.mcp', path: '/repo/.ai/onni/mcp.local.json', exists: false, content: '', version: null })
       }),
     )
     renderSection()
-    fireEvent.click(await screen.findByText('.ai/cezar/mcp.local.json'))
-    const editor = (await screen.findByLabelText('.ai/cezar/mcp.local.json contents')) as HTMLTextAreaElement
+    fireEvent.click(await screen.findByText('.ai/onni/mcp.local.json'))
+    const editor = (await screen.findByLabelText('.ai/onni/mcp.local.json contents')) as HTMLTextAreaElement
     await waitFor(() => expect(editor.value).toContain('"mcpServers"'))
     const starter = JSON.parse(editor.value) as { mcpServers: Record<string, { command?: string; args?: string[] }> }
     // Saved as-is it reaches every agent launch — so no example may fetch or execute a real program.

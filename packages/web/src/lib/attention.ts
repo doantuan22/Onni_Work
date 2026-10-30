@@ -46,7 +46,7 @@ export interface Attention {
  * Whether a run is blocked on a permission prompt.
  *
  * Always false today, on purpose. The `permission` bucket is in the ladder because the spec puts
- * it there and because R2 reserves the `permission.*` agent events that will feed it — but cezar
+ * it there and because R2 reserves the `permission.*` agent events that will feed it — but onni
  * emits none of them yet, and `RunRecord` carries no field that means "a tool wants approval".
  * Inventing one (say, treating every `waiting` as a permission prompt) would put a bucket in the
  * UI that no data backs. So the slot stays, wired to the truth: nothing.
@@ -96,7 +96,7 @@ export function budgetStop(run: Pick<RunRecord, 'status' | 'dispatch' | 'costUsd
 }
 
 /**
- * A `failed` run whose session closed on an unanswered `CEZ:ASK`: no process is left, but the
+ * A `failed` run whose session closed on an unanswered `ONNI:ASK`: no process is left, but the
  * question is still the user's. Every surface that asks "does this need you?" reads it the same way.
  */
 export function isAwaitingAnswer(run: Pick<RunRecord, 'status' | 'awaitingAnswerSince'>): boolean {
@@ -137,7 +137,7 @@ export function deriveAttention(run: AttentionInput): Attention {
   if (run.status === 'failed' && run.autoResumeAt) {
     return { bucket: 'none', tone: 'pending', pulse: false, label: 'scheduled' }
   }
-  // A session that closed on an unanswered `CEZ:ASK` — the inactivity timer, a crash, a restart —
+  // A session that closed on an unanswered `ONNI:ASK` — the inactivity timer, a crash, a restart —
   // is `failed` on the record because the process is gone, but the question is still the user's to
   // answer. Reporting it as a failure (or, before that, as done) hid a task that was waiting on
   // you; it wears the `waiting` rung instead, and the answer reopens the session.

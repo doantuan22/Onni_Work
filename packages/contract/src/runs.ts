@@ -61,7 +61,7 @@ export type RunStatus = z.infer<typeof runStatusSchema>;
 /**
  * Sub-state of `running` (spec 2026-07-18-subagent-monitoring-status, #490): the agent ended its
  * turn still working on its own downstream work (a sub-agent, a monitored command) and said so
- * with the `CEZ:MONITORING` marker — a non-attention state, not "needs you".
+ * with the `ONNI:MONITORING` marker — a non-attention state, not "needs you".
  */
 export const runActivitySchema = z.enum(['monitoring']);
 export type RunActivity = z.infer<typeof runActivitySchema>;
@@ -195,7 +195,7 @@ export const runRecordSchema = z.object({
    *
    * `event` is a plain string rather than `automationEventSchema`: it is the event NAME the
    * launching definition matched, recorded on the run for the audit trail, and `src/runs/store.ts`
-   * persists it as free text so an older cezar can still read a record written by a newer one.
+   * persists it as free text so an older onni can still read a record written by a newer one.
    */
   automation: z
     .object({
@@ -212,7 +212,7 @@ export const runRecordSchema = z.object({
   /**
    * Provenance for a task a SCHEDULED automation launched (spec 2026-09-14-automations-redesign
    * § Data Model). A separate optional key rather than a loosened `automation`: `runs.json` is
-   * parsed as one array, so a downgraded cezar meeting a record without `githubUrl` would drop
+   * parsed as one array, so a downgraded onni meeting a record without `githubUrl` would drop
    * every run — whereas an unknown key it simply strips.
    */
   automationTrigger: z
@@ -278,7 +278,7 @@ export const runRecordSchema = z.object({
   /** What the pending resume waits out: a usage limit's reset, or a transient provider failure's
    *  retry backoff. Absent on records written before it existed — read as `usage_limit`. */
   autoResumeReason: z.enum(['usage_limit', 'transient']).optional(),
-  /** ISO-8601 instant the run's session ended (inactivity, a crash, a restart) while a `CEZ:ASK`
+  /** ISO-8601 instant the run's session ended (inactivity, a crash, a restart) while a `ONNI:ASK`
    *  question was still unanswered. Present only on a `failed` run; the cockpit keeps such a run
    *  under "needs you" until the answer reopens it. Absent on records written before it existed. */
   awaitingAnswerSince: z.string().optional(),
@@ -315,9 +315,9 @@ export const runRecordSchema = z.object({
   /** Server-side provenance: referenced-issue discovery currently owns `issueNumber`. */
   referencedIssueNumberSeeded: z.boolean().optional(),
   /** 'user' = renamed via PATCH, never auto-overwritten; 'marker' = agent-declared via
-   *  CEZ:TITLE (spec 2026-07-18-task-ref-markers); 'auto' = namer-owned. */
+   *  ONNI:TITLE (spec 2026-07-18-task-ref-markers); 'auto' = namer-owned. */
   titleOrigin: z.enum(['user', 'auto', 'marker']).optional(),
-  /** References the agent declared via CEZ:PR/CEZ:ISSUE markers — authoritative over the namer
+  /** References the agent declared via ONNI:PR/ONNI:ISSUE markers — authoritative over the namer
    *  for the matching kind. */
   markerRefs: z.object({ pr: z.number().optional(), issue: z.number().optional() }).optional(),
   /** The referenced tier's working set (distinct PR URLs spotted, capped server-side). */
@@ -466,7 +466,7 @@ export const runIndexEntrySchema = z.object({
    *  it, so without it here a cross-project row would show a red "failed" dot and land in
    *  Recently finished for work that is simply waiting for its appointment. */
   autoResumeAt: z.string().optional(),
-  /** A `failed` run whose session closed on an unanswered `CEZ:ASK` — `deriveAttention` reads it,
+  /** A `failed` run whose session closed on an unanswered `ONNI:ASK` — `deriveAttention` reads it,
    *  so a cross-project row says "needs you" like every other surface rather than "failed". */
   awaitingAnswerSince: z.string().optional(),
   /** The workflow the run executes — the global Tasks page shows it in a column and groups by
@@ -532,7 +532,7 @@ export const runIndexEntrySchema = z.object({
    * The live CPU/RSS sample of this run's process tree, attached on the way out exactly as
    * `GET /runs` attaches it (`withUsage`) — never persisted.
    *
-   * It can ride a WORKSPACE-level answer because the sampler is process-wide: one cezar process
+   * It can ride a WORKSPACE-level answer because the sampler is process-wide: one onni process
    * runs every project's agents, so `currentUsage(runId)` knows about a run whatever project it
    * belongs to. That is what lets a cross-project table show live usage without opening one
    * event stream per project (it could not — the run stream is project-scoped).
@@ -838,12 +838,12 @@ export type PickVariantResponse = z.infer<typeof pickVariantResponseSchema>;
 // defaults/transforms below (`text`, `images`, `systemPrompt`) mean the parsed output is not the
 // same shape. `z.infer` here would demand keys the server fills in for you.
 
-/** The media type of an attachment cezar does not interpret — any file outside the list below. */
+/** The media type of an attachment onni does not interpret — any file outside the list below. */
 export const BINARY_ATTACHMENT_MEDIA_TYPE = 'application/octet-stream';
 
 /**
  * Non-image attachment types the composer may send (#950). Deliberately an allowlist and
- * deliberately short: cezar serves these files back from the cockpit's own origin, so every entry
+ * deliberately short: onni serves these files back from the cockpit's own origin, so every entry
  * here is one more thing that must be safe to hand a browser. `image/*` stays a regex — narrowing
  * what the route has always accepted would be the breaking half of this change.
  *
@@ -876,7 +876,7 @@ export function isAttachmentMediaType(mediaType: string): boolean {
 /**
  * The on-disk extension for an attachment, derived from its media type ALONE — the user's own
  * filename never reaches the wire, and therefore never reaches a path. `img` is the pre-existing
- * catch-all for an image type cezar does not name (an SVG, a BMP), kept so those files land where
+ * catch-all for an image type onni does not name (an SVG, a BMP), kept so those files land where
  * they always did.
  */
 export function attachmentExtension(mediaType: string): string {
@@ -1182,7 +1182,7 @@ export const createRunInputBaseSchema = z
     /** With `worktree: false`: switch the repo checkout to a branch before the agent starts — a
      *  new one forked from the configured base, or `branch` when it already exists. */
     newBranch: z.boolean().optional(),
-    /** The branch `newBranch` creates; omit for the namer's answer, else `cez/<id8>`. */
+    /** The branch `newBranch` creates; omit for the namer's answer, else `onni/<id8>`. */
     branch: z.string().trim().min(1).max(200).optional(),
     /** true → a read-only Ask task (spec 2026-10-20-trunk-based-projects): runs in the repo
      *  checkout with read-only tools, takes no lease and never lands. */

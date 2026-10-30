@@ -42,7 +42,7 @@ function createBareRunner(backend: AgentBackend | RunnerId | undefined): AgentRu
 
 /** What a run that cannot start in its directory reports (27d2e432). */
 export function missingWorkingDirectoryMessage(backend: string, cwd: string): string {
-  return `${backend}: cannot start — the working directory ${cwd} does not exist (the task's worktree was removed outside cezar, or the project moved). Continue re-creates the worktree from the task branch while that branch exists.`;
+  return `${backend}: cannot start — the working directory ${cwd} does not exist (the task's worktree was removed outside onni, or the project moved). Continue re-creates the worktree from the task branch while that branch exists.`;
 }
 
 /**

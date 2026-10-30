@@ -6,7 +6,7 @@ import { freshContinuationContext } from './continuation-context.ts';
 const run = (extra: Partial<RunRecord> = {}): RunRecord => ({
   id: 'r1', title: 'Fix it', workflow: 'quick-task', task: 'Fix the checkout bug',
   status: 'failed', error: 'Claude AI usage limit reached', createdAt: '2026-09-04T09:00:00Z',
-  tokensUsed: 12, archived: false, branch: 'cez/r1', worktreePath: '/repo/.ai/cezar/worktrees/r1',
+  tokensUsed: 12, archived: false, branch: 'onni/r1', worktreePath: '/repo/.ai/onni/worktrees/r1',
   steps: [{ id: 'task', name: 'Work', kind: 'agent', status: 'failed', iterations: 1, tokensUsed: 12 }],
   ...extra,
 });
@@ -15,7 +15,7 @@ const event = (seq: number, type: string, extra: Record<string, unknown>): RunEv
   seq, type, ts: '2026-09-04T09:00:00Z', ...extra,
 });
 
-const DIR = '/repo/.ai/cezar/runs/r1-images';
+const DIR = '/repo/.ai/onni/runs/r1-images';
 
 describe('freshContinuationContext', () => {
   it('hands the new provider the paths of screenshots pasted into the old session', () => {
@@ -23,14 +23,14 @@ describe('freshContinuationContext', () => {
       event(1, 'user-message', { text: 'is this true?', images: ['/api/v1/runs/r1/images/pasted-2.png'] }),
       event(2, 'user-message', { text: '', images: ['/api/v1/runs/r1/images/pasted-3.png'] }),
     ], DIR);
-    expect(context).toContain('Fix the checkout bug\nAttached files:\n- /repo/.ai/cezar/runs/r1-images/pasted-1.png');
-    expect(context).toContain('User:\nis this true?\nAttached files:\n- /repo/.ai/cezar/runs/r1-images/pasted-2.png');
-    expect(context).toContain('User:\nAttached files:\n- /repo/.ai/cezar/runs/r1-images/pasted-3.png');
+    expect(context).toContain('Fix the checkout bug\nAttached files:\n- /repo/.ai/onni/runs/r1-images/pasted-1.png');
+    expect(context).toContain('User:\nis this true?\nAttached files:\n- /repo/.ai/onni/runs/r1-images/pasted-2.png');
+    expect(context).toContain('User:\nAttached files:\n- /repo/.ai/onni/runs/r1-images/pasted-3.png');
   });
 
   it('lists the files of a task given as attachments only', () => {
     const context = freshContinuationContext(run({ task: '  ', taskImages: ['/api/v1/runs/r1/images/spec.pdf'] }), [], DIR);
-    expect(context).toContain('## Original task\n(given as attachments only)\nAttached files:\n- /repo/.ai/cezar/runs/r1-images/spec.pdf');
+    expect(context).toContain('## Original task\n(given as attachments only)\nAttached files:\n- /repo/.ai/onni/runs/r1-images/spec.pdf');
   });
 
   it('carries task state and the persisted conversation without a handoff file', () => {
@@ -41,7 +41,7 @@ describe('freshContinuationContext', () => {
     expect(context).toContain('Fix the checkout bug');
     expect(context).toContain('Status: failed');
     expect(context).toContain('Claude AI usage limit reached');
-    expect(context).toContain('Worktree: /repo/.ai/cezar/worktrees/r1');
+    expect(context).toContain('Worktree: /repo/.ai/onni/worktrees/r1');
     expect(context).toContain('User:\nPlease start with the API.');
     expect(context).toContain('Assistant:\nAPI is fixed.');
   });

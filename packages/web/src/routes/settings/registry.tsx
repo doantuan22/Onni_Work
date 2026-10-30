@@ -105,7 +105,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: 'secrets',
     title: 'Secrets',
-    description: 'Encrypted values for this project’s check steps and cezar — never for agents.',
+    description: 'Encrypted values for this project’s check steps and onni — never for agents.',
     icon: KeyRoundIcon,
     component: ProjectSecretsSection,
     scope: 'project',
@@ -121,7 +121,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: 'integrations',
     title: 'External integrations',
-    description: 'Third-party tools cezar installs and wires into this project — test frameworks first.',
+    description: 'Third-party tools onni installs and wires into this project — test frameworks first.',
     icon: BlocksIcon,
     component: IntegrationsSection,
     scope: 'project',

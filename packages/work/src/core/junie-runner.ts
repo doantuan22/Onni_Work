@@ -137,7 +137,7 @@ class JunieSession implements AgentSession {
   /** Set the moment WE signal the child (EOF watchdog, cancel, kill switch) —
    *  junie handles the signal and exits `128 + signal`, so without this the
    *  runner would read its own teardown as a junie failure (#703 precedent). */
-  private terminatedByCezar = false;
+  private terminatedByOnni = false;
   private readonly hasExited: () => boolean;
   private uiState: JunieUiMapperState = createJunieUiState();
 
@@ -171,7 +171,7 @@ class JunieSession implements AgentSession {
       this.child.stdout.destroy();
       killTimer = setTimeout(() => {
         if (!this.hasExited()) {
-          this.terminatedByCezar = true;
+          this.terminatedByOnni = true;
           this.child.kill('SIGKILL');
         }
       }, KILL_GRACE_MS);
@@ -237,10 +237,10 @@ class JunieSession implements AgentSession {
         return base;
       }
 
-      if (this.terminatedByCezar && isSignalTerminationExit(exitCode)) {
+      if (this.terminatedByOnni && isSignalTerminationExit(exitCode)) {
         this.emit({
           type: 'note',
-          message: `junie did not exit on its own after close; terminated by cezar (code ${exitCode})`,
+          message: `junie did not exit on its own after close; terminated by onni (code ${exitCode})`,
         });
         this.emit({ type: 'done' });
         return base;
@@ -291,7 +291,7 @@ class JunieSession implements AgentSession {
           this.eofKillTimer = kill;
         },
         () => {
-          this.terminatedByCezar = true;
+          this.terminatedByOnni = true;
         },
       );
     } catch {
@@ -312,7 +312,7 @@ class JunieSession implements AgentSession {
       }
     }
     if (!this.hasExited()) {
-      this.terminatedByCezar = true;
+      this.terminatedByOnni = true;
       this.child.kill('SIGTERM');
     }
   }
@@ -322,7 +322,7 @@ class JunieSession implements AgentSession {
     if (this.hardKillTimer || this.hasExited()) return;
     this.hardKillTimer = setTimeout(() => {
       if (!this.hasExited()) {
-        this.terminatedByCezar = true;
+        this.terminatedByOnni = true;
         this.child.kill('SIGKILL');
       }
     }, KILL_GRACE_MS);
@@ -422,7 +422,7 @@ class JunieSession implements AgentSession {
       // Our own teardown (stdin closed, signalled, or timed out) rejects every
       // in-flight request via `rejectPending` as part of ordinary shutdown —
       // that is not a junie failure (#703 precedent), so it stays a note.
-      if (!this.stdinOpen || this.terminatedByCezar || this.timedOut) {
+      if (!this.stdinOpen || this.terminatedByOnni || this.timedOut) {
         this.emit({ type: 'note', message: `junie: turn failed: ${detail}` });
       } else {
         this.emit({ type: 'error', message: `junie: turn failed: ${detail}` });
@@ -451,7 +451,7 @@ class JunieSession implements AgentSession {
 
   /** junie's ACP approval channel — never observed firing live with
    *  `brave_mode: 'on'` (see the mapper's module doc), but answered per
-   *  protocol rather than left to hang the turn: grant it, matching cezar's
+   *  protocol rather than left to hang the turn: grant it, matching onni's
    *  zero-config full-auto posture on every other backend (#430). Prefer
    *  `allow_once` over `allow_always` whatever order the agent lists them in —
    *  per-run full-auto must not persist a grant that outlives the run. */

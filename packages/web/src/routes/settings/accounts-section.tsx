@@ -170,7 +170,7 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
         <h2 className="text-sm font-semibold text-foreground">Agent accounts</h2>
         <p data-slot="accounts-hosted" className="text-[13px] text-soft-foreground">
           Agent accounts are disabled for remote access. On a trusted, authenticated self-hosted
-          deployment, set CEZ_REMOTE_AGENT_ACCOUNTS=1 and restart cezar.
+          deployment, set CEZ_REMOTE_AGENT_ACCOUNTS=1 and restart onni.
         </p>
       </div>
     )
@@ -362,13 +362,13 @@ function AgentTab({
  * "use it". Above the tabs because it is a cross-agent answer; splitting it into the per-agent tabs
  * would mean visiting all three to read one fact.
  *
- * DEFAULTS, never overrides. A project's own `.ai/cezar/config.json` still wins key by key, and a
+ * DEFAULTS, never overrides. A project's own `.ai/onni/config.json` still wins key by key, and a
  * project that has already picked an account keeps it — so changing these can never quietly
  * re-point work someone already configured onto another subscription. The copy says so, because
  * "default" alone does not distinguish the two.
  *
  * Two stores for one click, the same split the rest of the feature makes: the runner and models go
- * to `~/.cezar/config.json`, the account to `~/.cezar/agent-accounts.json`. Neither is committable —
+ * to `~/.onni/config.json`, the account to `~/.onni/agent-accounts.json`. Neither is committable —
  * that is the point of them being here rather than in a repo's settings.
  */
 function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse }) {
@@ -556,7 +556,7 @@ function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: ()
                     // The server answers a copyable command when it cannot open a terminal (hosted
                     // mode, no emulator, a folder it refuses to embed). Showing it is the whole
                     // point of failing closed rather than running the bare login.
-                    // A 409 with a command is a login cezar could not open — not installed, hosted —
+                    // A 409 with a command is a login onni could not open — not installed, hosted —
                     // which the server already counts (`trackLoginNotOpened`); not an error report.
                     onError: (error: Error) =>
                       error instanceof ApiError && error.command
@@ -717,7 +717,7 @@ function AccountDetails({
         </div>
       ) : null}
 
-      {/* The discovered account carries no Rename/Remove at all — it is what cezar found, so either
+      {/* The discovered account carries no Rename/Remove at all — it is what onni found, so either
           would imply a setting that does not exist. Nothing is rendered for it, not a disabled
           control, because a greyed-out Remove reads as "not allowed yet" rather than "not a thing". */}
       {account.isDefault ? null : (
@@ -786,10 +786,10 @@ function AccountDetails({
               >
                 Remove
               </Button>
-              {/* The label is cezar's own; the folder is the account. Saying so here is what keeps
+              {/* The label is onni's own; the folder is the account. Saying so here is what keeps
                   Rename from reading as "point this at a different directory". */}
               <span className="text-xs text-muted-foreground">
-                Renaming changes what cezar calls this account, not its folder.
+                Renaming changes what onni calls this account, not its folder.
               </span>
             </>
           )}

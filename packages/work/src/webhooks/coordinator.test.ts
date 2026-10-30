@@ -34,7 +34,7 @@ describe('lightweight project webhook enrollment', () => {
     await service.dispose();
   });
   it('reattaches ready capture after repair without backfilling the gap or changing the public slug', async () => {
-    vi.stubEnv('CEZ_WEBHOOKS', '1'); const project = root(); const dataDir = join(project, '.ai/cezar');
+    vi.stubEnv('CEZ_WEBHOOKS', '1'); const project = root(); const dataDir = join(project, '.ai/onni');
     const coordinator = new WebhookCoordinator({ mode: () => 'local', ports: () => [], projects: async () => [], singleProject: true, dryRun: true }); instances.push(coordinator);
     const store = RunStore.open(dataDir);
     const context = { id: 'default', root: project, store, manager: { isActive: () => false } } as unknown as ProjectContext;

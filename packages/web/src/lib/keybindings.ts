@@ -147,11 +147,11 @@ export function chordProblem(chord: string, apple = isApplePlatform()): string |
   }
   // Off a Mac, Ctrl+Alt is AltGr on many layouts — the chord would eat a typed character.
   if (!apple && modifiers.includes('Mod') && modifiers.includes('Alt')) return 'Ctrl+Alt types characters on many layouts'
-  if (RESERVED.has(chord)) return 'That shortcut is taken by the browser or cezar'
+  if (RESERVED.has(chord)) return 'That shortcut is taken by the browser or onni'
   return undefined
 }
 
-/** The shortcuts cezar ships. ⌘1–⌘9 go to the task's tabs, like a browser's. */
+/** The shortcuts onni ships. ⌘1–⌘9 go to the task's tabs, like a browser's. */
 export const DEFAULT_KEYBINDINGS: Readonly<Record<string, string>> = {
   ...Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`tab:${index + 1}`, `Mod+${index + 1}`])),
   'terminal-column': 'Mod+/',
@@ -161,7 +161,7 @@ const MAX_STORED_BINDINGS = 200
 
 /**
  * The stored overrides, reduced to what the ui-state PUT accepts (`setWorkspaceUiStateInputSchema`):
- * a hand-edited `~/.cezar/ui-state.json` must neither crash `formatChord` nor 400 every later write.
+ * a hand-edited `~/.onni/ui-state.json` must neither crash `formatChord` nor 400 every later write.
  */
 export function sanitizeOverrides(stored: unknown): Overrides {
   if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return {}

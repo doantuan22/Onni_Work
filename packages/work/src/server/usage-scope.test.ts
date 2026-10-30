@@ -33,18 +33,18 @@ describe('usage SSE fan-out is scoped per project', () => {
   const closers: Array<() => Promise<void>> = [];
 
   beforeEach(async () => {
-    home = mkdtempSync(join(tmpdir(), 'cez-usage-home-'));
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-usage-boot-'));
-    otherRoot = mkdtempSync(join(tmpdir(), 'cez-usage-other-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-usage-home-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-usage-boot-'));
+    otherRoot = mkdtempSync(join(tmpdir(), 'onni-usage-other-'));
     process.env.CEZ_HOME = home;
     delete process.env.CEZ_REMOTE;
     process.env.CEZ_DRY_RUN = '1';
     for (const root of [repoRoot, otherRoot]) {
-      mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-      writeFileSync(join(root, '.ai/cezar', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
+      mkdirSync(join(root, '.ai/onni'), { recursive: true });
+      writeFileSync(join(root, '.ai/onni', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
     }
     clearProjectProbeCache();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     bootRunId = store.createRun({
       title: 'boot',
       workflow: 'quick-task',

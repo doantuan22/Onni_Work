@@ -28,7 +28,7 @@ import { GH_CREDENTIAL_HELPER_CONFIG, cleanupCheckout, isValidCheckoutName, pars
  * parameter, and nothing in the request can reach it. Visibility is one click
  * on GitHub afterwards; an accidental public repo is not undoable.
  *
- * A GitHub repository is never deleted by cezar. If a later step fails after
+ * A GitHub repository is never deleted by onni. If a later step fails after
  * `gh repo create` succeeded, the local folder is cleaned up exactly like a
  * failed clone, and the error says the remote repo exists — deleting it would
  * need the `delete_repo` scope and is not something to do on a network error.
@@ -126,7 +126,7 @@ export const dryRunCommandRunner: CommandRunner = async (cmd, args, opts) => {
     // An empty commit needs an identity; a dry run must not depend on the
     // host's git config, so it lends one for that single call.
     const withIdentity =
-      args[0] === 'commit' ? ['-c', 'user.name=cezar dry run', '-c', 'user.email=dry-run@cezar.invalid', ...args] : args;
+      args[0] === 'commit' ? ['-c', 'user.name=onni dry run', '-c', 'user.email=dry-run@onni.invalid', ...args] : args;
     return spawnCommandRunner(cmd, withIdentity, opts);
   }
   opts.onLine?.(`(CEZ_DRY_RUN=1) gh ${args.join(' ')}`);

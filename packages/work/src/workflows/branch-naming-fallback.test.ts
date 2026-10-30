@@ -55,12 +55,12 @@ const roots: string[] = [];
 const savedAutoname = process.env.CEZ_AUTONAME;
 
 function fixtureRepo(): string {
-  const root = mkdtempSync(join(tmpdir(), 'cez-branch-fallback-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-branch-fallback-'));
   roots.push(root);
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
   execFileSync('git', [...GIT_ID, 'commit', '--allow-empty', '-q', '-m', 'base'], { cwd: root });
-  mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-  writeFileSync(join(root, '.ai/cezar/config.json'), JSON.stringify({ branchNaming: 'start with feature/' }));
+  mkdirSync(join(root, '.ai/onni'), { recursive: true });
+  writeFileSync(join(root, '.ai/onni/config.json'), JSON.stringify({ branchNaming: 'start with feature/' }));
   return root;
 }
 
@@ -86,7 +86,7 @@ afterEach(() => {
 
 async function runOnce(): Promise<{ branch: string | undefined; notes: string[]; id: string }> {
   const root = fixtureRepo();
-  const store = RunStore.open(join(root, '.ai/cezar'));
+  const store = RunStore.open(join(root, '.ai/onni'));
   const manager = new RunManager(store, root, { branchNameWaitMs: 50 });
   try {
     const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });
@@ -100,26 +100,26 @@ async function runOnce(): Promise<{ branch: string | undefined; notes: string[];
 }
 
 describe('branch naming fallbacks', () => {
-  it('a namer slower than the wait budget forks on cez/<id8> and says so', async () => {
+  it('a namer slower than the wait budget forks on onni/<id8> and says so', async () => {
     namerBehaviour = 'stall';
     const { branch, notes, id } = await runOnce();
-    expect(branch).toBe(`cez/${id.slice(0, 8)}`);
+    expect(branch).toBe(`onni/${id.slice(0, 8)}`);
     expect(notes.some((n) => n.includes('not ready in time'))).toBe(true);
   }, 30_000);
 
-  it('a namer that answers without a branch forks on cez/<id8> with the other note', async () => {
+  it('a namer that answers without a branch forks on onni/<id8> with the other note', async () => {
     namerBehaviour = 'no-branch';
     const { branch, notes, id } = await runOnce();
-    expect(branch).toBe(`cez/${id.slice(0, 8)}`);
+    expect(branch).toBe(`onni/${id.slice(0, 8)}`);
     expect(notes.some((n) => n.includes('answered no branch name'))).toBe(true);
     expect(notes.some((n) => n.includes('not ready in time'))).toBe(false);
   }, 30_000);
 
-  it('a generated name git refuses at fork time degrades to cez/<id8> instead of failing the task', async () => {
+  it('a generated name git refuses at fork time degrades to onni/<id8> instead of failing the task', async () => {
     namerBehaviour = 'branch';
     refuseNamedBranch = true;
     const root = fixtureRepo();
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root, { branchNameWaitMs: 2_000 });
     try {
       const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });
@@ -127,7 +127,7 @@ describe('branch naming fallbacks', () => {
       const run = store.getRun(record.id);
       const notes = store.readEvents(record.id).filter((e) => e.type === 'note').map((e) => String(e.message));
       expect(run?.status).toBe('done');
-      expect(run?.branch).toBe(`cez/${record.id.slice(0, 8)}`);
+      expect(run?.branch).toBe(`onni/${record.id.slice(0, 8)}`);
       expect(notes.some((n) => n.includes('generated branch "feature/raced" could not be created'))).toBe(true);
     } finally {
       manager.dispose();
@@ -138,7 +138,7 @@ describe('branch naming fallbacks', () => {
   it('a Cancel during the branch wait never forks the cancelled run', async () => {
     namerBehaviour = 'stall';
     const root = fixtureRepo();
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root, { branchNameWaitMs: 400 });
     try {
       const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });

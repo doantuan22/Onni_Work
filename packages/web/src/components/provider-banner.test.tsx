@@ -16,7 +16,7 @@ const DEFINITIVE_MISSING: ProviderStatusResponse = {
 
 function renderBanner(
   props: Partial<React.ComponentProps<typeof ProviderBanner>> = {},
-  entry = '/p/cezar/',
+  entry = '/p/onni/',
 ) {
   return render(
     <MemoryRouter initialEntries={[entry]}>
@@ -170,7 +170,7 @@ describe('ProviderBanner', () => {
     })
 
     expect(screen.getByRole('link', { name: 'Open agent settings' }).getAttribute('href')).toBe(
-      '/p/cezar/settings/agents#providers',
+      '/p/onni/settings/agents#providers',
     )
   })
 
@@ -189,7 +189,7 @@ describe('ProviderBanner', () => {
       name: 'Dismiss provider authentication alert',
     }))
     view.rerender(
-      <MemoryRouter initialEntries={['/p/cezar/']}>
+      <MemoryRouter initialEntries={['/p/onni/']}>
         <ProviderBanner
           status={status}
           pending={false}
@@ -234,7 +234,7 @@ describe('ProviderBanner', () => {
     renderBanner()
 
     expect(screen.getByRole('link', { name: 'Configure providers' }).getAttribute('href')).toBe(
-      '/p/cezar/settings/agents#providers',
+      '/p/onni/settings/agents#providers',
     )
   })
 

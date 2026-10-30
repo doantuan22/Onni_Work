@@ -68,7 +68,7 @@ const pull = (sha: string, over: Record<string, unknown> = {}) => ({
 describe('resolvePrHead (spec 2026-10-06-agentic-e2e-checks Phase 3)', () => {
   let repo: { root: string; base: string; head: string };
   beforeEach(async () => {
-    repo = await gitRepo('cez-pr-head-');
+    repo = await gitRepo('onni-pr-head-');
   });
   afterEach(() => rmSync(repo.root, { recursive: true, force: true }));
 
@@ -80,10 +80,10 @@ describe('resolvePrHead (spec 2026-10-06-agentic-e2e-checks Phase 3)', () => {
     const result = await resolve(runner);
     expect(result).toMatchObject({
       kind: 'ok',
-      head: { number: 42, repo: REPO, headRepo: REPO, headRef: 'feature/login', headSha: repo.head, baseRef: 'main', ref: 'refs/cezar/pr/42', untrusted: false },
+      head: { number: 42, repo: REPO, headRepo: REPO, headRef: 'feature/login', headSha: repo.head, baseRef: 'main', ref: 'refs/onni/pr/42', untrusted: false },
     });
     expect(calls).toContainEqual(['gh', 'api', `repos/${REPO}/pulls/42`]);
-    expect(calls).toContainEqual(['git', 'fetch', '--no-tags', 'origin', '+refs/pull/42/head:refs/cezar/pr/42']);
+    expect(calls).toContainEqual(['git', 'fetch', '--no-tags', 'origin', '+refs/pull/42/head:refs/onni/pr/42']);
     // A ref, never a branch: nothing new in the user's branch list.
     expect((await run('git', ['branch', '--list'], { cwd: repo.root })).stdout.trim()).toBe('* main');
   });
@@ -131,16 +131,16 @@ describe('resolvePrHead (spec 2026-10-06-agentic-e2e-checks Phase 3)', () => {
   it('makes no gh or fetch call under CEZ_DRY_RUN=1 and uses a fixture pull request', async () => {
     const { runner, calls } = fakeGithub(null, { ghFails: 'must not be called' });
     const result = await resolvePrHead({ root: repo.root, repo: REPO, number: 42, allowForkHeads: false, run: runner, env: { CEZ_DRY_RUN: '1' } });
-    expect(result).toMatchObject({ kind: 'ok', head: { headSha: repo.base, ref: 'refs/cezar/pr/42', untrusted: false } });
+    expect(result).toMatchObject({ kind: 'ok', head: { headSha: repo.base, ref: 'refs/onni/pr/42', untrusted: false } });
     expect(calls.some(([command, sub]) => command === 'gh' || sub === 'fetch')).toBe(false);
   });
 
   it('prunes the refs no run needs and keeps the rest', async () => {
-    await run('git', ['update-ref', 'refs/cezar/pr/1', repo.head], { cwd: repo.root });
-    await run('git', ['update-ref', 'refs/cezar/pr/2', repo.head], { cwd: repo.root });
+    await run('git', ['update-ref', 'refs/onni/pr/1', repo.head], { cwd: repo.root });
+    await run('git', ['update-ref', 'refs/onni/pr/2', repo.head], { cwd: repo.root });
     await prunePrHeadRefs(repo.root, new Set([2]));
-    const left = (await run('git', ['for-each-ref', '--format=%(refname)', 'refs/cezar/pr/'], { cwd: repo.root })).stdout.trim();
-    expect(left).toBe('refs/cezar/pr/2');
+    const left = (await run('git', ['for-each-ref', '--format=%(refname)', 'refs/onni/pr/'], { cwd: repo.root })).stdout.trim();
+    expect(left).toBe('refs/onni/pr/2');
   });
 });
 
@@ -180,8 +180,8 @@ describe('a pr-head automation launch', () => {
   let secrets: SecretStore;
 
   beforeEach(async () => {
-    repo = await gitRepo('cez-pr-launch-');
-    store = RunStore.open(join(repo.root, '.ai/cezar'));
+    repo = await gitRepo('onni-pr-launch-');
+    store = RunStore.open(join(repo.root, '.ai/onni'));
     secrets = new SecretStore();
     manager = new RunManager(store, repo.root, { projectId: PROJECT, secrets });
   });
@@ -234,7 +234,7 @@ describe('a pr-head automation launch', () => {
     expect(readFileSync(join(finished.worktreePath!, '..', 'verified-head.txt'), 'utf8').trim()).toBe(repo.head);
     expect(readFileSync(join(finished.worktreePath!, '..', 'verified-env.txt'), 'utf8').trim())
       .toBe(`sha=${repo.head} ref=feature/login base=main n=42 key=trusted-key`);
-    expect(finished.prHead).toMatchObject({ number: 42, headSha: repo.head, ref: 'refs/cezar/pr/42' });
+    expect(finished.prHead).toMatchObject({ number: 42, headSha: repo.head, ref: 'refs/onni/pr/42' });
     expect(finished.untrustedHead).toBeUndefined();
     expect(finished.prRefs?.map((ref) => ref.number)).toContain(42);
   }, 40_000);
@@ -256,7 +256,7 @@ describe('a pr-head automation launch', () => {
     const { runner } = fakeGithub(pull('0'.repeat(40)), { fetchSha: repo.head });
     const { runId } = await launchAutomationRun({ root: repo.root, manager, store, definition: definition(), candidate, receiptId: 'r3', runCommand: runner });
     await settle(runId);
-    const notes = readFileSync(join(repo.root, '.ai/cezar/runs', `${runId}.ndjson`), 'utf8');
+    const notes = readFileSync(join(repo.root, '.ai/onni/runs', `${runId}.ndjson`), 'utf8');
     expect(notes).toContain('moved while launching');
   }, 40_000);
 
@@ -288,7 +288,7 @@ describe('a pr-head automation launch', () => {
 describe('launch outcomes in the execution log', () => {
   let root: string;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-pr-outcome-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-pr-outcome-'));
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
@@ -296,7 +296,7 @@ describe('launch outcomes in the execution log', () => {
     ['skipped', 'fork-head', 'skipped'],
     ['failed', 'pr-head-unavailable: could not fetch refs/pull/42/head', 'launch-error'],
   ] as const)('records a %s launch as a receipt and a log row, without failing the poll', async (result, reason, receiptStatus) => {
-    const store = AutomationStore.open(join(root, '.ai/cezar'));
+    const store = AutomationStore.open(join(root, '.ai/onni'));
     const definition = { id: 'verify-prs', revision: 1 } as GithubAutomationDefinition;
     await launchEventCandidate({
       store, definition,

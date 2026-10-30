@@ -23,8 +23,8 @@ describe('POST /api/v1/runs systemPrompt', () => {
   const savedFollowups = process.env.CEZ_FOLLOWUPS;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-startrun-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-startrun-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     captured = undefined;
     // #471: these assertions are about systemPrompt, so pin the inbox on and
     // let the dedicated suite below own the gate's behavior.
@@ -113,7 +113,7 @@ describe('POST /api/v1/runs systemPrompt', () => {
 
   it('rejects a model override from repository lock config but still accepts a runner choice', async () => {
     writeFileSync(
-      join(repoRoot, '.ai', 'cezar', 'config.json'),
+      join(repoRoot, '.ai', 'onni', 'config.json'),
       JSON.stringify({ modelsLocked: true }),
       'utf8',
     );
@@ -144,8 +144,8 @@ describe('POST /api/v1/runs generateFollowups — the CEZ_FOLLOWUPS ceiling (#47
   const savedFollowups = process.env.CEZ_FOLLOWUPS;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-startrun-followups-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-startrun-followups-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     captured = undefined;
     const manager = {
       startRun: (_workflow: WorkflowDef, input: StartRunInput) => {

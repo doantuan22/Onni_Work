@@ -48,11 +48,11 @@ export const EOF_KILL_GRACE_MS = 4_000;
 export const AUTO_END_DELAY_MS = 250;
 
 /**
- * Claude runs through cezar's headless stream-json transport. There is no
+ * Claude runs through onni's headless stream-json transport. There is no
  * cockpit permission response channel yet, so a denial must become actionable
  * prose rather than an invitation to use Claude Code's interactive controls.
  */
-export const CLAUDE_HEADLESS_GUIDANCE = `You are running Claude Code through cezar's headless integration. Permission prompts cannot be answered in the cezar cockpit. If a tool call is denied, do not suggest Shift+Tab, /permissions, changing Claude permission settings, or replying Continue to retry it. Report the exact blocked tool and path or command, stop retrying that operation, and explain that the task's actual Open in… action is the workaround: continue in an interactive claude --resume <session id> shell in the task worktree and approve the prompt there. Do not use filesystem workarounds or claim that cezar can approve the request.`;
+export const CLAUDE_HEADLESS_GUIDANCE = `You are running Claude Code through onni's headless integration. Permission prompts cannot be answered in the onni cockpit. If a tool call is denied, do not suggest Shift+Tab, /permissions, changing Claude permission settings, or replying Continue to retry it. Report the exact blocked tool and path or command, stop retrying that operation, and explain that the task's actual Open in… action is the workaround: continue in an interactive claude --resume <session id> shell in the task worktree and approve the prompt there. Do not use filesystem workarounds or claim that onni can approve the request.`;
 
 /** Keep caller-owned instructions intact while adding guidance owned by this backend. */
 export function appendClaudeSystemPrompt(systemPrompt?: string): string {
@@ -95,7 +95,7 @@ export function resolveClaudeExecutable(override?: string): string {
  *
  * Session mechanics (multi-turn stdin, EOF watchdog, reopen window) follow
  * github-janitor's `claudeRunner.ts`; the original single-turn adaptation
- * came from @cezar/core's `ClaudeCodeCliRunner`.
+ * came from @onni/core's `ClaudeCodeCliRunner`.
  */
 export class ClaudeCliRunner implements AgentRunner {
   readonly backend = 'claude' as const;
@@ -190,9 +190,9 @@ export class ClaudeCliRunner implements AgentRunner {
     // inactivity kill switch. claude installs its own SIGTERM handler and exits
     // 143 instead of dying from the signal, so without this flag our own
     // teardown reads as an agent failure (#703).
-    let terminatedByCezar = false;
+    let terminatedByOnni = false;
     const signalChild = (signal: 'SIGTERM' | 'SIGKILL'): void => {
-      terminatedByCezar = true;
+      terminatedByOnni = true;
       child.kill(signal);
     };
     // Every watchdog below asks "is the child still alive?" — and that question
@@ -284,11 +284,11 @@ export class ClaudeCliRunner implements AgentRunner {
           emitUsageWindows(spec.onUsageWindows, normalizeClaudeUsageWindows(msg) ?? normalizeClaudeTerminalUsageLimit(msg));
 
           // Claude reports `error_during_execution` while reacting to our
-          // teardown signal. Once cezar has signalled the child, that frame
+          // teardown signal. Once onni has signalled the child, that frame
           // describes the intentional stop rather than an agent failure.
           // Normalize only this precise wire shape so genuine result errors
           // (authentication, limits, malformed sessions) stay authoritative.
-          const mappedMessage = normalizeIntentionalTeardownResult(msg, terminatedByCezar);
+          const mappedMessage = normalizeIntentionalTeardownResult(msg, terminatedByOnni);
           emitUi((state) => mapClaudeMessage(mappedMessage, state));
 
           let delta = 0;
@@ -344,13 +344,13 @@ export class ClaudeCliRunner implements AgentRunner {
         return { text, toolCalls, tokensUsed, sessionId: spec.sessionId };
       }
 
-      // A session cezar itself tore down (EOF watchdog after `end()`, or a
+      // A session onni itself tore down (EOF watchdog after `end()`, or a
       // cancel) exits 143/137 — that is our own signal coming back, not an
       // agent failure, so it settles on the normal path with a note (#703).
-      if (terminatedByCezar && isSignalTerminationExit(exitCode)) {
+      if (terminatedByOnni && isSignalTerminationExit(exitCode)) {
         onEvent?.({
           type: 'note',
-          message: `claude CLI did not exit on its own after close; terminated by cezar (code ${exitCode})`,
+          message: `claude CLI did not exit on its own after close; terminated by onni (code ${exitCode})`,
         });
         onEvent?.({ type: 'done' });
         return { text, toolCalls, tokensUsed, sessionId: spec.sessionId };
@@ -394,7 +394,7 @@ export class ClaudeCliRunner implements AgentRunner {
  * `stream_event` token deltas the cockpit renders as live text;
  * `--permission-mode dontAsk` keeps headless runs non-interactive: tools in
  * `--allowedTools` proceed and everything else is denied instead of prompting.
- * `CEZ_APPROVAL_GATE=1` selects Claude's `acceptEdits` mode, but cezar still
+ * `CEZ_APPROVAL_GATE=1` selects Claude's `acceptEdits` mode, but onni still
  * has no cockpit permission response channel.
  */
 export function buildClaudeArgs(
@@ -454,7 +454,7 @@ export function writeClaudeMcpConfig(
 ): { path: string; cleanup: () => void } | undefined {
   if (!servers?.length) return undefined;
   try {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-mcp-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-mcp-'));
     const path = join(dir, 'mcp.json');
     writeFileSync(path, JSON.stringify(toClaudeMcpConfig(servers)), { mode: 0o600 });
     return { path, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
@@ -519,10 +519,10 @@ interface ClaudeStreamMessage {
 
 function normalizeIntentionalTeardownResult(
   msg: ClaudeStreamMessage,
-  terminatedByCezar: boolean,
+  terminatedByOnni: boolean,
 ): ClaudeStreamMessage {
   if (
-    terminatedByCezar
+    terminatedByOnni
     && msg.type === 'result'
     && msg.is_error === true
     && msg.subtype === 'error_during_execution'
@@ -606,16 +606,16 @@ function handleClaudeMessage(
 
 // ---- subprocess plumbing --------------------------------------------------
 
-/** The signals a `128 + n` exit names; only reached when cezar did NOT signal the child. */
+/** The signals a `128 + n` exit names; only reached when onni did NOT signal the child. */
 const EXIT_SIGNALS: Record<number, string> = { 1: 'SIGHUP', 2: 'SIGINT', 3: 'SIGQUIT', 6: 'SIGABRT', 9: 'SIGKILL', 11: 'SIGSEGV', 13: 'SIGPIPE', 15: 'SIGTERM' };
 
 /** A failed exit, naming the signal behind a `128 + n` code — a bare "code 129" (telemetry 046a0525)
- *  read as a crash, and cezar never sends SIGHUP (Windows raises it when the console closes). */
+ *  read as a crash, and onni never sends SIGHUP (Windows raises it when the console closes). */
 export function claudeExitMessage(exitCode: number, stderr: string): string {
   const signal = exitCode > 128 ? EXIT_SIGNALS[exitCode - 128] : undefined;
   const hint = signal === 'SIGHUP'
-    ? ' (SIGHUP: the terminal or console it ran under went away — cezar did not stop it)'
-    : signal ? ` (${signal}: a signal cezar did not send)` : '';
+    ? ' (SIGHUP: the terminal or console it ran under went away — onni did not stop it)'
+    : signal ? ` (${signal}: a signal onni did not send)` : '';
   const tail = stderr.trim();
   const detail = tail ? ` — ${tail.split('\n').slice(-3).join(' | ')}` : '';
   return `claude CLI exited with code ${exitCode}${hint}${detail}`;

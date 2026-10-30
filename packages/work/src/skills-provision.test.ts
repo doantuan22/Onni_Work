@@ -39,7 +39,7 @@ describe('provisionSkills', () => {
   let cwd: string;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-provision-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-provision-'));
     cwd = join(root, 'worktree');
     mkdirSync(cwd);
     execFileSync('git', ['init', '-q'], { cwd });
@@ -55,7 +55,7 @@ describe('provisionSkills', () => {
       path: join(installed, 'SKILL.md'),
       source: 'agents',
     });
-    // The companion exists only in cezar's catalog (no install dir at all).
+    // The companion exists only in onni's catalog (no install dir at all).
     const companion = skill('om-code-review', 'Review engine.', { description: 'Reviews code.' });
 
     const names = await provisionSkills(cwd, [selected], [selected, companion]);
@@ -73,7 +73,7 @@ describe('provisionSkills', () => {
   it('never touches an entry that already exists (a tracked or user-installed skill)', async () => {
     mkdirSync(join(cwd, '.claude/skills/om-x'), { recursive: true });
     writeFileSync(join(cwd, '.claude/skills/om-x/SKILL.md'), 'mine');
-    const names = await provisionSkills(cwd, [skill('om-x', 'cezar copy')], []);
+    const names = await provisionSkills(cwd, [skill('om-x', 'onni copy')], []);
     expect(readFileSync(join(cwd, '.claude/skills/om-x/SKILL.md'), 'utf8')).toBe('mine');
     expect(lstatSync(join(cwd, '.agents/skills/om-x')).isDirectory()).toBe(true);
     expect(names).toEqual(['om-x']);
@@ -91,7 +91,7 @@ describe('provisionSkills', () => {
     const wt = join(root, 'linked');
     execFileSync('git', ['worktree', 'add', '-q', '--detach', wt], { cwd });
 
-    expect(await provisionSkills(wt, [skill('om-x', 'cezar copy')], [])).toEqual(['om-x']);
+    expect(await provisionSkills(wt, [skill('om-x', 'onni copy')], [])).toEqual(['om-x']);
 
     expect(execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: wt, encoding: 'utf8' })).toBe('');
     // The same path created in the main checkout must still show up as untracked.

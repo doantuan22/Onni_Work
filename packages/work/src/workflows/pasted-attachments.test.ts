@@ -103,17 +103,17 @@ describe('pastedAttachmentsText / pastedAttachmentsNote', () => {
   it('points at the attachment library without disturbing the per-run paths', () => {
     const text = pastedAttachmentsText(
       [{ name: 'pasted-1.md', url: '/api/v1/x', path: '/abs/runs/r-images/pasted-1.md' }],
-      '/repo/.ai/cezar/attachments',
+      '/repo/.ai/onni/attachments',
     );
     expect(text).toContain('The user attached 1 pasted file, also saved on disk at:');
     expect(text).toContain('- /abs/runs/r-images/pasted-1.md');
-    expect(text).toContain('kept under their original names in /repo/.ai/cezar/attachments');
+    expect(text).toContain('kept under their original names in /repo/.ai/onni/attachments');
     expect(text).toContain('a file the user names but did not attach to this message');
     // "Documents and named images", not "attachments": a nameless upload is deliberately never
     // filed, so a note promising every attachment would send the agent hunting in the wrong folder.
     expect(text).toContain('Documents and named images attached anywhere in this project');
     // The #950 closing instruction still lands after it, not before.
-    expect(text.indexOf('/repo/.ai/cezar/attachments')).toBeLessThan(text.indexOf('operate on these files'));
+    expect(text.indexOf('/repo/.ai/onni/attachments')).toBeLessThan(text.indexOf('operate on these files'));
   });
 
   /** The #950 wording is load-bearing for every backend that only ever sees text — a note that
@@ -138,7 +138,7 @@ describe('copyToAttachmentLibrary (#929)', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-library-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-library-'));
   });
 
   afterEach(() => {
@@ -181,7 +181,7 @@ describe('copyToAttachmentLibrary (#929)', () => {
    * Defense in depth. `toPastedContent` sanitizes at the wire boundary and is the only producer of
    * `FileBlock.name` today, but that field is a plain `string` — so the writer refuses anything
    * that is not already a bare segment rather than trusting a caller two modules away. A traversal
-   * that got this far would land outside `.ai/cezar/` entirely.
+   * that got this far would land outside `.ai/onni/` entirely.
    */
   it('refuses a name that is not already a bare filename, whoever hands it over', () => {
     expect(copyToAttachmentLibrary(dataDir, '../../etc/shadow', Buffer.from('x'))).toBeNull();
@@ -244,7 +244,7 @@ describe('attachment media types, extensions and blocks (#950)', () => {
     expect(attachmentExtension('text/plain')).toBe('txt');
     expect(attachmentExtension('text/markdown')).toBe('md');
     expect(attachmentExtension('text/x-markdown')).toBe('md');
-    // The pre-existing catch-all for an image type cezar does not name, kept so an SVG paste
+    // The pre-existing catch-all for an image type onni does not name, kept so an SVG paste
     // still lands exactly where it always did.
     expect(attachmentExtension('image/svg+xml')).toBe('img');
   });
@@ -314,7 +314,7 @@ describe('attachment media types, extensions and blocks (#950)', () => {
 
   // Conversion retains private name metadata but must not persist rejected requests.
   it('keeps named image conversion free of filesystem side effects', () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'cez-image-library-'));
+    const dataDir = mkdtempSync(join(tmpdir(), 'onni-image-library-'));
     try {
       const block = toPastedContent({ mediaType: 'image/png', data: TINY_PNG_B64, name: 'diagram.png' });
       expect(block).toEqual({
@@ -331,7 +331,7 @@ describe('attachment media types, extensions and blocks (#950)', () => {
    *  `pasted-2.png` clutter #929 already refuses for files, so a nameless image is skipped even
    *  when a `dataDir` is given. */
   it('never files a pasted (nameless) image during conversion', () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'cez-image-library-'));
+    const dataDir = mkdtempSync(join(tmpdir(), 'onni-image-library-'));
     try {
       toPastedContent({ mediaType: 'image/png', data: TINY_PNG_B64 });
       expect(existsSync(attachmentLibraryDir(dataDir))).toBe(false);
@@ -518,7 +518,7 @@ describe('sanitizeAttachmentName (#929)', () => {
 
 /**
  * End-to-end through the real engine with CEZ_DRY_RUN=1 (#357): a pasted
- * screenshot must land as a real file under `.ai/cezar/runs/<id>-images/`
+ * screenshot must land as a real file under `.ai/onni/runs/<id>-images/`
  * (named `pasted-<n>.<ext>`, never `screenshot-<n>.<ext>` — that prefix stays
  * reserved for the agent's own tool screenshots) and its absolute path must
  * reach the agent in the prompt/message text — verified via the mock's
@@ -534,8 +534,8 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-pasted-'));
-    dataDir = join(repoRoot, '.ai/cezar');
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-pasted-'));
+    dataDir = join(repoRoot, '.ai/onni');
     argsFile = join(repoRoot, 'mock-args.ndjson');
     stdinFile = join(repoRoot, 'mock-stdin.ndjson');
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
@@ -733,7 +733,7 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
 
   /**
    * The library end to end (#929): a named file attached to a task must land in
-   * `.ai/cezar/attachments/` under the name the user picked, and the agent must be told where —
+   * `.ai/onni/attachments/` under the name the user picked, and the agent must be told where —
    * that path is the only one a LATER task could find it by.
    */
   it('a named file attachment is filed in the project library and its path reaches the agent', async () => {
@@ -939,12 +939,12 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
     writeFileSync(argsFile, '', 'utf8');
     // Reproduce #987's first-use case: the live session starts before any named attachment has
     // created the project library. Its fixed grant must still include the directory.
-    const liveRepoRoot = mkdtempSync(join(tmpdir(), 'cez-live-attachment-repo-'));
+    const liveRepoRoot = mkdtempSync(join(tmpdir(), 'onni-live-attachment-repo-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: liveRepoRoot });
     writeFileSync(join(liveRepoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: liveRepoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: liveRepoRoot });
-    const liveDataDir = join(liveRepoRoot, '.ai/cezar');
+    const liveDataDir = join(liveRepoRoot, '.ai/onni');
     mkdirSync(liveDataDir, { recursive: true });
     writeFileSync(join(liveDataDir, 'config.json'), JSON.stringify({ maxParallel: 1 }));
     const liveStore = RunStore.open(liveDataDir);
@@ -1018,12 +1018,12 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
   it('does not advertise a library that appeared after the live session failed to grant it', async () => {
     writeFileSync(stdinFile, '', 'utf8');
     writeFileSync(argsFile, '', 'utf8');
-    const liveRepoRoot = mkdtempSync(join(tmpdir(), 'cez-late-library-repo-'));
+    const liveRepoRoot = mkdtempSync(join(tmpdir(), 'onni-late-library-repo-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: liveRepoRoot });
     writeFileSync(join(liveRepoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: liveRepoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: liveRepoRoot });
-    const liveDataDir = join(liveRepoRoot, '.ai/cezar');
+    const liveDataDir = join(liveRepoRoot, '.ai/onni');
     mkdirSync(liveDataDir, { recursive: true });
     writeFileSync(join(liveDataDir, 'config.json'), JSON.stringify({ maxParallel: 1 }));
     const blockedLibrary = attachmentLibraryDir(liveDataDir);

@@ -53,7 +53,7 @@ export interface CopilotAcpRunnerOptions {
 /**
  * GitHub Copilot CLI over the Agent Client Protocol (#582, spec
  * `2026-09-19-runner-seam-native-backends` Phase 3): one long-lived `copilot --acp` child and one
- * ACP session per cezar session. Follow-ups are further `session/prompt` calls on the same
+ * ACP session per onni session. Follow-ups are further `session/prompt` calls on the same
  * process; Continue resumes with `session/load`.
  *
  * The wire was verified against `@github/copilot` 1.0.88 — the record is
@@ -97,7 +97,7 @@ export class CopilotAcpRunner implements AgentRunner {
  * - `--allow-all-tools` is the `auto` permission mode (Q15). The **flag**, deliberately, not
  *   `COPILOT_ALLOW_ALL=true`: set to exactly `"true"` that variable *also* trusts the working
  *   directory, which loads its skills, plugins, MCP servers and hooks — including hooks that run
- *   shell commands. A cezar worktree is a checkout of someone else's branch; that is not a trust
+ *   shell commands. A onni worktree is a checkout of someone else's branch; that is not a trust
  *   decision this runner gets to make.
  * - `--no-auto-update` because a CLI that swaps itself out mid-task is not reproducible, and the
  *   download is not something a run should pay for.
@@ -131,7 +131,7 @@ export function buildCopilotEnv(backend: AgentBackend, extraEnv?: Record<string,
 }
 
 /**
- * A cezar-authored line for an exit outside a prompt.
+ * A onni-authored line for an exit outside a prompt.
  *
  * Copilot's exit codes are **not documented and were not verified**, so — unlike the Gemini
  * runner, which can name 41/52/55 — this reports the code and the tail of stderr rather than
@@ -164,9 +164,9 @@ class CopilotAcpSession implements AgentSession {
   private turnInFlight = false;
   private turnsCompleted = 0;
   private readonly queue: AcpContentBlock[][] = [];
-  private terminatedByCezar = false;
-  /** `end()` closed stdin: a turn the CLI then drops on EOF was cezar's call, not a failure. */
-  private endedByCezar = false;
+  private terminatedByOnni = false;
+  /** `end()` closed stdin: a turn the CLI then drops on EOF was onni's call, not a failure. */
+  private endedByOnni = false;
   private timedOut = false;
   private deadline: InactivityDeadline = armInactivityDeadline(0, () => {});
   private failed: string | null = null;
@@ -234,7 +234,7 @@ class CopilotAcpSession implements AgentSession {
   end(): void {
     if (!this.isOpen) return;
     this.isOpen = false;
-    this.endedByCezar = true;
+    this.endedByOnni = true;
     this.terminate(false);
   }
 
@@ -270,7 +270,7 @@ class CopilotAcpSession implements AgentSession {
       // The agent died with a prompt unanswered: the transport rejected it, the wire never will.
       this.turnInFlight = false;
       if (this.timedOut) this.applyUi(abortAcpTurn(this.ui, copilotDialect, 'timeout'));
-      else if (this.terminatedByCezar || this.endedByCezar) this.applyUi(abortAcpTurn(this.ui, copilotDialect, 'cancelled'));
+      else if (this.terminatedByOnni || this.endedByOnni) this.applyUi(abortAcpTurn(this.ui, copilotDialect, 'cancelled'));
       else {
         const reason = copilotExitMessage(exitCode, this.stderrText(), true);
         this.applyUi(abortAcpTurn(this.ui, copilotDialect, 'error', reason));
@@ -294,16 +294,16 @@ class CopilotAcpSession implements AgentSession {
       this.emit({ type: 'done' });
       return summary();
     }
-    if (!this.acpSessionId && !this.terminatedByCezar && (exitCode === 0 || exitCode === null)) {
+    if (!this.acpSessionId && !this.terminatedByOnni && (exitCode === 0 || exitCode === null)) {
       this.fail('Copilot CLI exited before it started a session');
       this.opts.onUiEvent?.({ type: 'session.ended', reason: 'error' });
       this.emit({ type: 'done' });
       return summary();
     }
     if (exitCode !== 0 && exitCode !== null) {
-      if (this.terminatedByCezar && (isSignalTerminationExit(exitCode) || exitCode === 1)) {
-        this.emit({ type: 'note', message: `Copilot CLI exited ${exitCode} after cezar stopped it` });
-      } else if (!this.terminatedByCezar) {
+      if (this.terminatedByOnni && (isSignalTerminationExit(exitCode) || exitCode === 1)) {
+        this.emit({ type: 'note', message: `Copilot CLI exited ${exitCode} after onni stopped it` });
+      } else if (!this.terminatedByOnni) {
         const message = copilotExitMessage(exitCode, this.stderrText());
         this.emit({ type: 'error', message });
         throw new Error(message);
@@ -312,7 +312,7 @@ class CopilotAcpSession implements AgentSession {
     if (this.tokensUsed === 0 && this.turnsCompleted > 0) {
       this.emit({ type: 'note', message: 'token usage not reported by Copilot CLI' });
     }
-    this.opts.onUiEvent?.({ type: 'session.ended', reason: this.terminatedByCezar && this.turnsCompleted === 0 ? 'cancelled' : 'end_turn' });
+    this.opts.onUiEvent?.({ type: 'session.ended', reason: this.terminatedByOnni && this.turnsCompleted === 0 ? 'cancelled' : 'end_turn' });
     this.emit({ type: 'done' });
     return summary();
   }
@@ -498,12 +498,12 @@ class CopilotAcpSession implements AgentSession {
         ? request.params.toolCall.title
         : 'a tool call';
     if (!choice || typeof choice.optionId !== 'string') {
-      this.emit({ type: 'note', message: `Copilot asked permission for ${title} with no option cezar could pick; cancelled` });
+      this.emit({ type: 'note', message: `Copilot asked permission for ${title} with no option onni could pick; cancelled` });
       return { result: { outcome: { outcome: 'cancelled' } } };
     }
     this.emit({
       type: 'note',
-      message: `Copilot asked permission for ${title}; auto-approved (${String(choice.kind ?? choice.optionId)}) — cezar runs Copilot in auto mode`,
+      message: `Copilot asked permission for ${title}; auto-approved (${String(choice.kind ?? choice.optionId)}) — onni runs Copilot in auto mode`,
     });
     return { result: { outcome: { outcome: 'selected', optionId: choice.optionId } } };
   }
@@ -547,11 +547,11 @@ class CopilotAcpSession implements AgentSession {
     }
     const signal = (sig: NodeJS.Signals): void => {
       if (this.hasExited()) return;
-      this.terminatedByCezar = true;
+      this.terminatedByOnni = true;
       this.child.kill(sig);
     };
     if (hard) {
-      this.terminatedByCezar = true;
+      this.terminatedByOnni = true;
       signal('SIGTERM');
       const kill = setTimeout(() => signal('SIGKILL'), EOF_KILL_GRACE_MS);
       kill.unref?.();

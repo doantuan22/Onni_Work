@@ -204,9 +204,9 @@ describe('views', () => {
 
 describe('copy', () => {
   it('copies what the run has, and nothing it does not', () => {
-    const { byId, on } = build(run('done', { branch: 'cez/r1' }))
+    const { byId, on } = build(run('done', { branch: 'onni/r1' }))
     byId.get('copy:branch')?.perform()
-    expect(on.copy).toHaveBeenCalledWith('cez/r1', 'Branch name')
+    expect(on.copy).toHaveBeenCalledWith('onni/r1', 'Branch name')
     expect(byId.has('copy:path')).toBe(false)
     expect(byId.get('copy:link')).toBeDefined()
     expect(byId.get('copy:resume')).toBeDefined()

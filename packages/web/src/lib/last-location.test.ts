@@ -37,7 +37,7 @@ const REGISTRY: ProjectsResponse = {
   ],
 }
 
-/** What the server answers when cezar was started somewhere with an EMPTY registry: the served
+/** What the server answers when onni was started somewhere with an EMPTY registry: the served
  *  folder is the whole list, flagged, and `bootProject` names it. (With projects registered the
  *  row is not listed at all — `bareRootLanding` below is what that case needs.) */
 const UNREGISTERED_BOOT: ProjectsResponse = {

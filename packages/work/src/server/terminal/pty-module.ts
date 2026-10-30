@@ -2,7 +2,7 @@
  * The optional PTY binding (spec `.ai/specs/2026-10-07-task-workspace.md` §6, Milestone 2).
  *
  * `@lydell/node-pty` is an `optionalDependency`, and that choice is load-bearing rather than
- * incidental. cezar ships with ZERO native dependencies and zero install scripts today, and its
+ * incidental. onni ships with ZERO native dependencies and zero install scripts today, and its
  * self-update path runs `npm install` on the user's own machine without `--ignore-scripts`
  * (`src/self-update/installer.ts`). Upstream `node-pty` would compile there through
  * `node-gyp rebuild`, on whatever Node the user has (`engines: >=20`, no upper bound), across

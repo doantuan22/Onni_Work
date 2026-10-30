@@ -86,7 +86,7 @@ describe('RunAppPanel', () => {
       urls: [{ url: 'http://localhost:5173', lastSeenAt: new Date(Date.now() + 500).toISOString(), running: true }],
     })
     const onOpen = vi.fn()
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={onOpen} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={onOpen} />)
 
     fireEvent.click(await screen.findByRole('button', { name: /Run npm run dev/ }))
 
@@ -94,7 +94,7 @@ describe('RunAppPanel', () => {
     expect(api.createRunTerminal).toHaveBeenCalledWith('r1', {})
     expect(api.writeRunTerminal).toHaveBeenCalledWith('r1', 's-1', 'npm run dev\r')
     // Remembered for the next task in this project.
-    expect(localStorage.getItem(rememberedCommandKey('cezar'))).toBe('npm run dev')
+    expect(localStorage.getItem(rememberedCommandKey('onni'))).toBe('npm run dev')
   })
 
   it('installs the dependencies in a tab of their own, then starts the app once they succeed', async () => {
@@ -107,7 +107,7 @@ describe('RunAppPanel', () => {
       urls: [{ url: 'http://localhost:5173', lastSeenAt: new Date(Date.now() + 5000).toISOString(), running: true }],
     })
     const onOpen = vi.fn()
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={onOpen} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={onOpen} />)
     expect(await screen.findByText(/Installs its dependencies first \(npm ci\)/)).not.toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /Run npm run dev/ }))
@@ -117,14 +117,14 @@ describe('RunAppPanel', () => {
     expect(api.writeRunTerminal).toHaveBeenNthCalledWith(1, 'r1', 'install', 'npm ci && exit 0 || exit 1\r')
     expect(api.writeRunTerminal).toHaveBeenNthCalledWith(2, 'r1', 's-1', 'npm run dev\r')
     // Only the start command is remembered; the install is decided afresh each time.
-    expect(localStorage.getItem(rememberedCommandKey('cezar'))).toBe('npm run dev')
+    expect(localStorage.getItem(rememberedCommandKey('onni'))).toBe('npm run dev')
   })
 
   it('stops at a failed install and starts nothing', async () => {
     api.getRunTerminalCommands.mockResolvedValue({ commands, install: 'npm ci' })
     api.createRunTerminal.mockResolvedValue(session({ id: 'install' }))
     api.getRunTerminal.mockResolvedValue({ available: true, sessions: [session({ id: 'install', exitCode: 1 })] })
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={() => {}} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={() => {}} />)
 
     fireEvent.click(await screen.findByRole('button', { name: /Run npm run dev/ }))
 
@@ -152,7 +152,7 @@ describe('RunAppPanel', () => {
         ],
       })
     const onOpen = vi.fn()
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={onOpen} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={onOpen} />)
 
     expect(await screen.findByText('Start the app')).not.toBeNull()
     expect(screen.getByText('npm run api')).not.toBeNull()
@@ -162,12 +162,12 @@ describe('RunAppPanel', () => {
     expect(api.writeRunTerminal).toHaveBeenCalledWith('r1', 'api', 'npm run api\r')
     expect(api.writeRunTerminal).toHaveBeenCalledWith('r1', 'web', 'npm run web\r')
     // A recipe is not a remembered command.
-    expect(localStorage.getItem(rememberedCommandKey('cezar'))).toBeNull()
+    expect(localStorage.getItem(rememberedCommandKey('onni'))).toBeNull()
   })
 
   it('suggests the command that worked last time over the discovered one', async () => {
-    localStorage.setItem(rememberedCommandKey('cezar'), 'make start')
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={() => {}} />)
+    localStorage.setItem(rememberedCommandKey('onni'), 'make start')
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={() => {}} />)
     expect(await screen.findByRole('button', { name: /Run make start/ })).not.toBeNull()
   })
 
@@ -176,7 +176,7 @@ describe('RunAppPanel', () => {
     api.getRunTerminal.mockResolvedValue({ available: true, sessions: [session({ exitCode: 1 })] })
     const onShowTerminal = vi.fn()
     const onOpen = vi.fn()
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={onOpen} onShowTerminal={onShowTerminal} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={onOpen} onShowTerminal={onShowTerminal} />)
 
     fireEvent.click(await screen.findByRole('button', { name: /Run npm run dev/ }))
 
@@ -188,7 +188,7 @@ describe('RunAppPanel', () => {
 
   it('offers only the menu when nothing in the project looks like a start command', async () => {
     api.getRunTerminalCommands.mockResolvedValue({ commands: [{ command: 'npm run build', source: 'package.json' }] })
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={() => {}} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={() => {}} />)
     expect(await screen.findByRole('button', { name: /Choose a command/ })).not.toBeNull()
     expect(screen.queryByRole('button', { name: /^Run / })).toBeNull()
   })
@@ -200,7 +200,7 @@ describe('the worktree setup (#1495)', () => {
     const { rerender } = render(
       <RunAppPanel
         runId="r1"
-        projectId="cezar"
+        projectId="onni"
         onOpen={() => {}}
         setup={{ ...projection, state: 'running', activeOperationId: '1d7c3c1e-6f2a-4b8e-9d1a-2f4c5b6a7e8f', needsAttention: false }}
       />,
@@ -209,7 +209,7 @@ describe('the worktree setup (#1495)', () => {
     expect(screen.getByRole('button', { name: /Run npm run dev/ }).hasAttribute('disabled')).toBe(true)
 
     rerender(
-      <RunAppPanel runId="r1" projectId="cezar" onOpen={() => {}} setup={{ ...projection, state: 'needs_attention', needsAttention: true }} />,
+      <RunAppPanel runId="r1" projectId="onni" onOpen={() => {}} setup={{ ...projection, state: 'needs_attention', needsAttention: true }} />,
     )
     expect(screen.getByText(/setup needs attention/)).not.toBeNull()
     expect(screen.getByRole('button', { name: /Run npm run dev/ }).hasAttribute('disabled')).toBe(false)
@@ -224,7 +224,7 @@ describe('the start recipe editor', () => {
       personal: null,
       personalAvailable: true,
     }))
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={() => {}} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Save a start recipe for this project' }))
 
     const first = await screen.findByRole('textbox', { name: 'Service 1' })
@@ -249,7 +249,7 @@ describe('the start recipe editor', () => {
 
   it('refuses an address that is not http(s), and offers no personal recipe outside the registry', async () => {
     api.getStartApp.mockResolvedValue({ project: null, personal: null, personalAvailable: false })
-    render(<RunAppPanel runId="r1" projectId="cezar" onOpen={() => {}} />)
+    render(<RunAppPanel runId="r1" projectId="onni" onOpen={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Save a start recipe for this project' }))
     await screen.findByRole('textbox', { name: 'Service 1' })
     await waitFor(() => expect(screen.getByRole('radio', { name: /Only me/ }).hasAttribute('disabled')).toBe(true))

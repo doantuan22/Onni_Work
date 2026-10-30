@@ -79,12 +79,12 @@ describe('a run stopped by a usage limit resumes itself', () => {
     process.env.CEZ_DRY_RUN = '1';
     // Far enough out that the schedule is unambiguous and the timer never fires mid-test.
     process.env.CEZ_MOCK_LIMIT_RESET_SECONDS = '3600';
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-auto-resume-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-auto-resume-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   afterEach(async () => {
@@ -186,7 +186,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
     if (restart === true) {
       manager.dispose();
       store.flush();
-      store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+      store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
       manager = new RunManager(store, repoRoot);
     }
     // The mock matches the task text on every turn. Change the reply after the interruption,
@@ -219,7 +219,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
         manager.dispose();
         pump.mockRestore();
         store.flush();
-        store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+        store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
         manager = new RunManager(store, repoRoot);
         await manager.recover();
       }
@@ -277,7 +277,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
       autoResumeAt: new Date(Date.now() - 1_000).toISOString(),
     });
     store.flush();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     manager = new RunManager(store, repoRoot);
     await manager.recover();
     await expect.poll(() => store.getRun(record.id)?.status, { timeout: 20_000 }).toBe('done');
@@ -324,7 +324,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
         autoResumeAt: new Date(Date.now() - 1_000).toISOString(),
       });
       store.flush();
-      store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+      store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
       manager = new RunManager(store, repoRoot);
       await manager.recover();
       await expect.poll(() => store.getRun(record.id)?.status, { timeout: 20_000 }).toBe('done');
@@ -372,7 +372,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
     const sessions = mockRunnerSessions((spec, invocation) => {
       if (invocation !== 3) return spec;
       // Observe disk before the retried agent starts, without flushing the fixture's store.
-      const checkpoint = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+      const checkpoint = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
       durableRetriesAtSpawn = checkpoint.getRun(record.id)?.steps.find((step) => step.id === 'check')?.retriesUsed;
       return { ...spec, userPrompt: 'mock:limit retry the plan' };
     });
@@ -395,7 +395,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
     if (legacy === 'walk') expect(Object.values(store.getRun(record.id)?.graphState?.loops ?? {})).toEqual([1]);
     if (legacy === 'no-walk') store.updateRun(record.id, { graphState: undefined });
     store.flush();
-    const eventsPath = join(repoRoot, '.ai/cezar/runs', `${record.id}.ndjson`);
+    const eventsPath = join(repoRoot, '.ai/onni/runs', `${record.id}.ndjson`);
     if (transcript === 'missing') {
       rmSync(eventsPath);
     } else if (transcript === 'malformed') {
@@ -405,7 +405,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
       lines[retryNote] = '{malformed retry note';
       writeFileSync(eventsPath, lines.join('\n'));
     }
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     manager = new RunManager(store, repoRoot);
     await manager.recover();
     await expect.poll(() => store.getRun(record.id)?.autoResumeAt, { timeout: 20_000 }).toBeUndefined();
@@ -450,7 +450,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
     manager.dispose();
     store.updateRun(record.id, { autoResumeAt: new Date(Date.now() - 1_000).toISOString() });
     store.flush();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     manager = new RunManager(store, repoRoot);
     await manager.recover();
     await expect.poll(() => store.getRun(record.id)?.status, { timeout: 20_000 }).toBe('done');
@@ -738,7 +738,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
 
   it('retires a deadline no timer is holding when the setting is off', async () => {
     // The population `reconcileAutoResumes` exists for — a record promising a resume that no
-    // timer is holding — met by the setting being off: cezar restarted while it was off, the
+    // timer is holding — met by the setting being off: onni restarted while it was off, the
     // config was hand-edited, or the project context was disposed mid-wait. Sweeping only the
     // armed timers leaves the deadline on the record, and a live `autoResumeAt` is not cosmetic:
     // `accountHolds()` reads it as a hold, so nothing new starts on that account, and the cockpit
@@ -945,7 +945,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
     expect(store.getRun(record.id)?.autoResumeAt).toBeDefined();
     first.dispose();
 
-    // cezar was down when the window reopened — the deadline is already in the past, which the
+    // onni was down when the window reopened — the deadline is already in the past, which the
     // re-arm floors to "fire now". The task text is swapped because a continuation carries the
     // run's own task back into the prompt (`hydrateQueuedContinuation`), and the mock replies to
     // `mock:limit` wherever it appears — this test is about the resume completing, not looping
@@ -987,7 +987,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
   async function restartAndRecover(): Promise<void> {
     manager?.dispose();
     store.flush();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     manager = new RunManager(store, repoRoot);
     await manager.recover();
   }
@@ -1155,7 +1155,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
     const walked = store.getRun(record.id);
     expect(walked?.steps.find((step) => step.id === 'plan')?.status).toBe('failed');
     expect(walked?.steps.find((step) => step.id === 'plan')?.error).toContain('usage limit reached|');
-    // cezar died while the walk was on the check node.
+    // onni died while the walk was on the check node.
     store.updateRun(record.id, {
       status: 'running',
       finishedAt: undefined,

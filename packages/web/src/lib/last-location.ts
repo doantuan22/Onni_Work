@@ -12,13 +12,13 @@ export type LocationParts = Pick<Location, 'pathname' | 'search' | 'hash'>
 /**
  * Where the remembered location lives: THIS browser, not the workspace file.
  *
- * It shipped in `~/.cezar/ui-state.json` and that made one answer serve every client — the phone
+ * It shipped in `~/.onni/ui-state.json` and that made one answer serve every client — the phone
  * on the couch decided where the desktop's next bare-root launch landed, and two open cockpits
  * overwrote each other on every navigation. "The page this window was last on" describes a
- * browser, so it is stored per browser (like `cez-theme`). A server that still holds the legacy
+ * browser, so it is stored per browser (like `onni-theme`). A server that still holds the legacy
  * `lastLocation` key keeps it; nothing reads it any more.
  */
-export const LAST_LOCATION_STORAGE_KEY = 'cez-last-location'
+export const LAST_LOCATION_STORAGE_KEY = 'onni-last-location'
 
 /** The stored value, unvalidated — `locationToRestore` is what decides whether it is usable. */
 export function readStoredLastLocation(): unknown {
@@ -136,7 +136,7 @@ export function locationToRestore(
  *
  * The boot project, as it always was — EXCEPT when the registry does not list it. That is the
  * unregistered launch folder: `/api/v1/projects` stops listing it once the user has projects
- * (the seed-once rule, so starting cezar somewhere never adds a row behind their back), and
+ * (the seed-once rule, so starting onni somewhere never adds a row behind their back), and
  * opening the cockpit on a project with no sidebar row would be the same takeover by another
  * route. The registry's own lead row — most recently opened, the sidebar's order — is the
  * honest landing instead; `missing` roots are skipped for the same reason a remembered location

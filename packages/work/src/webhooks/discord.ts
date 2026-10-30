@@ -58,7 +58,7 @@ export function renderDiscordMessage(eventJson: string, ctx: { receiverName?: st
   const [label, color] = presentation[event.type];
   const allowed_mentions = { parse: [] };
   if (event.type === 'webhook.test') {
-    return JSON.stringify({ content: contentText(`${label} · cezar is connected to this channel${ctx.receiverName ? ` · ${ctx.receiverName}` : ''}`), allowed_mentions });
+    return JSON.stringify({ content: contentText(`${label} · onni is connected to this channel${ctx.receiverName ? ` · ${ctx.receiverName}` : ''}`), allowed_mentions });
   }
   const title = escape(event.task.title || event.task.id.slice(0, 8));
   const content = contentText(`${label} · ${event.task.title || event.task.id.slice(0, 8)}`);
@@ -69,7 +69,7 @@ export function renderDiscordMessage(eventJson: string, ctx: { receiverName?: st
   ];
   if (event.type === 'task.failed' && event.data.message) fields.push({ name: 'Error', value: clip(escape(event.data.message), 1024), inline: false });
   const embedTitle = clip(`${label} · ${title}`, 256);
-  const fixedLength = embedTitle.length + 'cezar'.length + fields.reduce((sum, field) => sum + field.name.length + field.value.length, 0);
+  const fixedLength = embedTitle.length + 'onni'.length + fields.reduce((sum, field) => sum + field.name.length + field.value.length, 0);
   const descriptionLimit = Math.min(4096, 6000 - fixedLength);
   let description = '';
   if (event.type === 'task.attention_required') {
@@ -81,7 +81,7 @@ export function renderDiscordMessage(eventJson: string, ctx: { receiverName?: st
     }
   }
   const url = event.links?.pullRequest ?? event.links?.issue ?? (event.source.mode === 'hosted' ? event.links?.cockpit : undefined);
-  const embed = { title: embedTitle, color, timestamp: event.occurredAt, fields, footer: { text: 'cezar' },
+  const embed = { title: embedTitle, color, timestamp: event.occurredAt, fields, footer: { text: 'onni' },
     ...(description ? { description } : {}), ...(url ? { url } : {}) };
   if (fixedLength + description.length > 6000) return JSON.stringify({ content, allowed_mentions });
   return JSON.stringify({ content, allowed_mentions, embeds: [embed] });

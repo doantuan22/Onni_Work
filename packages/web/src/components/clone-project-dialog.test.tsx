@@ -47,9 +47,9 @@ function json(body: unknown, status = 200): Response {
 }
 
 const PROJECT: ProjectListEntry = {
-  id: 'cezar-2',
-  name: 'cezar',
-  root: '/home/me/cezar/projects/cezar',
+  id: 'onni-2',
+  name: 'onni',
+  root: '/home/me/onni/projects/onni',
   addedAt: '2026-07-20T00:00:00.000Z',
   lastOpenedAt: '2026-07-20T00:00:00.000Z',
   source: 'checkout',
@@ -69,7 +69,7 @@ function serve(checkout: () => Promise<Response> = async () => json({ project: P
       return checkout()
     }
     if (url.pathname === '/api/v1/projects') {
-      return json({ projects: [], bootProject: 'cezar', projectsDir: '~/cezar/projects' })
+      return json({ projects: [], bootProject: 'onni', projectsDir: '~/onni/projects' })
     }
     return json({ error: `unexpected ${String(init?.method ?? 'GET')} ${url.pathname}` }, 404)
   })
@@ -83,7 +83,7 @@ function renderDialog() {
   const onOpenChange = vi.fn()
   render(
     <QueryClientProvider client={createQueryClient()}>
-      <MemoryRouter initialEntries={['/p/cezar/']}>
+      <MemoryRouter initialEntries={['/p/onni/']}>
         <CloneProjectDialog open onOpenChange={onOpenChange} />
         <LocationProbe />
       </MemoryRouter>
@@ -106,7 +106,7 @@ describe('CloneProjectDialog', () => {
 
     fireEvent.change(urlInput(), { target: { value: 'https://github.com/open-mercato/cezar.git' } })
     // The name defaults to the repo half — the same rule the server applies.
-    await waitFor(() => expect(slot('clone-target')?.textContent).toBe('~/cezar/projects/cezar'))
+    await waitFor(() => expect(slot('clone-target')?.textContent).toBe('~/onni/projects/onni'))
     expect(rootSettingsControl().tagName).toBe('A')
     expect(rootSettingsControl().getAttribute('href')).toBe('/settings/global/projects')
     expect(rootSettingsControl().getAttribute('aria-label')).toBe('Edit checkout root')
@@ -121,24 +121,24 @@ describe('CloneProjectDialog', () => {
 
     // Success closes the dialog and jumps to the new project's scope.
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
-    await waitFor(() => expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/cezar-2/'))
+    await waitFor(() => expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/onni-2/'))
   })
 
   it('an edited folder name is previewed and posted', async () => {
     serve()
     renderDialog()
-    fireEvent.change(urlInput(), { target: { value: 'open-mercato/cezar' } })
-    fireEvent.change(nameInput(), { target: { value: 'cezar-fork' } })
-    await waitFor(() => expect(slot('clone-target')?.textContent).toBe('~/cezar/projects/cezar-fork'))
+    fireEvent.change(urlInput(), { target: { value: 'open-mercato/onni' } })
+    fireEvent.change(nameInput(), { target: { value: 'onni-fork' } })
+    await waitFor(() => expect(slot('clone-target')?.textContent).toBe('~/onni/projects/onni-fork'))
     fireEvent.click(cloneButton())
-    await waitFor(() => expect(posted[0]).toMatchObject({ name: 'cezar-fork' }))
+    await waitFor(() => expect(posted[0]).toMatchObject({ name: 'onni-fork' }))
   })
 
   it('renders checkout-progress lines for ITS OWN checkoutId and ignores another dialog\'s', async () => {
     let release: (res: Response) => void = () => {}
     serve(() => new Promise<Response>((resolve) => (release = resolve)))
     renderDialog()
-    fireEvent.change(urlInput(), { target: { value: 'open-mercato/cezar' } })
+    fireEvent.change(urlInput(), { target: { value: 'open-mercato/onni' } })
     fireEvent.click(cloneButton())
 
     await waitFor(() => expect(slot('clone-progress')).toBeTruthy())
@@ -150,12 +150,12 @@ describe('CloneProjectDialog', () => {
     expect((rootSettingsControl() as HTMLButtonElement).disabled).toBe(true)
     expect(rootSettingsControl().getAttribute('aria-label')).toBe('Edit checkout root')
     fireEvent.click(rootSettingsControl())
-    expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/cezar/')
+    expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/onni/')
 
     const checkoutId = String(posted[0]?.checkoutId)
     emitWorkspaceEvent?.('checkout-progress', {
       checkoutId,
-      name: 'cezar',
+      name: 'onni',
       phase: 'cloning',
       line: 'Receiving objects:  42% (420/1000)',
     })
@@ -179,7 +179,7 @@ describe('CloneProjectDialog', () => {
   it('shows the server\'s error VERBATIM and stays open — never a silent spinner', async () => {
     serve(async () => json({ error: 'gh CLI not found — install it and run `gh auth login`' }, 503))
     const { onOpenChange } = renderDialog()
-    fireEvent.change(urlInput(), { target: { value: 'open-mercato/cezar' } })
+    fireEvent.change(urlInput(), { target: { value: 'open-mercato/onni' } })
     fireEvent.click(cloneButton())
 
     await waitFor(() =>
@@ -187,7 +187,7 @@ describe('CloneProjectDialog', () => {
     )
     // Not closed, not navigated: the reader can fix the input and try again.
     expect(onOpenChange).not.toHaveBeenCalledWith(false)
-    expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/cezar/')
+    expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/onni/')
     expect(cloneButton().disabled).toBe(false)
   })
 
@@ -247,7 +247,7 @@ describe('CloneProjectDialog', () => {
   it('does not turn an arbitrary URL in clone output into a link', async () => {
     serve(async () => json({ error: 'remote: visit https://evil.example/authorize' }, 500))
     renderDialog()
-    fireEvent.change(urlInput(), { target: { value: 'open-mercato/cezar' } })
+    fireEvent.change(urlInput(), { target: { value: 'open-mercato/onni' } })
     fireEvent.click(cloneButton())
 
     await waitFor(() => expect(slot('clone-error')?.textContent).toContain('evil.example'))
@@ -257,12 +257,12 @@ describe('CloneProjectDialog', () => {
   })
 
   it('surfaces the existing-folder 409 as an error rather than navigating anywhere', async () => {
-    serve(async () => json({ error: 'folder already exists: /home/me/cezar/projects/cezar' }, 409))
+    serve(async () => json({ error: 'folder already exists: /home/me/onni/projects/onni' }, 409))
     renderDialog()
-    fireEvent.change(urlInput(), { target: { value: 'open-mercato/cezar' } })
+    fireEvent.change(urlInput(), { target: { value: 'open-mercato/onni' } })
     fireEvent.click(cloneButton())
     await waitFor(() => expect(slot('clone-error')?.textContent).toContain('already exists'))
-    expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/cezar/')
+    expect(document.querySelector('[data-testid="location"]')?.textContent).toBe('/p/onni/')
   })
 
   it('the confirm button is inert until there is something to clone', async () => {
@@ -271,7 +271,7 @@ describe('CloneProjectDialog', () => {
     expect(cloneButton().disabled).toBe(true)
     fireEvent.change(urlInput(), { target: { value: '   ' } })
     expect(cloneButton().disabled).toBe(true)
-    fireEvent.change(urlInput(), { target: { value: 'open-mercato/cezar' } })
+    fireEvent.change(urlInput(), { target: { value: 'open-mercato/onni' } })
     await waitFor(() => expect(cloneButton().disabled).toBe(false))
   })
 })

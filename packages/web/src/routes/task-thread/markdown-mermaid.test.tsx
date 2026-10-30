@@ -38,7 +38,7 @@ const fence = (source: string) => `\`\`\`mermaid\n${source}\n\`\`\``
 
 describe('Markdown Mermaid previews', () => {
   it('keeps the SVG when the cockpit theme changes; CSS supplies its palette', async () => {
-    localStorage.setItem('cez-theme', 'light')
+    localStorage.setItem('onni-theme', 'light')
     render(
       <ThemeProvider>
         <ThemeToggle />

@@ -7,7 +7,7 @@ import * as index from '../runs/run-index.ts';
 
 const roots: string[] = [];
 const root = () => {
-  const p = mkdtempSync(join(tmpdir(), 'cez-dashboard-'));
+  const p = mkdtempSync(join(tmpdir(), 'onni-dashboard-'));
   roots.push(p);
   return p;
 };
@@ -26,30 +26,30 @@ const record = (id: string, status = 'waiting') => ({
   steps: [],
 });
 function disk(p: string, value: unknown) {
-  mkdirSync(join(p, '.ai/cezar'), { recursive: true });
-  writeFileSync(join(p, '.ai/cezar/runs.json'), JSON.stringify(value));
+  mkdirSync(join(p, '.ai/onni'), { recursive: true });
+  writeFileSync(join(p, '.ai/onni/runs.json'), JSON.stringify(value));
 }
 
 describe('diagnostic run index', () => {
   it('distinguishes empty, missing, corrupt, and partially salvageable projects without changing the legacy wrapper', () => {
     const p = root();
-    expect(index.readRunIndexDiagnostic(join(p, '.ai/cezar'), p)).toMatchObject({
+    expect(index.readRunIndexDiagnostic(join(p, '.ai/onni'), p)).toMatchObject({
       state: 'complete',
       runs: [],
       omittedRuns: 0,
     });
-    expect(index.readRunIndexDiagnostic(join(p, 'gone/.ai/cezar'), join(p, 'gone'))).toMatchObject({
+    expect(index.readRunIndexDiagnostic(join(p, 'gone/.ai/onni'), join(p, 'gone'))).toMatchObject({
       state: 'unavailable',
     });
     disk(p, [record('good'), { garbage: true }]);
-    expect(index.readRunIndexDiagnostic(join(p, '.ai/cezar'), p)).toMatchObject({
+    expect(index.readRunIndexDiagnostic(join(p, '.ai/onni'), p)).toMatchObject({
       state: 'partial',
       runs: [{ id: 'good' }],
       omittedRuns: 1,
     });
-    expect(index.readRunIndexFromDisk(join(p, '.ai/cezar'))).toEqual([]);
+    expect(index.readRunIndexFromDisk(join(p, '.ai/onni'))).toEqual([]);
     disk(p, { invalid: true });
-    expect(index.readRunIndexDiagnostic(join(p, '.ai/cezar'), p)).toMatchObject({
+    expect(index.readRunIndexDiagnostic(join(p, '.ai/onni'), p)).toMatchObject({
       state: 'unavailable',
     });
   });

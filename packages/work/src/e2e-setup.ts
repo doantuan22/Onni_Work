@@ -8,7 +8,7 @@ import type { WorkflowDef, WorkflowStepDef } from './workflows/types.ts';
 /**
  * One-click browser e2e setup (spec `.ai/specs/2026-10-10-e2e-one-click-setup.md`).
  *
- * cezar installs TesterArmy's `e2e` the way it does any other work: as a task in its own
+ * onni installs TesterArmy's `e2e` the way it does any other work: as a task in its own
  * worktree, finishing with a branch the user merges (or at the review gate, when it is on). The engine learns nothing about e2e — the setup is an
  * ad-hoc workflow (an agent step that installs and configures, then two check steps that prove
  * it) handed to `startRun`, the same path an approved "(planned)" chain takes. It is never a
@@ -17,8 +17,8 @@ import type { WorkflowDef, WorkflowStepDef } from './workflows/types.ts';
 
 export { E2E_SETUP_WORKFLOW_NAME };
 
-/** Where the setup writes the project's own e2e workflow (committable: `.ai/cezar/workflows/`). */
-export const E2E_WORKFLOW_FILE = '.ai/cezar/workflows/implement-and-e2e.yaml';
+/** Where the setup writes the project's own e2e workflow (committable: `.ai/onni/workflows/`). */
+export const E2E_WORKFLOW_FILE = '.ai/onni/workflows/implement-and-e2e.yaml';
 
 /** Config files that mean the repo has an `e2e` suite — shared with the planner's detection. */
 export const E2E_CONFIG_FILES = ['e2e.config.ts', 'e2e.config.mts', 'e2e.config.js', 'e2e.config.mjs'] as const;
@@ -29,7 +29,7 @@ export const E2E_SETUP_TASK = 'Set up browser e2e tests (TesterArmy e2e) in this
 /**
  * Every `e2e` invocation the setup makes: the repo-pinned binary only (`--no-install` — a bare
  * `npx e2e` with nothing installed would fetch the registry's latest instead of the version the
- * setup pinned) and the vendor's telemetry off, because cezar does not widen network exposure
+ * setup pinned) and the vendor's telemetry off, because onni does not widen network exposure
  * on the user's behalf.
  */
 const E2E = 'E2E_TELEMETRY_DISABLED=1 npx --no-install e2e';
@@ -49,7 +49,7 @@ const PROVIDER_HINTS: Record<E2eCredentialName, string> = {
  * The setup agent adapts the install and unit-test commands to the project; the rest is fixed.
  */
 export const E2E_WORKFLOW_TEMPLATE = `name: implement-and-e2e
-description: Implement, unit-test, then prove it in a real browser (set up by cezar).
+description: Implement, unit-test, then prove it in a real browser (set up by onni).
 steps:
   - id: deps
     name: Install
@@ -90,13 +90,13 @@ steps:
  * the `e2e-list` check (a command, which is never templated) proves the file has it.
  */
 const TASK_TOKEN = '{{task}}';
-const TASK_PLACEHOLDER = '__CEZAR_TASK_TOKEN__';
+const TASK_PLACEHOLDER = '__ONNI_TASK_TOKEN__';
 
 /** The setup agent's instructions. `credentials` are NAMES only — the agent never sees a value. */
 export function e2eSetupPrompt(credentials: readonly E2eCredentialName[]): string {
   const provider = credentials[0];
   const providerLine = provider
-    ? `The project has \`${provider}\` stored for its check steps, so wire the default agent to ${PROVIDER_HINTS[provider]}. Pick the model the provider's section of \`node_modules/e2e/docs/models.mdx\` recommends. Do not read, print or write the key — it reaches the check steps from cezar's secret store, never the repository.`
+    ? `The project has \`${provider}\` stored for its check steps, so wire the default agent to ${PROVIDER_HINTS[provider]}. Pick the model the provider's section of \`node_modules/e2e/docs/models.mdx\` recommends. Do not read, print or write the key — it reaches the check steps from onni's secret store, never the repository.`
     : 'No model key is stored yet. Keep the `gateway(...)` model `e2e init` generated; tests without `agent.*` steps run without a key, and the user can add `AI_GATEWAY_API_KEY` in Settings → External integrations → Test frameworks later.';
   return `You are setting up TesterArmy's \`e2e\` (agentic browser end-to-end testing) in this repository, so the user never has to. Work only on test setup — do NOT change application code.
 
@@ -106,7 +106,7 @@ export function e2eSetupPrompt(credentials: readonly E2eCredentialName[]): strin
 
 3. Install the dependencies \`init\` added with the package manager this repository uses (the \`packageManager\` field or the lockfile; npm otherwise), so the lockfile is updated.
 
-4. Configure \`e2e.config.ts\` so every task gets its own port (cezar runs tasks in parallel):
+4. Configure \`e2e.config.ts\` so every task gets its own port (onni runs tasks in parallel):
    - \`app.url: 'http://127.0.0.1:0'\` — literally \`127.0.0.1\`, never \`localhost\`, which e2e rejects with port 0.
    - \`app.command\`: start THIS project's dev server as \`{ executable, args, env }\` (never a shell string) with the \`{port}\` placeholder, bound to 127.0.0.1 — e.g. Vite \`['run','dev','--','--host','127.0.0.1','--port','{port}','--strictPort']\`, Next.js \`['run','dev','--','-H','127.0.0.1','-p','{port}']\` (and add \`allowedDevOrigins: ['127.0.0.1']\` to the Next config, or the page never hydrates). Pass \`PORT: '{port}'\` in \`env\` too. Raise \`startupTimeout\` if the dev server is slow to start. The app process inherits only PATH, HOME and temp variables, so put anything else it needs in \`env\`.
    - Model: ${providerLine}
@@ -116,7 +116,7 @@ export function e2eSetupPrompt(credentials: readonly E2eCredentialName[]): strin
 
 6. Prove it locally: \`${E2E} list\` must list the smoke test, and \`${E2E} run --reporter list,markdown\` must pass (a missing browser downloads once on its own). Fix the configuration until both pass.
 
-7. Write \`${E2E_WORKFLOW_FILE}\` with exactly this content, changing only the \`deps\` install command and the \`unit\` test command to what this repository uses (drop the \`unit\` step if it has no unit tests). Replace \`${TASK_PLACEHOLDER}\` with cezar's task token: two opening curly braces, the word \`task\`, two closing curly braces, with no spaces. A check step verifies that token is in the file.
+7. Write \`${E2E_WORKFLOW_FILE}\` with exactly this content, changing only the \`deps\` install command and the \`unit\` test command to what this repository uses (drop the \`unit\` step if it has no unit tests). Replace \`${TASK_PLACEHOLDER}\` with onni's task token: two opening curly braces, the word \`task\`, two closing curly braces, with no spaces. A check step verifies that token is in the file.
 
 \`\`\`yaml
 ${E2E_WORKFLOW_TEMPLATE.replaceAll(TASK_TOKEN, TASK_PLACEHOLDER)}\`\`\`
@@ -132,7 +132,7 @@ export const E2E_SETUP_PR_TITLE = 'chore: set up e2e browser tests (TesterArmy e
  * and loop back with the failing output on ANY exit code: unlike a coding task, a config,
  * dependency or app-process error (2/3) is exactly the setup's own work.
  *
- * Then cezar opens the draft PR itself (the `github.draft-pr` node — the same `createDraftPr`
+ * Then onni opens the draft PR itself (the `github.draft-pr` node — the same `createDraftPr`
  * the review gate's button uses), so the setup ends with something to merge rather than a branch
  * to go looking for. It is a `version: 2` graph only for that node: the steps compile exactly as
  * a v1 chain would (`compileV1`), and the PR node is spliced in before `end`. A PR that cannot be

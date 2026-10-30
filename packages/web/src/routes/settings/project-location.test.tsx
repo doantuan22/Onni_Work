@@ -65,7 +65,7 @@ function seededClient() {
       },
     ],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   return client
 }

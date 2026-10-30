@@ -55,7 +55,7 @@ import {
 } from './config.ts';
 
 /**
- * `~/.cezar/config.json` house rules under test (spec
+ * `~/.onni/config.json` house rules under test (spec
  * 2026-07-20-multi-project-workspace, step 1.2): zero-config defaults, per-key
  * `.catch` degradation, `.passthrough()` forward compatibility, atomic `0600`
  * writes, and the read-modify-write merge that keeps concurrent writers from
@@ -69,7 +69,7 @@ describe('workspace config', () => {
   let home: string;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-workspace-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-workspace-'));
     process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
     delete process.env.CEZ_BROWSE_ROOT;
     delete process.env.CEZ_PROJECTS_DIR;
@@ -111,7 +111,7 @@ describe('workspace config', () => {
     expect(config).toEqual(defaultWorkspaceConfig());
     expect(config.schemaVersion).toBe(0);
     expect(config.browseRoot).toBe('~/');
-    expect(config.projectsDir).toBe('~/cezar/projects');
+    expect(config.projectsDir).toBe('~/onni/projects');
     expect(config.resources).toEqual({ maxParallel: 2, maxMonitoringSessions: 2, idleTimeoutMinutes: 15, monitoringWakeIntervalMinutes: 5, autoResumeOnUsageLimit: true, memoryLimitMb: null, worktreeRetentionDefault: 10 });
     expect(config.composerDefaults).toEqual({});
     expect(config.projects).toEqual([]);
@@ -198,13 +198,13 @@ describe('workspace config', () => {
     await mergeWriteWorkspaceConfig((config) => {
       config.schemaVersion = 1;
       config.resources.maxParallel = 4;
-      config.projects.push(project('cezar'));
+      config.projects.push(project('onni'));
     });
     expect(statSync(workspaceConfigPath()).mode & 0o777).toBe(0o600);
     const config = await loadWorkspaceConfig();
     expect(config.schemaVersion).toBe(1);
     expect(config.resources.maxParallel).toBe(4);
-    expect(config.projects).toEqual([project('cezar')]);
+    expect(config.projects).toEqual([project('onni')]);
   });
 
   it('a corrupt file degrades to defaults with one warning and is left on disk untouched', async () => {
@@ -224,8 +224,8 @@ describe('workspace config', () => {
   });
 
   it('every atomic write stages through its own tmp file (pid + random, never a shared name)', () => {
-    // Two cezar processes (a `serve` per repo, a settings PUT, `cezar run`)
-    // share `~/.cezar/` — a fixed `${path}.tmp` would let one writer O_TRUNC
+    // Two onni processes (a `serve` per repo, a settings PUT, `onni run`)
+    // share `~/.onni/` — a fixed `${path}.tmp` would let one writer O_TRUNC
     // the other's staging file mid-write and rename corruption into place.
     const path = workspaceConfigPath();
     const a = atomicTmpPath(path);
@@ -240,11 +240,11 @@ describe('workspace config', () => {
 
   it('a merge-write leaves no staging file behind', async () => {
     await mergeWriteWorkspaceConfig((config) => {
-      config.projects.push(project('cezar'));
+      config.projects.push(project('onni'));
     });
     const dir = readdirSync(dirname(workspaceConfigPath()));
     expect(dir.filter((name) => name.endsWith('.tmp'))).toEqual([]);
-    expect((await loadWorkspaceConfig()).projects.map((p) => p.id)).toEqual(['cezar']);
+    expect((await loadWorkspaceConfig()).projects.map((p) => p.id)).toEqual(['onni']);
   });
 
   it('flushes before rename and removes the staging file when rename fails', () => {
@@ -299,7 +299,7 @@ describe('workspace config', () => {
     write({
       futureTopLevelKey: { nested: true },
       resources: { maxParallel: 3, futureResourceKey: 'kept' },
-      projects: [{ ...project('cezar'), futureProjectKey: 42 }],
+      projects: [{ ...project('onni'), futureProjectKey: 42 }],
     });
     await mergeWriteWorkspaceConfig((config) => {
       config.schemaVersion = 1;
@@ -323,14 +323,14 @@ describe('workspace config', () => {
     const config = await loadWorkspaceConfig();
     expect(config.schemaVersion).toBe(0);
     expect(config.browseRoot).toBe('~/');
-    expect(config.projectsDir).toBe('~/cezar/projects');
+    expect(config.projectsDir).toBe('~/onni/projects');
     expect(config.resources).toEqual({ maxParallel: 2, maxMonitoringSessions: 2, idleTimeoutMinutes: 15, monitoringWakeIntervalMinutes: 5, autoResumeOnUsageLimit: true, memoryLimitMb: null, worktreeRetentionDefault: 10 });
     expect(config.projects).toEqual([project('good')]);
   });
 
   /**
    * #810 — the monitoring re-check cadence ships ON. It shipped as `null` and that
-   * made a `CEZ:MONITORING` run a dead end: #661 had already removed the idle timer
+   * made a `ONNI:MONITORING` run a dead end: #661 had already removed the idle timer
    * that used to bound a parked monitor, so nothing was left to resume it. `null`
    * remains reachable, but only as a deliberate operator choice.
    */
@@ -568,14 +568,14 @@ describe('workspace config', () => {
 
         expect((await loadWorkspaceConfig()).projects).toEqual([]);
         expect(warn).toHaveBeenCalledWith(
-          `[cez] workspace config ${workspaceConfigBackupPath()} is unreadable (EBUSY) — using defaults for now`,
+          `[onni] workspace config ${workspaceConfigBackupPath()} is unreadable (EBUSY) — using defaults for now`,
         );
 
         await expect(
           mergeWriteWorkspaceConfig((config) => {
             config.systemPrompt = 'global instructions';
           }),
-        ).rejects.toThrow(`[cez] cannot read ${workspaceConfigBackupPath()} (EBUSY) — refusing to overwrite it`);
+        ).rejects.toThrow(`[onni] cannot read ${workspaceConfigBackupPath()} (EBUSY) — refusing to overwrite it`);
       });
 
       it('a fresh home (nothing to read) still writes the zero-config defaults', async () => {

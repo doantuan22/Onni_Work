@@ -37,8 +37,8 @@ const REPO_A = {
   status: 'ok' as const,
 }
 
-/** The #1432 workspace: repoA registered, cezar started in repoB, which the registry omits. */
-const REGISTRY: ProjectsResponse = { projects: [REPO_A], bootProject: 'repob', projectsDir: '~/cezar/projects' }
+/** The #1432 workspace: repoA registered, onni started in repoB, which the registry omits. */
+const REGISTRY: ProjectsResponse = { projects: [REPO_A], bootProject: 'repob', projectsDir: '~/onni/projects' }
 
 describe('withServedBootProject', () => {
   it('adds the launch folder, flagged unregistered, while it is the project on screen', () => {

@@ -16,8 +16,8 @@ vi.mock('@hono/node-server', async () => {
 it('server shutdown drains boot and lazy lifecycle coordinators before disposing managers', async () => {
   vi.stubEnv('CEZ_AUTOMATIONS', '0');
   vi.stubEnv('CEZ_SKILLS_AUTO_UPDATE', '0');
-  const root = await mkdtemp(join(tmpdir(), 'cez-server-shutdown-'));
-  const store = RunStore.open(join(root, '.ai/cezar'));
+  const root = await mkdtemp(join(tmpdir(), 'onni-server-shutdown-'));
+  const store = RunStore.open(join(root, '.ai/onni'));
   const manager = new RunManager(store, root);
   const contexts = new ProjectContexts({listProjects: async () => []});
   let finishBoot!: () => void;

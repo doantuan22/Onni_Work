@@ -7,10 +7,9 @@
   "private": true,
   "type": "module",
   "bin": {
-    "cezar": "dist/index.js",
-    "cez": "dist/index.js",
-    "cezar-cli": "dist/index.js",
-    "cezar-run": "dist/index.js"
+    "onni": "dist/index.js",
+    "onni-cli": "dist/index.js",
+    "onni-run": "dist/index.js"
   },
   "exports": {
     ".": "./dist/index.js",

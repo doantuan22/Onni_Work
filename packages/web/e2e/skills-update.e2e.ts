@@ -19,7 +19,7 @@ const artifactsDir = resolve(
   import.meta.dirname,
   '../../../.ai/runs/2026-07-22-automatic-open-mercato-skills-updates/checkpoint-3-artifacts',
 )
-const workspaceConfig = resolve(import.meta.dirname, '../../../.ai/qa/cez-home/config.json')
+const workspaceConfig = resolve(import.meta.dirname, '../../../.ai/qa/onni-home/config.json')
 const sessionId = `e2e-skills-update-${process.pid}`
 const DESKTOP = { width: 1440, height: 900 }
 const IPHONE = { width: 390, height: 844 }
@@ -31,7 +31,7 @@ let previousConfig: string | null = null
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${baseUrl}${path}`, init)
-  if (!response.ok) throw new Error(`cezar e2e: ${init?.method ?? 'GET'} ${path} answered ${response.status}`)
+  if (!response.ok) throw new Error(`onni e2e: ${init?.method ?? 'GET'} ${path} answered ${response.status}`)
   return (await response.json()) as T
 }
 

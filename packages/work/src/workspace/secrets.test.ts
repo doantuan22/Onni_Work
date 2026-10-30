@@ -29,8 +29,8 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
   const noKeychain = async () => null;
 
   beforeEach(async () => {
-    home = await mkdtemp(join(tmpdir(), 'cez-secrets-home-'));
-    root = await mkdtemp(join(tmpdir(), 'cez-secrets-root-'));
+    home = await mkdtemp(join(tmpdir(), 'onni-secrets-home-'));
+    root = await mkdtemp(join(tmpdir(), 'onni-secrets-root-'));
     store = new SecretStore(env(), { keychain: noKeychain });
     project = { kind: 'project', projectId: 'demo', root };
   });
@@ -54,10 +54,10 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
   });
 
   it('lists names with audiences, sorted, and removes one', async () => {
-    await store.set(project, 'ZED', 'z-value', ['checks', 'cezar']);
-    await store.set(project, 'ALPHA', 'a-value', ['cezar']);
+    await store.set(project, 'ZED', 'z-value', ['checks', 'onni']);
+    await store.set(project, 'ALPHA', 'a-value', ['onni']);
     const listed = await store.list(project);
-    expect(listed.secrets.map((s) => [s.name, s.audiences])).toEqual([['ALPHA', ['cezar']], ['ZED', ['checks', 'cezar']]]);
+    expect(listed.secrets.map((s) => [s.name, s.audiences])).toEqual([['ALPHA', ['onni']], ['ZED', ['checks', 'onni']]]);
     expect(listed.skipped).toBeUndefined();
     expect(await store.unset(project, 'ZED')).toBe(true);
     expect(await store.unset(project, 'ZED')).toBe(false);
@@ -68,7 +68,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
     const ring = fakeKeychain();
     const vaulted = new SecretStore(env(), { keychain: async () => ring });
     expect(await vaulted.keyBackend()).toBe('keychain');
-    await vaulted.set(workspace, 'LLM_KEY', 'sk-workspace-key-0123456789', ['cezar']);
+    await vaulted.set(workspace, 'LLM_KEY', 'sk-workspace-key-0123456789', ['onni']);
     expect(ring.sets).toBe(1);
     expect(ring.key?.length).toBe(32);
     await expect(stat(join(home, 'secrets', '.key'))).rejects.toMatchObject({ code: 'ENOENT' });
@@ -120,7 +120,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
     ['lowercase', 'e2e_key'],
     ['leading digit', '1KEY'],
     ['too long', `K${'A'.repeat(128)}`],
-    ['cezar namespace', 'CEZ_RUN_ID'],
+    ['onni namespace', 'CEZ_RUN_ID'],
     ['loader', 'DYLD_INSERT_LIBRARIES'],
     ['shell', 'PATH'],
     ['shell', 'BASH_ENV'],
@@ -147,7 +147,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
     await store.set(project, 'KEY', 'v-long-enough');
     expect((await store.read(project)).skipped).toBeUndefined();
 
-    const other = await mkdtemp(join(tmpdir(), 'cez-secrets-other-'));
+    const other = await mkdtemp(join(tmpdir(), 'onni-secrets-other-'));
     try {
       const mismatch = await store.read({ ...project, root: other });
       expect(mismatch.values).toEqual({});
@@ -193,7 +193,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
 
   it('never hands one repository\'s values to another that took over its project id', async () => {
     await store.set(project, 'KEY', 'first-owner-value');
-    const other = await mkdtemp(join(tmpdir(), 'cez-secrets-other-'));
+    const other = await mkdtemp(join(tmpdir(), 'onni-secrets-other-'));
     try {
       const taken = { ...project, root: other };
       expect((await store.read(taken)).values).toEqual({});
@@ -213,12 +213,12 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
     await expect(store.set({ ...project, projectId: 'workspace' }, 'KEY', 'v-long-enough')).rejects.toThrow(/invalid project id/);
   });
 
-  it('trips the sandbox guard when a test would write the real cezar home', async () => {
-    const unpinned = new SecretStore({ ...process.env, CEZ_HOME: join(homedir(), '.cezar') }, { keychain: noKeychain });
+  it('trips the sandbox guard when a test would write the real onni home', async () => {
+    const unpinned = new SecretStore({ ...process.env, CEZ_HOME: join(homedir(), '.onni') }, { keychain: noKeychain });
     await expect(unpinned.set(project, 'KEY', 'v-long-enough')).rejects.toThrow(/refusing to write/);
   });
 
-  it('refuses a file shape this cezar never writes', () => {
+  it('refuses a file shape this onni never writes', () => {
     expect(() => parseSecretFile('{"version":2,"secrets":{}}')).toThrow(SecretsError);
     expect(() => parseSecretFile('[]')).toThrow(SecretsError);
     expect(parseSecretFile('{"version":1,"secrets":{}}')).toEqual({ version: 1, secrets: {} });
@@ -227,18 +227,18 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
   describe('resolve', () => {
     beforeEach(async () => {
       await store.set(workspace, 'SHARED', 'workspace-shared-value');
-      await store.set(workspace, 'LLM_KEY', 'workspace-llm-key-value', ['cezar']);
+      await store.set(workspace, 'LLM_KEY', 'workspace-llm-key-value', ['onni']);
       await store.set(project, 'SHARED', 'project-shared-value');
       await store.set(project, 'E2E_KEY', 'project-e2e-key-value');
-      await store.set(project, 'BOTH', 'project-both-value', ['checks', 'cezar']);
+      await store.set(project, 'BOTH', 'project-both-value', ['checks', 'onni']);
     });
 
     it('hands an audience every secret that admits it, the project winning on a shared name', async () => {
       const checks = await store.resolve(project, 'checks');
       expect(checks.values).toEqual({ SHARED: 'project-shared-value', E2E_KEY: 'project-e2e-key-value', BOTH: 'project-both-value' });
       expect(checks.notes).toEqual([]);
-      const cezar = await store.resolve(project, 'cezar');
-      expect(cezar.values).toEqual({ LLM_KEY: 'workspace-llm-key-value', BOTH: 'project-both-value' });
+      const onni = await store.resolve(project, 'onni');
+      expect(onni.values).toEqual({ LLM_KEY: 'workspace-llm-key-value', BOTH: 'project-both-value' });
     });
 
     it('serves the workspace alone when there is no project', async () => {
@@ -249,7 +249,7 @@ describe('SecretStore (spec 2026-10-10-project-secrets-vault-options)', () => {
       const bound = await store.resolve(project, 'checks', ['E2E_KEY', { name: 'SHARED', as: 'APP_TOKEN' }, 'LLM_KEY', 'MISSING']);
       expect(bound.values).toEqual({ E2E_KEY: 'project-e2e-key-value', APP_TOKEN: 'project-shared-value' });
       expect(bound.notes).toEqual([
-        'secret LLM_KEY is not available to checks (audiences: cezar)',
+        'secret LLM_KEY is not available to checks (audiences: onni)',
         'secret MISSING is not stored for this project or workspace',
       ]);
     });

@@ -130,7 +130,7 @@ export class EndpointRegistry {
   live(): PrivateReceiver[] { return structuredClone(this.state.receivers); }
   signingKeys(id: string): string[] {
     const receiver = this.get(id);
-    if (receiver.format !== 'cezar.json.v1') return [];
+    if (receiver.format !== 'onni.json.v1') return [];
     return [receiver.secret, ...(receiver.retired && Date.parse(receiver.retired.expiresAt) > this.deps.now() ? [receiver.retired.secret] : [])];
   }
   hasCapturingReceivers(): boolean { return this.state.receivers.some(receiver => receiver.state === 'active' || receiver.state === 'suspended'); }
@@ -144,7 +144,7 @@ export class EndpointRegistry {
     return this.serial(async () => {
       const settings = createWebhookSchema.parse(input); settings.name = redactSecrets(settings.name, [...this.secrets(), ...receiverSecretValues(settings)]);
       settings.url = normalizeChatUrl(settings.url, settings.format);
-      const receiver: PrivateReceiver = { ...settings, id: randomUUID(), secret: settings.format === 'cezar.json.v1' ? generateSigningKey() : '', state: 'inactive', revision: 1, deliveryRevision: 1,
+      const receiver: PrivateReceiver = { ...settings, id: randomUUID(), secret: settings.format === 'onni.json.v1' ? generateSigningKey() : '', state: 'inactive', revision: 1, deliveryRevision: 1,
         createdAt: this.time(), updatedAt: this.time(), consecutiveFailures: 0, activationBlocked: false, lastTest: 'none' };
       const next = structuredClone(this.state); next.receivers.push(receiver);
       await this.commit(next, 'created', receiver.id, receiver.revision);
@@ -164,7 +164,7 @@ export class EndpointRegistry {
       const changed = fields.some(key => key !== 'name');
       const receiver = { ...old, ...settings, revision: old.revision + 1, updatedAt: this.time() };
       if (settings.format !== old.format) {
-        receiver.secret = settings.format === 'cezar.json.v1' ? generateSigningKey() : '';
+        receiver.secret = settings.format === 'onni.json.v1' ? generateSigningKey() : '';
         receiver.retired = undefined;
       }
       if (changed) {
@@ -206,7 +206,7 @@ export class EndpointRegistry {
   rotate(id: string, expectedRevision: number, mode: 'graceful' | 'revoke_now'): Promise<{ receiver: WebhookReceiver; secret: string }> {
     return this.serial(async () => {
       const old = this.get(id, expectedRevision);
-      if (old.format !== 'cezar.json.v1') throw new WebhookStateError(409, 'Chat receivers do not use a signing key');
+      if (old.format !== 'onni.json.v1') throw new WebhookStateError(409, 'Chat receivers do not use a signing key');
       if (mode === 'graceful' && old.retired && Date.parse(old.retired.expiresAt) > this.deps.now()) throw new WebhookStateError(409, 'A key overlap is already active');
       const receiver: PrivateReceiver = { ...old, secret: generateSigningKey(), retired: mode === 'graceful' ? { secret: old.secret, expiresAt: new Date(this.deps.now() + 86400000).toISOString() } : undefined, revision: old.revision + 1, updatedAt: this.time() };
       const next = structuredClone(this.state); next.receivers = next.receivers.map(item => item.id === id ? receiver : item);
@@ -275,6 +275,6 @@ function normalizeChatUrl(url: string, format: PrivateReceiver['format']): strin
 /** Include the credential itself so aliases/normalization cannot bypass redaction. */
 export function receiverSecretValues(receiver: { url: string; format: PrivateReceiver['format']; secret?: string; retired?: { secret: string } }): string[] {
   const values = [receiver.url, receiver.secret ?? '', receiver.retired?.secret ?? ''];
-  if (receiver.format !== 'cezar.json.v1') values.push(new URL(receiver.url).pathname.split('/').at(-1) ?? '');
+  if (receiver.format !== 'onni.json.v1') values.push(new URL(receiver.url).pathname.split('/').at(-1) ?? '');
   return values.filter(Boolean);
 }

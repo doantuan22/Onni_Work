@@ -21,13 +21,13 @@ const json = (body: unknown, method = 'POST') => ({
 describe('deferred dispatch response contract', () => {
   let root: string, store: RunStore;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-deferred-contract-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-deferred-contract-'));
     mkdirSync(join(root, 'profile'));
     vi.stubEnv('CEZ_HOME', join(root, 'home'));
     vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'profile'));
     vi.stubEnv('CEZ_AUTOMATIONS', '1');
     vi.stubEnv('CEZ_DRY_RUN', '1');
-    store = RunStore.open(join(root, '.ai/cezar'));
+    store = RunStore.open(join(root, '.ai/onni'));
   });
   afterEach(() => {
     store.flush();

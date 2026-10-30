@@ -20,8 +20,8 @@ export const startAppRecipeSchema = z.object({
 });
 export type StartAppRecipe = z.infer<typeof startAppRecipeSchema>;
 
-/** Where a recipe comes from: the repo's `.ai/cezar/config.json` (shared with the team) or this
- *  user's own entry for the project in `~/.cezar/config.json`, which wins. */
+/** Where a recipe comes from: the repo's `.ai/onni/config.json` (shared with the team) or this
+ *  user's own entry for the project in `~/.onni/config.json`, which wins. */
 export const START_APP_SCOPES = ['project', 'personal'] as const;
 export const startAppScopeSchema = z.enum(START_APP_SCOPES);
 export type StartAppScope = z.infer<typeof startAppScopeSchema>;

@@ -61,7 +61,7 @@ export function unwrapJsonErrorEnvelope(message: string): string {
 const CODEX_CHATGPT_MODEL_RE = /model is not supported when using Codex with a ChatGPT account/i;
 
 /**
- * Codex's bare refusal names neither where the model came from nor the way out. Every model cezar
+ * Codex's bare refusal names neither where the model came from nor the way out. Every model onni
  * sends is one somebody picked — the task, a workflow step or the Settings → Agents default — so
  * the fix is the user's, and the message says which knobs to turn. Anything else is unchanged.
  */

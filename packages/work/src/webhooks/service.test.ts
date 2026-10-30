@@ -15,7 +15,7 @@ const services: module.WebhookService[] = [];
 const stores: RunStore[] = [];
 async function setup() {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-service-')); roots.push(root); execFileSync('git', ['init', '-q'], { cwd: root });
-  const dataDir = join(root, '.ai/cezar'); let now = Date.parse('2026-10-13T12:00:00Z');
+  const dataDir = join(root, '.ai/onni'); let now = Date.parse('2026-10-13T12:00:00Z');
   const send = vi.fn(async (_input: WebhookSend): Promise<SendResult> => ({ kind: 'http', status: 200 }));
   const options = { root, dataDir, projectId: 'project', mode: 'local' as const, serverPorts: () => [4317], scheduler: new WebhookScheduler(), now: () => now, send };
   return { root, dataDir, send, options, time: (value: number) => { now = value; } };
@@ -332,14 +332,14 @@ describe('project webhook lifecycle service', () => {
 describe('native chat delivery pipeline', () => {
   const slack = 'https://hooks.slack.com/services/T1/B1/test';
   const discord = `https://discord.com/api/webhooks/123456789012345678/${'x'.repeat(68)}`;
-  it.each([['slack.v1', slack], ['discord.v1', discord]] as const)('renders test and task notifications for %s, retaining cezar JSON and retry snapshots', async (format, url) => {
+  it.each([['slack.v1', slack], ['discord.v1', discord]] as const)('renders test and task notifications for %s, retaining onni JSON and retry snapshots', async (format, url) => {
     vi.stubEnv('CEZ_WEBHOOKS', '1'); const x = await setup();
     const service = (await module.WebhookService.open(x.options))!; services.push(service);
     const { receiver } = await service.create({ name: 'Team', format, url, preset: 'all', graceSeconds: 0 });
     await service.test(receiver.id, { expectedRevision: 1, deliveryRevision: 1, operationId: 'chat-test' });
     await service.tick();
     expect(x.send.mock.calls[0]![0]).toMatchObject({ format, secrets: [] });
-    expect(x.send.mock.calls[0]![0].body).toContain('cezar is connected to this channel');
+    expect(x.send.mock.calls[0]![0].body).toContain('onni is connected to this channel');
     expect(x.send.mock.calls[0]![0].body).toContain('Team');
     await service.activate(receiver.id, service.list().receivers[0]!.revision);
     const store = RunStore.open(x.dataDir); stores.push(store); service.attach(store, { isActive: () => false }, true);

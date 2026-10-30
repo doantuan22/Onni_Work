@@ -13,7 +13,7 @@ import { createApp } from './server.ts';
 
 /**
  * The workspace settings API (multi-project spec, step 2.7):
- * `GET/PUT /api/v1/workspace/config` — the settings slice of `~/.cezar/config.json`
+ * `GET/PUT /api/v1/workspace/config` — the settings slice of `~/.onni/config.json`
  * with the `projectsDir` writability probe and the semaphore `refresh()` hook —
  * and `GET/PUT /api/v1/workspace/ui-state`, the global GUI state with the same
  * merge/key-cap semantics as the per-repo ui-state route. All workspace-level:
@@ -33,16 +33,16 @@ describe('the workspace settings API (step 2.7)', () => {
   let app: Hono;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-workspace-api-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-workspace-api-'));
     process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
     delete process.env.CEZ_BROWSE_ROOT;
     delete process.env.CEZ_PROJECTS_DIR;
     delete process.env.CEZ_SKILLS_AUTO_UPDATE;
     delete process.env.CEZ_AUTONOMOUS_DEFAULT;
     delete process.env.CEZ_WORKTREE_DEFAULT;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-workspace-api-repo-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-workspace-api-repo-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     // The REAL semaphore with its production loader (which reads the CEZ_HOME
     // config), so the PUT → refresh() → cached-limits chain is observed end to
     // end. The routes never touch the manager — an empty stub is honest.
@@ -90,9 +90,9 @@ describe('the workspace settings API (step 2.7)', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as WorkspaceConfigResponse & Record<string, unknown>;
     expect(body).toEqual({
-      branding: { name: 'cezar', logoUrl: null },
+      branding: { name: 'onni', logoUrl: null },
       browseRoot: '~/',
-      projectsDir: '~/cezar/projects',
+      projectsDir: '~/onni/projects',
       skillsAutoUpdate: null,
       effectiveSkillsAutoUpdate: true,
       orgSkillsRepos: [],
@@ -137,7 +137,7 @@ describe('the workspace settings API (step 2.7)', () => {
     expect((await (await getConfig()).json() as WorkspaceConfigResponse).branding.name).toBe('Acme Studio');
     expect(rawConfig().branding).toEqual({ name: 'Acme Studio' });
     const cleared = await putConfig({ branding: { name: null } });
-    expect((await cleared.json() as WorkspaceConfigResponse).branding.name).toBe('cezar');
+    expect((await cleared.json() as WorkspaceConfigResponse).branding.name).toBe('onni');
     expect(setWorkspaceConfigInputSchema.safeParse({ branding: { name: '  ' } }).success).toBe(false);
     expect((await putConfig({ branding: { name: '  ' } })).status).toBe(400);
   });
@@ -288,9 +288,9 @@ describe('the workspace settings API (step 2.7)', () => {
     });
     expect(res.status).toBe(200);
     expect((await res.json()) as WorkspaceConfigResponse).toEqual({
-      branding: { name: 'cezar', logoUrl: null },
+      branding: { name: 'onni', logoUrl: null },
       browseRoot: '~/',
-      projectsDir: '~/cezar/projects',
+      projectsDir: '~/onni/projects',
       skillsAutoUpdate: null,
       effectiveSkillsAutoUpdate: true,
       orgSkillsRepos: [],
@@ -445,7 +445,7 @@ describe('the workspace settings API (step 2.7)', () => {
     writeFileSync(
       workspaceConfigPath(),
       JSON.stringify({
-        projects: [{ id: 'cezar', root: '/tmp/projects/cezar' }],
+        projects: [{ id: 'onni', root: '/tmp/projects/onni' }],
         futureKey: true,
       }),
       'utf8',
@@ -454,7 +454,7 @@ describe('the workspace settings API (step 2.7)', () => {
     const raw = rawConfig();
     // The merge-write materializes the entry's schema defaults (name, dates…) —
     // what matters is the registration itself survives a settings PUT.
-    expect(raw.projects).toMatchObject([{ id: 'cezar', root: '/tmp/projects/cezar' }]);
+    expect(raw.projects).toMatchObject([{ id: 'onni', root: '/tmp/projects/onni' }]);
     expect(raw.futureKey).toBe(true);
     expect((raw.resources as Record<string, unknown>).maxParallel).toBe(4);
   });
@@ -478,7 +478,7 @@ describe('the workspace settings API (step 2.7)', () => {
     expect(rawConfig().browseRoot).toBe(browseRoot);
     expect(readdirSync(browseRoot)).toEqual([]);
     expect(((await (await getConfig()).json()) as WorkspaceConfigResponse).projectsDir).toBe(
-      '~/cezar/projects',
+      '~/onni/projects',
     );
   });
 
@@ -558,17 +558,17 @@ describe('the workspace settings API (step 2.7)', () => {
     expect(await res.json()).toEqual({});
   });
 
-  it('PUT merges shallowly into ~/.cezar/ui-state.json — later keys never drop earlier ones', async () => {
+  it('PUT merges shallowly into ~/.onni/ui-state.json — later keys never drop earlier ones', async () => {
     expect((await putUiState({ appearance: { accent: 'violet' } })).status).toBe(200);
-    const res = await putUiState({ sidebar: { collapsed: { cezar: true } } });
+    const res = await putUiState({ sidebar: { collapsed: { onni: true } } });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       appearance: { accent: 'violet' },
-      sidebar: { collapsed: { cezar: true } },
+      sidebar: { collapsed: { onni: true } },
     });
     expect(rawUiState()).toEqual({
       appearance: { accent: 'violet' },
-      sidebar: { collapsed: { cezar: true } },
+      sidebar: { collapsed: { onni: true } },
     });
     // The workspace file, not the boot repo's — the per-repo twin stays empty.
     expect(await (await apiRequest(app, '/api/v1/ui-state')).json()).toEqual({});
@@ -592,7 +592,7 @@ describe('the workspace settings API (step 2.7)', () => {
   it('round-trips the sidebar project order beside the legacy collapse map', async () => {
     // #952. Both sidebar keys share one object, and the merge is TOP-LEVEL only — so the
     // cockpit sends the whole `sidebar`, and this proves the route stores exactly that.
-    const sidebar = { collapsed: { cezar: true }, projectOrder: ['shop', 'cezar', 'blog'] };
+    const sidebar = { collapsed: { onni: true }, projectOrder: ['shop', 'onni', 'blog'] };
     const res = await putUiState({ sidebar });
 
     expect(res.status).toBe(200);
@@ -600,8 +600,8 @@ describe('the workspace settings API (step 2.7)', () => {
     expect(rawUiState()).toEqual({ sidebar });
 
     // Reset is the key going away, which a whole-object write expresses by omitting it.
-    expect((await putUiState({ sidebar: { collapsed: { cezar: true } } })).status).toBe(200);
-    expect(rawUiState()).toEqual({ sidebar: { collapsed: { cezar: true } } });
+    expect((await putUiState({ sidebar: { collapsed: { onni: true } } })).status).toBe(200);
+    expect(rawUiState()).toEqual({ sidebar: { collapsed: { onni: true } } });
   });
 
   it.each([
@@ -757,7 +757,7 @@ describe('the workspace settings API (step 2.7)', () => {
   });
 
   it('rejects a malformed known key instead of writing garbage', async () => {
-    const res = await putUiState({ sidebar: { collapsed: { cezar: 'yes' } } });
+    const res = await putUiState({ sidebar: { collapsed: { onni: 'yes' } } });
     expect(res.status).toBe(400);
     expect((await res.json()) as { error: string }).toHaveProperty('error');
     expect(() => readFileSync(workspaceUiStatePath(), 'utf8')).toThrow(); // nothing written

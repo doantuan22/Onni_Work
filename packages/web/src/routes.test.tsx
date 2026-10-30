@@ -46,13 +46,13 @@ const BOOT = 'boot'
  *  payload never crashes. `followups: true` keeps the Inbox route's real heading. */
 const HEALTH = {
   version: '0.0.0-test',
-  repoRoot: '/home/u/cezar',
+  repoRoot: '/home/u/onni',
   repo: null,
   checks: [],
   defaultRunner: 'claude',
   forge: null,
   capabilities: { localHandoff: true, terminal: false, followups: true, singleProject: false, automations: false },
-  projects: [{ id: BOOT, name: 'cezar' }],
+  projects: [{ id: BOOT, name: 'onni' }],
   bootProject: BOOT,
 }
 
@@ -60,8 +60,8 @@ const REGISTRY: ProjectsResponse = {
   projects: [
     {
       id: BOOT,
-      name: 'cezar',
-      root: '/home/u/cezar',
+      name: 'onni',
+      root: '/home/u/onni',
       addedAt: '',
       lastOpenedAt: '',
       source: 'local',
@@ -78,7 +78,7 @@ const REGISTRY: ProjectsResponse = {
     },
   ],
   bootProject: BOOT,
-  projectsDir: '~/cezar/projects',
+  projectsDir: '~/onni/projects',
 }
 
 /** The address bar, readable from assertions: MemoryRouter keeps its location internal, so the
@@ -166,32 +166,32 @@ function currentHash(): string | null {
 
 describe('pageTitleContext', () => {
   it.each([
-    ['/p/cezar/', 'Tasks'],
+    ['/p/onni/', 'Tasks'],
     ['/new', 'New task'],
-    ['/p/cezar/compare/group-1', 'Compare'],
-    ['/p/cezar/git', 'Git'],
-    ['/p/cezar/git/commits/abc123', 'Git'],
-    ['/p/cezar/github/issues/543', 'GitHub'],
-    ['/p/cezar/skills', 'Skills'],
-    ['/p/cezar/inbox', 'Inbox'],
-    ['/p/cezar/workflows/quick-task', 'Workflows'],
-    ['/p/cezar/settings/agents', 'Settings'],
+    ['/p/onni/compare/group-1', 'Compare'],
+    ['/p/onni/git', 'Git'],
+    ['/p/onni/git/commits/abc123', 'Git'],
+    ['/p/onni/github/issues/543', 'GitHub'],
+    ['/p/onni/skills', 'Skills'],
+    ['/p/onni/inbox', 'Inbox'],
+    ['/p/onni/workflows/quick-task', 'Workflows'],
+    ['/p/onni/settings/agents', 'Settings'],
     ['/settings/global/projects', 'Settings'],
   ])('labels %s as %s', (pathname, pageLabel) => {
     expect(pageTitleContext(pathname)).toEqual({ pageLabel, taskId: null })
   })
 
   it.each([
-    '/p/cezar/tasks/run-1',
-    '/p/cezar/tasks/run-1/changes',
-    '/p/cezar/tasks/run-1/files',
-    '/p/cezar/tasks/run-1/commits/abc123',
+    '/p/onni/tasks/run-1',
+    '/p/onni/tasks/run-1/changes',
+    '/p/onni/tasks/run-1/files',
+    '/p/onni/tasks/run-1/commits/abc123',
   ])('returns the task lookup key for %s', (pathname) => {
     expect(pageTitleContext(pathname)).toEqual({ pageLabel: null, taskId: 'run-1' })
   })
 
   it('does not invent a label for an unknown route', () => {
-    expect(pageTitleContext('/p/cezar/not-a-route')).toEqual({ pageLabel: null, taskId: null })
+    expect(pageTitleContext('/p/onni/not-a-route')).toEqual({ pageLabel: null, taskId: null })
   })
 })
 
@@ -230,8 +230,8 @@ const ROUTE_CASES: Array<[url: string, route: string, title: string]> = [
   // Project settings only (step 3.5) — appearance/notifications/resources/projects moved to
   // the unscoped `/settings/global/*` area, covered in its own describe below. The project
   // index is titled by the PROJECT (unified settings, spec 2026-10-13): the registry names
-  // the boot project "cezar".
-  ['/settings', 'settings', 'cezar'],
+  // the boot project "onni".
+  ['/settings', 'settings', 'onni'],
   ['/settings/agents', 'settings-agents', 'Agents'],
   ['/settings/instructions', 'settings-instructions', 'Instructions'],
   ['/settings/tasks', 'settings-tasks', 'Tasks'],

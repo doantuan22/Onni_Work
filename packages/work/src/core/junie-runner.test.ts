@@ -90,7 +90,7 @@ describe('JunieRunner against the mock ACP process', () => {
    * #703 backend parity — the same session-level shape `claude-cli-runner.test.ts`
    * and `codex-app-server-runner.test.ts` each prove for their own transport.
    * `MOCK_JUNIE_IGNORE_EOF` makes the mock stay deaf to stdin EOF and exit 143
-   * on SIGTERM instead — a teardown cezar caused, never an agent failure.
+   * on SIGTERM instead — a teardown onni caused, never an agent failure.
    */
   it('settles the session instead of failing it when junie exits 143 after interrupt()', async () => {
     const runner = new JunieRunner({ bin: mockBin, timeoutMs: 0 });
@@ -115,7 +115,7 @@ describe('JunieRunner against the mock ACP process', () => {
     expect(events.some((e) => e.type === 'error')).toBe(false);
     expect(events.at(-1)).toEqual({ type: 'done' });
     expect(
-      events.some((e) => e.type === 'note' && e.message.includes('terminated by cezar (code 143)')),
+      events.some((e) => e.type === 'note' && e.message.includes('terminated by onni (code 143)')),
     ).toBe(true);
   }, 15_000);
 });

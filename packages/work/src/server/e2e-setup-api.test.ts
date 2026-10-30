@@ -32,11 +32,11 @@ describe('one-click e2e setup API (spec 2026-10-10-e2e-one-click-setup)', () => 
   let started: Array<{ workflow: WorkflowDef; input: StartRunInput }>;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-e2e-setup-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-e2e-setup-'));
     vi.stubEnv('CEZ_HOME', join(root, 'home'));
     vi.stubEnv('CEZ_SINGLE_PROJECT', '0');
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(root, '.ai/cezar'));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(root, '.ai/onni'));
     secrets = new SecretStore(process.env, { keychain: async () => null });
     started = [];
   });
@@ -164,11 +164,11 @@ describe('one-click e2e setup API (spec 2026-10-10-e2e-one-click-setup)', () => 
   it('reads what landed in the checkout, and a workspace key counts', async () => {
     gitInit();
     writeFileSync(join(root, 'e2e.config.ts'), 'export default {}\n');
-    mkdirSync(join(root, '.ai/cezar/workflows'), { recursive: true });
+    mkdirSync(join(root, '.ai/onni/workflows'), { recursive: true });
     writeFileSync(join(root, E2E_WORKFLOW_FILE), 'name: implement-and-e2e\n');
     await secrets.set({ kind: 'workspace' }, 'AI_GATEWAY_API_KEY', KEY, ['checks']);
-    // A key only cezar's own features may read is not one the e2e check can use.
-    await secrets.set({ kind: 'workspace' }, 'OPENAI_API_KEY', KEY, ['cezar']);
+    // A key only onni's own features may read is not one the e2e check can use.
+    await secrets.set({ kind: 'workspace' }, 'OPENAI_API_KEY', KEY, ['onni']);
     const { instance } = await app();
     expect(await status(instance)).toEqual({
       configFile: 'e2e.config.ts', workflow: true, credentials: ['AI_GATEWAY_API_KEY'], setup: null,

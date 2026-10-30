@@ -24,8 +24,8 @@ let app: ReturnType<typeof createApp>;
 const options = vi.fn();
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'tracker-automation-api-'));
-  store = RunStore.open(join(root, '.ai/cezar'));
-  automations = AutomationStore.open(join(root, '.ai/cezar'));
+  store = RunStore.open(join(root, '.ai/onni'));
+  automations = AutomationStore.open(join(root, '.ai/onni'));
   mocks.launch.mockReset().mockResolvedValue({ runId: 'run' });
   options.mockReset().mockResolvedValue({ events: ['issue.opened', 'issue.status_changed'], statuses: [{ id: 'todo', name: 'To Do' }], labels: [], limitations: [] });
   mocks.driver.mockReset().mockResolvedValue({ association, automationOptions: options, pollEvents: async () => ({ candidates: [], checkpoint: 'opaque', complete: true }) });

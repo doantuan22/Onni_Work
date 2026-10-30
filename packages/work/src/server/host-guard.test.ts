@@ -30,12 +30,12 @@ describe('host-header guard (DNS rebinding)', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-hostguard-home-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-hostguard-repo-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-hostguard-home-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-hostguard-repo-'));
     process.env.CEZ_HOME = home;
     delete process.env.CEZ_REMOTE;
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   afterEach(() => {
@@ -66,7 +66,7 @@ describe('host-header guard (DNS rebinding)', () => {
     expect(res.status).toBe(403);
   });
 
-  it.each(['attacker.example', 'attacker.example:4321', 'cezar.attacker.example', '192.168.1.10:4321'])(
+  it.each(['attacker.example', 'attacker.example:4321', 'onni.attacker.example', '192.168.1.10:4321'])(
     'rejects the rebound host %s with 403 on every route',
     async (host) => {
       for (const path of ['/api/v1/health', '/api/v1/projects', '/api/v1/fs/browse?path=', '/api/v1/runs']) {

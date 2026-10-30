@@ -56,7 +56,7 @@ const RECENT_LIMIT = 10
 
 /**
  * Read + write of the per-project collapse map (`lib/sidebar-collapse.ts`), which lives in
- * localStorage rather than `~/.cezar/ui-state.json`.
+ * localStorage rather than `~/.onni/ui-state.json`.
  *
  * Seeded once from storage at mount, so the first paint already carries the user's answer — no
  * request to wait for, and no flash of the active-project default. React state is the live copy
@@ -609,12 +609,12 @@ function ProjectGroup({
           >
             <span className="truncate">{project.name}</span>
             {project.unregistered ? (
-              // Says what the row is without pretending it is a problem: cezar is serving this
+              // Says what the row is without pretending it is a problem: onni is serving this
               // folder, it just is not in the saved list. The project's Settings has the one-click
               // Add (#1432); repeating the button here would put a registry write in the nav.
               <span
                 data-slot="project-unregistered"
-                title="cezar is serving this folder — it is not in your saved projects. Add it from this project's Settings."
+                title="onni is serving this folder — it is not in your saved projects. Add it from this project's Settings."
                 className="shrink-0 rounded-full bg-muted px-[7px] py-px text-[10px] font-medium text-soft-foreground"
               >
                 not saved

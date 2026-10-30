@@ -6,7 +6,7 @@ import { loadWorkspaceConfig, type WorkspaceConfig } from './workspace/config.ts
 import { RUNNER_IDS } from './core/agent-runner.ts';
 
 /**
- * Optional advanced config at `.ai/cezar/config.json`. Zero-config rule:
+ * Optional advanced config at `.ai/onni/config.json`. Zero-config rule:
  * a missing file behaves exactly like the default below, an unreadable or
  * invalid file degrades to the default too (never blocks startup). The key
  * can be overridden or emptied (`"skillsRepos": []` disables team skills).
@@ -40,7 +40,7 @@ const configSchema = z.object({
   /**
    * Count-based worktree retention (#483): keep the last N *finished*
    * worktrees materialized on disk; reclaim older ones (directory only — the
-   * `cez/<id8>` branch is kept, so the work stays recoverable). 0 = unlimited
+   * `onni/<id8>` branch is kept, so the work stays recoverable). 0 = unlimited
    * (never auto-reclaim). Default 10. `.catch(10)` keeps it additive-safe: a
    * bad value degrades to the default instead of discarding the rest.
    */
@@ -89,7 +89,7 @@ const configSchema = z.object({
   /**
    * Free-text branch naming instructions (spec 2026-10-11-branch-naming-instructions): the
    * creation-time namer derives the task branch from the first prompt under these rules.
-   * Absent = `cez/<id8>`. `.catch(undefined)` keeps it additive-safe like `systemPrompt`.
+   * Absent = `onni/<id8>`. `.catch(undefined)` keeps it additive-safe like `systemPrompt`.
    */
   branchNaming: z.string().trim().min(1).max(4_000).optional().catch(undefined),
   /**
@@ -120,7 +120,7 @@ const configSchema = z.object({
    * editing the vendor's file by hand.
    *
    * A separate boolean rather than an `"auto"` sentinel inside `defaultModels`
-   * because an older cezar reading this file would pass such a sentinel
+   * because an older onni reading this file would pass such a sentinel
    * straight to `--model`; a key it has never heard of it simply ignores.
    * `true` means auto; anything else is no opinion, and the writers delete the
    * key rather than storing `false`.
@@ -189,17 +189,17 @@ function withMachineDefaults(raw: unknown, machine: WorkspaceConfig['agentDefaul
 }
 
 /**
- * Read `.ai/cezar/config.json` on demand — never cached, never throws.
+ * Read `.ai/onni/config.json` on demand — never cached, never throws.
  *
  * Also reads the machine-wide defaults, which is one more small JSON read and deliberately not
- * cached for the same reason this one is not: `~/.cezar/` is shared by every cezar process on the
+ * cached for the same reason this one is not: `~/.onni/` is shared by every onni process on the
  * machine, so a snapshot is a staleness bug.
  */
 export async function loadConfig(repoRoot: string): Promise<CezConfig> {
   const machine = (await loadWorkspaceConfig()).agentDefaults;
   let raw: string;
   try {
-    raw = await readFile(join(repoRoot, '.ai/cezar', 'config.json'), 'utf8');
+    raw = await readFile(join(repoRoot, '.ai/onni', 'config.json'), 'utf8');
   } catch {
     return configSchema.parse(withMachineDefaults({}, machine));
   }
@@ -224,7 +224,7 @@ export async function loadConfig(repoRoot: string): Promise<CezConfig> {
 async function ownWorktreeRetention(repoRoot: string): Promise<number | undefined> {
   let raw: string;
   try {
-    raw = await readFile(join(repoRoot, '.ai/cezar', 'config.json'), 'utf8');
+    raw = await readFile(join(repoRoot, '.ai/onni', 'config.json'), 'utf8');
   } catch {
     return undefined; // no file — nothing set
   }
@@ -257,7 +257,7 @@ export async function projectGatedSkillsRepos(repoRoot: string): Promise<Set<str
   const none = new Set<string>();
   let raw: string;
   try {
-    raw = await readFile(join(repoRoot, '.ai/cezar', 'config.json'), 'utf8');
+    raw = await readFile(join(repoRoot, '.ai/onni', 'config.json'), 'utf8');
   } catch {
     // No file — the defaults are in effect, so they are the opt-in set.
     return new Set(DEFAULT_SKILLS_REPOS.map((r) => r.repo));

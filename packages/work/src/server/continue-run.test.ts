@@ -42,12 +42,12 @@ describe('POST /api/v1/runs/:id/continue override', () => {
 
   beforeEach(() => {
     process.env.CEZ_DRY_RUN = '1';
-    // Agent accounts resolve against `~/.cezar/` — pinned to a temp home so the machine's real
+    // Agent accounts resolve against `~/.onni/` — pinned to a temp home so the machine's real
     // logins can neither be read nor decide the outcome.
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-continue-home-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-continue-home-'));
     process.env.CEZ_HOME = home;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-continue-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-continue-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     captured = undefined;
     calls = 0;
     refuse = undefined;
@@ -122,7 +122,7 @@ describe('POST /api/v1/runs/:id/continue override', () => {
 
   it('rejects a model override while locked but still permits switching runners', async () => {
     writeFileSync(
-      join(repoRoot, '.ai', 'cezar', 'config.json'),
+      join(repoRoot, '.ai', 'onni', 'config.json'),
       JSON.stringify({ modelsLocked: true }),
       'utf8',
     );

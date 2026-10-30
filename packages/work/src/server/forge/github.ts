@@ -863,7 +863,7 @@ function mockGithub(): GithubData {
     syncedAt: new Date().toISOString(),
     issues: [
       mk({ kind: 'issue', number: 142, title: 'Login form drops session on refresh', labels: ['bug', 'auth'], comments: 3, body: 'Repro: log in, hit reload — you land back on /login. The session cookie is set correctly, but the client store rehydrates before the cookie check resolves, so the auth guard redirects.' }),
-      mk({ kind: 'issue', number: 139, title: 'Add --json flag to cez CLI output', labels: ['enhancement', 'cli'], comments: 1, body: 'For scripting it would help if `cez list` and `cez status` could emit machine-readable JSON instead of the table view.' }),
+      mk({ kind: 'issue', number: 139, title: 'Add --json flag to onni CLI output', labels: ['enhancement', 'cli'], comments: 1, body: 'For scripting it would help if `onni list` and `onni status` could emit machine-readable JSON instead of the table view.' }),
       mk({ kind: 'issue', number: 135, title: 'Flaky e2e: worktree cleanup race on cancel', labels: ['bug', 'flaky-test'], comments: 6, body: 'Cancelling a run while the agent holds a file lock leaves a dangling worktree. The next run on the same branch then fails with "worktree already exists".' }),
     ],
     prs: [
@@ -2020,7 +2020,7 @@ export function __seedRefStatusCacheForTests(
 /**
  * Forget what we knew about one reference, so the next read asks GitHub again.
  *
- * Called where cezar itself CHANGES a pull request — it merges one, it opens one — because those
+ * Called where onni itself CHANGES a pull request — it merges one, it opens one — because those
  * are the only forge changes this process can know about without asking. Everything else has to
  * be polled (GitHub cannot push to a cockpit with no public endpoint), but waiting out a TTL to
  * notice our own merge is a self-inflicted staleness: for up to a minute every chip would keep
@@ -2642,7 +2642,7 @@ function mockGithubComments(kind: 'issue' | 'pr'): ForgeCommentsData {
 }
 
 // ---- draft-PR creation (review gate, spec 009) ------------------------------
-// Final autosave-commit → `git push -u <push remote> cez/<id8>` → `gh pr create
+// Final autosave-commit → `git push -u <push remote> onni/<id8>` → `gh pr create
 // --draft --repo <base repo>`, all executed in the task worktree. Every failure
 // maps to a one-line human error — the GUI
 // shows it as a toast plus the manual `git merge <branch>` fallback. Never throws.
@@ -2819,7 +2819,7 @@ const branchPrsSchema = z.array(
 );
 
 /** The newest OPEN PR whose head is this task's branch, on the repo `resolvePrTarget` names — how the
- *  cockpit records a PR the agent opened even when it never declared `CEZ:PR`. Null on no match
+ *  cockpit records a PR the agent opened even when it never declared `ONNI:PR`. Null on no match
  *  and on any failure (no gh, offline): adoption is best-effort, never an error. */
 export async function findBranchPr(worktree: string, target: PrTarget): Promise<{ url: string; number: number } | null> {
   // Dry-run has no forge: stand in with the same demo PR `createDraftPr` fakes, so the flow completes.
@@ -2882,7 +2882,7 @@ export async function prRepoArgs(worktree: string, baseRemote: string, pushRemot
 /**
  * PR body from the handoff journal: the "## Goal" section (task text as
  * fallback) + the first ~10 lines of "## Progress log" (newest first) +
- * the cezar footer.
+ * the onni footer.
  */
 export function buildPrBody(handoffText: string, task: string): string {
   const goal = section(handoffText, '## Goal') || task.trim() || '(given as attachments only)';
@@ -2893,7 +2893,7 @@ export function buildPrBody(handoffText: string, task: string): string {
     .join('\n');
   const parts = ['## Goal', '', goal];
   if (progress) parts.push('', '## Progress log', '', progress);
-  parts.push('', '---', '', '🤖 made with cezar');
+  parts.push('', '---', '', '🤖 made with onni');
   return parts.join('\n');
 }
 

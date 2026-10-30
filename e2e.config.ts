@@ -14,7 +14,7 @@ export default {
   targets: [{
     engine: web(),
     app: {
-      // Port 0: every run (and every parallel cezar task) gets its own free port.
+      // Port 0: every run (and every parallel onni task) gets its own free port.
       url: 'http://127.0.0.1:0',
       readyUrl: 'http://127.0.0.1:{port}/api/v1/health',
       // The server serves the built cockpit (packages/work/web/dist), so build it first.
@@ -23,10 +23,10 @@ export default {
         args: ['-c', 'npm run build:web && exec npm run dev:server -- --port "$PORT" --no-open'],
         env: {
           PORT: '{port}',
-          // Bundled mock agents: no CLI login, no network. CEZ_HOME keeps ~/.cezar untouched.
+          // Bundled mock agents: no CLI login, no network. CEZ_HOME keeps ~/.onni untouched.
           CEZ_DRY_RUN: '1',
           CEZ_SKILLS_AUTO_UPDATE: '0',
-          CEZ_HOME: resolve('.e2e/cez-home'),
+          CEZ_HOME: resolve('.e2e/onni-home'),
         },
         startupTimeout: 180_000,
         log: '.e2e/logs/app.log',

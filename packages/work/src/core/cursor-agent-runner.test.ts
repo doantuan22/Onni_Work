@@ -59,7 +59,7 @@ describe('CursorAgentRunner mock bin', () => {
 
   it('rejects instead of crashing the process when the binary is missing', async () => {
     // Regression test for the unhandled 'error' event: spawn() reports ENOENT asynchronously,
-    // not by throwing — without a synchronous listener this takes down the whole cezar process.
+    // not by throwing — without a synchronous listener this takes down the whole onni process.
     const cwd = mkdtempSync(join(tmpdir(), 'cursor-runner-'));
     try {
       const runner = new CursorAgentRunner({ bin: '/nonexistent/agent-binary-xyz', timeoutMs: 15_000 });
@@ -86,7 +86,7 @@ describe('CursorAgentRunner mock bin', () => {
 });
 
 describe('cursorLaunch', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-cursor-launch-'));
+  const dir = mkdtempSync(join(tmpdir(), 'onni-cursor-launch-'));
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
   const write = (path: string, body: string) => {
     writeFileSync(join(dir, path), body);

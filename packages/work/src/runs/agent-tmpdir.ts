@@ -22,7 +22,7 @@
  *      A run that cannot get a working temp directory fails immediately with a
  *      named, actionable error instead of spawning an agent that will run blind.
  *
- * `CEZ_AGENT_TMPDIR=0` opts out of BOTH — cezar keeps its hands off the temp
+ * `CEZ_AGENT_TMPDIR=0` opts out of BOTH — onni keeps its hands off the temp
  * directory entirely and the pre-#785 behaviour is back, byte for byte. That is
  * deliberate: an escape hatch that still imposed the preflight would be a hatch
  * you cannot actually escape through, and this repo's graceful-degradation rule
@@ -100,9 +100,9 @@ let probeSeq = 0;
  * directory that is merely *full but writable* passes, by design.
  */
 function probeWritable(dir: string): void {
-  const probe = join(dir, `.cez-tmp-probe-${process.pid}-${(probeSeq += 1)}`);
+  const probe = join(dir, `.onni-tmp-probe-${process.pid}-${(probeSeq += 1)}`);
   try {
-    writeFileSync(probe, 'cez');
+    writeFileSync(probe, 'onni');
   } catch (err) {
     throw new AgentTempDirError(dir, err);
   } finally {

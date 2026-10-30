@@ -34,18 +34,18 @@ describe('a queued run re-resolves its workflow at dequeue (#1078)', () => {
   let store: RunStore;
   let manager: RunManager;
   const savedDryRun = process.env.CEZ_DRY_RUN;
-  const workflowFile = () => join(repoRoot, '.ai/cezar/workflows', 'demo.yaml');
+  const workflowFile = () => join(repoRoot, '.ai/onni/workflows', 'demo.yaml');
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-1078-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-1078-'));
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    mkdirSync(join(repoRoot, '.ai/cezar/workflows'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni/workflows'), { recursive: true });
     writeFileSync(workflowFile(), ONE_STEP);
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot, { semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1 } }) });
   });
 
@@ -159,7 +159,7 @@ describe('a queued run re-resolves its workflow at dequeue (#1078)', () => {
     // reopen from disk with live rows kept, and recover into a fresh manager.
     store.flush();
     manager.dispose();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     manager = new RunManager(store, repoRoot, { semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1 } }) });
     expect(store.getRun(id)?.status).toBe('queued');
     expect(store.getRun(id)?.workflowDef?.steps.map((s) => s.id)).toEqual(['task']);
@@ -170,7 +170,7 @@ describe('a queued run re-resolves its workflow at dequeue (#1078)', () => {
 
     expect(store.getRun(id)?.steps.map((s) => s.id)).toEqual(['task', 'wrapup']);
     expect(wrapupSessions()).toBe(1);
-    const persisted = JSON.parse(readFileSync(join(repoRoot, '.ai/cezar', 'runs.json'), 'utf8')) as unknown;
+    const persisted = JSON.parse(readFileSync(join(repoRoot, '.ai/onni', 'runs.json'), 'utf8')) as unknown;
     const rows = (Array.isArray(persisted) ? persisted : (persisted as { runs: unknown[] }).runs) as Array<{
       id: string;
       workflowDef?: WorkflowDef;
@@ -197,7 +197,7 @@ describe('a queued run re-resolves its workflow at dequeue (#1078)', () => {
 
 describe('a file override of quick-task that disappears keeps the queued snapshot (#1078)', () => {
   let repoRoot: string;
-  const overrideFile = () => join(repoRoot, '.ai/cezar/workflows', 'quick-task.yaml');
+  const overrideFile = () => join(repoRoot, '.ai/onni/workflows', 'quick-task.yaml');
   const OVERRIDE = `name: quick-task
 steps:
   - id: implement
@@ -209,8 +209,8 @@ steps:
 `;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-1078-qt-'));
-    mkdirSync(join(repoRoot, '.ai/cezar/workflows'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-1078-qt-'));
+    mkdirSync(join(repoRoot, '.ai/onni/workflows'), { recursive: true });
     writeFileSync(overrideFile(), OVERRIDE);
   });
 

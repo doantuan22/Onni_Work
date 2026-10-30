@@ -17,8 +17,8 @@ function g(dir: string, ...args: string[]): string {
 }
 
 function identity(dir: string): void {
-  g(dir, 'config', 'user.email', 'test@cezar.local');
-  g(dir, 'config', 'user.name', 'cezar-test');
+  g(dir, 'config', 'user.email', 'test@onni.local');
+  g(dir, 'config', 'user.name', 'onni-test');
   g(dir, 'config', 'commit.gpgsign', 'false');
 }
 
@@ -47,7 +47,7 @@ describe('repo sync — the main checkout against a local bare origin', () => {
 
   beforeEach(() => {
     delete process.env.CEZ_DRY_RUN;
-    base = mkdtempSync(join(tmpdir(), 'cez-sync-'));
+    base = mkdtempSync(join(tmpdir(), 'onni-sync-'));
     remote = join(base, 'origin.git');
     repo = join(base, 'repo');
     peer = join(base, 'peer');
@@ -159,7 +159,7 @@ describe('repo sync — the main checkout against a local bare origin', () => {
       writeFileSync(join(repo, '.gitignore'), '.ai/\n');
       g(repo, 'add', '-A');
       g(repo, 'commit', '-q', '-m', 'ignore state');
-      store = RunStore.open(join(repo, '.ai/cezar'));
+      store = RunStore.open(join(repo, '.ai/onni'));
       app = createApp({ repoRoot: repo, store, manager: {} as unknown as RunManager, version: '0.0.0-test' });
     });
 

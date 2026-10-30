@@ -437,9 +437,9 @@ describe('project scope (multi-project spec, step 3.1)', () => {
 
 describe('response parsing', () => {
   const workspaceConfig = (resources: Record<string, unknown>) => ({
-    branding: { name: 'cezar', logoUrl: null },
+    branding: { name: 'onni', logoUrl: null },
     browseRoot: '~/',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
     skillsAutoUpdate: null,
     effectiveSkillsAutoUpdate: true,
     composerDefaults: {
@@ -538,8 +538,8 @@ describe('response parsing', () => {
   it('returns the health payload as-is', async () => {
     const health = {
       version: '0.1.3',
-      repoRoot: '/home/me/cezar',
-      repo: { root: '/home/me/cezar', branch: 'main', remote: 'origin' },
+      repoRoot: '/home/me/onni',
+      repo: { root: '/home/me/onni', branch: 'main', remote: 'origin' },
       checks: [{ name: 'claude', available: true, version: '2.0.1' }],
       defaultRunner: 'claude',
     }
@@ -603,13 +603,13 @@ describe('createRunPr survives a lost response', () => {
     await vi.runAllTimersAsync()
     const error = (await result) as ApiError
     expect(error.status).toBe(0)
-    expect(error.message).toBe('cannot reach the cezar server (/api/v1/runs/run-1/pr)')
+    expect(error.message).toBe('cannot reach the onni server (/api/v1/runs/run-1/pr)')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('does not retry a refusal the server answered', async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ error: 'git push failed — denied', manual: 'git merge cez/abc' }), {
+      new Response(JSON.stringify({ error: 'git push failed — denied', manual: 'git merge onni/abc' }), {
         status: 409,
         headers: { 'content-type': 'application/json' },
       }),
@@ -679,12 +679,12 @@ describe('errors', () => {
   })
 
   it('carries the 409 extras the server pairs with the reason', async () => {
-    fail(409, JSON.stringify({ error: 'push failed: no upstream', manual: 'git merge cez/abc' }))
+    fail(409, JSON.stringify({ error: 'push failed: no upstream', manual: 'git merge onni/abc' }))
     const error = (await createRun({ task: 't', workflow: 'quick-task' }).catch((e: unknown) => e)) as ApiError
     expect(error.status).toBe(409)
     expect(error.message).toBe('push failed: no upstream')
     // The manual way out has to reach the UI — a 409 the user cannot act on is a dead end.
-    expect(error.manual).toBe('git merge cez/abc')
+    expect(error.manual).toBe('git merge onni/abc')
     expect(error.command).toBeUndefined()
     expect(error.exists).toBeUndefined()
   })
@@ -800,7 +800,7 @@ describe('history responses are validated at the boundary (#827)', () => {
     const error = (await getRunHistory('run-1').catch((e: unknown) => e)) as ApiError
     expect(error).toBeInstanceOf(ApiError)
     expect(error.status).toBe(200)
-    expect(error.message).toBe('the cezar server answered /runs/run-1/history with an unexpected body')
+    expect(error.message).toBe('the onni server answered /runs/run-1/history with an unexpected body')
   })
 
   it('rejects a 200 whose page carries a non-array `events`', async () => {
@@ -816,7 +816,7 @@ describe('history responses are validated at the boundary (#827)', () => {
     expect(error).toBeInstanceOf(ApiError)
     expect(error.status).toBe(200)
     expect(error.message).toBe(
-      'the cezar server answered /runs/run-1/history-context with an unexpected body',
+      'the onni server answered /runs/run-1/history-context with an unexpected body',
     )
   })
 

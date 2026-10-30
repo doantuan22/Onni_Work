@@ -1,5 +1,5 @@
 // Free-space awareness (telemetry 9cdcedc3: `codex: ENOSPC: no space left on device, write`).
-// Every task owns a full worktree, so cezar is a likely contributor to a full disk. This module
+// Every task owns a full worktree, so onni is a likely contributor to a full disk. This module
 // probes the volume cheaply (one `statfs`), names the floor below which an agent must not start,
 // and words the one actionable message the spawn guard, health and the ENOSPC error share.
 // Cleanup is NOT invented here: worktree retention (#483, runs/retention.ts) already reclaims

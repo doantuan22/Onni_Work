@@ -34,7 +34,7 @@ describe('model identity wiring (dry run)', () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-model-identity-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-model-identity-'));
     argsFile = join(repoRoot, 'mock-args.ndjson');
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     savedEnv.CEZ_MOCK_ARGS_FILE = process.env.CEZ_MOCK_ARGS_FILE;
@@ -46,9 +46,9 @@ describe('model identity wiring (dry run)', () => {
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(repoRoot, '.ai/cezar', 'config.json'), JSON.stringify({ maxParallel: 1 }), 'utf8');
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    writeFileSync(join(repoRoot, '.ai/onni', 'config.json'), JSON.stringify({ maxParallel: 1 }), 'utf8');
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 

@@ -32,13 +32,13 @@ describe('recover() and the dispatch field', () => {
   let store: RunStore;
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-recover-dispatch-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-dispatch-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   afterEach(() => {
@@ -126,7 +126,7 @@ describe('recover() and the dispatch field', () => {
 
   /**
    * The other half of a restart, and the one with no `dropActive` under it: a child parked
-   * `waiting` when cezar exited is SETTLED by `recover()` — a terminal transition reached through
+   * `waiting` when onni exited is SETTLED by `recover()` — a terminal transition reached through
    * none of this process's registries. Its parent has to learn about it anyway (spec
    * 2026-09-10-dispatch), and the only channel that survives a restart is the pending
    * report on the parent's own record.
@@ -156,7 +156,7 @@ describe('recover() and the dispatch field', () => {
       const pending = store.getRun(parent.id)?.dispatch?.pendingReports ?? [];
       expect(pending).toHaveLength(1);
       expect(pending[0]?.fromRunId).toBe(child.id);
-      // No CEZ:REPORT was ever emitted, so the report is synthesised from what the run left.
+      // No ONNI:REPORT was ever emitted, so the report is synthesised from what the run left.
       expect(pending[0]?.report.status).toBe('done');
     } finally {
       if (flag === undefined) delete process.env.CEZ_DISPATCH;
@@ -165,7 +165,7 @@ describe('recover() and the dispatch field', () => {
   });
 
   /**
-   * The Guard across a restart (audit R9): a child parked on its own `CEZ:ASK` is force-settled
+   * The Guard across a restart (audit R9): a child parked on its own `ONNI:ASK` is force-settled
    * like any other `waiting` run — but what reaches its commander must say BLOCKED, naming the
    * question, never a clean `done` nobody answered. The sibling above pins the other half: a
    * `waiting` child with no open question still reports `done` exactly as before.
@@ -194,7 +194,7 @@ describe('recover() and the dispatch field', () => {
 
       await new RunManager(store, repoRoot, { semaphore: frozen() }).recover();
 
-      expect(store.getRun(child.id)?.status).toBe('done'); // cezar's own settle is unchanged
+      expect(store.getRun(child.id)?.status).toBe('done'); // onni's own settle is unchanged
       // The question stays on the terminal record as the honest trace of what went unanswered.
       expect(store.getRun(child.id)?.dispatch?.pendingAsk?.questions).toEqual(['Delete the old migration?']);
       const pending = store.getRun(parent.id)?.dispatch?.pendingReports ?? [];
@@ -255,6 +255,6 @@ describe('recover() and the dispatch field', () => {
     store.flush();
     // A second store over the same dataDir parses `runs.json` from scratch, which is what a
     // restart really does — the persistence twin of `unitSchema` has to accept its own output.
-    expect(RunStore.open(join(repoRoot, '.ai/cezar')).getRun(id)?.dispatch).toEqual(dispatch);
+    expect(RunStore.open(join(repoRoot, '.ai/onni')).getRun(id)?.dispatch).toEqual(dispatch);
   });
 });

@@ -5,7 +5,7 @@
  * ever be lost, never wrong; a blocked `localStorage` degrades to an in-memory list.
  */
 
-const STORAGE_KEY = 'cezar:recent-tasks:v1'
+const STORAGE_KEY = 'onni:recent-tasks:v1'
 export const RECENT_TASKS_CAP = 30
 
 let memory: string[] | null = null

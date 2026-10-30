@@ -24,12 +24,12 @@ describe('worktree lifecycle API', () => {
   const script = (command: string): ScriptEntry => ({id: randomUUID(),command});
   beforeEach(async () => {
     vi.stubEnv('CEZ_DRY_RUN', '0');
-    root = realpathSync(mkdtempSync(join(tmpdir(), 'cez-lifecycle-api-')));
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'onni-lifecycle-api-')));
     execFileSync('git',['init','-q','-b','main'],{cwd:root});
-    writeFileSync(join(root,'.gitignore'),'.ai/cezar/\n');
+    writeFileSync(join(root,'.gitignore'),'.ai/onni/\n');
     execFileSync('git',['add','.gitignore'],{cwd:root});
     execFileSync('git',['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','fixture'],{cwd:root});
-    store = RunStore.open(join(root,'.ai/cezar'));
+    store = RunStore.open(join(root,'.ai/onni'));
     runId = store.createRun({title:'fixture',workflow:'quick-task',task:'fixture task',steps:[]}).id;
     const wt = await createWorktree(root,runId,'main'); path=wt.path;
     store.updateRun(runId,{status:'done',worktreePath:path,branch:wt.branch});
@@ -60,7 +60,7 @@ describe('worktree lifecycle API', () => {
   });
   it('previews safely without execution and validates bodies/params/queries',async()=>{
     const res=await request('/worktree-lifecycle/preview',{command:'printf %s {{ root_path }}/test'});
-    expect(res.status).toBe(200);expect(lifecyclePreviewResponseSchema.parse(await res.json())).toMatchObject({illustrative:true,cwd:'/example/project/.ai/cezar/worktrees/example-task'});
+    expect(res.status).toBe(200);expect(lifecyclePreviewResponseSchema.parse(await res.json())).toMatchObject({illustrative:true,cwd:'/example/project/.ai/onni/worktrees/example-task'});
     expect((await request('/worktree-lifecycle/preview',{command:'echo "{{ root_path }}"'})).status).toBe(400);
     expect((await request('/worktree-lifecycle/preview',{command:'echo {{ unknown }}'})).status).toBe(400);
     expect((await request('/worktree-lifecycle/../../outside')).status).toBe(404);
@@ -98,11 +98,11 @@ describe('worktree lifecycle API', () => {
     expect(res.status).toBe(409);expect(await res.json()).toMatchObject({error:expect.stringContaining('lifecycle')});
   });
   it('saves lists atomically with revision checking and preserves unrelated raw keys',async()=>{
-    writeFileSync(join(root,'.ai/cezar/config.json'),JSON.stringify({custom:{keep:true}}));
+    writeFileSync(join(root,'.ai/onni/config.json'),JSON.stringify({custom:{keep:true}}));
     const config={afterCreate:[script('echo {{ root_path }}')],beforeRemove:[]};
     const first=await request('/config',{worktreeLifecycle:config,worktreeLifecycleRevision:null,worktreeRetention:4},'PUT');
     expect(first.status).toBe(200);const saved=await first.json() as {worktreeLifecycleRevision:string};
-    const raw=()=>JSON.parse(readFileSync(join(root,'.ai/cezar/config.json'),'utf8'));
+    const raw=()=>JSON.parse(readFileSync(join(root,'.ai/onni/config.json'),'utf8'));
     expect(raw()).toMatchObject({custom:{keep:true},worktreeRetention:4,worktreeLifecycle:config});
     expect((await request('/config',{worktreeLifecycle:null,worktreeLifecycleRevision:null,worktreeRetention:9},'PUT')).status).toBe(409);
     expect(raw().worktreeRetention).toBe(4);
@@ -110,19 +110,19 @@ describe('worktree lifecycle API', () => {
     expect(raw().worktreeLifecycle).toEqual(config);
   });
   it('a malformed config.json degrades to defaults on a hook-free project, as before scripts existed (BC §3)',async()=>{
-    const configPath=join(root,'.ai/cezar/config.json');writeFileSync(configPath,'{broken');
+    const configPath=join(root,'.ai/onni/config.json');writeFileSync(configPath,'{broken');
     expect((await request('/config')).status).toBe(200);
     expect((await request('/config',{worktreeRetention:9},'PUT')).status).toBe(200);
     expect(JSON.parse(readFileSync(configPath,'utf8'))).toEqual({worktreeRetention:9});
     expect((await request(`/runs/${runId}/remove-worktree`,{})).status).toBe(200);expect(existsSync(path)).toBe(false);
   });
   it('an invalid worktreeLifecycle key still fails closed',async()=>{
-    const configPath=join(root,'.ai/cezar/config.json');writeFileSync(configPath,JSON.stringify({worktreeLifecycle:{afterCreate:'nope'}}));
+    const configPath=join(root,'.ai/onni/config.json');writeFileSync(configPath,JSON.stringify({worktreeLifecycle:{afterCreate:'nope'}}));
     expect((await request('/config',{worktreeRetention:9},'PUT')).status).toBe(409);
     expect((await request(`/runs/${runId}/remove-worktree`,{})).status).toBe(409);expect(existsSync(path)).toBe(true);
   });
   it('never saves or runs scripts from a git-tracked config.json',async()=>{
-    const configPath=join(root,'.ai/cezar/config.json');writeFileSync(configPath,JSON.stringify({worktreeRetention:3}));
+    const configPath=join(root,'.ai/onni/config.json');writeFileSync(configPath,JSON.stringify({worktreeRetention:3}));
     execFileSync('git',['add','-f',configPath],{cwd:root});
     const res=await request('/config',{worktreeLifecycle:{afterCreate:[script('true')],beforeRemove:[]},worktreeLifecycleRevision:null},'PUT');
     expect(res.status).toBe(409);expect(await res.json()).toMatchObject({error:expect.stringContaining('git-tracked')});

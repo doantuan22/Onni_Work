@@ -16,9 +16,9 @@ describe.runIf(process.platform === 'linux')('recover() reaps processes left by 
   const spawned: string[] = [];
 
   beforeEach(() => {
-    dataRoot = mkdtempSync(join(tmpdir(), 'cez-leftover-'));
-    mkdirSync(join(dataRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(dataRoot, '.ai/cezar'));
+    dataRoot = mkdtempSync(join(tmpdir(), 'onni-leftover-'));
+    mkdirSync(join(dataRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(dataRoot, '.ai/onni'));
   });
 
   afterEach(async () => {
@@ -52,7 +52,7 @@ describe.runIf(process.platform === 'linux')('recover() reaps processes left by 
     return false;
   };
   const lifecycle = (id: string): string[] => {
-    const file = join(dataRoot, '.ai/cezar/runs', `${id}.ndjson`);
+    const file = join(dataRoot, '.ai/onni/runs', `${id}.ndjson`);
     if (!existsSync(file)) return [];
     return readFileSync(file, 'utf8')
       .trim()

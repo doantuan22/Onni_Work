@@ -9,9 +9,9 @@ const { RunStore } = await import('../runs/store.ts');
 type Definition = Parameters<typeof launchScheduledRun>[0]['definition'];
 
 it('a composer start keeps its whole dispatch intent, not just the subtask ceiling (#1340)', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'cez-deferred-dispatch-'));
+  const root = await mkdtemp(join(tmpdir(), 'onni-deferred-dispatch-'));
   try {
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const inputs: Array<Record<string, unknown>> = [];
     const manager = { startRun: (workflow: { name: string }, input: Record<string, unknown>) => {
       inputs.push(input);
@@ -32,10 +32,10 @@ it('a composer start keeps its whole dispatch intent, not just the subtask ceili
 
 it('a composer start keeps its read-only Ask and in-place branch choices after storage', async () => {
   const { AutomationStore } = await import('./store.ts');
-  const root = await mkdtemp(join(tmpdir(), 'cez-deferred-modes-'));
+  const root = await mkdtemp(join(tmpdir(), 'onni-deferred-modes-'));
   try {
-    const store = RunStore.open(join(root, '.ai/cezar'));
-    const automations = AutomationStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
+    const automations = AutomationStore.open(join(root, '.ai/onni'));
     const inputs: Array<Record<string, unknown>> = [];
     const manager = { startRun: (workflow: { name: string }, input: Record<string, unknown>) => {
       inputs.push(input);
@@ -61,9 +61,9 @@ it('a composer start keeps its read-only Ask and in-place branch choices after s
 });
 
 it('reuses a variant persisted by a different cockpit without overwriting it', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'cez-deferred-reuse-'));
+  const root = await mkdtemp(join(tmpdir(), 'onni-deferred-reuse-'));
   try {
-    const dir = join(root, '.ai/cezar');
+    const dir = join(root, '.ai/onni');
     const store = RunStore.open(dir);
     const writer = RunStore.open(dir);
     writer.createRun({ id: 'run-a', title: 'original', workflow: 'quick-task', task: 'original', steps: [] });
@@ -94,11 +94,11 @@ it.each([false, true])('a failed scheduled write cannot be rescued or overwrite 
   const root = await mkdtemp(join(tmpdir(), 'review-flush-'));
   vi.stubEnv('CEZ_AUTONAME', '0');
   vi.stubEnv('CEZ_DRY_RUN', '1');
-  const dataDir = join(root, '.ai/cezar');
+  const dataDir = join(root, '.ai/onni');
   const store = RunStore.open(dataDir);
   const manager = new RunManager(store, root);
   const execute = vi.spyOn(manager as unknown as { execute: (...args: unknown[]) => Promise<void> }, 'execute').mockResolvedValue(undefined);
-  const automations = AutomationStore.open(join(root, '.ai/cezar'));
+  const automations = AutomationStore.open(join(root, '.ai/onni'));
   const definition = automations.create({ name: 'Later', kind: 'schedule', enabled: true,
     schedule: { type: 'once', date: '2099-01-01', hour: 9, minute: 0 },
     task: { prompt: 'test', workflow: 'quick-task', runner: 'claude', worktree: false },

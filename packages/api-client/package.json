@@ -1,7 +1,7 @@
 {
   "name": "@onni/api-client",
   "version": "0.17.0",
-  "description": "Typed client and shared contract types for the cezar cockpit HTTP API.",
+  "description": "Typed client and shared contract types for the onni cockpit HTTP API.",
   "license": "MIT",
   "private": true,
   "type": "module",

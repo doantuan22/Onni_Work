@@ -31,9 +31,9 @@ describe('automation task templates', () => {
   });
 
   it('launches through the ordinary manager and persists additive provenance', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-template-'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-template-'));
     try {
-      const store = RunStore.open(join(root, '.ai/cezar'));
+      const store = RunStore.open(join(root, '.ai/onni'));
       const manager = {
         startRun: (workflow: { name: string; steps: Array<{ id: string; name?: string; command?: string }> }, input: { task: string }) =>
           store.createRun({ title: 'automation', workflow: workflow.name, task: input.task, steps: workflow.steps.map((step) => ({ id: step.id, name: step.name ?? step.id, kind: step.command ? 'check' as const : 'agent' as const })) }),
@@ -44,9 +44,9 @@ describe('automation task templates', () => {
   });
 
   it('carries the automation\'s agent account onto the run it launches', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-template-account-'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-template-account-'));
     try {
-      const store = RunStore.open(join(root, '.ai/cezar'));
+      const store = RunStore.open(join(root, '.ai/onni'));
       const inputs: Array<{ agentProfile?: string }> = [];
       const manager = {
         startRun: (workflow: { name: string; steps: [] }, input: { task: string; agentProfile?: string }) => {
@@ -61,11 +61,11 @@ describe('automation task templates', () => {
   });
 
   it('refuses successful delivery when run provenance cannot be persisted', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-durable-launch-'));
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-durable-launch-'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const warning = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      await mkdir(join(root, '.ai/cezar/runs.json'));
+      await mkdir(join(root, '.ai/onni/runs.json'));
       const manager = {
         startRun: () => store.createRun({ title: 'automation', workflow: 'quick-task', task: 'test', steps: [] }),
       } as unknown as RunManager;
@@ -75,8 +75,8 @@ describe('automation task templates', () => {
   });
 
   it('reconciles another process durable run without replacing local pending runs', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-reconcile-process-'));
-    const dataDir = join(root, '.ai/cezar');
+    const root = await mkdtemp(join(tmpdir(), 'onni-reconcile-process-'));
+    const dataDir = join(root, '.ai/onni');
     const first = RunStore.open(dataDir);
     const second = RunStore.open(dataDir);
     try {
@@ -93,9 +93,9 @@ describe('automation task templates', () => {
   });
 
   it('keeps boot available but refuses strict retry reconciliation when durable evidence is unreadable', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-reconcile-unreadable-'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-reconcile-unreadable-'));
     try {
-      const dataDir = join(root, '.ai/cezar');
+      const dataDir = join(root, '.ai/onni');
       const runs = RunStore.open(dataDir);
       const automations = AutomationStore.open(dataDir);
       await mkdir(join(dataDir, 'runs.json'));
@@ -105,9 +105,9 @@ describe('automation task templates', () => {
   });
 
   it.each(['reserved', 'launch-error'] as const)('reconciles a %s receipt from persisted run provenance', async (status) => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-reconcile-'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-reconcile-'));
     try {
-      const dataDir = join(root, '.ai/cezar');
+      const dataDir = join(root, '.ai/onni');
       const runs = RunStore.open(dataDir);
       const run = runs.createRun({ title: 'x', workflow: 'quick-task', task: 'x', steps: [] });
       runs.updateRun(run.id, { automation: { automationId: 'one', automationRevision: 1, receiptId: 'receipt', event: 'issue.opened', githubUrl: candidate.url } });
@@ -155,9 +155,9 @@ describe('scheduled automation task templates (spec 2026-09-14)', () => {
   });
 
   it('launches a scheduled run with automationTrigger provenance and the dispatch intent only when dispatch is on', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-schedule-launch-'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-schedule-launch-'));
     try {
-      const store = RunStore.open(join(root, '.ai/cezar'));
+      const store = RunStore.open(join(root, '.ai/onni'));
       const inputs: Array<Record<string, unknown>> = [];
       const manager = {
         startRun: (workflow: { name: string; steps: Array<{ id: string; name?: string; command?: string }> }, input: Record<string, unknown>) => {
@@ -174,7 +174,7 @@ describe('scheduled automation task templates (spec 2026-09-14)', () => {
       expect(store.getRun(off.runId)?.automation).toBeUndefined();
       expect(store.getRun(on.runId)?.automationTrigger?.trigger).toBe('catch-up');
       // Reconciliation reads the new key too.
-      const automationStore = AutomationStore.open(join(root, '.ai/cezar'));
+      const automationStore = AutomationStore.open(join(root, '.ai/onni'));
       const reserved = automationStore.reserveReceipt({ automationId: 'nightly', revision: 2, eventId: 'schedule:x', occurrenceAt: occurrence.at })!;
       store.updateRun(on.runId, { automationTrigger: { automationId: 'nightly', automationRevision: 2, receiptId: reserved.receiptId, trigger: 'schedule', occurrenceAt: occurrence.at } });
       expect(reconcileAutomationReceipts(automationStore, store)).toBe(1);
@@ -184,9 +184,9 @@ describe('scheduled automation task templates (spec 2026-09-14)', () => {
   });
 
   it('re-baselines an enabled poll idle longer than its lookback, and leaves a fresh one alone', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-rebaseline-'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-rebaseline-'));
     try {
-      const automationStore = AutomationStore.open(join(root, '.ai/cezar'));
+      const automationStore = AutomationStore.open(join(root, '.ai/onni'));
       const now = Date.parse('2026-09-14T10:00:00Z');
       const stale = automationStore.create({ name: 'Stale', enabled: true, kind: 'github', events: ['issue.opened'], intervalSeconds: 300, filters: { lookbackDays: 7, maxRecords: 25 }, task: { prompt: 'x' } }, 'stale');
       automationStore.setState('stale', (current) => ({ ...current, cursor: { timestamp: '2026-07-01T00:00:00.000Z' }, lastSuccessAt: '2026-07-01T00:00:00.000Z', backlogAfter: { timestamp: '2026-07-01T00:00:00.000Z', tieBreaker: 'x' } }));
@@ -264,9 +264,9 @@ describe('tracker automation task templates (2026-09-19)', () => {
   });
 
   it('launches through the ordinary manager and persists tracker provenance', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'cezar-tracker-template-'));
+    const root = await mkdtemp(join(tmpdir(), 'onni-tracker-template-'));
     try {
-      const store = RunStore.open(join(root, '.ai/cezar'));
+      const store = RunStore.open(join(root, '.ai/onni'));
       const manager = {
         startRun: (workflow: { name: string; steps: Array<{ id: string; name?: string; command?: string }> }, input: { task: string }) =>
           store.createRun({ title: 'automation', workflow: workflow.name, task: input.task, steps: workflow.steps.map((step) => ({ id: step.id, name: step.name ?? step.id, kind: step.command ? 'check' as const : 'agent' as const })) }),
@@ -279,7 +279,7 @@ describe('tracker automation task templates (2026-09-19)', () => {
       expect(store.getRun(launched.runId)?.automationTracker).toEqual({
         automationId: 'todo', automationRevision: 1, receiptId: 'receipt', provider: 'jira', key: 'ABC-1', url: trackerCandidate.url, association: trackerCandidate.association, eventId: trackerCandidate.eventId, event: trackerCandidate.event, timestamp: trackerCandidate.timestamp, change: trackerCandidate.change,
       });
-      expect(RunStore.open(join(root, '.ai/cezar')).getRun(launched.runId)?.automationTracker)
+      expect(RunStore.open(join(root, '.ai/onni')).getRun(launched.runId)?.automationTracker)
         .toEqual(store.getRun(launched.runId)?.automationTracker);
     } finally { await rm(root, { recursive: true, force: true }); }
   });

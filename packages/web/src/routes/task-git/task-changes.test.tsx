@@ -32,7 +32,7 @@ const RUN: ApiRun = {
   tokensUsed: 0,
   archived: false,
   worktreePath: '/tmp/wt/r1',
-  branch: 'cez/abc12345',
+  branch: 'onni/abc12345',
   baseBranch: 'main',
   steps: [
     { id: 'task', name: 'Do the task', kind: 'agent', status: 'done', iterations: 1, tokensUsed: 0, sessionId: 's-1' },
@@ -320,14 +320,14 @@ describe('the Changes tab route', () => {
         jsonResponse({
           files: [],
           stat: { adds: 0, dels: 0, files: 0 },
-          repointedHead: { headBranch: 'review/pr-42', taskBranch: 'cez/abc12345' },
+          repointedHead: { headBranch: 'review/pr-42', taskBranch: 'onni/abc12345' },
         }),
     })
     renderChangesRoute()
 
     await waitFor(() => expect(document.querySelector('[data-slot="repointed-head-note"]')).not.toBeNull())
     expect(document.querySelector('[data-slot="repointed-head-note"]')?.textContent).toContain(
-      "HEAD is on review/pr-42, not this task's branch cez/abc12345 — showing only what this task changed there.",
+      "HEAD is on review/pr-42, not this task's branch onni/abc12345 — showing only what this task changed there.",
     )
   })
 
@@ -404,7 +404,7 @@ describe('the Changes tab route', () => {
       'GET /api/v1/runs/r1': () => jsonResponse(WITH_PR),
       'POST /api/v1/runs/r1/git/commit': () => jsonResponse({ committed: true, sha: 'abc1234def5678' }),
       'POST /api/v1/runs/r1/git/push': () =>
-        jsonResponse({ pushed: true, branch: 'cez/abc12345', remote: 'origin', upstreamSet: false }),
+        jsonResponse({ pushed: true, branch: 'onni/abc12345', remote: 'origin', upstreamSet: false }),
     })
     renderChangesRoute()
     await waitFor(() => expect(usable(toolbarAction('commit-push'))).toBe(true))
@@ -428,7 +428,7 @@ describe('the Changes tab route', () => {
       const paths = sent.filter((r) => r.method === 'POST').map((r) => r.path)
       expect(paths.indexOf('/api/v1/runs/r1/git/push')).toBeGreaterThan(paths.indexOf('/api/v1/runs/r1/git/commit'))
     })
-    await waitFor(() => expect(document.body.textContent).toContain('Pushed cez/abc12345 to origin'))
+    await waitFor(() => expect(document.body.textContent).toContain('Pushed onni/abc12345 to origin'))
   })
 
   it('a commit 409 surfaces git’s own words, keeps the dialog open, and pushes nothing', async () => {
@@ -455,7 +455,7 @@ describe('the Changes tab route', () => {
       'GET /api/v1/runs/r1': () => jsonResponse(WITH_PR),
       'GET /api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 0, unpushed: 2 }),
       'POST /api/v1/runs/r1/git/push': () =>
-        jsonResponse({ pushed: true, branch: 'cez/abc12345', remote: 'origin', upstreamSet: true }),
+        jsonResponse({ pushed: true, branch: 'onni/abc12345', remote: 'origin', upstreamSet: true }),
     })
     renderChangesRoute()
     await waitFor(() => expect(usable(toolbarAction('push'))).toBe(true))
@@ -464,11 +464,11 @@ describe('the Changes tab route', () => {
       expect(sent.some((r) => r.method === 'POST' && r.path === '/api/v1/runs/r1/git/push')).toBe(true),
     )
     await waitFor(() =>
-      expect(document.body.textContent).toContain('Pushed cez/abc12345 to origin (upstream set)'),
+      expect(document.body.textContent).toContain('Pushed onni/abc12345 to origin (upstream set)'),
     )
   })
 
-  // #791: `/api/v1/health` reports the boot folder, so a cezar booted outside a git repo answered
+  // #791: `/api/v1/health` reports the boot folder, so a onni booted outside a git repo answered
   // `repo: null` and Push went dark for every project. The remote must come from the
   // project-scoped `/repo` instead.
   it('offers Push from the project remote even when the boot folder has no git repo', async () => {
@@ -550,7 +550,7 @@ describe('GitToolbar', () => {
   it('shows the branch chip and the aggregate ± stat', () => {
     render(
       <GitToolbar
-        branch="cez/abc12345"
+        branch="onni/abc12345"
         stat={{ adds: 12, dels: 3, files: 2 }}
         mode="unified"
         wrap={false}
@@ -558,7 +558,7 @@ describe('GitToolbar', () => {
         onWrapChange={noop}
       />,
     )
-    expect(document.querySelector('[data-slot="branch-chip"]')?.textContent).toContain('cez/abc12345')
+    expect(document.querySelector('[data-slot="branch-chip"]')?.textContent).toContain('onni/abc12345')
     const stat = document.querySelector('[data-slot="changes-stat"]')?.textContent
     expect(stat).toContain('+12')
     expect(stat).toContain('−3')

@@ -34,7 +34,7 @@ export interface ProjectContext {
   id: string;
   /** Realpath'd repo root the registry holds for this project. */
   root: string;
-  /** `<root>/.ai/cezar` — all of this project's on-disk state. */
+  /** `<root>/.ai/onni` — all of this project's on-disk state. */
   dataDir: string;
   store: RunStore;
   manager: RunManager;
@@ -45,7 +45,7 @@ export interface ProjectContext {
 
 /** Minimal registry shape the context map needs — matches
  *  `workspace/projects.ts` `ProjectListEntry` structurally, but injected so
- *  tests stay hermetic (no `~/.cezar` reads). */
+ *  tests stay hermetic (no `~/.onni` reads). */
 export interface ProjectContextSource {
   id: string;
   root: string;
@@ -244,7 +244,7 @@ export class ProjectContexts {
     if (project.status === 'missing') throw new ProjectContextError('missing-root', projectId);
 
     ensureDataGitignore(project.root);
-    const dataDir = join(project.root, '.ai/cezar');
+    const dataDir = join(project.root, '.ai/onni');
     // keepLive + recover() (#367), same as serveCommand: runs that were live
     // when this project's context last existed are re-queued or resumed.
     const store = RunStore.open(dataDir, { keepLive: true });

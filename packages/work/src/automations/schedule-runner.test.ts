@@ -17,7 +17,7 @@ const T0 = Date.parse('2026-09-14T03:59:30Z');
 const FIRST_RUN = Date.parse('2026-09-14T04:00:00Z');
 
 async function setup(schedule: ScheduleAutomationDefinition['schedule'] = { type: 'daily', hour: 4, minute: 0 }) {
-  const dir = await mkdtemp(join(tmpdir(), 'cezar-schedule-runner-'));
+  const dir = await mkdtemp(join(tmpdir(), 'onni-schedule-runner-'));
   dirs.push(dir);
   let now = T0;
   const clock = { now: () => now, set: (ms: number) => { now = ms; } };

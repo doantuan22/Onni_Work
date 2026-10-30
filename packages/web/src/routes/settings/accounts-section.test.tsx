@@ -148,7 +148,7 @@ function serve(
         })
       }
       if (url === '/api/v1/projects' && method === 'GET') {
-        return json({ projects: [], bootProject: 'boot', projectsDir: '~/cezar/projects' })
+        return json({ projects: [], bootProject: 'boot', projectsDir: '~/onni/projects' })
       }
       if (String(input).startsWith('/api/v1/models?runner=')) {
         const runner = String(input).includes('cursor') ? 'cursor' : 'codex'
@@ -190,7 +190,7 @@ function renderAccounts(
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: [],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   render(
     <QueryClientProvider client={client}>
@@ -283,7 +283,7 @@ describe('the agent accounts section', () => {
     // One tab at a time, so only the ACTIVE agent's rows are in the DOM.
     await waitFor(() => expect(rows()).toHaveLength(1))
     expect(document.body.textContent).toContain('discovered')
-    // The discovered profile is what cezar found — a Rename or Remove would imply a setting. Checked
+    // The discovered profile is what onni found — a Rename or Remove would imply a setting. Checked
     // with the panel OPEN, since that is now the only place either could appear.
     await openDetails('default')
     expect(document.querySelector('[data-slot="account-manage"]')).toBeNull()
@@ -439,7 +439,7 @@ describe('the agent accounts section', () => {
           defaults: {},
           profiles: [...DEFAULTS, profile({ id: 'klaudiusz', status: { provider: 'claude', status: 'disconnected' } })],
         },
-        { connect: { status: 409, body: { error: 'Run this command on the machine hosting cezar.', command: 'claude auth login' } } },
+        { connect: { status: 409, body: { error: 'Run this command on the machine hosting onni.', command: 'claude auth login' } } },
       )
       const reported: string[] = []
       const off = onDangerToast((message) => reported.push(message))
@@ -450,7 +450,7 @@ describe('the agent accounts section', () => {
           return rowFor('klaudiusz')!
         })
         fireEvent.click(row.querySelector('[data-action="account-connect"]')!)
-        await screen.findByText(/Run this command on the machine hosting cezar\. — run: claude auth login/)
+        await screen.findByText(/Run this command on the machine hosting onni\. — run: claude auth login/)
         expect(reported).toEqual([])
       } finally {
         off()
@@ -1014,7 +1014,7 @@ describe('the add-account dialog', () => {
 
     expect(screen.getByLabelText<HTMLSelectElement>('Agent').value).toBe('codex')
     // The placeholder follows too, so the example folder is not the wrong agent's. It stays a
-    // GENERIC name — this string ships to every cezar user, so it must not carry one person's.
+    // GENERIC name — this string ships to every onni user, so it must not carry one person's.
     expect(dirField().placeholder).toBe('~/.codex-second')
   })
 

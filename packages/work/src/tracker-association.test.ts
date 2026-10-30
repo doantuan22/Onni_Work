@@ -32,8 +32,8 @@ describe('tracker association persistence', () => {
   const path = () => join(dataDir, 'tracker.json');
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-tracker-association-'));
-    dataDir = join(root, '.ai/cezar');
+    root = mkdtempSync(join(tmpdir(), 'onni-tracker-association-'));
+    dataDir = join(root, '.ai/onni');
   });
 
   afterEach(() => {
@@ -129,7 +129,7 @@ describe('tracker association persistence', () => {
 describe('tracker association across processes', () => {
   let directory: string;
   const children: ChildProcess[] = [];
-  beforeEach(() => { directory = mkdtempSync(join(tmpdir(), 'cez-association-process-')); });
+  beforeEach(() => { directory = mkdtempSync(join(tmpdir(), 'onni-association-process-')); });
   afterEach(() => {
     for (const child of children.splice(0)) child.kill();
     rmSync(directory, { recursive: true, force: true });

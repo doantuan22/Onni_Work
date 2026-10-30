@@ -56,7 +56,7 @@ const EXTENSION_MEDIA_TYPES: Record<string, string> = {
 }
 
 /** Text formats sent as `text/plain` (telemetry 6c4b3066: an `.html` was refused). The contract
- *  never widens to `text/html` — cezar serves attachments from the cockpit's origin — so the bytes
+ *  never widens to `text/html` — onni serves attachments from the cockpit's origin — so the bytes
  *  travel as plain text and the server pins the stored name to `.txt` (`sanitizeAttachmentName`). */
 const PLAIN_TEXT_EXTENSIONS = new Set([
   'html', 'htm', 'xml', 'css', 'scss', 'less', 'csv', 'tsv', 'json', 'jsonl', 'ndjson',
@@ -74,7 +74,7 @@ const PLAIN_TEXT_MEDIA_TYPES = new Set([
 ])
 
 /**
- * What cezar will call this file on the wire.
+ * What onni will call this file on the wire.
  *
  * The browser's `type` wins when it is one the contract knows. When it is empty — a `.md` on
  * Windows, a file dragged out of some archive tools — the extension decides instead, because

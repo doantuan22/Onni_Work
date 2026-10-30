@@ -4,8 +4,8 @@
  * fallback ("AskUserQuestion isn't available…"). See the spec
  * `.ai/specs/2026-07-18-askuser-across-runners.md`.
  *
- * The agent emits this as a `CEZ:ASK <compact-json>` control marker (a sibling
- * of `CEZ:DONE` / `CEZ:MONITORING`), parsed on the assembled turn text in
+ * The agent emits this as a `ONNI:ASK <compact-json>` control marker (a sibling
+ * of `ONNI:DONE` / `ONNI:MONITORING`), parsed on the assembled turn text in
  * `src/workflows/run.ts` — uniform across claude, codex and opencode with no
  * per-backend mapper work. The shape is modeled on Claude Code's built-in
  * `AskUserQuestion` (`header` ≤12 chars, unique question texts and unique
@@ -20,8 +20,8 @@ import { z } from 'zod';
  * parity with `AskUserQuestion`'s 1–4 / 2–4. That parity was the only reason
  * the bounds used to be 4 and 4, and it cost a real run its question: an agent
  * with five decisions for the user had the whole payload refused and its
- * questions rendered as raw JSON. `CEZ:ASK` is cezar's own marker, rendered by
- * cezar's own cockpit, and both the `ask.requested` event types and the ask
+ * questions rendered as raw JSON. `ONNI:ASK` is onni's own marker, rendered by
+ * onni's own cockpit, and both the `ask.requested` event types and the ask
  * card already handle any count.
  *
  * Declared here as the single source of truth: a second copy of either number
@@ -101,19 +101,19 @@ export function parseAskRequest(value: unknown): AskRequest | null {
 }
 
 /**
- * The AskUser control marker: a trailing `CEZ:ASK <compact-json>` line (a
- * sibling of `CEZ:DONE` / `CEZ:MONITORING`). Detected on the *assembled* turn
+ * The AskUser control marker: a trailing `ONNI:ASK <compact-json>` line (a
+ * sibling of `ONNI:DONE` / `ONNI:MONITORING`). Detected on the *assembled* turn
  * text so delta-streaming backends can't split it — uniform across all three
  * backends. The JSON is greedily captured from the first `{` after the keyword
  * to the last `}` at end-of-text.
  */
-export const ASK_MARKER_RE = /CEZ:ASK[ \t]+(\{[\s\S]*\})\s*$/;
+export const ASK_MARKER_RE = /ONNI:ASK[ \t]+(\{[\s\S]*\})\s*$/;
 
 /**
  * The payload candidate of the LAST `<keyword> ` occurrence in a turn — everything from there to
  * end-of-text — or `null` when the keyword never appears followed by whitespace.
  *
- * The LAST occurrence, deliberately. A model narrates: "as CEZ:ASK requires, here is my
+ * The LAST occurrence, deliberately. A model narrates: "as ONNI:ASK requires, here is my
  * question:" and then emits the real marker line. Anchoring on the first mention (what a
  * non-global `.exec()` does) captured that prose as the payload and refused a well-formed marker
  * as invalid JSON — observed on live unit runs, where the refusal was fatal. The candidate is
@@ -130,12 +130,12 @@ function lastMarkerCandidate(turnText: string, keyword: string): string | null {
 
 /**
  * Drop the control-marker lines a role prompt tells an agent to append AFTER its payload
- * (`CEZ:MONITORING` after a dispatch, `CEZ:DONE` after a report). They are protocol, not JSON, and
+ * (`ONNI:MONITORING` after a dispatch, `ONNI:DONE` after a report). They are protocol, not JSON, and
  * a candidate that runs to end-of-text would otherwise carry them into `JSON.parse` — a failure
  * `closeUnbalancedJson` cannot repair, because nothing is unbalanced.
  *
  * Peeled line by line rather than with one anchored regex: the old
- * `/(?:\s*\n\s*CEZ:(?:MONITORING|DONE)\s*)+$/` let three `\s*` runs fight over the same newlines,
+ * `/(?:\s*\n\s*ONNI:(?:MONITORING|DONE)\s*)+$/` let three `\s*` runs fight over the same newlines,
  * so a turn ending in a few thousand blank lines backtracked cubically — 8,000 newlines held the
  * server's event loop for 85 s (CodeQL js/redos, alert #10). Only a marker on its OWN line is
  * dropped, as before.
@@ -146,7 +146,7 @@ function trimTrailingControlMarkers(candidate: string): string {
     const newline = text.lastIndexOf('\n');
     if (newline < 0) return text;
     const line = text.slice(newline + 1).trim();
-    if (line !== 'CEZ:MONITORING' && line !== 'CEZ:DONE') return text;
+    if (line !== 'ONNI:MONITORING' && line !== 'ONNI:DONE') return text;
     text = text.slice(0, newline).trimEnd();
   }
 }
@@ -278,7 +278,7 @@ function issuesOf(error: z.ZodError): AskParseIssue[] {
  * rejected so the raw fallback stays readable.
  */
 export function parseAskMarkerResult(turnText: string): AskMarkerParseResult {
-  const candidate = lastMarkerCandidate(turnText.trimEnd(), 'CEZ:ASK');
+  const candidate = lastMarkerCandidate(turnText.trimEnd(), 'ONNI:ASK');
   if (candidate === null) return { kind: 'none' };
   const payload = trimTrailingControlMarkers(candidate);
   let raw: unknown;
@@ -309,7 +309,7 @@ export function parseAskMarkerResult(turnText: string): AskMarkerParseResult {
 }
 
 /**
- * Extract and validate a trailing `CEZ:ASK <json>` marker from assembled turn
+ * Extract and validate a trailing `ONNI:ASK <json>` marker from assembled turn
  * text. Returns a strict or safely normalized `AskRequest`, or `null` when
  * there is no marker or its payload remains invalid (caller degrades to plain
  * text — the prose fallback is never made worse).
@@ -320,22 +320,22 @@ export function parseAskMarker(turnText: string): AskRequest | null {
 }
 
 /**
- * Strip a trailing `CEZ:ASK <json>` marker from one text event so transcripts
+ * Strip a trailing `ONNI:ASK <json>` marker from one text event so transcripts
  * stay free of protocol noise — but ONLY when the payload actually validates.
  * An invalid payload never becomes an ask card (`parseAskMarker` → `null`), so
  * stripping it would delete the agent's question from the transcript with
  * nothing to replace it; it stays visible as raw text instead — degraded but
  * answerable (the prose fallback is never made worse). Delta backends may split
  * the marker across events — then it stays visible; detection on the assembled
- * turn text is unaffected (same best-effort caveat as the `CEZ:DONE` /
- * `CEZ:MONITORING` strippers).
+ * turn text is unaffected (same best-effort caveat as the `ONNI:DONE` /
+ * `ONNI:MONITORING` strippers).
  *
- * The strip runs from the `CEZ:ASK` keyword to end-of-text rather than to a
+ * The strip runs from the `ONNI:ASK` keyword to end-of-text rather than to a
  * trailing `}`: a repaired payload (#936) may end on `]`, or on the last
  * character before the closers this module appended, and half a marker left
  * under a rendered card is protocol noise the card already replaced.
  */
 export function stripAskMarker(text: string): string {
   if (parseAskMarker(text) === null) return text;
-  return stripLastMarker(text, 'CEZ:ASK');
+  return stripLastMarker(text, 'ONNI:ASK');
 }

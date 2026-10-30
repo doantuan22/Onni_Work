@@ -23,7 +23,7 @@ let service: WebhookService;
 let receiverId: string;
 
 beforeEach(async () => {
-  root = mkdtempSync(join(tmpdir(), 'cez-lifecycle-settlement-'));
+  root = mkdtempSync(join(tmpdir(), 'onni-lifecycle-settlement-'));
   vi.stubEnv('CEZ_WEBHOOKS', '1');
   vi.stubEnv('CEZ_AUTO_NAMING', '0');
   vi.stubEnv('CEZ_DRY_RUN', '0');
@@ -35,10 +35,10 @@ beforeEach(async () => {
   writeFileSync(join(root, '.gitignore'), '.ai/\n');
   execFileSync('git', ['add', '.'], { cwd: root });
   execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'base'], { cwd: root });
-  store = RunStore.open(join(root, '.ai/cezar'));
+  store = RunStore.open(join(root, '.ai/onni'));
   manager = new RunManager(store, root);
   service = (await WebhookService.open({
-    root, dataDir: join(root, '.ai/cezar'), projectId: 'lifecycle', mode: 'local',
+    root, dataDir: join(root, '.ai/onni'), projectId: 'lifecycle', mode: 'local',
     serverPorts: () => [], scheduler: new WebhookScheduler(),
     send: async () => ({ kind: 'http', status: 200 }),
   }))!;
@@ -178,14 +178,14 @@ it('recovers a persisted unanswered native Codex question without reporting succ
   expect(store.getRun(id)?.attentionRequest?.questions.length).toBeGreaterThan(0);
   expect(store.getRun(id)?.dispatch?.pendingAsk).toBeUndefined();
   store.flush();
-  const copy = mkdtempSync(join(tmpdir(), 'cez-lifecycle-restart-'));
+  const copy = mkdtempSync(join(tmpdir(), 'onni-lifecycle-restart-'));
   execFileSync('git', ['init', '-q'], { cwd: copy });
   cpSync(join(root, '.ai'), join(copy, '.ai'), { recursive: true });
-  const recovered = RunStore.open(join(copy, '.ai/cezar'), { keepLive: true });
+  const recovered = RunStore.open(join(copy, '.ai/onni'), { keepLive: true });
   const recovery = new RunManager(recovered, copy, { semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 0 } }) });
   const send = vi.fn(async () => ({ kind: 'http' as const, status: 200 }));
   const capture = (await WebhookService.open({
-    root: copy, dataDir: join(copy, '.ai/cezar'), projectId: 'restart', mode: 'local',
+    root: copy, dataDir: join(copy, '.ai/onni'), projectId: 'restart', mode: 'local',
     serverPorts: () => [], scheduler: new WebhookScheduler(), send,
   }))!;
   try {

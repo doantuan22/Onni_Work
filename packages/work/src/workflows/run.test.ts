@@ -59,11 +59,11 @@ describe('appendTurnText', () => {
     'preserves a marker boundary before later commentary during %s',
     () => {
       const turnText = appendTurnText(
-        'Issue claimed.\n\nCEZ:PR=635\nCEZ:TITLE=linking per-project limits',
+        'Issue claimed.\n\nONNI:PR=635\nONNI:TITLE=linking per-project limits',
         'The verification gate confirms the defect.',
       );
 
-      expect(turnText).toContain('CEZ:TITLE=linking per-project limits\nThe verification');
+      expect(turnText).toContain('ONNI:TITLE=linking per-project limits\nThe verification');
       expect(turnText).not.toContain('limitsThe');
       expect(parseTaskMarkers(turnText).title).toBe('linking per-project limits');
     },
@@ -78,25 +78,25 @@ describe('appendTurnText', () => {
 
 describe('turn-end markers tolerate trailing task references (#997)', () => {
   const ask =
-    'CEZ:ASK {"questions":[{"header":"Scope","question":"Which scope?","options":[{"label":"Narrow"},{"label":"Wide"}]}]}';
+    'ONNI:ASK {"questions":[{"header":"Scope","question":"Which scope?","options":[{"label":"Narrow"},{"label":"Wide"}]}]}';
 
   it.each([
-    'finished\nCEZ:DONE\nCEZ:PR=42',
-    'finished\nCEZ:DONE\nCEZ:ISSUE=997',
-    'finished\nCEZ:DONE\nCEZ:TITLE=closing the issue',
+    'finished\nONNI:DONE\nONNI:PR=42',
+    'finished\nONNI:DONE\nONNI:ISSUE=997',
+    'finished\nONNI:DONE\nONNI:TITLE=closing the issue',
   ])('normalizes DONE before trailing references: %s', (turn) => {
     expect(endsWithDoneMarker(turn)).toBe(true);
   });
 
   it('normalizes ASK before trailing references so the card parser still sees it', () => {
-    const normalized = turnEndMarkerText(`Need a decision.\n${ask}\nCEZ:ISSUE=997`);
+    const normalized = turnEndMarkerText(`Need a decision.\n${ask}\nONNI:ISSUE=997`);
     expect(parseAskMarker(normalized)).not.toBeNull();
   });
 
   it.each([
-    'finished\nCEZ:DONE\nthen continued working',
-    'Need a decision.\nCEZ:ASK {"questions":[]}\nCEZ:ISSUE=997\nthen continued working',
-    'I will emit CEZ:DONE and CEZ:PR=42 in the next turn.',
+    'finished\nONNI:DONE\nthen continued working',
+    'Need a decision.\nONNI:ASK {"questions":[]}\nONNI:ISSUE=997\nthen continued working',
+    'I will emit ONNI:DONE and ONNI:PR=42 in the next turn.',
   ])('does not strip or promote marker-like prose: %s', (turn) => {
     expect(turnEndMarkerText(turn)).toBe(turn);
   });
@@ -109,8 +109,8 @@ describe('RunManager directional usage accounting', () => {
   let internal: UsageAccountingHarness;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-usage-accounting-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-usage-accounting-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot, {
       semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 0 } }),
     });
@@ -199,14 +199,14 @@ describe('RunManager directional usage accounting', () => {
     store.flush();
 
     internal.beginUsageInvocation(run.id, state, 'work');
-    expect(RunStore.open(join(repoRoot, '.ai/cezar')).getRun(run.id)?.steps[0]).toMatchObject({
+    expect(RunStore.open(join(repoRoot, '.ai/onni')).getRun(run.id)?.steps[0]).toMatchObject({
       usageInvocationsStarted: 1,
     });
 
     const persistedAtSink: StepState[] = [];
     const sink = {
       handle: (_event: UiEvent) => {
-        const persisted = RunStore.open(join(repoRoot, '.ai/cezar')).getRun(run.id)?.steps[0];
+        const persisted = RunStore.open(join(repoRoot, '.ai/onni')).getRun(run.id)?.steps[0];
         if (persisted) persistedAtSink.push(persisted);
       },
     };
@@ -255,8 +255,8 @@ describe('RunManager directional usage accounting', () => {
 });
 
 it('parallel variants ignore a worktree opt-out and retain isolated mode', () => {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'cez-variant-isolation-'));
-  const store = RunStore.open(join(repoRoot, '.ai/cezar'));
+  const repoRoot = mkdtempSync(join(tmpdir(), 'onni-variant-isolation-'));
+  const store = RunStore.open(join(repoRoot, '.ai/onni'));
   try {
     const manager = new RunManager(store, repoRoot, {
       semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 0 } }),
@@ -293,12 +293,12 @@ describe('RunManager.recordTurnEnd', () => {
   let manager: RunManager;
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-turnend-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-turnend-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\ntwo\nthree\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -402,11 +402,11 @@ describe('RunManager.recordTurnEnd', () => {
     await expect(manager.recordTurnEnd('nope', TURN_TEXT)).resolves.toBeUndefined();
   });
 
-  it('applies in-band CEZ markers from the turn text (spec 2026-07-18-task-ref-markers)', async () => {
+  it('applies in-band ONNI markers from the turn text (spec 2026-07-18-task-ref-markers)', async () => {
     const record = store.createRun({ title: 't', workflow: 'w', task: 'implement comment threads', steps: [] });
     await manager.recordTurnEnd(
       record.id,
-      'Progress so far.\nCEZ:PR=500\nCEZ:ISSUE=433\nCEZ:TITLE=implementing comment threads\nMore to come.',
+      'Progress so far.\nONNI:PR=500\nONNI:ISSUE=433\nONNI:TITLE=implementing comment threads\nMore to come.',
     );
     const after = store.getRun(record.id);
     expect(after?.prNumber).toBe(500);
@@ -420,16 +420,16 @@ describe('RunManager.recordTurnEnd', () => {
   it('a marker title never overwrites a user rename — but the numbers still land', async () => {
     const record = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
     store.updateRun(record.id, { title: 'My name', titleSummary: 'My name', titleOrigin: 'user' });
-    await manager.recordTurnEnd(record.id, 'CEZ:PR=500\nCEZ:TITLE=implementing comment threads');
+    await manager.recordTurnEnd(record.id, 'ONNI:PR=500\nONNI:TITLE=implementing comment threads');
     const after = store.getRun(record.id);
     expect(after?.titleSummary).toBe('My name');
     expect(after?.titleOrigin).toBe('user');
     expect(after?.prNumber).toBe(500);
   });
 
-  it('a junk CEZ:TITLE never blanks the title', async () => {
+  it('a junk ONNI:TITLE never blanks the title', async () => {
     const record = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
-    await manager.recordTurnEnd(record.id, 'CEZ:PR=500\nCEZ:TITLE=...');
+    await manager.recordTurnEnd(record.id, 'ONNI:PR=500\nONNI:TITLE=...');
     const after = store.getRun(record.id);
     expect(after?.titleSummary).toBeUndefined();
     expect(after?.titleOrigin).toBeUndefined();
@@ -438,7 +438,7 @@ describe('RunManager.recordTurnEnd', () => {
 
   it('prose that merely mentions a marker changes nothing', async () => {
     const record = store.createRun({ title: 't', workflow: 'w', task: 'task', steps: [] });
-    await manager.recordTurnEnd(record.id, 'I will emit CEZ:PR=442 once the PR exists.');
+    await manager.recordTurnEnd(record.id, 'I will emit ONNI:PR=442 once the PR exists.');
     const after = store.getRun(record.id);
     expect(after?.markerRefs).toBeUndefined();
     expect(after?.prNumber).toBeUndefined();
@@ -459,8 +459,8 @@ describe('RunManager.continueRun override', () => {
   let manager: RunManager;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-continue-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-continue-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     // No live agent — we only assert the synchronous persistence continueRun does before it
     // hands off to the (stubbed) continuation.
@@ -726,12 +726,12 @@ describe('RunManager.settleSuccess — optional review gate', () => {
   let manager: RunManager;
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-reviewgate-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-reviewgate-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\ntwo\nthree\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -746,7 +746,7 @@ describe('RunManager.settleSuccess — optional review gate', () => {
     manager.dispose(); // see DISPOSE at the top of this file
     delete process.env.CEZ_REVIEW_GATE;
     // Reset the config file each test so config.reviewGate never leaks across cases.
-    rmSync(join(repoRoot, '.ai/cezar', 'config.json'), { force: true });
+    rmSync(join(repoRoot, '.ai/onni', 'config.json'), { force: true });
   });
 
   /** A fresh run + worktree holding a real diff (edit + new file) vs main. */
@@ -812,7 +812,7 @@ describe('RunManager.settleSuccess — optional review gate', () => {
  * are present and the engine's loop does iterate over both, proven below);
  * the root cause was that every step got the identical task text and shared
  * one run-level handoff journal, so the LAST step's fresh session — the only
- * one that honors `CEZ:DONE` as an early-completion signal — could read an
+ * one that honors `ONNI:DONE` as an early-completion signal — could read an
  * earlier step's own "done" report and conclude the whole run was already
  * finished, ending its first turn with the marker before doing its own
  * step's work. The fix (`chainStepNote`, `workflows/types.ts`) tells every
@@ -828,14 +828,14 @@ describe('a chain of 2 selected skills runs BOTH steps, in order (#410)', () => 
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-410-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-410-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -861,7 +861,7 @@ describe('a chain of 2 selected skills runs BOTH steps, in order (#410)', () => 
         { id: 'om-auto-verify-pr-ui', name: 'om-auto-verify-pr-ui', skill: 'om-auto-verify-pr-ui', prompt: '{{task}}' },
       ],
     };
-    // `mock:done` makes the mock's turn end with CEZ:DONE — needed so the
+    // `mock:done` makes the mock's turn end with ONNI:DONE — needed so the
     // last (interactive) step closes itself and the run reaches a terminal
     // status instead of parking at `waiting` for a real reply.
     const record = manager.startRun(workflow, { task: 'mock:done fix the PR', worktree: false });
@@ -918,14 +918,14 @@ describe('a single agent step plus a check step gets NO chain note (#410)', () =
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-410-single-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-410-single-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -996,7 +996,7 @@ describe('worktree off + newBranch switches the repo checkout to a branch off ba
   };
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-inplace-branch-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-inplace-branch-'));
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, '.gitignore'), '.ai/\nnotes.md\n');
@@ -1007,8 +1007,8 @@ describe('worktree off + newBranch switches the repo checkout to a branch off ba
     writeFileSync(join(repoRoot, 'x.txt'), 'x\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'elsewhere only'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
-    writeFileSync(join(repoRoot, '.ai/cezar/config.json'), JSON.stringify({ baseBranch: 'main' }));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
+    writeFileSync(join(repoRoot, '.ai/onni/config.json'), JSON.stringify({ baseBranch: 'main' }));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -1060,13 +1060,13 @@ describe('check-step mutations stay out of autosave commits (#1079)', () => {
   const savedDryRun = process.env.CEZ_DRY_RUN;
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-1079-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-1079-'));
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'debug_test.txt'), 'base\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -1107,7 +1107,7 @@ describe('check-step mutations stay out of autosave commits (#1079)', () => {
     expect(finished?.worktreePath).toBeTruthy();
     const worktreePath = finished?.worktreePath as string;
     const { stdout: subjects } = await run('git', ['log', '--format=%s', '-5'], { cwd: worktreePath });
-    expect(subjects.trim().split('\n')).toEqual(['cezar autosave (turn end)', 'base']);
+    expect(subjects.trim().split('\n')).toEqual(['onni autosave (turn end)', 'base']);
     const { stdout: files } = await run('git', ['show', '--format=', '--name-only', 'HEAD'], { cwd: worktreePath });
     expect(files.trim().split('\n')).toEqual(['notes.md']);
     expect(readFileSync(join(worktreePath, 'debug_test.txt'), 'utf8')).toBe('base\ndebug from check\n');
@@ -1118,12 +1118,12 @@ describe('check-step mutations stay out of autosave commits (#1079)', () => {
 });
 
 /**
- * #490 — the `CEZ:MONITORING` marker parks a still-working turn-end as
+ * #490 — the `ONNI:MONITORING` marker parks a still-working turn-end as
  * `running`/`activity:'monitoring'` (a non-attention state) instead of
  * `waiting`, while a markerless turn-end still parks as `waiting`. Resuming
  * clears the activity. Driven dry through the mock (`mock:monitoring`).
  */
-describe('CEZ:MONITORING parks as running/monitoring, not waiting (#490)', () => {
+describe('ONNI:MONITORING parks as running/monitoring, not waiting (#490)', () => {
   // Fresh repo + manager per test: these runs PARK (they never reach a terminal
   // status), and a `worktree:false` parked run holds the exclusive repo-root
   // lock — so a shared manager would starve the next test. Isolation avoids that.
@@ -1139,14 +1139,14 @@ describe('CEZ:MONITORING parks as running/monitoring, not waiting (#490)', () =>
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-490-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-490-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     currentId = undefined;
   });
@@ -1170,7 +1170,7 @@ describe('CEZ:MONITORING parks as running/monitoring, not waiting (#490)', () =>
     }
   };
 
-  it('a CEZ:MONITORING turn-end parks the run as running/monitoring', async () => {
+  it('a ONNI:MONITORING turn-end parks the run as running/monitoring', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:monitoring keep going', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.activity === 'monitoring');
@@ -1184,7 +1184,7 @@ describe('CEZ:MONITORING parks as running/monitoring, not waiting (#490)', () =>
   /**
    * #810 — the regression the two 0.9.2 reports describe. #661 removed the 15-minute
    * idle timer from the monitoring branch and replaced it with a wake timer that
-   * defaulted OFF, so a zero-config parked monitor had NO timer at all and cezar has no
+   * defaulted OFF, so a zero-config parked monitor had NO timer at all and onni has no
    * other resume path (no process-exit callback, no CI webhook, no sub-agent-completion
    * event). It sat in `monitoring` until a human typed something. A default manager must
    * therefore publish a wake deadline: the run has to be able to resume itself.
@@ -1227,12 +1227,12 @@ describe('CEZ:MONITORING parks as running/monitoring, not waiting (#490)', () =>
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:monitoring keep going', worktree: false });
     currentId = record.id;
     await waitFor(record.id, () => {
-      const path = join(repoRoot, '.ai/cezar/runs', `${record.id}.ndjson`);
+      const path = join(repoRoot, '.ai/onni/runs', `${record.id}.ndjson`);
       if (!existsSync(path)) return false;
       const ndjson = readFileSync(path, 'utf8');
       return ndjson.includes('automatic monitoring wake-up (1/40)');
     });
-    const events = readFileSync(join(repoRoot, '.ai/cezar/runs', `${record.id}.ndjson`), 'utf8')
+    const events = readFileSync(join(repoRoot, '.ai/onni/runs', `${record.id}.ndjson`), 'utf8')
       .trim().split('\n').map((line) => JSON.parse(line) as { type: string; message?: string });
     expect(events.some((event) => event.type === 'note' && event.message?.includes('(1/40)'))).toBe(true);
     expect(events.some((event) => event.type === 'user-message')).toBe(false);
@@ -1245,20 +1245,20 @@ describe('CEZ:MONITORING parks as running/monitoring, not waiting (#490)', () =>
     expect(store.getRun(record.id)?.activity).toBeUndefined();
   }, 30_000);
 
-  it('strips the CEZ:MONITORING marker from server-emitted v1 text events', async () => {
+  it('strips the ONNI:MONITORING marker from server-emitted v1 text events', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:monitoring keep going', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.activity === 'monitoring');
-    // v1 `text` events are stripped server-side (like CEZ:DONE); v2 message items carry
+    // v1 `text` events are stripped server-side (like ONNI:DONE); v2 message items carry
     // the raw text and the thread reducer strips it on display (thread-state.test.ts).
-    const ndjson = readFileSync(join(repoRoot, '.ai/cezar/runs', `${record.id}.ndjson`), 'utf8');
+    const ndjson = readFileSync(join(repoRoot, '.ai/onni/runs', `${record.id}.ndjson`), 'utf8');
     const v1Text = ndjson
       .trim()
       .split('\n')
       .map((l) => JSON.parse(l))
       .filter((e) => e.type === 'text');
     expect(v1Text.length).toBeGreaterThan(0);
-    expect(v1Text.some((e) => String(e.text).includes('CEZ:MONITORING'))).toBe(false);
+    expect(v1Text.some((e) => String(e.text).includes('ONNI:MONITORING'))).toBe(false);
   }, 30_000);
 
   it('resuming a monitoring run clears the activity', async () => {
@@ -1278,36 +1278,36 @@ describe('CEZ:MONITORING parks as running/monitoring, not waiting (#490)', () =>
  * with the "paused, waiting for your reply" footer and a browser notification.
  *
  * The handoff contract asks the agent to declare its subject PR/issue "as soon as you
- * know", and said nothing about ordering, so `CEZ:MONITORING` followed by `CEZ:PR=…`
+ * know", and said nothing about ordering, so `ONNI:MONITORING` followed by `ONNI:PR=…`
  * is a shape agents really emit. The `$`-anchored test then missed the marker and the
  * turn fell through to the `waiting` default — indistinguishable in the cockpit from a
  * genuine user-blocking pause.
  *
  * Unit-level here rather than only through a parked run, because the property that
  * matters is a SUPERSET claim (`BACKWARD_COMPATIBILITY.md` §8: an already-emitted
- * `CEZ:MONITORING` must keep meaning what it meant), and that is a claim about the
+ * `ONNI:MONITORING` must keep meaning what it meant), and that is a claim about the
  * predicate, not about one transcript.
  */
 describe('endsWithMonitoringMarker tolerates trailing task-reference lines (#933)', () => {
   /** The pre-#933 predicate, kept verbatim as the baseline the new one must not shrink. */
-  const oldPredicate = (turnText: string) => /CEZ:MONITORING\s*$/.test(turnText.trimEnd());
+  const oldPredicate = (turnText: string) => /ONNI:MONITORING\s*$/.test(turnText.trimEnd());
 
   const PARKS_MONITORING = [
-    ['the plain marker', 'dispatched 3 sub-agents; waiting on them\nCEZ:MONITORING'],
-    ['the marker with trailing whitespace', 'still working\nCEZ:MONITORING   \n\n'],
-    ['the marker followed by a PR declaration', 'opened the PR\nCEZ:MONITORING\nCEZ:PR=4242'],
+    ['the plain marker', 'dispatched 3 sub-agents; waiting on them\nONNI:MONITORING'],
+    ['the marker with trailing whitespace', 'still working\nONNI:MONITORING   \n\n'],
+    ['the marker followed by a PR declaration', 'opened the PR\nONNI:MONITORING\nONNI:PR=4242'],
     [
       'the marker followed by every task-reference marker',
-      'fanned out\n\nCEZ:MONITORING\nCEZ:PR=42\nCEZ:ISSUE=9\nCEZ:TITLE=waiting on sub-agents',
+      'fanned out\n\nONNI:MONITORING\nONNI:PR=42\nONNI:ISSUE=9\nONNI:TITLE=waiting on sub-agents',
     ],
-    ['a blank line between the marker and the references', 'x\nCEZ:MONITORING\n\nCEZ:PR=42'],
+    ['a blank line between the marker and the references', 'x\nONNI:MONITORING\n\nONNI:PR=42'],
   ] as const;
 
   const PARKS_WAITING = [
     ['a markerless turn', 'Which of these two should I do first?'],
-    ['task references with no marker at all', 'Opened the PR.\nCEZ:PR=42'],
-    ['a marker with prose after it', 'CEZ:MONITORING\nactually, one question first: which branch?'],
-    ['the marker merely mentioned in prose', 'I will emit CEZ:MONITORING next time, but now I need you.'],
+    ['task references with no marker at all', 'Opened the PR.\nONNI:PR=42'],
+    ['a marker with prose after it', 'ONNI:MONITORING\nactually, one question first: which branch?'],
+    ['the marker merely mentioned in prose', 'I will emit ONNI:MONITORING next time, but now I need you.'],
   ] as const;
 
   it.each(PARKS_MONITORING)('detects %s', (_name, turnText) => {
@@ -1325,16 +1325,16 @@ describe('endsWithMonitoringMarker tolerates trailing task-reference lines (#933
   });
 
   /**
-   * The widening is deliberately narrow: only whole `CEZ:(PR|ISSUE|TITLE)=` lines are
+   * The widening is deliberately narrow: only whole `ONNI:(PR|ISSUE|TITLE)=` lines are
    * peeled off the end. A reference line in the MIDDLE of a turn is prose as far as the
    * turn-end decision is concerned and must survive — which is why the pattern carries no
    * `/m` flag (with it, `$` matches every line end).
    */
   it('only peels task-reference lines off the END of the turn', () => {
-    expect(turnEndMarkerText('CEZ:PR=42\nand then I kept working')).toBe(
-      'CEZ:PR=42\nand then I kept working',
+    expect(turnEndMarkerText('ONNI:PR=42\nand then I kept working')).toBe(
+      'ONNI:PR=42\nand then I kept working',
     );
-    expect(turnEndMarkerText('done\nCEZ:PR=42')).toBe('done');
+    expect(turnEndMarkerText('done\nONNI:PR=42')).toBe('done');
   });
 });
 
@@ -1357,14 +1357,14 @@ describe('a turn that parks on its sub-agents while declaring its PR is not "nee
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-933-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-933-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     currentId = undefined;
   });
@@ -1429,25 +1429,25 @@ describe('a turn that parks on its sub-agents while declaring its PR is not "nee
     });
     currentId = record.id;
     await waitFor(record.id, hasParked);
-    const v1Text = readFileSync(join(repoRoot, '.ai/cezar/runs', `${record.id}.ndjson`), 'utf8')
+    const v1Text = readFileSync(join(repoRoot, '.ai/onni/runs', `${record.id}.ndjson`), 'utf8')
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line) as { type: string; text?: string })
       .filter((event) => event.type === 'text');
     expect(v1Text.length).toBeGreaterThan(0);
-    expect(v1Text.some((event) => String(event.text).includes('CEZ:MONITORING'))).toBe(false);
-    expect(v1Text.some((event) => String(event.text).includes('CEZ:PR='))).toBe(false);
+    expect(v1Text.some((event) => String(event.text).includes('ONNI:MONITORING'))).toBe(false);
+    expect(v1Text.some((event) => String(event.text).includes('ONNI:PR='))).toBe(false);
   }, 30_000);
 });
 
 /**
- * #473 — the `CEZ:ASK` marker parks a turn-end as `waiting` (attention, NOT
+ * #473 — the `ONNI:ASK` marker parks a turn-end as `waiting` (attention, NOT
  * monitoring) AND emits an `ask.requested` v2 event so the cockpit renders a
  * structured question as clickable chips. The marker is stripped from the v1
  * text; a markerless turn raises no ask. Driven dry through the mock
  * (`mock:ask`).
  */
-describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
+describe('ONNI:ASK parks as waiting and emits ask.requested (#473)', () => {
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
@@ -1481,14 +1481,14 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-473-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-473-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     currentId = undefined;
   });
@@ -1513,14 +1513,14 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
   };
 
   const readEvents = (id: string): Array<Record<string, unknown>> =>
-    readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`), 'utf8')
+    readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.ndjson`), 'utf8')
       .trim()
       .split('\n')
       .map((l) => JSON.parse(l));
 
   const steps = (id: string) => store.getRun(id)?.steps.map((s) => ({ id: s.id, status: s.status }));
 
-  it('a CEZ:ASK turn-end parks the run as waiting (attention) and emits ask.requested', async () => {
+  it('a ONNI:ASK turn-end parks the run as waiting (attention) and emits ask.requested', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:ask which library?', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
@@ -1776,7 +1776,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     vi.useRealTimers();
   });
 
-  it('an intermediate CEZ:ASK pauses before the following check', async () => {
+  it('an intermediate ONNI:ASK pauses before the following check', async () => {
     const record = manager.startRun(BLOCKING_CHECK, { task: 'mock:ask choose a path', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
@@ -1791,7 +1791,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     expect(readEvents(record.id).filter((event) => event.type === 'ask.requested')).toHaveLength(1);
   }, 30_000);
 
-  it('answering an intermediate CEZ:ASK resumes the workflow through the following check', async () => {
+  it('answering an intermediate ONNI:ASK resumes the workflow through the following check', async () => {
     const record = manager.startRun(PASSING_CHECK, { task: 'mock:ask choose a path', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
@@ -1807,13 +1807,13 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
   }, 30_000);
 
   /**
-   * A parked step can wake WITHOUT cezar delivering anything: Claude Code re-invokes the model
+   * A parked step can wake WITHOUT onni delivering anything: Claude Code re-invokes the model
    * itself when a background command or sub-agent it started finishes. Writing straight into the
    * session reproduces that — `manager.sendMessage`, the only path that clears the park, never
-   * runs. A later turn that declares `CEZ:DONE` must still finish the step and run the next one,
+   * runs. A later turn that declares `ONNI:DONE` must still finish the step and run the next one,
    * not be settled as a question nobody answered (live run 2c2d2e34).
    */
-  it('a self-woken intermediate monitoring park that ends with CEZ:DONE resumes the workflow', async () => {
+  it('a self-woken intermediate monitoring park that ends with ONNI:DONE resumes the workflow', async () => {
     const record = manager.startRun(PASSING_CHECK, { task: 'mock:monitoring keep going', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.activity === 'monitoring');
@@ -1994,7 +1994,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
   }, 40_000);
 
   /**
-   * The continuation twin of #1282. A session can wake WITHOUT cezar delivering anything (Claude
+   * The continuation twin of #1282. A session can wake WITHOUT onni delivering anything (Claude
    * Code re-invokes the model when a background command finishes), so `sendMessage` — which clears
    * the park — never runs. A later turn that asks nothing must retire the earlier question, or the
    * idle close would report a task that stopped asking as still waiting on the user.
@@ -2202,7 +2202,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
    * degrades to the diagnostic note it already left and the workflow carries on —
    * unlike the final interactive step, which parks either way (test above).
    */
-  it('a malformed intermediate CEZ:ASK leaves the workflow running', async () => {
+  it('a malformed intermediate ONNI:ASK leaves the workflow running', async () => {
     const record = manager.startRun(PASSING_CHECK, { task: 'mock:ask-bad choose', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'done');
@@ -2288,13 +2288,13 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     expect(manager.isActive(record.id)).toBe(false);
   }, 30_000);
 
-  it('strips the CEZ:ASK marker from server-emitted v1 text events', async () => {
+  it('strips the ONNI:ASK marker from server-emitted v1 text events', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:ask pick one', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
     const v1Text = readEvents(record.id).filter((e) => e.type === 'text');
     expect(v1Text.length).toBeGreaterThan(0);
-    expect(v1Text.some((e) => String(e.text).includes('CEZ:ASK'))).toBe(false);
+    expect(v1Text.some((e) => String(e.text).includes('ONNI:ASK'))).toBe(false);
   }, 30_000);
 
   it('normalizes a near-valid presentation-only marker into exactly one ask card', async () => {
@@ -2310,7 +2310,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     }>;
     expect(questions[0]!.header).toBe('Implementati');
     expect(questions[0]!.options[0]).toEqual({ label: 'Minimal', description: 'd'.repeat(280) });
-    expect(events.filter((event) => event.type === 'text').some((event) => String(event.text).includes('CEZ:ASK'))).toBe(false);
+    expect(events.filter((event) => event.type === 'text').some((event) => String(event.text).includes('ONNI:ASK'))).toBe(false);
   }, 30_000);
 
   // The 4-question / 4-option caps came from AskUserQuestion parity, and a live run paid for
@@ -2326,7 +2326,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     expect(questions).toHaveLength(6);
     expect(questions[0]!.options).toHaveLength(6);
     // A rendered card replaces the marker; a refused one used to leave it in the text.
-    expect(events.filter((e) => e.type === 'text').some((e) => String(e.text).includes('CEZ:ASK'))).toBe(false);
+    expect(events.filter((e) => e.type === 'text').some((e) => String(e.text).includes('ONNI:ASK'))).toBe(false);
   }, 30_000);
 
   it('a markerless turn-end raises no ask.requested', async () => {
@@ -2336,7 +2336,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     expect(readEvents(record.id).some((e) => e.type === 'ask.requested')).toBe(false);
   }, 30_000);
 
-  it('a malformed CEZ:ASK degrades gracefully: parks waiting, no ask card', async () => {
+  it('a malformed ONNI:ASK degrades gracefully: parks waiting, no ask card', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:ask-bad choose', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
@@ -2357,7 +2357,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
   // question vanished from the transcript entirely, leaving the user nothing
   // to answer. An invalid marker must survive as raw text (degraded but
   // answerable) and still park the run `waiting`.
-  it('a schema-invalid CEZ:ASK stays visible in v1 text — no card will ever render it', async () => {
+  it('a schema-invalid ONNI:ASK stays visible in v1 text — no card will ever render it', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:ask-invalid choose', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
@@ -2367,7 +2367,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     expect(rejections).toHaveLength(1);
     expect(rejections[0]!.tone).toBe('danger'); // see the malformed case above
     const assistantText = events.filter((e) => e.type === 'text');
-    expect(assistantText.some((e) => String(e.text).includes('CEZ:ASK {"questions":[]}'))).toBe(true);
+    expect(assistantText.some((e) => String(e.text).includes('ONNI:ASK {"questions":[]}'))).toBe(true);
   }, 30_000);
 
   // #936 — a payload one closing brace short used to die at `JSON.parse` and
@@ -2375,7 +2375,7 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
   // transcript, and a dim note where the question should have been. The closer
   // repair recovers the card; the recovery is audited with its own note, and
   // the raw marker (which ends on `]`) is stripped along with it.
-  it('a CEZ:ASK missing its final brace still renders one card, notes the recovery, and strips the marker', async () => {
+  it('a ONNI:ASK missing its final brace still renders one card, notes the recovery, and strips the marker', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:ask-truncated choose', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
@@ -2395,14 +2395,14 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     // trace of the repair — it must not whisper (#936).
     expect(recoveries[0]!.tone).toBe('danger');
     expect(events.some((e) => e.type === 'note' && String(e.message).includes('ignored'))).toBe(false);
-    expect(events.filter((e) => e.type === 'text').some((e) => String(e.text).includes('CEZ:ASK'))).toBe(false);
+    expect(events.filter((e) => e.type === 'text').some((e) => String(e.text).includes('ONNI:ASK'))).toBe(false);
   }, 30_000);
 
   // The same recovery on the OTHER turn-end handler. `runContinuation`'s is
   // hand-duplicated from `runAgentStep`'s — AGENTS.md's standing warning that a
   // lifecycle change applied to one of them ships half a fix. Both now route
   // through `resolveAskTurn`; this pins that they stay indistinguishable.
-  it('recovers a truncated CEZ:ASK on a continuation turn identically', async () => {
+  it('recovers a truncated ONNI:ASK on a continuation turn identically', async () => {
     const record = manager.startRun(SINGLE_STEP, { task: 'do the first thing', worktree: false });
     currentId = record.id;
     await waitFor(record.id, (r) => r?.status === 'waiting');
@@ -2425,12 +2425,12 @@ describe('CEZ:ASK parks as waiting and emits ask.requested (#473)', () => {
     expect(recoveries[0]!.tone).toBe('danger');
     expect(String(recoveries[0]!.stepId)).toMatch(/^continue-/); // the continuation handler, not the step one
     expect(events.some((e) => e.type === 'note' && String(e.message).includes('ignored'))).toBe(false);
-    expect(events.filter((e) => e.type === 'text').some((e) => String(e.text).includes('CEZ:ASK'))).toBe(false);
+    expect(events.filter((e) => e.type === 'text').some((e) => String(e.text).includes('ONNI:ASK'))).toBe(false);
   }, 40_000);
 });
 
 /**
- * #917 — restart recovery over a run parked mid-workflow on a `CEZ:ASK`.
+ * #917 — restart recovery over a run parked mid-workflow on a `ONNI:ASK`.
  *
  * A run-level `waiting` used to mean one thing, "the final interactive step is
  * open for follow-ups", where marking the open step done and settling as a
@@ -2445,8 +2445,8 @@ describe('recover() over a mid-workflow ask park (#917)', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-917-recover-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-917-recover-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   afterEach(() => {
@@ -2504,12 +2504,12 @@ describe('recover() over a mid-workflow ask park (#917)', () => {
     const id = parkedRun(true);
     store.flush();
 
-    const raw = JSON.parse(readFileSync(join(repoRoot, '.ai/cezar/runs.json'), 'utf8')) as Array<
+    const raw = JSON.parse(readFileSync(join(repoRoot, '.ai/onni/runs.json'), 'utf8')) as Array<
       Record<string, unknown>
     >;
     expect(raw.find((r) => r.id === id)).toHaveProperty('askParked', true);
 
-    const reopened = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    const reopened = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     expect(reopened.getRun(id)?.askParked).toBe(true); // survived reconcileLoadedRun
     await recover(reopened);
 
@@ -2536,11 +2536,11 @@ describe('recover() over a mid-workflow ask park (#917)', () => {
   it('reads a pre-#917 record with no askParked key unchanged', () => {
     const id = parkedRun(false);
     store.flush();
-    const raw = JSON.parse(readFileSync(join(repoRoot, '.ai/cezar/runs.json'), 'utf8')) as Array<
+    const raw = JSON.parse(readFileSync(join(repoRoot, '.ai/onni/runs.json'), 'utf8')) as Array<
       Record<string, unknown>
     >;
     expect(raw.find((r) => r.id === id)).not.toHaveProperty('askParked');
-    expect(RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true }).getRun(id)?.status).toBe('waiting');
+    expect(RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true }).getRun(id)?.status).toBe('waiting');
   });
 });
 
@@ -2563,11 +2563,11 @@ describe('RunManager.persistAttachment without a session (#472)', () => {
   ) => { name: string; url: string; path: string } | null;
   const persist = (id: string, prefix?: string) =>
     (manager as unknown as { persistAttachment: PersistFn }).persistAttachment(id, 'image/png', PNG, prefix);
-  const imagesDir = (id: string) => join(repoRoot, '.ai/cezar', 'runs', `${id}-images`);
+  const imagesDir = (id: string) => join(repoRoot, '.ai/onni', 'runs', `${id}-images`);
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-persist-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-persist-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -2649,11 +2649,11 @@ describe('RunManager queued-stack mutators (#472)', () => {
   };
   const dequeue = (id: string) =>
     (manager as unknown as { pendingJobs: Map<string, unknown> }).pendingJobs.delete(id);
-  const imagesDir = (id: string) => join(repoRoot, '.ai/cezar', 'runs', `${id}-images`);
+  const imagesDir = (id: string) => join(repoRoot, '.ai/onni', 'runs', `${id}-images`);
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-stack-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-stack-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -2966,8 +2966,8 @@ describe('RunManager.hydrateQueuedInput (#472)', () => {
     });
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-hydrate-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-hydrate-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -3014,7 +3014,7 @@ describe('RunManager.hydrateQueuedInput (#472)', () => {
 
   it('re-encodes stacked attachments from disk into stackedImages', () => {
     const r = store.createRun({ title: 't', workflow: 'w', task: 'look at this', steps: [] });
-    const dir = join(repoRoot, '.ai/cezar', 'runs', `${r.id}-images`);
+    const dir = join(repoRoot, '.ai/onni', 'runs', `${r.id}-images`);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'pasted-1.png'), 'the-bytes');
     stack(r.id, { text: 'see the mock', images: [`/api/v1/runs/${r.id}/images/pasted-1.png`] });
@@ -3029,7 +3029,7 @@ describe('RunManager.hydrateQueuedInput (#472)', () => {
 
   it('re-encodes initial task images from disk after a queued-run restart (#612)', () => {
     const r = store.createRun({ title: 't', workflow: 'w', task: 'look at this', steps: [] });
-    const dir = join(repoRoot, '.ai/cezar', 'runs', `${r.id}-images`);
+    const dir = join(repoRoot, '.ai/onni', 'runs', `${r.id}-images`);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'pasted-1.png'), 'the-task-bytes');
     store.updateRun(r.id, { taskImages: [`/api/v1/runs/${r.id}/images/pasted-1.png`] });
@@ -3054,7 +3054,7 @@ describe('RunManager.hydrateQueuedInput (#472)', () => {
    */
   it('never re-encodes a non-image attachment into an image block on restart', () => {
     const r = store.createRun({ title: 't', workflow: 'w', task: 'read the brief', steps: [] });
-    const dir = join(repoRoot, '.ai/cezar', 'runs', `${r.id}-images`);
+    const dir = join(repoRoot, '.ai/onni', 'runs', `${r.id}-images`);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'pasted-1.png'), 'the-task-bytes');
     writeFileSync(join(dir, 'pasted-2.pdf'), '%PDF-1.4 the-document-bytes');
@@ -3113,17 +3113,17 @@ describe('queued stacking reaches the backend (#472)', () => {
   };
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-472-e2e-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-472-e2e-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     // One slot, so the second run demonstrably waits in the queue.
-    writeFileSync(join(repoRoot, '.ai/cezar', 'config.json'), JSON.stringify({ maxParallel: 1 }));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    writeFileSync(join(repoRoot, '.ai/onni', 'config.json'), JSON.stringify({ maxParallel: 1 }));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -3192,8 +3192,8 @@ describe('recover() carries the queued stack exactly once (#472)', () => {
   };
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-recover-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
   });
 
   afterEach(() => {
@@ -3239,7 +3239,7 @@ describe('native Codex requestUserInput parks and resumes the run (#565)', () =>
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-565-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-565-'));
     delete process.env.CEZ_DRY_RUN;
     // Resolved from this file, not the cwd: the fixture is a sibling of the source under test,
     // so the path holds wherever vitest is invoked from and survives the tree moving.
@@ -3248,7 +3248,7 @@ describe('native Codex requestUserInput parks and resumes the run (#565)', () =>
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -3275,7 +3275,7 @@ describe('native Codex requestUserInput parks and resumes the run (#565)', () =>
     });
     runId = record.id;
     await waitFor(() => store.getRun(record.id)?.status === 'waiting');
-    const eventsPath = join(repoRoot, '.ai/cezar/runs', `${record.id}.ndjson`);
+    const eventsPath = join(repoRoot, '.ai/onni/runs', `${record.id}.ndjson`);
     expect(readFileSync(eventsPath, 'utf8')).toContain('"type":"ask.requested"');
     expect(store.getRun(record.id)?.attentionRequest?.questions.length).toBeGreaterThan(0);
     expect(manager.sendMessage(record.id, [{ type: 'text', text: 'Library: Vitest' }])).toBe(true);
@@ -3310,14 +3310,14 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-955-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-955-'));
     delete process.env.CEZ_DRY_RUN;
     process.env.CEZ_CODEX_BIN = join(import.meta.dirname, '../core/__fixtures__/codex/mock-codex-app-server.mjs');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     runId = undefined;
   });
@@ -3353,7 +3353,7 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
   };
 
   const eventsOf = (id: string) => {
-    const path = join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`);
+    const path = join(repoRoot, '.ai/onni/runs', `${id}.ndjson`);
     if (!existsSync(path)) return [] as Array<Record<string, string>>;
     return readFileSync(path, 'utf8')
       .trim()
@@ -3361,7 +3361,7 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
       .filter(Boolean)
       .map((line) => JSON.parse(line) as Record<string, string>);
   };
-  /** How many times cezar continued the run across a compaction boundary. */
+  /** How many times onni continued the run across a compaction boundary. */
   const continuations = (id: string) =>
     eventsOf(id).filter((e) => e.type === 'note' && e.message?.includes('continuing on the same thread')).length;
 
@@ -3399,22 +3399,22 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
     expect(continuations(id)).toBe(0);
   }, 40_000);
 
-  it('CEZ:DONE before the compaction still closes the session', async () => {
+  it('ONNI:DONE before the compaction still closes the session', async () => {
     const id = start('mock:compaction-done wrap it up');
     await waitFor(() => ['done', 'review'].includes(store.getRun(id)?.status ?? ''));
     expect(continuations(id)).toBe(0);
     expect(eventsOf(id).some((e) => e.type === 'lifecycle' && e.message?.includes('goal achieved'))).toBe(true);
   }, 40_000);
 
-  it('CEZ:MONITORING before the compaction still parks as running/monitoring', async () => {
+  it('ONNI:MONITORING before the compaction still parks as running/monitoring', async () => {
     const id = start('mock:compaction-monitor kicked the build off');
     await waitFor(() => store.getRun(id)?.activity === 'monitoring');
     expect(store.getRun(id)?.status).toBe('running');
     expect(continuations(id)).toBe(0);
   }, 40_000);
 
-  it('CEZ:MONITORING followed by a task-reference line still parks as monitoring (#933)', async () => {
-    // The marker reading the monitoring decision uses (trailing `CEZ:PR=` lines stripped) must
+  it('ONNI:MONITORING followed by a task-reference line still parks as monitoring (#933)', async () => {
+    // The marker reading the monitoring decision uses (trailing `ONNI:PR=` lines stripped) must
     // also be the one that decides the turn spoke — otherwise the boundary continues a monitor.
     const id = start('mock:compaction-monitor-ref kicked the build off');
     await waitFor(() => store.getRun(id)?.activity === 'monitoring');
@@ -3422,7 +3422,7 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
     expect(continuations(id)).toBe(0);
   }, 40_000);
 
-  it('a MALFORMED CEZ:ASK before the compaction still parks, so the question is not buried', async () => {
+  it('a MALFORMED ONNI:ASK before the compaction still parks, so the question is not buried', async () => {
     // The marker raises no ask card, so nothing downstream would show that a question was
     // asked at all — continuing here would answer it on the user's behalf and lose it.
     const id = start('mock:compaction-badask which database?');
@@ -3430,7 +3430,7 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
 
     expect(continuations(id)).toBe(0);
     expect(
-      eventsOf(id).some((e) => e.type === 'note' && e.message?.includes('CEZ:ASK payload is not valid JSON')),
+      eventsOf(id).some((e) => e.type === 'note' && e.message?.includes('ONNI:ASK payload is not valid JSON')),
     ).toBe(true);
   }, 40_000);
 
@@ -3514,19 +3514,19 @@ describe('registry /skill expansion survives a continuation (#811)', () => {
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-811-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-811-'));
     savedDryRun = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    mkdirSync(join(repoRoot, '.ai/cezar/skills'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni/skills'), { recursive: true });
     writeFileSync(
-      join(repoRoot, '.ai/cezar/skills/demo-review.md'),
+      join(repoRoot, '.ai/onni/skills/demo-review.md'),
       '---\nname: demo-review\ndescription: Review a diff.\n---\n\nRun the demo review playbook.\n',
     );
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     runId = undefined;
   });
@@ -3541,7 +3541,7 @@ describe('registry /skill expansion survives a continuation (#811)', () => {
   });
 
   const eventsOf = (id: string) =>
-    readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`), 'utf8')
+    readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.ndjson`), 'utf8')
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line) as { type: string; text?: string; stepId?: string });
@@ -3614,7 +3614,7 @@ describe('registry /skill expansion survives a continuation (#811)', () => {
     // The pinned id is recorded before the preflight; a turn that never spawned created no
     // conversation, so the next Continue must not try to `--resume` it.
     const id = await finishedRun();
-    const tmp = join(repoRoot, '.ai/cezar/tmp');
+    const tmp = join(repoRoot, '.ai/onni/tmp');
     rmSync(tmp, { recursive: true, force: true });
     writeFileSync(tmp, 'not a directory', 'utf8');
     expect(manager.continueRun(id, { runner: 'codex' })).toEqual({ ok: true });
@@ -3657,7 +3657,7 @@ describe('registry /skill expansion survives a continuation (#811)', () => {
  * A task STARTED with `/om-...` as its first message is delivered straight to
  * `startSession` inside `execute`, never through `deliverMessage`, and #811 only
  * patched the continuation seam. So the opening prompt leaked the raw slash to the
- * backend, which answered "Unknown command" even though Cezar lists the skill.
+ * backend, which answered "Unknown command" even though Onni lists the skill.
  *
  * The mock CLI echoes the prompt it received (`Okay — looking into: …`), so the
  * transcript is a faithful witness of what actually reached the backend.
@@ -3675,19 +3675,19 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-278-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-278-'));
     savedDryRun = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    mkdirSync(join(repoRoot, '.ai/cezar/skills'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni/skills'), { recursive: true });
     writeFileSync(
-      join(repoRoot, '.ai/cezar/skills/demo-review.md'),
+      join(repoRoot, '.ai/onni/skills/demo-review.md'),
       '---\nname: demo-review\ndescription: Review a diff.\n---\n\nRun the demo review playbook.\n',
     );
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     runId = undefined;
   });
@@ -3706,7 +3706,7 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
   const eventsOf = (id: string) => {
     let raw: string;
     try {
-      raw = readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`), 'utf8').trim();
+      raw = readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.ndjson`), 'utf8').trim();
     } catch {
       return [] as { type: string; text?: string; stepId?: string }[];
     }
@@ -3744,13 +3744,13 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
   }, 40_000);
 
   it("installs the slash skill and the companion it names into the task's worktree", async () => {
-    // The worktree is a fresh checkout: neither skill is in it unless cezar puts it there,
+    // The worktree is a fresh checkout: neither skill is in it unless onni puts it there,
     // and the agent then answers "Unknown skill" / "companion not installed".
     writeFileSync(
-      join(repoRoot, '.ai/cezar/skills/demo-review.md'),
+      join(repoRoot, '.ai/onni/skills/demo-review.md'),
       '---\nname: demo-review\ndescription: Review a diff.\n---\n\nRun the `demo-engine` skill verbatim.\n',
     );
-    writeFileSync(join(repoRoot, '.ai/cezar/skills/demo-engine.md'), '---\nname: demo-engine\n---\n\nEngine.\n');
+    writeFileSync(join(repoRoot, '.ai/onni/skills/demo-engine.md'), '---\nname: demo-engine\n---\n\nEngine.\n');
     const record = manager.startRun(SINGLE_STEP, { task: '/demo-review 12', worktree: true });
     runId = record.id;
     await waitFor(() => eventsOf(record.id).some((e) => e.stepId === 'task' && e.type === 'text'));
@@ -3767,11 +3767,11 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
     const savedApiUrl = process.env.CEZ_API_URL;
     process.env.CEZ_API_URL = 'http://127.0.0.1:1';
     try {
-      const record = manager.startRun(SINGLE_STEP, { task: '/create-cezar-automation daily', worktree: false });
+      const record = manager.startRun(SINGLE_STEP, { task: '/create-onni-automation daily', worktree: false });
       runId = record.id;
       await waitFor(() => eventsOf(record.id).some((e) => e.stepId === 'task' && e.type === 'text'));
       for (const dir of ['.claude/skills', '.agents/skills']) {
-        expect(existsSync(join(repoRoot, dir, 'create-cezar-automation'))).toBe(false);
+        expect(existsSync(join(repoRoot, dir, 'create-onni-automation'))).toBe(false);
       }
     } finally {
       if (savedApiUrl === undefined) delete process.env.CEZ_API_URL;

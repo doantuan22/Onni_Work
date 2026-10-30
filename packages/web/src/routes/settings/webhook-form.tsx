@@ -11,7 +11,7 @@ const selectStyle = 'h-9 w-full rounded-md border border-input bg-card px-3 py-1
 const hintStyle = 'text-[13px] text-muted-foreground'
 export type WebhookDraft = { format: CreateWebhook['format']; name: string; url: string; profile: CreateWebhook['profile']; preset: CreateWebhook['preset']; events: WebhookTaskEventType[]; scope: CreateWebhook['scope']; graceSeconds: CreateWebhook['graceSeconds']; local: boolean; scheduled: boolean }
 export function webhookDraft(receiver?: WebhookReceiver): WebhookDraft {
-  return { format: receiver?.format ?? 'cezar.json.v1', name: receiver?.name ?? '', url: '', profile: receiver?.profile ?? 'minimal', preset: receiver?.preset ?? 'attention', events: receiver?.events ?? [], scope: receiver?.scope ?? 'main_and_questions', graceSeconds: receiver?.graceSeconds ?? 180, local: receiver?.allowLocalNetwork ?? false, scheduled: receiver?.includeScheduledFailures ?? false }
+  return { format: receiver?.format ?? 'onni.json.v1', name: receiver?.name ?? '', url: '', profile: receiver?.profile ?? 'minimal', preset: receiver?.preset ?? 'attention', events: receiver?.events ?? [], scope: receiver?.scope ?? 'main_and_questions', graceSeconds: receiver?.graceSeconds ?? 180, local: receiver?.allowLocalNetwork ?? false, scheduled: receiver?.includeScheduledFailures ?? false }
 }
 function Field({ id, label, children }: { id?: string; label: string; children: ReactNode }) {
   return <div className="flex flex-col gap-1.5">{id ? <label htmlFor={id} className="text-sm font-medium">{label}</label> : <span className="text-sm font-medium">{label}</span>}{children}</div>
@@ -21,7 +21,7 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
   const { format, name, url, profile, preset, events, scope, graceSeconds, local, scheduled } = draft
   const change = <K extends keyof WebhookDraft>(key: K, value: WebhookDraft[K]) => setDraft({ ...draft, [key]: value })
   const [error, setError] = useState('')
-  const chat = format !== 'cezar.json.v1'
+  const chat = format !== 'onni.json.v1'
   const destinationName = format === 'slack.v1' ? 'Slack' : 'Discord'
   let suggestedFormat: WebhookDraft['format'] | undefined
   try {
@@ -29,7 +29,7 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
     if (host === 'hooks.slack.com') suggestedFormat = 'slack.v1'
     if (['discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com'].includes(host)) suggestedFormat = 'discord.v1'
   } catch { /* Incomplete input. */ }
-  const changeFormat = (value: WebhookDraft['format']) => setDraft({ ...draft, format: value, local: value === 'cezar.json.v1' && local })
+  const changeFormat = (value: WebhookDraft['format']) => setDraft({ ...draft, format: value, local: value === 'onni.json.v1' && local })
   return <form className="flex flex-col gap-4" onSubmit={event => {
     event.preventDefault()
     if (pending || blocked) return
@@ -40,7 +40,7 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
   }}>
     <Field id={`${prefix}-destination`} label="Destination">
       <select id={`${prefix}-destination`} className={selectStyle} value={format} onChange={event => changeFormat(event.target.value as WebhookDraft['format'])}>
-        <option value="cezar.json.v1">Custom receiver (signed cezar JSON)</option>
+        <option value="onni.json.v1">Custom receiver (signed onni JSON)</option>
         <option value="slack.v1">Slack channel (Incoming Webhook)</option>
         <option value="discord.v1">Discord channel (Webhook URL)</option>
       </select>
@@ -58,7 +58,7 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
       {format === 'discord.v1' && <p className={hintStyle}>In Discord, open Server Settings → Integrations → Webhooks, create one and paste its URL. <a className="underline underline-offset-2 hover:text-foreground" href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks" target="_blank" rel="noreferrer">Discord setup guide</a></p>}
       {chat ? <p className={hintStyle}>Keep this URL secret — anyone who has it can post to the channel. {destinationName} receivers need no signing key.</p> : <>
         <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={local} onChange={event => change('local', event.target.checked)} />Allow a receiver on this computer or private network</label>
-        {local && <p className={hintStyle}>Tests will contact this private address. Hosted cezar sends to public HTTPS receivers only.</p>}
+        {local && <p className={hintStyle}>Tests will contact this private address. Hosted onni sends to public HTTPS receivers only.</p>}
         <a className="text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground" href={`${guideHref}#external-automation-receivers`} target="_blank" rel="noreferrer">How to build a receiver</a>
       </>}
     </Field>
@@ -99,7 +99,7 @@ function ChatPreview({ format, profile }: { format: WebhookDraft['format']; prof
       <p>running → waiting</p>
       <p className="text-xs text-muted-foreground">example-project · a1b2c3d4 · Jan 1, 2026, 12:00 UTC</p>
       {profile === 'standard' && <div><p>Which example option should be used?</p><p>Example A · Example B</p></div>}
-      <p className="text-xs text-muted-foreground">cezar</p>
+      <p className="text-xs text-muted-foreground">onni</p>
     </div>
   </details>
 }

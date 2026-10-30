@@ -10,7 +10,7 @@ import { clearProjectProbeCache, registerProject } from './projects.ts';
 /**
  * `initWorkspace` — the one function every boot path (`serve`, `run`, the
  * single-project `projects list`) calls, and therefore the only thing that
- * decides whether starting cezar in a folder writes to the user's registry.
+ * decides whether starting onni in a folder writes to the user's registry.
  * `shouldAutoRegisterProject` has its own unit tests; these assert the WIRING,
  * because a boot that quietly went back to the old path would leave every one
  * of those tests green.
@@ -21,8 +21,8 @@ describe('initWorkspace', () => {
   let repos: string;
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-boot-home-'));
-    repos = mkdtempSync(join(realpathSync(tmpdir()), 'cez-boot-repos-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-boot-home-'));
+    repos = mkdtempSync(join(realpathSync(tmpdir()), 'onni-boot-repos-'));
     process.env.CEZ_HOME = home;
     clearProjectProbeCache();
   });
@@ -44,7 +44,7 @@ describe('initWorkspace', () => {
   const registeredRoots = async (): Promise<string[]> =>
     (await loadWorkspaceConfig()).projects.map((project) => project.root);
 
-  it('seeds the registry from the folder cezar first runs in', async () => {
+  it('seeds the registry from the folder onni first runs in', async () => {
     const root = makeRepo('first');
     const id = await initWorkspace(root);
     expect(id).toBe('first');

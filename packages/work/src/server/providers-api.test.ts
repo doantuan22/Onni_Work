@@ -107,8 +107,8 @@ describe('workspace provider API', () => {
   const savedRemote = process.env.CEZ_REMOTE;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-providers-api-'));
-    store = RunStore.open(join(root, '.ai/cezar'));
+    root = mkdtempSync(join(tmpdir(), 'onni-providers-api-'));
+    store = RunStore.open(join(root, '.ai/onni'));
     delete process.env.CEZ_AGENT_MODELS_LOCKED;
     delete process.env.CEZ_DRY_RUN;
     delete process.env.CEZ_REMOTE;
@@ -468,8 +468,8 @@ describe('workspace provider API', () => {
   });
 
   it('observes a lazy-project auth failure emitted during recovery', async () => {
-    const lazyRoot = mkdtempSync(join(tmpdir(), 'cez-providers-lazy-'));
-    const lazyStore = RunStore.open(join(lazyRoot, '.ai/cezar'), { keepLive: true });
+    const lazyRoot = mkdtempSync(join(tmpdir(), 'onni-providers-lazy-'));
+    const lazyStore = RunStore.open(join(lazyRoot, '.ai/onni'), { keepLive: true });
     const run = lazyStore.createRun({
       title: 'lazy recovery',
       workflow: 'quick-task',
@@ -694,7 +694,7 @@ describe('workspace provider API', () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      error: 'Run this command on the machine hosting cezar.',
+      error: 'Run this command on the machine hosting onni.',
       command: "'claude' auth login",
     });
     expect(openTerminal).not.toHaveBeenCalled();
@@ -731,7 +731,7 @@ describe('workspace provider API', () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
-      error: 'Run this command on the machine hosting cezar.',
+      error: 'Run this command on the machine hosting onni.',
       command: "'codex' login",
     });
     expect(openTerminal).not.toHaveBeenCalled();
@@ -767,7 +767,7 @@ describe('workspace provider API', () => {
 
       expect(response.status).toBe(409);
       expect(await response.json()).toEqual({
-        error: 'Run this command on the machine hosting cezar.',
+        error: 'Run this command on the machine hosting onni.',
         command: "'opencode' upgrade",
       });
       expect(openTerminal).not.toHaveBeenCalled();

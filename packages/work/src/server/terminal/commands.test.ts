@@ -51,7 +51,7 @@ describe('discoverCommands', () => {
   let worktree: string;
 
   beforeEach(() => {
-    worktree = mkdtempSync(join(tmpdir(), 'cez-commands-'));
+    worktree = mkdtempSync(join(tmpdir(), 'onni-commands-'));
   });
 
   afterEach(() => {
@@ -85,7 +85,7 @@ describe('installCommand', () => {
   let worktree: string;
 
   beforeEach(() => {
-    worktree = mkdtempSync(join(tmpdir(), 'cez-install-'));
+    worktree = mkdtempSync(join(tmpdir(), 'onni-install-'));
   });
 
   afterEach(() => {

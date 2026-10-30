@@ -177,7 +177,7 @@ export function retryableExit(retryOn: number[] | undefined, exitCode: number): 
  * earlier step's own "done" signal (its final report, its handoff Resume
  * notes) and — with nothing in its prompt saying otherwise — conclude the
  * OVERALL task is already achieved. Since only the chain's last step honors
- * `CEZ:DONE` as an early-completion signal (`run.ts`'s `interactive` gate),
+ * `ONNI:DONE` as an early-completion signal (`run.ts`'s `interactive` gate),
  * this silently skipped exactly the last selected skill: it ended its first
  * turn with the marker instead of doing its own step's work.
  *
@@ -210,7 +210,7 @@ export function chainStepNote(steps: WorkflowStepDef[], index: number): string |
     );
   }
   sentences.push(
-    `Only end this turn with CEZ:DONE once step ${position}'s own goal is achieved, not just the run's overall task.`,
+    `Only end this turn with ONNI:DONE once step ${position}'s own goal is achieved, not just the run's overall task.`,
   );
   return sentences.join(' ');
 }

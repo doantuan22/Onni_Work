@@ -38,7 +38,7 @@ function start(dir: string, id: string, operation: string, barrier: string) {
   return { child, done };
 }
 function setup() {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-index-race-'));
+  const dir = mkdtempSync(join(tmpdir(), 'onni-index-race-'));
   dirs.push(dir);
   writeFileSync(join(dir, 'runs.json'), '[]');
   return dir;

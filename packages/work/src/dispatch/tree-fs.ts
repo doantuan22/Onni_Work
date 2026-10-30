@@ -2,7 +2,7 @@
  * The tree directory — the FILESYSTEM channel between a task and the tasks it dispatched
  * (spec `.ai/specs/2026-09-10-dispatch.md`).
  *
- *     .ai/cezar/dispatch/<rootRunId>/
+ *     .ai/onni/dispatch/<rootRunId>/
  *       brief.md                 the root's objective — what every task in the tree is accountable to
  *       ledger.jsonl             one line per engine event: dispatch, settle, notice, guard-ask
  *       units/<id8>/order.md     the task order a child was given (engine writes at dispatch)
@@ -22,7 +22,7 @@
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** The first eight characters of a run id — the same handle `cez/<id8>` branches use, so a unit
+/** The first eight characters of a run id — the same handle `onni/<id8>` branches use, so a unit
  *  can address a sibling from the branch name in a report. */
 export function shortId(runId: string): string {
   return runId.slice(0, 8);
@@ -101,7 +101,7 @@ export function writeBrief(dataDir: string, rootRunId: string, objective: string
     ``,
     `- Read this file before working on a dispatched task. Every task in the tree is accountable to THIS objective, whatever its own order says.`,
     `- \`units/<id8>/order.md\` is what each task was told; \`units/<id8>/notes.md\` is what it wrote as it worked; \`units/<id8>/report.md\` is what it reported when it settled.`,
-    `- To message a task, write a markdown file into \`inbox/<id8>/\` (the first eight characters of its run id, as in its branch name). \`inbox/root/\` reaches the root. cezar wakes a parked recipient and hands an opening session a digest of what arrived while it was away.`,
+    `- To message a task, write a markdown file into \`inbox/<id8>/\` (the first eight characters of its run id, as in its branch name). \`inbox/root/\` reaches the root. onni wakes a parked recipient and hands an opening session a digest of what arrived while it was away.`,
     ``,
   ];
   return writeText(path, lines.join('\n'));
@@ -144,7 +144,7 @@ export function seedNotes(dataDir: string, rootRunId: string, runId: string, tit
       ``,
       `## Suggestions for the root`,
       ``,
-      `Anything the root task should know that is outside your order — a better split, a risk, a missing piece. cez forwards this section to the root's inbox when you settle. Suggest; never redefine the objective.`,
+      `Anything the root task should know that is outside your order — a better split, a risk, a missing piece. onni forwards this section to the root's inbox when you settle. Suggest; never redefine the objective.`,
       ``,
     ].join('\n'),
   );
@@ -257,7 +257,7 @@ export function treeEnvelopeLines(paths: TaskPaths): string[] {
     `- Brief (read it FIRST — the objective you are ultimately accountable to): ${paths.brief}`,
     `- Your order, verbatim: ${paths.order}`,
     `- Your notes (write progress, findings and suggestions here as you go): ${paths.notes}`,
-    `- Your inbox (messages to you; cez tells you when something new arrives): ${paths.inbox}`,
+    `- Your inbox (messages to you; onni tells you when something new arrives): ${paths.inbox}`,
     `- To message another task, write a markdown file into ${paths.treeDir}/inbox/<its id8>/ — the root is inbox/root/. Other tasks' orders, notes and reports are under ${paths.treeDir}/units/<id8>/.`,
   ];
 }

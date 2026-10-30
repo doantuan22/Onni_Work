@@ -5,7 +5,7 @@ import type { TrackerAssociation, TrackerItemsResponse } from '@onni/contract';
 const association: TrackerAssociation = { kind: 'jira', source: { id: 's', webUrl: 'https://example.com' }, externalId: '1', externalName: 'One' };
 const page: TrackerItemsResponse = { available: true, items: [], truncated: false };
 const input = { association, query: '', state: 'active' as const, labels: [] };
-const project = { root: '/repo/a', dataDir: '/repo/a/.ai/cezar' };
+const project = { root: '/repo/a', dataDir: '/repo/a/.ai/onni' };
 afterEach(() => vi.useRealTimers());
 function fixture() {
   vi.useFakeTimers();

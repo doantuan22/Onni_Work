@@ -38,8 +38,8 @@ describe('POST /api/v1/runs todoId', () => {
   const readTodosFile = (): TodoItem[] => JSON.parse(readFileSync(todosFile(), 'utf8')) as TodoItem[];
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-todorun-'));
-    dataDir = join(repoRoot, '.ai/cezar');
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-todorun-'));
+    dataDir = join(repoRoot, '.ai/onni');
     mkdirSync(dataDir, { recursive: true });
     store = RunStore.open(dataDir);
     started = 0;

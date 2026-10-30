@@ -19,12 +19,12 @@ describe('GitHub automation API', () => {
   const savedAutomations = process.env.CEZ_AUTOMATIONS;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cezar-automation-api-'));
-    home = mkdtempSync(join(tmpdir(), 'cezar-automation-home-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-automation-api-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-automation-home-'));
     process.env.CEZ_HOME = home;
     process.env.CEZ_AUTOMATIONS = '1';
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(root, '.ai/cezar'));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(root, '.ai/onni'));
   });
   afterEach(() => {
     store.flush();
@@ -130,7 +130,7 @@ describe('GitHub automation API', () => {
     expect(check.status).toBe('error');
     const list = await apiRequest(server, '/api/v1/automations');
     expect(((await list.json()) as any).automations).toHaveLength(1);
-    expect(readFileOrEmpty(join(root, '.ai/cezar/automation-receipts.ndjson'))).toBe('');
+    expect(readFileOrEmpty(join(root, '.ai/onni/automation-receipts.ndjson'))).toBe('');
   });
 
   it('shares API mutations with the workspace scheduler store', async () => {
@@ -145,7 +145,7 @@ describe('GitHub automation API', () => {
         projectId: 'default',
         timeZone: 'UTC',
         store: sharedStore,
-        github: { owner: 'open-mercato', repo: 'cezar', poller: { poll: async () => ({ candidates: [], truncated: false, pages: 1 }) } as never },
+        github: { owner: 'open-mercato', repo: 'onni', poller: { poll: async () => ({ candidates: [], truncated: false, pages: 1 }) } as never },
       }),
     });
     const server = app({
@@ -177,7 +177,7 @@ describe('GitHub automation API', () => {
   });
 
   it('accepts preview as an automation-log result filter', async () => {
-    const automationStore = AutomationStore.open(join(root, '.ai/cezar'));
+    const automationStore = AutomationStore.open(join(root, '.ai/onni'));
     automationStore.appendLog({
       automationId: 'previewed',
       revision: 1,
@@ -221,12 +221,12 @@ describe('automation API — kinds, run, templates (spec 2026-09-14)', () => {
   const savedAutomations = process.env.CEZ_AUTOMATIONS;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cezar-automation-kinds-'));
-    home = mkdtempSync(join(tmpdir(), 'cezar-automation-kinds-home-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-automation-kinds-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-automation-kinds-home-'));
     process.env.CEZ_HOME = home;
     delete process.env.CEZ_AUTOMATIONS;
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(root, '.ai/cezar'));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(root, '.ai/onni'));
     manager = {
       startRun: (workflow: { name: string; steps: Array<{ id: string; name?: string; command?: string }> }, input: { task: string }) =>
         store.createRun({ title: 'automation', workflow: workflow.name, task: input.task, steps: workflow.steps.map((step) => ({ id: step.id, name: step.name ?? step.id, kind: step.command ? 'check' as const : 'agent' as const })) }),

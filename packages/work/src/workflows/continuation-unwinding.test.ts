@@ -50,12 +50,12 @@ describe('Continue posted while a settled continuation is still unwinding (telem
     gate.specs.length = 0;
     gate.release = undefined;
     vi.mocked(autosaveCommit).mockClear();
-    repoRoot = realpathSync(mkdtempSync(join(tmpdir(), 'cez-unwinding-')));
+    repoRoot = realpathSync(mkdtempSync(join(tmpdir(), 'onni-unwinding-')));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -69,8 +69,8 @@ describe('Continue posted while a settled continuation is still unwinding (telem
   });
 
   async function terminalWorktreeRun(): Promise<string> {
-    const worktreePath = join(repoRoot, '.ai/cezar/worktrees/wt');
-    await run('git', ['worktree', 'add', '-q', '-b', 'cez/wt', worktreePath], { cwd: repoRoot });
+    const worktreePath = join(repoRoot, '.ai/onni/worktrees/wt');
+    await run('git', ['worktree', 'add', '-q', '-b', 'onni/wt', worktreePath], { cwd: repoRoot });
     const record = store.createRun({
       title: 't',
       workflow: 'legacy',
@@ -78,7 +78,7 @@ describe('Continue posted while a settled continuation is still unwinding (telem
       runner: 'claude',
       steps: [{ id: 'work', name: 'work', kind: 'agent' as const }],
     });
-    store.updateRun(record.id, { status: 'done', finishedAt: new Date().toISOString(), worktreePath, branch: 'cez/wt' });
+    store.updateRun(record.id, { status: 'done', finishedAt: new Date().toISOString(), worktreePath, branch: 'onni/wt' });
     store.updateStep(record.id, 'work', { status: 'done', sessionId: 'sess-1', backend: 'claude' });
     return record.id;
   }

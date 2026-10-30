@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import { lstat, open, readFile, readdir, realpath, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
-import { CEZAR_DATA_EXCLUDE } from '../data-gitignore.ts';
+import { ONNI_DATA_EXCLUDE } from '../data-gitignore.ts';
 import { resolveTaskDiffBase, type RepointedHead } from '../git-diff-base.ts';
 import { isSafeGitRef } from '../git-refs.ts';
 import { resolveTaskRemotes, splitRemoteRef } from '../git-remotes.ts';
@@ -281,14 +281,14 @@ export async function collectChanges(
     intentToAdd?: boolean;
     taskBranch?: string;
     runStartedAt?: string;
-    /** Leave cezar's own `.ai/cezar/` out — an in-place task's Changes show what would land. */
-    excludeCezarData?: boolean;
+    /** Leave onni's own `.ai/onni/` out — an in-place task's Changes show what would land. */
+    excludeOnniData?: boolean;
   } = {},
 ): Promise<ChangesResult> {
   if (!isSafeGitRef(baseBranch)) return { ok: false, error: 'refusing option-like base ref' };
   const patchCap = opts.patchCap ?? PATCH_CAP;
   // `git add -N .` (intent-to-add) makes untracked files appear in the diff, but it MUTATES the
-  // index — fine in a task worktree cezar owns, but forbidden on the user's real main tree (a
+  // index — fine in a task worktree onni owns, but forbidden on the user's real main tree (a
   // read-only GET must never stage files, #major-index-mutation). When `intentToAdd` is false we
   // build a SCRATCH index (GIT_INDEX_FILE) seeded from HEAD + intent-to-add, so untracked files
   // still show WITHOUT touching the user's real index.
@@ -296,7 +296,7 @@ export async function collectChanges(
   let scratchIndex: string | undefined;
   try {
     if (opts.intentToAdd === false) {
-      scratchIndex = join(tmpdir(), `cez-scratch-index-${process.pid}-${scratchSeq++}`);
+      scratchIndex = join(tmpdir(), `onni-scratch-index-${process.pid}-${scratchSeq++}`);
       env = { GIT_INDEX_FILE: scratchIndex };
       await git(dir, ['read-tree', 'HEAD'], env); // seed with tracked files; harmless if no HEAD
       await git(dir, ['add', '-N', '.'], env);
@@ -324,7 +324,7 @@ export async function collectChanges(
     // so that refresh is written once here instead — else every poll re-reads each stat-dirty file.
     await git(dir, ['update-index', '-q', '--refresh'], env);
     const readEnv = { ...env, GIT_OPTIONAL_LOCKS: '0' };
-    const scope = opts.excludeCezarData ? ['--', '.', CEZAR_DATA_EXCLUDE] : [];
+    const scope = opts.excludeOnniData ? ['--', '.', ONNI_DATA_EXCLUDE] : [];
     const [nameStatus, numstat, patchOut, baseRev] = await Promise.all([
       git(dir, ['diff', '--name-status', '-z', '-M', base, ...scope], readEnv),
       git(dir, ['diff', '--numstat', '-z', '-M', base, ...scope], readEnv),
@@ -835,7 +835,7 @@ export async function commitAll(dir: string, message: string): Promise<CommitRes
   if (unresolved) return { ok: false, error: `refusing to commit: ${unresolved}` };
   const add = await git(dir, ['add', '-A']);
   if (!add.ok) return { ok: false, error: gitReason(add, 'git add failed') };
-  const identityArgs = (await gitHasIdentity(dir)) ? [] : ['-c', 'user.name=cezar', '-c', 'user.email=cezar@local'];
+  const identityArgs = (await gitHasIdentity(dir)) ? [] : ['-c', 'user.name=onni', '-c', 'user.email=onni@local'];
   const commit = await git(dir, [...identityArgs, 'commit', '-m', message]);
   if (!commit.ok) return { ok: false, error: gitReason(commit, 'git commit failed') };
   const head = await git(dir, ['rev-parse', 'HEAD']);

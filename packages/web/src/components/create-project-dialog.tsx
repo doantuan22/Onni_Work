@@ -144,7 +144,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
         <DialogHeader>
           <DialogTitle>New project</DialogTitle>
           <DialogDescription>
-            cezar creates a new git repository in your checkout root and adds it as a project.
+            onni creates a new git repository in your checkout root and adds it as a project.
           </DialogDescription>
         </DialogHeader>
 

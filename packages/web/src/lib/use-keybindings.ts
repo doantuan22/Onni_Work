@@ -8,7 +8,7 @@ import type { WorkspaceUiState } from '@onni/api-client'
 import { assignBinding, effectiveBindings, resetBinding, sanitizeOverrides, type Overrides } from './keybindings'
 
 /**
- * The user's shortcuts, stored in the workspace ui-state (`~/.cezar/ui-state.json`) beside
+ * The user's shortcuts, stored in the workspace ui-state (`~/.onni/ui-state.json`) beside
  * Appearance — they describe the person at the keyboard, so every project and every browser on
  * this machine shares them. Same write discipline as `useProjectOrder`: optimistic cache, writes
  * serialized, the whole `keybindings` object sent (the PUT merges shallowly).

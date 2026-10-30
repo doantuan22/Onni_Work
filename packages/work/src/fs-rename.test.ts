@@ -51,7 +51,7 @@ describe('renameSyncWithRetry', () => {
   });
 
   it('renames a real file with the default fs and sleep', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-rename-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-rename-'));
     writeFileSync(join(dir, 'x.tmp'), 'new');
     writeFileSync(join(dir, 'x'), 'old');
     renameSyncWithRetry(join(dir, 'x.tmp'), join(dir, 'x'));
@@ -119,7 +119,7 @@ describe('renameWithRetry', () => {
   });
 
   it('renames a real file with the default fs', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-rename-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-rename-'));
     writeFileSync(join(dir, 'x.tmp'), 'new');
     writeFileSync(join(dir, 'x'), 'old');
     await renameWithRetry(join(dir, 'x.tmp'), join(dir, 'x'));

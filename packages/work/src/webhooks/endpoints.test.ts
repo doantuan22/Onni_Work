@@ -204,7 +204,7 @@ describe('chat review regressions', () => {
     state.receivers[0].url = 'https://hooks.slack.com/services/T1/B1/test';
     delete state.receivers[0].format; writeFileSync(path, JSON.stringify(state));
     const reopened = await endpoints.EndpointRegistry.open(dir, { installationId: 'inst_test', highWater: () => 0, now: () => Date.now(), assertOwner() {} });
-    expect(reopened.list().receivers[0]).toMatchObject({ name: 'Legacy', format: 'cezar.json.v1' });
+    expect(reopened.list().receivers[0]).toMatchObject({ name: 'Legacy', format: 'onni.json.v1' });
     await reopened.activate(reopened.list().receivers[0]!.id, 1);
   });
   it('redacts original Discord aliases and bare tokens after normalization', async () => {

@@ -11,7 +11,7 @@ vi.mock('@/api/queries', () => ({ useHealth: () => ({ data: { capabilities: { we
 vi.mock('@/lib/project-router', () => ({ useActiveProjectId: () => mocks.project }))
 vi.mock('@/api/client', () => ({ webhookApi: mocks }))
 const receiver: WebhookReceiver = {
-  kind: 'live', id: 'receiver', name: 'Alerts', destination: 'http://example.invalid/[redacted]', format: 'cezar.json.v1',
+  kind: 'live', id: 'receiver', name: 'Alerts', destination: 'http://example.invalid/[redacted]', format: 'onni.json.v1',
   state: 'inactive', revision: 1, deliveryRevision: 1, profile: 'standard', preset: 'all', events: [],
   scope: 'every_task', graceSeconds: 600, allowLocalNetwork: true, includeScheduledFailures: true,
   pendingCount: 2, inFlightCount: 0, consecutiveFailures: 0, activationBlocked: false, lastTest: 'none',

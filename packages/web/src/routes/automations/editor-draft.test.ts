@@ -263,7 +263,7 @@ describe('applyTemplate', () => {
   it('copies another project\'s GitHub filters and skill, so the copy launches for the same items', () => {
     const steps = [{ id: 'task', name: 'om-auto-review-pr', skill: 'om-auto-review-pr', prompt: '{{task}}' }]
     const pick = templatePick({
-      project: { id: 'cezar', name: 'cezar' },
+      project: { id: 'onni', name: 'onni' },
       id: 'eee6c276',
       name: 'Self-review tasks',
       kind: 'github',
@@ -284,7 +284,7 @@ describe('applyTemplate', () => {
 
   it('a later pick never inherits an earlier pick\'s filters, skill or fork-head admission', () => {
     const copied = applyTemplate(newDraft(), templatePick({
-      project: { id: 'cezar', name: 'cezar' },
+      project: { id: 'onni', name: 'onni' },
       id: 'eee6c276',
       name: 'Self-review tasks',
       kind: 'github',

@@ -75,12 +75,12 @@ describe('a message deferred while a run settles (telemetry 1408d7cb follow-up)'
     gate.diff = '';
     gate.release = undefined;
     gate.onStart = undefined;
-    repoRoot = realpathSync(mkdtempSync(join(tmpdir(), 'cez-deferred-redeliver-')));
+    repoRoot = realpathSync(mkdtempSync(join(tmpdir(), 'onni-deferred-redeliver-')));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -94,8 +94,8 @@ describe('a message deferred while a run settles (telemetry 1408d7cb follow-up)'
   });
 
   async function settledRun(): Promise<string> {
-    const worktreePath = join(repoRoot, '.ai/cezar/worktrees/wt');
-    await run('git', ['worktree', 'add', '-q', '-b', 'cez/wt', worktreePath], { cwd: repoRoot });
+    const worktreePath = join(repoRoot, '.ai/onni/worktrees/wt');
+    await run('git', ['worktree', 'add', '-q', '-b', 'onni/wt', worktreePath], { cwd: repoRoot });
     const record = store.createRun({
       title: 't',
       workflow: 'legacy',
@@ -103,7 +103,7 @@ describe('a message deferred while a run settles (telemetry 1408d7cb follow-up)'
       runner: 'claude',
       steps: [{ id: 'work', name: 'work', kind: 'agent' as const }],
     });
-    store.updateRun(record.id, { status: 'done', finishedAt: new Date().toISOString(), worktreePath, branch: 'cez/wt' });
+    store.updateRun(record.id, { status: 'done', finishedAt: new Date().toISOString(), worktreePath, branch: 'onni/wt' });
     store.updateStep(record.id, 'work', { status: 'done', sessionId: 'sess-1', backend: 'claude' });
     return record.id;
   }
@@ -132,7 +132,7 @@ describe('a message deferred while a run settles (telemetry 1408d7cb follow-up)'
 
   it('a run whose review was ACCEPTED mid-gap is not continued', async () => {
     // The review gate is opt-in; with it on, a diff settles the turn at `review`.
-    writeFileSync(join(repoRoot, '.ai/cezar/config.json'), JSON.stringify({ reviewGate: true }));
+    writeFileSync(join(repoRoot, '.ai/onni/config.json'), JSON.stringify({ reviewGate: true }));
     gate.diff = 'diff --git a/a.txt b/a.txt\n+two\n';
     const runId = await deferInSettleTail();
     internals().active.get(runId)!.acceptReviewOnDrop = true;
@@ -237,20 +237,20 @@ describe('a message deferred while a run settles (telemetry 1408d7cb follow-up)'
 
   it('a restart notes a message the previous process was still holding', async () => {
     const runId = await deferInSettleTail(['held', 'also held']);
-    const marker = join(repoRoot, '.ai/cezar/runs', `${runId}.deferred-messages`);
+    const marker = join(repoRoot, '.ai/onni/runs', `${runId}.deferred-messages`);
     expect(existsSync(marker)).toBe(true);
     // The process dies here: a fresh manager over the same data dir is the restart.
     manager!.dispose();
-    mkdirSync(join(repoRoot, '.ai/cezar/runs'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni/runs'), { recursive: true });
     manager = new RunManager(store, repoRoot);
     await manager.recover();
-    expect(lifecycle(runId).some((m) => m.includes('2 messages sent while the session was closing could not be delivered — cezar restarted'))).toBe(true);
+    expect(lifecycle(runId).some((m) => m.includes('2 messages sent while the session was closing could not be delivered — onni restarted'))).toBe(true);
     expect(existsSync(marker)).toBe(false);
   });
 
   it('removes the marker once the deferred message is delivered', async () => {
     const runId = await deferInSettleTail(['delivered later']);
-    const marker = join(repoRoot, '.ai/cezar/runs', `${runId}.deferred-messages`);
+    const marker = join(repoRoot, '.ai/onni/runs', `${runId}.deferred-messages`);
     expect(existsSync(marker)).toBe(true);
     releaseGate();
     await expect.poll(() => gate.specs.length, { timeout: 15_000 }).toBe(2);

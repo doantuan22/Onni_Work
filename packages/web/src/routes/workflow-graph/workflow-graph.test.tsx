@@ -45,7 +45,7 @@ const SHIP: WorkflowDef = {
   name: 'ship-it',
   description: 'Fix then review.',
   source: 'file',
-  path: '.ai/cezar/workflows/ship-it.yaml',
+  path: '.ai/onni/workflows/ship-it.yaml',
   steps: [
     { id: 'om-fix', name: 'om-fix', skill: 'om-fix', prompt: '{{task}}' },
     { id: 'om-review', name: 'om-review', skill: 'om-review', prompt: '{{task}}' },
@@ -56,7 +56,7 @@ const SHIP: WorkflowDef = {
 const VERIFY: WorkflowDef = {
   name: 'verify',
   source: 'file',
-  path: '.ai/cezar/workflows/verify.yaml',
+  path: '.ai/onni/workflows/verify.yaml',
   steps: [
     { id: 'implement', prompt: '{{task}}' },
     { id: 'tests', command: 'npm test', onFail: { retry: 'implement', max: 2 } },
@@ -136,7 +136,7 @@ describe('WorkflowGraphRoute', () => {
 
   it('saves a pure skill stack in the compact skills form, overwriting its own file', async () => {
     const sent = stubFetch({
-      'POST /api/v1/workflows': () => jsonResponse({ path: '.ai/cezar/workflows/ship-it.yaml', name: 'ship-it' }, 201),
+      'POST /api/v1/workflows': () => jsonResponse({ path: '.ai/onni/workflows/ship-it.yaml', name: 'ship-it' }, 201),
     })
     renderAt('/workflows/ship-it')
     await nameField()
@@ -153,7 +153,7 @@ describe('WorkflowGraphRoute', () => {
 
   it('saves anything richer as a version 2 graph', async () => {
     const sent = stubFetch({
-      'POST /api/v1/workflows/graph': () => jsonResponse({ path: '.ai/cezar/workflows/verify.yaml', name: 'verify' }, 201),
+      'POST /api/v1/workflows/graph': () => jsonResponse({ path: '.ai/onni/workflows/verify.yaml', name: 'verify' }, 201),
     })
     renderAt('/workflows/verify')
     await nameField()
@@ -171,7 +171,7 @@ describe('WorkflowGraphRoute', () => {
       'POST /api/v1/workflows': () =>
         calls++ === 0
           ? jsonResponse({ error: 'workflow file already exists', exists: true }, 409)
-          : jsonResponse({ path: '.ai/cezar/workflows/verify.yaml', name: 'verify' }, 201),
+          : jsonResponse({ path: '.ai/onni/workflows/verify.yaml', name: 'verify' }, 201),
     })
     renderAt('/workflows/ship-it')
     fireEvent.change(await nameField(), { target: { value: 'verify' } })

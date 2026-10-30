@@ -47,14 +47,14 @@ describe('apiPath — unscoped', () => {
 
 describe('apiPath — scoped', () => {
   it('inserts the project scope inside the version prefix', () => {
-    setApiScope('cezar')
-    expect(apiPath('/runs')).toBe('/api/v1/p/cezar/runs')
+    setApiScope('onni')
+    expect(apiPath('/runs')).toBe('/api/v1/p/onni/runs')
     expect(apiPath('/runs/run-1/files?path=x.png&raw=1')).toBe(
-      '/api/v1/p/cezar/runs/run-1/files?path=x.png&raw=1',
+      '/api/v1/p/onni/runs/run-1/files?path=x.png&raw=1',
     )
-    expect(apiPath('/runs/run-1/events')).toBe('/api/v1/p/cezar/runs/run-1/events')
-    expect(apiBase()).toBe('/api/v1/p/cezar')
-    expect(queryScope()).toBe('cezar')
+    expect(apiPath('/runs/run-1/events')).toBe('/api/v1/p/onni/runs/run-1/events')
+    expect(apiBase()).toBe('/api/v1/p/onni')
+    expect(queryScope()).toBe('onni')
   })
 
   it('URL-encodes the project id', () => {
@@ -65,7 +65,7 @@ describe('apiPath — scoped', () => {
   })
 
   it('leaves workspace-level routes unscoped — they are single-mount, scoping would 404', () => {
-    setApiScope('cezar')
+    setApiScope('onni')
     expect(apiPath('/health')).toBe('/api/v1/health')
     expect(apiPath('/models?runner=codex')).toBe('/api/v1/models?runner=codex')
     expect(apiPath('/projects')).toBe('/api/v1/projects')
@@ -81,16 +81,16 @@ describe('apiPath — scoped', () => {
   })
 
   it('does not treat a lookalike route as workspace-level', () => {
-    setApiScope('cezar')
+    setApiScope('onni')
     // `/healthcheck` is not `/health`; the exemption matches whole segments only.
-    expect(apiPath('/healthcheck')).toBe('/api/v1/p/cezar/healthcheck')
+    expect(apiPath('/healthcheck')).toBe('/api/v1/p/onni/healthcheck')
   })
 
   it('versions whatever route it is given — callers pass routes, never URLs', () => {
     // The contract is one-way on purpose: a URL that came FROM the server goes through
     // `resolveApiUrl`, which is the only function that inspects an existing prefix.
-    setApiScope('cezar')
-    expect(apiPath('/new')).toBe('/api/v1/p/cezar/new')
+    setApiScope('onni')
+    expect(apiPath('/new')).toBe('/api/v1/p/onni/new')
   })
 
   it('treats the empty string as unscoped — there is no project ""', () => {
@@ -112,14 +112,14 @@ describe('resolveApiUrl — URLs the server minted', () => {
   })
 
   it('re-scopes a stored unscoped URL onto the active project', () => {
-    setApiScope('cezar')
+    setApiScope('onni')
     expect(resolveApiUrl('/api/runs/r1/images/shot.png')).toBe(
-      '/api/v1/p/cezar/runs/r1/images/shot.png',
+      '/api/v1/p/onni/runs/r1/images/shot.png',
     )
   })
 
   it('keeps a URL that already names its own project', () => {
-    setApiScope('cezar')
+    setApiScope('onni')
     expect(resolveApiUrl('/api/p/other/runs/r1/images/shot.png')).toBe(
       '/api/v1/p/other/runs/r1/images/shot.png',
     )
@@ -129,7 +129,7 @@ describe('resolveApiUrl — URLs the server minted', () => {
   })
 
   it('does not touch what is not a cockpit API URL', () => {
-    setApiScope('cezar')
+    setApiScope('onni')
     expect(resolveApiUrl('/raw/assets/icon.svg')).toBe('/raw/assets/icon.svg')
     expect(resolveApiUrl('https://github.com/o/r/pull/7')).toBe('https://github.com/o/r/pull/7')
     expect(resolveApiUrl('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA')
@@ -145,14 +145,14 @@ describe('resolveApiUrl — URLs the server minted', () => {
   })
 
   it('scopes an absolute stored URL onto the active project too', () => {
-    setApiScope('cezar')
+    setApiScope('onni')
     expect(resolveApiUrl('http://127.0.0.1:4321/api/runs/r1/images/shot.png')).toBe(
-      'http://127.0.0.1:4321/api/v1/p/cezar/runs/r1/images/shot.png',
+      'http://127.0.0.1:4321/api/v1/p/onni/runs/r1/images/shot.png',
     )
   })
 
   it('leaves an absolute URL that already names its own project alone', () => {
-    setApiScope('cezar')
+    setApiScope('onni')
     expect(resolveApiUrl('http://127.0.0.1:4321/api/v1/p/other/runs/r1/images/shot.png')).toBe(
       'http://127.0.0.1:4321/api/v1/p/other/runs/r1/images/shot.png',
     )
@@ -160,7 +160,7 @@ describe('resolveApiUrl — URLs the server minted', () => {
 
   it('never re-bases an absolute URL onto the configured base', () => {
     // The origin in the stored URL wins: rewriting someone else's host is not this function's job.
-    setApiBaseUrl('https://cezar.example.com')
+    setApiBaseUrl('https://onni.example.com')
     expect(resolveApiUrl('http://127.0.0.1:4321/api/runs/r1/images/a.png')).toBe(
       'http://127.0.0.1:4321/api/v1/runs/r1/images/a.png',
     )
@@ -174,42 +174,42 @@ describe('setApiBaseUrl — the service on another origin', () => {
   })
 
   it('prefixes every route once the base is set', () => {
-    setApiBaseUrl('https://cezar.example.com')
-    expect(apiPath('/runs')).toBe('https://cezar.example.com/api/v1/runs')
-    expect(apiBase()).toBe('https://cezar.example.com/api/v1')
+    setApiBaseUrl('https://onni.example.com')
+    expect(apiPath('/runs')).toBe('https://onni.example.com/api/v1/runs')
+    expect(apiBase()).toBe('https://onni.example.com/api/v1')
   })
 
   it('composes with the project scope', () => {
-    setApiBaseUrl('https://cezar.example.com')
-    setApiScope('cezar')
-    expect(apiPath('/runs')).toBe('https://cezar.example.com/api/v1/p/cezar/runs')
-    expect(apiBase()).toBe('https://cezar.example.com/api/v1/p/cezar')
+    setApiBaseUrl('https://onni.example.com')
+    setApiScope('onni')
+    expect(apiPath('/runs')).toBe('https://onni.example.com/api/v1/p/onni/runs')
+    expect(apiBase()).toBe('https://onni.example.com/api/v1/p/onni')
   })
 
   it('tolerates a trailing slash — it would otherwise double against the route', () => {
-    setApiBaseUrl('https://cezar.example.com/')
-    expect(apiPath('/runs')).toBe('https://cezar.example.com/api/v1/runs')
+    setApiBaseUrl('https://onni.example.com/')
+    expect(apiPath('/runs')).toBe('https://onni.example.com/api/v1/runs')
   })
 
   it('works with a path prefix, for a service behind a reverse proxy', () => {
-    setApiBaseUrl('/cezar')
-    expect(apiPath('/runs')).toBe('/cezar/api/v1/runs')
+    setApiBaseUrl('/onni')
+    expect(apiPath('/runs')).toBe('/onni/api/v1/runs')
   })
 
   it('re-bases a stored transcript URL rather than double-prefixing one', () => {
-    setApiBaseUrl('https://cezar.example.com')
+    setApiBaseUrl('https://onni.example.com')
     // Written by a server that had no base — still has to resolve against this one.
     expect(resolveApiUrl('/api/runs/r1/images/a.png')).toBe(
-      'https://cezar.example.com/api/v1/runs/r1/images/a.png',
+      'https://onni.example.com/api/v1/runs/r1/images/a.png',
     )
     // Already based: must not gain a second copy of the origin.
-    expect(resolveApiUrl('https://cezar.example.com/api/v1/runs/r1/images/a.png')).toBe(
-      'https://cezar.example.com/api/v1/runs/r1/images/a.png',
+    expect(resolveApiUrl('https://onni.example.com/api/v1/runs/r1/images/a.png')).toBe(
+      'https://onni.example.com/api/v1/runs/r1/images/a.png',
     )
   })
 
   it('leaves a foreign absolute URL alone', () => {
-    setApiBaseUrl('https://cezar.example.com')
+    setApiBaseUrl('https://onni.example.com')
     expect(resolveApiUrl('https://github.com/o/r/pull/7')).toBe('https://github.com/o/r/pull/7')
   })
 })

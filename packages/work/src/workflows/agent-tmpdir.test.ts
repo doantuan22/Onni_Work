@@ -36,9 +36,9 @@ describe('RunManager — task-scoped agent TMPDIR (#785)', () => {
   const seam = () => manager as unknown as Seam;
 
   beforeEach(async () => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-agent-tmpdir-home-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-agent-tmpdir-repo-'));
-    dataDir = join(repoRoot, '.ai/cezar');
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-agent-tmpdir-home-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-agent-tmpdir-repo-'));
+    dataDir = join(repoRoot, '.ai/onni');
     process.env.CEZ_HOME = home;
     store = RunStore.open(dataDir);
     manager = new RunManager(store, repoRoot);

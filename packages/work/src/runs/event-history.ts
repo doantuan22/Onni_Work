@@ -149,11 +149,11 @@ export function canonicalSessionItems(events: readonly RunEvent[]): CanonicalIte
     } else if (v2Texts.length > 0) {
       const normalize = (text: string) =>
         text
-          .replace(/\s*CEZ:DONE\s*$/, '')
-          .replace(/\s*CEZ:MONITORING\s*$/, '')
-          .replace(/\s*CEZ:ASK[ \t]+\{[\s\S]*\}\s*$/, '')
+          .replace(/\s*ONNI:DONE\s*$/, '')
+          .replace(/\s*ONNI:MONITORING\s*$/, '')
+          .replace(/\s*ONNI:ASK[ \t]+\{[\s\S]*\}\s*$/, '')
           .split('\n')
-          .filter((line) => !/^CEZ:(?:PR=\d+|ISSUE=\d+|TITLE=.+)\s*$/.test(line))
+          .filter((line) => !/^ONNI:(?:PR=\d+|ISSUE=\d+|TITLE=.+)\s*$/.test(line))
           .join('\n')
           .replace(/\s+/g, '');
       const v2Normalized = new Set(v2Texts.map(normalize));

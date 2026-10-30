@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import * as storage from './storage.ts';
 const roots: string[] = [];
-function project() { const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-storage-')); roots.push(root); execFileSync('git', ['init', '-q'], { cwd: root }); return { root, dataDir: join(root, '.ai/cezar') }; }
+function project() { const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-storage-')); roots.push(root); execFileSync('git', ['init', '-q'], { cwd: root }); return { root, dataDir: join(root, '.ai/onni') }; }
 // Creating a symlink needs a privilege Windows only grants an elevated (or developer-mode)
 // process, so the symlink assertions run where the platform can actually make one.
 const symlinksSupported = (() => {
@@ -52,7 +52,7 @@ describe('private webhook storage', () => {
   it('refuses tracked private data instead of silently untracking it', async () => {
     const { root, dataDir } = project(); mkdirSync(join(dataDir, 'webhooks'), { recursive: true });
     writeFileSync(join(dataDir, 'webhooks/endpoints.json'), '{}');
-    execFileSync('git', ['add', '-f', '.ai/cezar/webhooks/endpoints.json'], { cwd: root });
+    execFileSync('git', ['add', '-f', '.ai/onni/webhooks/endpoints.json'], { cwd: root });
     await expect(storage.prepareStorage(root, dataDir, false)).rejects.toThrow('tracked');
   });
   it.skipIf(!symlinksSupported)('rejects symlinked directories, files and path traversal', async () => {

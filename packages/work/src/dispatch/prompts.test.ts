@@ -13,11 +13,11 @@ describe('the dispatch prompt', () => {
     for (const flag of ['--title', '--kind', '--review-of', '--scope', '--budget', '--success', '--evidence', '--tools', '--runner', '--model']) {
       expect(DISPATCH_PROMPT).toContain(flag);
     }
-    expect(DISPATCH_PROMPT).toContain('cez task create');
-    // The first live run found an older `cez` on the agents' PATH: the prompt must route through
+    expect(DISPATCH_PROMPT).toContain('onni task create');
+    // The first live run found an older `onni` on the agents' PATH: the prompt must route through
     // the cockpit's own entrypoint.
     expect(DISPATCH_PROMPT).toContain('node "$CEZ_BIN" task');
-    expect(DISPATCH_PROMPT).toContain('cez task report');
+    expect(DISPATCH_PROMPT).toContain('onni task report');
     expect(DISPATCH_PROMPT).toContain('--verdict');
     expect(DISPATCH_PROMPT).toContain('--suggestions');
   });
@@ -57,8 +57,8 @@ describe('the dispatch prompt', () => {
 
   it('treats a report as a claim and keeps the Guard and the tree directory', () => {
     expect(DISPATCH_PROMPT).toMatch(/A report is a CLAIM/);
-    expect(DISPATCH_PROMPT).toContain('CEZ:ASK');
-    expect(DISPATCH_PROMPT).toContain('CEZ:MONITORING');
+    expect(DISPATCH_PROMPT).toContain('ONNI:ASK');
+    expect(DISPATCH_PROMPT).toContain('ONNI:MONITORING');
     expect(DISPATCH_PROMPT).toContain('brief.md');
     expect(DISPATCH_PROMPT).toContain('inbox/root/');
     expect(DISPATCH_PROMPT).toContain('CEZ_TREE_DIR');
@@ -80,7 +80,7 @@ describe('the dispatch prompt', () => {
       const withIntent = composeDispatchPrompt(undefined, {});
       expect(withIntent.startsWith(DISPATCH_PROMPT)).toBe(true);
       expect(withIntent).toContain('Dispatch mode. The user started this task expecting it to be split.');
-      expect(withIntent).toContain('CEZ:MONITORING');
+      expect(withIntent).toContain('ONNI:MONITORING');
     });
 
     it('turns the user’s limits and child defaults into sentences the agent can plan by', () => {

@@ -43,7 +43,7 @@ export type RunStatus = 'queued' | 'running' | 'waiting' | 'review' | 'done' | '
 /**
  * A sub-state of `running` (spec 2026-07-18-subagent-monitoring-status, #490):
  * the agent ended its turn still working on its own downstream work (a sub-agent
- * or a monitored command) and declared it with the `CEZ:MONITORING` marker — so
+ * or a monitored command) and declared it with the `ONNI:MONITORING` marker — so
  * the cockpit shows a non-attention "monitoring" label instead of "needs you".
  * Only ever set while `status === 'running'`; cleared on resume/terminal.
  */
@@ -62,7 +62,7 @@ const usageCounterSchema = z.number().finite().nonnegative();
 
 /**
  * A runner id as it may appear in a PERSISTED record, normalized to the
- * ids the rest of cezar speaks (#547).
+ * ids the rest of onni speaks (#547).
  *
  * `claude-cli` is the legacy spelling of `claude` — still a member of
  * `AgentBackend` and still accepted by `createRunner`, and named by
@@ -226,7 +226,7 @@ export const runRecordSchema = z.object({
   deferredBinding: deferredBindingSchema.optional(),
   queueWaitReason: queueWaitReasonSchema.optional(),
   /** Provenance for a task a scheduled automation launched (spec 2026-09-14). Its own key so a
-   *  pre-schedule cezar strips it instead of failing the whole index on a missing `githubUrl`. */
+   *  pre-schedule onni strips it instead of failing the whole index on a missing `githubUrl`. */
   automationTrigger: z
     .object({
       automationId: z.string(),
@@ -237,7 +237,7 @@ export const runRecordSchema = z.object({
     })
     .optional(),
   /** Provenance for a task a tracker (Jira/Linear) automation launched. Its own key, same reason
-   *  as `automationTrigger`: a pre-tracker cezar strips it instead of failing the whole index.
+   *  as `automationTrigger`: a pre-tracker onni strips it instead of failing the whole index.
    *  The optional association binds credentials to the exact source, scope and connection
    *  that fired the run. Legacy records without that snapshot receive no tracker credentials.
    *  No secret is stored on this record. */
@@ -281,7 +281,7 @@ export const runRecordSchema = z.object({
   monitoringWakeAt: z.string().datetime().optional().catch(undefined),
   /** True only for the live epoch that exhausted all automatic monitoring checks. */
   monitoringWakeCapReached: z.boolean().optional(),
-  /** This `waiting` is a MID-WORKFLOW park on a `CEZ:ASK` raised by a non-final
+  /** This `waiting` is a MID-WORKFLOW park on a `ONNI:ASK` raised by a non-final
    *  agent step (#917), not the final interactive session. The difference is
    *  what has already run: a mid-workflow park still has later steps sitting at
    *  `pending`, so settling it as a success — which is right for the final step —
@@ -293,8 +293,8 @@ export const runRecordSchema = z.object({
    *  `reconcileLoadedRun` retire it on any other status, so no caller has to. */
   askParked: z.boolean().optional(),
   /**
-   * When the run's session ended — the inactivity timer, a crash, a cezar restart — while a
-   * `CEZ:ASK` question was still unanswered. The run is `failed` on the record (no process, no
+   * When the run's session ended — the inactivity timer, a crash, a onni restart — while a
+   * `ONNI:ASK` question was still unanswered. The run is `failed` on the record (no process, no
    * slot), but the question is still the user's to answer, so the cockpit keeps it under
    * "needs you" instead of filing it as an outcome; Continue (or the ask card) reopens the session
    * with the answer. Additive and optional (BACKWARD_COMPATIBILITY §3). Invariant: only a
@@ -305,7 +305,7 @@ export const runRecordSchema = z.object({
   /**
    * A run a `checkout: 'pr-head'` automation launched on a pull request's head (spec
    * 2026-10-06-agentic-e2e-checks Phase 3). `headSha` is what was fetched and tested — also the
-   * run's `baseBranch` — and `ref` the namespaced `refs/cezar/pr/<n>` holding it. Its presence
+   * run's `baseBranch` — and `ref` the namespaced `refs/onni/pr/<n>` holding it. Its presence
    * is what refuses `POST /runs/:id/pr`: the branch would contain the whole foreign PR.
    */
   prHead: z
@@ -363,12 +363,12 @@ export const runRecordSchema = z.object({
    *  after a restart. Any prompt, namer, or marker write clears this flag. */
   referencedIssueNumberSeeded: z.boolean().optional(),
   /** Who owns the display title: `user` (PATCH rename — never auto-overwritten),
-   *  `marker` (agent-declared via `CEZ:TITLE`, spec 2026-07-18-task-ref-markers —
+   *  `marker` (agent-declared via `ONNI:TITLE`, spec 2026-07-18-task-ref-markers —
    *  beats the namer, silences live refresh) or `auto` (namer-owned — a later
    *  namer result may replace it). Missing on old runs = legacy behavior (auto
    *  fills only an unset titleSummary). Precedence: user > marker > auto. */
   titleOrigin: z.enum(['user', 'auto', 'marker']).optional(),
-  /** References the agent itself declared via `CEZ:PR=` / `CEZ:ISSUE=` markers
+  /** References the agent itself declared via `ONNI:PR=` / `ONNI:ISSUE=` markers
    *  (spec 2026-07-18-task-ref-markers). Presence of a kind makes it
    *  authoritative: the namer may no longer write that kind, and a declared PR
    *  owns the referenced tier's resolution. */
@@ -408,13 +408,13 @@ export const runRecordSchema = z.object({
       error: z.string().optional(),
     })
     .optional(),
-  /** The task's own branch, created off `baseBranch`: `cez/<id8>` unless branch naming
+  /** The task's own branch, created off `baseBranch`: `onni/<id8>` unless branch naming
    *  instructions named it (spec 2026-10-11-branch-naming-instructions) — read it, never recompute it. */
   branch: z.string().optional(),
   /** Stable baseline for session git views: a worktree's fork ref, or an in-place run's starting commit. */
   baseBranch: z.string().optional(),
   /** Set when count-based retention (#483) reclaimed this run's worktree
-   *  *directory* (the `cez/<id8>` branch is kept). Presence means "materialized
+   *  *directory* (the `onni/<id8>` branch is kept). Presence means "materialized
    *  dir gone, recoverable via `git worktree add`"; it excludes the run from the
    *  retention budget until the dir is re-materialized (resume clears it). */
   worktreeReclaimedAt: z.string().optional(),
@@ -532,7 +532,7 @@ const MAX_TOOL_INPUT_HAYSTACK_CHARS = 8_192;
  *  which is a real and common state (no `gh`, no remote, a non-git root) — never an error. */
 export type RepoHandle = { owner: string; name: string };
 
-/** `https://github.com/open-mercato/cezar/pull/402` → `open-mercato/cezar`, lowercased.
+/** `https://github.com/open-mercato/cezar/pull/402` → `open-mercato/onni`, lowercased.
  *  Undefined for anything that is not a `<host>/<owner>/<repo>/<kind>/<n>` forge URL. */
 function refUrlRepo(url: string): string | undefined {
   const parts = url.split('/');
@@ -553,7 +553,7 @@ function refUrlRepo(url: string): string | undefined {
  * `owner/repo`, which a pasted URL does inherently. That is the trust boundary this module already
  * uses elsewhere — the prompt and the agent's own turn text are trusted, scraped tool output is
  * not — and it is what keeps the legitimate cross-repo case working (#819:
- * `om-auto-fix-pr https://github.com/open-mercato/open-mercato/pull/1977` started from cezar).
+ * `om-auto-fix-pr https://github.com/open-mercato/open-mercato/pull/1977` started from onni).
  *
  * Unknown handle → today's behavior exactly (`AGENTS.md` zero config: degrade, never fail). An
  * unparseable URL is left alone for the same reason — the guard only ever removes an association
@@ -594,7 +594,7 @@ function clearPendingAutoResume(run: RunRecord): void {
   run.autoResumeReason = undefined;
 }
 
-/** The OS refused the write (EPERM/EACCES/EROFS) — the file is there, cezar may not touch it. */
+/** The OS refused the write (EPERM/EACCES/EROFS) — the file is there, onni may not touch it. */
 function isAccessDenied(err: unknown): boolean {
   const code = (err as NodeJS.ErrnoException | undefined)?.code;
   return code === 'EPERM' || code === 'EACCES' || code === 'EROFS';
@@ -617,7 +617,7 @@ function clearAwaitingAnswer(run: RunRecord): void {
  * bulk "Archive finished" sweep never goes through a route, and it has to obey the rule too.
  *
  * Deleted, not set to `false`: absent is what every reader treats as unpinned, and it is the
- * shape a cezar that has never heard of pins already writes.
+ * shape a onni that has never heard of pins already writes.
  */
 function clearPin(run: RunRecord): void {
   delete run.pinned;
@@ -666,11 +666,11 @@ function eventTextFragments(event: Record<string, unknown>): string[] {
  * `CREATED_PR_RE` used to be matched against everything an event carried, tool OUTPUT included,
  * so a transcript that merely QUOTES a `gh pr create` line handed the run a PR it never opened.
  * Not hypothetical: the task that fixed the reference chips printed another run's stored events
- * while investigating them, and cezar read `"title": "Ran gh pr create --repo …"` out of that
+ * while investigating them, and onni read `"title": "Ran gh pr create --repo …"` out of that
  * dump and adopted a PR from a DIFFERENT repository as its own — permanently, because the first
  * created URL wins and the real `gh pr create` that followed was never looked at.
  *
- * So the claim must come from the agent's own words, or from the tool title cezar itself renders
+ * So the claim must come from the agent's own words, or from the tool title onni itself renders
  * from the command it saw run. Tool output and tool input are the transcript of the world, not a
  * statement about this run. The URL is still read from the whole event — `gh` prints it in the
  * output — because it is the CLAIM that needs a trustworthy source, not the link.
@@ -840,7 +840,7 @@ function appendPrRefToRun(run: RunRecord, ref: Omit<RunPrRef, 'at'> & { at?: str
 /**
  * The PR declaration the REFERENCED tier is allowed to act on.
  *
- * `CEZ:PR=N` means one of two things depending on when the agent writes it: on the way in it
+ * `ONNI:PR=N` means one of two things depending on when the agent writes it: on the way in it
  * names the PR the task is ABOUT, and once the task has opened a PR of its own the marker
  * contract asks it to re-declare with the new number ("Re-emit with the new number if the subject
  * changes (e.g. you open a PR later in the task)"). A declaration naming the PR this run CREATED
@@ -902,11 +902,11 @@ export function reconcileLoadedRun(run: RunRecord, opts?: { keepLive?: boolean }
     !opts?.keepLive &&
     (run.status === 'running' || run.status === 'queued' || run.status === 'waiting')
   ) {
-    // A run parked on an unanswered `CEZ:ASK` still owes the user that question — the same
+    // A run parked on an unanswered `ONNI:ASK` still owes the user that question — the same
     // answer `RunManager.recover()` gives, so this reader and the manager agree on "needs you".
     const askParked = run.status === 'waiting' && run.askParked === true;
     run.status = 'failed';
-    run.error = 'interrupted — cezar process exited during the run';
+    run.error = 'interrupted — onni process exited during the run';
     run.finishedAt = run.finishedAt ?? new Date().toISOString();
     // Stamped from `finishedAt`, so every cold read of the same record agrees on the instant.
     if (askParked) run.awaitingAnswerSince = run.finishedAt;
@@ -933,11 +933,11 @@ export function reconcileLoadedRun(run: RunRecord, opts?: { keepLive?: boolean }
   if (run.status !== 'waiting') run.attentionRequest = undefined;
   if (run.status !== 'done') run.completionReason = undefined;
   // Heal a record written before `referencedPrDeclaration` existed: a task that re-declared
-  // `CEZ:PR` with the PR it had just CREATED cleared the PR it was ABOUT, because no candidate
+  // `ONNI:PR` with the PR it had just CREATED cleared the PR it was ABOUT, because no candidate
   // could match the created number. The evidence is all still on the record — only the
   // conclusion drawn from it was wrong — so re-resolve without that declaration instead of
   // asking for a migration. Deliberately one-directional: it only runs on a record that HAS no
-  // referenced PR, so it can never take one away from a record written by an older cezar whose
+  // referenced PR, so it can never take one away from a record written by an older onni whose
   // candidate list no longer explains it. `prNumber` is not recoverable this way (the
   // declaration overwrote it) and is left alone — the restored URL is what paints the chip.
   if (
@@ -1049,7 +1049,7 @@ const runIndexTicketSchema = z.object({
  * lease, a paused live writer never loses ownership midway through read/merge/rename. Unique
  * names also make dead-process cleanup safe: no successor can own the path being removed.
  * A live PID is not proof of a live writer: a crashed writer's PID is often reused, in a
- * container by the restarted cezar itself (#1434 review). A ticket is dead, without guessing
+ * container by the restarted onni itself (#1434 review). A ticket is dead, without guessing
  * from age, when it is from an earlier boot; when it names this PID and thread but is not the
  * ticket this thread is taking (acquisition is synchronous); when its PID is gone; or, on
  * Linux, when its recorded process start time no longer matches. PIDs mean nothing in another
@@ -1133,7 +1133,7 @@ function lockRunIndex(dataDir: string): () => void {
     publish(number);
     while (tickets().some(([other, n]) => other !== name &&
       (n === 0 || n < number || (n === number && other < name)))) {
-      if (performance.now() >= deadline) throw new Error(`Timed out waiting for run-index writer (tickets in ${directory}; remove one only if its cezar is not running)`);
+      if (performance.now() >= deadline) throw new Error(`Timed out waiting for run-index writer (tickets in ${directory}; remove one only if its onni is not running)`);
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
     }
     return () => { releaseIndexPath(path); };
@@ -1146,7 +1146,7 @@ function lockRunIndex(dataDir: string): () => void {
 
 /**
  * File-backed run store: `runs.json` index (atomic tmp+rename writes, the
- * pattern from @cezar/core's IssueStore) plus one append-only NDJSON event
+ * pattern from @onni/core's IssueStore) plus one append-only NDJSON event
  * file per run. Also the in-process event bus the SSE endpoints subscribe to:
  * emits `('run', RunRecord)` and `('event', { runId, event: RunEvent })`.
  */
@@ -1207,7 +1207,7 @@ export class RunStore extends EventEmitter {
     } catch (err) {
       store.eventsUnwritable = true;
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`[cez] cannot create ${join(dataDir, 'runs')} (${message}); task history in this project will not be saved`);
+      console.error(`[onni] cannot create ${join(dataDir, 'runs')} (${message}); task history in this project will not be saved`);
     }
     const indexPath = join(dataDir, 'runs.json');
     if (existsSync(indexPath)) {
@@ -1261,7 +1261,7 @@ export class RunStore extends EventEmitter {
    * does not corroborate it (#945). Returns whether anything changed.
    *
    * One-directional by construction: it only ever clears fields, so a record written by an older
-   * cezar — or read by one after this ran — is never worse off, and a downgrade sees a record whose
+   * onni — or read by one after this ran — is never worse off, and a downgrade sees a record whose
    * format is untouched and whose cleared fields were already optional.
    */
   private rescopeRun(run: RunRecord): boolean {
@@ -1590,7 +1590,7 @@ export class RunStore extends EventEmitter {
    *  Deleting the field rather than adding a "manually unread" flag is the whole point:
    *  absent `seenAt` is ALREADY what every reader treats as unread (`isUnread` in the
    *  cockpit's read-state.ts, and `markAllRead`'s clause-for-clause copy of it below), so
-   *  clearing needs no new state and writes a shape any older cezar already parses.
+   *  clearing needs no new state and writes a shape any older onni already parses.
    *
    *  Deliberately unconditional: clearing a receipt is always a legal write, so this
    *  succeeds for an already-unread run (idempotent) and for statuses that can never wear
@@ -1661,7 +1661,7 @@ export class RunStore extends EventEmitter {
         if (!isAccessDenied(err)) throw err;
         this.eventsUnwritable = true;
         const message = err instanceof Error ? err.message : String(err);
-        console.error(`[cez] cannot write task history (${message}); events stay live-only until it is writable again`);
+        console.error(`[onni] cannot write task history (${message}); events stay live-only until it is writable again`);
       }
       return;
     }
@@ -1682,7 +1682,7 @@ export class RunStore extends EventEmitter {
     const seq = this.nextSeq(runId);
     // Scrub credentials before the event touches disk or the live wire (#427):
     // tool-result output is persisted verbatim and served back over the API, so
-    // a secret in an agent's command output would otherwise land in `.ai/cezar/`.
+    // a secret in an agent's command output would otherwise land in `.ai/onni/`.
     const full: RunEvent = this.redact({ ...event, seq, ts: new Date().toISOString() }, runId);
     // Sync append keeps event order without a write queue; local NDJSON
     // appends at agent-event rates are effectively free.
@@ -2176,7 +2176,7 @@ export class RunStore extends EventEmitter {
     } catch (err) {
       if (throwOnError) throw new Error('Could not persist automation run provenance; the launch was not confirmed.');
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`[cez] failed to save runs.json: ${message}`);
+      console.error(`[onni] failed to save runs.json: ${message}`);
     } finally {
       // Cleanup failure after a successful rename must not turn a durable creation into a
       // false failure/rollback. Failed own-ticket cleanup is retained and retried;

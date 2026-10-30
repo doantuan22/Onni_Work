@@ -34,7 +34,7 @@ export function UnknownProjectRoute({
         title={`“${projectId}” isn’t registered here`}
         // "can open", not "registered on this one": the list below is the
         // `GET /api/v1/projects` payload, which since seed-once leads with the
-        // folder cezar is serving WITHOUT having registered it. Offering that row
+        // folder onni is serving WITHOUT having registered it. Offering that row
         // under a sentence calling it registered contradicts the "· not registered"
         // marker the same folder carries in Settings.
         subtitle="This workspace doesn’t serve a project by that id. The link may come from another machine’s workspace — these are the projects this one can open:"

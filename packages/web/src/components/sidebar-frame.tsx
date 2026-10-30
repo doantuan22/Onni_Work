@@ -37,12 +37,12 @@ import { cn } from '@/lib/utils'
 
 export type DesktopShell = 'macos' | 'windows' | 'linux' | null
 
-/** Which desktop shell hosts this page, read once from the init script's `data-cez-desktop`
+/** Which desktop shell hosts this page, read once from the init script's `data-onni-desktop`
  *  (packages/desktop). Null in every browser. */
 export function useDesktopShell(): DesktopShell {
   const [platform] = React.useState<DesktopShell>(() => {
     if (typeof document === 'undefined') return null
-    const value = document.documentElement.dataset.cezDesktop
+    const value = document.documentElement.dataset.onniDesktop
     return value === 'macos' || value === 'windows' || value === 'linux' ? value : null
   })
   return platform

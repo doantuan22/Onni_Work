@@ -18,15 +18,15 @@ afterEach(() => {
 
 describe('isProjectCollapsed', () => {
   it('defaults to expanding the active project and collapsing the rest', () => {
-    expect(isProjectCollapsed(undefined, 'cezar', 'cezar')).toBe(false)
-    expect(isProjectCollapsed(undefined, 'shop', 'cezar')).toBe(true)
+    expect(isProjectCollapsed(undefined, 'onni', 'onni')).toBe(false)
+    expect(isProjectCollapsed(undefined, 'shop', 'onni')).toBe(true)
   })
 
   it('lets a stored answer override the default in both directions', () => {
     // An explicit `false` is how a user pins a non-active project open — it must not be
     // mistaken for "no entry" and collapsed back on the next render.
-    expect(isProjectCollapsed({ shop: false }, 'shop', 'cezar')).toBe(false)
-    expect(isProjectCollapsed({ cezar: true }, 'cezar', 'cezar')).toBe(true)
+    expect(isProjectCollapsed({ shop: false }, 'shop', 'onni')).toBe(false)
+    expect(isProjectCollapsed({ onni: true }, 'onni', 'onni')).toBe(true)
   })
 })
 
@@ -45,8 +45,8 @@ describe('normalizeCollapsed', () => {
 
 describe('collapse storage', () => {
   it('round-trips the map through localStorage', () => {
-    writeStoredCollapsed({ cezar: true, shop: false })
-    expect(readStoredCollapsed()).toEqual({ cezar: true, shop: false })
+    writeStoredCollapsed({ onni: true, shop: false })
+    expect(readStoredCollapsed()).toEqual({ onni: true, shop: false })
   })
 
   it('answers {} for an absent or hand-broken value rather than throwing', () => {

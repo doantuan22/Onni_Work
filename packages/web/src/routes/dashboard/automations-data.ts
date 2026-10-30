@@ -5,7 +5,7 @@ import {
   type DashboardAutomation,
   type DashboardAutomations,
 } from '@onni/api-client'
-import { cez, unwrap } from '@/api/client'
+import { onni, unwrap } from '@/api/client'
 import { useProjects, workspaceQueryKeys } from '@/api/queries'
 import { onWorkspaceEvent } from '@/api/global-events'
 
@@ -61,7 +61,7 @@ export function useDashboardAutomations(enabled: boolean) {
             try {
               const data = dashboardAutomationsSchema.parse(
                 await unwrap(
-                  await cez.api.v1.workspace.dashboard.automations.$get(
+                  await onni.api.v1.workspace.dashboard.automations.$get(
                     { query: { projectId: project.id } },
                     { init: { signal } },
                   ),

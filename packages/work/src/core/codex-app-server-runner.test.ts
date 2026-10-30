@@ -27,10 +27,10 @@ vi.mock('node:child_process', async (importOriginal) => {
 /**
  * #703 backend parity — `claude-cli-runner.test.ts` proves the Claude half;
  * this is the same session-level shape for Codex. The fix only holds if BOTH
- * runners classify a cezar-initiated 128+signal exit as a teardown note rather
+ * runners classify a onni-initiated 128+signal exit as a teardown note rather
  * than an agent failure, so the Codex branch needs its own regression.
  */
-describe('a teardown cezar initiated (codex app-server)', () => {
+describe('a teardown onni initiated (codex app-server)', () => {
   const mockBin = fileURLToPath(
     new URL('./__fixtures__/codex/mock-codex-app-server.mjs', import.meta.url),
   );
@@ -53,7 +53,7 @@ describe('a teardown cezar initiated (codex app-server)', () => {
     );
     await firstText;
 
-    // The cancel path; the EOF watchdog reaches the same `terminatedByCezar`.
+    // The cancel path; the EOF watchdog reaches the same `terminatedByOnni`.
     session.interrupt();
     const result = await session.result;
 
@@ -61,7 +61,7 @@ describe('a teardown cezar initiated (codex app-server)', () => {
     expect(events.some((e) => e.type === 'error')).toBe(false);
     expect(events.at(-1)).toEqual({ type: 'done' });
     expect(
-      events.some((e) => e.type === 'note' && e.message.includes('terminated by cezar (code 143)')),
+      events.some((e) => e.type === 'note' && e.message.includes('terminated by onni (code 143)')),
     ).toBe(true);
   }, 15_000);
 
@@ -101,7 +101,7 @@ describe('a model the ChatGPT-plan login cannot use (1350055f)', () => {
     new URL('./__fixtures__/codex/mock-codex-app-server.mjs', import.meta.url),
   );
 
-  it('names the model cezar sent and where to change it', async () => {
+  it('names the model onni sent and where to change it', async () => {
     const events: AgentEvent[] = [];
     const session = new CodexAppServerRunner({ bin: mockBin, timeoutMs: 0 }).startSession(
       { userPrompt: 'mock:chatgpt-model', cwd: process.cwd(), model: 'gpt-5.1-codex' },
@@ -161,8 +161,8 @@ describe('late Codex teardown events (#1105)', () => {
   );
 
   it('does not route a teardown follow-up failure into a removed run store', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-1105-'));
-    const store = RunStore.open(join(dir, '.ai/cezar'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-1105-'));
+    const store = RunStore.open(join(dir, '.ai/onni'));
     const run = store.createRun({
       title: 't', workflow: 'quick-task', task: 'check the working tree', runner: 'codex', worktree: false,
       steps: [{ id: 'task', name: 'Task', kind: 'agent' }],
@@ -270,11 +270,11 @@ describe('a turn that ended at a context-compaction boundary (#955)', () => {
   }, 15_000);
 
   it('does not claim a compaction boundary when the model spoke after it', async () => {
-    // `mock:compaction-done` compacts AFTER a `CEZ:DONE` message. The compaction is still
+    // `mock:compaction-done` compacts AFTER a `ONNI:DONE` message. The compaction is still
     // the last ITEM, which is exactly why the runner reports the boundary and `run.ts` —
     // not the runner — owns marker precedence. The text must survive intact either way.
     const events = await collect('mock:compaction-done wrap it up');
-    expect(events.some((e) => e.type === 'text' && e.text.includes('CEZ:DONE'))).toBe(true);
+    expect(events.some((e) => e.type === 'text' && e.text.includes('ONNI:DONE'))).toBe(true);
   }, 15_000);
 
   it('never lets a CHILD thread compaction end the parent turn (#600 holds)', async () => {
@@ -360,7 +360,7 @@ describe('an asynchronous turn/start or turn/steer rejection (#955)', () => {
     await session.result.catch(() => undefined);
   }, 20_000);
 
-  it("keeps cezar's OWN teardown a note, so cancelling never fails the run (#703 parity)", async () => {
+  it("keeps onni's OWN teardown a note, so cancelling never fails the run (#703 parity)", async () => {
     // The in-flight request the escalation must NOT fire on: `mock:steer-silent` never
     // answers the steer, so it is still pending when `interrupt()` tears the session down
     // and `rejectPending` settles it. Escalating that to `error` would turn every cancel
@@ -392,7 +392,7 @@ describe('an asynchronous turn/start or turn/steer rejection (#955)', () => {
  * #844 — the runner's own SIGTERM sets `ChildProcess.killed`, so a watchdog
  * gated on `!child.killed` refused to escalate for exactly the app-server it
  * was written for: one that handles the signal and keeps running. The guard now
- * tracks real termination, and `terminatedByCezar` (#703) is still set before
+ * tracks real termination, and `terminatedByOnni` (#703) is still set before
  * every signal so the resulting 137/143 stays a teardown note, not a failure.
  */
 describe('SIGTERM→SIGKILL escalation for an app-server that survives SIGTERM', () => {

@@ -15,11 +15,11 @@ describe('secrets API (spec 2026-10-10-project-secrets-vault-options)', () => {
   let store: RunStore;
   let secrets: SecretStore;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-secrets-api-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-secrets-api-'));
     vi.stubEnv('CEZ_HOME', join(root, 'home'));
     vi.stubEnv('CEZ_SINGLE_PROJECT', '0');
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(root, '.ai/cezar'));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(root, '.ai/onni'));
     secrets = new SecretStore(process.env, { keychain: async () => null });
   });
   afterEach(() => {
@@ -42,7 +42,7 @@ describe('secrets API (spec 2026-10-10-project-secrets-vault-options)', () => {
   it('stores a project secret, answers metadata only, and deletes it', async () => {
     const { id, instance } = await app();
     expect((await apiRequest(instance, '/api/v1/secrets/E2E_KEY', put({ value: 'secret-value-123' }))).status).toBe(204);
-    expect((await apiRequest(instance, '/api/v1/secrets/LLM_KEY', put({ value: 'llm-value-123', audiences: ['cezar'] }))).status).toBe(204);
+    expect((await apiRequest(instance, '/api/v1/secrets/LLM_KEY', put({ value: 'llm-value-123', audiences: ['onni'] }))).status).toBe(204);
 
     for (const path of ['/api/v1/secrets', `/api/v1/p/${id}/secrets`]) {
       const response = await apiRequest(instance, path);
@@ -52,7 +52,7 @@ describe('secrets API (spec 2026-10-10-project-secrets-vault-options)', () => {
       expect(text).not.toMatch(/secret-value-123|llm-value-123/);
       const body = secretsListSchema.parse(JSON.parse(text));
       expect(body.keyBackend).toBe('file');
-      expect(body.secrets.map((s) => [s.name, s.audiences])).toEqual([['E2E_KEY', ['checks']], ['LLM_KEY', ['cezar']]]);
+      expect(body.secrets.map((s) => [s.name, s.audiences])).toEqual([['E2E_KEY', ['checks']], ['LLM_KEY', ['onni']]]);
     }
     const raw = readFileSync(join(root, 'home', 'secrets', `${id}.json`), 'utf8');
     expect(raw).toContain('"E2E_KEY"');

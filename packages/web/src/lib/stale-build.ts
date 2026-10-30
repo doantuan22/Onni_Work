@@ -4,7 +4,7 @@
  * "Importing a module script failed." (telemetry c66965f8). Reloading picks up the served build.
  */
 
-const RELOADED_AT_KEY = 'cez:stale-build-reload-at'
+const RELOADED_AT_KEY = 'onni:stale-build-reload-at'
 /** A chunk that still fails this soon after a reload is really missing — report it, don't loop. */
 const RETRY_WINDOW_MS = 60_000
 

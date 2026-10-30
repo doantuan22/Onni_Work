@@ -10,7 +10,7 @@ const directories: string[] = [];
 afterEach(() => { for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 
 function fixture() {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-completion-'));
+  const dir = mkdtempSync(join(tmpdir(), 'onni-completion-'));
   directories.push(dir);
   const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim();
   git('init', '-q', '-b', 'main');
@@ -19,10 +19,10 @@ function fixture() {
   writeFileSync(join(dir, 'file.txt'), 'before\n');
   git('add', '.');
   git('commit', '-qm', 'base');
-  git('checkout', '-qb', 'cez/task');
-  const store = RunStore.open(join(dir, '.git', 'cezar-test'));
+  git('checkout', '-qb', 'onni/task');
+  const store = RunStore.open(join(dir, '.git', 'onni-test'));
   const run = store.createRun({ title: 'test', task: 'test', workflow: 'test', steps: [] });
-  Object.assign(run, { worktreePath: dir, baseBranch: 'main', branch: 'cez/task', startedAt: new Date().toISOString() });
+  Object.assign(run, { worktreePath: dir, baseBranch: 'main', branch: 'onni/task', startedAt: new Date().toISOString() });
   const commitChange = () => {
     writeFileSync(join(dir, 'file.txt'), 'after\n');
     git('add', '.');

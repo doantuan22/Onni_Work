@@ -32,14 +32,14 @@ describe('onFail.retryOn gates the check retry loop by exit code', () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-retry-on-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-retry-on-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 

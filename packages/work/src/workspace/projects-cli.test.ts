@@ -8,20 +8,20 @@ import { clearProjectProbeCache, registerProject } from './projects.ts';
 import { runProjectsCommand, type ProjectsCommandIo } from './projects-cli.ts';
 
 /**
- * `cezar projects` (spec 2026-07-20-multi-project-workspace, step 5.2): the
+ * `onni projects` (spec 2026-07-20-multi-project-workspace, step 5.2): the
  * offline registry CLI. Every test pins `CEZ_HOME` to a temp dir — these cases
  * register and remove projects for real, and must never touch the developer's
- * own `~/.cezar`.
+ * own `~/.onni`.
  */
-describe('cezar projects CLI', () => {
+describe('onni projects CLI', () => {
   const originalHome = process.env.CEZ_HOME;
   let home: string;
   let repos: string;
   let io: ProjectsCommandIo & { out: string[]; err: string[] };
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-projects-cli-'));
-    repos = mkdtempSync(join(realpathSync(tmpdir()), 'cez-projects-cli-repos-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-cli-'));
+    repos = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-cli-repos-'));
     process.env.CEZ_HOME = home;
     clearProjectProbeCache();
     const out: string[] = [];
@@ -132,7 +132,7 @@ describe('cezar projects CLI', () => {
     });
 
     it('refuses a task worktree and $HOME, exactly like boot registration', async () => {
-      const worktree = makeDir('host', '.ai', 'cezar', 'worktrees', 'abc12345');
+      const worktree = makeDir('host', '.ai', 'onni', 'worktrees', 'abc12345');
       expect(await run('add', worktree)).toBe(1);
       expect(await run('add', homedir())).toBe(1);
       expect(io.err.join('\n')).toContain('refusing to register');
@@ -156,7 +156,7 @@ describe('cezar projects CLI', () => {
       expect(await run('remove', 'nope')).toBe(1);
       expect(io.err.join('\n')).toContain('unknown project: nope');
       expect(await run('remove')).toBe(1);
-      expect(io.err.join('\n')).toContain('cezar projects remove <id>');
+      expect(io.err.join('\n')).toContain('onni projects remove <id>');
     });
   });
 
@@ -234,7 +234,7 @@ describe('cezar projects CLI', () => {
   it('exits 1 with the usage block on an unknown subcommand', async () => {
     expect(await run('frobnicate')).toBe(1);
     expect(io.err.join('\n')).toContain('unknown projects subcommand: frobnicate');
-    expect(io.err.join('\n')).toContain('cezar projects [list]');
+    expect(io.err.join('\n')).toContain('onni projects [list]');
   });
 
   it('documents the single-project mutation restriction in usage output', async () => {
@@ -285,7 +285,7 @@ describe('cezar projects CLI', () => {
 
     it('needs an id', async () => {
       expect(await run('tag')).toBe(1);
-      expect(io.err.join('\n')).toContain('cezar projects [list]');
+      expect(io.err.join('\n')).toContain('onni projects [list]');
     });
   });
 });

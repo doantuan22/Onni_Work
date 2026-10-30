@@ -2,14 +2,14 @@ import { randomBytes } from 'node:crypto';
 import { closeSync, fstatSync, openSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { attachmentInputSchema, UPLOAD_ID_RE, type AttachmentInput, type StagedUpload } from '@onni/contract';
-import { cezarHomeDir } from './paths.ts';
+import { onniHomeDir } from './paths.ts';
 import { atomicWriteJsonSync } from './workspace/config.ts';
 
 /**
  * Staged attachments (telemetry 7054e5f2): the composer uploads each file when it is ATTACHED and a
  * message names it by id, so a message's attachments are no longer bounded by one request body.
  *
- * Workspace-level, under `~/.cezar/uploads/`, because the new-task form carries attachments across
+ * Workspace-level, under `~/.onni/uploads/`, because the new-task form carries attachments across
  * a project switch. Transient by design: an upload is pruned after `UPLOAD_TTL_MS`, the oldest go
  * first when the store passes `UPLOADS_MAX_BYTES`, and a reference to a pruned one is refused with
  * `ATTACHMENT_UPLOAD_MISSING`, which the composer answers by staging again.
@@ -24,7 +24,7 @@ interface StoredUpload extends AttachmentInput {
 }
 
 export function uploadsDir(): string {
-  return join(cezarHomeDir(), 'uploads');
+  return join(onniHomeDir(), 'uploads');
 }
 
 function uploadPath(id: string): string {

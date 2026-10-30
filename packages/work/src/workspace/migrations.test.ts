@@ -19,8 +19,8 @@ describe('workspace migrations', () => {
   let repoRoot: string;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-migrations-home-'));
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-migrations-repo-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-migrations-home-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-migrations-repo-'));
     process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
   });
 
@@ -34,8 +34,8 @@ describe('workspace migrations', () => {
   });
 
   const writeRepoFile = (name: string, value: unknown) => {
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(repoRoot, '.ai/cezar', name), JSON.stringify(value), 'utf8');
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    writeFileSync(join(repoRoot, '.ai/onni', name), JSON.stringify(value), 'utf8');
   };
 
   const rawGlobalConfig = () =>
@@ -61,8 +61,8 @@ describe('workspace migrations', () => {
       notifications: { enabled: false },
       githubView: 'prs', // project-scoped — must NOT go global
     });
-    const repoConfigBefore = readFileSync(join(repoRoot, '.ai/cezar/config.json'), 'utf8');
-    const repoUiBefore = readFileSync(join(repoRoot, '.ai/cezar/ui-state.json'), 'utf8');
+    const repoConfigBefore = readFileSync(join(repoRoot, '.ai/onni/config.json'), 'utf8');
+    const repoUiBefore = readFileSync(join(repoRoot, '.ai/onni/ui-state.json'), 'utf8');
 
     await runMigrations({ bootRepoRoot: repoRoot });
 
@@ -76,8 +76,8 @@ describe('workspace migrations', () => {
     });
     expect(statSync(workspaceUiStatePath()).mode & 0o777).toBe(0o600);
     // additive: per-repo files are byte-identical
-    expect(readFileSync(join(repoRoot, '.ai/cezar/config.json'), 'utf8')).toBe(repoConfigBefore);
-    expect(readFileSync(join(repoRoot, '.ai/cezar/ui-state.json'), 'utf8')).toBe(repoUiBefore);
+    expect(readFileSync(join(repoRoot, '.ai/onni/config.json'), 'utf8')).toBe(repoConfigBefore);
+    expect(readFileSync(join(repoRoot, '.ai/onni/ui-state.json'), 'utf8')).toBe(repoUiBefore);
   });
 
   it('never overwrites keys already set globally (crash-interrupted re-run safety)', async () => {

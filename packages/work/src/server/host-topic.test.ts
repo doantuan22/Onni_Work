@@ -41,8 +41,8 @@ describe('host topic + sampler (live-server path)', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-host-topic-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-host-topic-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     hostUsageSampler.dispose();
   });
 

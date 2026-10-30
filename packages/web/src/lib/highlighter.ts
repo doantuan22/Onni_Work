@@ -43,7 +43,7 @@ export interface SynHighlight {
  * near-foreground. `type: 'dark'` is nominal — the variables carry both palettes.
  */
 export const SYN_THEME = {
-  name: 'cezar-syn',
+  name: 'onni-syn',
   type: 'dark' as const,
   fg: 'var(--syn-var)',
   bg: 'transparent',

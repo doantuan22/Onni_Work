@@ -23,7 +23,7 @@ vi.mock('../workflow-graph/task-graph', () => ({
 const { TaskWorkspaceRoute, classifyReference } = await import('./task-workspace')
 
 let hostLayouts: Record<string, unknown> = {}
-/** `~/.cezar/ui-state.json`: where layouts saved for every task live (`savedLayouts`). */
+/** `~/.onni/ui-state.json`: where layouts saved for every task live (`savedLayouts`). */
 let hostUiState: Record<string, unknown> = {}
 
 beforeEach(() => {
@@ -53,7 +53,7 @@ const RUN: ApiRun = {
   tokensUsed: 0,
   archived: false,
   worktreePath: '/tmp/wt/r1',
-  branch: 'cez/abc12345',
+  branch: 'onni/abc12345',
   baseBranch: 'main',
   seenAt: '2026-07-15T09:00:00.000Z',
   steps: [

@@ -62,7 +62,7 @@ it('corrupt and unwritable stores degrade with one redacted warning', async () =
 });
 
 it('the existing sandbox guard rejects real-home writes before filesystem I/O', async () => {
-  vi.stubEnv('CEZ_HOME', join(homedir(), '.cezar'));
+  vi.stubEnv('CEZ_HOME', join(homedir(), '.onni'));
   await expect(saveUsageWindows(binding, observation())).rejects.toThrow('refusing to write');
 });
 

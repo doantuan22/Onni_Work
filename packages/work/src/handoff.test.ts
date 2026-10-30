@@ -22,7 +22,7 @@ describe('appendHandoffHeartbeat bounded progress log', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cezar-handoff-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-handoff-'));
     vi.useFakeTimers();
   });
 
@@ -166,7 +166,7 @@ describe('HANDOFF_INSTRUCTIONS', () => {
 /**
  * #933 — a task that had dispatched sub-agents and was waiting only on them showed as
  * "needs you", with the "paused, waiting for your reply" footer and a browser notification.
- * The transcript evidence put it on the BEHAVIORAL branch: cezar has no sub-agent-completion
+ * The transcript evidence put it on the BEHAVIORAL branch: onni has no sub-agent-completion
  * event, so this paragraph is the only thing that makes the agent declare the state, and the
  * pre-#933 wording ("a sub-agent you dispatched") never said whether a sub-agent that hands
  * control back immediately and reports later still counts.
@@ -183,7 +183,7 @@ describe('HANDOFF_INSTRUCTIONS — the still-working marker contract (#933)', ()
 
   it('extracts a non-empty paragraph to assert on', () => {
     expect(paragraph.startsWith('Still-working marker:')).toBe(true);
-    expect(paragraph).toContain('CEZ:MONITORING');
+    expect(paragraph).toContain('ONNI:MONITORING');
   });
 
   it('names dispatching a sub-agent as the case the marker exists for', () => {
@@ -202,7 +202,7 @@ describe('HANDOFF_INSTRUCTIONS — the still-working marker contract (#933)', ()
       .map((line) => line.trim())
       .filter((line) => line !== '');
     expect(example.length).toBeGreaterThanOrEqual(2);
-    expect(example[example.length - 1]).toBe('CEZ:MONITORING');
+    expect(example[example.length - 1]).toBe('ONNI:MONITORING');
     expect(example[0]).toContain('sub-agents');
   });
 
@@ -211,7 +211,7 @@ describe('HANDOFF_INSTRUCTIONS — the still-working marker contract (#933)', ()
    * the contract should still ask for the ordering that needs no tolerance.
    */
   it('tells the agent to keep task-reference markers above the turn-end markers', () => {
-    expect(HANDOFF_INSTRUCTIONS).toContain('above any CEZ:DONE / CEZ:MONITORING line');
+    expect(HANDOFF_INSTRUCTIONS).toContain('above any ONNI:DONE / ONNI:MONITORING line');
   });
 });
 
@@ -226,6 +226,6 @@ describe('HANDOFF_INSTRUCTIONS — the ask card answers an agent must handle', (
   });
 
   it('asks for an explanation and a re-ask on a request for more information', () => {
-    expect(paragraph).toContain('ask it again with CEZ:ASK');
+    expect(paragraph).toContain('ask it again with ONNI:ASK');
   });
 });

@@ -18,8 +18,8 @@ import { HostUsageWidget, HOST_WIDGET_STALE_MS } from './host-usage-widget'
 
 const HEALTH_LOCAL = {
   version: '0.1.3',
-  repoRoot: '/srv/cezar',
-  repo: { root: '/srv/cezar', branch: 'main' },
+  repoRoot: '/srv/onni',
+  repo: { root: '/srv/onni', branch: 'main' },
   checks: [],
   defaultRunner: 'claude',
   capabilities: { localHandoff: true, terminal: false, followups: false, singleProject: false, automations: false },

@@ -31,7 +31,7 @@ describe('server state', () => {
   const original = process.env.CEZ_HOME;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-state-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-state-'));
     process.env.CEZ_HOME = home;
   });
   afterEach(() => {
@@ -131,8 +131,8 @@ describe('server state', () => {
     expect(await nextFreeInstancePort(4321, { probe: free })).toBe(4323); // 4321 + 4322 both taken
   });
 
-  // #913: `~/.cezar` is per-user, a loopback port is machine-wide. A second unix
-  // user's registry is EMPTY while the first user's cezar holds 4321, so the
+  // #913: `~/.onni` is per-user, a loopback port is machine-wide. A second unix
+  // user's registry is EMPTY while the first user's onni holds 4321, so the
   // recorded-state scan alone hands out a port the new instance cannot bind —
   // and the vhost rendered from it proxies that user into the first user's
   // cockpit, run history and coding-agent subscription.

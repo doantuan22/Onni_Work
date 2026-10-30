@@ -97,7 +97,7 @@ describe('selectReclaimableWorktrees (#483)', () => {
 
 describe('reclamation lifecycle gate', () => {
   it('reports only verified removals and keeps scanning after gated or malformed candidates', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-retention-lifecycle-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-retention-lifecycle-'));
     try {
       const records = ['malformed', 'gated', 'ordinary', 'newest'].map((id, index) => {
         const path = join(root, id); mkdirSync(path);

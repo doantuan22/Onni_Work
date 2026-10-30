@@ -360,9 +360,9 @@ describe('shortcuts', () => {
     fireEvent.keyDown(input(), { key: 'Enter', shiftKey: true })
     expect(await within(palette()!).findByText('Press the keys for this command…')).toBeTruthy()
 
-    // A chord cezar owns is refused, and nothing is saved.
+    // A chord onni owns is refused, and nothing is saved.
     fireEvent.keyDown(input(), { code: 'KeyK', key: 'k', metaKey: true })
-    expect(await within(palette()!).findByText(/taken by the browser or cezar/)).toBeTruthy()
+    expect(await within(palette()!).findByText(/taken by the browser or onni/)).toBeTruthy()
     expect(sent.some((request) => request.method === 'PUT')).toBe(false)
 
     fireEvent.keyDown(input(), { code: 'KeyL', key: 'l', metaKey: true, shiftKey: true })

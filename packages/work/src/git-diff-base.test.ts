@@ -30,11 +30,11 @@ function stubGit(answers: Record<string, { ok: boolean; stdout: string }>): {
 }
 
 function realGitFixture() {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-diff-base-'));
+  const dir = mkdtempSync(join(tmpdir(), 'onni-diff-base-'));
   const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim();
   git('init', '-q', '-b', 'main');
-  git('config', 'user.name', 'Cezar test');
-  git('config', 'user.email', 'cezar-test@example.invalid');
+  git('config', 'user.name', 'Onni test');
+  git('config', 'user.email', 'onni-test@example.invalid');
   writeFileSync(join(dir, 'base.txt'), 'base\n');
   git('add', '.');
   git('commit', '-q', '-m', 'base');
@@ -47,7 +47,7 @@ function realGitFixture() {
   git('remote', 'add', 'origin', dir);
   git('update-ref', 'refs/remotes/origin/main', upstream);
   git('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');
-  git('checkout', '-q', '-b', 'cez/task', 'origin/main');
+  git('checkout', '-q', '-b', 'onni/task', 'origin/main');
   writeFileSync(join(dir, 'task.txt'), 'task\n');
   git('add', '.');
   git('commit', '-q', '-m', 'task');
@@ -75,11 +75,11 @@ describe('resolveTaskDiffBase — the freshest base ref', () => {
   it('anchors at the merge-base when HEAD is still on the task branch', async () => {
     const { run, calls } = stubGit({
       ...NO_REMOTE,
-      [HEAD_BRANCH]: { ok: true, stdout: 'cez/ab12cd34\n' },
+      [HEAD_BRANCH]: { ok: true, stdout: 'onni/ab12cd34\n' },
       [MERGE_BASE]: { ok: true, stdout: 'deadbeefdeadbeef\n' },
     });
 
-    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'cez/ab12cd34' })).toEqual({
+    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'onni/ab12cd34' })).toEqual({
       base: 'deadbeefdeadbeef',
     });
     expect(calls).toContainEqual(['merge-base', 'main', 'HEAD']);
@@ -91,11 +91,11 @@ describe('resolveTaskDiffBase — the freshest base ref', () => {
     const { run } = stubGit({
       [HAS_REMOTE]: { ok: true, stdout: 'b61ae485b61ae485\n' },
       [LOCAL_CURRENT]: { ok: false, stdout: '' }, // origin/main is NOT an ancestor of main
-      [HEAD_BRANCH]: { ok: true, stdout: 'cez/ab12cd34\n' },
+      [HEAD_BRANCH]: { ok: true, stdout: 'onni/ab12cd34\n' },
       [MERGE_BASE_REMOTE]: { ok: true, stdout: 'freshfreshfresh0\n' },
     });
 
-    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'cez/ab12cd34' })).toEqual({
+    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'onni/ab12cd34' })).toEqual({
       base: 'freshfreshfresh0',
     });
   });
@@ -105,11 +105,11 @@ describe('resolveTaskDiffBase — the freshest base ref', () => {
     const { run, calls } = stubGit({
       [HAS_REMOTE]: { ok: true, stdout: 'b61ae485b61ae485\n' },
       [LOCAL_CURRENT]: { ok: true, stdout: '' },
-      [HEAD_BRANCH]: { ok: true, stdout: 'cez/ab12cd34\n' },
+      [HEAD_BRANCH]: { ok: true, stdout: 'onni/ab12cd34\n' },
       [MERGE_BASE]: { ok: true, stdout: 'deadbeefdeadbeef\n' },
     });
 
-    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'cez/ab12cd34' })).toEqual({
+    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'onni/ab12cd34' })).toEqual({
       base: 'deadbeefdeadbeef',
     });
     expect(calls).not.toContainEqual(['merge-base', 'origin/main', 'HEAD']);
@@ -119,13 +119,13 @@ describe('resolveTaskDiffBase — the freshest base ref', () => {
     // A zero-config task forked from the user's own diverged branch (keepDiverged).
     const { run } = stubGit({
       [HAS_REMOTE]: { ok: true, stdout: 'b61ae485b61ae485\n' },
-      [HEAD_BRANCH]: { ok: true, stdout: 'cez/ab12cd34\n' },
+      [HEAD_BRANCH]: { ok: true, stdout: 'onni/ab12cd34\n' },
       [MERGE_BASE]: { ok: true, stdout: 'localtiplocaltip\n' },
       [MERGE_BASE_REMOTE]: { ok: true, stdout: 'olderolderolder0\n' },
       'merge-base --is-ancestor olderolderolder0 localtiplocaltip': { ok: true, stdout: '' },
     });
 
-    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'cez/ab12cd34' })).toEqual({
+    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'onni/ab12cd34' })).toEqual({
       base: 'localtiplocaltip',
     });
   });
@@ -134,12 +134,12 @@ describe('resolveTaskDiffBase — the freshest base ref', () => {
     // A configured base: stale diverged local main, the task forked from origin/main.
     const { run } = stubGit({
       [HAS_REMOTE]: { ok: true, stdout: 'b61ae485b61ae485\n' },
-      [HEAD_BRANCH]: { ok: true, stdout: 'cez/ab12cd34\n' },
+      [HEAD_BRANCH]: { ok: true, stdout: 'onni/ab12cd34\n' },
       [MERGE_BASE]: { ok: true, stdout: 'olderolderolder0\n' },
       [MERGE_BASE_REMOTE]: { ok: true, stdout: 'freshfreshfresh0\n' },
     });
 
-    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'cez/ab12cd34' })).toEqual({
+    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'onni/ab12cd34' })).toEqual({
       base: 'freshfreshfresh0',
     });
   });
@@ -214,9 +214,9 @@ describe('resolveTaskDiffBase — the freshest base ref', () => {
   });
 
   it('falls back to the base branch name when the merge-base cannot be resolved', async () => {
-    const { run } = stubGit({ ...NO_REMOTE, [HEAD_BRANCH]: { ok: true, stdout: 'cez/ab12cd34\n' } });
+    const { run } = stubGit({ ...NO_REMOTE, [HEAD_BRANCH]: { ok: true, stdout: 'onni/ab12cd34\n' } });
 
-    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'cez/ab12cd34' })).toEqual({
+    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'onni/ab12cd34' })).toEqual({
       base: 'main',
     });
   });
@@ -241,12 +241,12 @@ describe('resolveTaskDiffBase — a repointed HEAD', () => {
 
     expect(
       await resolveTaskDiffBase(run, 'main', {
-        taskBranch: 'cez/ab12cd34',
+        taskBranch: 'onni/ab12cd34',
         runStartedAt: STARTED_AT,
       }),
     ).toEqual({
       base: 'prtipprtipprtip0',
-      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'cez/ab12cd34' },
+      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'onni/ab12cd34' },
     });
   });
 
@@ -270,12 +270,12 @@ describe('resolveTaskDiffBase — a repointed HEAD', () => {
 
     expect(
       await resolveTaskDiffBase(run, 'main', {
-        taskBranch: 'cez/ab12cd34',
+        taskBranch: 'onni/ab12cd34',
         runStartedAt: STARTED_AT,
       }),
     ).toEqual({
       base: 'mergedbasemergedb',
-      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'cez/ab12cd34' },
+      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'onni/ab12cd34' },
     });
   });
 
@@ -295,21 +295,21 @@ describe('resolveTaskDiffBase — a repointed HEAD', () => {
 
     expect(
       await resolveTaskDiffBase(run, 'main', {
-        taskBranch: 'cez/ab12cd34',
+        taskBranch: 'onni/ab12cd34',
         runStartedAt: STARTED_AT,
       }),
     ).toEqual({
       base: 'sameshasamesha00',
-      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'cez/ab12cd34' },
+      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'onni/ab12cd34' },
     });
   });
 
   it('narrows to HEAD when there is no run start to read the branch at (#751 behavior)', async () => {
     const { run, calls } = stubGit(reviewRun);
 
-    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'cez/ab12cd34' })).toEqual({
+    expect(await resolveTaskDiffBase(run, 'main', { taskBranch: 'onni/ab12cd34' })).toEqual({
       base: 'HEAD',
-      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'cez/ab12cd34' },
+      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'onni/ab12cd34' },
     });
     // Uncommitted work only — the answer cannot depend on the checked-out branch's history.
     expect(calls).not.toContainEqual(['merge-base', 'main', 'HEAD']);
@@ -325,12 +325,12 @@ describe('resolveTaskDiffBase — a repointed HEAD', () => {
 
     expect(
       await resolveTaskDiffBase(run, 'main', {
-        taskBranch: 'cez/ab12cd34',
+        taskBranch: 'onni/ab12cd34',
         runStartedAt: STARTED_AT,
       }),
     ).toEqual({
       base: 'HEAD',
-      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'cez/ab12cd34' },
+      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'onni/ab12cd34' },
     });
   });
 
@@ -343,12 +343,12 @@ describe('resolveTaskDiffBase — a repointed HEAD', () => {
 
     expect(
       await resolveTaskDiffBase(run, 'main', {
-        taskBranch: 'cez/ab12cd34',
+        taskBranch: 'onni/ab12cd34',
         runStartedAt: STARTED_AT,
       }),
     ).toEqual({
       base: 'HEAD',
-      repointedHead: { headBranch: 'HEAD', taskBranch: 'cez/ab12cd34' },
+      repointedHead: { headBranch: 'HEAD', taskBranch: 'onni/ab12cd34' },
     });
     expect(calls.some((args) => args.some((arg) => arg.includes('@{')))).toBe(false);
   });
@@ -363,12 +363,12 @@ describe('resolveTaskDiffBase — a repointed HEAD', () => {
 
     expect(
       await resolveTaskDiffBase(run, 'main', {
-        taskBranch: 'cez/ab12cd34',
+        taskBranch: 'onni/ab12cd34',
         runStartedAt: '-1',
       }),
     ).toEqual({
       base: 'HEAD',
-      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'cez/ab12cd34' },
+      repointedHead: { headBranch: 'review/pr-694', taskBranch: 'onni/ab12cd34' },
     });
     expect(calls.some((args) => args.some((arg) => arg.includes('@{')))).toBe(false);
   });
@@ -392,7 +392,7 @@ describe('resolveTaskDiffBase — degradation', () => {
 
     expect(
       await resolveTaskDiffBase(run, 'main', {
-        taskBranch: 'cez/ab12cd34',
+        taskBranch: 'onni/ab12cd34',
         runStartedAt: STARTED_AT,
       }),
     ).toEqual({ base: 'deadbeefdeadbeef' });

@@ -76,7 +76,7 @@ describe('parsePrivateMcp', () => {
 describe('loadPrivateMcp', () => {
   let repo: string;
   beforeEach(() => {
-    repo = mkdtempSync(join(tmpdir(), 'cez-private-mcp-'));
+    repo = mkdtempSync(join(tmpdir(), 'onni-private-mcp-'));
   });
   afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
@@ -84,8 +84,8 @@ describe('loadPrivateMcp', () => {
     expect(await loadPrivateMcp(repo)).toEqual({ servers: [], problems: [] });
   });
 
-  it('reads <repo>/.ai/cezar/mcp.local.json', async () => {
-    mkdirSync(join(repo, '.ai', 'cezar'), { recursive: true });
+  it('reads <repo>/.ai/onni/mcp.local.json', async () => {
+    mkdirSync(join(repo, '.ai', 'onni'), { recursive: true });
     writeFileSync(privateMcpPath(repo), FILE);
     expect((await loadPrivateMcp(repo)).servers.map((s) => s.name)).toEqual(['tracker', 'docs', 'legacy']);
   });
@@ -172,27 +172,27 @@ describe('per-agent translation', () => {
   });
 });
 
-describe('the cezar.private.mcp catalog file', () => {
+describe('the onni.private.mcp catalog file', () => {
   let repo: string;
   beforeEach(() => {
-    repo = realpathSync(mkdtempSync(join(tmpdir(), 'cez-private-mcp-repo-')));
+    repo = realpathSync(mkdtempSync(join(tmpdir(), 'onni-private-mcp-repo-')));
     execFileSync('git', ['init', '-q'], { cwd: repo });
   });
   afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
   it('is listed for every agent that can take it', () => {
-    expect(findConfigFile('cezar.private.mcp')?.runners).toEqual(['claude', 'codex', 'opencode', 'junie', 'copilot']);
+    expect(findConfigFile('onni.private.mcp')?.runners).toEqual(['claude', 'codex', 'opencode', 'junie', 'copilot']);
   });
 
   it('is written 0600 and is git-ignored even when a .mcp.json is committed', async () => {
     writeFileSync(join(repo, '.mcp.json'), '{"mcpServers":{}}');
     execFileSync('git', ['add', '.mcp.json'], { cwd: repo });
 
-    const out = await writeConfigFile('cezar.private.mcp', FILE, null, repo, { HOME: repo });
+    const out = await writeConfigFile('onni.private.mcp', FILE, null, repo, { HOME: repo });
     expect(out).toMatchObject({ ok: true });
     const path = privateMcpPath(repo);
     expect(statSync(path).mode & 0o777).toBe(0o600);
-    expect((await readConfigFile('cezar.private.mcp', repo, { HOME: repo })) as { content: string }).toMatchObject({ content: FILE });
+    expect((await readConfigFile('onni.private.mcp', repo, { HOME: repo })) as { content: string }).toMatchObject({ content: FILE });
 
     execFileSync('git', ['check-ignore', '-q', path], { cwd: repo }); // throws when not ignored
     const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: repo, encoding: 'utf8' });

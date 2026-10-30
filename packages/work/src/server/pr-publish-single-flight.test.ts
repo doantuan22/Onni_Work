@@ -28,11 +28,11 @@ describe('POST /runs/:id/pr is single-flight per run', () => {
 
   beforeEach(() => {
     vi.mocked(createDraftPr).mockReset();
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-pr-flight-'));
-    worktree = mkdtempSync(join(tmpdir(), 'cez-pr-flight-wt-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-pr-flight-'));
+    worktree = mkdtempSync(join(tmpdir(), 'onni-pr-flight-wt-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     execFileSync('git', ['init', '-b', 'main'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,
@@ -52,7 +52,7 @@ describe('POST /runs/:id/pr is single-flight per run', () => {
 
   it('joins a second request onto the publish already running', async () => {
     const run = store.createRun({ title: 'Ship it', task: 'ship it', workflow: 'quick-task', steps: [] });
-    store.updateRun(run.id, { status: 'review', worktreePath: worktree, branch: 'cez/abc' });
+    store.updateRun(run.id, { status: 'review', worktreePath: worktree, branch: 'onni/abc' });
     let finish!: (outcome: DraftPrOutcome) => void;
     vi.mocked(createDraftPr).mockReturnValue(new Promise((resolve) => (finish = resolve)));
 
@@ -75,12 +75,12 @@ describe('POST /runs/:id/pr is single-flight per run', () => {
 
   it('publishes afresh once the previous publish settled', async () => {
     const run = store.createRun({ title: 'Ship it', task: 'ship it', workflow: 'quick-task', steps: [] });
-    store.updateRun(run.id, { status: 'review', worktreePath: worktree, branch: 'cez/abc' });
+    store.updateRun(run.id, { status: 'review', worktreePath: worktree, branch: 'onni/abc' });
     vi.mocked(createDraftPr).mockResolvedValue({ ok: false, error: 'git push failed — denied' });
 
     const refused = await post(run.id);
     expect(refused.status).toBe(409);
-    expect(await refused.json()).toEqual({ error: 'git push failed — denied', manual: 'git merge cez/abc' });
+    expect(await refused.json()).toEqual({ error: 'git push failed — denied', manual: 'git merge onni/abc' });
     await post(run.id);
     expect(createDraftPr).toHaveBeenCalledTimes(2);
   });

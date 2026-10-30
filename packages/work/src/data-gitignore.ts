@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * `.ai/cezar/.gitignore` — keep run data out of the user's repo history while workflows and
+ * `.ai/onni/.gitignore` — keep run data out of the user's repo history while workflows and
  * skills stay committable (BACKWARD_COMPATIBILITY.md §3: any new run-data file is added here in
  * the same PR).
  *
@@ -38,7 +38,7 @@ export const DATA_GITIGNORE_ENTRIES = [
   'todos.json.tmp',
   // Private, per-project MCP servers (spec 2026-10-07-private-project-mcp) — personal tokens.
   'mcp.local.json',
-  'mcp.local.json.cez-tmp-*',
+  'mcp.local.json.onni-tmp-*',
   'tracker.json',
   'tracker.json.tmp',
   'tracker.json.*.tmp',
@@ -58,15 +58,15 @@ export const DATA_GITIGNORE_ENTRIES = [
   'automation-mutation.lock',
 ] as const;
 
-/** cezar's own data directory as a git pathspec exclusion. An in-place task's Changes and its
+/** onni's own data directory as a git pathspec exclusion. An in-place task's Changes and its
  *  landing commit leave it out (spec 2026-10-20-trunk-based-projects): its config, ui-state and
  *  .gitignore are not untracked by default, but they are never the task's work. */
-export const CEZAR_DATA_EXCLUDE = ':(exclude).ai/cezar';
+export const ONNI_DATA_EXCLUDE = ':(exclude).ai/onni';
 
 export function ensureDataGitignore(repoRoot: string): void {
-  const path = join(repoRoot, '.ai/cezar', '.gitignore');
+  const path = join(repoRoot, '.ai/onni', '.gitignore');
   try {
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
     const lines = current.split('\n');
     const missing = DATA_GITIGNORE_ENTRIES.filter((w) => !lines.includes(w));

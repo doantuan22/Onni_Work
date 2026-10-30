@@ -34,9 +34,9 @@ describe('the design-proxy API', () => {
   beforeEach(() => {
     delete process.env.CEZ_REMOTE;
     delete process.env.CEZ_DESIGN_MODE;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-design-api-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-design-api-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     proxies = new DesignProxies();
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', designProxies: proxies });
   });

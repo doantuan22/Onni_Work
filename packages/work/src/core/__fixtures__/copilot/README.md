@@ -36,7 +36,7 @@ mkdir /tmp/copilot-probe && cd /tmp/copilot-probe && npm init -y && npm i @githu
 
 Line 1 is a `{"fixture": {…}}` header (source, CLI version, ACP docs, scenario, the verification
 record it cites). Every other line is `{"dir":"out"|"in","frame":<JSON-RPC message>}` in wire
-order — `out` is what cezar wrote to the agent's stdin, `in` is what the agent wrote to stdout.
+order — `out` is what onni wrote to the agent's stdin, `in` is what the agent wrote to stdout.
 `copilot-ui-mapper.test.ts` replays exactly those frames through `mapCopilotFrame`, the same way
 the runner drives it, and asserts `toStrictEqual` against the `.expected.json`. The same expected
 files feed `ui-parity.test.ts`.

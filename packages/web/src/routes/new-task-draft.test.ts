@@ -205,7 +205,7 @@ describe('the new-task draft store', () => {
     })
     // A fresh page has no in-memory cache but keeps localStorage: resetDraft removes storage, so
     // instead drop only the cache by round-tripping through a raw storage read.
-    const raw = localStorage.getItem('cez-new-task-draft') as string
+    const raw = localStorage.getItem('onni-new-task-draft') as string
     expect(JSON.parse(raw)).toMatchObject({
       text: 'do not lose me',
       variants: 2,
@@ -219,7 +219,7 @@ describe('the new-task draft store', () => {
   it('normalizes a malformed/older stored value instead of throwing', () => {
     // A cold read (cache null after resetDraft) hitting bad JSON must degrade to EMPTY.
     resetDraft()
-    localStorage.setItem('cez-new-task-draft', 'not json at all')
+    localStorage.setItem('onni-new-task-draft', 'not json at all')
     expect(readDraft()).toEqual({
       text: '',
       source: null,
@@ -234,7 +234,7 @@ describe('the new-task draft store', () => {
     })
 
     resetDraft()
-    localStorage.setItem('cez-new-task-draft', '{"text":42,"variants":9,"source":"nope","worktree":"x"}')
+    localStorage.setItem('onni-new-task-draft', '{"text":42,"variants":9,"source":"nope","worktree":"x"}')
     expect(readDraft()).toEqual({
       text: '',
       source: null,
@@ -254,7 +254,7 @@ describe('the new-task draft store', () => {
  * #1018 — switching project while composing takes the composition with you.
  *
  * The per-project keys are right, and stay: a half-typed task for the shop frontend must not
- * surface in the cezar composer. What they were wrong ABOUT is the explicit switch — the user
+ * surface in the onni composer. What they were wrong ABOUT is the explicit switch — the user
  * changing their mind mid-sentence about where this task belongs, with a screenshot already
  * pasted. That is a move, and the rules below are what keep it one.
  */
@@ -276,7 +276,7 @@ describe('the new-task attachment store', () => {
   it('never reaches localStorage — four 5 MB images would not fit', () => {
     writeAttachments([shot()], 'shop')
     expect(
-      Object.keys(localStorage).filter((key) => key.startsWith('cez-new-task-draft')),
+      Object.keys(localStorage).filter((key) => key.startsWith('onni-new-task-draft')),
     ).toEqual([])
   })
 })
@@ -311,8 +311,8 @@ describe('handOffComposition', () => {
   })
 
   it('refuses to clobber an unsent draft already waiting in the arriving project', () => {
-    writeDraft({ ...EMPTY_DRAFT, text: 'from cezar' }, null)
-    writeAttachments([shot('cezar.png')], null)
+    writeDraft({ ...EMPTY_DRAFT, text: 'from onni' }, null)
+    writeAttachments([shot('onni.png')], null)
     writeDraft({ ...EMPTY_DRAFT, text: 'already writing this' }, 'shop')
 
     expect(handOffComposition(null, 'shop')).toEqual({ moved: false, reason: 'destination-busy' })
@@ -321,21 +321,21 @@ describe('handOffComposition', () => {
     // departing one still holds what was typed there — switching back restores it.
     expect(readDraft('shop').text).toBe('already writing this')
     expect(readAttachments('shop')).toEqual([])
-    expect(readDraft(null).text).toBe('from cezar')
-    expect(readAttachments(null).map((a) => a.name)).toEqual(['cezar.png'])
+    expect(readDraft(null).text).toBe('from onni')
+    expect(readAttachments(null).map((a) => a.name)).toEqual(['onni.png'])
   })
 
   it('refuses to clobber attachments waiting in an otherwise empty destination', () => {
-    writeDraft({ ...EMPTY_DRAFT, text: 'from cezar' }, null)
-    writeAttachments([shot('cezar.png')], null)
+    writeDraft({ ...EMPTY_DRAFT, text: 'from onni' }, null)
+    writeAttachments([shot('onni.png')], null)
     writeAttachments([shot('shop.png')], 'shop')
 
     expect(handOffComposition(null, 'shop')).toEqual({ moved: false, reason: 'destination-busy' })
 
     expect(readDraft('shop').text).toBe('')
     expect(readAttachments('shop').map((a) => a.name)).toEqual(['shop.png'])
-    expect(readDraft(null).text).toBe('from cezar')
-    expect(readAttachments(null).map((a) => a.name)).toEqual(['cezar.png'])
+    expect(readDraft(null).text).toBe('from onni')
+    expect(readAttachments(null).map((a) => a.name)).toEqual(['onni.png'])
   })
 
   it('carries an attachment pasted before a word was typed', () => {
@@ -378,7 +378,7 @@ describe('normalizeDispatchIntent', () => {
     writeDraft({ ...readDraft(), dispatch: { maxSubtasks: 10, inFlight: 2 } })
     resetDraftCacheOnly()
     expect(readDraft().dispatch).toEqual({ maxSubtasks: 10, inFlight: 2 })
-    localStorage.setItem('cez-new-task-draft', '{"dispatch":"yes please"}')
+    localStorage.setItem('onni-new-task-draft', '{"dispatch":"yes please"}')
     resetDraftCacheOnly()
     expect(readDraft().dispatch).toBeNull()
   })
@@ -386,9 +386,9 @@ describe('normalizeDispatchIntent', () => {
 
 /** Drop the in-memory cache but keep localStorage — a reload, not a reset. */
 function resetDraftCacheOnly() {
-  const stored = localStorage.getItem('cez-new-task-draft')
+  const stored = localStorage.getItem('onni-new-task-draft')
   resetDraft()
-  if (stored !== null) localStorage.setItem('cez-new-task-draft', stored)
+  if (stored !== null) localStorage.setItem('onni-new-task-draft', stored)
 }
 
 describe('composerRunModeNote (#793)', () => {

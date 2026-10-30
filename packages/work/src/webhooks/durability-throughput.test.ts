@@ -34,7 +34,7 @@ async function setup(extra: Partial<WebhookServiceOptions> = {}) {
   vi.stubEnv('CEZ_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-durability-')); roots.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const dataDir = join(root, '.ai/cezar');
+  const dataDir = join(root, '.ai/onni');
   let now = Date.parse('2026-10-13T12:00:00Z');
   const send = vi.fn(async (_input: WebhookSend): Promise<SendResult> => ({ kind: 'http', status: 200 }));
   const options: WebhookServiceOptions = { root, dataDir, projectId: 'project', mode: 'local', serverPorts: () => [4317], scheduler: new WebhookScheduler(), now: () => now, send, ...extra };

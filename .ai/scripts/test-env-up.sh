@@ -4,7 +4,7 @@
 # history:
 #   2026-10-10 use Node detached spawn when setsid is unavailable (macOS), so
 #             the QA server survives process-group cleanup after the bootstrap shell exits.
-#   2026-07-14 generated (cold ~40s, warm ~2s) — cezar has no backing services, so
+#   2026-07-14 generated (cold ~40s, warm ~2s) — onni has no backing services, so
 #             the service-provisioning step of the contract is deliberately absent.
 #   2026-07-21 detach the app with nohup so non-interactive bootstrap shells do not
 #             terminate the healthy server immediately after the script exits.
@@ -54,11 +54,11 @@ BUILD_INPUT_PATHS="packages/contract/src packages/contract/package.json packages
 # `claude` login and reaches no network — the whole point for CI/e2e.
 export CEZ_DRY_RUN=1
 
-# The real CLI writes workspace state at boot (~/.cezar migrations + project
+# The real CLI writes workspace state at boot (~/.onni migrations + project
 # registration) — pin CEZ_HOME under .ai/qa so a test boot never touches the
-# developer's real ~/.cezar. Kept stable (not per-boot) so the reuse path
+# developer's real ~/.onni. Kept stable (not per-boot) so the reuse path
 # attaches to the same workspace the running instance was booted with.
-export CEZ_HOME="$QA_DIR/cez-home"
+export CEZ_HOME="$QA_DIR/onni-home"
 
 FORCE=0
 FORCE_REBUILD=0
@@ -336,7 +336,7 @@ ensure_browser() {
     fi
   fi
   browser_probe() {
-    BROWSER_PROBE_SESSION="cez-provider-probe-$$"
+    BROWSER_PROBE_SESSION="onni-provider-probe-$$"
     if "$BROWSER_COMMAND" --session "$BROWSER_PROBE_SESSION" open about:blank --json >/dev/null 2>&1; then
       "$BROWSER_COMMAND" --session "$BROWSER_PROBE_SESSION" close --json >/dev/null 2>&1 || true
       return 0
@@ -358,7 +358,7 @@ start_app() {
   port_free "$PORT" || PORT=$(free_port)
   BASE_URL="http://127.0.0.1:$PORT"
 
-  log "starting cezar on $BASE_URL (CEZ_DRY_RUN=1)"
+  log "starting onni on $BASE_URL (CEZ_DRY_RUN=1)"
   # --no-open: a test boot must never hijack the operator's browser.
   if command -v setsid >/dev/null 2>&1; then
     (cd "$REPO_ROOT" && exec setsid nohup node packages/work/dist/index.js --port "$PORT" --no-open --repo "$REPO_ROOT" \
@@ -411,7 +411,7 @@ write_descriptor() {
     const [out, baseUrl, port, pid, cmd, bInstalled, bCmd, bVer, bLdLibraryPath, bArgs, bNotes, desc, singleProject, platform] = process.argv.slice(1);
     fs.writeFileSync(out, JSON.stringify({
       version: 1,
-      runId: "cezar-" + new Date().toISOString().slice(0, 10) + "-" + pid,
+      runId: "onni-" + new Date().toISOString().slice(0, 10) + "-" + pid,
       status: "running",
       mode: "prod",
       baseUrl,
@@ -440,7 +440,7 @@ write_descriptor() {
       notes: "Booted from a production build after npm ci with CEZ_DRY_RUN=1, so workspace links/runtime dependencies are present, the agent CLIs are mocked, and no agent login/network is needed. No backing services. Stop with .ai/scripts/test-env-down.sh. App log: .ai/qa/test-env-app.log.",
     }, null, 2) + "\n");
   ' "$ENV_DESCRIPTOR" "$BASE_URL" "$PORT" "$APP_PID" \
-    "CEZ_DRY_RUN=1 CEZ_HOME=.ai/qa/cez-home node packages/work/dist/index.js --port $PORT --no-open" \
+    "CEZ_DRY_RUN=1 CEZ_HOME=.ai/qa/onni-home node packages/work/dist/index.js --port $PORT --no-open" \
     "$BROWSER_INSTALLED" "$BROWSER_COMMAND" "$BROWSER_VERSION" "$BROWSER_ENV_LD_LIBRARY_PATH" "$BROWSER_ENV_AGENT_BROWSER_ARGS" "$BROWSER_NOTES" "$BROWSER_DESCRIPTOR" \
     "$SINGLE_PROJECT" "$(uname -s 2>/dev/null | grep -qi Linux && { grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null && echo wsl2 || echo linux; } || echo darwin)"
 }

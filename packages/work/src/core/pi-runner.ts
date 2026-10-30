@@ -150,7 +150,7 @@ export class PiRunner implements AgentRunner {
       hardKillTimer.unref?.();
     };
 
-    write({ id: 'cezar-state', type: 'get_state' });
+    write({ id: 'onni-state', type: 'get_state' });
     sendMessage([
       ...(spec.images ?? []),
       {

@@ -53,7 +53,7 @@ const server = createServer((req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const port = server.address().port;
 net.connect = function(options, ...rest) { return connect.call(this, { ...options, host: '127.0.0.1', port, lookup: undefined }, ...rest); };
-const root = mkdtempSync(join(realpathSync(tmpdir()), 'cez-service-diagnostics-'));
+const root = mkdtempSync(join(realpathSync(tmpdir()), 'onni-service-diagnostics-'));
 execFileSync('git', ['init', '-q'], { cwd: root });
 const base = process.argv[1];
 const { WebhookService } = await import(base + 'service.ts');
@@ -64,7 +64,7 @@ const { signWebhook } = await import(base + 'signing.ts');
 signed = signWebhook;
 process.env.CEZ_WEBHOOKS = '1';
 try {
-  service = await WebhookService.open({ root, dataDir: root + '/.ai/cezar', projectId: 'synthetic', mode: 'local', serverPorts: () => [], scheduler: new WebhookScheduler(), send: async input => {
+  service = await WebhookService.open({ root, dataDir: root + '/.ai/onni', projectId: 'synthetic', mode: 'local', serverPorts: () => [], scheduler: new WebhookScheduler(), send: async input => {
     keys = input.secrets;
     captured = await sendWebhook(input, { lookup: async () => [{ address: '8.8.8.8', family: 4 }] });
     // Add after transport redaction, before serialized durable completion. This
@@ -92,7 +92,7 @@ try {
   assert.equal(refreshed.retryAfter, '60');
   assert.equal(refreshed.status, 429);
   assert.equal(service.deliveries(a.receiver.id)[0].body, body, 'frozen signed body is unchanged');
-  const directory = root + '/.ai/cezar/webhooks';
+  const directory = root + '/.ai/onni/webhooks';
   const disk = readFileSync(directory + '/deliveries.ndjson', 'utf8') + readdirSync(directory + '/events').filter(n => n.endsWith('.json')).map(n => readFileSync(directory + '/events/' + n, 'utf8')).join('');
   assert(!disk.includes('private-tail'));
   assert(!disk.includes('private-capability'));

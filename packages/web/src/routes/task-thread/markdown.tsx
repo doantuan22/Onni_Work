@@ -115,7 +115,7 @@ const HARD_BREAKS = [...Object.values(defaultRemarkPlugins), remarkHardBreaks]
  */
 const INLINE_ELEMENTS = ['p', 'strong', 'em', 'del', 'code', 'a'] as const
 const INLINE_COMPONENTS = { p: 'span', a: 'span' } as const
-const LOCAL_ONLY_DESTINATION_PREFIX = 'cezar-local-only:'
+const LOCAL_ONLY_DESTINATION_PREFIX = 'onni-local-only:'
 
 /**
  * Transcript links are untrusted agent output. A leading slash is not enough to identify a

@@ -61,7 +61,7 @@ describe('OS-verified process identity', async () => {
   // A service or scheduled-task context can have a trimmed PATH, where a bare `powershell` would
   // ENOENT and leave webhooks unavailable on Windows.
   it('resolves PowerShell from SystemRoot, falling back to PATH', async () => {
-    const root = mkdtempSync(join(realpathSync(tmpdir()), 'cez-winroot-'));
+    const root = mkdtempSync(join(realpathSync(tmpdir()), 'onni-winroot-'));
     try {
       const exe = join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
       mkdirSync(join(root, 'System32', 'WindowsPowerShell', 'v1.0'), { recursive: true }); writeFileSync(exe, '');
@@ -105,7 +105,7 @@ describe('parseWindowsProcessStarts', async () => {
   });
 
   it('reads a missing pid as absent only when the probe ran to its sentinel', async () => {
-    expect(parseWindowsProcessStarts('cez-probe-complete\n').size).toBe(0);
+    expect(parseWindowsProcessStarts('onni-probe-complete\n').size).toBe(0);
   });
 
   it('fails closed when the script died before its sentinel', async () => {

@@ -30,7 +30,7 @@ describe('descendantGroups', () => {
     expect(descendantGroups([], 200, SELF)).toBeNull();
   });
 
-  it('never returns cezar’s own group or init’s, even if a descendant claims one', () => {
+  it('never returns onni’s own group or init’s, even if a descendant claims one', () => {
     const odd = [...rows, { pid: 500, ppid: 200, pgid: 100 }, { pid: 501, ppid: 200, pgid: 1 }, { pid: 502, ppid: 200, pgid: 0 }];
     expect(descendantGroups(odd, 200, SELF)?.sort()).toEqual([200, 300, 400]);
   });

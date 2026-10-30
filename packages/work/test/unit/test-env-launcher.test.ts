@@ -30,7 +30,7 @@ function commandPath(command: string): string {
 const hasSetsid = spawnSync('/bin/sh', ['-c', 'command -v setsid'], { stdio: 'ignore' }).status === 0;
 
 function makeFixture(withSetsid: boolean): { root: string; path: string } {
-  const root = mkdtempSync(join(tmpdir(), 'cez-test-env-launcher-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-test-env-launcher-'));
   fixtures.push(root);
   mkdirSync(join(root, '.ai/scripts'), { recursive: true });
   mkdirSync(join(root, '.ai/browsers'), { recursive: true });

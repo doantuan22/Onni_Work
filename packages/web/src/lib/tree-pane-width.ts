@@ -5,7 +5,7 @@
  * responsive CSS widths — so "no preference" is `null`, never a stored default.
  */
 
-export const TREE_PANE_WIDTH_STORAGE_KEY = 'cez-tree-pane-width'
+export const TREE_PANE_WIDTH_STORAGE_KEY = 'onni-tree-pane-width'
 
 /** Narrow enough to give the diff most of a laptop screen, wide enough for a deep path. */
 export const MIN_TREE_PANE_WIDTH = 160

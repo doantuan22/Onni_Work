@@ -50,8 +50,8 @@ describe('GET /api/v1/health — forge + capabilities', () => {
   const savedInstanceId = process.env.CEZ_INSTANCE_ID;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-health-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-health-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     delete process.env.CEZ_REMOTE;
     // #471: the inbox is opt-in, so an ambient CEZ_FOLLOWUPS on the dev box
     // must not decide what these assertions see.
@@ -325,8 +325,8 @@ describe('POST /api/v1/runs/:id/open-in-cli — hosted-mode defense in depth', (
   const savedRemote = process.env.CEZ_REMOTE;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-handoff-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-handoff-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     runId = store.createRun({ title: 't', workflow: 'quick-task', task: 'do it', steps: [] }).id;
     delete process.env.CEZ_REMOTE;
   });

@@ -20,7 +20,7 @@ import { ThemeProvider } from '@/components/theme-provider'
  * separate page would mean adding an account here and going elsewhere to say "use it".
  *
  * What this pins is the STORES. One click answers one question but writes two files — the runner and
- * the models to `~/.cezar/config.json`, the account to `~/.cezar/agent-accounts.json` — and neither
+ * the models to `~/.onni/config.json`, the account to `~/.onni/agent-accounts.json` — and neither
  * may ever reach the per-repo `/api/v1/config`, which is committable. A regression there would
  * publish which login someone works under.
  */
@@ -78,9 +78,9 @@ function serve({
 } = {}) {
   requests = []
   const state: WorkspaceConfigResponse = {
-    branding: { name: 'cezar', logoUrl: null },
+    branding: { name: 'onni', logoUrl: null },
     browseRoot: '~/',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
     skillsAutoUpdate: null,
     effectiveSkillsAutoUpdate: true,
     orgSkillsRepos: [],
@@ -150,7 +150,7 @@ function renderAccounts() {
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: [],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   render(
     <QueryClientProvider client={client}>
@@ -211,7 +211,7 @@ describe('Agent accounts → Defaults for new projects', () => {
         if (url === '/api/v1/workspace/config') {
           return json({
             browseRoot: '~/',
-            projectsDir: '~/cezar/projects',
+            projectsDir: '~/onni/projects',
             skillsAutoUpdate: null,
             effectiveSkillsAutoUpdate: true,
             composerDefaults: {

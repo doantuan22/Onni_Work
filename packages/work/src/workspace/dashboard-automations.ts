@@ -20,7 +20,7 @@ async function readJson(path: string, fallback: unknown): Promise<unknown> {
 /** Reads only the two existing files. Never opens a store/context, arms timers, or probes GitHub. */
 export async function readDashboardAutomations(root: string): Promise<DashboardAutomations> {
   if (!(await stat(root)).isDirectory()) throw new Error('Project folder unavailable');
-  const dir = join(root, '.ai/cezar');
+  const dir = join(root, '.ai/onni');
   const [rawDefinitions, rawState] = await Promise.all([
     readJson(join(dir, 'automations.json'), { version: 1, automations: [] }),
     readJson(join(dir, 'automation-state.json'), { version: 1, states: {} }),

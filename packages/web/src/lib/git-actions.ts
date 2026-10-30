@@ -225,7 +225,7 @@ export interface TrunkGitActionState {
   status: RunStatus
   /** The checkout's base branch, as the button names it. */
   base: string
-  /** Files outside `.ai/cezar/` the land would commit; undefined while loading. */
+  /** Files outside `.ai/onni/` the land would commit; undefined while loading. */
   uncommitted?: number
   /** Local commits the upstream lacks; null = no upstream. */
   unpushed?: number | null

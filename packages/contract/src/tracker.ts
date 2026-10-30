@@ -26,7 +26,7 @@ export const trackerCandidateSchema = z
   .strict();
 export type TrackerCandidate = z.infer<typeof trackerCandidateSchema>;
 
-/** The non-secret, server-resolved association persisted for one cezar project. */
+/** The non-secret, server-resolved association persisted for one onni project. */
 export const trackerAssociationSchema = z
   .object({
     kind: trackerKindSchema,

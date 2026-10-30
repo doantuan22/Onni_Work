@@ -90,13 +90,13 @@ describe('POST /api/v1/runs/:id/open-in — agent CLI resume vs fresh launch', (
   const savedHome = process.env.CEZ_HOME;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-open-in-cli-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-open-in-cli-'));
     // The account resolution behind the handoff (spec 2026-07-29-agent-profiles) reads
-    // `~/.cezar/agent-accounts.json`, so this suite must own one — without `CEZ_HOME` it would read the
+    // `~/.onni/agent-accounts.json`, so this suite must own one — without `CEZ_HOME` it would read the
     // developer's real workspace and its answers would depend on who ran it.
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-open-in-cli-home-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-open-in-cli-home-'));
     process.env.CEZ_HOME = home;
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     delete process.env.CEZ_REMOTE;
     mockOpenInTerminal.mockClear();
   });

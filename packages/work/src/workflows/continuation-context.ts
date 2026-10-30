@@ -9,9 +9,9 @@ const CONVERSATION_CONTEXT_CHARS = 60_000;
 function cleanText(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const text = value
-    .replace(/^CEZ:(?:PR=\d+|ISSUE=\d+|TITLE=.+)\s*$/gm, '')
-    .replace(/\s*CEZ:(?:DONE|MONITORING)\s*$/g, '')
-    .replace(/\s*CEZ:ASK[ \t]+\{[\s\S]*\}\s*$/g, '')
+    .replace(/^ONNI:(?:PR=\d+|ISSUE=\d+|TITLE=.+)\s*$/gm, '')
+    .replace(/\s*ONNI:(?:DONE|MONITORING)\s*$/g, '')
+    .replace(/\s*ONNI:ASK[ \t]+\{[\s\S]*\}\s*$/g, '')
     .trim();
   return text || undefined;
 }
@@ -46,7 +46,7 @@ export function freshContinuationContext(
   const v2Messages = events.flatMap((event) => {
     if (event.type !== 'item.completed' || typeof event.item !== 'object' || event.item === null) return [];
     const item = event.item as { kind?: unknown; role?: unknown; text?: unknown };
-    // `user-message` is Cezar's authoritative user transcript. Some normalized protocols also
+    // `user-message` is Onni's authoritative user transcript. Some normalized protocols also
     // echo user messages as items; accepting both would duplicate the instruction at hand-off.
     if (item.kind !== 'message' || item.role === 'user') return [];
     const text = cleanText(item.text);
@@ -84,12 +84,12 @@ export function freshContinuationContext(
     `- ${step.id} (${step.kind}): ${step.status}${step.error ? ` — ${step.error}` : ''}`,
   );
   return [
-    'You are continuing an existing Cezar task in a fresh provider session. The previous provider session cannot be resumed. Use this persisted Cezar state and conversation as the hand-off; inspect the existing worktree before changing anything.',
+    'You are continuing an existing Onni task in a fresh provider session. The previous provider session cannot be resumed. Use this persisted Onni state and conversation as the hand-off; inspect the existing worktree before changing anything.',
     '',
     '## Original task',
     withAttachments(run.task.trim() || '(given as attachments only)', attachmentLines(run.taskImages, attachmentsDir)),
     '',
-    '## Cezar task state before this continuation',
+    '## Onni task state before this continuation',
     // A queued/running status is this continuation's own bookkeeping, not where the task stood;
     // the steps below carry that.
     ...(run.status === 'queued' || run.status === 'running' ? [] : [`Status: ${run.status}`]),

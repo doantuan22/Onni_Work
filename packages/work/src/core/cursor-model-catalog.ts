@@ -20,7 +20,7 @@ const MAX_MODELS = 500;
 /**
  * Parse `agent models` / `agent --list-models` text.
  * Lines look like: `composer-2.5 - Composer 2.5`. Skip headers, tips, and the
- * `auto` id (cezar already exposes empty-id auto as "no --model flag").
+ * `auto` id (onni already exposes empty-id auto as "no --model flag").
  */
 export function parseCursorModelsOutput(text: string): ModelOption[] {
   const models: ModelOption[] = [];

@@ -33,10 +33,10 @@ describe('RunManager agent-profile resolution', () => {
   const seam = () => manager as unknown as Seam;
 
   beforeEach(async () => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-profile-wiring-home-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-profile-wiring-repo-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profile-wiring-home-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-profile-wiring-repo-'));
     process.env.CEZ_HOME = home;
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     await registerProject(repoRoot);
   });

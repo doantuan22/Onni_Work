@@ -1,5 +1,5 @@
 /**
- * `cez task …` — the CLI a running agent uses to dispatch other tasks and to report
+ * `onni task …` — the CLI a running agent uses to dispatch other tasks and to report
  * (spec `.ai/specs/2026-09-10-dispatch.md`).
  *
  * It is a thin HTTP client over the dispatch family, addressed by three variables the engine puts
@@ -24,16 +24,16 @@ export interface TaskCliIo {
   error: (line: string) => void;
 }
 
-const USAGE = `cez task — dispatch cezar tasks from inside a task (on by default; CEZ_DISPATCH=0 on the cockpit turns it off)
+const USAGE = `onni task — dispatch onni tasks from inside a task (on by default; CEZ_DISPATCH=0 on the cockpit turns it off)
 
-  cez task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch|run>]
+  onni task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch|run>]
                   [--scope "…"] [--budget <usd>] [--success "…"] [--evidence "…"] [--tools A,B]
                   [--runner ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>]
-  cez task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
+  onni task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
                   [--verdict approve|changes|reject] [--suggestions "…"]… [--confidence <0-1>]
                   [--side-effect "…"]… [--error "…"]… [--next "…"]
-  cez task list                       the tree this task belongs to, with status and cost
-  cez task tree <run id>              the tree rooted at (or containing) another run`;
+  onni task list                       the tree this task belongs to, with status and cost
+  onni task tree <run id>              the tree rooted at (or containing) another run`;
 
 function base(env: TaskCliEnv): { url: string; scope: string } | null {
   const url = env.CEZ_API_URL?.replace(/\/+$/, '');
@@ -72,8 +72,8 @@ export async function runTaskCommand(
   const api = base(env);
   if (!api) {
     io.error(missingCockpitMessage({
-      command: 'cez task',
-      example: 'cez task tree <run id>',
+      command: 'onni task',
+      example: 'onni task tree <run id>',
       insideTask: 'this command only works inside a task run by a cockpit with dispatch on (it is on by default; CEZ_DISPATCH=0 turns it off). Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is unavailable.',
     }, env));
     return 2;
@@ -105,7 +105,7 @@ export async function runTaskCommand(
           },
         });
         const objective = positionals.join(' ').trim();
-        if (!objective) throw new Error('an objective is required: cez task create "<objective>"');
+        if (!objective) throw new Error('an objective is required: onni task create "<objective>"');
         if (!env.CEZ_TASK_ID) throw new Error('CEZ_TASK_ID is not set — only a running task can dispatch');
         const body = {
           objective,
@@ -129,7 +129,7 @@ export async function runTaskCommand(
         if (!response.ok) throw new Error(`dispatch refused — ${await readError(response)}`);
         const created = (await response.json()) as { id: string; branch?: string };
         io.log(`dispatched ${created.id}${created.branch ? ` on branch ${created.branch}` : ''}`);
-        io.log('It reports into this session when it settles. End your turn with CEZ:MONITORING to wait for it.');
+        io.log('It reports into this session when it settles. End your turn with ONNI:MONITORING to wait for it.');
         return 0;
       }
       case 'report': {
@@ -205,11 +205,11 @@ export async function runTaskCommand(
         return 0;
       }
       default:
-        io.error(`cez task: unknown command "${command}"\n\n${USAGE}`);
+        io.error(`onni task: unknown command "${command}"\n\n${USAGE}`);
         return 2;
     }
   } catch (error) {
-    io.error(`cez task: ${error instanceof Error ? error.message : String(error)}`);
+    io.error(`onni task: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
 }

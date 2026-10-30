@@ -165,7 +165,7 @@ describe('describeRunNotification', () => {
     expect(describeRunNotification(run({ status: 'waiting' }))).toEqual({
       title: 'Normalize the agent-event protocol',
       body: 'Task needs you',
-      tag: 'cezar-run-r1',
+      tag: 'onni-run-r1',
     })
     expect(
       describeRunNotification(run({ status: 'review', titleSummary: 'Protocol cleanup' })).title,

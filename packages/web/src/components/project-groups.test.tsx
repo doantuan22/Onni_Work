@@ -35,9 +35,9 @@ function storedCollapsed(): unknown {
 
 function project(over: Partial<ProjectListEntry> = {}): ProjectListEntry {
   return {
-    id: 'cezar',
-    name: 'cezar',
-    root: '/home/me/Projects/cezar',
+    id: 'onni',
+    name: 'onni',
+    root: '/home/me/Projects/onni',
     addedAt: '2026-07-01T00:00:00.000Z',
     lastOpenedAt: '2026-07-20T12:00:00.000Z',
     source: 'local',
@@ -98,7 +98,7 @@ function serve(routes: Record<string, unknown>, uiState: Record<string, unknown>
 
 function renderGroups(
   projects: ProjectListEntry[],
-  entry = '/p/cezar/',
+  entry = '/p/onni/',
   // #801: workspace-wide, unlike the per-project forge gate — one env var on the one server that
   // serves every group. Off by default here, exactly as a default server reports it.
   { automations = false }: { automations?: boolean } = {},
@@ -107,7 +107,7 @@ function renderGroups(
     <QueryClientProvider client={createQueryClient()}>
       <MemoryRouter initialEntries={[entry]}>
         <ListViewProvider>
-          <ProjectGroups projects={projects} bootProjectId="cezar" automationsAvailable={automations} />
+          <ProjectGroups projects={projects} bootProjectId="onni" automationsAvailable={automations} />
         </ListViewProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -152,30 +152,30 @@ function taskLinks(id: string): HTMLAnchorElement[] {
 describe('ProjectGroups', () => {
   it('caps an expanded group at 10 rows and links More… at that project’s tasks pane', async () => {
     const runs = Array.from({ length: 15 }, () => run())
-    serve({ '/api/v1/p/cezar/runs': runs })
+    serve({ '/api/v1/p/onni/runs': runs })
     renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
-    await waitFor(() => expect(taskLinks('cezar').length).toBeGreaterThan(0))
+    await waitFor(() => expect(taskLinks('onni').length).toBeGreaterThan(0))
     // Ten of fifteen — the spec's "10 most recent tasks", counted across buckets.
-    expect(taskLinks('cezar')).toHaveLength(10)
+    expect(taskLinks('onni')).toHaveLength(10)
 
-    const more = within(group('cezar')).getByRole('link', { name: 'More…' })
-    expect(more.getAttribute('href')).toBe('/p/cezar/')
+    const more = within(group('onni')).getByRole('link', { name: 'More…' })
+    expect(more.getAttribute('href')).toBe('/p/onni/')
   })
 
   it('orders groups by lastOpenedAt and only fetches the expanded one', async () => {
-    serve({ '/api/v1/p/cezar/runs': [] })
+    serve({ '/api/v1/p/onni/runs': [] })
     renderGroups([
       project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-18T00:00:00.000Z' }),
       project(),
     ])
 
-    await waitFor(() => expect(disclosure('cezar').getAttribute('aria-expanded')).toBe('true'))
+    await waitFor(() => expect(disclosure('onni').getAttribute('aria-expanded')).toBe('true'))
     expect(
       Array.from(document.querySelectorAll('[data-slot="project-group"]')).map((el) =>
         el.getAttribute('data-project'),
       ),
-    ).toEqual(['cezar', 'shop'])
+    ).toEqual(['onni', 'shop'])
     // The collapsed group costs one registry row, never a runs request.
     expect(disclosure('shop').getAttribute('aria-expanded')).toBe('false')
     const asked = fetchMock.mock.calls.map((call) => String(call[0]))
@@ -184,7 +184,7 @@ describe('ProjectGroups', () => {
 
   it('renders each group’s nav scoped to that project', async () => {
     storeCollapsed({ shop: false })
-    serve({ '/api/v1/p/cezar/runs': [], '/api/v1/p/shop/runs': [] })
+    serve({ '/api/v1/p/onni/runs': [], '/api/v1/p/shop/runs': [] })
     renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
     await waitFor(() => expect(disclosure('shop').getAttribute('aria-expanded')).toBe('true'))
@@ -197,20 +197,20 @@ describe('ProjectGroups', () => {
       '/p/shop/workflows',
       '/p/shop/settings',
     ])
-    // Only the group that owns the URL lights a nav row — `/p/cezar/` is the Tasks area of
+    // Only the group that owns the URL lights a nav row — `/p/onni/` is the Tasks area of
     // exactly one project, not of every project whose nav lists a Tasks row.
     expect(within(shopNav).queryByRole('link', { current: 'page' })).toBeNull()
-    const cezarNav = within(group('cezar')).getByRole('navigation', { name: 'cezar navigation' })
-    expect(within(cezarNav).getByRole('link', { current: 'page' }).textContent).toBe('Tasks')
+    const onniNav = within(group('onni')).getByRole('navigation', { name: 'onni navigation' })
+    expect(within(onniNav).getByRole('link', { current: 'page' }).textContent).toBe('Tasks')
   })
 
   it("gates each group's GitHub tab on that project's own forge (#698)", async () => {
     // Two expanded groups, one with a GitHub remote and one without: the GitHub nav item must
     // follow each entry's own `forge` field, not one workspace-wide answer — the exact failure
-    // was every group hiding (or showing) GitHub based on the folder cezar was LAUNCHED in.
+    // was every group hiding (or showing) GitHub based on the folder onni was LAUNCHED in.
     storeCollapsed({ plain: false })
     serve({
-      '/api/v1/p/cezar/runs': [],
+      '/api/v1/p/onni/runs': [],
       '/api/v1/p/plain/runs': [],
     })
     renderGroups([
@@ -219,8 +219,8 @@ describe('ProjectGroups', () => {
     ])
 
     await waitFor(() => expect(disclosure('plain').getAttribute('aria-expanded')).toBe('true'))
-    const cezarNav = within(group('cezar')).getByRole('navigation', { name: 'cezar navigation' })
-    expect(within(cezarNav).getByRole('link', { name: 'GitHub' }).getAttribute('href')).toBe('/p/cezar/github')
+    const onniNav = within(group('onni')).getByRole('navigation', { name: 'onni navigation' })
+    expect(within(onniNav).getByRole('link', { name: 'GitHub' }).getAttribute('href')).toBe('/p/onni/github')
     const plainNav = within(group('plain')).getByRole('navigation', { name: 'plain navigation' })
     expect(within(plainNav).queryByRole('link', { name: 'GitHub' })).toBeNull()
   })
@@ -229,12 +229,12 @@ describe('ProjectGroups', () => {
   // another hides it — and with the opt-in off, none of them offers it at all.
   it("gates every group's Automations tab on the workspace capability (#801)", async () => {
     storeCollapsed({ shop: false })
-    serve({ '/api/v1/p/cezar/runs': [], '/api/v1/p/shop/runs': [] })
+    serve({ '/api/v1/p/onni/runs': [], '/api/v1/p/shop/runs': [] })
     const shop = project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })
-    const view = renderGroups([project(), shop], '/p/cezar/', { automations: true })
+    const view = renderGroups([project(), shop], '/p/onni/', { automations: true })
 
     await waitFor(() => expect(disclosure('shop').getAttribute('aria-expanded')).toBe('true'))
-    for (const id of ['cezar', 'shop']) {
+    for (const id of ['onni', 'shop']) {
       const nav = within(group(id)).getByRole('navigation', { name: `${id} navigation` })
       expect(within(nav).getByRole('link', { name: 'Automations' }).getAttribute('href'))
         .toBe(`/p/${id}/automations`)
@@ -243,29 +243,29 @@ describe('ProjectGroups', () => {
     view.unmount()
     renderGroups([project(), shop])
     await waitFor(() => expect(disclosure('shop').getAttribute('aria-expanded')).toBe('true'))
-    for (const id of ['cezar', 'shop']) {
+    for (const id of ['onni', 'shop']) {
       const nav = within(group(id)).getByRole('navigation', { name: `${id} navigation` })
       expect(within(nav).queryByRole('link', { name: 'Automations' })).toBeNull()
     }
   })
 
   it('round-trips a collapse through this browser’s storage, never the server', async () => {
-    serve({ '/api/v1/p/cezar/runs': [] })
+    serve({ '/api/v1/p/onni/runs': [] })
     renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
-    await waitFor(() => expect(disclosure('cezar').getAttribute('aria-expanded')).toBe('true'))
+    await waitFor(() => expect(disclosure('onni').getAttribute('aria-expanded')).toBe('true'))
     // The drawer DOES read workspace ui-state once, for the hand-picked project order (#952) —
     // what must not happen is a toggle costing a request, so measure from here.
     const uiStateReadsBefore = uiStateRequests()
 
-    fireEvent.click(disclosure('cezar'))
-    await waitFor(() => expect(disclosure('cezar').getAttribute('aria-expanded')).toBe('false'))
-    expect(storedCollapsed()).toEqual({ cezar: true })
+    fireEvent.click(disclosure('onni'))
+    await waitFor(() => expect(disclosure('onni').getAttribute('aria-expanded')).toBe('false'))
+    expect(storedCollapsed()).toEqual({ onni: true })
 
     // …and expanding it again writes the other way, composing with the entry already stored.
-    fireEvent.click(disclosure('cezar'))
-    await waitFor(() => expect(disclosure('cezar').getAttribute('aria-expanded')).toBe('true'))
-    expect(storedCollapsed()).toEqual({ cezar: false })
+    fireEvent.click(disclosure('onni'))
+    await waitFor(() => expect(disclosure('onni').getAttribute('aria-expanded')).toBe('true'))
+    expect(storedCollapsed()).toEqual({ onni: false })
 
     // Not one request either way: the collapse map never leaves this browser.
     expect(fetchMock.mock.calls.map(([, init]) => init?.method)).not.toContain('PUT')
@@ -273,24 +273,24 @@ describe('ProjectGroups', () => {
   })
 
   it('starts from the stored collapse rather than the active-project default', async () => {
-    storeCollapsed({ cezar: true })
+    storeCollapsed({ onni: true })
     serve({
-      '/api/v1/p/cezar/runs': [],
+      '/api/v1/p/onni/runs': [],
     })
     renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
     // The active project, pinned shut by the user, stays shut across a reload.
-    await waitFor(() => expect(disclosure('cezar').getAttribute('aria-expanded')).toBe('false'))
+    await waitFor(() => expect(disclosure('onni').getAttribute('aria-expanded')).toBe('false'))
   })
 
   it('badges a group with its needs-you count', async () => {
     serve({
-      '/api/v1/p/cezar/runs': [run({ status: 'waiting' }), run({ status: 'review' }), run()],
+      '/api/v1/p/onni/runs': [run({ status: 'waiting' }), run({ status: 'review' }), run()],
     })
     renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
     await waitFor(() =>
-      expect(group('cezar').querySelector('[data-slot="project-attention"]')?.textContent).toBe('2'),
+      expect(group('onni').querySelector('[data-slot="project-attention"]')?.textContent).toBe('2'),
     )
     // Nothing waiting, nothing to badge — a "0" here is noise, not information.
     expect(group('shop').querySelector('[data-slot="project-attention"]')).toBeNull()
@@ -301,25 +301,25 @@ describe('ProjectGroups', () => {
     // live under the 'default' scope key. The boot group must share that entry, or its list and
     // needs-you badge freeze at whatever the expand-time fetch answered.
     const client = createQueryClient()
-    serve({ '/api/v1/p/cezar/runs': [] })
+    serve({ '/api/v1/p/onni/runs': [] })
     render(
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/p/cezar/']}>
+        <MemoryRouter initialEntries={['/p/onni/']}>
           <ListViewProvider>
-            <ProjectGroups projects={[project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })]} bootProjectId="cezar" />
+            <ProjectGroups projects={[project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })]} bootProjectId="onni" />
           </ListViewProvider>
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    await waitFor(() => expect(disclosure('cezar').getAttribute('aria-expanded')).toBe('true'))
-    expect(taskLinks('cezar')).toHaveLength(0)
+    await waitFor(() => expect(disclosure('onni').getAttribute('aria-expanded')).toBe('true'))
+    expect(taskLinks('onni')).toHaveLength(0)
 
     // A live `run` event lands in the cache exactly where global-events writes it: under
     // ['default', 'runs', 'list'], never under the boot project's own id.
     client.setQueryData(['default', 'runs', 'list'], [run({ status: 'waiting' })])
 
-    await waitFor(() => expect(taskLinks('cezar')).toHaveLength(1))
-    expect(group('cezar').querySelector('[data-slot="project-attention"]')?.textContent).toBe('1')
+    await waitFor(() => expect(taskLinks('onni')).toHaveLength(1))
+    expect(group('onni').querySelector('[data-slot="project-attention"]')?.textContent).toBe('1')
     // The non-boot group keeps its own per-project key untouched.
     expect(taskLinks('shop')).toHaveLength(0)
   })
@@ -330,13 +330,13 @@ describe('ProjectGroups', () => {
       run({ id: 'kept-a', pinned: true }),
       run({ id: 'kept-b', pinned: true }),
     ]
-    serve({ '/api/v1/p/cezar/runs': runs })
+    serve({ '/api/v1/p/onni/runs': runs })
     renderGroups([project()])
 
-    await waitFor(() => expect(taskLinks('cezar').length).toBeGreaterThan(0))
+    await waitFor(() => expect(taskLinks('onni').length).toBeGreaterThan(0))
     // Twelve: both pins, plus the ten the ordinary buckets are still allowed.
-    expect(taskLinks('cezar')).toHaveLength(12)
-    const pinnedBucket = group('cezar').querySelector('[data-bucket="Pinned"]')
+    expect(taskLinks('onni')).toHaveLength(12)
+    const pinnedBucket = group('onni').querySelector('[data-bucket="Pinned"]')
     expect(pinnedBucket?.querySelectorAll('[data-slot="task-row"]')).toHaveLength(2)
   })
 
@@ -351,20 +351,20 @@ describe('ProjectGroups', () => {
         posts.push(path)
         return json({})
       }
-      if (path === '/api/v1/p/cezar/runs') return json([run({ id: 'other-project-task' })])
+      if (path === '/api/v1/p/onni/runs') return json([run({ id: 'other-project-task' })])
       if (path === '/api/v1/p/shop/runs') return json([])
       return json({ error: 'not found' }, 404)
     })
     // Standing in `shop`, with the boot project's group open beside it.
-    storeCollapsed({ cezar: false })
+    storeCollapsed({ onni: false })
     renderGroups(
       [project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })],
       '/p/shop/',
     )
 
-    await waitFor(() => expect(taskLinks('cezar')).toHaveLength(1))
-    fireEvent.click(within(group('cezar')).getByRole('button', { name: 'Pin task' }))
-    await waitFor(() => expect(posts).toEqual(['/api/v1/p/cezar/runs/other-project-task/pin']))
+    await waitFor(() => expect(taskLinks('onni')).toHaveLength(1))
+    fireEvent.click(within(group('onni')).getByRole('button', { name: 'Pin task' }))
+    await waitFor(() => expect(posts).toEqual(['/api/v1/p/onni/runs/other-project-task/pin']))
   })
 
   it("archives through the row's OWN project, not the one the URL names", async () => {
@@ -376,27 +376,27 @@ describe('ProjectGroups', () => {
         posts.push({ path, body: JSON.parse(String(init.body)) })
         return json({})
       }
-      if (path === '/api/v1/p/cezar/runs') return json([run({ id: 'other-project-task', status: 'done' })])
+      if (path === '/api/v1/p/onni/runs') return json([run({ id: 'other-project-task', status: 'done' })])
       if (path === '/api/v1/p/shop/runs') return json([])
       return json({ error: 'not found' }, 404)
     })
-    storeCollapsed({ cezar: false })
+    storeCollapsed({ onni: false })
     renderGroups(
       [project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })],
       '/p/shop/',
     )
 
-    await waitFor(() => expect(taskLinks('cezar')).toHaveLength(1))
-    fireEvent.click(within(group('cezar')).getByRole('button', { name: 'Archive task' }))
+    await waitFor(() => expect(taskLinks('onni')).toHaveLength(1))
+    fireEvent.click(within(group('onni')).getByRole('button', { name: 'Archive task' }))
     await waitFor(() =>
       expect(posts).toEqual([
-        { path: '/api/v1/p/cezar/runs/other-project-task/archive', body: { archived: true } },
+        { path: '/api/v1/p/onni/runs/other-project-task/archive', body: { archived: true } },
       ]),
     )
   })
 
   it('renders a missing project greyed and inert, with no nav behind it', async () => {
-    serve({ '/api/v1/p/cezar/runs': [] })
+    serve({ '/api/v1/p/onni/runs': [] })
     renderGroups([project(), project({ id: 'gone', name: 'old-spike', status: 'missing', lastOpenedAt: '2026-07-01T00:00:00.000Z' })])
 
     await waitFor(() => expect(group('gone')).not.toBeNull())
@@ -414,7 +414,7 @@ describe('ProjectGroups', () => {
     serve({ '/api/v1/workspace/ui-state': {}, '/api/v1/p/scratch/runs': [] })
     renderGroups(
       [
-        // Saved projects have timestamps; the folder cezar was started in has none,
+        // Saved projects have timestamps; the folder onni was started in has none,
         // so the plain lastOpenedAt sort would bury it at the bottom.
         project(),
         project({
@@ -433,7 +433,7 @@ describe('ProjectGroups', () => {
       Array.from(document.querySelectorAll('[data-slot="project-group"]')).map((el) =>
         el.getAttribute('data-project'),
       ),
-    ).toEqual(['scratch', 'cezar'])
+    ).toEqual(['scratch', 'onni'])
     expect(group('scratch').querySelector('[data-slot="project-unregistered"]')?.textContent).toBe(
       'not saved',
     )
@@ -452,20 +452,20 @@ describe('ProjectGroups', () => {
    * user reads an all-projects table says the page is about that project when it is not.
    */
   it('marks no project as selected on a page that belongs to none', async () => {
-    serve({ '/api/v1/p/cezar/runs': [] })
+    serve({ '/api/v1/p/onni/runs': [] })
     renderGroups(
       [project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })],
       '/tasks',
     )
 
-    await waitFor(() => expect(group('cezar')).not.toBeNull())
-    for (const id of ['cezar', 'shop']) {
+    await waitFor(() => expect(group('onni')).not.toBeNull())
+    for (const id of ['onni', 'shop']) {
       expect(group(id).hasAttribute('data-active')).toBe(false)
       expect(group(id).querySelector('[aria-current="page"]')).toBeNull()
     }
     // The boot group still OPENS by default: landing on a global page must not fold the whole
     // sidebar shut — that is a different question from which one is selected.
-    expect(disclosure('cezar').getAttribute('aria-expanded')).toBe('true')
+    expect(disclosure('onni').getAttribute('aria-expanded')).toBe('true')
   })
 
   /**
@@ -487,37 +487,37 @@ describe('ProjectGroups', () => {
       )
 
     it('renders the stored order instead of the lastOpenedAt sort', async () => {
-      serve({ '/api/v1/p/cezar/runs': [] }, { sidebar: { projectOrder: ['blog', 'cezar', 'shop'] } })
+      serve({ '/api/v1/p/onni/runs': [] }, { sidebar: { projectOrder: ['blog', 'onni', 'shop'] } })
       renderGroups(three())
 
-      await waitFor(() => expect(renderedOrder()).toEqual(['blog', 'cezar', 'shop']))
+      await waitFor(() => expect(renderedOrder()).toEqual(['blog', 'onni', 'shop']))
     })
 
     it('floats a project registered since the last drag to the top', async () => {
-      // `cezar` was never placed, so it is the one that just arrived — visible, and one drag from
+      // `onni` was never placed, so it is the one that just arrived — visible, and one drag from
       // wherever the user wants it, rather than buried under a curated list.
-      serve({ '/api/v1/p/cezar/runs': [] }, { sidebar: { projectOrder: ['blog', 'shop'] } })
+      serve({ '/api/v1/p/onni/runs': [] }, { sidebar: { projectOrder: ['blog', 'shop'] } })
       renderGroups(three())
 
-      await waitFor(() => expect(renderedOrder()).toEqual(['cezar', 'blog', 'shop']))
+      await waitFor(() => expect(renderedOrder()).toEqual(['onni', 'blog', 'shop']))
     })
 
     it('ignores stored ids that are no longer registered', async () => {
       serve(
-        { '/api/v1/p/cezar/runs': [] },
-        { sidebar: { projectOrder: ['ghost', 'shop', 'cezar', 'blog'] } },
+        { '/api/v1/p/onni/runs': [] },
+        { sidebar: { projectOrder: ['ghost', 'shop', 'onni', 'blog'] } },
       )
       renderGroups(three())
 
-      await waitFor(() => expect(renderedOrder()).toEqual(['shop', 'cezar', 'blog']))
+      await waitFor(() => expect(renderedOrder()).toEqual(['shop', 'onni', 'blog']))
     })
 
     it('gives every group a labelled grip that says where it is', async () => {
-      serve({ '/api/v1/p/cezar/runs': [] }, { sidebar: { projectOrder: ['cezar', 'shop', 'blog'] } })
+      serve({ '/api/v1/p/onni/runs': [] }, { sidebar: { projectOrder: ['onni', 'shop', 'blog'] } })
       renderGroups(three())
 
-      await waitFor(() => expect(grip('cezar')?.disabled).toBe(false))
-      expect(grip('cezar')?.getAttribute('aria-label')).toBe('Reorder cezar, position 1 of 3')
+      await waitFor(() => expect(grip('onni')?.disabled).toBe(false))
+      expect(grip('onni')?.getAttribute('aria-label')).toBe('Reorder onni, position 1 of 3')
       expect(grip('blog')?.getAttribute('aria-label')).toBe('Reorder blog, position 3 of 3')
       // A real focusable control, which is what dnd-kit's Space/arrows/Space path lifts from.
       expect(grip('shop')?.tagName).toBe('BUTTON')
@@ -531,24 +531,24 @@ describe('ProjectGroups', () => {
       // to reconcile, had a drag affordance nobody could see. Asserted on the class list rather
       // than a computed style because jsdom resolves no media queries at all: what is being
       // pinned is that the coarse-pointer reveal is PRESENT, and that `disabled` still undoes it.
-      serve({ '/api/v1/p/cezar/runs': [] }, { sidebar: { projectOrder: ['cezar', 'shop', 'blog'] } })
+      serve({ '/api/v1/p/onni/runs': [] }, { sidebar: { projectOrder: ['onni', 'shop', 'blog'] } })
       renderGroups(three())
 
-      await waitFor(() => expect(grip('cezar')?.disabled).toBe(false))
-      const enabled = grip('cezar')!.className
+      await waitFor(() => expect(grip('onni')?.disabled).toBe(false))
+      const enabled = grip('onni')!.className
       expect(enabled).toContain('opacity-0')
       expect(enabled).toContain('[@media(hover:none)]:opacity-100')
 
       cleanup()
       // A grip with nothing to do must not be the one thing a phone DOES show.
-      serve({ '/api/v1/p/cezar/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [] })
       renderGroups([project()])
-      await waitFor(() => expect(grip('cezar')?.disabled).toBe(true))
-      expect(grip('cezar')!.className).toContain('[@media(hover:none)]:opacity-0')
+      await waitFor(() => expect(grip('onni')?.disabled).toBe(true))
+      expect(grip('onni')!.className).toContain('[@media(hover:none)]:opacity-0')
     })
 
     it('offers no grip on a project whose folder is gone', async () => {
-      serve({ '/api/v1/p/cezar/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [] })
       renderGroups([
         project(),
         project({ id: 'gone', name: 'old-spike', status: 'missing', lastOpenedAt: '2026-07-01T00:00:00.000Z' }),
@@ -557,15 +557,15 @@ describe('ProjectGroups', () => {
       await waitFor(() => expect(group('gone')).not.toBeNull())
       expect(grip('gone')).toBeNull()
       // It still holds its place in the list rather than being pushed anywhere special.
-      expect(renderedOrder()).toEqual(['cezar', 'gone'])
+      expect(renderedOrder()).toEqual(['onni', 'gone'])
     })
 
     it('cannot reorder a single-project registry', async () => {
-      serve({ '/api/v1/p/cezar/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [] })
       renderGroups([project()])
 
-      await waitFor(() => expect(group('cezar')).not.toBeNull())
-      expect(grip('cezar')?.disabled).toBe(true)
+      await waitFor(() => expect(group('onni')).not.toBeNull())
+      expect(grip('onni')?.disabled).toBe(true)
     })
 
     it('disables the grips until the workspace ui-state has answered', async () => {
@@ -574,14 +574,14 @@ describe('ProjectGroups', () => {
       fetchMock.mockImplementation(async (input) => {
         const url = String(input)
         if (url === '/api/v1/workspace/ui-state') return new Promise<never>(() => {})
-        return json(url === '/api/v1/p/cezar/runs' ? [] : { error: 'not found' }, 200)
+        return json(url === '/api/v1/p/onni/runs' ? [] : { error: 'not found' }, 200)
       })
       renderGroups(three())
 
-      await waitFor(() => expect(grip('cezar')).not.toBeNull())
-      expect(grip('cezar')?.disabled).toBe(true)
+      await waitFor(() => expect(grip('onni')).not.toBeNull())
+      expect(grip('onni')?.disabled).toBe(true)
       // …and the fallback order still renders, so the drawer is never blank on a slow read.
-      expect(renderedOrder()).toEqual(['cezar', 'shop', 'blog'])
+      expect(renderedOrder()).toEqual(['onni', 'shop', 'blog'])
     })
   })
 
@@ -594,16 +594,16 @@ describe('ProjectGroups', () => {
 
     await waitFor(() => expect(group('shop')).not.toBeNull())
     expect(group('shop').hasAttribute('data-active')).toBe(true)
-    expect(group('cezar').hasAttribute('data-active')).toBe(false)
+    expect(group('onni').hasAttribute('data-active')).toBe(false)
     // The selected project's own row says so — in the accessibility tree, and visibly through
     // the ONE background the chevron and the name share (the same `bg-muted` hover paints, which
     // is all the distinction this row needs: hover belongs to the row under the pointer).
     expect(header('shop').getAttribute('aria-current')).toBe('true')
-    expect(header('cezar').getAttribute('aria-current')).toBeNull()
+    expect(header('onni').getAttribute('aria-current')).toBeNull()
     // `classList`, not a substring of `className`: every row carries `hover:bg-muted`, which a
     // `toContain('bg-muted')` would happily match on the unselected group too.
     expect(headerRow('shop').classList.contains('bg-muted')).toBe(true)
-    expect(headerRow('cezar').classList.contains('bg-muted')).toBe(false)
+    expect(headerRow('onni').classList.contains('bg-muted')).toBe(false)
     // The highlight is the WRAPPER's, never a control's: a background on the chevron or on the
     // name alone is what split the selected row into two tiles with a seam between them.
     expect(disclosure('shop').classList.contains('bg-muted')).toBe(false)
@@ -614,7 +614,7 @@ describe('ProjectGroups', () => {
     expect(
       within(group('shop')).getByRole('link', { name: 'Git' }).getAttribute('aria-current'),
     ).toBe('page')
-    expect(group('cezar').querySelector('[aria-current="page"]')).toBeNull()
+    expect(group('onni').querySelector('[aria-current="page"]')).toBeNull()
   })
 
   /**
@@ -629,7 +629,7 @@ describe('ProjectGroups', () => {
    */
   describe('selecting a project', () => {
     it('navigates into the project the name names, and leaves the disclosure alone', async () => {
-      serve({ '/api/v1/p/cezar/runs': [], '/api/v1/p/shop/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [], '/api/v1/p/shop/runs': [] })
       renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
       await waitFor(() => expect(group('shop')).not.toBeNull())
@@ -641,7 +641,7 @@ describe('ProjectGroups', () => {
 
       fireEvent.click(header('shop'))
       await waitFor(() => expect(group('shop').hasAttribute('data-active')).toBe(true))
-      expect(group('cezar').hasAttribute('data-active')).toBe(false)
+      expect(group('onni').hasAttribute('data-active')).toBe(false)
       expect(header('shop').getAttribute('aria-current')).toBe('true')
     })
 
@@ -650,7 +650,7 @@ describe('ProjectGroups', () => {
       // arrival, but a stored answer beats the default (`isProjectCollapsed`), so without the
       // explicit write the user would land in a project whose group is empty.
       storeCollapsed({ shop: true })
-      serve({ '/api/v1/p/cezar/runs': [], '/api/v1/p/shop/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [], '/api/v1/p/shop/runs': [] })
       renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
       await waitFor(() => expect(disclosure('shop').getAttribute('aria-expanded')).toBe('false'))
@@ -664,7 +664,7 @@ describe('ProjectGroups', () => {
     })
 
     it('costs the server nothing — selection is a route change, collapse is this browser’s', async () => {
-      serve({ '/api/v1/p/cezar/runs': [], '/api/v1/p/shop/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [], '/api/v1/p/shop/runs': [] })
       renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
       await waitFor(() => expect(group('shop')).not.toBeNull())
@@ -678,20 +678,20 @@ describe('ProjectGroups', () => {
     })
 
     it('discloses without selecting — the chevron never moves you', async () => {
-      serve({ '/api/v1/p/cezar/runs': [], '/api/v1/p/shop/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [], '/api/v1/p/shop/runs': [] })
       renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
 
       await waitFor(() => expect(disclosure('shop').getAttribute('aria-expanded')).toBe('false'))
       fireEvent.click(disclosure('shop'))
 
       await waitFor(() => expect(disclosure('shop').getAttribute('aria-expanded')).toBe('true'))
-      // Peeked at, not moved into: `cezar` is still the project the URL names.
-      expect(group('cezar').hasAttribute('data-active')).toBe(true)
+      // Peeked at, not moved into: `onni` is still the project the URL names.
+      expect(group('onni').hasAttribute('data-active')).toBe(true)
       expect(group('shop').hasAttribute('data-active')).toBe(false)
     })
 
     it('offers neither control on a project whose folder is gone', async () => {
-      serve({ '/api/v1/p/cezar/runs': [] })
+      serve({ '/api/v1/p/onni/runs': [] })
       renderGroups([
         project(),
         project({ id: 'shop', name: 'shop', status: 'missing', lastOpenedAt: '2026-07-19T00:00:00.000Z' }),

@@ -25,7 +25,7 @@ describe('agent profile resolution', () => {
   let home: string;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-profiles-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-profiles-'));
     process.env.CEZ_HOME = home;
   });
 

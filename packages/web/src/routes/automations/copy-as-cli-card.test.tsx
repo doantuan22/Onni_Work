@@ -21,9 +21,9 @@ describe('CopyAsCliCard', () => {
         <Toaster />
       </>,
     )
-    const line = 'cez automation add --name "Nightly" --cron "0 4 * * *" --workflow "quick-task" --autonomous --prompt "Bump"'
+    const line = 'onni automation add --name "Nightly" --cron "0 4 * * *" --workflow "quick-task" --autonomous --prompt "Bump"'
     expect(screen.getByText(line)).not.toBeNull()
-    expect(screen.getByText(/cez automation schema/)).not.toBeNull()
+    expect(screen.getByText(/onni automation schema/)).not.toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(line))
     await waitFor(() => expect(screen.getByText('Copied to the clipboard.')).not.toBeNull())
@@ -33,6 +33,6 @@ describe('CopyAsCliCard', () => {
     render(
       <CopyAsCliCard definition={{ name: 'Triage', kind: 'github', events: ['issue.opened'], intervalSeconds: 300, filters: { assignees: ['me'], lookbackDays: 7, maxRecords: 25 }, task: { prompt: 'p' } }} />,
     )
-    expect(screen.getByText(/^cez automation create --json/)).not.toBeNull()
+    expect(screen.getByText(/^onni automation create --json/)).not.toBeNull()
   })
 })

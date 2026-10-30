@@ -25,9 +25,9 @@ describe('the ui-state API — skillUsage (#408)', () => {
 
   beforeEach(() => {
     rmSync(legacyWorkspaceStatePath, { force: true });
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-uistateapi-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-uistateapi-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     // The ui-state routes never touch the manager — an empty stub is honest.
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test' });
   });
@@ -38,7 +38,7 @@ describe('the ui-state API — skillUsage (#408)', () => {
     rmSync(legacyWorkspaceStatePath, { force: true });
   });
 
-  const uiStatePath = () => join(repoRoot, '.ai/cezar', 'ui-state.json');
+  const uiStatePath = () => join(repoRoot, '.ai/onni', 'ui-state.json');
   const rawFile = () => JSON.parse(readFileSync(uiStatePath(), 'utf8')) as Record<string, unknown>;
 
   const get = () => apiRequest(app, '/api/v1/ui-state');

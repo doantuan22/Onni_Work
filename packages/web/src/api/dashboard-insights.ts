@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { dashboardInsightsSchema, type DashboardInsightsQuery } from '@onni/api-client'
-import { cez, unwrap } from './client'
+import { onni, unwrap } from './client'
 import { workspaceQueryKeys } from './queries'
 
 /** Delivered work, failure reasons, backend and automation stats for one period. */
@@ -15,7 +15,7 @@ export function useDashboardInsights(period: DashboardInsightsQuery['period'], e
     queryFn: async ({ signal }) =>
       dashboardInsightsSchema.parse(
         await unwrap(
-          await cez.api.v1.workspace.dashboard.insights.$get(
+          await onni.api.v1.workspace.dashboard.insights.$get(
             {
               query: {
                 period,

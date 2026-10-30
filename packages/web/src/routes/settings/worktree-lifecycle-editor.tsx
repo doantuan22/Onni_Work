@@ -13,7 +13,7 @@ const titles = { afterCreate: 'After worktree creation', beforeRemove: 'Before w
 const variables = [
   ['root_path', 'The selected project’s root directory'],
   ['worktree_path', 'The isolated worktree directory'],
-  ['worktree_id', 'Stable cez-prefixed resource identity'],
+  ['worktree_id', 'Stable onni-prefixed resource identity'],
   ['task_id', 'The original task ID'],
 ] as const
 const control = 'w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50'
@@ -116,7 +116,7 @@ export function WorktreeLifecycleEditor({ config }: { config: ConfigResponse }) 
 
   return <div id="worktree-lifecycle-scripts" className="flex min-w-0 flex-col gap-5" data-slot="worktree-lifecycle-editor">
     <div className="rounded-md border border-border bg-muted/30 p-3 text-[13px] text-muted-foreground">
-      <p>Scripts apply only to this project. Saving commands opts in to running them as the Cezar host user, with that user’s local privileges.</p>
+      <p>Scripts apply only to this project. Saving commands opts in to running them as the Onni host user, with that user’s local privileges.</p>
       <p className="mt-1">Runtime: noninteractive Bash, in the isolated worktree directory. Bash must be installed on the host. Commands run in order; the default timeout is 30 minutes.</p>
       <p className="mt-1" id="lifecycle-variable-help">Values are shell-escaped; do not wrap variable tokens in quotes. Use <code>{'\\{{'}</code> for literal double braces, for example <code>{"docker inspect --format '\\{{.State.Status}}' container"}</code>.</p>
     </div>

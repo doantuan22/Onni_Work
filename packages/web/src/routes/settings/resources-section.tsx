@@ -20,7 +20,7 @@ import { SettingsField } from './settings-field'
  * advance (#memory-guard).
  *
  * Both are workspace-level since the multi-project split (spec §"Resource governance"): they
- * protect the host, not a repo, so they live in `~/.cezar/config.json` and persist through
+ * protect the host, not a repo, so they live in `~/.onni/config.json` and persist through
  * `PUT /api/workspace/config` — the merged answer lands straight in the workspace config query,
  * and the server refreshes the shared semaphore so a change takes effect without a restart.
  * Leftover per-repo `maxParallel`/`memoryLimitMb` keys were imported once by Migration 001 and
@@ -135,7 +135,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
       className="mx-auto flex w-full max-w-2xl flex-col gap-7 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6"
     >
       {/* Live host totals first: they answer "how is the machine" before the knobs below answer
-          "how hard may cezar push it" (spec 2026-09-20-host-resource-telemetry, §UI/UX). The
+          "how hard may onni push it" (spec 2026-09-20-host-resource-telemetry, §UI/UX). The
           card owns its own subscription, so this screen is what keeps the sampler alive. */}
       <MachineCard />
 
@@ -241,7 +241,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
 
       <SettingsField
         title="Auto-resume after a usage limit"
-        hint="When an agent stops because its provider usage limit is reached, cezar waits for the reset the provider named and continues the task 30 seconds later — up to 12 times in a row without you. Off leaves the task failed with its Continue button."
+        hint="When an agent stops because its provider usage limit is reached, onni waits for the reset the provider named and continues the task 30 seconds later — up to 12 times in a row without you. Off leaves the task failed with its Continue button."
       >
         <select
           aria-label="Auto-resume after a usage limit"

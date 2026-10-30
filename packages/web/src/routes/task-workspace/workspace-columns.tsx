@@ -316,7 +316,7 @@ function ColumnHeader({
   const [dropTarget, setDropTarget] = useState(false)
   const ViewIcon = VIEW_ICONS[column.view]
   const startDrag = (event: React.DragEvent) => {
-    event.dataTransfer.setData('text/cez-column', String(index))
+    event.dataTransfer.setData('text/onni-column', String(index))
     event.dataTransfer.effectAllowed = 'move'
   }
 
@@ -324,7 +324,7 @@ function ColumnHeader({
     <header
       data-slot="workspace-column-header"
       onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes('text/cez-column')) return
+        if (!event.dataTransfer.types.includes('text/onni-column')) return
         event.preventDefault()
         event.dataTransfer.dropEffect = 'move'
         setDropTarget(true)
@@ -335,8 +335,8 @@ function ColumnHeader({
         // Re-checked here, not just in `onDragOver`: `Number('')` is 0 and passes
         // `Number.isInteger`, so a foreign drop that reached this handler would have reordered
         // column 0.
-        if (!event.dataTransfer.types.includes('text/cez-column')) return
-        const raw = event.dataTransfer.getData('text/cez-column')
+        if (!event.dataTransfer.types.includes('text/onni-column')) return
+        const raw = event.dataTransfer.getData('text/onni-column')
         const from = Number(raw)
         if (raw === '' || !Number.isInteger(from)) return
         event.preventDefault()

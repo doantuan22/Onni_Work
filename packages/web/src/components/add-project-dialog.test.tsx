@@ -33,9 +33,9 @@ function json(body: unknown, status = 200): Response {
 
 function project(over: Partial<ProjectListEntry> = {}): ProjectListEntry {
   return {
-    id: 'cezar',
-    name: 'cezar',
-    root: '/home/me/Projects/cezar',
+    id: 'onni',
+    name: 'onni',
+    root: '/home/me/Projects/onni',
     addedAt: '2026-07-01T00:00:00.000Z',
     lastOpenedAt: '2026-07-20T12:00:00.000Z',
     source: 'local',
@@ -56,7 +56,7 @@ const PROJECTS: FsBrowseResponse = {
   path: '/home/me/Projects',
   parent: '/home/me',
   dirs: [
-    { name: 'cezar', path: '/home/me/Projects/cezar', isRepo: true },
+    { name: 'onni', path: '/home/me/Projects/onni', isRepo: true },
     { name: 'notes', path: '/home/me/Projects/notes', isRepo: false },
   ],
   truncated: false,
@@ -81,7 +81,7 @@ function serve({ browse = { '': json(HOME) }, projects = [], register }: Answers
       posted.push({ root })
       return register ? register(root) : json({ project: project({ id: 'added', root }) })
     }
-    if (url.pathname === '/api/v1/projects') return json({ projects, bootProject: 'cezar', projectsDir: '~/cezar/projects' })
+    if (url.pathname === '/api/v1/projects') return json({ projects, bootProject: 'onni', projectsDir: '~/onni/projects' })
     if (url.pathname === '/api/v1/fs/browse') {
       const answer = browse[url.searchParams.get('path') ?? '']
       if (answer === undefined) return json({ error: 'unexpected browse path' }, 500)
@@ -100,7 +100,7 @@ function renderDialog() {
   const onOpenChange = vi.fn()
   render(
     <QueryClientProvider client={createQueryClient()}>
-      <MemoryRouter initialEntries={['/p/cezar/']}>
+      <MemoryRouter initialEntries={['/p/onni/']}>
         <AddProjectDialog open onOpenChange={onOpenChange} />
         <LocationProbe />
       </MemoryRouter>
@@ -137,7 +137,7 @@ describe('AddProjectDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Projects' }))
     await waitFor(() => expect(breadcrumb().textContent).toBe('/home/me/Projects'))
     // The git repo is badged; the plain folder is not — and both are listed.
-    expect(within(rows().getByText('cezar').closest('button') as HTMLElement).getByText('git')).toBeTruthy()
+    expect(within(rows().getByText('onni').closest('button') as HTMLElement).getByText('git')).toBeTruthy()
     expect(rows().getByText('notes')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Up one level/ }))
     await waitFor(() => expect(breadcrumb().textContent).toBe('/home/me'))
@@ -169,49 +169,49 @@ describe('AddProjectDialog', () => {
   it('marks an already-registered folder and navigates to it when the server answers 409', async () => {
     serve({
       browse: { '': json(PROJECTS) },
-      projects: [project({ id: 'cezar', root: '/home/me/Projects/cezar' })],
+      projects: [project({ id: 'onni', root: '/home/me/Projects/onni' })],
       // The registry dedupes by realpath and answers the EXISTING entry — not a dead end.
       register: (root) =>
-        json({ project: project({ id: 'cezar', root }), error: 'already registered as cezar' }, 409),
+        json({ project: project({ id: 'onni', root }), error: 'already registered as onni' }, 409),
     })
     renderDialog()
-    await waitFor(() => expect(rows().getByText('cezar')).toBeTruthy())
-    expect(within(rows().getByText('cezar').closest('button') as HTMLElement).getByText('already added')).toBeTruthy()
-    fireEvent.click(rows().getByText('cezar'))
+    await waitFor(() => expect(rows().getByText('onni')).toBeTruthy())
+    expect(within(rows().getByText('onni').closest('button') as HTMLElement).getByText('already added')).toBeTruthy()
+    fireEvent.click(rows().getByText('onni'))
     fireEvent.click(addButton())
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/p/cezar/'))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/p/onni/'))
     expect(document.querySelector('[data-slot="add-project-error"]')).toBeNull()
   })
 
-  it('does not mark the folder cezar is serving but has not registered', async () => {
+  it('does not mark the folder onni is serving but has not registered', async () => {
     serve({
       browse: { '': json(PROJECTS) },
       // What `GET /api/v1/projects` answers when the boot folder is not in the registry: the row
       // is there so the cockpit can reach it, flagged so nothing reads it as saved. Badging it
       // "already added" here would contradict Settings, which offers to add the same folder.
-      projects: [project({ id: 'cezar', root: '/home/me/Projects/cezar', unregistered: true })],
+      projects: [project({ id: 'onni', root: '/home/me/Projects/onni', unregistered: true })],
     })
     renderDialog()
-    await waitFor(() => expect(rows().getByText('cezar')).toBeTruthy())
+    await waitFor(() => expect(rows().getByText('onni')).toBeTruthy())
     expect(
-      within(rows().getByText('cezar').closest('button') as HTMLElement).queryByText('already added'),
+      within(rows().getByText('onni').closest('button') as HTMLElement).queryByText('already added'),
     ).toBeNull()
   })
 
   it('shows a register refusal verbatim and stays put', async () => {
     serve({
       browse: { '': json(HOME) },
-      register: () => json({ error: 'not a project folder: ~ is your home directory or a cezar task worktree' }, 400),
+      register: () => json({ error: 'not a project folder: ~ is your home directory or a onni task worktree' }, 400),
     })
     const { onOpenChange } = renderDialog()
     await waitFor(() => expect(addButton().disabled).toBe(false))
     fireEvent.click(addButton())
     await waitFor(() =>
       expect(document.querySelector('[data-slot="add-project-error"]')?.textContent).toBe(
-        'not a project folder: ~ is your home directory or a cezar task worktree',
+        'not a project folder: ~ is your home directory or a onni task worktree',
       ),
     )
-    expect(screen.getByTestId('location').textContent).toBe('/p/cezar/')
+    expect(screen.getByTestId('location').textContent).toBe('/p/onni/')
     expect(onOpenChange).not.toHaveBeenCalled()
     // Server messages quote unbreakable paths — they must wrap, not widen the grid column.
     expect(document.querySelector('[data-slot="add-project-error"]')?.className).toContain('break-words')
@@ -238,7 +238,7 @@ describe('AddProjectDialog', () => {
         '/home/me': json(HOME),
         '/home/me/Projects': () =>
           blocked
-            ? json({ error: 'macOS privacy settings do not allow cezar to read this folder.' }, 403)
+            ? json({ error: 'macOS privacy settings do not allow onni to read this folder.' }, 403)
             : json(PROJECTS),
       },
     })
@@ -258,7 +258,7 @@ describe('AddProjectDialog', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy())
     blocked = false
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await waitFor(() => expect(rows().getByText('cezar')).toBeTruthy())
+    await waitFor(() => expect(rows().getByText('onni')).toBeTruthy())
   })
 
   it.each(['C:\\', '\\\\?\\C:\\'])('Back from a Windows listing error returns to %s', async (root) => {

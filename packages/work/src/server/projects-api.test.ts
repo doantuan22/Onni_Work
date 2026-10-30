@@ -78,11 +78,11 @@ describe('workspace projects API', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-workspace-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-projects-boot-'));
-    otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-projects-other-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-workspace-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-boot-'));
+    otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-projects-other-'));
     process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     delete process.env.CEZ_REMOTE;
     delete process.env.CEZ_FOLLOWUPS;
     delete process.env.CEZ_SINGLE_PROJECT;
@@ -148,7 +148,7 @@ describe('workspace projects API', () => {
       // Unregistered boot repo (e.g. worktree/$HOME/unreadable workspace):
       // bootProject degrades to the repo's would-be slug, not an error.
       expect(body.bootProject).toBe(allocateProjectSlug(repoRoot, []));
-      expect(body.projectsDir).toBe('~/cezar/projects');
+      expect(body.projectsDir).toBe('~/onni/projects');
     });
 
     it('lists registered projects with root + status and derives bootProject from the registry', async () => {
@@ -173,7 +173,7 @@ describe('workspace projects API', () => {
       });
       // Derived lazily by realpath lookup — the boot repo, not the other one.
       expect(body.bootProject).toBe(boot.id);
-      expect(body.projectsDir).toBe('~/cezar/projects');
+      expect(body.projectsDir).toBe('~/onni/projects');
     });
 
     it('keeps an unregistered boot project distinct from a registered project with the same slug', async () => {
@@ -238,7 +238,7 @@ describe('workspace projects API', () => {
    * The folder the server was started in, when the registry does not hold it.
    * Listed only while the registry is EMPTY — there the launch folder is the
    * cockpit's project, and it is flagged so nothing offers to edit a registry
-   * row that does not exist. Once the user has projects, starting cezar
+   * row that does not exist. Once the user has projects, starting onni
    * somewhere neither registers that folder (seed-once) nor lists it; it is
    * still served under `/p/<bootProject>/` and the unscoped alias.
    */
@@ -261,7 +261,7 @@ describe('workspace projects API', () => {
     });
 
     it('flags a boot folder the register route would refuse as notAddable (telemetry 48dc0f71)', async () => {
-      const worktree = join(repoRoot, '.ai', 'cezar', 'worktrees', 'task1');
+      const worktree = join(repoRoot, '.ai', 'onni', 'worktrees', 'task1');
       mkdirSync(worktree, { recursive: true });
 
       const body = await getProjects({ repoRoot: worktree });
@@ -278,7 +278,7 @@ describe('workspace projects API', () => {
       const other = await registerProject(otherRoot);
       const body = await getProjects();
 
-      // The whole point (#774 follow-up): starting cezar in a folder the user
+      // The whole point (#774 follow-up): starting onni in a folder the user
       // never added puts no row in their sidebar.
       expect(body.projects.map((project) => project.id)).toEqual([other.id]);
       expect(body.projects.some((project) => project.unregistered)).toBe(false);
@@ -370,7 +370,7 @@ describe('workspace projects API', () => {
       const first = (await (await apiRequest(app, '/api/v1/projects')).json()) as ProjectsResponse;
       const bootId = first.bootProject;
 
-      // A same-basename folder registered OUT OF BAND — `cezar projects add` in a
+      // A same-basename folder registered OUT OF BAND — `onni projects add` in a
       // terminal, where this server's reservation cannot reach it.
       const twin = join(otherRoot, basename(repoRoot));
       mkdirSync(twin, { recursive: true });
@@ -407,7 +407,7 @@ describe('workspace projects API', () => {
       const res = await apiRequest(makeApp({ cloneRunner }), '/api/v1/projects/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url: 'open-mercato/cezar' }),
+        body: JSON.stringify({ url: 'open-mercato/onni' }),
       });
 
       expect(res.status).toBe(409);
@@ -662,13 +662,13 @@ describe('workspace projects API', () => {
     };
 
     it('deregisters the project, emits project-removed, and leaves every file on disk untouched', async () => {
-      // A realistic project: source, git metadata, and its own cezar state — the three things a
+      // A realistic project: source, git metadata, and its own onni state — the three things a
       // user would be devastated to lose behind a button labelled "Remove".
       mkdirSync(join(otherRoot, '.git'), { recursive: true });
-      mkdirSync(join(otherRoot, '.ai/cezar/runs'), { recursive: true });
+      mkdirSync(join(otherRoot, '.ai/onni/runs'), { recursive: true });
       writeFileSync(join(otherRoot, 'README.md'), '# keep me\n', 'utf8');
       writeFileSync(join(otherRoot, '.git/HEAD'), 'ref: refs/heads/main\n', 'utf8');
-      writeFileSync(join(otherRoot, '.ai/cezar/runs.json'), '[]\n', 'utf8');
+      writeFileSync(join(otherRoot, '.ai/onni/runs.json'), '[]\n', 'utf8');
       clearProjectProbeCache();
       const other = await registerProject(otherRoot);
       const before = snapshot(otherRoot);

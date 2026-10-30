@@ -31,13 +31,13 @@ describe('recover() and the follow-up ceiling (#471)', () => {
   const savedFollowups = process.env.CEZ_FOLLOWUPS;
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-recover-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   // Capped at 0 — recover() re-queues, the queue never drains, no agent is spawned.

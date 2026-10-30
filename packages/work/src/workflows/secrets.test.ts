@@ -32,7 +32,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
  * Project and workspace secrets reach CHECK steps only (spec 2026-10-10-project-secrets-vault-options,
  * superseding the `check-env` half of 2026-10-06-agentic-e2e-checks Phase 1).
  *
- * The old advice — export the e2e model key before starting cezar — put the key in
+ * The old advice — export the e2e model key before starting onni — put the key in
  * `process.env`, where `buildChildEnv`'s prefix matching handed `ANTHROPIC_API_KEY` to every
  * Claude Code session and silently switched it to API billing. These tests pin the replacement:
  * the check sees the value, no agent env can, and a failing check's output is scrubbed before it
@@ -52,7 +52,7 @@ describe('project and workspace secrets in check steps', () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-secrets-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-secrets-'));
     project = `secrets-${randomUUID()}`;
     scope = { kind: 'project', projectId: project, root: repoRoot };
     for (const key of ['CEZ_DRY_RUN', 'CEZ_MOCK_STDIN_FILE']) savedEnv[key] = process.env[key];
@@ -63,7 +63,7 @@ describe('project and workspace secrets in check steps', () => {
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     secrets = new SecretStore(process.env, { keychain: async () => null });
     manager = new RunManager(store, repoRoot, { projectId: project, secrets });
   });
@@ -90,7 +90,7 @@ describe('project and workspace secrets in check steps', () => {
   };
 
   const checkOutputs = (id: string): string[] =>
-    readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`), 'utf8')
+    readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.ndjson`), 'utf8')
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line) as { type: string; text?: string })
@@ -98,7 +98,7 @@ describe('project and workspace secrets in check steps', () => {
       .map((event) => event.text ?? '');
 
   const notes = (id: string): string[] =>
-    readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`), 'utf8')
+    readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.ndjson`), 'utf8')
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line) as { type: string; message?: string })
@@ -128,7 +128,7 @@ describe('project and workspace secrets in check steps', () => {
     // this test reads back (pinned below, in the scrubbing case).
     await secrets.set(workspace, 'SHARED', 'from-ws');
     await secrets.set(workspace, 'WS_ONLY', 'ws-only');
-    await secrets.set(workspace, 'LLM_KEY', 'cezar-only-key-value', ['cezar']);
+    await secrets.set(workspace, 'LLM_KEY', 'onni-only-key-value', ['onni']);
     await secrets.set(scope, 'SHARED', 'from-proj');
     const record = manager.startRun(checkOnly('echo "$SHARED/$WS_ONLY/${LLM_KEY:-unset}"'), { task: 'mock:done go', worktree: false });
     await settle(record.id);
@@ -139,7 +139,7 @@ describe('project and workspace secrets in check steps', () => {
   it('honours the step\'s secrets: binding — exactly those, renamed on request, the rest said on the step', async () => {
     await secrets.set(scope, 'E2E_KEY', 'bound-key');
     await secrets.set(scope, 'OTHER', 'not-bound-value');
-    await secrets.set(scope, 'LLM_KEY', 'cezar-only-key-value', ['cezar']);
+    await secrets.set(scope, 'LLM_KEY', 'onni-only-key-value', ['onni']);
     const record = manager.startRun(
       checkOnly('echo "${AI_GATEWAY_API_KEY:-unset}/${E2E_KEY:-unset}/${OTHER:-unset}/${LLM_KEY:-unset}"', {
         secrets: [{ name: 'E2E_KEY', as: 'AI_GATEWAY_API_KEY' }, 'LLM_KEY', 'MISSING'],
@@ -150,7 +150,7 @@ describe('project and workspace secrets in check steps', () => {
 
     expect(checkOutputs(record.id)).toEqual(['bound-key/unset/unset/unset']);
     expect(notes(record.id)).toEqual(expect.arrayContaining([
-      'secret LLM_KEY is not available to checks (audiences: cezar)',
+      'secret LLM_KEY is not available to checks (audiences: onni)',
       'secret MISSING is not stored for this project or workspace',
     ]));
   }, 30_000);
@@ -239,7 +239,7 @@ describe('project and workspace secrets in check steps', () => {
     // A store written for a DIFFERENT project root — a moved checkout, a changed symlink. It
     // reads as empty by design, and the value is write-only, so without this note the user sees
     // an empty `secrets list` and cannot tell "never stored" from "stored but ignored".
-    const elsewhere = mkdtempSync(join(tmpdir(), 'cez-secrets-elsewhere-'));
+    const elsewhere = mkdtempSync(join(tmpdir(), 'onni-secrets-elsewhere-'));
     try {
       await secrets.set({ ...scope, root: elsewhere }, 'E2E_FLAG', 'on');
       const record = manager.startRun(checkOnly('echo "flag=$E2E_FLAG"'), { task: 'mock:done go', worktree: false });
@@ -266,17 +266,17 @@ describe('run context for check steps', () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-check-context-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-check-context-'));
     for (const key of ['CEZ_DRY_RUN', 'CEZ_RUN_ID', 'CEZ_GITHUB_NUMBER', 'CEZ_PROJECT_ID']) savedEnv[key] = process.env[key];
     process.env.CEZ_DRY_RUN = '1';
-    // What a cezar started inside another cezar task inherits: it must never leak through.
+    // What a onni started inside another onni task inherits: it must never leak through.
     process.env.CEZ_RUN_ID = 'outer-task';
     process.env.CEZ_GITHUB_NUMBER = '999';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot, { projectId: PROJECT });
   });
 
@@ -346,10 +346,10 @@ describe('run context for check steps', () => {
 
   /**
    * `CEZ_PROJECT_ID` is the one context name that is also a documented CLI *input*
-   * (BACKWARD_COMPATIBILITY.md §1 — it is how `cez task`/`cez automation` address a cockpit), so
-   * the strip must not reach it on a run that cannot replace it. The headless `cezar run` path
+   * (BACKWARD_COMPATIBILITY.md §1 — it is how `onni task`/`onni automation` address a cockpit), so
+   * the strip must not reach it on a run that cannot replace it. The headless `onni run` path
    * builds its manager without a projectId; stripping there left `CEZ_API_URL` in place while
-   * `cez task create` silently fell back to the cockpit's boot project.
+   * `onni task create` silently fell back to the cockpit's boot project.
    */
   it('forwards an inherited CEZ_PROJECT_ID when the run has no project of its own', async () => {
     process.env.CEZ_PROJECT_ID = 'operators-choice';
@@ -377,11 +377,11 @@ describe('run context for check steps', () => {
 
   /**
    * The id becomes a path segment, so it is re-validated where that happens — the same guard
-   * `workspace/secrets.ts` applies before building `~/.cezar/secrets/<projectId>.json`. No
+   * `workspace/secrets.ts` applies before building `~/.onni/secrets/<projectId>.json`. No
    * caller can produce this id today (the workspace schema drops it, `allocateProjectSlug`
    * cannot emit it); the point is that a `recursive` mkdir is not where we want to find out.
    */
-  it('omits the cache directory rather than escaping the cezar home on a non-slug project id', async () => {
+  it('omits the cache directory rather than escaping the onni home on a non-slug project id', async () => {
     const record = store.createRun({ title: 't', workflow: 'w', task: 'x', steps: [{ id: 'verify', name: 'Verify', kind: 'check' }] });
     const escaping = new RunManager(store, repoRoot, { projectId: '../../escape' });
     try {

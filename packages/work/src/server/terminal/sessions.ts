@@ -11,7 +11,7 @@ import { resolveShell } from './shells.ts';
  * `.ai/specs/2026-10-07-task-workspace.md` §6, Milestone 2).
  *
  * This is a NEW host-process capability, not an extension of an existing one: before it, nothing
- * in cezar owned a long-lived child beyond a single agent run, and nothing anywhere killed a
+ * in onni owned a long-lived child beyond a single agent run, and nothing anywhere killed a
  * process TREE — the agent runners signal their direct child only, and grandchildren (an agent's
  * own Bash calls) are observed for telemetry but never reaped. A shell is the opposite case: what
  * the user starts in it (`npm run dev`, `make dev`) is precisely the grandchildren, so "stop" has
@@ -136,9 +136,9 @@ export type CreateSessionResult =
  *
  * A module-level set is the right scope for exactly one job: the signal handler in `index.ts`
  * must kill every shell before the process exits, and it has no handle on the server, let alone
- * on a registry built deep inside `createApp`. It matters more here than anywhere else in cezar
+ * on a registry built deep inside `createApp`. It matters more here than anywhere else in onni
  * because a PTY child is in its OWN process group — so, unlike the agent runners' children, it
- * does NOT receive the Ctrl-C the TTY delivers to cezar's foreground group, and it would outlive
+ * does NOT receive the Ctrl-C the TTY delivers to onni's foreground group, and it would outlive
  * the cockpit silently.
  */
 const registries = new Set<TerminalSessions>();
@@ -366,11 +366,11 @@ export class TerminalSessions {
     return true;
   }
 
-  /** Stop every session, synchronously enough for a shutdown handler. A cezar restart stops all
+  /** Stop every session, synchronously enough for a shutdown handler. A onni restart stops all
    *  terminal sessions and their children (spec §6) — nothing else in the process does this, so
    *  it has to be wired into the signal handlers rather than relying on process-group inheritance:
    *  a PTY child is deliberately in its OWN group and so does NOT receive the Ctrl-C that reaches
-   *  cezar's foreground group. */
+   *  onni's foreground group. */
   closeAll(): void {
     if (this.entries.size === 0) return;
     // One table read for every session, before the first signal re-parents anything.

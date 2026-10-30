@@ -28,7 +28,7 @@ describe('durable manual webhook operations', () => {
     expect(await reopened.test(x.id, input)).toEqual(first);
     const record = admissions.all()[0]!;
     expect(record.deliveries).toHaveLength(1);
-    expect(JSON.parse(record.deliveries[0]!.body!)).toEqual({ id: record.id, type: 'webhook.test', schemaVersion: 1, occurredAt: new Date(now).toISOString(), data: { test: true, format: 'cezar.json.v1' } });
+    expect(JSON.parse(record.deliveries[0]!.body!)).toEqual({ id: record.id, type: 'webhook.test', schemaVersion: 1, occurredAt: new Date(now).toISOString(), data: { test: true, format: 'onni.json.v1' } });
     await expect(reopened.test(x.id, { ...input, expectedRevision: 2 })).rejects.toThrow('Operation ID');
   });
   it('repairs the atomic admission / endpoint acknowledgement crash boundary without a second test', async () => {

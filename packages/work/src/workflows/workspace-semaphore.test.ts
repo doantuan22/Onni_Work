@@ -78,7 +78,7 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
     semaphore: WorkspaceSemaphore,
   ): { store: RunStore; manager: RunManager; root: string } {
     const root = fixtureRepo(prefix, roots);
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root, { semaphore });
     stores.push(store);
     managers.push(manager);
@@ -92,7 +92,7 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
 
   it('exempts only the configured number of durable monitoring sessions', () => {
     const semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 2, maxMonitoringSessions: 2 } });
-    const projectA = project('cez-monitor-cap-', semaphore);
+    const projectA = project('onni-monitor-cap-', semaphore);
     const internals = projectA.manager as unknown as {
       active: Map<string, object>;
       waiting: Set<string>;
@@ -133,8 +133,8 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
 
   it('caps concurrent runs across two projects: with cap 2, the third run queues', async () => {
     const semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 2 } });
-    const a = project('cez-wsem-a-', semaphore);
-    const b = project('cez-wsem-b-', semaphore);
+    const a = project('onni-wsem-a-', semaphore);
+    const b = project('onni-wsem-b-', semaphore);
 
     const slowA = a.manager.startRun(SLOW, { task: 'hold a slot (A)' });
     const slowB = b.manager.startRun(SLOW, { task: 'hold a slot (B)' });
@@ -161,11 +161,11 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
   }, 45_000);
 
   // #1524: a restarter that read the boot project's store only counted tasks in any other
-  // project — or every task, when cezar booted outside a project — as zero.
+  // project — or every task, when onni booted outside a project — as zero.
   it('counts running and queued runs in every project', async () => {
     const semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 1 } });
-    const a = project('cez-wsem-upd-a-', semaphore);
-    const b = project('cez-wsem-upd-b-', semaphore);
+    const a = project('onni-wsem-upd-a-', semaphore);
+    const b = project('onni-wsem-upd-b-', semaphore);
     expect(semaphore.activeRuns()).toBe(0);
 
     const slowA = a.manager.startRun(SLOW, { task: 'running in A' });
@@ -185,8 +185,8 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
     // its own. The fix routes every slot-freeing transition through
     // `WorkspaceSemaphore.release()`, which pumps every manager.
     const semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 2 } });
-    const a = project('cez-wsem-cross-a-', semaphore);
-    const b = project('cez-wsem-cross-b-', semaphore);
+    const a = project('onni-wsem-cross-a-', semaphore);
+    const b = project('onni-wsem-cross-b-', semaphore);
 
     const slow1 = a.manager.startRun(SLOW, { task: 'saturate 1' });
     const slow2 = a.manager.startRun(SLOW, { task: 'saturate 2' });
@@ -212,8 +212,8 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
 
   it('a freed slot goes to the longest-waiting run across projects', async () => {
     const semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 1 } });
-    const a = project('cez-wsem-fair-a-', semaphore);
-    const b = project('cez-wsem-fair-b-', semaphore);
+    const a = project('onni-wsem-fair-a-', semaphore);
+    const b = project('onni-wsem-fair-b-', semaphore);
 
     const holder = a.manager.startRun(SLOW, { task: 'hold the only slot' });
     await waitFor(() => a.store.getRun(holder.id)?.status === 'running', 'the holder to run');
@@ -236,8 +236,8 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
 
   it('#347 across projects: a waiting run resumes immediately even when other projects saturate the cap', async () => {
     const semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 2 } });
-    const a = project('cez-wsem-347a-', semaphore);
-    const b = project('cez-wsem-347b-', semaphore);
+    const a = project('onni-wsem-347a-', semaphore);
+    const b = project('onni-wsem-347b-', semaphore);
 
     // B's agent run parks at `waiting` (markerless mock turn-end) — and by the
     // #347 rule gives its slot back while parked.
@@ -287,9 +287,9 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
         Promise.resolve({ maxParallel: 4, memoryLimitMb: null, projectLimits: new Map(projectLimits) }),
       initial: { maxParallel: 4 },
     });
-    const a = project('cez-wsem-ppA-', semaphore);
+    const a = project('onni-wsem-ppA-', semaphore);
     const rootA = a.root;
-    const b = project('cez-wsem-ppB-', semaphore);
+    const b = project('onni-wsem-ppB-', semaphore);
 
     // Pin project A to a single concurrent run; refresh so the snapshot carries it.
     projectLimits.set(realpathSync(rootA), 1);
@@ -327,7 +327,7 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
   }, 60_000);
 
   it('restart recovery queues interrupted continuations behind the per-project cap', async () => {
-    const root = fixtureRepo('cez-wsem-recover-cap-', roots);
+    const root = fixtureRepo('onni-wsem-recover-cap-', roots);
     const projectLimits = new Map([[realpathSync(root), 1]]);
     const semaphore = new WorkspaceSemaphore({
       load: () =>
@@ -335,7 +335,7 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
       initial: { maxParallel: 3 },
     });
     await semaphore.refresh();
-    const store = RunStore.open(join(root, '.ai/cezar'), { keepLive: true });
+    const store = RunStore.open(join(root, '.ai/onni'), { keepLive: true });
     const firstManager = new RunManager(store, root, { semaphore });
     stores.push(store);
 
@@ -410,7 +410,7 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
           .some(
             (event) =>
               event.type === 'lifecycle' &&
-              event.message === 'cezar restarted — interrupted continuation re-queued',
+              event.message === 'onni restarted — interrupted continuation re-queued',
           ),
       ).toBe(true);
     }
@@ -425,9 +425,9 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
   });
 
   it('restart continuation releases its starting slot after becoming active', async () => {
-    const root = fixtureRepo('cez-wsem-recover-starting-', roots);
+    const root = fixtureRepo('onni-wsem-recover-starting-', roots);
     const semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 1 } });
-    const store = RunStore.open(join(root, '.ai/cezar'), { keepLive: true });
+    const store = RunStore.open(join(root, '.ai/onni'), { keepLive: true });
     const manager = new RunManager(store, root, { semaphore });
     stores.push(store);
     managers.push(manager);
@@ -466,7 +466,7 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
         Promise.resolve({ maxParallel: 4, memoryLimitMb: null, projectLimits: new Map(projectLimits) }),
       initial: { maxParallel: 4 },
     });
-    const a = project('cez-wsem-pp347-', semaphore);
+    const a = project('onni-wsem-pp347-', semaphore);
     const rootA = a.root;
     projectLimits.set(realpathSync(rootA), 1);
     await semaphore.refresh();
@@ -495,7 +495,7 @@ describe('workspace semaphore across RunManagers (step 2.5)', () => {
       load: () => Promise.resolve({ ...limits }),
       initial: { maxParallel: 1 },
     });
-    const a = project('cez-wsem-refresh-', semaphore);
+    const a = project('onni-wsem-refresh-', semaphore);
 
     const holder = a.manager.startRun(SLOW, { task: 'hold the only slot' });
     const queued = a.manager.startRun(INSTANT, { task: 'wait for capacity' });

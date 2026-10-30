@@ -142,7 +142,7 @@ describe('the Design Mode toggle', () => {
   it('switches off when ⌥D is pressed inside the page (the picker forwards it)', async () => {
     renderView()
     await enterDesignMode()
-    deliver({ source: 'cezar-design', type: 'toggle' }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'toggle' }, MIRROR, frame().contentWindow)
     expect(toggle().getAttribute('aria-pressed')).toBe('false')
   })
 
@@ -150,7 +150,7 @@ describe('the Design Mode toggle', () => {
     renderView()
     await enterDesignMode()
     fireEvent.click(toggle())
-    deliver({ source: 'cezar-design', type: 'toggle' }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'toggle' }, MIRROR, frame().contentWindow)
     expect(toggle().getAttribute('aria-pressed')).toBe('false')
   })
 
@@ -212,14 +212,14 @@ describe('the picker conversation', () => {
     renderView()
     await enterDesignMode()
     const post = vi.spyOn(frame().contentWindow!, 'postMessage').mockImplementation(() => {})
-    deliver({ source: 'cezar-design', type: 'ready' }, MIRROR, frame().contentWindow)
-    expect(post).toHaveBeenCalledWith({ source: 'cezar-design-host', type: 'set-active', active: true }, MIRROR)
+    deliver({ source: 'onni-design', type: 'ready' }, MIRROR, frame().contentWindow)
+    expect(post).toHaveBeenCalledWith({ source: 'onni-design-host', type: 'set-active', active: true }, MIRROR)
   })
 
   it('hands a picked element to the host and confirms it', async () => {
     const { onPickElement } = renderView()
     await enterDesignMode()
-    deliver({ source: 'cezar-design', type: 'picked', element: ELEMENT }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: ELEMENT }, MIRROR, frame().contentWindow)
     expect(onPickElement).toHaveBeenCalledWith(ELEMENT)
     expect(toast).toHaveBeenCalledWith('Element picked.')
   })
@@ -227,7 +227,7 @@ describe('the picker conversation', () => {
   it('says nothing when the host did not keep the pick', async () => {
     renderView(vi.fn(() => false))
     await enterDesignMode()
-    deliver({ source: 'cezar-design', type: 'picked', element: ELEMENT }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: ELEMENT }, MIRROR, frame().contentWindow)
     expect(toast).not.toHaveBeenCalled()
   })
 
@@ -239,7 +239,7 @@ describe('the picker conversation', () => {
     const { onPickElement } = renderView()
     await enterDesignMode()
     deliver(
-      { source: 'cezar-design', type: 'picked', element: ELEMENT },
+      { source: 'onni-design', type: 'picked', element: ELEMENT },
       origin,
       source === 'own' ? frame().contentWindow : window,
     )
@@ -250,7 +250,7 @@ describe('the picker conversation', () => {
     const { onPickElement } = renderView()
     await enterDesignMode()
     deliver({ type: 'picked', element: ELEMENT }, MIRROR, frame().contentWindow)
-    deliver({ source: 'cezar-design', type: 'picked', element: { nope: true } }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: { nope: true } }, MIRROR, frame().contentWindow)
     deliver('picked', MIRROR, frame().contentWindow)
     expect(onPickElement).not.toHaveBeenCalled()
   })
@@ -259,7 +259,7 @@ describe('the picker conversation', () => {
     renderView()
     await enterDesignMode()
     const before = frame()
-    deliver({ source: 'cezar-design', type: 'cancel' }, MIRROR, before.contentWindow)
+    deliver({ source: 'onni-design', type: 'cancel' }, MIRROR, before.contentWindow)
     expect(toggle().getAttribute('aria-pressed')).toBe('false')
     // Same element, same address: the picker stands down, the page keeps its state.
     expect(frame()).toBe(before)
@@ -305,12 +305,12 @@ describe('marks and the note popup', () => {
     const { rerender } = render(view([]))
     await enterDesignMode()
     const post = vi.spyOn(frame().contentWindow!, 'postMessage').mockImplementation(() => {})
-    deliver({ source: 'cezar-design', type: 'ready' }, MIRROR, frame().contentWindow)
-    expect(post).toHaveBeenCalledWith({ source: 'cezar-design-host', type: 'set-marks', marks: [] }, MIRROR)
+    deliver({ source: 'onni-design', type: 'ready' }, MIRROR, frame().contentWindow)
+    expect(post).toHaveBeenCalledWith({ source: 'onni-design-host', type: 'set-marks', marks: [] }, MIRROR)
     rerender(view([DRAFT, SENT]))
     expect(post).toHaveBeenLastCalledWith(
       {
-        source: 'cezar-design-host',
+        source: 'onni-design-host',
         type: 'set-marks',
         marks: [
           { key: 'abc-1', selector: 'main > button.save', path: '/settings' },
@@ -334,7 +334,7 @@ describe('marks and the note popup', () => {
     expect(screen.queryByTestId('note')).toBeNull()
 
     deliver(
-      { source: 'cezar-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1', rect: { x: 40, y: 50, width: 100, height: 20 } } },
+      { source: 'onni-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1', rect: { x: 40, y: 50, width: 100, height: 20 } } },
       MIRROR,
       frame().contentWindow,
     )
@@ -345,7 +345,7 @@ describe('marks and the note popup', () => {
     expect(note().style.top).toBe('80px')
 
     deliver(
-      { source: 'cezar-design', type: 'rects', rects: [{ key: 'abc-1', x: 200, y: 300, width: 100, height: 20 }] },
+      { source: 'onni-design', type: 'rects', rects: [{ key: 'abc-1', x: 200, y: 300, width: 100, height: 20 }] },
       MIRROR,
       frame().contentWindow,
     )
@@ -357,13 +357,13 @@ describe('marks and the note popup', () => {
     const { view } = harness()
     const { rerender } = render(view([]))
     await enterDesignMode()
-    deliver({ source: 'cezar-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
     rerender(view([DRAFT]))
-    deliver({ source: 'cezar-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-2' } }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-2' } }, MIRROR, frame().contentWindow)
     rerender(view([DRAFT, { ...DRAFT, key: 'abc-2' }]))
     expect(screen.getByTestId('note').dataset.mark).toBe('abc-2')
     // The first element kept its frame and its draft; clicking the frame is the way back to it.
-    deliver({ source: 'cezar-design', type: 'mark-clicked', key: 'abc-1' }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'mark-clicked', key: 'abc-1' }, MIRROR, frame().contentWindow)
     expect(screen.getByTestId('note').dataset.mark).toBe('abc-1')
   })
 
@@ -371,12 +371,12 @@ describe('marks and the note popup', () => {
     const { view } = harness()
     const { rerender } = render(view([]))
     await enterDesignMode()
-    deliver({ source: 'cezar-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
     rerender(view([DRAFT]))
     fireEvent.click(screen.getByTestId('note'))
     expect(screen.queryByTestId('note')).toBeNull()
 
-    deliver({ source: 'cezar-design', type: 'mark-clicked', key: 'abc-1' }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'mark-clicked', key: 'abc-1' }, MIRROR, frame().contentWindow)
     expect(screen.getByTestId('note')).toBeTruthy()
     // Discarded (or withdrawn): there is no note left for a popup to be about.
     rerender(view([]))
@@ -387,15 +387,15 @@ describe('marks and the note popup', () => {
     const { view, onEscape } = harness()
     const { rerender } = render(view([]))
     await enterDesignMode()
-    deliver({ source: 'cezar-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
     rerender(view([DRAFT]))
 
-    deliver({ source: 'cezar-design', type: 'cancel' }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'cancel' }, MIRROR, frame().contentWindow)
     expect(onEscape).toHaveBeenCalledWith('abc-1')
     expect(screen.queryByTestId('note')).toBeNull()
     expect(toggle().getAttribute('aria-pressed')).toBe('true')
 
-    deliver({ source: 'cezar-design', type: 'cancel' }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'cancel' }, MIRROR, frame().contentWindow)
     expect(onEscape).toHaveBeenCalledTimes(1)
     expect(toggle().getAttribute('aria-pressed')).toBe('false')
   })
@@ -406,7 +406,7 @@ describe('marks and the note popup', () => {
     await enterDesignMode()
     // Not before the page has reported: an unreported draft is not a lost one.
     expect(document.querySelector('[data-slot=browser-design-adrift]')).toBeNull()
-    deliver({ source: 'cezar-design', type: 'rects', rects: [] }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'rects', rects: [] }, MIRROR, frame().contentWindow)
     const adrift = document.querySelector('[data-slot=browser-design-adrift]')!
     // The draft only — a sent note without a frame has nothing left to write.
     expect(adrift.textContent).toBe('Draft · button.save')
@@ -419,8 +419,8 @@ describe('marks and the note popup', () => {
     render(view([SENT], () => false))
     await enterDesignMode()
     const post = vi.spyOn(frame().contentWindow!, 'postMessage').mockImplementation(() => {})
-    deliver({ source: 'cezar-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-9' } }, MIRROR, frame().contentWindow)
-    expect(post).toHaveBeenCalledWith({ source: 'cezar-design-host', type: 'set-marks', marks: [{ key: 'abc-2', n: 1 }] }, MIRROR)
+    deliver({ source: 'onni-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-9' } }, MIRROR, frame().contentWindow)
+    expect(post).toHaveBeenCalledWith({ source: 'onni-design-host', type: 'set-marks', marks: [{ key: 'abc-2', n: 1 }] }, MIRROR)
     expect(screen.queryByTestId('note')).toBeNull()
   })
 
@@ -428,10 +428,10 @@ describe('marks and the note popup', () => {
     const { view } = harness()
     const { rerender } = render(view([]))
     await enterDesignMode()
-    deliver({ source: 'cezar-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
+    deliver({ source: 'onni-design', type: 'picked', element: { ...ELEMENT, mark: 'abc-1' } }, MIRROR, frame().contentWindow)
     rerender(view([DRAFT]))
     for (const rects of ['nope', [{ key: '../../x', x: 1 }], [null, 7], [{ key: 'abc-1', x: 'left', y: Number.NaN, width: 5, height: 5 }]]) {
-      deliver({ source: 'cezar-design', type: 'rects', rects }, MIRROR, frame().contentWindow)
+      deliver({ source: 'onni-design', type: 'rects', rects }, MIRROR, frame().contentWindow)
     }
     expect(screen.getByTestId('note')).toBeTruthy()
   })

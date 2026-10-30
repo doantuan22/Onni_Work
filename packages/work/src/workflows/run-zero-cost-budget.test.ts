@@ -8,10 +8,10 @@ import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { remainingBudgetUsd } from '../dispatch/engine.ts';
 
 it('retains the child reservation after preliminary zero and failure before final cost', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-zero-incomplete-'));
+  const dir = mkdtempSync(join(tmpdir(), 'onni-zero-incomplete-'));
   vi.stubEnv('CEZ_HOME', join(dir, 'home'));
   vi.stubEnv('CEZ_FOLLOWUPS', '0');
-  const store = RunStore.open(join(dir, '.ai/cezar'));
+  const store = RunStore.open(join(dir, '.ai/onni'));
   const bin = join(dir, 'stub.mjs');
   writeFileSync(bin, `#!/usr/bin/env node
 import {createServer} from 'node:http';

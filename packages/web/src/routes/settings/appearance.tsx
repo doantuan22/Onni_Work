@@ -20,7 +20,7 @@ import { toast } from '@/components/ui/toaster'
  * Settings → Appearance (R6 Step 1.3, spec §"Settings").
  *
  * Each knob is honest about where it persists:
- *  - THEME rides the existing theme system (localStorage `cez-theme`, shared with the legacy
+ *  - THEME rides the existing theme system (localStorage `onni-theme`, shared with the legacy
  *    cockpit and the pre-paint script) — per-browser by design, like every OS theme choice;
  *  - ACCENT + DENSITY persist in `ui-state.json` through the AppearanceProvider (additive
  *    `appearance` key), mirrored to localStorage for pre-paint;
@@ -137,7 +137,7 @@ function ProjectOrderField() {
   return (
     <Field
       title="Project order"
-      hint="The sidebar is in the order you dragged it into. Reset puts it back to most-recently-opened first. Shared with every browser signed in to this cezar."
+      hint="The sidebar is in the order you dragged it into. Reset puts it back to most-recently-opened first. Shared with every browser signed in to this onni."
     >
       <Button
         type="button"
@@ -177,8 +177,8 @@ function BrandingFields() {
     onError: (error: Error) => toast(error.message, { tone: 'danger' }),
   })
   const branding = config.data?.branding
-  const [name, setName] = useState(branding?.name ?? 'cezar')
-  const [lastName, setLastName] = useState(branding?.name ?? 'cezar')
+  const [name, setName] = useState(branding?.name ?? 'onni')
+  const [lastName, setLastName] = useState(branding?.name ?? 'onni')
   useEffect(() => {
     if (branding && name === lastName) {
       setName(branding.name)
@@ -191,12 +191,12 @@ function BrandingFields() {
         <input data-slot="branding-name" aria-label="Instance name" maxLength={80} value={name} onChange={(event) => setName(event.currentTarget.value)}
           onBlur={() => {
             const value = name.trim()
-            if (!value) { setName(branding?.name ?? 'cezar'); return }
+            if (!value) { setName(branding?.name ?? 'onni'); return }
             if (value !== branding?.name) save.mutate({ branding: { name: value } })
             setLastName(value)
           }}
           className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm" />
-        <Button type="button" variant="outline" size="sm" disabled={!branding || branding.name === 'cezar' || save.isPending}
+        <Button type="button" variant="outline" size="sm" disabled={!branding || branding.name === 'onni' || save.isPending}
           onClick={() => save.mutate({ branding: { name: null } })}>Reset name</Button>
       </div>
     </Field>

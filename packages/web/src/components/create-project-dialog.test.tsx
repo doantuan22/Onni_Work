@@ -44,7 +44,7 @@ function json(body: unknown, status = 200): Response {
 const PROJECT: ProjectListEntry = {
   id: 'fresh',
   name: 'fresh',
-  root: '/home/me/cezar/projects/fresh',
+  root: '/home/me/onni/projects/fresh',
   addedAt: '2026-09-29T00:00:00.000Z',
   lastOpenedAt: '2026-09-29T00:00:00.000Z',
   source: 'checkout',
@@ -72,7 +72,7 @@ function serve(
     }
     if (url.pathname === '/api/v1/projects/github-owners') return json(owners)
     if (url.pathname === '/api/v1/projects') {
-      return json({ projects: [], bootProject: 'cezar', projectsDir: '~/cezar/projects' })
+      return json({ projects: [], bootProject: 'onni', projectsDir: '~/onni/projects' })
     }
     return json({ error: `unexpected ${String(init?.method ?? 'GET')} ${url.pathname}` }, 404)
   })
@@ -86,7 +86,7 @@ function renderDialog() {
   const onOpenChange = vi.fn()
   render(
     <QueryClientProvider client={createQueryClient()}>
-      <MemoryRouter initialEntries={['/p/cezar/']}>
+      <MemoryRouter initialEntries={['/p/onni/']}>
         <CreateProjectDialog open onOpenChange={onOpenChange} />
         <LocationProbe />
       </MemoryRouter>
@@ -114,7 +114,7 @@ describe('CreateProjectDialog', () => {
     expect(ownerCards()[1]?.textContent).toContain('Builds rockets')
 
     fireEvent.change(nameInput(), { target: { value: ' fresh' } })
-    expect(slot('create-target')?.textContent).toBe('~/cezar/projects/fresh')
+    expect(slot('create-target')?.textContent).toBe('~/onni/projects/fresh')
     fireEvent.click(ownerCards()[1] as HTMLButtonElement)
     expect(selectedOwner()).toBe('acme')
     fireEvent.click(createButton())
@@ -155,7 +155,7 @@ describe('CreateProjectDialog', () => {
     await waitFor(() => expect(slot('create-owner')).toBeTruthy())
     fireEvent.change(nameInput(), { target: { value: 'my new project' } })
     expect(nameInput().value).toBe('my-new-project')
-    expect(slot('create-target')?.textContent).toBe('~/cezar/projects/my-new-project')
+    expect(slot('create-target')?.textContent).toBe('~/onni/projects/my-new-project')
     fireEvent.change(nameInput(), { target: { value: 'zażółć' } })
     expect(slot('create-name-error')?.textContent).toContain('letters, digits')
     expect(createButton().disabled).toBe(true)

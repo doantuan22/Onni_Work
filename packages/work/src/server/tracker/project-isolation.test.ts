@@ -33,7 +33,7 @@ beforeEach(async () => {
 });
 afterEach(async () => { await rm(root, { recursive: true, force: true }); });
 const service = () => createTrackerService({ CEZ_HOME: join(root, 'home'), JIRA_API_TOKEN: 'ignored', LINEAR_API_KEY: 'ignored' }, fetcher);
-const data = (project: string) => join(project, '.ai/cezar');
+const data = (project: string) => join(project, '.ai/onni');
 async function connect(s: ReturnType<typeof service>, project: string) {
   const result = await s.resolve(project, { kind: 'linear', sourceId: 'same-org', externalId: team, connectionId: (await s.connection(project)).connection?.id });
   if (!result.available) throw new Error(result.reason);

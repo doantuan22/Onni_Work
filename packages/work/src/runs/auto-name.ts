@@ -11,7 +11,7 @@ import { extractTaskRefs, refineTaskRefs, titleRefNumber, type TaskRefs } from '
  * INTENT — skill + arguments + prompt + PR/issue context, never the agent's
  * streamed words — into a short `<number>: <gerund phrase>` display title with
  * structured, regex-cross-checked PR/issue numbers. Mirrors the planner (spec
- * 008): `[cez-namer]` dry-run marker, strict JSON, never blocks, never fails a
+ * 008): `[onni-namer]` dry-run marker, strict JSON, never blocks, never fails a
  * run. This module is the pure half; the runner call lives in `generateRunName`.
  */
 
@@ -99,7 +99,7 @@ export const BRANCH_NAME_MAX = 80;
  * Make a model-written branch name safe to splice into `git worktree add -b`: whitespace → `-`,
  * anything outside `[A-Za-z0-9._/-]` dropped, the `git check-ref-format` traps (`..`, `@{`,
  * `.lock`, leading `-`/`/`/`.`, trailing `/`/`.`) removed, runs collapsed, length capped.
- * Answers undefined when nothing usable is left — the caller keeps `cez/<id8>`.
+ * Answers undefined when nothing usable is left — the caller keeps `onni/<id8>`.
  */
 export function sanitizeBranchName(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
@@ -126,11 +126,11 @@ export function sanitizeBranchName(raw: string | undefined): string | undefined 
   return name && !name.startsWith('-') ? name : undefined;
 }
 
-/** The `[cez-namer]` marker lets the CEZ_DRY_RUN mock recognize a naming call. */
+/** The `[onni-namer]` marker lets the CEZ_DRY_RUN mock recognize a naming call. */
 export function buildNamerPrompt(ctx: NamerContext): string {
   const refs = advisoryRefs(ctx);
   const lines = [
-    '[cez-namer] Name this task.',
+    '[onni-namer] Name this task.',
     '',
     ...(ctx.skillName ? [`Selected skill: /${ctx.skillName}`] : []),
     ...(ctx.skillDescription ? [`Skill description: ${ctx.skillDescription}`] : []),
@@ -252,7 +252,7 @@ export function composeNameResult(rawText: string, ctx: NamerContext): NameResul
   const titleSummary = postValidateTitle(parsed.title, refNumber);
   if (!titleSummary || titleSummary === String(refNumber ?? '')) return null;
   // A branch is only ever asked for (and accepted) under instructions — a model that volunteers
-  // one unprompted is ignored, so the zero-config path can never gain a non-`cez/` branch.
+  // one unprompted is ignored, so the zero-config path can never gain a non-`onni/` branch.
   const branch = ctx.branchNaming ? sanitizeBranchName(parsed.branch) : undefined;
   return { titleSummary, ...checked, ...(branch ? { branch } : {}) };
 }

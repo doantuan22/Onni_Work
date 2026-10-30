@@ -6,7 +6,7 @@ import { RunStore } from './store.ts';
 
 describe('reported run cost', () => {
   it('preserves an actual zero report through unrelated updates and disk reload without inventing missing zero', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-reported-cost-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-reported-cost-'));
     const store = RunStore.open(dir);
     try {
       const r = store.createRun({

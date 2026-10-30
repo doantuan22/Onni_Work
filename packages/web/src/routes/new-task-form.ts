@@ -1,4 +1,4 @@
-// A contract VALUE, not a type: which runners cezar can interrogate for a live catalog is decided
+// A contract VALUE, not a type: which runners onni can interrogate for a live catalog is decided
 // once, by the schema `GET /api/v1/models` validates with, so the picker and the route cannot
 // disagree about who has discovery. It narrows `Runner` to `ModelDiscoveryRunner`.
 import { runnerDiscoversModels } from '@onni/api-client'
@@ -184,7 +184,7 @@ export function modelsForRunner(
     base.push({ id: model.id, label: model.label || model.id, desc: model.description })
   }
   // Native settings may contain a provider-specific/custom id that is not in
-  // cezar's static catalog. Keep it representable so the initial selection
+  // onni's static catalog. Keep it representable so the initial selection
   // matches the agent's own configured default on every backend.
   for (const id of customIds) {
     if (!id || seen.has(id) || modelConflictsWithRunner(id, runner)) continue
@@ -194,7 +194,7 @@ export function modelsForRunner(
   return base
 }
 
-/** `auto` survives every discovery outcome — it is cezar's own entry (no `--model` at all), not
+/** `auto` survives every discovery outcome — it is onni's own entry (no `--model` at all), not
  *  something a CLI can stop offering. */
 function autoPreset(presets: readonly ModelPreset[]): ModelPreset {
   return presets.find((preset) => preset.id === '') ?? { id: '', label: 'auto', desc: '' }

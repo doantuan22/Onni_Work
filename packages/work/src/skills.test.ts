@@ -35,7 +35,7 @@ function teamSkill(name: string, repo: string): Skill {
 }
 
 function localSkill(name: string): Skill {
-  return { name, body: `${name} body`, path: `/repo/.ai/cezar/skills/${name}.md`, source: 'cezar' };
+  return { name, body: `${name} body`, path: `/repo/.ai/onni/skills/${name}.md`, source: 'onni' };
 }
 
 describe('readImportedSkills', () => {
@@ -104,9 +104,9 @@ describe('filterImportedTeamSkills', () => {
 
 describe('discoverSkills local entrypoints', () => {
   it('recognizes only scalar true as the interactive composer hint', async () => {
-    const repoRoot = await mkdtemp(join(tmpdir(), 'cezar-skills-'));
+    const repoRoot = await mkdtemp(join(tmpdir(), 'onni-skills-'));
     tempDirs.push(repoRoot);
-    const skillsDir = join(repoRoot, '.ai/cezar/skills');
+    const skillsDir = join(repoRoot, '.ai/onni/skills');
     await mkdir(skillsDir, { recursive: true });
     await writeFile(join(skillsDir, 'true.md'), '---\r\ninteractive: "true"\r\n---\r\nBody');
     await writeFile(join(skillsDir, 'false.md'), '---\ninteractive: false\n---\nBody');
@@ -114,7 +114,7 @@ describe('discoverSkills local entrypoints', () => {
     await writeFile(join(skillsDir, 'yes.md'), '---\ninteractive: yes\n---\nBody');
     await writeFile(join(skillsDir, 'missing.md'), 'Body');
 
-    const skills = (await discoverSkills(repoRoot)).filter((skill) => skill.source === 'cezar');
+    const skills = (await discoverSkills(repoRoot)).filter((skill) => skill.source === 'onni');
     expect(skills.find((skill) => skill.name === 'true')).toMatchObject({
       interactive: true,
       body: 'Body',
@@ -125,9 +125,9 @@ describe('discoverSkills local entrypoints', () => {
   });
 
   it('keeps flat and SKILL.md skills while excluding nested reference files', async () => {
-    const repoRoot = await mkdtemp(join(tmpdir(), 'cezar-skills-'));
+    const repoRoot = await mkdtemp(join(tmpdir(), 'onni-skills-'));
     tempDirs.push(repoRoot);
-    const skillsDir = join(repoRoot, '.ai/cezar/skills');
+    const skillsDir = join(repoRoot, '.ai/onni/skills');
     await mkdir(join(skillsDir, 'om-example/references'), { recursive: true });
     await mkdir(join(skillsDir, 'legacy/nested'), { recursive: true });
     await writeFile(join(skillsDir, 'flat.md'), '# Flat skill');
@@ -135,14 +135,14 @@ describe('discoverSkills local entrypoints', () => {
     await writeFile(join(skillsDir, 'om-example/SKILL.md'), '# Example skill');
     await writeFile(join(skillsDir, 'om-example/references/agentic-setup.md'), '# Supporting doc');
 
-    const skills = (await discoverSkills(repoRoot)).filter((skill) => skill.source === 'cezar');
+    const skills = (await discoverSkills(repoRoot)).filter((skill) => skill.source === 'onni');
 
     expect(skills.map((skill) => skill.name)).toEqual(['flat', 'legacy', 'om-example']);
     expect(skills.some((skill) => skill.name === 'agentic-setup')).toBe(false);
   });
 
   it('follows npx-skills directory mirrors and deduplicates them by skill name', async () => {
-    const repoRoot = await mkdtemp(join(tmpdir(), 'cezar-skills-'));
+    const repoRoot = await mkdtemp(join(tmpdir(), 'onni-skills-'));
     tempDirs.push(repoRoot);
     const canonicalDir = join(repoRoot, '.agents/skills/om-example');
     const mirrorRoot = join(repoRoot, '.claude/skills');
@@ -218,11 +218,11 @@ describe('parseFrontmatter', () => {
 });
 
 /**
- * The one skill cezar ships itself (spec 2026-09-13-automations-from-prompt): listed only on a
+ * The one skill onni ships itself (spec 2026-09-13-automations-from-prompt): listed only on a
  * cockpit that has automations on AND publishes a transport, and shadowed by a repo skill of the
  * same name — the same "user's repo is the source of truth" rule every other source follows.
  */
-describe('the built-in create-cezar-automation skill', () => {
+describe('the built-in create-onni-automation skill', () => {
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
     saved.CEZ_AUTOMATIONS = process.env.CEZ_AUTOMATIONS;
@@ -236,11 +236,11 @@ describe('the built-in create-cezar-automation skill', () => {
   });
 
   async function emptyRepo(): Promise<string> {
-    const repoRoot = await mkdtemp(join(tmpdir(), 'cezar-skills-'));
+    const repoRoot = await mkdtemp(join(tmpdir(), 'onni-skills-'));
     tempDirs.push(repoRoot);
     // A repo that names its own skills repos gates nothing and clones nothing here — the
     // team cache is empty in a fresh process, so the catalog is exactly the local + built-in set.
-    await mkdir(join(repoRoot, '.ai/cezar'), { recursive: true });
+    await mkdir(join(repoRoot, '.ai/onni'), { recursive: true });
     return repoRoot;
   }
 
@@ -248,19 +248,19 @@ describe('the built-in create-cezar-automation skill', () => {
     const repoRoot = await emptyRepo();
     process.env.CEZ_AUTOMATIONS = '0';
     process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
-    expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-cezar-automation')).toBe(false);
+    expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-onni-automation')).toBe(false);
     delete process.env.CEZ_AUTOMATIONS;
     delete process.env.CEZ_API_URL;
-    expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-cezar-automation')).toBe(false);
+    expect((await discoverSkills(repoRoot)).some((s) => s.name === 'create-onni-automation')).toBe(false);
   });
 
   it('lists as a builtin, interactive skill when automations are on (the default) and reachable', async () => {
     const repoRoot = await emptyRepo();
     delete process.env.CEZ_AUTOMATIONS;
     process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
-    const skill = (await discoverSkills(repoRoot)).find((s) => s.name === 'create-cezar-automation');
-    expect(skill).toMatchObject({ source: 'builtin', interactive: true, path: 'builtin:create-cezar-automation' });
-    expect(skill?.body).toContain('cez automation');
+    const skill = (await discoverSkills(repoRoot)).find((s) => s.name === 'create-onni-automation');
+    expect(skill).toMatchObject({ source: 'builtin', interactive: true, path: 'builtin:create-onni-automation' });
+    expect(skill?.body).toContain('onni automation');
   });
 
   it('is shadowed by a repo skill of the same name', async () => {
@@ -268,8 +268,8 @@ describe('the built-in create-cezar-automation skill', () => {
     process.env.CEZ_AUTOMATIONS = '1';
     process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
     await mkdir(join(repoRoot, '.ai/skills'), { recursive: true });
-    await writeFile(join(repoRoot, '.ai/skills/create-cezar-automation.md'), '---\nname: create-cezar-automation\n---\nHouse version');
-    const matches = (await discoverSkills(repoRoot)).filter((s) => s.name === 'create-cezar-automation');
+    await writeFile(join(repoRoot, '.ai/skills/create-onni-automation.md'), '---\nname: create-onni-automation\n---\nHouse version');
+    const matches = (await discoverSkills(repoRoot)).filter((s) => s.name === 'create-onni-automation');
     expect(matches).toHaveLength(1);
     expect(matches[0]).toMatchObject({ source: 'ai', body: 'House version' });
   });

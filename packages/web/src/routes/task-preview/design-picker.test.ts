@@ -22,7 +22,7 @@ let host: Window
 let HOST: string
 let posted: Array<{ type: string; key?: string; element?: { mark?: string; selector?: string; html?: string } }>
 const onMessage = (event: MessageEvent) => {
-  if ((event.data as { source?: string } | null)?.source === 'cezar-design') posted.push(event.data)
+  if ((event.data as { source?: string } | null)?.source === 'onni-design') posted.push(event.data)
 }
 
 /** Let `postMessage` deliver — it is asynchronous in every DOM, jsdom included. */
@@ -31,7 +31,7 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
 /** A message from the cockpit, as the browser would deliver it to the framed page. */
 function tell(data: Record<string, unknown>) {
   page.dispatchEvent(
-    new page.MessageEvent('message', { data: { source: 'cezar-design-host', ...data }, origin: HOST, source: host }),
+    new page.MessageEvent('message', { data: { source: 'onni-design-host', ...data }, origin: HOST, source: host }),
   )
 }
 
@@ -39,8 +39,8 @@ function mouse(type: string, target: Element) {
   target.dispatchEvent(new page.MouseEvent(type, { bubbles: true, cancelable: true }))
 }
 
-const hoverBox = () => page.document.querySelector<HTMLElement>('[data-cezar-design=box]')
-const marks = () => [...page.document.querySelectorAll<HTMLElement>('[data-cezar-design=mark]')]
+const hoverBox = () => page.document.querySelector<HTMLElement>('[data-onni-design=box]')
+const marks = () => [...page.document.querySelectorAll<HTMLElement>('[data-onni-design=mark]')]
 const shown = (node: HTMLElement | null) => node !== null && node.style.display !== 'none'
 
 beforeEach(async () => {
@@ -92,7 +92,7 @@ describe('selecting an element', () => {
     expect(picked.element?.selector).toBe('body > main > button.buy')
     expect(picked.element?.mark).toMatch(/^[a-z0-9]+-1$/)
     // What is reported is the element itself — the frame is not part of its markup.
-    expect(picked.element?.html).not.toContain('data-cezar-design')
+    expect(picked.element?.html).not.toContain('data-onni-design')
   })
 
   it('stays lime when the pointer leaves, and while another element is hovered', () => {
@@ -210,7 +210,7 @@ describe('the cockpit is the authority on what is selected', () => {
     mouse('click', page.document.querySelector('.buy')!)
     page.dispatchEvent(
       new page.MessageEvent('message', {
-        data: { source: 'cezar-design-host', type: 'set-marks', marks: [] },
+        data: { source: 'onni-design-host', type: 'set-marks', marks: [] },
         origin: 'https://evil.example',
         source: host,
       }),

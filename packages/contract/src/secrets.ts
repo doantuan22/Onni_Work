@@ -16,10 +16,10 @@ export const SECRET_VALUE_MAX_BYTES = 16 * 1024;
 /**
  * Who may read a secret.
  * - `checks`: a workflow's check steps (`command:`), as environment variables.
- * - `cezar`: cezar's own features (an LLM key for cezar-level actions). Reserved for consumers
- *   that read through the store's `cezar` audience; nothing ships one yet.
+ * - `onni`: onni's own features (an LLM key for onni-level actions). Reserved for consumers
+ *   that read through the store's `onni` audience; nothing ships one yet.
  */
-export const SECRET_AUDIENCES = ['checks', 'cezar'] as const;
+export const SECRET_AUDIENCES = ['checks', 'onni'] as const;
 export const secretAudienceSchema = z.enum(SECRET_AUDIENCES);
 export type SecretAudience = z.infer<typeof secretAudienceSchema>;
 
@@ -38,7 +38,7 @@ export const secretKeyBackendSchema = z.enum(['keychain', 'file']);
 export type SecretKeyBackend = z.infer<typeof secretKeyBackendSchema>;
 
 const NAME_SHAPE = /^[A-Z_][A-Z0-9_]{0,127}$/;
-/** Names a check could use to change how the shell, the loader or cezar itself behaves. */
+/** Names a check could use to change how the shell, the loader or onni itself behaves. */
 const REFUSED_NAMES: ReadonlySet<string> = new Set([
   'PATH', 'HOME', 'SHELL', 'USER', 'TMPDIR', 'TEMP', 'TMP',
   'NODE_OPTIONS', 'LD_PRELOAD', 'LD_LIBRARY_PATH', 'BASH_ENV', 'ENV',
@@ -49,7 +49,7 @@ export function secretNameIssue(name: string): string | null {
   if (!NAME_SHAPE.test(name)) {
     return 'a name is 1–128 characters: uppercase letters, digits and underscores, not starting with a digit';
   }
-  if (name.startsWith('CEZ_')) return 'CEZ_* names are reserved for cezar';
+  if (name.startsWith('CEZ_')) return 'CEZ_* names are reserved for onni';
   if (name.startsWith('DYLD_')) return 'DYLD_* names change how programs load and are refused';
   if (REFUSED_NAMES.has(name)) return `${name} changes how the check's shell runs and is refused`;
   return null;

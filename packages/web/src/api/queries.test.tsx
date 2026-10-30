@@ -75,8 +75,8 @@ function wrapper() {
 
 const HEALTH = {
   version: '0.1.3',
-  repoRoot: '/home/me/cezar',
-  repo: { root: '/home/me/cezar', branch: 'main' },
+  repoRoot: '/home/me/onni',
+  repo: { root: '/home/me/onni', branch: 'main' },
   checks: [],
   defaultRunner: 'claude',
   capabilities: { localHandoff: true, terminal: false, followups: false, singleProject: false, automations: false },
@@ -128,7 +128,7 @@ class FakeHealthSocket {
 }
 
 describe('useRunnerModels', () => {
-  // One cache entry per runner (#794 for OpenCode, #784 for Claude): every runner cezar ships is
+  // One cache entry per runner (#794 for OpenCode, #784 for Claude): every runner onni ships is
   // read from its own host catalog, so the fetch must follow the pick rather than name one CLI.
   it.each([
     ['codex', 'gpt-future'],
@@ -1238,7 +1238,7 @@ describe('useProjectRepoBase', () => {
   }
 
   const REGISTRY = [
-    { id: 'boot-id', name: 'boot', root: '/home/me/cezar', repoUrl: 'https://github.com/o/boot' },
+    { id: 'boot-id', name: 'boot', root: '/home/me/onni', repoUrl: 'https://github.com/o/boot' },
     { id: 'proj-a', name: 'a', root: '/home/me/a', repoUrl: 'https://github.com/o/a' },
     { id: 'proj-b', name: 'b', root: '/home/me/b' },
   ]

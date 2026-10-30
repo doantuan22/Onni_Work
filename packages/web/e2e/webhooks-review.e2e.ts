@@ -2,7 +2,7 @@ import { beforeEach, describe, test } from '@e2e-dev/web'
 import { expect } from 'e2e'
 
 // UI-only fixtures: no delivery is sent and no signing material is generated.
-const receiver = { kind: 'live', id: 'review-fixture', name: 'Review fixture', format: 'cezar.json.v1', destination: 'https://receiver.invalid/', state: 'active', revision: 1, deliveryRevision: 1, profile: 'minimal', preset: 'attention', events: [], scope: 'every_task', graceSeconds: 180, allowLocalNetwork: false, includeScheduledFailures: false, pendingCount: 1, inFlightCount: 1, consecutiveFailures: 0, lastTest: 'none', activationBlocked: false }
+const receiver = { kind: 'live', id: 'review-fixture', name: 'Review fixture', format: 'onni.json.v1', destination: 'https://receiver.invalid/', state: 'active', revision: 1, deliveryRevision: 1, profile: 'minimal', preset: 'attention', events: [], scope: 'every_task', graceSeconds: 180, allowLocalNetwork: false, includeScheduledFailures: false, pendingCount: 1, inFlightCount: 1, consecutiveFailures: 0, lastTest: 'none', activationBlocked: false }
 describe('fixture UI guards', () => {
   beforeEach(async ({ browser }) => {
     await browser.route(/\/api\/v1\/(?:p\/[^/]+\/)?webhooks(?:\?.*)?$/, route => route.fulfill({ json: { receivers: [receiver], history: [], historyCount: 0, changeSequence: 0, webhookHealth: { status: 'ready' } } }))

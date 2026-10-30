@@ -50,7 +50,7 @@ describe('findPackGaps', () => {
 
 // npm <= 11 prints an array of reports; npm 12 prints an object keyed by package name.
 describe('firstPackReport', () => {
-  const report = { filename: 'open-mercato-cezar-1.0.0.tgz', files: [{ path: 'dist/index.js' }] };
+  const report = { filename: 'open-mercato-onni-1.0.0.tgz', files: [{ path: 'dist/index.js' }] };
 
   it('reads the array shape (npm <= 11)', () => {
     expect(firstPackReport([report])).toEqual(report);

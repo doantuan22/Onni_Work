@@ -19,7 +19,7 @@ import { renameSyncWithRetry } from '../fs-rename.ts';
 import { freshServerState, serverStateSchema, type ServerState, type StepOutcome } from './types.ts';
 
 /**
- * `~/.cezar/server.json` I/O and the single-writer lock. Reads degrade to a
+ * `~/.onni/server.json` I/O and the single-writer lock. Reads degrade to a
  * fresh record on any corruption (house pattern — never crash the wizard);
  * writes are atomic (tmp + rename) and `0600`, since the file is the input to
  * uninstall's "reverse exactly what was created" logic.
@@ -72,7 +72,7 @@ export function listServerInstances(): Array<{ instance: string; state: ServerSt
 /**
  * Can THIS process bind `host:port` right now? The authority for whether a
  * loopback port is available, because it is the only question that sees the
- * WHOLE machine — `~/.cezar` is per-user, the port is not (#913). Bind and
+ * WHOLE machine — `~/.onni` is per-user, the port is not (#913). Bind and
  * release immediately; a free port is never held open by the probe.
  *
  * Only "somebody already has it" answers false. Any other bind failure (a
@@ -106,7 +106,7 @@ export const INSTANCE_PORT_SCAN_WINDOW = 50;
  * currently stopped), then an actual bind probe. The probe is not an
  * optimization — it is the fix for #913. Recorded state is per-user while a
  * loopback port is machine-wide, so on a host with a second unix account the
- * scan used to start and stop at 4321 while the first account's cezar held it,
+ * scan used to start and stop at 4321 while the first account's onni held it,
  * and the vhost we then rendered proxied one user into the other's cockpit.
  *
  * Exhausting the window throws rather than returning an unverified port: a
@@ -155,7 +155,7 @@ export async function instancePortConflict(
   if (!(await probe(port, host))) {
     return (
       `port ${port} is already in use on ${host} by a process this install does not own ` +
-      '(another unix user\'s cezar can hold it — ~/.cezar is per-user, the port is machine-wide)'
+      '(another unix user\'s onni can hold it — ~/.onni is per-user, the port is machine-wide)'
     );
   }
   return null;

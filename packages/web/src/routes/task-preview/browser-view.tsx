@@ -51,7 +51,7 @@ const LOAD_TIMEOUT_MS = 12_000
 // 2026-10-07-task-workspace §7), so the host's bounds apply here too.
 export { emptyBrowserState, MAX_BROWSER_TABS, MAX_TAB_URL_LENGTH, reviveBrowserState, type BrowserState }
 
-/** Hosts that mean "the machine cezar runs on". Framing one of these from a remote cockpit would
+/** Hosts that mean "the machine onni runs on". Framing one of these from a remote cockpit would
  *  resolve on the VIEWER's machine instead — a different computer entirely. */
 const LOOPBACK = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[?::1\]?|.+\.local)$/i
 
@@ -132,7 +132,7 @@ export function BrowserView({
    * server on another port included.
    *
    * So the history is the addresses THIS VIEW pointed the frame at, plus the moves a page with
-   * cezar's location reporter tells it about (`followPage`). Without one, a link followed inside
+   * onni's location reporter tells it about (`followPage`). Without one, a link followed inside
    * the page is unobservable for the same reason its title is; Back then returns to the previous
    * address the bar held, which is the honest meaning of a history an embedder may keep.
    *
@@ -147,7 +147,7 @@ export function BrowserView({
   /**
    * Where the framed document says it is now — moved by `pushState`, `replaceState` or a hash
    * change, which fire no `load`. Null until it says so, and for every page that cannot: only a
-   * page carrying cezar's location reporter (the desktop shell's frame script, Design Mode's
+   * page carrying onni's location reporter (the desktop shell's frame script, Design Mode's
    * picker) speaks, because a cross-origin frame's `location` is unreadable from here.
    */
   const [live, setLive] = useState<string | null>(null)
@@ -274,7 +274,7 @@ export function BrowserView({
   useEffect(() => {
     if (!pickerReady || mirror === null) return
     frameRef.current?.contentWindow?.postMessage(
-      { source: 'cezar-design-host', type: 'set-active', active: designActive },
+      { source: 'onni-design-host', type: 'set-active', active: designActive },
       mirror,
     )
   }, [designActive, mirror, pickerReady])
@@ -343,7 +343,7 @@ export function BrowserView({
   const sendMarks = useCallback(() => {
     if (mirror === null) return
     frameRef.current?.contentWindow?.postMessage(
-      { source: 'cezar-design-host', type: 'set-marks', marks: JSON.parse(marksKey) as unknown },
+      { source: 'onni-design-host', type: 'set-marks', marks: JSON.parse(marksKey) as unknown },
       mirror,
     )
   }, [marksKey, mirror])
@@ -368,7 +368,7 @@ export function BrowserView({
         key?: unknown
         rects?: unknown
       } | null
-      if (data === null || typeof data !== 'object' || data.source !== 'cezar-design') return
+      if (data === null || typeof data !== 'object' || data.source !== 'onni-design') return
       if (data.type === 'ready') setPickerReady(true)
       // Only ever OFF from the page: its own script could post this too, and switching Design
       // Mode on takes the user's own action (spec §7a).
@@ -532,7 +532,7 @@ export function BrowserView({
       // This view's own frame, at the origin it was pointed at: no other window speaks for it.
       if (event.origin !== frameOrigin || event.source !== frameRef.current?.contentWindow) return
       const data = event.data as { source?: unknown; type?: unknown; url?: unknown; how?: unknown } | null
-      if (data === null || typeof data !== 'object' || data.source !== 'cezar-preview' || data.type !== 'location') return
+      if (data === null || typeof data !== 'object' || data.source !== 'onni-preview' || data.type !== 'location') return
       if (typeof data.url !== 'string') return
       const url = pageAddress(data.url, frameOrigin, mirror !== null ? targetOrigin : null)
       if (url !== null) followPage(url, typeof data.how === 'string' ? data.how : 'replace')
@@ -883,7 +883,7 @@ interface MarkRect {
   height: number
 }
 
-/** The page's report of its marks. From a page cezar does not control: anything malformed is
+/** The page's report of its marks. From a page onni does not control: anything malformed is
  *  dropped, and what is kept is numbers only. */
 function parseMarkRects(raw: unknown): Record<string, MarkRect> {
   const out: Record<string, MarkRect> = {}

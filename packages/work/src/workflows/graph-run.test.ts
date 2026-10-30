@@ -25,14 +25,14 @@ describe('graph workflows run through RunManager', () => {
   let savedDryRun: string | undefined;
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-graph-run-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-graph-run-'));
     savedDryRun = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -245,8 +245,8 @@ describe('graph workflows run through RunManager', () => {
     }
   }, 30_000);
 
-  it('loads a version: 2 file from .ai/cezar/workflows beside v1 files', async () => {
-    const dir = join(repoRoot, '.ai/cezar/workflows');
+  it('loads a version: 2 file from .ai/onni/workflows beside v1 files', async () => {
+    const dir = join(repoRoot, '.ai/onni/workflows');
     await run('mkdir', ['-p', dir]);
     writeFileSync(
       join(dir, 'graph.yaml'),

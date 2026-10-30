@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { AgentBrowser, bootProjectId, cezarCli, fixtureServeEnv } from './agent-browser'
+import { AgentBrowser, bootProjectId, onniCli, fixtureServeEnv } from './agent-browser'
 
 /**
  * The Changes tab (R5 Step 1.5) end-to-end against a LIVE dry run, same doctrine as
@@ -56,7 +56,7 @@ async function waitForHealth(url: string): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: the changes-tab server never answered at ${url}`)
+  throw new Error(`onni e2e: the changes-tab server never answered at ${url}`)
 }
 
 async function waitForStatus(url: string, id: string, wanted: string[]): Promise<string> {
@@ -65,7 +65,7 @@ async function waitForStatus(url: string, id: string, wanted: string[]): Promise
     if (wanted.includes(record.status)) return record.status
     await new Promise((r) => setTimeout(r, 500))
   }
-  throw new Error(`cezar e2e: run ${id} never reached status "${wanted.join('/')}"`)
+  throw new Error(`onni e2e: run ${id} never reached status "${wanted.join('/')}"`)
 }
 
 /** `health.forge` is recomputed on an interval (server.ts `HEALTH_TTL_MS`), not per request —
@@ -90,7 +90,7 @@ async function waitForNoForge(url: string): Promise<void> {
     if (health.forge === null) return
     await new Promise((r) => setTimeout(r, 500))
   }
-  throw new Error(`cezar e2e: health.forge never cleared at ${url}`)
+  throw new Error(`onni e2e: health.forge never cleared at ${url}`)
 }
 
 let browser: AgentBrowser
@@ -107,11 +107,11 @@ let runId: string
 let worktreePath: string
 
 beforeAll(async () => {
-  dataRoot = mkdtempSync(join(tmpdir(), 'cezar-e2e-changes-'))
+  dataRoot = mkdtempSync(join(tmpdir(), 'onni-e2e-changes-'))
   const git = (...args: string[]) => execFileSync('git', ['-C', dataRoot, ...args])
   git('init', '-q', '-b', 'main')
-  git('config', 'user.email', 'e2e@cezar.test')
-  git('config', 'user.name', 'cezar e2e')
+  git('config', 'user.email', 'e2e@onni.test')
+  git('config', 'user.name', 'onni e2e')
   writeFileSync(join(dataRoot, 'README.md'), '# changes-tab e2e fixture repo\n', 'utf8')
   git('add', '.')
   git('commit', '-qm', 'init')
@@ -123,7 +123,7 @@ beforeAll(async () => {
   baseUrl = `http://localhost:${port}`
   server = spawn(
     process.execPath,
-    [cezarCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
+    [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
     // CEZ_REVIEW_GATE=1 because this spec is ABOUT the gate: it is opt-in (#489, default OFF),
     // so pinning it here is what makes the parked-at-review fixture reproducible instead of
     // depending on whatever the operator happens to export.
@@ -146,7 +146,7 @@ beforeAll(async () => {
   await waitForStatus(baseUrl, runId, ['waiting'])
   await fetch(`${baseUrl}/api/v1/runs/${runId}/finish`, { method: 'POST' })
   const parked = await waitForStatus(baseUrl, runId, ['review', 'done'])
-  if (parked !== 'review') throw new Error('cezar e2e: the dry run settled as done — no diff to review?')
+  if (parked !== 'review') throw new Error('onni e2e: the dry run settled as done — no diff to review?')
 
   const record = (await (await fetch(`${baseUrl}/api/v1/runs/${runId}`)).json()) as { worktreePath: string }
   worktreePath = record.worktreePath
@@ -216,7 +216,7 @@ describe('the Changes tab against a live dry run', () => {
     // The Changes tab's own toolbar is dumb about git now — the run header carries the one step.
     expect(browser.count('[data-slot="git-toolbar"] [data-action]')).toBe(0)
     // The branch chip still names the run's real branch, in the toolbar.
-    expect(browser.text('[data-slot="git-toolbar"] [data-slot="branch-chip"]')).toContain('cez/')
+    expect(browser.text('[data-slot="git-toolbar"] [data-slot="branch-chip"]')).toContain('onni/')
 
     browser.screenshot(`${artifactsDir}/changes-desktop.png`)
   })
@@ -248,7 +248,7 @@ describe('the Changes tab against a live dry run', () => {
     browser.click('[data-slot="git-button"] [data-action="commit"]')
     // The prompt reached the task — a live message or a continue both land as a `user-message` in
     // the run's event log. The mock agent does not run git, so the commit itself is unit-tested.
-    await waitForUserMessage(join(dataRoot, '.ai/cezar/runs', `${runId}.ndjson`), /^Commit$/)
+    await waitForUserMessage(join(dataRoot, '.ai/onni/runs', `${runId}.ndjson`), /^Commit$/)
     // The commit dialog is the server fallback for a task with no agent to ask — not this one.
     expect(browser.count('[data-slot="commit-message"]')).toBe(0)
   })

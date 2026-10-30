@@ -3,8 +3,8 @@ import { z } from 'zod';
 /**
  * A task's saved workspace layouts (spec `.ai/specs/2026-10-07-task-workspace.md` §5.2, §5.3).
  *
- * The wire shape of what the cockpit builds in the view area, persisted by the cezar that owns
- * the task — §5.3: "Persist named layouts per task on the Cezar host that owns the task."
+ * The wire shape of what the cockpit builds in the view area, persisted by the onni that owns
+ * the task — §5.3: "Persist named layouts per task on the Onni host that owns the task."
  *
  * Every axis is bounded, because this body is written straight to a file on the host: three
  * columns is the spec's own cap (§5.2), and the rest are sized so a hand-written request cannot
@@ -74,7 +74,7 @@ export type WorkspaceLayoutsResponse = z.infer<typeof workspaceLayoutsResponseSc
 
 /**
  * A layout the user SAVED by name — workspace-wide, so it is offered in every task of every
- * project (`savedLayouts` in `~/.cezar/ui-state.json`). Only the arrangement travels: which views,
+ * project (`savedLayouts` in `~/.onni/ui-state.json`). Only the arrangement travels: which views,
  * how wide. A column's own state (a Preview's tabs) belongs to the task it was opened in.
  */
 export const MAX_SAVED_WORKSPACE_LAYOUTS = 50;

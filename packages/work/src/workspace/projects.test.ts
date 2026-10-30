@@ -32,8 +32,8 @@ describe('workspace projects', () => {
   let repos: string;
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-workspace-'));
-    repos = mkdtempSync(join(realpathSync(tmpdir()), 'cez-repos-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-workspace-'));
+    repos = mkdtempSync(join(realpathSync(tmpdir()), 'onni-repos-'));
     process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
     clearProjectProbeCache();
   });
@@ -64,9 +64,9 @@ describe('workspace projects', () => {
 
   describe('registerProject', () => {
     it('registers a new root with slug, name, timestamps and source', async () => {
-      const root = makeDir('cezar');
+      const root = makeDir('onni');
       const entry = await registerProject(root);
-      expect(entry).toMatchObject({ id: 'cezar', root, name: 'cezar', source: 'local' });
+      expect(entry).toMatchObject({ id: 'onni', root, name: 'onni', source: 'local' });
       expect(entry.addedAt).not.toBe('');
       expect(entry.lastOpenedAt).toBe(entry.addedAt);
       expect((await loadWorkspaceConfig()).projects).toEqual([entry]);
@@ -241,7 +241,7 @@ describe('workspace projects', () => {
       const root = makeDir('disconnected');
       const store = new TrackerConnections();
       const record = await store.write(root, { kind: 'linear', key: 'test-key' });
-      await writeTrackerAssociation(join(root, '.ai/cezar'), {
+      await writeTrackerAssociation(join(root, '.ai/onni'), {
         kind: 'linear', source: { id: 'org', webUrl: 'https://linear.app/test' },
         externalId: 'team', externalName: 'Team', connectionId: record!.id,
       });
@@ -260,13 +260,13 @@ describe('workspace projects', () => {
       await registerProject(jiraRoot);
       await registerProject(linearRoot);
       await registerProject(plainRoot);
-      await writeTrackerAssociation(join(jiraRoot, '.ai/cezar'), {
+      await writeTrackerAssociation(join(jiraRoot, '.ai/onni'), {
         kind: 'jira',
         source: { id: 'cloud-1', webUrl: 'https://acme.atlassian.net' },
         externalId: '10000',
         externalName: 'Platform',
       });
-      await writeTrackerAssociation(join(linearRoot, '.ai/cezar'), {
+      await writeTrackerAssociation(join(linearRoot, '.ai/onni'), {
         kind: 'linear',
         source: { id: 'org-1', webUrl: 'https://linear.app/acme' },
         externalId: 'team-1',
@@ -280,7 +280,7 @@ describe('workspace projects', () => {
         { id: 'plain-project', tracker: undefined },
       ]);
 
-      await writeTrackerAssociation(join(jiraRoot, '.ai/cezar'), {
+      await writeTrackerAssociation(join(jiraRoot, '.ai/onni'), {
         kind: 'linear',
         source: { id: 'org-2', webUrl: 'https://linear.app/other' },
         externalId: 'team-2',
@@ -293,7 +293,7 @@ describe('workspace projects', () => {
     it('includes tracker classification in the shared one-project probe helper', async () => {
       const root = makeDir('probed-project');
       await new TrackerConnections().write(root, { kind: 'jira', origin: 'https://acme.atlassian.net', email: 'test@example.com', token: 'test-token' });
-      await writeTrackerAssociation(join(root, '.ai/cezar'), {
+      await writeTrackerAssociation(join(root, '.ai/onni'), {
         kind: 'jira',
         source: { id: 'cloud-1', webUrl: 'https://acme.atlassian.net' },
         externalId: '10000',
@@ -327,20 +327,20 @@ describe('workspace projects', () => {
       expect(await shouldRegisterProject(makeRepo('normal-repo'))).toBe(true);
     });
 
-    it('suppresses a cezar task worktree root', async () => {
-      const worktree = makeDir('host-repo', '.ai', 'cezar', 'worktrees', 'abc12345');
+    it('suppresses a onni task worktree root', async () => {
+      const worktree = makeDir('host-repo', '.ai', 'onni', 'worktrees', 'abc12345');
       expect(await shouldRegisterProject(worktree)).toBe(false);
     });
 
     it('suppresses a repo nested deeper inside a task worktree', async () => {
-      const nested = join(repos, 'host', '.ai', 'cezar', 'worktrees', 'run-1', 'sub', 'repo');
+      const nested = join(repos, 'host', '.ai', 'onni', 'worktrees', 'run-1', 'sub', 'repo');
       // Path need not exist — normalizeRoot degrades to resolve(); the guard
       // must still recognize the worktree marker on the raw spelling.
       expect(await shouldRegisterProject(nested)).toBe(false);
     });
 
     it('does not suppress a repo merely named like the marker pieces', async () => {
-      expect(await shouldRegisterProject(makeDir('cezar-worktrees'))).toBe(true);
+      expect(await shouldRegisterProject(makeDir('onni-worktrees'))).toBe(true);
     });
 
     it('suppresses the home directory itself, in any spelling', async () => {
@@ -350,7 +350,7 @@ describe('workspace projects', () => {
 
     it('keeps allowing an explicit add once the registry is populated', async () => {
       await registerProject(makeRepo('first'));
-      // The path-shape guard is what `cezar projects add` and POST /api/projects
+      // The path-shape guard is what `onni projects add` and POST /api/projects
       // ask — it must stay blind to how many projects already exist.
       expect(await shouldRegisterProject(makeRepo('second'))).toBe(true);
     });
@@ -380,7 +380,7 @@ describe('workspace projects', () => {
 
     it('keeps the path-shape guards ahead of the seeding rule', async () => {
       expect(await shouldAutoRegisterProject(homedir(), env())).toBe(false);
-      const worktree = makeDir('host', '.ai', 'cezar', 'worktrees', 'abc12345');
+      const worktree = makeDir('host', '.ai', 'onni', 'worktrees', 'abc12345');
       expect(await shouldAutoRegisterProject(worktree, env())).toBe(false);
     });
 

@@ -43,7 +43,7 @@ afterEach(() => {
 const SKILLS: Skill[] = [
   { name: 'global-deploy', description: 'Deploy from anywhere', body: '', path: '/g/global-deploy.md', source: 'global' },
   { name: 'om-fix', description: 'Fix an issue', body: '', path: '/p/om-fix.md', source: 'ai' },
-  { name: 'om-review', body: '', path: '/p/om-review.md', source: 'cezar' },
+  { name: 'om-review', body: '', path: '/p/om-review.md', source: 'onni' },
 ]
 
 /** The composer fetches `/api/v1/skills` (only once `/` has been typed) and `/api/v1/ui-state`

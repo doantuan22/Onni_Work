@@ -61,7 +61,7 @@ const sample: WorktreesResponse = {
       runId: 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa',
       title: 'fix the login bug',
       status: 'done',
-      branch: 'cez/aaaaaaaa',
+      branch: 'onni/aaaaaaaa',
       sizeBytes: 5 * 1024 * 1024,
       finishedAt: '2026-07-01T00:00:00Z',
       reclaimable: true,
@@ -70,7 +70,7 @@ const sample: WorktreesResponse = {
       runId: 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb',
       title: 'review dialog',
       status: 'review',
-      branch: 'cez/bbbbbbbb',
+      branch: 'onni/bbbbbbbb',
       sizeBytes: null,
       finishedAt: null,
       reclaimable: false,
@@ -136,7 +136,7 @@ describe('Settings → Resources: worktrees panel (#483)', () => {
 describe('Worktrees lifecycle management', () => {
   const managed: WorktreeLifecycleSummary = {
     worktreeId: 'dddddddd-4444-4444-8444-dddddddddddd', runId: sample.worktrees[0]!.runId,
-    task: {id: sample.worktrees[0]!.runId, title: 'fix the login bug'}, worktreePath: '/project/.ai/cezar/worktrees/task',
+    task: {id: sample.worktrees[0]!.runId, title: 'fix the login bug'}, worktreePath: '/project/.ai/onni/worktrees/task',
     generation: 1, onDisk: true, prepared: true, needsAttention: false, autoCleanupSuppressed: false,
   }
   it('uses the operation API for a managed worktree and does not claim it is removed when queued', async () => {

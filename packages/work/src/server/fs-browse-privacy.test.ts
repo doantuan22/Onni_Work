@@ -26,7 +26,7 @@ describe('browseDirectory — a folder macOS privacy blocks', () => {
   const platform = process.platform;
   let root: string;
   beforeEach(() => {
-    root = realpathSync(mkdtempSync(join(tmpdir(), 'cez-fs-privacy-')));
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'onni-fs-privacy-')));
     mkdirSync(join(root, 'Documents'));
     denied.add(join(root, 'Documents'));
   });

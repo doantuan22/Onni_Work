@@ -97,8 +97,8 @@ describe('provider action gating', () => {
     delete process.env.CEZ_AGENT_MODELS_LOCKED;
     process.env.CEZ_DRY_RUN = '1';
     process.env.CEZ_FOLLOWUPS = '1';
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-provider-action-gating-'));
-    dataDir = join(repoRoot, '.ai/cezar');
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-provider-action-gating-'));
+    dataDir = join(repoRoot, '.ai/onni');
     store = RunStore.open(dataDir);
     startRun = vi.fn((_workflow: WorkflowDef, input: StartRunInput) => makeRun(input));
     sendMessage = vi.fn(() => true);
@@ -274,7 +274,7 @@ describe('provider action gating', () => {
 /**
  * The gate re-probes before it refuses (`providerActionError` in `server.ts`).
  *
- * Auth state is served stale-while-revalidate, so a cached "disconnected" can predate a login cezar
+ * Auth state is served stale-while-revalidate, so a cached "disconnected" can predate a login onni
  * never saw — someone typing `claude auth login` in a terminal. Refusing on that would lock a user
  * out of their own cockpit with no way back but waiting, which is exactly what a short cache window
  * used to paper over, at the cost of making every reader of `GET /api/v1/providers/status`
@@ -291,9 +291,9 @@ describe('the gate verifies before it refuses', () => {
     // The whole point is the real probe path, so dry-run (which reports everything connected) must
     // be off or these would pass without exercising anything.
     delete process.env.CEZ_DRY_RUN;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-gate-verify-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-gate-verify-'));
     openTerminal.mockClear();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     startRun = vi.fn((_workflow: WorkflowDef, input: StartRunInput) => store.createRun({
       title: 'Task',
       workflow: 'quick-task',
@@ -519,8 +519,8 @@ describe('provider availability preserves existing execution', () => {
       import.meta.dirname,
       '../core/__fixtures__/codex/mock-codex-app-server.mjs',
     );
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-provider-continuity-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-provider-continuity-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 

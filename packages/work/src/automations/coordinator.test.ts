@@ -7,7 +7,7 @@ import { AutomationStore } from './store.ts';
 
 const dirs: string[] = [];
 async function project(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'cezar-coordinator-'));
+  const root = await mkdtemp(join(tmpdir(), 'onni-coordinator-'));
   dirs.push(root);
   return root;
 }
@@ -17,8 +17,8 @@ describe('AutomationCoordinator', () => {
   it('discovers only projects carrying the optional definitions file', async () => {
     const first = await project();
     const second = await project();
-    await mkdir(join(first, '.ai/cezar'), { recursive: true });
-    await writeFile(join(first, '.ai/cezar/automations.json'), '{"version":1,"automations":[]}');
+    await mkdir(join(first, '.ai/onni'), { recursive: true });
+    await writeFile(join(first, '.ai/onni/automations.json'), '{"version":1,"automations":[]}');
     const coordinator = new AutomationCoordinator({
       listProjects: async () => [
         { id: 'first', root: first, status: 'ok' },
@@ -32,8 +32,8 @@ describe('AutomationCoordinator', () => {
 
   it('drops removed and gone projects without failing other handles', async () => {
     const root = await project();
-    await mkdir(join(root, '.ai/cezar'), { recursive: true });
-    await writeFile(join(root, '.ai/cezar/automations.json'), '{"version":1,"automations":[]}');
+    await mkdir(join(root, '.ai/onni'), { recursive: true });
+    await writeFile(join(root, '.ai/onni/automations.json'), '{"version":1,"automations":[]}');
     let status: 'ok' | 'missing' = 'ok';
     const coordinator = new AutomationCoordinator({
       listProjects: async () => [{ id: 'one', root, status }],
@@ -47,7 +47,7 @@ describe('AutomationCoordinator', () => {
 
   /**
    * The boot project is the one project the registry may legitimately not name:
-   * `cezar serve` serves the folder it was started in either way, and since boot
+   * `onni serve` serves the folder it was started in either way, and since boot
    * registration became seed-once that folder is usually unregistered, so its
    * store is keyed on the `'default'` alias. Without the pin, the sweep in
    * `refresh()` reads "not in the registry" as "stale" and drops it — and because
@@ -59,8 +59,8 @@ describe('AutomationCoordinator', () => {
     const boot = await project();
     const registered = await project();
     for (const root of [boot, registered]) {
-      await mkdir(join(root, '.ai/cezar'), { recursive: true });
-      await writeFile(join(root, '.ai/cezar/automations.json'), '{"version":1,"automations":[]}');
+      await mkdir(join(root, '.ai/onni'), { recursive: true });
+      await writeFile(join(root, '.ai/onni/automations.json'), '{"version":1,"automations":[]}');
     }
     const coordinator = new AutomationCoordinator({
       // What the real registry answers for an unregistered boot folder: the boot
@@ -81,8 +81,8 @@ describe('AutomationCoordinator', () => {
     // The pin is one id, not an amnesty: a project that really did leave the
     // registry must still be dropped.
     const gone = await project();
-    await mkdir(join(gone, '.ai/cezar'), { recursive: true });
-    await writeFile(join(gone, '.ai/cezar/automations.json'), '{"version":1,"automations":[]}');
+    await mkdir(join(gone, '.ai/onni'), { recursive: true });
+    await writeFile(join(gone, '.ai/onni/automations.json'), '{"version":1,"automations":[]}');
     const coordinator = new AutomationCoordinator({ listProjects: async () => [], pinned: 'default' });
     expect(coordinator.store('gone', gone)).toBeDefined();
     await coordinator.refresh();
@@ -91,9 +91,9 @@ describe('AutomationCoordinator', () => {
 
   /**
    * The exact sequence the cockpit's **Add project** button performs on the folder
-   * cezar was started in: the server has already opened that root under the boot
+   * onni was started in: the server has already opened that root under the boot
    * alias, and the registry then gains the SAME root under a freshly allocated
-   * slug. Two ids, one `.ai/cezar` directory.
+   * slug. Two ids, one `.ai/onni` directory.
    *
    * `AutomationStore` is file-backed with an in-memory snapshot taken at `open()`,
    * so a second instance over that directory is not a harmless duplicate: the
@@ -103,8 +103,8 @@ describe('AutomationCoordinator', () => {
    */
   it('serves two ids for one root from a single store', async () => {
     const root = await project();
-    await mkdir(join(root, '.ai/cezar'), { recursive: true });
-    await writeFile(join(root, '.ai/cezar/automations.json'), '{"version":1,"automations":[]}');
+    await mkdir(join(root, '.ai/onni'), { recursive: true });
+    await writeFile(join(root, '.ai/onni/automations.json'), '{"version":1,"automations":[]}');
     let registry: { id: string; root: string; status: 'ok' }[] = [];
     const coordinator = new AutomationCoordinator({
       listProjects: async () => registry,
@@ -128,8 +128,8 @@ describe('AutomationCoordinator', () => {
     // because only that one routes `launch` to the boot manager and store; the slug
     // would build a second ProjectContext over the same root.
     const root = await project();
-    await mkdir(join(root, '.ai/cezar'), { recursive: true });
-    AutomationStore.open(join(root, '.ai/cezar')).create(
+    await mkdir(join(root, '.ai/onni'), { recursive: true });
+    AutomationStore.open(join(root, '.ai/onni')).create(
       {
         name: 'Review PRs',
         enabled: true,
@@ -154,8 +154,8 @@ describe('AutomationCoordinator', () => {
     // Dropping the shared store with the first id to leave would hand the survivor
     // a fresh snapshot — the divergence again, by a slower route.
     const root = await project();
-    await mkdir(join(root, '.ai/cezar'), { recursive: true });
-    await writeFile(join(root, '.ai/cezar/automations.json'), '{"version":1,"automations":[]}');
+    await mkdir(join(root, '.ai/onni'), { recursive: true });
+    await writeFile(join(root, '.ai/onni/automations.json'), '{"version":1,"automations":[]}');
     const coordinator = new AutomationCoordinator({ listProjects: async () => [] });
     const first = coordinator.store('default', root);
     expect(coordinator.store('my-repo', root)).toBe(first);

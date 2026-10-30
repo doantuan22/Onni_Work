@@ -25,14 +25,14 @@ describe('the GitHub merge API', () => {
   });
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-ghmerge-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-ghmerge-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     execFileSync('git', ['init', '-b', 'main'], { cwd: repoRoot });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoRoot });
     execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoRoot });
     execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: repoRoot });
     execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/acme/demo.git'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test' });
   });
 

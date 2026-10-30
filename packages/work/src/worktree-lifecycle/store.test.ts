@@ -10,10 +10,10 @@ let root: string;
 let store: LifecycleStore;
 let record: WorktreeLifecycleRecord;
 beforeEach(async () => {
-  root = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'cez-lifecycle-')));
-  store = new LifecycleStore(join(root, '.ai', 'cezar'), root);
+  root = await fs.realpath(await fs.mkdtemp(join(tmpdir(), 'onni-lifecycle-')));
+  store = new LifecycleStore(join(root, '.ai', 'onni'), root);
   record = { schemaVersion: 1, worktreeId: randomUUID(), runId: randomUUID(), projectRoot: root, worktreePath: '', generation: 1, autoCleanupSuppressed: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-  record.worktreePath = join(root, '.ai', 'cezar', 'worktrees', record.runId);
+  record.worktreePath = join(root, '.ai', 'onni', 'worktrees', record.runId);
 });
 afterEach(async () => { await fs.rm(root, { recursive: true, force: true }); });
 const operation = () => lifecycleOperationSchema.parse({ schemaVersion: 1, id: randomUUID(), worktreeId: record.worktreeId, generation: 1, phase: 'setup', intent: 'create', state: 'queued', revision: 0, createdAt: record.createdAt, updatedAt: record.updatedAt, executions: [] });
@@ -54,8 +54,8 @@ describe('LifecycleStore', () => {
     await expect(store.readWorktree('..')).rejects.toThrow();
     await expect(store.writeWorktree({ ...record, projectRoot: '/tmp' })).rejects.toThrow('another project');
     await expect(store.writeWorktree({ ...record, worktreePath: root })).rejects.toThrow('managed task directory');
-    await fs.mkdir(join(root, '.ai', 'cezar'), { recursive: true });
-    await fs.symlink(root, join(root, '.ai', 'cezar', 'worktrees'));
+    await fs.mkdir(join(root, '.ai', 'onni'), { recursive: true });
+    await fs.symlink(root, join(root, '.ai', 'onni', 'worktrees'));
     await expect(store.writeWorktree(record)).rejects.toThrow('symbolic link');
   });
   it('salvages valid records while reporting corrupt identities without guessing context', async () => {

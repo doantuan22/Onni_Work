@@ -100,7 +100,7 @@ describe('buildClaudeArgs approval gate', () => {
 });
 
 /**
- * #703 — a session cezar tore down itself must not settle as an agent
+ * #703 — a session onni tore down itself must not settle as an agent
  * failure. Every agent CLI installs its own stop-signal handler and exits
  * `128 + signal`, so the runner sees a NON-ZERO code for a teardown it
  * asked for (goal achieved → `end()`, or a user cancel → `interrupt()`).
@@ -119,7 +119,7 @@ describe('isSignalTerminationExit', () => {
   });
 });
 
-describe('a teardown cezar initiated', () => {
+describe('a teardown onni initiated', () => {
   const stubBin = fileURLToPath(
     new URL('./__fixtures__/claude/stub-ignores-eof-exits-143.mjs', import.meta.url),
   );
@@ -158,7 +158,7 @@ describe('a teardown cezar initiated', () => {
     });
     expect(events.at(-1)).toEqual({ type: 'done' });
     expect(
-      events.some((e) => e.type === 'note' && e.message.includes('terminated by cezar (code 143)')),
+      events.some((e) => e.type === 'note' && e.message.includes('terminated by onni (code 143)')),
     ).toBe(true);
   }, 15_000);
 });
@@ -316,14 +316,14 @@ describe('SIGTERM→SIGKILL escalation for a CLI that survives SIGTERM', () => {
 });
 
 describe('claudeExitMessage', () => {
-  it('names a hangup the CLI exited on, which cezar never sends (telemetry 046a0525)', () => {
+  it('names a hangup the CLI exited on, which onni never sends (telemetry 046a0525)', () => {
     expect(claudeExitMessage(129, '')).toBe(
-      'claude CLI exited with code 129 (SIGHUP: the terminal or console it ran under went away — cezar did not stop it)',
+      'claude CLI exited with code 129 (SIGHUP: the terminal or console it ran under went away — onni did not stop it)',
     );
   });
 
   it('names any other signal exit, and keeps the stderr tail', () => {
-    expect(claudeExitMessage(137, 'a\nb')).toBe('claude CLI exited with code 137 (SIGKILL: a signal cezar did not send) — a | b');
+    expect(claudeExitMessage(137, 'a\nb')).toBe('claude CLI exited with code 137 (SIGKILL: a signal onni did not send) — a | b');
   });
 
   it('leaves an ordinary failure code alone', () => {
@@ -346,7 +346,7 @@ describe('ClaudeCliRunner token usage', () => {
     const mockBin = fileURLToPath(new URL('../../scripts/mock-claude.mjs', import.meta.url));
     const runner = new ClaudeCliRunner({ bin: mockBin, timeoutMs: 60_000 });
     const events: AgentEvent[] = [];
-    const cwd = mkdtempSync(join(tmpdir(), 'cez-claude-token-usage-'));
+    const cwd = mkdtempSync(join(tmpdir(), 'onni-claude-token-usage-'));
 
     try {
       const result = await runner.run(
@@ -379,7 +379,7 @@ describe('ClaudeCliRunner private MCP (spec 2026-10-07-private-project-mcp)', ()
   it('spawns with --mcp-config pointing at a 0600 file that is gone once the session ends', async () => {
     const mockBin = fileURLToPath(new URL('../../scripts/mock-claude.mjs', import.meta.url));
     const runner = new ClaudeCliRunner({ bin: mockBin, timeoutMs: 60_000 });
-    const cwd = mkdtempSync(join(tmpdir(), 'cez-claude-private-mcp-'));
+    const cwd = mkdtempSync(join(tmpdir(), 'onni-claude-private-mcp-'));
     const argsFile = join(cwd, 'args.ndjson');
     try {
       await runner.run({
@@ -407,7 +407,7 @@ describe('a CLI that dies before reading its prompt', () => {
   );
 
   // A failed stdin write surfaces as an async 'error' event on the pipe, not a throw; unhandled,
-  // it crashed the whole cezar process (seen on a fleet hub when the CLI failed to start).
+  // it crashed the whole onni process (seen on a fleet hub when the CLI failed to start).
   it('fails the session instead of crashing the process on EPIPE', async () => {
     const runner = new ClaudeCliRunner({ bin: stubBin, timeoutMs: 0 });
     const session = runner.startSession(

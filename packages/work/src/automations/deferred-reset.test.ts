@@ -120,7 +120,7 @@ it.each([true, false])('retains a terminal Claude reset through the real manager
     const binding = { provider: 'claude' as const, accountId: account.id, profilePath: account.path };
     expect((await previewDeferredStart(root, input, true, resolveDeferredReset)).preview).toMatchObject({ available: false, reason: 'no-data' });
     expect(existsSync(calls)).toBe(false);
-    store = RunStore.open(join(root, '.ai/cezar'));
+    store = RunStore.open(join(root, '.ai/onni'));
     manager = new RunManager(store, root, { semaphore: new WorkspaceSemaphore({ initial: { autoResumeOnUsageLimit: autoResume } }) });
     const record = manager.startRun({ name: 'quick-task', source: 'built-in', steps: [{ id: 'work', name: 'Work', prompt: '{{task}}', runner: 'claude' }] }, { task: 'mock:limit terminal observation', worktree: false });
     await expect.poll(() => store!.getRun(record.id)?.status, { timeout: 15_000 }).toBe('failed');

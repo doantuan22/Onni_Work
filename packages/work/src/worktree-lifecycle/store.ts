@@ -123,7 +123,7 @@ export class LifecycleStore {
   async validateContext(record: WorktreeLifecycleRecord): Promise<void> {
     const root = await fs.realpath(this.projectRoot);
     if (record.projectRoot !== root) throw new LifecycleStoreError('Lifecycle record belongs to another project');
-    const expected = join(root, '.ai', 'cezar', 'worktrees', safeRunId(record.runId));
+    const expected = join(root, '.ai', 'onni', 'worktrees', safeRunId(record.runId));
     if (resolve(record.worktreePath) !== expected) throw new LifecycleStoreError('Lifecycle worktree path does not match the managed task directory');
     await assertLifecyclePath(expected, root);
   }

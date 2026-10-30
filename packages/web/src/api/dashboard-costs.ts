@@ -2,7 +2,7 @@ import { dashboardTruthRevision, reconcileDashboardTruth } from './dashboard-tru
 import { useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { dashboardCostsSchema, type DashboardCosts } from '@onni/api-client'
-import { cez, unwrap, ApiError } from './client'
+import { onni, unwrap, ApiError } from './client'
 import { workspaceQueryKeys } from './queries'
 export const costsKey = [...workspaceQueryKeys.dashboard, 'costs'] as const
 // Policy belongs to the live workspace client, not a cached ranking/cohort or a
@@ -61,7 +61,7 @@ export async function getDashboardCosts(
   const revision = dashboardTruthRevision()
   const result = dashboardCostsSchema.parse(
     await unwrap(
-      await cez.api.v1.workspace.dashboard.costs.$get(
+      await onni.api.v1.workspace.dashboard.costs.$get(
         {
           query: {
             ...options,

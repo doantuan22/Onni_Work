@@ -14,7 +14,7 @@ type WebhookEnv = { Variables: { project: ProjectContext; webhookService: Webhoo
 export function createWebhookRoutes(resolve: (context: ProjectContext) => Promise<WebhookService>) {
   const gate: MiddlewareHandler<WebhookEnv> = async (c, next) => {
     if (!webhookPlatformSupported()) return c.json({ error: WEBHOOK_UNSUPPORTED_PLATFORM_MESSAGE }, 409);
-    if (process.env.CEZ_WEBHOOKS !== '1') return c.json({ error: 'Enable webhook delivery with CEZ_WEBHOOKS=1 and restart cezar' }, 409);
+    if (process.env.CEZ_WEBHOOKS !== '1') return c.json({ error: 'Enable webhook delivery with CEZ_WEBHOOKS=1 and restart onni' }, 409);
     if (!c.get('webhookService')) c.set('webhookService', await resolve(c.get('project')));
     c.header('Cache-Control', 'no-store');
     await next();
@@ -25,7 +25,7 @@ export function createWebhookRoutes(resolve: (context: ProjectContext) => Promis
         if (error.retryAt !== undefined) c.header('Retry-After', String(Math.max(1, Math.ceil((error.retryAt - Date.now()) / 1000))));
         return c.json({ error: error.message }, error.status);
       }
-      return c.json({ error: 'Webhooks are temporarily unavailable. Try again, or restart cezar if it keeps happening.' }, 503);
+      return c.json({ error: 'Webhooks are temporarily unavailable. Try again, or restart onni if it keeps happening.' }, 503);
     })
     .use('/webhooks', gate).use('/webhooks/*', gate)
     .get('/webhooks', c => c.json(c.get('webhookService').list()))

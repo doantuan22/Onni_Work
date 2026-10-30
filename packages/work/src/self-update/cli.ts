@@ -1,12 +1,12 @@
 /**
- * `cezar link | unlink` — the terminal side of the managed layout: register a built checkout
- * under `~/.cezar/versions` so the desktop shell's `current` runs it. Local only: no registry,
+ * `onni link | unlink` — the terminal side of the managed layout: register a built checkout
+ * under `~/.onni/versions` so the desktop shell's `current` runs it. Local only: no registry,
  * no npm, no server.
  */
 
 import { resolve } from 'node:path';
 
-import { branchOf, cezarPackageRoot } from './checkouts.ts';
+import { branchOf, onniPackageRoot } from './checkouts.ts';
 import { activate, activeId, linkCheckout, listLinks, removeInstalled } from './layout.ts';
 
 export interface SelfUpdateCliOptions {
@@ -27,9 +27,9 @@ export async function runSelfUpdateCommand(command: string, args: string[], opts
 
 async function linkCommand(dir: string | undefined, use: boolean): Promise<number> {
   const target = resolve(dir ?? process.cwd());
-  const packageRoot = cezarPackageRoot(target);
+  const packageRoot = onniPackageRoot(target);
   if (!packageRoot) {
-    console.error(`  ✗ ${target} is not a cezar checkout (no @onni/work package.json there or in packages/work)`);
+    console.error(`  ✗ ${target} is not a onni checkout (no @onni/work package.json there or in packages/work)`);
     return 1;
   }
   try {
@@ -41,7 +41,7 @@ async function linkCommand(dir: string | undefined, use: boolean): Promise<numbe
       console.log(`  ✓ now using ${result.id}`);
       console.log('    the desktop app picks it up on its next start — a running cockpit keeps its version');
     } else {
-      console.log('    switch with: cezar link --use  ·  desktop: Cezar ▸ Versions');
+      console.log('    switch with: onni link --use  ·  desktop: Onni ▸ Versions');
     }
     console.log('    rebuild the checkout (npm run build) and restart to run new code — the link needs no refresh\n');
     return 0;
@@ -53,7 +53,7 @@ async function linkCommand(dir: string | undefined, use: boolean): Promise<numbe
 
 async function unlinkCommand(id: string | undefined): Promise<number> {
   if (!id) {
-    console.error('  usage: cezar unlink <id|checkout-path>');
+    console.error('  usage: onni unlink <id|checkout-path>');
     return 1;
   }
   const match = listLinks().find((entry) => entry.id === id || entry.checkout === resolve(id));

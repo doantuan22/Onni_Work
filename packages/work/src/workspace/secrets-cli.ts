@@ -4,7 +4,7 @@ import { SECRET_AUDIENCES, secretNameIssue, type SecretAudience } from '@onni/co
 import { SecretStore, SecretsError, type SecretScopeRef } from './secrets.ts';
 import { loadWorkspaceConfig } from './config.ts';
 
-const USAGE = 'Usage: cezar secrets list | set <NAME> [--audience checks,cezar] | unset <NAME>   [--workspace] [--repo <dir>]\n' +
+const USAGE = 'Usage: onni secrets list | set <NAME> [--audience checks,onni] | unset <NAME>   [--workspace] [--repo <dir>]\n' +
   '  set reads the value from stdin (pipe it in, or type it at the hidden prompt) — never from argv.\n' +
   '  --workspace addresses the user\'s own secrets, shared by every project; the default is this project\'s.\n' +
   `  --audience names who may read the secret (${SECRET_AUDIENCES.join(', ')}); the default is checks.`;
@@ -17,7 +17,7 @@ export interface SecretsCliIo {
 }
 
 /**
- * `cezar secrets` (spec 2026-10-10-project-secrets-vault-options). Local-only, like
+ * `onni secrets` (spec 2026-10-10-project-secrets-vault-options). Local-only, like
  * `tracker-connections`: it writes the same store the cockpit does and needs no running
  * server. A value is never taken from argv — nothing lands in shell history or `ps` — and
  * only names and metadata are ever printed.
@@ -37,7 +37,7 @@ export async function runSecretsCommand(
   if (action.kind !== 'list') {
     const issue = secretNameIssue(action.name);
     if (issue) {
-      io.error(`cezar secrets: ${action.name} — ${issue}`);
+      io.error(`onni secrets: ${action.name} — ${issue}`);
       return 1;
     }
   }
@@ -48,7 +48,7 @@ export async function runSecretsCommand(
   } else {
     const project = await registeredProject(repo ?? process.cwd());
     if (!project) {
-      io.error('cezar secrets: this folder is not a registered cezar project — open it in cezar once, then retry (or pass --workspace).');
+      io.error('onni secrets: this folder is not a registered onni project — open it in onni once, then retry (or pass --workspace).');
       return 1;
     }
     scope = { kind: 'project', projectId: project.id, root: project.root };
@@ -57,16 +57,16 @@ export async function runSecretsCommand(
     if (action.kind === 'list') {
       const [listed, keyBackend] = await Promise.all([store.list(scope), store.keyBackend()]);
       for (const secret of listed.secrets) io.log(`${secret.name}\t${secret.audiences.join(',')}`);
-      if (listed.skipped) io.error(`cezar secrets: store skipped — ${listed.skipped}`);
+      if (listed.skipped) io.error(`onni secrets: store skipped — ${listed.skipped}`);
       io.error(keyBackend === 'keychain'
         ? '# encrypted with a data key in the OS keychain'
-        : '# encrypted with a data key in ~/.cezar/secrets/.key (no OS keychain in use) — private file, not a vault');
+        : '# encrypted with a data key in ~/.onni/secrets/.key (no OS keychain in use) — private file, not a vault');
       return 0;
     }
     if (action.kind === 'set') {
       const value = await (io.readValue ?? readValueFromStdin)();
       if (value === '') {
-        io.error('cezar secrets: empty value — nothing saved');
+        io.error('onni secrets: empty value — nothing saved');
         return 1;
       }
       await store.set(scope, action.name, value, audiences);
@@ -74,7 +74,7 @@ export async function runSecretsCommand(
       return 0;
     }
     if (!(await store.unset(scope, action.name))) {
-      io.error(`cezar secrets: no secret named ${action.name}`);
+      io.error(`onni secrets: no secret named ${action.name}`);
       return 1;
     }
     io.log(action.name);
@@ -82,8 +82,8 @@ export async function runSecretsCommand(
   } catch (error) {
     io.error(
       error instanceof SecretsError
-        ? `cezar secrets: ${error.message}`
-        : 'cezar secrets: cannot access the secret store — check local storage permissions.',
+        ? `onni secrets: ${error.message}`
+        : 'onni secrets: cannot access the secret store — check local storage permissions.',
     );
     return 1;
   }

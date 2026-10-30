@@ -12,20 +12,20 @@ describe('the settings return store', () => {
   })
 
   it('remembers the last NON-settings location, query and hash included', () => {
-    recordSettingsReturn(at('/p/cezar/tasks/run-1', '?tab=changes', '#file-3'))
-    expect(settingsReturnLocation()).toEqual(at('/p/cezar/tasks/run-1', '?tab=changes', '#file-3'))
+    recordSettingsReturn(at('/p/onni/tasks/run-1', '?tab=changes', '#file-3'))
+    expect(settingsReturnLocation()).toEqual(at('/p/onni/tasks/run-1', '?tab=changes', '#file-3'))
   })
 
   it('ignores settings pages, so hopping between sections never moves the way back', () => {
-    recordSettingsReturn(at('/p/cezar/git'))
-    recordSettingsReturn(at('/p/cezar/settings/agents'))
+    recordSettingsReturn(at('/p/onni/git'))
+    recordSettingsReturn(at('/p/onni/settings/agents'))
     recordSettingsReturn(at('/settings/global/appearance'))
     recordSettingsReturn(at('/p/other/settings'))
-    expect(settingsReturnLocation()).toEqual(at('/p/cezar/git'))
+    expect(settingsReturnLocation()).toEqual(at('/p/onni/git'))
   })
 
   it('the latest non-settings page wins', () => {
-    recordSettingsReturn(at('/p/cezar/git'))
+    recordSettingsReturn(at('/p/onni/git'))
     recordSettingsReturn(at('/p/other/skills'))
     expect(settingsReturnLocation()).toEqual(at('/p/other/skills'))
   })

@@ -127,13 +127,13 @@ describe('sudoStep', () => {
           retryable: false,
           message:
             'nginx configuration test failed; fix the generated configuration before rerunning this step.\n' +
-            'nginx: [emerg] unknown directive "http2" in /etc/nginx/sites-enabled/cezar:12',
+            'nginx: [emerg] unknown directive "http2" in /etc/nginx/sites-enabled/onni:12',
         }),
       }),
     ).rejects.toBeInstanceOf(StepAborted);
     expect(errors).toEqual([
       'nginx configuration test failed; fix the generated configuration before rerunning this step.\n' +
-        'nginx: [emerg] unknown directive "http2" in /etc/nginx/sites-enabled/cezar:12',
+        'nginx: [emerg] unknown directive "http2" in /etc/nginx/sites-enabled/onni:12',
     ]);
     expect(confirm).toHaveBeenCalledTimes(1); // only the delegate completion prompt
   });
@@ -192,14 +192,14 @@ describe('sudoStep secret channel (stdin, never argv)', () => {
     });
     await sudoStep(ctx, {
       description: 'write credentials',
-      command: 'cat > /etc/cezar/htpasswd && chmod 0640 /etc/cezar/htpasswd',
+      command: 'cat > /etc/onni/htpasswd && chmod 0640 /etc/onni/htpasswd',
       input: 'ops:$apr1$secret-hash\n',
       inputLabel: 'credential line',
       verify: async () => true,
     });
     expect(interactive).toHaveBeenCalledWith(
       'sudo',
-      ['bash', '-lc', 'cat > /etc/cezar/htpasswd && chmod 0640 /etc/cezar/htpasswd'],
+      ['bash', '-lc', 'cat > /etc/onni/htpasswd && chmod 0640 /etc/onni/htpasswd'],
       { input: 'ops:$apr1$secret-hash\n' },
     );
     const argv = interactive.mock.calls[0]?.[1] ?? [];
@@ -216,7 +216,7 @@ describe('sudoStep secret channel (stdin, never argv)', () => {
     const ctx = makeCtx({ ui });
     await sudoStep(ctx, {
       description: 'write credentials',
-      command: 'cat > /etc/cezar/htpasswd',
+      command: 'cat > /etc/onni/htpasswd',
       input: 'ops:$apr1$secret-hash\n',
       inputLabel: 'credential line',
       verify: async () => true,

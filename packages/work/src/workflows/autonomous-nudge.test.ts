@@ -13,7 +13,7 @@ const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 
 /**
- * Autonomous mode (#autonomous) must never park a run at `waiting`: at every turn end cezar
+ * Autonomous mode (#autonomous) must never park a run at `waiting`: at every turn end onni
  * sends `AUTONOMOUS_NUDGE` into the open session, bounded by `MAX_AUTO_CONTINUES`.
  *
  * The nudge was unreachable on BOTH turn-end handlers, in two different ways — the shape
@@ -26,7 +26,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
  * did nothing at turn end still looked tested.
  *
  * Driven dry through `scripts/mock-claude.mjs`: `mock:autonomous` ends the first turn plainly and
- * answers the nudge with `CEZ:DONE`, so a nudged run can actually finish inside a test.
+ * answers the nudge with `ONNI:DONE`, so a nudged run can actually finish inside a test.
  */
 describe('autonomous mode nudges at turn end instead of parking (#autonomous)', () => {
   // Fresh repo + manager per test, like the #490 suite: these runs park (or hold the exclusive
@@ -43,14 +43,14 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-autonudge-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-autonudge-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
     currentId = undefined;
   });
@@ -75,7 +75,7 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
   };
 
   const readEvents = (id: string): Array<{ type: string; message?: string; stepId?: string }> => {
-    const path = join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`);
+    const path = join(repoRoot, '.ai/onni/runs', `${id}.ndjson`);
     if (!existsSync(path)) return [];
     return readFileSync(path, 'utf8')
       .trim()
@@ -115,7 +115,7 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
       `autonomous — continuing without pausing (1/${MAX_AUTO_CONTINUES})`,
     );
 
-    // And the nudged turn ends with CEZ:DONE, so the run settles instead of sitting on a slot.
+    // And the nudged turn ends with ONNI:DONE, so the run settles instead of sitting on a slot.
     await waitFor(record.id, (r) => r?.status === 'done');
     expect(statuses).not.toContain('waiting');
     expect(store.getRun(record.id)?.steps.every((s) => s.status !== 'waiting')).toBe(true);
@@ -203,7 +203,7 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
 
   it('stops at MAX_AUTO_CONTINUES and parks the run, so the loop is bounded', async () => {
     // No `mock:autonomous` arming: the mock answers every nudge plainly and never emits
-    // CEZ:DONE, which is the stuck-agent case the cap exists for.
+    // ONNI:DONE, which is the stuck-agent case the cap exists for.
     const record = manager.startRun(SINGLE_STEP, {
       task: 'never finishes on its own',
       worktree: false,
@@ -223,7 +223,7 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
 
   it('parks on a question the agent repeats after a nudge instead of nudging it to the cap', async () => {
     // The live-session failure this pins: the agent asked how to proceed around a refused
-    // `cez task create`, the nudge overrode it forty times, and the agent improvised at full
+    // `onni task create`, the nudge overrode it forty times, and the agent improvised at full
     // cost. The first override stands (the #967 rule); the same question asked again parks.
     const record = manager.startRun(SINGLE_STEP, {
       task: 'mock:ask-repeat pick a date library',
@@ -241,8 +241,8 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
     expect(readEvents(record.id).some((e) => e.type === 'ask.requested')).toBe(true);
   }, 90_000);
 
-  it('records the CEZ:ASK it overrides, so an overridden question is not lost', async () => {
-    // The nudge deliberately outranks `CEZ:ASK` while budget remains — but `stripAskMarker`
+  it('records the ONNI:ASK it overrides, so an overridden question is not lost', async () => {
+    // The nudge deliberately outranks `ONNI:ASK` while budget remains — but `stripAskMarker`
     // removes the marker from the visible text and no ask card is emitted, so without an
     // explicit note the question would leave NO trace in the transcript at all.
     const record = manager.startRun(SINGLE_STEP, {
@@ -265,7 +265,7 @@ describe('autonomous mode nudges at turn end instead of parking (#autonomous)', 
   }, 40_000);
 
   it('keeps the nudge text the dry-run mock recognises', () => {
-    // `scripts/mock-claude.mjs` ends a nudged turn with CEZ:DONE by matching the OPENING WORDS
+    // `scripts/mock-claude.mjs` ends a nudged turn with ONNI:DONE by matching the OPENING WORDS
     // of the nudge (it carries no `mock:` marker of its own). Rewording the nudge without
     // updating the mock does not fail at the seam: the nudge still fires, the mock just never
     // finishes, and the autonomous tests above die on their waitFor deadline with "condition

@@ -190,7 +190,7 @@ export class CursorAgentRunner implements AgentRunner {
     }
 
     // `spawn` reports a missing/unresolvable binary asynchronously via 'error' (process.nextTick),
-    // not by throwing — an unhandled 'error' event crashes the whole cezar process. This listener
+    // not by throwing — an unhandled 'error' event crashes the whole onni process. This listener
     // must be attached synchronously, before any await, same as claude-cli-runner.ts.
     let spawnFailed: Error | null = null;
     child.on('error', (err: NodeJS.ErrnoException) => {
@@ -202,7 +202,7 @@ export class CursorAgentRunner implements AgentRunner {
     let sessionId = spec.sessionId;
     let tokensUsed = 0;
     let open = true;
-    let terminatedByCezar = false;
+    let terminatedByOnni = false;
     let timedOut = false;
     // A `result` frame with `is_error: true` can still exit 0 — the stream is the source of
     // truth for whether the turn failed, not the process exit code.
@@ -237,7 +237,7 @@ export class CursorAgentRunner implements AgentRunner {
     let killTimer: NodeJS.Timeout | undefined;
     const deadline = armInactivityDeadline(limitMs, () => {
       timedOut = true;
-      terminatedByCezar = true;
+      terminatedByOnni = true;
       try {
         child.kill('SIGTERM');
       } catch {
@@ -287,10 +287,10 @@ export class CursorAgentRunner implements AgentRunner {
         return { text, toolCalls, tokensUsed, sessionId };
       }
 
-      if (terminatedByCezar && isSignalTerminationExit(exitCode)) {
+      if (terminatedByOnni && isSignalTerminationExit(exitCode)) {
         onEvent?.({
           type: 'note',
-          message: `cursor agent terminated by cezar (code ${exitCode})`,
+          message: `cursor agent terminated by onni (code ${exitCode})`,
         });
         onEvent?.({ type: 'done' });
         return { text, toolCalls, tokensUsed, sessionId };
@@ -317,7 +317,7 @@ export class CursorAgentRunner implements AgentRunner {
     });
 
     const interrupt = () => {
-      terminatedByCezar = true;
+      terminatedByOnni = true;
       open = false;
       try {
         child.kill('SIGTERM');

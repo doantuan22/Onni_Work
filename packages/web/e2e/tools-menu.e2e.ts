@@ -24,7 +24,7 @@ type Health = {
 const RUNNERS = new Set(['claude', 'codex', 'junie', 'opencode', 'pi', 'copilot'])
 
 /** What (if anything) keeps the aggregate dot from green, derived from the live health answer the
- *  same way `toolsBlocker()` derives it: the dot is amber only when cez cannot start a task at all,
+ *  same way `toolsBlocker()` derives it: the dot is amber only when onni cannot start a task at all,
  *  not merely because an optional tool is absent. */
 function blockerFor(health: Health): string | null {
   const runners = health.checks.filter((check) => RUNNERS.has(check.name))
@@ -73,7 +73,7 @@ describe('tools menu', () => {
 
     const blocker = blockerFor(health)
     const missing = health.checks.filter((c) => !c.available).map((c) => c.name)
-    let expectedTitle = `cezar v${health.version}`
+    let expectedTitle = `onni v${health.version}`
     if (blocker) expectedTitle += ` · ${blocker}`
     else if (missing.length > 0) expectedTitle += ` · optional: ${missing.join(', ')} not installed`
     expect(browser.evaluate(`document.querySelector('${TRIGGER}').getAttribute('title')`)).toBe(expectedTitle)

@@ -22,8 +22,8 @@ let requests: Array<{ method: string; url: string; body?: unknown }> = []
 function serve(uiState: Record<string, unknown> = {}) {
   requests = []
   let workspaceConfig = {
-    branding: { name: 'cezar', logoUrl: null as string | null },
-    browseRoot: '~/', projectsDir: '~/cezar/projects', skillsAutoUpdate: null, effectiveSkillsAutoUpdate: true,
+    branding: { name: 'onni', logoUrl: null as string | null },
+    browseRoot: '~/', projectsDir: '~/onni/projects', skillsAutoUpdate: null, effectiveSkillsAutoUpdate: true,
     composerDefaults: { autonomous: null, worktree: null, inheritedAutonomous: 'source-dependent', inheritedWorktree: true },
     resources: { maxParallel: 2, maxMonitoringSessions: 2, idleTimeoutMinutes: 15, monitoringWakeIntervalMinutes: 5, autoResumeOnUsageLimit: true, memoryLimitMb: null, worktreeRetentionDefault: 10 },
     agentDefaults: {},
@@ -65,8 +65,8 @@ function seedProjects(client: QueryClient, ids: string[]) {
       source: 'local',
       status: 'ok',
     })),
-    bootProject: ids[0] ?? 'cezar',
-    projectsDir: '~/cezar/projects',
+    bootProject: ids[0] ?? 'onni',
+    projectsDir: '~/onni/projects',
   })
 }
 
@@ -96,7 +96,7 @@ describe('Settings → Appearance: project order', () => {
   it('previews a selected logo and uploads only after Save logo', async () => {
     serve()
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:logo-preview', revokeObjectURL: vi.fn() }))
-    renderSection(['cezar'])
+    renderSection(['onni'])
     const file = new File(['sample-image'], 'brand.png', { type: 'image/png' })
     expect(screen.getByRole('button', { name: 'Choose logo' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Upload logo'), { target: { files: [file] } })
@@ -108,8 +108,8 @@ describe('Settings → Appearance: project order', () => {
   })
 
   it('offers the reset once an order has been stored', async () => {
-    serve({ sidebar: { collapsed: { cezar: true }, projectOrder: ['shop', 'cezar'] } })
-    renderSection(['cezar', 'shop'])
+    serve({ sidebar: { collapsed: { onni: true }, projectOrder: ['shop', 'onni'] } })
+    renderSection(['onni', 'shop'])
 
     await waitFor(() => expect(document.querySelector(RESET)).not.toBeNull())
     fireEvent.click(screen.getByRole('button', { name: 'Reset order' }))
@@ -118,13 +118,13 @@ describe('Settings → Appearance: project order', () => {
     // user placed nothing on purpose" — and the legacy collapse map rides along untouched.
     await waitFor(() => expect(requests.filter((r) => r.method === 'PUT')).toHaveLength(1))
     expect(requests.find((r) => r.method === 'PUT')?.body).toEqual({
-      sidebar: { collapsed: { cezar: true } },
+      sidebar: { collapsed: { onni: true } },
     })
   })
 
   it('stays absent when nothing has been reordered', async () => {
     serve({ appearance: { accent: 'violet' } })
-    renderSection(['cezar', 'shop'])
+    renderSection(['onni', 'shop'])
 
     await waitFor(() => expect(screen.getByText('Reading width')).not.toBeNull())
     expect(document.querySelector(RESET)).toBeNull()
@@ -132,8 +132,8 @@ describe('Settings → Appearance: project order', () => {
 
   it('stays absent in a single-project workspace, order or no order', async () => {
     // The grouped sidebar does not render below two projects, so there is no order to undo.
-    serve({ sidebar: { projectOrder: ['cezar'] } })
-    renderSection(['cezar'])
+    serve({ sidebar: { projectOrder: ['onni'] } })
+    renderSection(['onni'])
 
     await waitFor(() => expect(screen.getByText('Reading width')).not.toBeNull())
     expect(document.querySelector(RESET)).toBeNull()

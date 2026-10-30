@@ -45,7 +45,7 @@ function skillActivation(
 ): SkillActivation | undefined {
   const alwaysEnabled =
     skill.source === 'ai' ||
-    skill.source === 'cezar' ||
+    skill.source === 'onni' ||
     skill.source === 'agents' ||
     skill.source === 'global'
   const canToggle = skill.source === 'team' && (importableNames.has(skill.name) || importableUnavailable)

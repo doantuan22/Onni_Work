@@ -42,8 +42,8 @@ describe('POST /api/v1/todos/:id/start', () => {
     // capability. These assertions are about the #401/#413 body, so it is switched on explicitly
     // rather than inherited from whatever the dev box exports.
     process.env.CEZ_FOLLOWUPS = '1';
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-todos-start-'));
-    dataDir = join(repoRoot, '.ai/cezar');
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-todos-start-'));
+    dataDir = join(repoRoot, '.ai/onni');
     store = RunStore.open(dataDir);
     captured = undefined;
     const manager = {
@@ -245,7 +245,7 @@ describe('POST /api/v1/todos/:id/start', () => {
 
   it('rejects a model override while locked but still permits choosing the runner', async () => {
     writeFileSync(
-      join(repoRoot, '.ai', 'cezar', 'config.json'),
+      join(repoRoot, '.ai', 'onni', 'config.json'),
       JSON.stringify({ modelsLocked: true }),
       'utf8',
     );

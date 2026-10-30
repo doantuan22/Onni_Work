@@ -28,7 +28,7 @@ export function parseTreeRows(text: string): TreeRow[] {
  *
  * "Vouch" is the guard that makes a group signal safe: the root must be a live DIRECT CHILD of
  * this process. A pid whose shell already exited may have been recycled by an unrelated process,
- * and walking that would signal a stranger's tree. cezar's own group and init's are never
+ * and walking that would signal a stranger's tree. onni's own group and init's are never
  * returned, whatever the table says.
  */
 export function descendantGroups(rows: readonly TreeRow[], rootPid: number, self = process.pid): number[] | null {

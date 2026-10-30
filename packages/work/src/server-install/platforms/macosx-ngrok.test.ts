@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cezarLaunchdPlist, launchdPlist, macosxNgrok, macosxNgrokIdentityStep } from './macosx-ngrok.ts';
+import { onniLaunchdPlist, launchdPlist, macosxNgrok, macosxNgrokIdentityStep } from './macosx-ngrok.ts';
 import { availablePlatformIds, getStrategy } from '../strategies.ts';
 import { runInstall, runUninstall } from '../engine.ts';
 import { loadServerState } from '../state.ts';
@@ -32,7 +32,7 @@ describe('macosx-ngrok', () => {
   let home: string;
   const original = process.env.CEZ_HOME;
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-mac-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-mac-'));
     process.env.CEZ_HOME = home;
   });
   afterEach(() => {
@@ -47,23 +47,23 @@ describe('macosx-ngrok', () => {
   });
 
   it('launchdPlist embeds the port, basic-auth and reserved domain', () => {
-    const p = launchdPlist(4321, 'ops:hunter2', 'cezar.ngrok.app');
+    const p = launchdPlist(4321, 'ops:hunter2', 'onni.ngrok.app');
     expect(p).toContain('<string>http</string>');
     expect(p).toContain('<string>4321</string>');
     expect(p).toContain('<string>ops:hunter2</string>');
-    expect(p).toContain('<string>cezar.ngrok.app</string>');
+    expect(p).toContain('<string>onni.ngrok.app</string>');
     expect(p).toContain('<key>KeepAlive</key>');
   });
 
-  it('cezar launchd plist has one PATH key and carries instance identity', () => {
-    const plist = cezarLaunchdPlist('/repo', 4321, ['/usr/bin/node', '/repo/dist/index.js'], 'install-a');
+  it('onni launchd plist has one PATH key and carries instance identity', () => {
+    const plist = onniLaunchdPlist('/repo', 4321, ['/usr/bin/node', '/repo/dist/index.js'], 'install-a');
     expect(plist.match(/<key>PATH<\/key>/g)).toHaveLength(1);
     expect(plist).toContain('<key>CEZ_INSTANCE_ID</key>');
     expect(plist).toContain('<string>install-a</string>');
   });
 
-  it('cezarLaunchdPlist embeds the argv, port, workdir and env', () => {
-    const p = cezarLaunchdPlist('/repo', 4321, ['/usr/local/bin/node', '/app/dist/index.js']);
+  it('onniLaunchdPlist embeds the argv, port, workdir and env', () => {
+    const p = onniLaunchdPlist('/repo', 4321, ['/usr/local/bin/node', '/app/dist/index.js']);
     expect(p).toContain('<string>/usr/local/bin/node</string>');
     expect(p).toContain('<string>/app/dist/index.js</string>');
     expect(p).toContain('<string>serve</string>');
@@ -71,7 +71,7 @@ describe('macosx-ngrok', () => {
     expect(p).toContain('<string>4321</string>');
     expect(p).toContain('<string>/repo</string>');
     expect(p).toContain('<key>CEZ_REMOTE</key>');
-    expect(p).toContain('<string>ai.cezar.cockpit</string>');
+    expect(p).toContain('<string>ai.onni.cockpit</string>');
   });
 
   it('identity verification accepts a matching health identity and reports legacy payloads as inconclusive', async () => {
@@ -138,7 +138,7 @@ describe('macosx-ngrok review fixes (PR #423)', () => {
   let home: string;
   const original = process.env.CEZ_HOME;
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-mac-fix-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-mac-fix-'));
     process.env.CEZ_HOME = home;
   });
   afterEach(() => {
@@ -208,7 +208,7 @@ describe('macosx-ngrok review fixes (PR #423)', () => {
     process.env.HOME = home; // node's os.homedir() honors $HOME on posix
     try {
       await ngrokStepOf().run(ctxFor(runner));
-      const p = join(home, 'Library', 'LaunchAgents', 'ai.cezar.ngrok.plist');
+      const p = join(home, 'Library', 'LaunchAgents', 'ai.onni.ngrok.plist');
       const mode = statSync(p).mode & 0o777;
       expect(mode).toBe(0o600);
       expect(readFileSync(p, 'utf8')).toContain('ops:longenough'); // creds live here → hence 0600
@@ -250,7 +250,7 @@ describe('macosx-ngrok review fixes (PR #423)', () => {
     process.env.HOME = home;
     try {
       await ngrokStepOf().undo(ctxFor(runner), null);
-      expect(commands.some((c) => c[0] === 'bootout' && (c[1] ?? '').includes('ai.cezar.ngrok'))).toBe(true);
+      expect(commands.some((c) => c[0] === 'bootout' && (c[1] ?? '').includes('ai.onni.ngrok'))).toBe(true);
     } finally {
       if (oldHome === undefined) delete process.env.HOME;
       else process.env.HOME = oldHome;
@@ -288,8 +288,8 @@ describe('macosx-ngrok review fixes (PR #423)', () => {
       else process.env.HOME = oldHome;
     }
     expect(domainValidate).toBeDefined();
-    expect(domainValidate?.('https://cezar.ngrok.app')).toBeDefined();
-    expect(domainValidate?.('cezar.ngrok.app')).toBeUndefined();
+    expect(domainValidate?.('https://onni.ngrok.app')).toBeDefined();
+    expect(domainValidate?.('onni.ngrok.app')).toBeUndefined();
     expect(domainValidate?.('')).toBeUndefined(); // blank = ephemeral, allowed
   });
 });

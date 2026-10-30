@@ -54,7 +54,7 @@ export function inFlightChildren(runs: readonly RunRecord[], parentId: string): 
  * What a parent may still hand out: `budgetUsd − costUsd − Σ children.budgetUsd` (spec §Budget).
  *
  * `undefined` means UNCAPPED — the parent was given no ceiling, which is the pre-existing
- * behaviour of every cezar run, so a spawn under it is never refused for cost. Children are read
+ * behaviour of every onni run, so a spawn under it is never refused for cost. Children are read
  * from the store rather than tracked, because a restart must not forget what is already promised;
  * a child with no ceiling of its own consumes nothing here, which is exactly why a spawn is only
  * allowed to omit `max_cost` while something is left.
@@ -134,8 +134,8 @@ export function handoffSectionExcerpt(text: string, header: string, maxLines = 4
   return lines.join('\n');
 }
 
-/** What a settled run's cezar status means as a REPORT status, for a child that never filed a
- *  report of its own (`cez task report`). `review` is work finished and waiting for a human, not
+/** What a settled run's onni status means as a REPORT status, for a child that never filed a
+ *  report of its own (`onni task report`). `review` is work finished and waiting for a human, not
  *  a failure; `cancelled` is neither done nor failed — somebody stopped it, which is a block. */
 function statusToReportStatus(status: string): DispatchReport['status'] {
   if (status === 'done' || status === 'review') return 'done';
@@ -149,7 +149,7 @@ function statusToReportStatus(status: string): DispatchReport['status'] {
  * one (persisted on the parent as a pending report, so a restart cannot lose it) and the PROSE
  * one (delivered into the parent's session, which reads text, not JSON).
  *
- * A child that called `cez task report` reports what it said. One that did not — it crashed, was
+ * A child that called `onni task report` reports what it said. One that did not — it crashed, was
  * cancelled, or simply forgot — still reports: its status, its resume notes if it left any, and
  * its error. A silent settle would leave the parent monitoring a child that will never speak.
  */
@@ -159,7 +159,7 @@ export function childSettleReport(
 ): { text: string; report: DispatchReport } {
   const own = child.dispatch?.report;
   // A run that settled while still parked on its own question never got its answer: that is a
-  // BLOCK, whatever cezar's terminal status says. A restart force-settles every `waiting` run as
+  // BLOCK, whatever onni's terminal status says. A restart force-settles every `waiting` run as
   // `done`, and reporting that upward as success would turn "I stopped and asked before doing
   // something irreversible" into a clean `done` nobody ever answered — the Guard's whole premise.
   const unanswered = own ? undefined : child.dispatch?.pendingAsk;
@@ -181,7 +181,7 @@ export function childSettleReport(
           result:
             context.resumeNotes?.trim() ||
             child.error?.trim() ||
-            'no structured report — the run settled without calling `cez task report`',
+            'no structured report — the run settled without calling `onni task report`',
           evidence: [],
           side_effects: [],
           errors: child.error ? [child.error] : [],
@@ -191,7 +191,7 @@ export function childSettleReport(
   const where = child.branch
     ? `${child.id}, branch ${child.branch}${child.baseBranch ? ` off ${child.baseBranch}` : ''}`
     : `${child.id}, no branch — it ran in the repository working tree`;
-  const parts: string[] = [`status ${report.status} (cezar: ${child.status})`, report.result];
+  const parts: string[] = [`status ${report.status} (onni: ${child.status})`, report.result];
   if (report.evidence.length) parts.push(`evidence: ${report.evidence.join(' · ')}`);
   if (report.errors.length) parts.push(`errors: ${report.errors.join(' · ')}`);
   if (report.side_effects.length) parts.push(`side effects: ${report.side_effects.join(' · ')}`);

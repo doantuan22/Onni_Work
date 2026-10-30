@@ -111,7 +111,7 @@ describe('Settings → Keyboard', () => {
     act(() => {
       fireEvent.keyDown(window, { code: 'KeyK', key: 'k', metaKey: true })
     })
-    expect(await screen.findByText(/taken by the browser or cezar/)).toBeTruthy()
+    expect(await screen.findByText(/taken by the browser or onni/)).toBeTruthy()
     expect(puts).toEqual([])
   })
 })

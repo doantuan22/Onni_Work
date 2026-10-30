@@ -31,7 +31,7 @@ describe('lifecycle client scope and transport',()=>{
     expect(String(fetchMock.mock.calls[1]![0])).toContain('/operations/op/output?afterSeq=15&limit=100')
   })
   it('uses remote credentials and carries the server conflict to the recovery UI',async()=>{
-    setApiBaseUrl('https://cezar.example')
+    setApiBaseUrl('https://onni.example')
     fetchMock.mockResolvedValue(new Response(JSON.stringify({error:'State changed; reload'}),{status:409}))
     await expect(getWorktreeLifecycle()).rejects.toMatchObject({status:409,message:'State changed; reload'})
     expect(fetchMock.mock.calls[0]![1]?.credentials).toBe('include')

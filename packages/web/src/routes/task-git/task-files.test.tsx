@@ -26,7 +26,7 @@ const RUN: ApiRun = {
   tokensUsed: 0,
   archived: false,
   worktreePath: '/tmp/wt/r1',
-  branch: 'cez/abc12345',
+  branch: 'onni/abc12345',
   baseBranch: 'main',
   steps: [
     { id: 'task', name: 'Do the task', kind: 'agent', status: 'done', iterations: 1, tokensUsed: 0, sessionId: 's-1' },

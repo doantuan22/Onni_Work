@@ -3,13 +3,13 @@ import type { RunnerId } from '../core/agent-runner.ts';
 import { PRIVATE_MCP_FILE, PRIVATE_MCP_RUNNERS, privateMcpPath } from '../core/private-mcp.ts';
 
 /**
- * The catalog of coding-agent config files cezar can surface and edit (spec
+ * The catalog of coding-agent config files onni can surface and edit (spec
  * `.ai/specs/2026-07-16-agent-config-files.md`). This file is the ONLY place
  * vendor knowledge lives: where each agent keeps its files, at which scope, in
  * what format, and — the load-bearing part — the vendor's OWN documented
- * precedence, quoted so a UI label never claims a merge cezar does not perform.
+ * precedence, quoted so a UI label never claims a merge onni does not perform.
  *
- * Hardcoding is the design. cezar's value here is knowing where the files are
+ * Hardcoding is the design. onni's value here is knowing where the files are
  * and what the docs say; an unknown file is not shown rather than guessed at.
  * A raw editor cannot drift on a vendor's *schema*; it can drift on *paths and
  * precedence strings*, so every entry carries a `docsUrl` and this table is the
@@ -59,7 +59,7 @@ export interface ConfigFileDef {
   seeded?: boolean;
   /** True when this file holds MCP server definitions (drives the MCP section's filter). */
   holdsMcp?: boolean;
-  /** cezar-owned private file: written `0600`, and its git-ignore entry is ensured before a write. */
+  /** onni-owned private file: written `0600`, and its git-ignore entry is ensured before a write. */
   private?: boolean;
   /** Top-level native setting that supplies the agent's new-session model, when present. */
   modelKey?: string;
@@ -159,7 +159,7 @@ export const CONFIG_FILES: ConfigFileDef[] = [
     tracked: 'tracked',
     holdsMcp: true,
     precedence:
-      'Project-scoped MCP servers (key: mcpServers), shared via version control. Each requires approval before use; user- and local-scoped servers live in ~/.claude.json, which cezar does not edit.',
+      'Project-scoped MCP servers (key: mcpServers), shared via version control. Each requires approval before use; user- and local-scoped servers live in ~/.claude.json, which onni does not edit.',
     docsUrl: CLAUDE_MCP_DOCS,
   },
   {
@@ -313,7 +313,7 @@ export const CONFIG_FILES: ConfigFileDef[] = [
     format: 'json',
     tracked: 'outside-repo',
     precedence:
-      'The CLI\'s own persisted settings, including the model chosen with /model. A --model flag or COPILOT_MODEL overrides it for one run; cezar always passes --model, so this is what a run would get otherwise.',
+      'The CLI\'s own persisted settings, including the model chosen with /model. A --model flag or COPILOT_MODEL overrides it for one run; onni always passes --model, so this is what a run would get otherwise.',
     docsUrl: COPILOT_CONFIG_DOCS,
   },
   {
@@ -438,20 +438,20 @@ export const CONFIG_FILES: ConfigFileDef[] = [
     docsUrl: CURSOR_CLI_CONFIG_DOCS,
   },
 
-  // ---- Shared: cezar's private, per-project MCP servers (spec 2026-10-07-private-project-mcp) ----
+  // ---- Shared: onni's private, per-project MCP servers (spec 2026-10-07-private-project-mcp) ----
   {
-    id: 'cezar.private.mcp',
+    id: 'onni.private.mcp',
     runners: [...PRIVATE_MCP_RUNNERS],
     kind: 'mcp',
     scope: 'local',
     resolve: (repo) => privateMcpPath(repo),
-    label: `.ai/cezar/${PRIVATE_MCP_FILE}`,
+    label: `.ai/onni/${PRIVATE_MCP_FILE}`,
     format: 'json',
     tracked: 'gitignored',
     holdsMcp: true,
     private: true,
     precedence:
-      'Private MCP servers for this project only — same shape as .mcp.json (key: mcpServers). Lives in cezar\'s git-ignored data dir, never in a worktree, so it is never committed. cezar adds these servers to every run of this project at launch (Claude --mcp-config, Codex thread config, OpenCode OPENCODE_CONFIG_CONTENT, Junie/Copilot ACP session); the agent\'s own MCP config still loads, and on a name clash this file wins. Cursor and pi have no launch-time MCP channel.',
+      'Private MCP servers for this project only — same shape as .mcp.json (key: mcpServers). Lives in onni\'s git-ignored data dir, never in a worktree, so it is never committed. onni adds these servers to every run of this project at launch (Claude --mcp-config, Codex thread config, OpenCode OPENCODE_CONFIG_CONTENT, Junie/Copilot ACP session); the agent\'s own MCP config still loads, and on a name clash this file wins. Cursor and pi have no launch-time MCP channel.',
     docsUrl: PRIVATE_MCP_DOCS,
   },
 

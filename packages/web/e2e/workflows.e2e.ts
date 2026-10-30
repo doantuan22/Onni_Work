@@ -9,7 +9,7 @@ import { AgentBrowser, readTestEnv } from './agent-browser'
  * The workflow node editor (spec 2026-09-30-workflow-node-editor) end-to-end against the shared
  * dry-run environment: a new canvas, the palette (a floating panel), a port's `+` stub adding a
  * node wired to that port, live server validation, Save (a real `version: 2` file lands in
- * `.ai/cezar/workflows/`, read back here), and Import through `/api/v1/workflows/parse`.
+ * `.ai/onni/workflows/`, read back here), and Import through `/api/v1/workflows/parse`.
  * Saved files are removed in afterAll so a developer's repo stays clean.
  */
 
@@ -18,7 +18,7 @@ const DESKTOP = { width: 1440, height: 900 }
 const repoRoot = resolve(import.meta.dirname, '../../..')
 const FLOW = 'e2e-graph-flow'
 const IMPORTED = 'e2e-graph-imported'
-const savedPath = (name: string) => resolve(repoRoot, `.ai/cezar/workflows/${name}.yaml`)
+const savedPath = (name: string) => resolve(repoRoot, `.ai/onni/workflows/${name}.yaml`)
 
 let browser: AgentBrowser
 let baseUrl: string

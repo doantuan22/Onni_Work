@@ -14,7 +14,7 @@ const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 /**
  * Trunk-based projects (spec 2026-10-20-trunk-based-projects), driven dry through
  * `scripts/mock-claude.mjs`: the project's default workspace puts a task in the checkout, a
- * `CEZ:DONE` lands what it left, a failing required check goes back to the agent, and a
+ * `ONNI:DONE` lands what it left, a failing required check goes back to the agent, and a
  * read-only task runs beside a write task that holds the working-tree lease.
  */
 // Real runs: well under a second alone, past the 5 s default under the full parallel suite.
@@ -30,19 +30,19 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
   };
 
   const writeConfig = (config: Record<string, unknown>) => {
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(repoRoot, '.ai/cezar/config.json'), JSON.stringify(config));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    writeFileSync(join(repoRoot, '.ai/onni/config.json'), JSON.stringify(config));
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-kb-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-kb-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'daily.md'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -66,7 +66,7 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
   };
 
   const notes = (id: string): string[] => {
-    const path = join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`);
+    const path = join(repoRoot, '.ai/onni/runs', `${id}.ndjson`);
     if (!existsSync(path)) return [];
     return readFileSync(path, 'utf8')
       .trim()
@@ -80,9 +80,9 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
   const head = async () => (await run('git', ['log', '-1', '--format=%H %s'], { cwd: repoRoot })).stdout.trim();
 
   const clean = async () =>
-    (await run('git', ['status', '--porcelain', '--', '.', ':(exclude).ai/cezar'], { cwd: repoRoot })).stdout;
+    (await run('git', ['status', '--porcelain', '--', '.', ':(exclude).ai/onni'], { cwd: repoRoot })).stdout;
 
-  it('parks an interactive task for review on CEZ:DONE and lands it on Finish', async () => {
+  it('parks an interactive task for review on ONNI:DONE and lands it on Finish', async () => {
     writeConfig({ taskWorkspace: 'in-place', landing: 'auto', requiredChecks: ['test -f person.md'] });
     writeFileSync(join(repoRoot, 'person.md'), 'Bjorn\n');
     const before = await head();
@@ -132,7 +132,7 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
     writeFileSync(join(repoRoot, 'person.md'), 'broken\n');
     const answer = await manager.land(record.id);
     expect(answer).toEqual({ outcome: 'failed', message: 'checks failed — sent back to the agent to fix' });
-    // The agent took it back; the mock answers without CEZ:DONE and parks for the user.
+    // The agent took it back; the mock answers without ONNI:DONE and parks for the user.
     await waitFor(record.id, (r) => r?.status === 'waiting');
   }, 30_000);
 
@@ -168,7 +168,7 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
     expect(await clean()).toBe('');
   }, 30_000);
 
-  it('lands an autonomous task on CEZ:DONE without stopping for review', async () => {
+  it('lands an autonomous task on ONNI:DONE without stopping for review', async () => {
     writeConfig({ taskWorkspace: 'in-place', landing: 'auto' });
     writeFileSync(join(repoRoot, 'person.md'), 'Bjorn\n');
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:done', autonomous: true });
@@ -184,7 +184,7 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
     await waitFor(record.id, (r) => r?.status === 'waiting');
     manager.finish(record.id);
     await waitFor(record.id, (r) => r?.landing?.status === 'failed');
-    // The mock answers the failure without CEZ:DONE, so the run parks for the user again.
+    // The mock answers the failure without ONNI:DONE, so the run parks for the user again.
     await waitFor(record.id, (r) => r?.status === 'waiting' && notes(record.id).some((n) => n.startsWith('auto-land failed at checks — sent back to the agent')));
     expect(store.getRun(record.id)?.landing).toMatchObject({ status: 'failed', stage: 'checks' });
   });
@@ -214,7 +214,7 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
 
   it('does not let a git-tracked config grant auto-land', async () => {
     writeConfig({ taskWorkspace: 'in-place', landing: 'auto' });
-    await run('git', ['add', '-f', '.ai/cezar/config.json'], { cwd: repoRoot });
+    await run('git', ['add', '-f', '.ai/onni/config.json'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'track config'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'person.md'), 'x\n');
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:done' });

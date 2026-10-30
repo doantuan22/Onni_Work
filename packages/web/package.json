@@ -1,7 +1,7 @@
 {
   "name": "@onni/web",
   "version": "0.17.0",
-  "description": "The cezar cockpit SPA — one client of the cezar API service.",
+  "description": "The onni cockpit SPA — one client of the onni API service.",
   "license": "MIT",
   "private": true,
   "type": "module",

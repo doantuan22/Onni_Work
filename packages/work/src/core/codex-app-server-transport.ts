@@ -75,7 +75,7 @@ export class CodexAppServerRpc {
 
   dispatchResponse(message: CodexAppServerMessage): boolean {
     if (message.result === undefined && message.error === undefined) return false;
-    // JSON-RPC lets a server echo the id as a string; cezar only ever allocates integers.
+    // JSON-RPC lets a server echo the id as a string; onni only ever allocates integers.
     const id = typeof message.id === 'string' && /^(0|[1-9]\d*)$/.test(message.id) ? Number(message.id) : message.id;
     if (typeof id !== 'number' || !Number.isSafeInteger(id)) return false;
     const pending = this.pending.get(id);
@@ -88,7 +88,7 @@ export class CodexAppServerRpc {
 
   async initialize(): Promise<void> {
     await this.request('initialize', {
-      clientInfo: { name: 'cezar', title: 'cezar', version: '0.1.0' },
+      clientInfo: { name: 'onni', title: 'onni', version: '0.1.0' },
       capabilities: { experimentalApi: true },
     });
     this.notify('initialized', {});

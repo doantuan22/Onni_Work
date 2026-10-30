@@ -1,6 +1,6 @@
 /**
  * The little semver the managed layout needs — dependency-free on purpose (the CLI's runtime
- * deps are six packages and this is not worth a seventh). Handles what cezar publishes:
+ * deps are six packages and this is not worth a seventh). Handles what onni publishes:
  * `0.11.1`, `0.11.1-nightly.20260924.49`, `0.9.2-pr743.1156.2`, `0.1.5-develop.124`.
  */
 

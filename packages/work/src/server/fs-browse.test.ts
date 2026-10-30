@@ -34,10 +34,10 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    home = realpathSync(mkdtempSync(join(tmpdir(), 'cez-fs-browse-home-')));
-    outside = realpathSync(mkdtempSync(join(tmpdir(), 'cez-fs-browse-outside-')));
+    home = realpathSync(mkdtempSync(join(tmpdir(), 'onni-fs-browse-home-')));
+    outside = realpathSync(mkdtempSync(join(tmpdir(), 'onni-fs-browse-outside-')));
     process.env.HOME = home;
-    process.env.CEZ_HOME = join(home, '.cezar');
+    process.env.CEZ_HOME = join(home, '.onni');
     delete process.env.CEZ_REMOTE; // local mode is the default under test
     delete process.env.CEZ_BROWSE_ROOT;
 
@@ -51,8 +51,8 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     symlinkSync(join(home, 'projects/repo'), join(home, 'link-inside'));
 
     const repoRoot = join(home, 'boot');
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,
@@ -198,7 +198,7 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     beforeEach(() => {
       // Stored with a literal `~`, exactly as PUT /api/v1/workspace/config keeps
       // it — so this also proves the hosted root expands the tilde.
-      mkdirSync(join(home, '.cezar'), { recursive: true });
+      mkdirSync(join(home, '.onni'), { recursive: true });
       writeFileSync(
         workspaceConfigPath(),
         JSON.stringify({ browseRoot: '~/projects', projectsDir: '~/checkouts' }),

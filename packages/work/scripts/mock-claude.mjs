@@ -77,11 +77,11 @@ emit({ type: 'system', subtype: 'init' });
 
 let turn = 0;
 
-// `mock:autonomous` → the autonomous auto-nudge fixture (#autonomous). Cezar's nudge text is
+// `mock:autonomous` → the autonomous auto-nudge fixture (#autonomous). Onni's nudge text is
 // fixed and carries no `mock:` marker, so a marker-per-message mock could never end such a
 // session: the first turn would end plainly, every nudge would end plainly, and the run would
 // only stop at MAX_AUTO_CONTINUES. This one flag ARMS the session instead — the turn that
-// answers the nudge ends with CEZ:DONE — so a dry-run test can watch a nudged run complete
+// answers the nudge ends with ONNI:DONE — so a dry-run test can watch a nudged run complete
 // rather than time out.
 let autonomousArmed = false;
 let askRepeat = false;
@@ -142,31 +142,31 @@ function writeHandoffAndTodo() {
 async function respond(userText, imageCount) {
   turn += 1;
   await pace(250);
-  // `mock:done` anywhere in the message → the reply ends with the CEZ:DONE
+  // `mock:done` anywhere in the message → the reply ends with the ONNI:DONE
   // completion marker (#347), so the auto-close path is testable dry. `mock:report` implies it:
   // a unit that has reported is finished, and a report with no done marker would leave the child
   // parked instead of settling into the report its parent is waiting for.
   // `mock:autonomous` arms the dry autonomous loop: once armed, the first nudge the engine sends
-  // is answered with CEZ:DONE, so a nudged run settles instead of looping to the cap.
+  // is answered with ONNI:DONE, so a nudged run settles instead of looping to the cap.
   if (userText.includes('mock:autonomous')) autonomousArmed = true;
-  // `mock:ask-repeat` → the SAME CEZ:ASK on this turn and on every later one (a nudge included):
+  // `mock:ask-repeat` → the SAME ONNI:ASK on this turn and on every later one (a nudge included):
   // the agent that is blocked on something no nudge can fix and keeps asking about it.
   if (userText.includes('mock:ask-repeat')) askRepeat = true;
   // `mock:monitoring-sticky` → this turn and every later one (a wake-up nudge included) ends with
-  // CEZ:MONITORING: the watcher whose downstream work never finishes.
+  // ONNI:MONITORING: the watcher whose downstream work never finishes.
   if (userText.includes('mock:monitoring-sticky')) monitoringSticky = true;
-  // An inbox digest delivered into the session is answered with CEZ:DONE: the dry run proves the
+  // An inbox digest delivered into the session is answered with ONNI:DONE: the dry run proves the
   // message reached the model, then settles.
-  // `mock:done-refs` → CEZ:DONE with a task-reference line AFTER it, the order an agent that
+  // `mock:done-refs` → ONNI:DONE with a task-reference line AFTER it, the order an agent that
   // declares its PR last really emits.
   const doneMarker = userText.includes('mock:done-refs')
-    ? '\n\nCEZ:DONE\nCEZ:PR=4243'
+    ? '\n\nONNI:DONE\nONNI:PR=4243'
     : userText.includes('mock:done') ||
         userText.includes('## Tree inbox') ||
         (autonomousArmed && userText.includes(AUTONOMOUS_NUDGE_PREFIX))
-      ? '\n\nCEZ:DONE'
+      ? '\n\nONNI:DONE'
       : '';
-  // `mock:monitoring` → the reply ends with CEZ:MONITORING, the "still working
+  // `mock:monitoring` → the reply ends with ONNI:MONITORING, the "still working
   // on downstream work" marker (#490), so the monitoring-status path is testable dry.
   // `mock:monitoring-refs` → the same marker, but with task-reference marker lines AFTER it
   // (#933): the handoff contract asks for those "as soon as you know", so an agent that opens
@@ -174,10 +174,10 @@ async function respond(userText, imageCount) {
   // bury the marker and park the run as `waiting` ("needs you").
   const monitoringMarker = monitoringSticky || userText.includes('mock:monitoring')
     ? userText.includes('mock:monitoring-refs')
-      ? '\n\nCEZ:MONITORING\nCEZ:PR=4242\nCEZ:TITLE=waiting on dispatched sub-agents'
-      : '\n\nCEZ:MONITORING'
+      ? '\n\nONNI:MONITORING\nONNI:PR=4242\nONNI:TITLE=waiting on dispatched sub-agents'
+      : '\n\nONNI:MONITORING'
     : '';
-  // `mock:ask` → the reply ends with a valid CEZ:ASK marker (#473), so the
+  // `mock:ask` → the reply ends with a valid ONNI:ASK marker (#473), so the
   // AskUser card path (park `waiting` + emit `ask.requested`) is testable dry.
   // `mock:ask-bad` → a MALFORMED marker (invalid JSON), to prove graceful
   // degradation: the run still parks `waiting`, no ask card, prose preserved.
@@ -199,7 +199,7 @@ async function respond(userText, imageCount) {
   // raw JSON. It must now render as exactly one card, and a dispatched child
   // parking on it must still write a run record its index parser can read.
   const askMarker = userText.includes('mock:ask-many')
-    ? '\n\nCEZ:ASK ' +
+    ? '\n\nONNI:ASK ' +
       JSON.stringify({
         questions: Array.from({ length: 6 }, (_, index) => ({
           header: `Area ${index}`,
@@ -210,13 +210,13 @@ async function respond(userText, imageCount) {
         })),
       })
     : userText.includes('mock:ask-bad')
-    ? '\n\nCEZ:ASK {not valid json'
+    ? '\n\nONNI:ASK {not valid json'
     : userText.includes('mock:ask-invalid')
-      ? '\n\nCEZ:ASK {"questions":[]}'
+      ? '\n\nONNI:ASK {"questions":[]}'
       : userText.includes('mock:ask-truncated')
-        ? '\n\nCEZ:ASK {"questions":[{"header":"Lint scope","question":"How much of the lint backlog should I land now?","multiSelect":false,"options":[{"label":"First slice only"},{"label":"Rule by rule"},{"label":"Whole backlog"}]}]'
+        ? '\n\nONNI:ASK {"questions":[{"header":"Lint scope","question":"How much of the lint backlog should I land now?","multiSelect":false,"options":[{"label":"First slice only"},{"label":"Rule by rule"},{"label":"Whole backlog"}]}]'
       : userText.includes('mock:ask-near')
-        ? '\n\nCEZ:ASK ' +
+        ? '\n\nONNI:ASK ' +
           JSON.stringify({
             transportHint: 'render as chips',
             questions: [
@@ -232,7 +232,7 @@ async function respond(userText, imageCount) {
             ],
           })
       : userText.includes('mock:ask') || askRepeat
-      ? '\n\nCEZ:ASK ' +
+      ? '\n\nONNI:ASK ' +
         JSON.stringify({
           questions: [
             {
@@ -245,25 +245,25 @@ async function respond(userText, imageCount) {
             },
           ],
         }) +
-        (userText.includes('mock:ask-refs') ? '\nCEZ:ISSUE=997\nCEZ:TITLE=asking before declaring' : '')
+        (userText.includes('mock:ask-refs') ? '\nONNI:ISSUE=997\nONNI:TITLE=asking before declaring' : '')
       : '';
-  // `mock:verdict=<name>` → the reply ends with `CEZ:VERDICT <name>`, a graph agent node's
-  // branch choice (spec 2026-09-30-workflow-node-editor). cezar's one-shot verdict nudge carries
+  // `mock:verdict=<name>` → the reply ends with `ONNI:VERDICT <name>`, a graph agent node's
+  // branch choice (spec 2026-09-30-workflow-node-editor). onni's one-shot verdict nudge carries
   // no `mock:` marker, so it is answered with the FIRST verdict it lists — which makes the nudge
   // path testable dry: omit the marker on the first turn, get the verdict on the nudge.
   const verdictMatch = /mock:verdict=([A-Za-z0-9_-]+)/.exec(userText);
   const nudgeMatch = userText.includes('You did not end with a verdict.')
-    ? /CEZ:VERDICT ([A-Za-z0-9_-]+)/.exec(userText)
+    ? /ONNI:VERDICT ([A-Za-z0-9_-]+)/.exec(userText)
     : null;
   const verdictMarker = verdictMatch
-    ? `\n\nCEZ:VERDICT ${verdictMatch[1]}`
+    ? `\n\nONNI:VERDICT ${verdictMatch[1]}`
     : nudgeMatch
-      ? `\n\nCEZ:VERDICT ${nudgeMatch[1]}`
+      ? `\n\nONNI:VERDICT ${nudgeMatch[1]}`
       : '';
   // `mock:refs` → the reply carries the in-band task-reference markers
   // (spec 2026-07-18-task-ref-markers), so the declaration path is testable dry.
   const refsMarkers = userText.includes('mock:refs')
-    ? '\nCEZ:PR=4242\nCEZ:ISSUE=17\nCEZ:TITLE=implementing marker refs'
+    ? '\nONNI:PR=4242\nONNI:ISSUE=17\nONNI:TITLE=implementing marker refs'
     : '';
 
   // `mock:slow` → hold the turn for ~25 s so queue states are observable. `mock:pause` → ~2 s,
@@ -472,10 +472,10 @@ async function respond(userText, imageCount) {
     return;
   }
 
-  // Task auto-naming spec: a naming call (marked `[cez-namer]`) answers a
+  // Task auto-naming spec: a naming call (marked `[onni-namer]`) answers a
   // deterministic short title + a PR classification of the sample number so
   // dry-run tests can assert the full apply pipeline.
-  if (userText.includes('[cez-namer]')) {
+  if (userText.includes('[onni-namer]')) {
     const numbered = /(?:^|\D)(\d{1,7})(?:\D|$)/.exec(userText);
     // Branch naming instructions (spec 2026-10-11-branch-naming-instructions): a canned branch
     // so dry-run tests can assert the fork used it. Only when the prompt carried instructions.
@@ -504,11 +504,11 @@ async function respond(userText, imageCount) {
     return;
   }
 
-  // Spec 008: a planning call (marked `[cez-planner]` in the user prompt)
+  // Spec 008: a planning call (marked `[onni-planner]` in the user prompt)
   // gets a canned chain plan. The `code-review` skill is deliberately made up:
   // the planner's sanitizer strips unknown skills, and the step survives on
   // its prompt — which is exactly the path worth exercising in dry runs.
-  if (userText.includes('[cez-planner]')) {
+  if (userText.includes('[onni-planner]')) {
     const plan = JSON.stringify({
       title: 'implement-verify-review',
       steps: [

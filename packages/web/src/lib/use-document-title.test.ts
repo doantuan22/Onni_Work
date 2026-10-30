@@ -13,23 +13,23 @@ describe('documentTitleOf', () => {
       name: 'project and page',
       projectName: 'Storefront',
       pageLabel: 'Tasks',
-      expected: 'Storefront — Tasks · cezar',
+      expected: 'Storefront — Tasks · onni',
     },
     {
       name: 'project only',
       projectName: 'Storefront',
       pageLabel: null,
-      expected: 'Storefront · cezar',
+      expected: 'Storefront · onni',
     },
     {
       name: 'page only',
       projectName: null,
       pageLabel: 'Settings',
-      expected: 'Settings · cezar',
+      expected: 'Settings · onni',
     },
-    { name: 'neither part', projectName: null, pageLabel: null, expected: 'cezar' },
-    { name: 'empty project', projectName: '', pageLabel: 'Tasks', expected: 'Tasks · cezar' },
-    { name: 'blank parts', projectName: '  ', pageLabel: '\t', expected: 'cezar' },
+    { name: 'neither part', projectName: null, pageLabel: null, expected: 'onni' },
+    { name: 'empty project', projectName: '', pageLabel: 'Tasks', expected: 'Tasks · onni' },
+    { name: 'blank parts', projectName: '  ', pageLabel: '\t', expected: 'onni' },
   ])('formats $name', ({ projectName, pageLabel, expected }) => {
     expect(documentTitleOf({ projectName, pageLabel })).toBe(expected)
   })
@@ -42,7 +42,7 @@ describe('documentTitleOf', () => {
 
 describe('useDocumentTitle', () => {
   beforeEach(() => {
-    document.title = 'cezar'
+    document.title = 'onni'
   })
 
   it('updates the existing writer when its truthful inputs change', () => {
@@ -55,9 +55,9 @@ describe('useDocumentTitle', () => {
       { initialProps },
     )
 
-    expect(document.title).toBe('Storefront — Tasks · cezar')
+    expect(document.title).toBe('Storefront — Tasks · onni')
     rerender({ projectName: 'Back office', pageLabel: null })
-    expect(document.title).toBe('Back office · cezar')
+    expect(document.title).toBe('Back office · onni')
   })
 
   it('updates the tab icon to the instance logo and restores the product icon when cleared', () => {

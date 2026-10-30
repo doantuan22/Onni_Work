@@ -11,7 +11,7 @@ import { loadWorkspaceConfig } from './workspace/config.ts';
 /**
  * Team skills from remote git repos (spec 005), janitor-style: a bare clone
  * without a checkout, listed with `git ls-tree` and read with `git show`.
- * The cache lives in `~/.cache/cez/skills/<owner>__<name>/` — global, so one
+ * The cache lives in `~/.cache/onni/skills/<owner>__<name>/` — global, so one
  * fetch serves every project. Everything degrades: no network / no access to
  * the skills repo means the team skills quietly disappear from the list while
  * local skills keep working. Nothing here ever blocks startup.
@@ -30,7 +30,7 @@ interface GitResult {
 
 /**
  * Hardening applied to *every* git invocation here (#428). The `repo`/`ref`
- * strings ultimately come from a file — `.ai/cezar/config.json` — that an
+ * strings ultimately come from a file — `.ai/onni/config.json` — that an
  * attacker might influence (a prompt-injected Write-only agent, a synced
  * config), so git must never be able to pick a remote-helper transport:
  *  - `protocol.ext.allow=never` / `fd.allow=never` kill the `ext::`/`fd::`
@@ -154,7 +154,7 @@ export function bareDirFor(repo: string): string {
     .replace(/^~\//, '');
   const segments = trimmed.split(/[/:]/).filter(Boolean).map(sanitizeSegment);
   const key = segments.slice(-2).join('__') || 'skills';
-  return join(homedir(), '.cache', 'cez', 'skills', key);
+  return join(homedir(), '.cache', 'onni', 'skills', key);
 }
 
 function sanitizeSegment(s: string): string {
@@ -168,9 +168,9 @@ function warnUnsafeRemoteOnce(repo: string): void {
   if (warnedUnsafeRemotes.has(repo)) return;
   warnedUnsafeRemotes.add(repo);
   console.warn(
-    `[cez] ignoring skills repo ${JSON.stringify(repo)} — not an accepted source shape ` +
+    `[onni] ignoring skills repo ${JSON.stringify(repo)} — not an accepted source shape ` +
       `(owner/name, an https/http/ssh/git URL, git@host:path, or a local/file:// path). ` +
-      `Check "skillsRepos" in .ai/cezar/config.json.`,
+      `Check "skillsRepos" in .ai/onni/config.json.`,
   );
 }
 
@@ -257,7 +257,7 @@ function isUnderSkillsDir(line: string): boolean {
  * Default discovery — the three conventions (BACKWARD_COMPATIBILITY §5, additive only):
  *  - `**\/SKILL.md`          → skill named after the parent directory (with references/)
  *  - `**\/commands/<n>.md`   → skill `<n>`
- *  - `.ai/skills/**\/*.md` or `.ai/cezar/skills/**\/*.md` → frontmatter/basename name
+ *  - `.ai/skills/**\/*.md` or `.ai/onni/skills/**\/*.md` → frontmatter/basename name
  */
 function matchSkillPath(line: string): SkillPathHit | null {
   if (line === 'SKILL.md' || line.endsWith('/SKILL.md')) {
@@ -268,7 +268,7 @@ function matchSkillPath(line: string): SkillPathHit | null {
   }
   const cmd = /(?:^|\/)commands\/([^/]+)\.md$/.exec(line);
   if (cmd) return { name: cmd[1] as string, kind: 'command' };
-  if (/(?:^|\/)\.ai\/(?:cezar\/)?skills\/.+\.md$/.test(line)) return { name: null, kind: 'markdown' };
+  if (/(?:^|\/)\.ai\/(?:onni\/)?skills\/.+\.md$/.test(line)) return { name: null, kind: 'markdown' };
   return null;
 }
 
@@ -462,7 +462,7 @@ export function shouldPassiveFetch(opts: {
   return !opts.attempted || opts.now - opts.fetchedAt > opts.ttlMs;
 }
 // Both maps are keyed by `repoRoot` (multi-project workspace, step 2.6): each
-// project resolves its own `.ai/cezar/config.json` → `skillsRepos`, so one
+// project resolves its own `.ai/onni/config.json` → `skillsRepos`, so one
 // project's team-skill list must never be served under another project's scope.
 const teamSkillsByRoot = new Map<string, Skill[]>();
 const firstLoadByRoot = new Map<string, Promise<Skill[]>>();
@@ -471,7 +471,7 @@ const firstLoadByRoot = new Map<string, Promise<Skill[]>>();
 let teamSkillsGeneration = 0;
 let lastOrgSignature: string | undefined;
 
-/** The org repos as currently on disk. `~/.cezar/` is shared by every cezar process, so another
+/** The org repos as currently on disk. `~/.onni/` is shared by every onni process, so another
  *  server's save must invalidate this process's cache too — a local callback cannot see it. */
 function orgReposSignature(): string {
   try {

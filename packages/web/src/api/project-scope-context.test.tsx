@@ -29,14 +29,14 @@ describe('ProjectScopeProvider', () => {
 
   it('scopes both the context and the module seam before the children render', () => {
     const view = render(
-      <ProjectScopeProvider projectId="cezar">
+      <ProjectScopeProvider projectId="onni">
         <Probe />
       </ProjectScopeProvider>,
     )
     // The probe read apiPath/queryScope during ITS render — if the provider had waited
     // for an effect, the first paint would have fetched and cached under the wrong scope.
-    expect(view.getByTestId('probe').textContent).toBe('cezar|/api/v1/p/cezar|cezar|/api/v1/p/cezar/runs')
-    expect(getApiScope()).toBe('cezar')
+    expect(view.getByTestId('probe').textContent).toBe('onni|/api/v1/p/onni|onni|/api/v1/p/onni/runs')
+    expect(getApiScope()).toBe('onni')
   })
 
   it('follows a projectId change and resets to unscoped on unmount', () => {

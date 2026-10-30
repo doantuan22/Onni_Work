@@ -21,8 +21,8 @@ function g(dir: string, ...args: string[]): string {
 }
 function initRepo(dir: string): void {
   g(dir, 'init', '-b', 'main');
-  g(dir, 'config', 'user.email', 'test@cezar.local');
-  g(dir, 'config', 'user.name', 'cezar-test');
+  g(dir, 'config', 'user.email', 'test@onni.local');
+  g(dir, 'config', 'user.name', 'onni-test');
   g(dir, 'config', 'commit.gpgsign', 'false');
 }
 
@@ -34,8 +34,8 @@ describe('POST /api/v1/groups/:groupId/pick — review gate', () => {
   let app: Hono;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-pick-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-pick-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,

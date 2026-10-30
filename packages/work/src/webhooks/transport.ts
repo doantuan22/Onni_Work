@@ -114,8 +114,8 @@ export async function sendWebhook(input: WebhookSend, dependencies: { lookup?: L
       dispatcher, method: 'POST', body: input.body, signal: controller.signal,
       maxRedirections: 0, headersTimeout: 10_000, bodyTimeout: 10_000,
       headers: {
-        'content-type': 'application/json', 'user-agent': 'cezar-webhooks/1',
-        ...(input.format === undefined || input.format === 'cezar.json.v1' ? {
+        'content-type': 'application/json', 'user-agent': 'onni-webhooks/1',
+        ...(input.format === undefined || input.format === 'onni.json.v1' ? {
           'webhook-id': input.eventId, 'webhook-timestamp': String(timestamp),
           'webhook-signature': signWebhook(input.eventId, timestamp, input.body, input.secrets),
         } : {}),

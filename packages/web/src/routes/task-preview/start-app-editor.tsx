@@ -21,12 +21,12 @@ const SCOPES: Array<{ scope: StartAppScope; title: string; detail: string }> = [
   {
     scope: 'project',
     title: 'Team',
-    detail: "Saved in the repo's .ai/cezar/config.json. Commit it and everyone gets the same Start app.",
+    detail: "Saved in the repo's .ai/onni/config.json. Commit it and everyone gets the same Start app.",
   },
   {
     scope: 'personal',
     title: 'Only me',
-    detail: 'Saved in your ~/.cezar/config.json, and used instead of the team recipe.',
+    detail: 'Saved in your ~/.onni/config.json, and used instead of the team recipe.',
   },
 ]
 

@@ -250,7 +250,7 @@ describe('opening and closing', () => {
 
 describe('Views group', () => {
   it('uses the associated provider label in a single-project workspace', async () => {
-    renderPalette({ projects: [project({ id: 'cezar', tracker: 'linear' })], entry: '/p/cezar/' })
+    renderPalette({ projects: [project({ id: 'onni', tracker: 'linear' })], entry: '/p/onni/' })
     openWith({ metaKey: true })
     await screen.findByRole('dialog')
     await waitFor(() => expect(document.querySelector('[data-nav-to="/tracker"]')).not.toBeNull())
@@ -345,7 +345,7 @@ describe('Views group', () => {
   })
 
   it('Global settings navigates OUTSIDE the project scope — never `/p/<id>/settings/global`', async () => {
-    renderPalette({ entry: '/p/cezar/git' })
+    renderPalette({ entry: '/p/onni/git' })
     openWith({ metaKey: true })
     await screen.findByRole('dialog')
 
@@ -422,18 +422,18 @@ describe('Views group', () => {
 
 describe('Projects group', () => {
   const REGISTRY = [
-    project({ id: 'cezar', name: 'cezar', branch: 'main', lastOpenedAt: '2026-07-14T00:00:00Z' }),
+    project({ id: 'onni', name: 'onni', branch: 'main', lastOpenedAt: '2026-07-14T00:00:00Z' }),
     project({ id: 'shop', name: 'shop', branch: 'develop', lastOpenedAt: '2026-07-12T00:00:00Z' }),
     project({ id: 'docs', name: 'docs', lastOpenedAt: '2026-07-13T00:00:00Z' }),
   ]
 
   it('lists the registry recency-first with the active project last, and switches project', async () => {
-    renderPalette({ projects: REGISTRY, entry: '/p/cezar/' })
+    renderPalette({ projects: REGISTRY, entry: '/p/onni/' })
     openWith({ metaKey: true })
     await screen.findByText('shop')
 
     const rows = [...document.querySelectorAll('[data-slot="palette-project"]')]
-    expect(rows.map((row) => row.getAttribute('data-project-id'))).toEqual(['docs', 'shop', 'cezar'])
+    expect(rows.map((row) => row.getAttribute('data-project-id'))).toEqual(['docs', 'shop', 'onni'])
     // The branch is the disambiguator when two entries share a name; absent entries show none.
     expect(rows[1]?.textContent).toContain('develop')
 
@@ -447,10 +447,10 @@ describe('Projects group', () => {
   it('filters by name and by root, so two checkouts of one repo stay tellable apart', async () => {
     renderPalette({
       projects: [
-        project({ id: 'cezar', name: 'cezar', root: '/repos/cezar' }),
-        project({ id: 'cezar-fork', name: 'cezar', root: '/work/fork/cezar' }),
+        project({ id: 'onni', name: 'onni', root: '/repos/onni' }),
+        project({ id: 'onni-fork', name: 'onni', root: '/work/fork/onni' }),
       ],
-      entry: '/p/cezar/',
+      entry: '/p/onni/',
     })
     openWith({ metaKey: true })
     await screen.findByRole('dialog')
@@ -461,11 +461,11 @@ describe('Projects group', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'fork' } })
 
     const rows = [...document.querySelectorAll('[data-slot="palette-project"]')]
-    expect(rows.map((row) => row.getAttribute('data-project-id'))).toEqual(['cezar-fork'])
+    expect(rows.map((row) => row.getAttribute('data-project-id'))).toEqual(['onni-fork'])
   })
 
   it('renders no Projects group in a single-project workspace — there is nowhere to switch to', async () => {
-    renderPalette({ projects: [project({ id: 'cezar' })], entry: '/p/cezar/' })
+    renderPalette({ projects: [project({ id: 'onni' })], entry: '/p/onni/' })
     openWith({ metaKey: true })
     await screen.findByRole('dialog')
 
@@ -476,10 +476,10 @@ describe('Projects group', () => {
   it('lists a missing folder but refuses to navigate into it', async () => {
     renderPalette({
       projects: [
-        project({ id: 'cezar' }),
+        project({ id: 'onni' }),
         project({ id: 'gone', name: 'gone', status: 'missing' }),
       ],
-      entry: '/p/cezar/',
+      entry: '/p/onni/',
     })
     openWith({ metaKey: true })
     const row = await screen.findByText('folder not found')
@@ -488,7 +488,7 @@ describe('Projects group', () => {
 
     fireEvent.click(item)
 
-    expect(location()).toBe('/p/cezar/')
+    expect(location()).toBe('/p/onni/')
     expect(dialog()).not.toBeNull()
   })
 })
@@ -498,7 +498,7 @@ describe('Tasks group', () => {
     renderPalette({
       // A registry with a real boot slug, as the server always answers — the run target is
       // spelled `/p/<boot>/…` rather than leaning on the legacy flat redirect to land.
-      projects: [project({ id: 'cezar' })],
+      projects: [project({ id: 'onni' })],
       runs: [
         run({ id: 'r-old', title: 'Old fix', status: 'done', createdAt: '2026-07-13T10:00:00Z' }),
         run({ id: 'r-new', title: 'Fix the flaky test', status: 'waiting', createdAt: '2026-07-14T10:00:00Z' }),
@@ -515,7 +515,7 @@ describe('Tasks group', () => {
 
     fireEvent.click(tasks[0] as HTMLElement)
 
-    expect(location()).toBe('/p/cezar/tasks/r-new')
+    expect(location()).toBe('/p/onni/tasks/r-new')
     await waitFor(() => expect(dialog()).toBeNull())
   })
 
@@ -748,8 +748,8 @@ describe('Recently finished group', () => {
 
   it('reaches across projects — another project’s unread task leads too', async () => {
     renderPalette({
-      projects: [project({ id: 'cezar' }), project({ id: 'shop' })],
-      entry: '/p/cezar/',
+      projects: [project({ id: 'onni' }), project({ id: 'shop' })],
+      entry: '/p/onni/',
       runs: [run({ id: 'r-live', title: 'Still running', status: 'running' })],
       indexed: [
         indexed({
@@ -781,8 +781,8 @@ describe('Recently finished group', () => {
 
   it('leaves a usage-limit resume out, cross-project too — it has an appointment, not an outcome', async () => {
     renderPalette({
-      projects: [project({ id: 'cezar' }), project({ id: 'shop' })],
-      entry: '/p/cezar/',
+      projects: [project({ id: 'onni' }), project({ id: 'shop' })],
+      entry: '/p/onni/',
       runs: [],
       indexed: [
         // `failed` with a resume booked (#auto-resume). `isUnread` and `deriveAttention` both
@@ -944,14 +944,14 @@ describe('searching', () => {
 
 describe('Tasks across projects', () => {
   const REGISTRY = [
-    project({ id: 'cezar', name: 'cezar' }),
+    project({ id: 'onni', name: 'onni' }),
     project({ id: 'shop', name: 'shop' }),
   ]
 
   it('lists other projects’ tasks after the active one’s, labelled, and opens them in place', async () => {
     renderPalette({
       projects: REGISTRY,
-      entry: '/p/cezar/',
+      entry: '/p/onni/',
       runs: [run({ id: 'r-mine', title: 'Fix the flaky test', createdAt: '2026-07-10T10:00:00Z' })],
       indexed: [
         // Newer than the active project's task and still listed second: locality wins the
@@ -968,7 +968,7 @@ describe('Tasks across projects', () => {
     const labels = tasks.map((task) =>
       task.querySelector('[data-slot="palette-task-project"]')?.textContent,
     )
-    expect(labels).toEqual(['cezar', 'shop'])
+    expect(labels).toEqual(['onni', 'shop'])
 
     fireEvent.click(tasks[1] as HTMLElement)
 
@@ -979,7 +979,7 @@ describe('Tasks across projects', () => {
   it('filters by project name, so "shop" narrows to shop’s tasks', async () => {
     renderPalette({
       projects: REGISTRY,
-      entry: '/p/cezar/',
+      entry: '/p/onni/',
       runs: [run({ id: 'r-mine', title: 'Fix the flaky test' })],
       indexed: [indexed({ id: 'r-shop', projectId: 'shop', title: 'Checkout crash' })],
     })
@@ -995,11 +995,11 @@ describe('Tasks across projects', () => {
   it('never doubles the active project — its live run list wins over the index snapshot', async () => {
     renderPalette({
       projects: REGISTRY,
-      entry: '/p/cezar/',
+      entry: '/p/onni/',
       // The live list has the run's CURRENT status; the index still says it was running.
       runs: [run({ id: 'r-mine', title: 'Fix the flaky test', status: 'review' })],
       indexed: [
-        indexed({ id: 'r-mine', projectId: 'cezar', title: 'Fix the flaky test', status: 'running' }),
+        indexed({ id: 'r-mine', projectId: 'onni', title: 'Fix the flaky test', status: 'running' }),
         indexed({ id: 'r-shop', projectId: 'shop', title: 'Checkout crash' }),
       ],
     })
@@ -1020,7 +1020,7 @@ describe('Tasks across projects', () => {
       entry: '/settings/global',
       runs: [run({ id: 'r-boot', title: 'Fix the flaky test' })],
       indexed: [
-        indexed({ id: 'r-boot', projectId: 'cezar', title: 'Fix the flaky test' }),
+        indexed({ id: 'r-boot', projectId: 'onni', title: 'Fix the flaky test' }),
         indexed({ id: 'r-shop', projectId: 'shop', title: 'Checkout crash' }),
       ],
     })
@@ -1030,18 +1030,18 @@ describe('Tasks across projects', () => {
     const tasks = [...document.querySelectorAll('[data-slot="palette-task"]')]
     expect(tasks.map((task) => task.getAttribute('data-run-id'))).toEqual(['r-boot', 'r-shop'])
     // And it is labelled with the boot project rather than going nameless.
-    expect(tasks[0]?.querySelector('[data-slot="palette-task-project"]')?.textContent).toBe('cezar')
+    expect(tasks[0]?.querySelector('[data-slot="palette-task-project"]')?.textContent).toBe('onni')
 
     fireEvent.click(tasks[0] as HTMLElement)
 
     // An explicit target, not an unprefixed one that would need the legacy redirect to land.
-    expect(location()).toBe('/p/cezar/tasks/r-boot')
+    expect(location()).toBe('/p/onni/tasks/r-boot')
   })
 
   it('asks for no index at all in a single-project workspace', async () => {
     renderPalette({
-      projects: [project({ id: 'cezar' })],
-      entry: '/p/cezar/',
+      projects: [project({ id: 'onni' })],
+      entry: '/p/onni/',
       runs: [run({ id: 'r-mine', title: 'Fix the flaky test' })],
     })
     openWith({ metaKey: true })
@@ -1088,7 +1088,7 @@ describe('Skills group', () => {
     skill({ name: 'project-review', source: 'agents', description: 'Review the diff' }),
     skill({ name: 'team-release', source: 'team' }),
     skill({ name: 'project-fix', source: 'ai' }),
-    skill({ name: 'project-plan', source: 'cezar' }),
+    skill({ name: 'project-plan', source: 'onni' }),
   ]
 
   it('orders local and team project skills before global ones, stably (#377/#555)', async () => {
@@ -1143,10 +1143,10 @@ describe('the pure ordering helpers', () => {
       skill({ name: 'g', source: 'global' }),
       skill({ name: 't', source: 'team' }),
       skill({ name: 'a', source: 'agents' }),
-      skill({ name: 'c', source: 'cezar' }),
+      skill({ name: 'c', source: 'onni' }),
       skill({ name: 'i', source: 'ai' }),
     ])
-    expect(ordered.map((entry) => entry.source)).toEqual(['team', 'agents', 'cezar', 'ai', 'global'])
+    expect(ordered.map((entry) => entry.source)).toEqual(['team', 'agents', 'onni', 'ai', 'global'])
   })
 
   it('orderRuns sorts newest first without mutating its input', () => {
@@ -1164,16 +1164,16 @@ describe('the pure ordering helpers', () => {
         run({ id: 'a', title: 'a', createdAt: '2026-07-10T00:00:00Z' }),
         run({ id: 'b', title: 'b', createdAt: '2026-07-11T00:00:00Z' }),
       ],
-      'cezar',
+      'onni',
       [
-        indexed({ id: 'a', projectId: 'cezar', title: 'a', createdAt: '2026-07-10T00:00:00Z' }),
+        indexed({ id: 'a', projectId: 'onni', title: 'a', createdAt: '2026-07-10T00:00:00Z' }),
         indexed({ id: 'z', projectId: 'shop', title: 'z', createdAt: '2026-07-20T00:00:00Z' }),
         indexed({ id: 'y', projectId: 'docs', title: 'y', createdAt: '2026-07-12T00:00:00Z' }),
       ],
     )
     // Active project newest-first, then the rest newest-first; `a`'s index twin is gone.
     expect(merged.map((task) => task.id)).toEqual(['b', 'a', 'z', 'y'])
-    expect(merged.map((task) => task.projectId)).toEqual(['cezar', 'cezar', 'shop', 'docs'])
+    expect(merged.map((task) => task.projectId)).toEqual(['onni', 'onni', 'shop', 'docs'])
   })
 
   it('mergeTasks keeps every project when the cockpit is unscoped', () => {
@@ -1186,11 +1186,11 @@ describe('the pure ordering helpers', () => {
   it('mergeTasks dedups against the BOOT project when there is no active scope', () => {
     // Global settings: no project scope, so `useRuns()` answered for the boot project. The
     // caller passes that slug, and the index's twin of `a` must not become a second row.
-    const merged = mergeTasks([run({ id: 'a', title: 'a' })], 'cezar', [
-      indexed({ id: 'a', projectId: 'cezar', title: 'a' }),
+    const merged = mergeTasks([run({ id: 'a', title: 'a' })], 'onni', [
+      indexed({ id: 'a', projectId: 'onni', title: 'a' }),
       indexed({ id: 'z', projectId: 'shop', title: 'z' }),
     ])
-    expect(merged.map((task) => `${task.projectId}/${task.id}`)).toEqual(['cezar/a', 'shop/z'])
+    expect(merged.map((task) => `${task.projectId}/${task.id}`)).toEqual(['onni/a', 'shop/z'])
   })
 
   it('orderProjects sorts most-recently-opened first, active last, without mutating', () => {

@@ -36,7 +36,7 @@ const reports = () => posted.map(({ message }) => [message.url, message.how])
 describe('location reporter', () => {
   it('reports the address it starts on, to the cockpit origin only', () => {
     expect(posted).toEqual([
-      { message: { source: 'cezar-preview', type: 'location', url: 'http://localhost:5173/orders#status=open', how: 'load' }, origin: COCKPIT },
+      { message: { source: 'onni-preview', type: 'location', url: 'http://localhost:5173/orders#status=open', how: 'load' }, origin: COCKPIT },
     ])
   })
 

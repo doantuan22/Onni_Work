@@ -33,7 +33,7 @@ import { useFinishRun } from './use-finish-run'
 import { writeClipboard } from '@/lib/clipboard'
 
 /**
- * The review gate (spec 009, §"Task thread" review bullet) on the new surface — cezar's core
+ * The review gate (spec 009, §"Task thread" review bullet) on the new surface — onni's core
  * promise that nothing auto-merges. The flow is UNCHANGED from web/app.js `renderReviewPanel`;
  * only the surface is redesigned: a violet review banner, the diff as collapsible per-file
  * sections (`RunDiff` in components/run-diff.tsx — shared with the variants compare view),

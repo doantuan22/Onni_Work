@@ -39,14 +39,14 @@ describe('a parked in-place run releases the working-tree lease', () => {
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-lease-park-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-lease-park-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -70,7 +70,7 @@ describe('a parked in-place run releases the working-tree lease', () => {
   };
 
   const notes = (id: string): string[] => {
-    const path = join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`);
+    const path = join(repoRoot, '.ai/onni/runs', `${id}.ndjson`);
     if (!existsSync(path)) return [];
     return readFileSync(path, 'utf8')
       .trim()
@@ -82,7 +82,7 @@ describe('a parked in-place run releases the working-tree lease', () => {
   };
 
   /** An in-place run that became the ROOT of a dispatch tree — what `dispatch()` writes on a
-   *  parent's first `cez task create`, and the only in-place run that parks for its children.
+   *  parent's first `onni task create`, and the only in-place run that parks for its children.
    *  Set the way `dispatch-engine.test.ts` does it; `mock:pause` keeps the turn open long enough
    *  that the record carries the tree before the turn ends. */
   const inPlaceRoot = (task: string): RunRecord => {
@@ -122,7 +122,7 @@ describe('a parked in-place run releases the working-tree lease', () => {
     expect(notes(parked.id).filter((m) => m.startsWith('parked — released')).length).toBe(2);
     // Somebody else held the tree meanwhile, so the session is told its view of it may be stale
     // rather than left to clobber the other task's work.
-    expect(readFileSync(join(repoRoot, '.ai/cezar/runs', `${parked.id}.ndjson`), 'utf8'))
+    expect(readFileSync(join(repoRoot, '.ai/onni/runs', `${parked.id}.ndjson`), 'utf8'))
       .toContain('another task held this repository working tree');
   }, 40_000);
 

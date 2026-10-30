@@ -97,7 +97,7 @@ function gateSeededClient(singleProject = false, projects: ProjectListEntry[] = 
   client.setQueryData(workspaceQueryKeys.projects, {
     projects,
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   return client
 }
@@ -148,7 +148,7 @@ const entry = (id: string, extra: Partial<ProjectListEntry> = {}): ProjectListEn
   ...extra,
 })
 const REGISTRY = [
-  entry('boot', { name: 'cezar', branch: 'main' }),
+  entry('boot', { name: 'onni', branch: 'main' }),
   entry('other', { name: 'storefront', lastOpenedAt: '2026-07-19T09:00:00.000Z' }),
   entry('gone', { name: 'old-repo', status: 'missing', lastOpenedAt: '2026-07-18T09:00:00.000Z' }),
 ]
@@ -253,7 +253,7 @@ describe('the settings shell', () => {
     expect(rows[1]?.querySelector('[data-slot="settings-project-link"]')?.getAttribute('href')).toBe('/p/other/settings/agents')
     expect(rows[0]?.querySelector('[data-slot="settings-project-link"]')).toBeNull()
     expect(rows[0]?.querySelector('[data-slot="settings-project-toggle"]')).not.toBeNull()
-    expect(rows[0]?.textContent).toContain('cezar')
+    expect(rows[0]?.textContent).toContain('onni')
     // No branch in settings — the row is the project's name only.
     expect(rows[0]?.textContent).not.toContain('main')
   })
@@ -384,7 +384,7 @@ describe('the settings shell', () => {
     expect(nav().querySelector('[data-project-section]')).toBeNull()
   })
 
-  it('an UNREGISTERED boot project (cezar started from a task worktree) gets no row — it is not a project', () => {
+  it('an UNREGISTERED boot project (onni started from a task worktree) gets no row — it is not a project', () => {
     // The registry lists two other projects but not `boot`; health knows the boot repo.
     const others = REGISTRY.filter((p) => p.id !== 'boot')
     const client = gateSeededClient(false, others)
@@ -444,7 +444,7 @@ describe('the settings shell', () => {
     renderAt('/settings', { projects: REGISTRY })
     const boot = () => nav().querySelector('[data-slot="settings-project"][data-project="boot"]')!
     const other = () => nav().querySelector('[data-slot="settings-project"][data-project="other"]')!
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse cezar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse onni' }))
     expect(boot().hasAttribute('data-expanded')).toBe(false)
     // Switch to the other project's General, then back to boot's.
     fireEvent.click(other().querySelector('a[data-slot="settings-project-link"]')!)
@@ -605,7 +605,7 @@ describe('the settings shell', () => {
   })
 
   it('the sidebar IS the app sidebar frame: resizable, sharing the stored width', () => {
-    localStorage.setItem('cez-sidebar-width', '350')
+    localStorage.setItem('onni-sidebar-width', '350')
     renderAt('/settings/agents', { projects: REGISTRY })
     const sidebar = document.querySelector<HTMLElement>('[data-slot="settings-sidebar"]')!
     // The width the app sidebar was dragged to is this column's width too — one preference.
@@ -614,8 +614,8 @@ describe('the settings shell', () => {
     expect(handle.getAttribute('role')).toBe('separator')
     fireEvent.keyDown(handle, { key: 'ArrowRight' })
     expect(sidebar.style.width).toBe('366px')
-    expect(localStorage.getItem('cez-sidebar-width')).toBe('366')
-    localStorage.removeItem('cez-sidebar-width')
+    expect(localStorage.getItem('onni-sidebar-width')).toBe('366')
+    localStorage.removeItem('onni-sidebar-width')
   })
 
   it('the sidebar reuses the app sidebar frame: Back + brand up top, labelled groups, no breadcrumb', () => {
@@ -632,11 +632,11 @@ describe('the settings shell', () => {
     const header = document.querySelector('[data-slot="settings-header"]')!
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Agents')
     // `project / view`: the project name leads, a slash separates, the view is the heading.
-    expect(header.querySelector('[data-slot="settings-scope-chip"]')?.textContent).toBe('cezar')
+    expect(header.querySelector('[data-slot="settings-scope-chip"]')?.textContent).toBe('onni')
     const h1 = screen.getByRole('heading', { level: 1 })
     expect(h1.previousElementSibling?.textContent).toBe('/')
     expect(h1.previousElementSibling?.previousElementSibling?.getAttribute('data-slot')).toBe('settings-scope-chip')
-    expect(h1.parentElement?.textContent).toBe('cezar/Agents')
+    expect(h1.parentElement?.textContent).toBe('onni/Agents')
     expect(header.textContent).toContain('Providers, default runner and models.')
     expect(header.querySelector('nav')).toBeNull()
     // Desktop only: below `md` the mobile bar titles the page, so the header hides itself.
@@ -644,7 +644,7 @@ describe('the settings shell', () => {
     expect(header.className).toContain('md:flex')
     const bar = document.querySelector('[data-slot="settings-mobile-bar"]')!
     expect(bar.textContent).toContain('Agents')
-    expect(bar.textContent).toContain('cezar')
+    expect(bar.textContent).toContain('onni')
   })
 
   it('a global page carries no project marker, and the project index is titled by the project', () => {
@@ -652,7 +652,7 @@ describe('the settings shell', () => {
     expect(document.querySelector('[data-slot="settings-scope-chip"]')).toBeNull()
     cleanup()
     renderAt('/settings', { projects: REGISTRY })
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('cezar')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('onni')
   })
 
   it('Back returns to the last non-settings page, however many settings pages were visited', () => {
@@ -722,8 +722,8 @@ describe('the appearance section (global scope)', () => {
     expect(screen.getByRole('radio', { name: 'Violet' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByRole('radio', { name: 'Compact' }).getAttribute('aria-checked')).toBe('true')
     // The mirror follows the server, so the next cold load pre-paints the truth.
-    expect(localStorage.getItem('cez-accent')).toBe('violet')
-    expect(localStorage.getItem('cez-density')).toBe('compact')
+    expect(localStorage.getItem('onni-accent')).toBe('violet')
+    expect(localStorage.getItem('onni-density')).toBe('compact')
   })
 
   it('accent round-trip: apply immediately, PUT the FULL appearance object', async () => {
@@ -743,7 +743,7 @@ describe('the appearance section (global scope)', () => {
         appearance: { accent: 'violet', density: 'compact', width: 'wide' },
       })
     })
-    expect(localStorage.getItem('cez-accent')).toBe('violet')
+    expect(localStorage.getItem('onni-accent')).toBe('violet')
   })
 
   it('density flips back to the default and the attribute comes OFF the root', async () => {
@@ -793,12 +793,12 @@ describe('the appearance section (global scope)', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'Light' }))
     expect(document.documentElement.classList.contains('light')).toBe(true)
-    expect(localStorage.getItem('cez-theme')).toBe('light')
+    expect(localStorage.getItem('onni-theme')).toBe('light')
     expect(screen.getByRole('radio', { name: 'Light' }).getAttribute('aria-checked')).toBe('true')
 
     fireEvent.click(screen.getByRole('radio', { name: 'Dark' }))
     expect(document.documentElement.classList.contains('light')).toBe(false)
-    expect(localStorage.getItem('cez-theme')).toBe('dark')
+    expect(localStorage.getItem('onni-theme')).toBe('dark')
 
     // Theme is per-browser by design (pre-paint) — it must never leak into ui-state.json.
     await waitFor(() => {

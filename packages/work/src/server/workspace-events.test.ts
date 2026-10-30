@@ -48,18 +48,18 @@ describe('GET /api/v1/workspace/events', () => {
   const closers: Array<() => Promise<void>> = [];
 
   beforeEach(async () => {
-    home = mkdtempSync(join(tmpdir(), 'cez-wsev-home-'));
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-wsev-boot-'));
-    otherRoot = mkdtempSync(join(tmpdir(), 'cez-wsev-other-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-wsev-home-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-wsev-boot-'));
+    otherRoot = mkdtempSync(join(tmpdir(), 'onni-wsev-other-'));
     process.env.CEZ_HOME = home;
     delete process.env.CEZ_REMOTE;
     process.env.CEZ_DRY_RUN = '1';
     for (const root of [repoRoot, otherRoot]) {
-      mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-      writeFileSync(join(root, '.ai/cezar', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
+      mkdirSync(join(root, '.ai/onni'), { recursive: true });
+      writeFileSync(join(root, '.ai/onni', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
     }
     clearProjectProbeCache();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     contexts = new ProjectContexts({ listProjects });
     bus = new WorkspaceEventBus();
     bootId = (await registerProject(repoRoot)).id;

@@ -23,9 +23,9 @@ describe('the agent-config API', () => {
 
   beforeEach(() => {
     delete process.env.CEZ_REMOTE;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-agentcfg-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-agentcfg-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,

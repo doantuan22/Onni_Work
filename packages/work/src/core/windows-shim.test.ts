@@ -38,7 +38,7 @@ const NATIVE_PS1 = [
 describe('spawnableCommand (telemetry a330744e)', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-shim-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-shim-'));
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 

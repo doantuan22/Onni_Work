@@ -64,7 +64,7 @@ const order = (a: DashboardTaskRow, b: DashboardTaskRow) =>
   createdTime(a) - createdTime(b) ||
   a.id.localeCompare(b.id) ||
   a.projectId.localeCompare(b.projectId);
-/** A `waiting` run, or a `failed` one whose session closed on an unanswered `CEZ:ASK` — both are
+/** A `waiting` run, or a `failed` one whose session closed on an unanswered `ONNI:ASK` — both are
  *  a question for the user, which is how the cockpit's attention layer reads them too. */
 const isQuestion = (r: DashboardTaskRow) =>
   r.status === 'waiting' || (r.status === 'failed' && Boolean(r.awaitingAnswerSince));
@@ -249,7 +249,7 @@ export class DashboardReader {
         }
         try {
           const root = statSync(project.root);
-          const stat = statSync(join(project.root, '.ai/cezar/runs.json'));
+          const stat = statSync(join(project.root, '.ai/onni/runs.json'));
           identity = `${project.root}:${root.dev}:${root.ino}:${root.mode}:${root.ctimeMs}:${stat.dev}:${stat.ino}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`;
         } catch {
           // Recheck errors on every demanded read: repaired permissions or an absent index
@@ -271,7 +271,7 @@ export class DashboardReader {
       if (!cached || cached.identity !== identity) {
         const diagnostic = project.store
           ? { runs: project.store.listRuns(), ...project.store.getIndexReadHealth() }
-          : readRunIndexDiagnostic(join(project.root, '.ai/cezar'), project.root);
+          : readRunIndexDiagnostic(join(project.root, '.ai/onni'), project.root);
         const slim: DashboardTaskRow[] = [];
         let omitted = diagnostic.omittedRuns;
         for (const run of diagnostic.runs) {

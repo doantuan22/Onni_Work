@@ -16,7 +16,7 @@ let root: string;
 const git = (...args: string[]) => execFileSync('git', args, { cwd: root });
 beforeEach(() => {
   vi.resetModules();
-  root = mkdtempSync(join(tmpdir(), 'cez-dashboard-git-'));
+  root = mkdtempSync(join(tmpdir(), 'onni-dashboard-git-'));
   vi.stubEnv('GIT_CEILING_DIRECTORIES', dirname(root));
 });
 afterEach(() => {
@@ -52,7 +52,7 @@ it('does not disguise a missing project root as no remote', async () => {
 });
 
 it.each(['file', 'directory'])('does not disguise broken Git metadata (%s) as no remote', async (kind) => {
-  if (kind === 'file') writeFileSync(join(root, '.git'), 'gitdir: /nonexistent/cez-dashboard-git');
+  if (kind === 'file') writeFileSync(join(root, '.git'), 'gitdir: /nonexistent/onni-dashboard-git');
   else mkdirSync(join(root, '.git'));
   expect((await read()).sources.every((source) => source.reason === 'Could not read GitHub repository')).toBe(true);
 });
@@ -73,7 +73,7 @@ it('retains known repository rows as stale when the project disappears', async (
 it.skipIf(!existsSync('/dev/shm') || statSync('/dev/shm').dev === statSync('/dev').dev)(
   'treats a non-repository at a filesystem discovery boundary as unconfigured', async () => {
     rmSync(root, { recursive: true });
-    root = mkdtempSync('/dev/shm/cez-dashboard-git-');
+    root = mkdtempSync('/dev/shm/onni-dashboard-git-');
     vi.stubEnv('GIT_CEILING_DIRECTORIES', '');
     vi.stubEnv('GIT_DISCOVERY_ACROSS_FILESYSTEM', '0');
     const result = await read();

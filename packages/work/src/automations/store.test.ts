@@ -18,7 +18,7 @@ const input = {
 };
 
 async function directory(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'cezar-automations-'));
+  const dir = await mkdtemp(join(tmpdir(), 'onni-automations-'));
   dirs.push(dir);
   return dir;
 }

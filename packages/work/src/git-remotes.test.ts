@@ -50,15 +50,15 @@ const FORK_URL = 'https://github.com/marta/shop.git';
  * repos) and GitHub — the stubbed lookup — reports the fork's parent as the canonical repo.
  */
 async function forkFixture(layout: 'origin-is-fork' | 'origin-is-canonical') {
-  const canonical = tempDir('cez-canonical-');
+  const canonical = tempDir('onni-canonical-');
   await run('git', ['init', '-q', '-b', 'main'], { cwd: canonical });
   await commit(canonical, '1\n', 'c1');
-  const fork = tempDir('cez-fork-');
+  const fork = tempDir('onni-fork-');
   await run('git', ['clone', '-q', '--bare', canonical, fork], { cwd: tmpdir() });
   await commit(canonical, '2\n', 'c2 — only upstream has this');
   const canonicalTip = await git(canonical, 'rev-parse', 'HEAD');
 
-  const work = tempDir('cez-forkwork-');
+  const work = tempDir('onni-forkwork-');
   const [originUrl, otherName, otherUrl] =
     layout === 'origin-is-fork' ? [FORK_URL, 'upstream', CANONICAL_URL] : [CANONICAL_URL, 'fork', FORK_URL];
   await git(work, 'init', '-q', '-b', 'main');
@@ -111,7 +111,7 @@ describe('taskRemotes (real git)', () => {
   });
 
   it('a lone remote with an unconventional name is both; no remote is null', async () => {
-    const solo = tempDir('cez-solo-');
+    const solo = tempDir('onni-solo-');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: solo });
     expect(await taskRemotes(solo)).toEqual({ base: null, push: null, names: [] });
     await git(solo, 'remote', 'add', 'gitlab', CANONICAL_URL);
@@ -120,7 +120,7 @@ describe('taskRemotes (real git)', () => {
 
   it('downstream fork: an `upstream` that is NOT origin\'s GitHub parent leaves origin as the base', async () => {
     // A company's own copy of an OSS project: PRs go to origin, `upstream` is only synced from.
-    const repo = tempDir('cez-downstream-');
+    const repo = tempDir('onni-downstream-');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repo });
     await git(repo, 'remote', 'add', 'origin', 'git@github.com:company/shop.git');
     await git(repo, 'remote', 'add', 'upstream', 'https://github.com/oss/shop.git');
@@ -149,7 +149,7 @@ describe('taskRemotes (real git)', () => {
   });
 
   it('never asks GitHub about a non-GitHub origin', async () => {
-    const repo = tempDir('cez-gitlab-');
+    const repo = tempDir('onni-gitlab-');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repo });
     await git(repo, 'remote', 'add', 'origin', 'git@gitlab.com:marta/shop.git');
     await git(repo, 'remote', 'add', 'upstream', 'https://gitlab.com/acme/shop.git');
@@ -160,7 +160,7 @@ describe('taskRemotes (real git)', () => {
   });
 
   it('ignores option-like remote names (#431 dash-guard)', async () => {
-    const repo = tempDir('cez-dashremote-');
+    const repo = tempDir('onni-dashremote-');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repo });
     await git(repo, 'config', 'remote.--upload-pack=evil.url', CANONICAL_URL);
     await git(repo, 'remote', 'add', 'origin', FORK_URL);
@@ -197,16 +197,16 @@ describe('a new task on a fork clone starts from the PR target, not the stale fo
   it('diffs measure against upstream, so the fork lag never counts as task work', async () => {
     const { work } = await forkFixture('origin-is-fork');
     const base = await chooseForkBase(work, 'main', undefined, () => undefined);
-    await git(work, 'checkout', '-q', '-b', 'cez/t', base);
+    await git(work, 'checkout', '-q', '-b', 'onni/t', base);
     writeFileSync(join(work, 'mine.txt'), 'x\n');
     // Recorded as `main` (a name) the read-time rule must still pick upstream/main.
-    expect(await worktreeShortstat(work, 'main', { taskBranch: 'cez/t' })).toEqual({ adds: 1, dels: 0, files: 1 });
+    expect(await worktreeShortstat(work, 'main', { taskBranch: 'onni/t' })).toEqual({ adds: 1, dels: 0, files: 1 });
   });
 
   it('git.sync-base merges the latest upstream, even for a base recorded as upstream/main', async () => {
     const { work, canonical } = await forkFixture('origin-is-fork');
     const base = await chooseForkBase(work, 'main', undefined, () => undefined);
-    await git(work, 'checkout', '-q', '-b', 'cez/t', base);
+    await git(work, 'checkout', '-q', '-b', 'onni/t', base);
     await commit(canonical, '2\nmore\n', 'c3 — upstream moved again');
     const tip = await git(canonical, 'rev-parse', 'HEAD');
     expect(await syncWithBase(work, base)).toEqual({ result: 'done' });
@@ -215,16 +215,16 @@ describe('a new task on a fork clone starts from the PR target, not the stale fo
 
   it('git.push sends the task branch to the push remote (the fork)', async () => {
     const { work, fork, canonical } = await forkFixture('origin-is-fork');
-    await git(work, 'checkout', '-q', '-b', 'cez/t');
-    expect(await pushBranch(work, 'cez/t')).toEqual({ ok: true });
-    expect(await git(fork, 'branch', '--list', 'cez/t')).toContain('cez/t');
-    expect(await git(canonical, 'branch', '--list', 'cez/t')).toBe('');
+    await git(work, 'checkout', '-q', '-b', 'onni/t');
+    expect(await pushBranch(work, 'onni/t')).toEqual({ ok: true });
+    expect(await git(fork, 'branch', '--list', 'onni/t')).toContain('onni/t');
+    expect(await git(canonical, 'branch', '--list', 'onni/t')).toBe('');
   });
 });
 
 describe('prRepoArgs (gh pr create target)', () => {
   async function withUrls(urls: Record<string, string>): Promise<string> {
-    const repo = tempDir('cez-prargs-');
+    const repo = tempDir('onni-prargs-');
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repo });
     for (const [name, url] of Object.entries(urls)) await git(repo, 'remote', 'add', name, url);
     return repo;
@@ -232,29 +232,29 @@ describe('prRepoArgs (gh pr create target)', () => {
 
   it('opens the PR on the base repo with an owner-qualified head from the fork', async () => {
     const repo = await withUrls({
-      origin: 'git@github.com:marta/cezar.git',
+      origin: 'git@github.com:marta/onni.git',
       upstream: 'https://github.com/open-mercato/cezar.git',
     });
-    expect(await prRepoArgs(repo, 'upstream', 'origin', 'cez/ab12cd34')).toEqual([
+    expect(await prRepoArgs(repo, 'upstream', 'origin', 'onni/ab12cd34')).toEqual([
       '--repo',
       'github.com/open-mercato/cezar',
       '--head',
-      'marta:cez/ab12cd34',
+      'marta:onni/ab12cd34',
     ]);
   });
 
   it('a same-repo push keeps a plain head but still pins --repo', async () => {
-    const repo = await withUrls({ origin: 'git@github.com:open-mercato/cezar.git' });
-    expect(await prRepoArgs(repo, 'origin', 'origin', 'cez/x')).toEqual([
+    const repo = await withUrls({ origin: 'git@github.com:open-mercato/onni.git' });
+    expect(await prRepoArgs(repo, 'origin', 'origin', 'onni/x')).toEqual([
       '--repo',
       'github.com/open-mercato/cezar',
       '--head',
-      'cez/x',
+      'onni/x',
     ]);
   });
 
   it('an unparseable base remote falls back to gh\'s own resolution', async () => {
     const repo = await withUrls({ origin: '/some/local/path' });
-    expect(await prRepoArgs(repo, 'origin', 'origin', 'cez/x')).toEqual(['--head', 'cez/x']);
+    expect(await prRepoArgs(repo, 'origin', 'origin', 'onni/x')).toEqual(['--head', 'onni/x']);
   });
 });

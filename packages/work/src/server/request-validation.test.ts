@@ -28,8 +28,8 @@ describe('request validation bounds (#429)', () => {
 
   beforeEach(() => {
     delete process.env.CEZ_REMOTE;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-reqval-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-reqval-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     captured = undefined;
     continueText = undefined;
     retiredQuestionRunId = undefined;
@@ -181,7 +181,7 @@ describe('request validation bounds (#429)', () => {
     await apiRequest(app, `/api/v1/runs/${run.id}/pin`, { method: 'POST' });
     const res = await postJson(`/api/v1/runs/${run.id}/pin`, { pinned: false });
     expect(res.status).toBe(200);
-    // Absent, not `false`: the shape a cezar that never heard of pins would have written.
+    // Absent, not `false`: the shape a onni that never heard of pins would have written.
     expect(await res.json()).not.toHaveProperty('pinned');
     expect(store.getRun(run.id)).not.toHaveProperty('pinned');
   });
@@ -221,7 +221,7 @@ describe('request validation bounds (#429)', () => {
     expect(res.status).toBe(200);
     const merged = (await res.json()) as Record<string, unknown>;
     expect(merged.someFuturePref).toBe('keep-me');
-    const onDisk = JSON.parse(readFileSync(join(repoRoot, '.ai/cezar/ui-state.json'), 'utf8'));
+    const onDisk = JSON.parse(readFileSync(join(repoRoot, '.ai/onni/ui-state.json'), 'utf8'));
     expect(onDisk.someFuturePref).toBe('keep-me');
   });
 

@@ -23,10 +23,10 @@ import {
 } from './agent-accounts.ts';
 
 /**
- * `~/.cezar/agent-accounts.json` (spec 2026-07-29-agent-profiles).
+ * `~/.onni/agent-accounts.json` (spec 2026-07-29-agent-profiles).
  *
  * The first describe block is the reason this file exists at all: accounts used to live in
- * `config.json`, where surviving a cezar downgrade depended on a `.passthrough()` in the other
+ * `config.json`, where surviving a onni downgrade depended on a `.passthrough()` in the other
  * version's schema. Here they cannot be touched by a version that does not know about them.
  */
 describe('agent accounts store', () => {
@@ -34,7 +34,7 @@ describe('agent accounts store', () => {
   let home: string;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-accounts-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-accounts-'));
     process.env.CEZ_HOME = home;
   });
 
@@ -58,13 +58,13 @@ describe('agent accounts store', () => {
   });
 
   describe('isolation from config.json (the reason for this file)', () => {
-    it('survives a cezar that rewrites config.json without knowing accounts exist', async () => {
+    it('survives a onni that rewrites config.json without knowing accounts exist', async () => {
       await mergeWriteAgentAccounts((store) => {
         store.accounts.push(account('work'));
         store.selections['/repo'] = { claude: 'work' };
       });
 
-      // An older cezar boots: it reads and rewrites config.json (registering a project, bumping
+      // An older onni boots: it reads and rewrites config.json (registering a project, bumping
       // lastOpenedAt, saving a setting). It has never heard of accounts, so it never opens their
       // file — and no `.passthrough()` in ITS schema has to hold for them to survive.
       await mergeWriteWorkspaceConfig((config) => {
@@ -83,7 +83,7 @@ describe('agent accounts store', () => {
       expect(store.selections['/repo']).toEqual({ claude: 'work' });
     });
 
-    it('survives even a config.json so corrupt that the other cezar rewrote it from defaults', async () => {
+    it('survives even a config.json so corrupt that the other onni rewrote it from defaults', async () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {});
       await mergeWriteAgentAccounts((store) => {
         store.accounts.push(account('work'));
@@ -125,7 +125,7 @@ describe('agent accounts store', () => {
       expect(store.selections['/repo']).toEqual({ claude: 'work' });
       // Persisted, so the next read does not depend on config.json any more…
       expect(existsSync(agentAccountsPath())).toBe(true);
-      // …and config.json keeps what it had: an older cezar sharing this home reads it unchanged.
+      // …and config.json keeps what it had: an older onni sharing this home reads it unchanged.
       const raw = JSON.parse(readFileSync(workspaceConfigPath(), 'utf8')) as Record<string, unknown>;
       expect(raw.agentProfiles).toEqual([account('work')]);
     });
@@ -212,7 +212,7 @@ describe('agent accounts store', () => {
       expect(row).toMatchObject({ id: 'work', label: '', addedAt: '' });
     });
 
-    it('preserves a NEWER cezar\'s unknown keys at every level (.passthrough)', async () => {
+    it('preserves a NEWER onni\'s unknown keys at every level (.passthrough)', async () => {
       write({
         futureTopLevel: { keep: true },
         accounts: [{ ...account('work'), futureRowKey: 1 }],
@@ -237,7 +237,7 @@ describe('agent accounts store', () => {
       expect(store.selections['/c']).toEqual({});
     });
 
-    it('writes at mode 0600, like every other file in ~/.cezar', async () => {
+    it('writes at mode 0600, like every other file in ~/.onni', async () => {
       await mergeWriteAgentAccounts((store) => {
         store.accounts.push(account('work'));
       });

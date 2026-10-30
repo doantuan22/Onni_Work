@@ -17,7 +17,7 @@ beforeEach(async () => {
   env = { CEZ_HOME: join(root, 'home') };
   const record = await new TrackerConnections(env).write(project, { kind: 'jira', origin: 'https://acme.atlassian.net', email: 'a@acme.com', token: 'synthetic-token' });
   association = { kind: 'jira', source: { id: 'https://acme.atlassian.net', webUrl: 'https://acme.atlassian.net' }, externalId: 'SAM', externalName: 'Sam', connectionId: record!.id };
-  await writeTrackerAssociation(join(project, '.ai/cezar'), association);
+  await writeTrackerAssociation(join(project, '.ai/onni'), association);
 });
 afterEach(async () => { await rm(root, { recursive: true, force: true }); });
 it('maps only the bound connection to agent env', async () => {
@@ -28,7 +28,7 @@ it('never substitutes a rotated credential', async () => {
   await expect(resolveTrackerAgentEnv(project, association, env)).rejects.toThrow(/connection|scope/i);
 });
 it.each(['externalId', 'source', 'kind'] as const)('rejects a changed %s', async (field) => {
-  await writeTrackerAssociation(join(project, '.ai/cezar'), { ...association, [field]: field === 'source' ? { ...association.source, id: 'different' } : field === 'kind' ? 'linear' : 'different' });
+  await writeTrackerAssociation(join(project, '.ai/onni'), { ...association, [field]: field === 'source' ? { ...association.source, id: 'different' } : field === 'kind' ? 'linear' : 'different' });
   await expect(resolveTrackerAgentEnv(project, association, env)).rejects.toThrow(/connection|scope/i);
 });
 it('legacy and dry runs never receive real credentials', async () => {
@@ -43,6 +43,6 @@ it('rejects a removed connection', async () => {
 it('maps a bound Linear connection', async () => {
   const record = await new TrackerConnections(env).write(project, { kind: 'linear', key: 'synthetic-linear-key' });
   const linear = { ...association, kind: 'linear' as const, connectionId: record!.id };
-  await writeTrackerAssociation(join(project, '.ai/cezar'), linear);
+  await writeTrackerAssociation(join(project, '.ai/onni'), linear);
   expect(await resolveTrackerAgentEnv(project, linear, env)).toEqual({ LINEAR_API_KEY: 'synthetic-linear-key' });
 });

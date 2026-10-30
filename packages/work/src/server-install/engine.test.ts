@@ -48,7 +48,7 @@ describe('engine', () => {
   let home: string;
   const original = process.env.CEZ_HOME;
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-engine-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-engine-'));
     process.env.CEZ_HOME = home;
   });
   afterEach(() => {
@@ -247,7 +247,7 @@ describe('engine', () => {
 
     expect(res.status).toBe('cancelled');
     expect(undo.undo).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith('2 projects are registered in ~/.cezar/config.json.');
+    expect(warn).toHaveBeenCalledWith('2 projects are registered in ~/.onni/config.json.');
   });
 
   it('after a full uninstall the host can be installed with a different platform', async () => {
@@ -318,7 +318,7 @@ describe('engine — ledger preservation and uninstall safety (PR #423 review fi
   let home: string;
   const original = process.env.CEZ_HOME;
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-engine-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-engine-'));
     process.env.CEZ_HOME = home;
   });
   afterEach(() => {

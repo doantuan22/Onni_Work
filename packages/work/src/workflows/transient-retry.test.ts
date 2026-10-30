@@ -41,12 +41,12 @@ describe('a run stopped by a transient provider failure retries itself', () => {
 
   beforeEach(async () => {
     process.env.CEZ_DRY_RUN = '1';
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-transient-retry-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-transient-retry-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   afterEach(async () => {

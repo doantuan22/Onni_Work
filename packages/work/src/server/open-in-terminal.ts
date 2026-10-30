@@ -120,12 +120,12 @@ export const LAUNCH_SCRIPT_TTL_MS = 60_000;
  * the worktree, run `command`, then drop into an interactive shell so the window stays
  * open — and schedules its own removal (#785).
  *
- * Every "open in terminal" used to leave its `cez-term-*` directory behind forever. On a
- * host whose `/tmp` is a tmpfs that never reboots, cezar's own litter is part of what
+ * Every "open in terminal" used to leave its `onni-term-*` directory behind forever. On a
+ * host whose `/tmp` is a tmpfs that never reboots, onni's own litter is part of what
  * exhausts the directory the agents' output capture depends on, so the opener cleans up
  * after itself. Deleting the script mid-run is safe: the emulator has already `exec`'d
  * bash on it, and POSIX keeps an unlinked file's inode alive for every open descriptor.
- * The timer is `unref`'d — a pending cleanup must never be the reason `cezar serve`
+ * The timer is `unref`'d — a pending cleanup must never be the reason `onni serve`
  * refuses to exit.
  *
  * Exported for the regression test, which must prove the directory does not survive
@@ -136,7 +136,7 @@ export function createLaunchScript(
   command: string,
   ttlMs: number = LAUNCH_SCRIPT_TTL_MS,
 ): string {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-term-'));
+  const dir = mkdtempSync(join(tmpdir(), 'onni-term-'));
   const scriptPath = join(dir, 'launch.sh');
   writeFileSync(scriptPath, `#!/usr/bin/env bash\ncd ${shellQuote(cwd)}\n${command}\nexec bash\n`, 'utf8');
   chmodSync(scriptPath, 0o755);
@@ -154,7 +154,7 @@ export function createLaunchScript(
 /**
  * A test that reaches a real launcher opens a window on the developer's machine — a Terminal on
  * macOS, a `cmd` window on Windows, an emulator on Linux — and #820 is what that looks like: a
- * suite run left a Terminal sitting in a `cez-profiles-home-*` fixture directory the same run had
+ * suite run left a Terminal sitting in a `onni-profiles-home-*` fixture directory the same run had
  * already deleted. Throwing beats returning `false`: a silent refusal would let the omission
  * survive as a passing test, and the fix is always the same one line — inject the launcher seam
  * (`openTerminal` / `openFile` / `openApp` on `ServerDeps`) instead of reaching the real one.

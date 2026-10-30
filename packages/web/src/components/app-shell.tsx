@@ -60,7 +60,7 @@ export type AppShellProps = {
   unreadCount?: number | null
   /** A quiet, accessible marker on Skills when a checked update remains actionable. */
   skillsUpdateAvailable?: boolean
-  /** cezar version for the footer chip. Null until Step 3.1 reads it from `/api/health`. */
+  /** onni version for the footer chip. Null until Step 3.1 reads it from `/api/health`. */
   version?: string | null
   /** Step 3.3's grouped task quick-list. */
   taskQuickList?: ReactNode
@@ -174,12 +174,12 @@ export const AppShell = React.memo(function AppShell({
   singleProject = false,
   banner,
   projectGroups,
-  brandName = 'cezar',
+  brandName = 'onni',
   brandLogoUrl = null,
 }: AppShellProps) {
   const { pathname } = useLocation()
   // The nav's area rules reason about the flat route map — strip any `/p/:projectId` prefix
-  // (multi-project spec, step 3.2) so `/p/cezar/git/commits` still lights Git.
+  // (multi-project spec, step 3.2) so `/p/onni/git/commits` still lights Git.
   const areaPathname = stripProjectPrefix(pathname)
   const activeTo = activeNavPath(areaPathname)
   const currentBase = activeNavItem(areaPathname)

@@ -42,7 +42,7 @@ describe('Slack rendering', () => {
     expect(local).toContain('https://example.com/issues/1?q=a%7Cb|Issue');
     expect(local).not.toContain('cockpit.example');
     value.source.mode = 'hosted';
-    expect(renderSlackMessage(JSON.stringify(value))).toContain('cockpit.example/task|Open in cezar');
+    expect(renderSlackMessage(JSON.stringify(value))).toContain('cockpit.example/task|Open in onni');
   });
   it('keeps a supplied user title under minimal without inventing optional details', () => {
     const value = event('task.attention_required'); value.task.title = 'User title';
@@ -51,7 +51,7 @@ describe('Slack rendering', () => {
     expect(result).not.toContain('Failure detail'); expect(result).not.toContain('https://');
   });
   it('renders a named test without task data', () => {
-    const result = renderSlackMessage(JSON.stringify({ id: 'evt_11111111-1111-4111-8111-111111111111', schemaVersion: 1, occurredAt: at, type: 'webhook.test', data: { test: true, format: 'cezar.json.v1' } }), { receiverName: 'My channel' });
-    expect(result).toContain('cezar is connected to this channel'); expect(result).toContain('My channel');
+    const result = renderSlackMessage(JSON.stringify({ id: 'evt_11111111-1111-4111-8111-111111111111', schemaVersion: 1, occurredAt: at, type: 'webhook.test', data: { test: true, format: 'onni.json.v1' } }), { receiverName: 'My channel' });
+    expect(result).toContain('onni is connected to this channel'); expect(result).toContain('My channel');
   });
 });

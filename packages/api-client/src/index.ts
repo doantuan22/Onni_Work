@@ -1,5 +1,5 @@
 /**
- * `@onni/api-client` — the one boundary between the cezar service and anything
+ * `@onni/api-client` — the one boundary between the onni service and anything
  * that talks to it.
  *
  * Everything reachable from this barrel is Node-free by construction: no `node:*` import, no
@@ -10,7 +10,7 @@
  * now structural.
  *
  * Contents:
- *   - `client.ts` — `createCezarClient<AppType>()`, the typed client over the versioned
+ *   - `client.ts` — `createOnniClient<AppType>()`, the typed client over the versioned
  *     `/api/v1` surface. Types come from the server's own handlers; nothing is declared twice.
  *   - `@onni/contract` — re-exported wholesale, so a consumer needs one import for
  *     both the client and the request/response schemas it speaks. The hand-written `dto/*` mirror

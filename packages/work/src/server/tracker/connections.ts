@@ -3,7 +3,7 @@ import { promises as fs, constants } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { renameWithRetry } from '../../fs-rename.ts';
 import type { TrackerCredentials } from '@onni/contract';
-import { cezarHomeDir, assertCezarHomeWriteIsSandboxed } from '../../paths.ts';
+import { onniHomeDir, assertOnniHomeWriteIsSandboxed } from '../../paths.ts';
 import { connectionRecordSchema, decodeConnectionEnv, encodeConnectionEnv, type StoredTrackerConnection } from './connection-env.ts';
 export type { StoredTrackerConnection } from './connection-env.ts';
 
@@ -13,7 +13,7 @@ export class TrackerConnections {
   private readonly demo: boolean;
   constructor(env: NodeJS.ProcessEnv = process.env) {
     this.demo = env.CEZ_DRY_RUN === '1';
-    this.directory = join(cezarHomeDir(env), 'tracker-connections');
+    this.directory = join(onniHomeDir(env), 'tracker-connections');
   }
   private id(root: string): string { return createHash('sha256').update(root).digest('hex'); }
   private async checkDirectory(): Promise<void> {
@@ -21,7 +21,7 @@ export class TrackerConnections {
     if (!directory.isDirectory() || directory.isSymbolicLink() || (process.platform !== 'win32' && (directory.mode & 0o077) !== 0)) throw new Error('Invalid credential directory');
   }
   private async prepare(path: string): Promise<void> {
-    assertCezarHomeWriteIsSandboxed(path);
+    assertOnniHomeWriteIsSandboxed(path);
     await fs.mkdir(this.directory, { recursive: true, mode: 0o700 });
     await this.checkDirectory();
     // This directory is entirely managed private state, including locks and temporary files.
@@ -93,7 +93,7 @@ export class TrackerConnections {
       return { record: await this.readId(this.id(canonical)) };
     } catch (error) {
       return (error as NodeJS.ErrnoException).code === 'ENOENT' ? { record: null }
-        : { record: null, error: 'Cannot read project credentials. Re-save in Settings or use cez tracker-connections list/remove for local cleanup.' };
+        : { record: null, error: 'Cannot read project credentials. Re-save in Settings or use onni tracker-connections list/remove for local cleanup.' };
     }
   }
   async read(root: string): Promise<StoredTrackerConnection | null> {

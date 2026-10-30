@@ -34,11 +34,11 @@ export type SkillActivation = {
 
 const SKILL_SOURCE_DESCRIPTIONS: Record<Skill['source'], string> = {
   ai: 'From this project’s .ai/skills; always enabled while present.',
-  cezar: 'From this project’s .ai/cezar/skills; always enabled while present.',
+  onni: 'From this project’s .ai/onni/skills; always enabled while present.',
   agents: 'From .agents/skills or an agent-specific folder; always enabled while present.',
   global: 'User-wide from ~/.agents/skills or ~/.claude/skills, shared across projects.',
   team: 'Shared from a team repository configured for this project; importable skills can be enabled or disabled here.',
-  builtin: 'Built into Cezar rather than installed from a skill repository.',
+  builtin: 'Built into Onni rather than installed from a skill repository.',
 }
 
 /** The source tag every skill listing shows — project sources read emphasized (#377). */

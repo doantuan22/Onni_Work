@@ -36,24 +36,24 @@ interface MonitorState {
 
 describe('endsWithDoneMarker tolerates trailing task-reference lines', () => {
   it.each([
-    ['the bare marker', 'all done\n\nCEZ:DONE'],
-    ['the marker followed by a PR declaration', 'opened the PR\nCEZ:DONE\nCEZ:PR=4242'],
-    ['the marker followed by every reference', 'x\nCEZ:DONE\nCEZ:PR=1\nCEZ:ISSUE=2\nCEZ:TITLE=t'],
+    ['the bare marker', 'all done\n\nONNI:DONE'],
+    ['the marker followed by a PR declaration', 'opened the PR\nONNI:DONE\nONNI:PR=4242'],
+    ['the marker followed by every reference', 'x\nONNI:DONE\nONNI:PR=1\nONNI:ISSUE=2\nONNI:TITLE=t'],
   ])('detects %s', (_name, turnText) => {
     expect(endsWithDoneMarker(turnText)).toBe(true);
   });
 
   it.each([
     ['a markerless turn', 'Which one first?'],
-    ['references with no marker', 'Opened it.\nCEZ:PR=42'],
-    ['a marker with prose after it', 'CEZ:DONE\nactually, one question'],
+    ['references with no marker', 'Opened it.\nONNI:PR=42'],
+    ['a marker with prose after it', 'ONNI:DONE\nactually, one question'],
   ])('does not detect %s', (_name, turnText) => {
     expect(endsWithDoneMarker(turnText)).toBe(false);
   });
 
   it('is a strict superset of the plain `$`-anchored predicate', () => {
-    for (const text of ['CEZ:DONE', 'a\nCEZ:DONE  \n', 'CEZ:DONE\nCEZ:PR=1', 'no']) {
-      if (/CEZ:DONE\s*$/.test(text.trimEnd())) expect(endsWithDoneMarker(text)).toBe(true);
+    for (const text of ['ONNI:DONE', 'a\nONNI:DONE  \n', 'ONNI:DONE\nONNI:PR=1', 'no']) {
+      if (/ONNI:DONE\s*$/.test(text.trimEnd())) expect(endsWithDoneMarker(text)).toBe(true);
     }
   });
 });
@@ -73,14 +73,14 @@ describe('a parked monitor always has an exit', () => {
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-monitor-exit-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-monitor-exit-'));
     savedDryRun = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     currentId = undefined;
   });
 
@@ -104,7 +104,7 @@ describe('a parked monitor always has an exit', () => {
   const stateOf = (id: string) =>
     (manager as unknown as { active: Map<string, MonitorState> }).active.get(id);
   const notes = (id: string) => {
-    const path = join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`);
+    const path = join(repoRoot, '.ai/onni/runs', `${id}.ndjson`);
     if (!existsSync(path)) return [] as string[];
     return readFileSync(path, 'utf8')
       .trim()
@@ -114,7 +114,7 @@ describe('a parked monitor always has an exit', () => {
       .map((event) => String(event.message));
   };
   const heartbeats = (id: string) =>
-    readFileSync(handoffPath(join(repoRoot, '.ai/cezar'), id), 'utf8')
+    readFileSync(handoffPath(join(repoRoot, '.ai/onni'), id), 'utf8')
       .split('\n')
       .filter((line) => /^- \d{4}-\d\d-\d\dT\S+ — /.test(line))
       .map((line) => line.replace(/^- \S+ — /, ''));
@@ -249,7 +249,7 @@ describe('a parked monitor always has an exit', () => {
     expect(store.getRun(id)?.status).toBe('waiting');
     store.flush();
 
-    const reopened = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    const reopened = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     const restarted = new RunManager(reopened, repoRoot, {
       semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 0 } }),
     });
@@ -268,7 +268,7 @@ describe('a parked monitor always has an exit', () => {
     store.updateRun(parentId, { status: 'cancelled' });
     store.flush();
 
-    const reopened = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    const reopened = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     const restarted = new RunManager(reopened, repoRoot, {
       semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 0 } }),
     });
@@ -463,7 +463,7 @@ describe('a parked monitor always has an exit', () => {
     await waitFor(id, (r) => r?.status === 'waiting');
   }, 30_000);
 
-  it('closes on `CEZ:DONE` followed by a task reference at the first-session turn-end', async () => {
+  it('closes on `ONNI:DONE` followed by a task reference at the first-session turn-end', async () => {
     boot();
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:done-refs finish it', worktree: false });
     currentId = record.id;
@@ -472,7 +472,7 @@ describe('a parked monitor always has an exit', () => {
     expect(store.getRun(record.id)?.prNumber).toBe(4243);
   }, 30_000);
 
-  it('closes on `CEZ:DONE` followed by a task reference at the continuation turn-end', async () => {
+  it('closes on `ONNI:DONE` followed by a task reference at the continuation turn-end', async () => {
     boot();
     const record = manager.startRun(SINGLE_STEP, { task: 'just do the thing', worktree: false });
     currentId = record.id;

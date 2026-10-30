@@ -137,7 +137,7 @@ describe.runIf(process.platform === 'linux')('reaping real processes (linux)', (
       expect(killed[0]?.command).toContain('sleep 100000');
       expect(await waitFor(() => !alive(target))).toBe(true);
       expect(alive(bystander)).toBe(true);
-      // cezar's own process is never listed, whatever it inherited
+      // onni's own process is never listed, whatever it inherited
       expect((await listTaskProcesses()).some((p) => p.pid === process.pid)).toBe(false);
     } finally {
       for (const pid of [target, bystander]) {

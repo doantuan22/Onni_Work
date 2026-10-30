@@ -11,8 +11,8 @@ describe('PUT /workspace/config orgSkillsRepos', () => {
   let repoRoot: string;
   let store: RunStore;
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-org-skills-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-org-skills-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
   afterEach(() => {
     store.flush();

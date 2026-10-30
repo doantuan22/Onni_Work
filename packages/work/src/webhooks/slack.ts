@@ -22,7 +22,7 @@ export function renderSlackMessage(eventJson: string, ctx: { receiverName?: stri
   const event = webhookEventSchema.parse(JSON.parse(eventJson));
   const label = labels[event.type];
   if (event.type === 'webhook.test') {
-    const text = clip(`${label} · cezar is connected to this channel${ctx.receiverName ? ` · ${escape(ctx.receiverName)}` : ''}`);
+    const text = clip(`${label} · onni is connected to this channel${ctx.receiverName ? ` · ${escape(ctx.receiverName)}` : ''}`);
     return JSON.stringify({ text, blocks: [section(text)], link_names: false, unfurl_links: false, unfurl_media: false });
   }
   const title = escape(event.task.title || event.task.id.slice(0, 8));
@@ -45,7 +45,7 @@ export function renderSlackMessage(eventJson: string, ctx: { receiverName?: stri
     .map(([kind, url]) => {
       // Delimiters in a URL must not manufacture another Slack link or mention.
       const safeUrl = escape(url.replace(/[<>|\s]/g, character => encodeURIComponent(character)));
-      return `<${safeUrl}|${kind === 'pullRequest' ? 'Pull request' : kind === 'issue' ? 'Issue' : 'Open in cezar'}>`;
+      return `<${safeUrl}|${kind === 'pullRequest' ? 'Pull request' : kind === 'issue' ? 'Issue' : 'Open in onni'}>`;
     });
   if (links.length) blocks.push(section(links.join(' · ')));
   const options = { text, link_names: false, unfurl_links: false, unfurl_media: false };

@@ -13,28 +13,28 @@ import {
   type SecretKeyBackend,
   type StepSecretBinding,
 } from '@onni/contract';
-import { assertCezarHomeWriteIsSandboxed, cezarHomeDir } from '../paths.ts';
+import { assertOnniHomeWriteIsSandboxed, onniHomeDir } from '../paths.ts';
 import { PROJECT_ID_RE } from './config.ts';
 import { osKeychain, type DataKeyring } from './secret-keyring.ts';
 
 /**
  * Project and workspace secrets (spec `2026-10-10-project-secrets-vault-options`).
  *
- * One JSON file per scope holder under `~/.cezar/secrets/`: `<projectId>.json` for a project,
+ * One JSON file per scope holder under `~/.onni/secrets/`: `<projectId>.json` for a project,
  * `workspace.json` for the user's whole workspace. The file carries every secret's METADATA in
  * the clear (name, audiences, timestamps) and its VALUE as AES-256-GCM ciphertext under one
  * per-machine data key. The data key lives in the OS keychain when one is usable
- * (`secret-keyring.ts`) and in `~/.cezar/secrets/.key` (`0600`) otherwise — in which case the
+ * (`secret-keyring.ts`) and in `~/.onni/secrets/.key` (`0600`) otherwise — in which case the
  * store is exactly as strong as a private plaintext file, and `keyBackend()` says so.
  *
  * Values never enter `process.env`: a consumer asks `resolve()` for an AUDIENCE and gets only
  * the secrets that admit it. There is no agent audience, so `buildChildEnv`'s prefix matching
- * can never pass one to a backend — the leak the old "export the key before starting cezar"
+ * can never pass one to a backend — the leak the old "export the key before starting onni"
  * advice caused, which silently switched Claude Code and Codex to API billing.
  *
  * Same write discipline as `TrackerConnections`: a `0700` directory with a `*` `.gitignore`,
  * `0600` files, `O_NOFOLLOW` bounded reads, atomic tmp/rename writes, a cross-process mkdir
- * lock for read-modify-write, and `assertCezarHomeWriteIsSandboxed`. Not an OS-user boundary.
+ * lock for read-modify-write, and `assertOnniHomeWriteIsSandboxed`. Not an OS-user boundary.
  *
  * A project slug can be handed to another repository after the first is removed from the
  * registry, so a project file records the root it belongs to; a file whose recorded root is not
@@ -75,7 +75,7 @@ type SecretFile = z.infer<typeof secretFileSchema>;
  * be used — bad modes, a symlink, a corrupt file, a recorded root that is not this project's, or
  * a data key that no longer decrypts it. Reading as empty is the right degradation (a corrupt
  * store must never stop runs), but doing it silently left the user no way to tell "I never
- * stored it" from "cezar ignored what I stored": the value is write-only, so there is nothing
+ * stored it" from "onni ignored what I stored": the value is write-only, so there is nothing
  * to inspect and compare. The caller turns this into one note on the run.
  */
 export interface SecretsRead {
@@ -101,7 +101,7 @@ export class SecretStore {
   private dataKey: { key: Buffer; backend: SecretKeyBackend } | undefined;
 
   constructor(env: NodeJS.ProcessEnv = process.env, options: SecretStoreOptions = {}) {
-    this.directory = join(cezarHomeDir(env), 'secrets');
+    this.directory = join(onniHomeDir(env), 'secrets');
     this.keychain = options.keychain ?? (() => osKeychain(env));
   }
 
@@ -153,7 +153,7 @@ export class SecretStore {
         values: {},
         skipped: error instanceof SecretsError
           ? error.message
-          : 'the store is unreadable — check the modes on ~/.cezar/secrets (0700 dir, 0600 file)',
+          : 'the store is unreadable — check the modes on ~/.onni/secrets (0700 dir, 0600 file)',
       };
     }
     if (scope.kind === 'project') {
@@ -165,7 +165,7 @@ export class SecretStore {
     if (Object.keys(file.secrets).length === 0) return { values: {} };
     const dataKey = await this.loadDataKey();
     if (!dataKey) {
-      return { values: {}, skipped: 'the data key is gone — the OS keychain item or ~/.cezar/secrets/.key was removed; store the secrets again' };
+      return { values: {}, skipped: 'the data key is gone — the OS keychain item or ~/.onni/secrets/.key was removed; store the secrets again' };
     }
     const values: Record<string, { value: string; audiences: SecretAudience[]; updatedAt: string }> = {};
     for (const [name, stored] of Object.entries(file.secrets)) {
@@ -336,12 +336,12 @@ export class SecretStore {
       directory.isSymbolicLink() ||
       (process.platform !== 'win32' && (directory.mode & 0o077) !== 0)
     ) {
-      throw new SecretsError('the store directory is unusable — ~/.cezar/secrets must be a 0700 directory, not a symlink');
+      throw new SecretsError('the store directory is unusable — ~/.onni/secrets must be a 0700 directory, not a symlink');
     }
   }
 
   private async prepare(): Promise<void> {
-    assertCezarHomeWriteIsSandboxed(this.directory);
+    assertOnniHomeWriteIsSandboxed(this.directory);
     await fs.mkdir(this.directory, { recursive: true, mode: 0o700 });
     await this.checkDirectory();
     await this.save(join(this.directory, '.gitignore'), '# Managed private secrets; never commit this directory.\n*\n');
@@ -370,7 +370,7 @@ export class SecretStore {
   }
 
   private async save(path: string, text: string): Promise<void> {
-    assertCezarHomeWriteIsSandboxed(path);
+    assertOnniHomeWriteIsSandboxed(path);
     const temporary = `${path}.${randomUUID()}.tmp`;
     try {
       await fs.writeFile(temporary, text, { mode: 0o600, flag: 'wx' });
@@ -429,7 +429,7 @@ function fileId(scope: SecretScopeRef): string | undefined {
 
 /** Binds a ciphertext to its slot: a value moved between files or names does not decrypt. */
 function aad(fileId: string, name: string): Buffer {
-  return Buffer.from(`cezar-secret\0${fileId}\0${name}`, 'utf8');
+  return Buffer.from(`onni-secret\0${fileId}\0${name}`, 'utf8');
 }
 
 function encrypt(key: Buffer, associated: Buffer, value: string): Pick<StoredSecret, 'iv' | 'data' | 'tag'> {
@@ -461,7 +461,7 @@ export function parseSecretFile(text: string): SecretFile {
     throw new SecretsError('the store file is corrupt — not JSON');
   }
   const parsed = secretFileSchema.safeParse(json);
-  if (!parsed.success) throw new SecretsError('the store file is corrupt — not a shape this cezar writes');
+  if (!parsed.success) throw new SecretsError('the store file is corrupt — not a shape this onni writes');
   return parsed.data;
 }
 

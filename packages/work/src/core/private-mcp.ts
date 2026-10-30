@@ -6,8 +6,8 @@ import type { RunnerId } from './agent-runner.ts';
 /**
  * Private, per-project MCP servers (spec `.ai/specs/2026-10-07-private-project-mcp.md`).
  *
- * One file, `<repo>/.ai/cezar/mcp.local.json`, in the same shape as Claude's `.mcp.json`
- * (`{ "mcpServers": { "<name>": { … } } }`). It lives in cezar's git-ignored data dir — never in
+ * One file, `<repo>/.ai/onni/mcp.local.json`, in the same shape as Claude's `.mcp.json`
+ * (`{ "mcpServers": { "<name>": { … } } }`). It lives in onni's git-ignored data dir — never in
  * a run's worktree — so it cannot be committed by the user or by an agent, and a committed
  * `.mcp.json` next to it is irrelevant. Each runner injects the servers at launch through the
  * agent's own documented channel; nothing is written into the worktree:
@@ -25,9 +25,9 @@ import type { RunnerId } from './agent-runner.ts';
 
 export const PRIVATE_MCP_FILE = 'mcp.local.json';
 
-/** `<repo>/.ai/cezar/mcp.local.json` */
+/** `<repo>/.ai/onni/mcp.local.json` */
 export function privateMcpPath(repoRoot: string): string {
-  return join(repoRoot, '.ai', 'cezar', PRIVATE_MCP_FILE);
+  return join(repoRoot, '.ai', 'onni', PRIVATE_MCP_FILE);
 }
 
 export type PrivateMcpTransport = 'stdio' | 'http' | 'sse';

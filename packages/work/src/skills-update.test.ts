@@ -8,7 +8,7 @@ const oldDryRun = process.env.CEZ_DRY_RUN;
 afterEach(() => { if (oldDryRun === undefined) delete process.env.CEZ_DRY_RUN; else process.env.CEZ_DRY_RUN = oldDryRun; });
 
 async function fixture(project: unknown, global?: unknown) {
-  const root = await mkdtemp(join(tmpdir(), 'cez-skills-update-'));
+  const root = await mkdtemp(join(tmpdir(), 'onni-skills-update-'));
   const home = join(root, 'home'); const repo = join(root, 'repo');
   await mkdir(join(home, '.agents'), { recursive: true }); await mkdir(repo);
   if (project !== undefined) await writeFile(join(repo, 'skills-lock.json'), typeof project === 'string' ? project : JSON.stringify(project));
@@ -98,7 +98,7 @@ describe('SkillsUpdateService', () => {
     const first = new SkillsUpdateService({ homeDir: home, resolveNpx: async () => 'npx', run: async () => { await gate; return { stdout: '', stderr: '' }; } });
     const secondRun = vi.fn(async () => ({ stdout: '', stderr: '' }));
     const second = new SkillsUpdateService({ homeDir: home, resolveNpx: async () => 'npx', run: secondRun });
-    const active = first.check(repo); await vi.waitFor(async () => { await expect(import('node:fs/promises').then((fs) => fs.stat(join(home, '.cache', 'cez', 'skills-update.lock')))).resolves.toBeDefined(); });
+    const active = first.check(repo); await vi.waitFor(async () => { await expect(import('node:fs/promises').then((fs) => fs.stat(join(home, '.cache', 'onni', 'skills-update.lock')))).resolves.toBeDefined(); });
     const blocked = await second.check(repo); release(); await active;
     expect(blocked.status).toBe('unavailable'); expect(secondRun).not.toHaveBeenCalled();
   });
@@ -111,8 +111,8 @@ describe('SkillsUpdateService', () => {
 
   it('recovers a dead cache lock and removes its own lock afterward', async () => {
     const { home, repo } = await fixture({ skills: { om: { source: 'open-mercato/skills' } } });
-    const lockPath = join(home, '.cache', 'cez', 'skills-update.lock');
-    await mkdir(join(home, '.cache', 'cez'), { recursive: true });
+    const lockPath = join(home, '.cache', 'onni', 'skills-update.lock');
+    await mkdir(join(home, '.cache', 'onni'), { recursive: true });
     await writeFile(lockPath, `99999999\n${Date.now()}\n`);
     const run = vi.fn(async () => ({ stdout: '', stderr: '' }));
     await new SkillsUpdateService({ homeDir: home, run, resolveNpx: async () => 'npx' }).check(repo);
@@ -218,7 +218,7 @@ describe('SkillsUpdateService', () => {
     let release!: () => void; const gate = new Promise<void>((resolve) => { release = resolve; });
     const owner = new SkillsUpdateService({ homeDir: home, resolveNpx: async () => 'npx', run: async () => { await gate; return { stdout: '', stderr: '' }; } });
     const contender = new SkillsUpdateService({ homeDir: home, resolveNpx: async () => 'npx', run: vi.fn() });
-    const active = owner.check(repo, true); const lockPath = join(home, '.cache', 'cez', 'skills-update.lock');
+    const active = owner.check(repo, true); const lockPath = join(home, '.cache', 'onni', 'skills-update.lock');
     await vi.waitFor(async () => { await expect(readFile(lockPath, 'utf8')).resolves.toContain(String(process.pid)); });
     await expect(contender.update(repo, true)).rejects.toBeInstanceOf(SkillsUpdateConflictError);
     release(); await active;

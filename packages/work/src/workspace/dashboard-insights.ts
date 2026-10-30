@@ -41,7 +41,7 @@ export function projectInsightRow(projectId: string, run: RunRecord): InsightRow
   const prs = new Map<number, boolean>();
   for (const ref of run.prRefs ?? [])
     prs.set(ref.number, (prs.get(ref.number) ?? false) || ref.origin === 'created');
-  // Records written before `prRefs` carry the PR cezar opened as a bare URL/number.
+  // Records written before `prRefs` carry the PR onni opened as a bare URL/number.
   if (!run.prRefs?.length && run.prNumber !== undefined && run.pullRequestUrl)
     prs.set(run.prNumber, true);
   const failedStep = [...run.steps].reverse().find((s) => s.status === 'failed');

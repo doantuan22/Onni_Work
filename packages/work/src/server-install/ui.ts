@@ -164,7 +164,7 @@ export function createAutoUi(
       return answer(opts.message, opts.initialValue ?? true);
     },
     // A placeholder is a HINT, never an answer — auto-adopting it turned the
-    // example domain `cezar.ngrok.app` into real input under `--yes`.
+    // example domain `onni.ngrok.app` into real input under `--yes`.
     async text(o) {
       const v = String(answer(o.message, o.initialValue ?? ''));
       checkValid(o.message, v, o.validate);

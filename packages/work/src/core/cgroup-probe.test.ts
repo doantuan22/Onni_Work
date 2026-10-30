@@ -122,14 +122,14 @@ describe('cgroup v2 probe', () => {
   it('finds a limit that lives on an ancestor cgroup, not the leaf', () => {
     const probe = createCgroupProbe({
       readFile: fileReader({
-        '/proc/self/cgroup': '0::/system.slice/cezar.service\n',
+        '/proc/self/cgroup': '0::/system.slice/onni.service\n',
         '/proc/self/mountinfo': V2_MOUNTINFO,
         '/sys/fs/cgroup/cpu.max': 'max 100000\n',
         '/sys/fs/cgroup/memory.max': 'max\n',
         '/sys/fs/cgroup/system.slice/cpu.max': '400000 100000\n',
         '/sys/fs/cgroup/system.slice/memory.max': '8589934592\n',
-        '/sys/fs/cgroup/system.slice/cezar.service/cpu.max': 'max 100000\n',
-        '/sys/fs/cgroup/system.slice/cezar.service/memory.max': 'max\n',
+        '/sys/fs/cgroup/system.slice/onni.service/cpu.max': 'max 100000\n',
+        '/sys/fs/cgroup/system.slice/onni.service/memory.max': 'max\n',
       }),
       platform: 'linux',
     });
@@ -179,7 +179,7 @@ describe('cgroup v2 probe', () => {
     // then missed entirely, reporting the full host core count for a pinned process.
     const probe = createCgroupProbe({
       readFile: fileReader({
-        '/proc/self/cgroup': '0::/system.slice/cezar.service\n',
+        '/proc/self/cgroup': '0::/system.slice/onni.service\n',
         '/proc/self/mountinfo': V2_MOUNTINFO,
         '/sys/fs/cgroup/cpu.max': 'max 100000\n',
         '/sys/fs/cgroup/memory.max': 'max\n',
@@ -187,8 +187,8 @@ describe('cgroup v2 probe', () => {
         '/sys/fs/cgroup/system.slice/memory.max': 'max\n',
         // The pin sits here, two levels above the leaf.
         '/sys/fs/cgroup/system.slice/cpuset.cpus.effective': '4,6\n',
-        '/sys/fs/cgroup/system.slice/cezar.service/cpu.max': 'max 100000\n',
-        '/sys/fs/cgroup/system.slice/cezar.service/memory.max': 'max\n',
+        '/sys/fs/cgroup/system.slice/onni.service/cpu.max': 'max 100000\n',
+        '/sys/fs/cgroup/system.slice/onni.service/memory.max': 'max\n',
       }),
       platform: 'linux',
     });
@@ -298,14 +298,14 @@ describe('cgroup v2 + v1 hybrids', () => {
     const facts = createCgroupProbe({
       readFile: fileReader({
         // Both hierarchies are mounted; the process's own path on the v1 side holds the quota.
-        '/proc/self/cgroup': '0::/system.slice/cezar.service\n11:cpu,cpuacct:/system.slice/cezar.service\n',
+        '/proc/self/cgroup': '0::/system.slice/onni.service\n11:cpu,cpuacct:/system.slice/onni.service\n',
         '/proc/self/mountinfo': HYBRID_MOUNTINFO,
         '/sys/fs/cgroup/system.slice/cpu.max': 'max 100000\n',
         '/sys/fs/cgroup/system.slice/memory.max': 'max\n',
-        '/sys/fs/cgroup/system.slice/cezar.service/cpu.max': 'max 100000\n',
-        '/sys/fs/cgroup/system.slice/cezar.service/memory.stat': 'inactive_file 4096\n',
-        '/sys/fs/cgroup/cpu,cpuacct/system.slice/cezar.service/cpu.cfs_quota_us': '150000\n',
-        '/sys/fs/cgroup/cpu,cpuacct/system.slice/cezar.service/cpu.cfs_period_us': '100000\n',
+        '/sys/fs/cgroup/system.slice/onni.service/cpu.max': 'max 100000\n',
+        '/sys/fs/cgroup/system.slice/onni.service/memory.stat': 'inactive_file 4096\n',
+        '/sys/fs/cgroup/cpu,cpuacct/system.slice/onni.service/cpu.cfs_quota_us': '150000\n',
+        '/sys/fs/cgroup/cpu,cpuacct/system.slice/onni.service/cpu.cfs_period_us': '100000\n',
       }),
       platform: 'linux',
     })();

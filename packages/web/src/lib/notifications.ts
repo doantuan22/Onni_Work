@@ -125,6 +125,6 @@ export function describeRunNotification(run: RunRecord): RunNotificationContent 
   return {
     title: run.titleSummary ?? run.title,
     body: `Task ${label}`,
-    tag: `cezar-run-${run.id}`,
+    tag: `onni-run-${run.id}`,
   }
 }

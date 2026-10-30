@@ -191,9 +191,9 @@ export function newNode(type: GraphNodeType, taken: Iterable<string>): WorkflowG
     case 'github.pr-update':
       return { id: uniqueId('pr-update', taken), type, ready: true }
     case 'github.issue-comment':
-      return { id: uniqueId('issue-comment', taken), type, body: 'Update from cezar: {{task}}' }
+      return { id: uniqueId('issue-comment', taken), type, body: 'Update from onni: {{task}}' }
     case 'notify.webhook':
-      return { id: uniqueId('webhook', taken), type, url: 'https://example.com/hook', body: 'cezar: {{task}}' }
+      return { id: uniqueId('webhook', taken), type, url: 'https://example.com/hook', body: 'onni: {{task}}' }
   }
 }
 

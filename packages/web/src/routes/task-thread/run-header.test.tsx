@@ -424,7 +424,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 2, unpushed: null }),
       '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
     })
-    renderHeader(run('done', { worktreePath: '/tmp/wt/r1', branch: 'cez/r1' }), undefined, { done: 1, total: 3 })
+    renderHeader(run('done', { worktreePath: '/tmp/wt/r1', branch: 'onni/r1' }), undefined, { done: 1, total: 3 })
     const identity = document.querySelector('[data-slot="run-identity"]') as HTMLElement
     expect(identity.querySelector('[data-slot="pill"]')).toBeNull()
     expect(identity.lastElementChild?.getAttribute('data-slot')).toBe('plan-mirror')
@@ -444,7 +444,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     stubFetch()
     renderHeader(
       run('done', {
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         diffStat: { adds: 0, dels: 0, files: 0 },
         pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
       }),
@@ -458,7 +458,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
   it('collapses the desktop header to its title and tabs, and remembers it', () => {
     stubFetch()
     try {
-      window.localStorage.removeItem('cez:run-header-collapsed')
+      window.localStorage.removeItem('onni:run-header-collapsed')
     } catch {}
     renderHeader(run('done'))
     const details = document.querySelector('[data-slot="run-details"]') as HTMLElement
@@ -466,10 +466,10 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     fireEvent.click(screen.getByRole('button', { name: 'Collapse header' }))
     expect(details.className).toContain('md:hidden')
     expect(screen.getByRole('button', { name: 'Expand header' }).getAttribute('aria-expanded')).toBe('false')
-    expect(window.localStorage.getItem('cez:run-header-collapsed')).toBe('1')
+    expect(window.localStorage.getItem('onni:run-header-collapsed')).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: 'Expand header' }))
     expect(details.className).toContain('md:block')
-    expect(window.localStorage.getItem('cez:run-header-collapsed')).toBeNull()
+    expect(window.localStorage.getItem('onni:run-header-collapsed')).toBeNull()
   })
 
   it('tokens, cost and the agent badge sit once in the meta row, leaving the tabs line to navigation', () => {
@@ -486,12 +486,12 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     stubFetch({
       '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 0, unpushed: 1 }),
       '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
-      '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/cezar.git' } }),
+      '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/onni.git' } }),
     })
     renderHeader(
       run('done', {
         worktreePath: '/tmp/wt/r1',
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
       }),
     )
@@ -522,7 +522,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     renderHeader(
       run('running', {
         worktreePath: '/tmp/wt/r1',
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
       }),
     )
@@ -545,7 +545,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 0, unpushed: null, behind: 4, ahead: 1 }),
       '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
     })
-    renderHeader(run('waiting', { worktreePath: '/tmp/wt/r1', branch: 'cez/r1', baseBranch: 'origin/main' }))
+    renderHeader(run('waiting', { worktreePath: '/tmp/wt/r1', branch: 'onni/r1', baseBranch: 'origin/main' }))
     await waitFor(() =>
       expect((document.querySelector('[data-slot="git-button"] [data-action="create-pr"]') as HTMLButtonElement | null)?.disabled).toBe(false),
     )
@@ -562,14 +562,14 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     await waitFor(() => expect(document.querySelector('[data-slot="git-button"] button')?.textContent).toBe('Updating branch…'))
   })
 
-  it('every git step says just its name to the agent — no cezar playbook in the thread', () => {
+  it('every git step says just its name to the agent — no onni playbook in the thread', () => {
     expect(createPrPrompt(false)).toBe('Create PR')
     expect(createPrPrompt(true)).toBe('Create draft PR')
     expect(updateBranchPrompt()).toBe('Update branch')
     // The base rides along, so a task whose base is not the repo default (a dispatch child, a
     // feature-branch task) is never opened against or merged from `main` by mistake.
     expect(createPrPrompt(false, 'origin/main')).toBe('Create PR against main')
-    expect(createPrPrompt(true, 'cez/1a2b3c4d')).toBe('Create draft PR against cez/1a2b3c4d')
+    expect(createPrPrompt(true, 'onni/1a2b3c4d')).toBe('Create draft PR against onni/1a2b3c4d')
     expect(updateBranchPrompt('origin/release/2.x')).toBe('Update branch from release/2.x')
     // A raw sha (detached fork point) is not a branch to target.
     expect(createPrPrompt(false, '0a1b2c3d4e5f')).toBe('Create PR')
@@ -587,7 +587,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     const prRun = (status: RunStatus, extra: Partial<ApiRun> = {}) =>
       run(status, {
         worktreePath: '/tmp/wt/r1',
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
         ...extra,
       })
@@ -595,7 +595,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       stubFetch({
         '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 0, unpushed: 2, behind: 0, ahead: 2 }),
         '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
-        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/cezar.git' } }),
+        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/onni.git' } }),
         ...extra,
       })
     async function enabled(action: string) {
@@ -608,7 +608,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       })
     }
 
-    it('Push: the agent is asked to push — cezar does not push itself', async () => {
+    it('Push: the agent is asked to push — onni does not push itself', async () => {
       const sent = unpushed()
       renderHeader(prRun('waiting'))
       fireEvent.click(await enabled('push'))
@@ -632,7 +632,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
         '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 0, unpushed: null, behind: 0, ahead: 1 }),
         '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
       })
-      renderHeader(run('waiting', { worktreePath: '/tmp/wt/r1', branch: 'cez/r1', baseBranch: 'origin/main' }))
+      renderHeader(run('waiting', { worktreePath: '/tmp/wt/r1', branch: 'onni/r1', baseBranch: 'origin/main' }))
       fireEvent.click(await enabled('create-pr'))
       await waitFor(() => {
         if (!textSent(sent, 'Create PR against main')) throw new Error('the agent was not asked')
@@ -644,7 +644,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       const sent = stubFetch({
         '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 3, unpushed: 0, behind: 0, ahead: 1 }),
         '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
-        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/cezar.git' } }),
+        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/onni.git' } }),
       })
       renderHeader(prRun('waiting'))
       fireEvent.click(await enabled('commit-push'))
@@ -655,10 +655,10 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       expect(sent.some((r) => r.path.endsWith('/git/commit'))).toBe(false)
     })
 
-    it('no agent session to reach: Push falls back to cezar pushing', async () => {
+    it('no agent session to reach: Push falls back to onni pushing', async () => {
       const sent = unpushed({
         '/api/v1/runs/r1/git/push': () =>
-          jsonResponse({ pushed: true, branch: 'cez/r1', remote: 'origin', upstreamSet: false }),
+          jsonResponse({ pushed: true, branch: 'onni/r1', remote: 'origin', upstreamSet: false }),
       })
       // No session id on any step: nothing to resume, so the agent cannot be asked.
       renderHeader(prRun('done', { steps: [step()] }))
@@ -671,7 +671,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       const sent = stubFetch({
         '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 3, unpushed: 0, behind: 0, ahead: 1 }),
         '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
-        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/cezar.git' } }),
+        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/onni.git' } }),
       })
       renderHeader(prRun('done', { steps: [step()] }))
       fireEvent.click(await enabled('commit-push'))
@@ -721,7 +721,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     const live = (status: RunStatus, withPr = true) =>
       run(status, {
         worktreePath: '/tmp/wt/r1',
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         baseBranch: 'origin/main',
         ...(withPr ? { pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311' } : {}),
       })
@@ -790,7 +790,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       const sent = stubFetch({
         '/api/v1/runs/r1/git/status': () => jsonResponse(gitStatus),
         '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
-        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/cezar.git' } }),
+        '/api/v1/repo': () => jsonResponse({ info: { remote: 'git@github.com:open-mercato/onni.git' } }),
       })
       const client = createQueryClient()
       const tree = (status: RunStatus) => (
@@ -803,7 +803,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
                   <RunHeader
                     run={run(status, {
                       worktreePath: '/tmp/wt/r1',
-                      branch: 'cez/r1',
+                      branch: 'onni/r1',
                       pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1311',
                     })}
                   />
@@ -881,7 +881,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 0, unpushed: null, behind: 0, ahead: 0 }),
       '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
     })
-    renderHeader(run('running', { worktreePath: '/tmp/wt/r1', branch: 'cez/r1', baseBranch: 'main' }))
+    renderHeader(run('running', { worktreePath: '/tmp/wt/r1', branch: 'onni/r1', baseBranch: 'main' }))
     await waitFor(() => expect(sent.some((r) => r.path === '/api/v1/runs/r1/git/status')).toBe(true))
     await act(async () => {})
     expect(document.querySelector('[data-slot="git-button"]')).toBeNull()
@@ -897,7 +897,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     renderHeader(
       run('done', {
         worktreePath: '/tmp/wt/r1',
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/1283',
       }),
     )
@@ -913,8 +913,8 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     renderHeader(
       run('done', {
         worktreePath: '/tmp/wt/r1',
-        branch: 'cez/r1',
-        // Declared by the agent (`CEZ:PR`) — the task's own subject.
+        branch: 'onni/r1',
+        // Declared by the agent (`ONNI:PR`) — the task's own subject.
         markerRefs: { pr: 534 },
         prRefs: [{ number: 534, origin: 'marker', at: '2026-07-14T12:00:00.000Z' }],
       }),
@@ -933,7 +933,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
     renderHeader(
       run('done', {
         worktreePath: '/tmp/wt/r1',
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/534',
         prRefs: [
           { number: 534, url: 'https://github.com/open-mercato/cezar/pull/534', origin: 'legacy', at: '2026-07-14T12:00:00.000Z' },
@@ -962,7 +962,7 @@ describe('action bar visibility per status (the legacy rules, rendered)', () => 
       '/api/v1/p/shop/runs/r1/git/status': status,
       '/api/v1/p/shop/runs': () => jsonResponse([]),
     })
-    const record = run('done', { worktreePath: '/tmp/wt/r1', branch: 'cez/r1' })
+    const record = run('done', { worktreePath: '/tmp/wt/r1', branch: 'onni/r1' })
     render(
       <QueryClientProvider client={createQueryClient()}>
         <MemoryRouter initialEntries={[`/tasks/${record.id}`]}>
@@ -1173,7 +1173,7 @@ describe('the phone action menu mirrors the desktop rows', () => {
       '/api/v1/runs/r1/git/status': () => jsonResponse({ uncommitted: 2, unpushed: null }),
       '/api/v1/health': () => jsonResponse({ forge: { kind: 'github', available: true } }),
     })
-    renderHeader(run('done', { worktreePath: '/tmp/wt/r1', branch: 'cez/r1' }))
+    renderHeader(run('done', { worktreePath: '/tmp/wt/r1', branch: 'onni/r1' }))
     // Wait for the step to resolve (the desktop button paints it too) before opening the menu.
     await waitFor(() => expect(document.querySelector('[data-slot="git-button"]')).not.toBeNull())
     const menu = await openKebab()
@@ -1587,7 +1587,7 @@ describe('dense run details (#765)', () => {
     renderHeader(
       run('done', {
         id: freshRunId(),
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         diffStat: { adds: 42, dels: 7, files: 3 },
         costUsd: 0.04,
       }),
@@ -1609,7 +1609,7 @@ describe('dense run details (#765)', () => {
 
     expect(details.className).not.toContain('hidden')
     expect(screen.getByRole('button', { name: 'Hide run details' }).getAttribute('aria-expanded')).toBe('true')
-    expect(details.textContent).toContain('cez/r1')
+    expect(details.textContent).toContain('onni/r1')
     expect(details.textContent).toContain('IN 24.6k · OUT 2.4k')
   })
 
@@ -1707,7 +1707,7 @@ describe('meta line, tabs, pill and resume hint', () => {
       run('done', {
         runner: 'codex',
         model: 'gpt-5.2-codex',
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         diffStat: { adds: 42, dels: 7, files: 3 },
         costUsd: 0.04,
       }),
@@ -1724,7 +1724,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     expect(badge.textContent).toBe('')
     // Still not loose text: everything runner/model-shaped is inside the badge, nowhere else.
     expect(meta.textContent?.replace(badge.textContent ?? '', '')).not.toContain('codex')
-    expect(within(meta).getByText('cez/r1').getAttribute('data-slot')).toBe('branch-chip')
+    expect(within(meta).getByText('onni/r1').getAttribute('data-slot')).toBe('branch-chip')
     expect(meta.querySelector('[data-slot="diff-stat"]')?.textContent).toBe('+42 −7')
     expect(meta.textContent).toContain('IN 24.6k · OUT 2.4k')
     expect(meta.textContent).toContain('$0.04')
@@ -1832,7 +1832,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     { name: 'neither', refs: {}, pr: false, issue: false },
   ])('shows discovered tracker chips next to the branch ($name)', ({ refs, pr, issue }) => {
     stubFetch()
-    renderHeader(run('done', { branch: 'cez/r1', ...refs }))
+    renderHeader(run('done', { branch: 'onni/r1', ...refs }))
     const meta = document.querySelector('[data-slot="run-meta"]') as HTMLElement
     const branch = meta.querySelector('[data-slot="branch-chip"]')
     const prChip = meta.querySelector('[data-slot="pr-chip"]')
@@ -1863,7 +1863,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     })
     renderHeader(
       run('running', {
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/534',
       }),
     )
@@ -1892,7 +1892,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     stubFetch()
     renderHeader(
       run('done', {
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/5366',
         referencedPullRequestUrl: 'https://github.com/open-mercato/cezar/pull/4326',
         markerRefs: { pr: 5366 },
@@ -1918,11 +1918,11 @@ describe('meta line, tabs, pill and resume hint', () => {
       '/api/v1/projects': () =>
         jsonResponse({
           projects: [
-            { id: 'boot-id', name: 'cezar', root: '/home/me/cezar', repoUrl: 'https://github.com/open-mercato/cezar' },
+            { id: 'boot-id', name: 'onni', root: '/home/me/onni', repoUrl: 'https://github.com/open-mercato/cezar' },
           ],
         }),
     })
-    renderHeader(run('done', { branch: 'cez/r1', prNumber: 901, markerRefs: { pr: 901 } }))
+    renderHeader(run('done', { branch: 'onni/r1', prNumber: 901, markerRefs: { pr: 901 } }))
     await waitFor(() => {
       const chip = document.querySelector('[data-slot="run-meta"] [data-slot="pr-chip"]')
       expect(chip?.getAttribute('href')).toBe('https://github.com/open-mercato/cezar/pull/901')
@@ -1936,7 +1936,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     stubFetch({ '/api/v1/health': () => jsonResponse({ repo: {} }) })
     renderHeader(
       run('done', {
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         pullRequestUrl: 'https://forge.example.com/o/r/merge_requests/spec-fix',
         prNumber: 42,
       }),
@@ -1952,7 +1952,7 @@ describe('meta line, tabs, pill and resume hint', () => {
     stubFetch({ '/api/v1/health': () => jsonResponse({ repo: {} }) })
     renderHeader(
       run('done', {
-        branch: 'cez/r1',
+        branch: 'onni/r1',
         pullRequestUrl: 'https://github.com/open-mercato/cezar/pull/5366',
         prNumber: 901,
       }),
@@ -2189,12 +2189,12 @@ describe('meta line, tabs, pill and resume hint', () => {
     stubFetch()
     const writeText = vi.fn(() => Promise.resolve())
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
-    renderHeader(run('done', { branch: 'cez/feature-branch' }))
+    renderHeader(run('done', { branch: 'onni/feature-branch' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy branch name cez/feature-branch' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy branch name onni/feature-branch' }))
 
     await waitFor(() => {
-      expect(writeText).toHaveBeenCalledWith('cez/feature-branch')
+      expect(writeText).toHaveBeenCalledWith('onni/feature-branch')
       expect(screen.getAllByText('Copied').length).toBeGreaterThan(0)
       expect(screen.getByRole('status').textContent).toBe('Branch name copied')
     })
@@ -2204,8 +2204,8 @@ describe('meta line, tabs, pill and resume hint', () => {
     vi.useFakeTimers()
     const writeText = vi.fn(() => Promise.resolve())
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
-    renderHeader(run('done', { branch: 'cez/feature-branch' }))
-    const chip = screen.getByRole('button', { name: 'Copy branch name cez/feature-branch' })
+    renderHeader(run('done', { branch: 'onni/feature-branch' }))
+    const chip = screen.getByRole('button', { name: 'Copy branch name onni/feature-branch' })
 
     fireEvent.click(chip)
     await act(async () => {})
@@ -2225,11 +2225,11 @@ describe('meta line, tabs, pill and resume hint', () => {
   ])('shows the branch itself when the browser %s', async (_case, navigatorStub) => {
     stubFetch()
     vi.stubGlobal('navigator', navigatorStub)
-    renderHeader(run('done', { branch: 'cez/feature-branch' }))
+    renderHeader(run('done', { branch: 'onni/feature-branch' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy branch name cez/feature-branch' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy branch name onni/feature-branch' }))
 
-    expect(await screen.findByText('Branch: cez/feature-branch')).not.toBeNull()
+    expect(await screen.findByText('Branch: onni/feature-branch')).not.toBeNull()
   })
 
   it('clears the pending copy confirmation when the header unmounts', async () => {
@@ -2237,9 +2237,9 @@ describe('meta line, tabs, pill and resume hint', () => {
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
     const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: () => Promise.resolve() } })
-    const view = renderHeader(run('done', { branch: 'cez/feature-branch' }))
+    const view = renderHeader(run('done', { branch: 'onni/feature-branch' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy branch name cez/feature-branch' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy branch name onni/feature-branch' }))
     await act(async () => {})
     const dismissCall = setTimeoutSpy.mock.calls.findIndex(([, delay]) => delay === 1_500)
     expect(dismissCall).toBeGreaterThanOrEqual(0)
@@ -2420,7 +2420,7 @@ describe('lifecycle-aware task deletion', () => {
       '/api/v1/config': () => jsonResponse({worktreeLifecycle:{afterCreate:[],beforeRemove:[{id:'33333333-3333-4333-8333-333333333333',command:'echo cleanup'}]}}),
       '/api/v1/worktree-lifecycle/operations': () => jsonResponse({operation}, 202),
     })
-    renderHeader(run('done', {worktreePath:'/project/.ai/cezar/worktrees/r1', ...(managed ? {worktreeLifecycle:{worktreeId:operation.worktreeId,generation:1,needsAttention:false}} : {})}))
+    renderHeader(run('done', {worktreePath:'/project/.ai/onni/worktrees/r1', ...(managed ? {worktreeLifecycle:{worktreeId:operation.worktreeId,generation:1,needsAttention:false}} : {})}))
     fireEvent.click(actionBar().getByRole('button',{name:'Delete'}))
     const dialog = await screen.findByRole('alertdialog')
     fireEvent.click(within(dialog).getByRole('button',{name:'Delete'}))

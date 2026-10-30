@@ -3,7 +3,7 @@
  *
  * Junie speaks the real Agent Client Protocol (`junie --acp=true`, verified
  * against `@jetbrains/junie` 26.9.22 with a live authenticated session — see
- * the wire captures cited inline below). ACP already uses cezar's own v2
+ * the wire captures cited inline below). ACP already uses onni's own v2
  * vocabulary almost verbatim (`AGENT_PROTOCOL.md` §3: "ACP vocabulary
  * wherever a choice is arbitrary") — junie's `tool_call.kind` values
  * (`read`/`edit`/`execute`/`other`, confirmed live) map onto `ToolKind`
@@ -50,7 +50,7 @@
  * or otherwise, can cover these because the public ACP schema itself has no wire
  * shape to map: junie's `tool_call.kind` is unmodified core ACP
  * (`read`/`edit`/`delete`/`move`/`search`/`execute`/`think`/`fetch`/`other`),
- * which has no `task` kind at all — cezar's `task` `ToolKind` is an extension
+ * which has no `task` kind at all — onni's `task` `ToolKind` is an extension
  * the OTHER three backends' bespoke sub-agent tool names map onto, not
  * something ACP itself defines. `_meta.jetbrains.air.capabilities` advertises
  * `nativeSubagentSessions`, but that capability has no published wire shape at
@@ -184,7 +184,7 @@ export function junieUsageFromResponse(raw: unknown): TokenUsage | undefined {
 }
 
 /** `session/prompt`'s response `stopReason` — `end_turn`/`cancelled` confirmed
- *  live; `refusal`/`max_turn_requests` (→`max_tokens`, the closest cezar word
+ *  live; `refusal`/`max_turn_requests` (→`max_tokens`, the closest onni word
  *  for "a resource limit ended the turn") are the documented ACP values not
  *  yet observed. Anything else degrades to `error` rather than guessing. */
 export function junieStopReason(value: unknown): StopReason {
@@ -317,9 +317,9 @@ function contentTextOf(content: unknown): string | undefined {
 
 // ---- tools -------------------------------------------------------------------
 
-/** junie's `tool_call.kind` already speaks cezar's `ToolKind` vocabulary
+/** junie's `tool_call.kind` already speaks onni's `ToolKind` vocabulary
  *  (confirmed live: `other`, `edit`, `execute`, `read`) — real ACP defines the
- *  same enum cezar's is a superset of, so any recognized value passes through
+ *  same enum onni's is a superset of, so any recognized value passes through
  *  verbatim and only a genuinely unknown one falls back to `other`. */
 const KNOWN_TOOL_KINDS = new Set<ToolKind>([
   'read',

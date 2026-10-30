@@ -4,19 +4,19 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assertCezarHomeWriteIsSandboxed, workspaceConfigPath } from '../paths.ts';
+import { assertOnniHomeWriteIsSandboxed, workspaceConfigPath } from '../paths.ts';
 import { atomicWriteJsonSync, loadWorkspaceConfig, mergeWriteWorkspaceConfig } from './config.ts';
 
 /**
- * The registry-clobber regression. A cezar test run used to be able to replace
- * the developer's real `~/.cezar/config.json` with a fixture's projects: the
+ * The registry-clobber regression. A onni test run used to be able to replace
+ * the developer's real `~/.onni/config.json` with a fixture's projects: the
  * `CEZ_HOME` pin lives in `process.env`, a timing-out test drops it in
  * `afterEach` while a merge-write is still in flight, and the write then
  * resolved a different home than the read. These cases lock in the two
  * defences — one resolved path per merge-write, and a hard refusal to write
- * into the real cezar home from a test process.
+ * into the real onni home from a test process.
  */
-describe('cezar home write safety', () => {
+describe('onni home write safety', () => {
   const originalCezHome = process.env.CEZ_HOME;
   const originalHome = process.env.HOME;
   let pinned: string;
@@ -25,9 +25,9 @@ describe('cezar home write safety', () => {
 
   beforeEach(() => {
     const base = realpathSync(tmpdir());
-    pinned = mkdtempSync(join(base, 'cez-home-safety-pinned-'));
-    elsewhere = mkdtempSync(join(base, 'cez-home-safety-elsewhere-'));
-    fakeUserHome = mkdtempSync(join(base, 'cez-home-safety-user-'));
+    pinned = mkdtempSync(join(base, 'onni-home-safety-pinned-'));
+    elsewhere = mkdtempSync(join(base, 'onni-home-safety-elsewhere-'));
+    fakeUserHome = mkdtempSync(join(base, 'onni-home-safety-user-'));
     process.env.CEZ_HOME = pinned;
   });
 
@@ -75,14 +75,14 @@ describe('cezar home write safety', () => {
     expect((await loadWorkspaceConfig()).projects.map((p) => p.id)).toEqual(['shop']);
   });
 
-  it('refuses a write into the real cezar home while running under vitest', () => {
+  it('refuses a write into the real onni home while running under vitest', () => {
     process.env.HOME = fakeUserHome;
     delete process.env.CEZ_HOME;
     const target = workspaceConfigPath();
 
-    expect(target).toBe(join(fakeUserHome, '.cezar', 'config.json'));
+    expect(target).toBe(join(fakeUserHome, '.onni', 'config.json'));
     expect(() => atomicWriteJsonSync(target, { projects: [] })).toThrow(/CEZ_HOME is not pinned/);
-    expect(existsSync(join(fakeUserHome, '.cezar'))).toBe(false);
+    expect(existsSync(join(fakeUserHome, '.onni'))).toBe(false);
   });
 
   it('leaves an existing real-home registry byte-for-byte intact when a leaked write is refused', () => {
@@ -90,7 +90,7 @@ describe('cezar home write safety', () => {
     delete process.env.CEZ_HOME;
     const target = workspaceConfigPath();
     const existing = '{"projects":[{"id":"real","root":"/repos/real"}]}\n';
-    mkdirSync(join(fakeUserHome, '.cezar'), { recursive: true });
+    mkdirSync(join(fakeUserHome, '.onni'), { recursive: true });
     writeFileSync(target, existing);
 
     expect(() => atomicWriteJsonSync(target, { projects: [] })).toThrow(/refusing to write/);
@@ -102,7 +102,7 @@ describe('cezar home write safety', () => {
     // CLI suite with a timeout short enough that every case is killed mid-write,
     // pointed at a throwaway HOME and started with no CEZ_HOME at all — the way
     // `npm test` runs on a developer's machine. Run against the code as it was
-    // before this change, that command wrote `<home>/.cezar/config.json` holding
+    // before this change, that command wrote `<home>/.onni/config.json` holding
     // the fixture's projects on 5 runs out of 5; the `remove` cases are the
     // cheapest set that does it (~1s, against ~40s for the whole file).
     //
@@ -126,16 +126,16 @@ describe('cezar home write safety', () => {
     // The nested suite is EXPECTED to fail — 15ms cannot finish a `git init`.
     // What matters is what it left behind outside its sandbox.
     expect(run.error).toBeUndefined();
-    expect(existsSync(join(fakeUserHome, '.cezar'))).toBe(false);
+    expect(existsSync(join(fakeUserHome, '.onni'))).toBe(false);
   }, 180_000);
 
-  it('allows writes outside the real cezar home, and is inert outside vitest', () => {
+  it('allows writes outside the real onni home, and is inert outside vitest', () => {
     process.env.HOME = fakeUserHome;
     const sandboxed = join(pinned, 'config.json');
 
-    expect(() => assertCezarHomeWriteIsSandboxed(sandboxed)).not.toThrow();
+    expect(() => assertOnniHomeWriteIsSandboxed(sandboxed)).not.toThrow();
     expect(() =>
-      assertCezarHomeWriteIsSandboxed(join(homedir(), '.cezar', 'config.json'), { VITEST: undefined }),
+      assertOnniHomeWriteIsSandboxed(join(homedir(), '.onni', 'config.json'), { VITEST: undefined }),
     ).not.toThrow();
   });
 });

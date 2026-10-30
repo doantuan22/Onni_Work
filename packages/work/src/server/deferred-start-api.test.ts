@@ -15,10 +15,10 @@ import { AutomationStore } from '../automations/store.ts';
 describe('deferred start API', () => {
   let root: string, store: RunStore;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-deferred-api-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-deferred-api-'));
     mkdirSync(join(root, 'profile'));
     vi.stubEnv('CEZ_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'profile')); vi.stubEnv('CEZ_AUTOMATIONS', '1');
-    store = RunStore.open(join(root, '.ai/cezar'));
+    store = RunStore.open(join(root, '.ai/onni'));
   });
   afterEach(() => { vi.restoreAllMocks(); store.flush(); rmSync(root, { recursive: true, force: true }); vi.unstubAllEnvs(); });
   const json = (body: unknown, method = 'POST') => ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -85,7 +85,7 @@ describe('deferred start API', () => {
     expect(fresh.status).toBe(409);
     expect(await fresh.json()).toMatchObject({ error: expect.stringContaining('Automations are off') });
     expect((await apiRequest(api, '/api/v1/deferred-start/preview', json(body))).status).toBe(409);
-    expect(AutomationStore.open(join(root, '.ai/cezar')).list()).toHaveLength(1);
+    expect(AutomationStore.open(join(root, '.ai/onni')).list()).toHaveLength(1);
     expect(store.listRuns()).toHaveLength(0);
   });
   it('schedules Pi through the API and executes its first step without a Claude profile', async () => {
@@ -120,7 +120,7 @@ describe('deferred start API', () => {
     const attachments = await apiRequest(app(), '/api/v1/deferred-start/preview', json({ ...body, task: { ...body.task, images: [{ mediaType: 'image/png', data: 'AA==' }] } }));
     expect(await attachments.json()).toMatchObject({ available: false, reason: 'attachments' });
     expect((await apiRequest(app(), '/api/v1/deferred-start', json({ arbitrary: true }))).status).toBe(400);
-    expect(AutomationStore.open(join(root, '.ai/cezar')).list()).toEqual([]);
+    expect(AutomationStore.open(join(root, '.ai/onni')).list()).toEqual([]);
   });
   it('guards both POSTs when automations are disabled', async () => {
     vi.stubEnv('CEZ_AUTOMATIONS', '0');
@@ -144,16 +144,16 @@ describe('deferred start API', () => {
   });
   it('lets an uncertain launch be dismissed, recording only the runs that exist', async () => {
     const { api, result } = await create(); const id = result.scheduled.id;
-    const automations = AutomationStore.open(join(root, '.ai/cezar'));
+    const automations = AutomationStore.open(join(root, '.ai/onni'));
     const saved = automations.get(id)!;
     const ambiguous = automations.update(id, saved.revision, { ...saved, enabled: false, deferredStart: { ...saved.deferredStart!, status: 'failed', failureKind: 'ambiguous', runIds: ['run-a', 'run-b'] } });
     const response = await apiRequest(api, `/api/v1/automations/${id}?expectedRevision=${ambiguous.revision}`, { method: 'DELETE' });
     expect(response.status).toBe(204);
-    expect(AutomationStore.open(join(root, '.ai/cezar')).creationFor(id)).toMatchObject({ outcome: 'cancelled', runIds: [] });
+    expect(AutomationStore.open(join(root, '.ai/onni')).creationFor(id)).toMatchObject({ outcome: 'cancelled', runIds: [] });
   });
   it('still refuses to cancel a launch in progress, and says when the task already started', async () => {
     const { api, result } = await create(); const id = result.scheduled.id;
-    const automations = AutomationStore.open(join(root, '.ai/cezar'));
+    const automations = AutomationStore.open(join(root, '.ai/onni'));
     const saved = automations.get(id)!;
     const launching = automations.update(id, saved.revision, { ...saved, deferredStart: { ...saved.deferredStart!, status: 'launching', runIds: ['run-a'] } });
     expect((await apiRequest(api, `/api/v1/automations/${id}?expectedRevision=${launching.revision}`, { method: 'DELETE' })).status).toBe(409);

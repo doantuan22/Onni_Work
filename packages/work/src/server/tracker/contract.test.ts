@@ -26,7 +26,7 @@ import {
 
 const item = {
   kind: 'issue' as const,
-  id: 'CEZ-42',
+  id: 'ONNI-42',
   title: 'Keep tracker failures distinct from empty results',
   author: 'Ada Lovelace',
   createdAt: '2026-09-18T09:30:00.000Z',
@@ -35,7 +35,7 @@ const item = {
   body: 'A complete issue description.',
   bodyTruncated: false,
   unsupportedContent: false,
-  url: 'https://example.atlassian.net/browse/CEZ-42',
+  url: 'https://example.atlassian.net/browse/ONNI-42',
   status: 'In Progress',
 };
 
@@ -57,7 +57,7 @@ describe('tracker entity schemas', () => {
         kind: 'jira',
         externalId: '10001',
         sourceId: 'cloud-1',
-        externalName: 'Cezar',
+        externalName: 'Onni',
       }).success,
     ).toBe(false);
   });
@@ -114,7 +114,7 @@ describe('tracker result and HTTP response branches', () => {
       trackerCandidatesResultSchema.safeParse({
         available: true,
         source: { id: 'cloud-1', webUrl: 'https://example.atlassian.net' },
-        candidates: [{ id: '10001', name: 'Cezar' }],
+        candidates: [{ id: '10001', name: 'Onni' }],
         truncated: true,
         nextCursor: 'page-2',
       }).success,
@@ -202,7 +202,7 @@ describe('tracker query and parameter schemas', () => {
     for (const id of ['association', 'candidates', 'search', '', 'x'.repeat(257)]) {
       expect(trackerItemParamsSchema.safeParse({ id }).success).toBe(false);
     }
-    expect(trackerItemParamsSchema.parse({ id: 'CEZ-42' })).toEqual({ id: 'CEZ-42' });
+    expect(trackerItemParamsSchema.parse({ id: 'ONNI-42' })).toEqual({ id: 'ONNI-42' });
   });
 
   it('publishes string wire inputs separately from parsed driver query types', () => {

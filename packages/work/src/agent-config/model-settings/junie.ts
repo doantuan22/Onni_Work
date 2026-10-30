@@ -7,7 +7,7 @@ import type { AgentModelSettingsStrategy } from './types.ts';
  * settings file yet (`~/.junie/config.json` / `<project>/.junie/config.json`
  * both carry a `model` key, confirmed live), so `readNativeSettingsFiles`
  * finds none and this reports "no native default" — the truthful answer, not
- * a stub: the cockpit falls back to cezar's own preset exactly as it does for
+ * a stub: the cockpit falls back to onni's own preset exactly as it does for
  * pi today. The day junie's config file is catalogued, this strategy starts
  * honoring it with no change here.
  */

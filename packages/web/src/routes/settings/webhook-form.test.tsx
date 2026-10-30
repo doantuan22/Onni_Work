@@ -45,7 +45,7 @@ describe('chat destination settings', () => {
   })
   it('keeps custom receivers signed and previews their JSON', () => {
     mount()
-    expect(screen.getByLabelText('Destination')).toHaveProperty('value', 'cezar.json.v1')
+    expect(screen.getByLabelText('Destination')).toHaveProperty('value', 'onni.json.v1')
     expect(screen.getByLabelText('Synthetic JSON sample')).toBeTruthy()
     expect(screen.getByLabelText('Allow a receiver on this computer or private network')).toBeTruthy()
   })

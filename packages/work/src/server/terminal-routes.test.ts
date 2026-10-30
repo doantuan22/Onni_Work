@@ -44,10 +44,10 @@ describe('the workspace terminal routes', () => {
   const savedDryRun = process.env.CEZ_DRY_RUN;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-terminal-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-terminal-'));
     worktree = join(repoRoot, 'wt');
     mkdirSync(worktree, { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     delete process.env.CEZ_REMOTE;
     delete process.env.CEZ_TERMINAL;
     process.env.CEZ_DRY_RUN = '1';
@@ -171,9 +171,9 @@ describe('the workspace terminal routes', () => {
       const before = await (await apiRequest(makeApp(), `/api/v1/runs/${runId}/terminal/commands`)).json();
       expect(before).toMatchObject({ install: 'npm ci' });
 
-      mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+      mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
       writeFileSync(
-        join(repoRoot, '.ai/cezar/config.json'),
+        join(repoRoot, '.ai/onni/config.json'),
         JSON.stringify({
           worktreeLifecycle: {
             afterCreate: [{ id: '0d7c3c1e-6f2a-4b8e-9d1a-2f4c5b6a7e8f', command: 'npm ci' }],

@@ -50,7 +50,7 @@ describe.skipIf(!usable)('stopping a real shell stops its whole process tree (sp
 
   beforeEach(() => {
     sessions = new TerminalSessions();
-    cwd = mkdtempSync(join(tmpdir(), 'cez-pty-tree-'));
+    cwd = mkdtempSync(join(tmpdir(), 'onni-pty-tree-'));
     // Nine digits: unique enough to be nobody else's, and under the 2^31 s macOS `sleep` accepts.
     marker = `1${String(process.pid % 1000).padStart(3, '0')}${String(Math.floor(Math.random() * 1e5)).padStart(5, '0')}`;
   });

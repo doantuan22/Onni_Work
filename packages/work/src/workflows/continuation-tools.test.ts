@@ -92,12 +92,12 @@ describe('a resumed session keeps its workflow step tools', { timeout: 20_000 },
 
   beforeEach(async () => {
     captured.specs.length = 0;
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-continue-tools-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-continue-tools-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 
@@ -181,7 +181,7 @@ describe('a resumed session keeps its workflow step tools', { timeout: 20_000 },
     };
 
     // Both ends pin `claude` explicitly. An absent `defaultRunner` falls through to the
-    // MACHINE-wide `~/.cezar/` agent defaults (`withMachineDefaults`, `config.ts`), so leaving it
+    // MACHINE-wide `~/.onni/` agent defaults (`withMachineDefaults`, `config.ts`), so leaving it
     // implicit would make this assertion depend on the config of whoever runs the suite.
     const record = manager!.startRun(NARROWED, { task: 'do the thing', worktree: false, runner: 'claude' });
     const opening = await specAt(0);
@@ -256,7 +256,7 @@ describe('a resumed session keeps its workflow step tools', { timeout: 20_000 },
     expect(spec.sessionId).not.toBe('sess-1');
     expect(spec.allowedTools).toEqual(TAIL_TOOLS);
     expect(spec.bashAllowlist).toBeUndefined();
-    expect(spec.userPrompt).toContain('You are continuing an existing Cezar task');
+    expect(spec.userPrompt).toContain('You are continuing an existing Onni task');
     expect(spec.userPrompt).toContain('Status: failed');
     expect(spec.userPrompt).toContain('Codex usage limit reached');
     expect(spec.userPrompt).toContain('User:\nfirst fix the API');

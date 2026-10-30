@@ -30,7 +30,7 @@ const IN_FLIGHT: ReadonlySet<RunStatus> = new Set(['queued', 'running', 'waiting
  * off by default and `done` alone would read as "nothing left to do".
  */
 function setupLine(status: RunStatus, landed: boolean, branch: string | undefined, prUrl: string | undefined): string {
-  if (IN_FLIGHT.has(status)) return 'Setting up — cezar is installing and configuring e2e in its own worktree.'
+  if (IN_FLIGHT.has(status)) return 'Setting up — onni is installing and configuring e2e in its own worktree.'
   const mergeIt = prUrl
     ? 'its draft PR is ready — merge it to finish.'
     : `merge ${branch ? `branch ${branch}` : 'the setup task’s branch'} to finish.`
@@ -51,7 +51,7 @@ function Row({ ok, children }: { ok: boolean; children: React.ReactNode }) {
 
 /**
  * Settings → project → External integrations → Test frameworks → TesterArmy e2e (spec
- * 2026-10-10-e2e-one-click-setup). One button: cezar
+ * 2026-10-10-e2e-one-click-setup). One button: onni
  * installs and configures TesterArmy's `e2e` as a task whose branch the user merges. The model key
  * is optional — smoke tests run without one — and goes to the project's secret store for check
  * steps only, never to an agent.
@@ -120,7 +120,7 @@ export function TesterArmyE2eCard() {
           </a>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          cezar installs it for this project, points it at your dev server, writes a smoke test and an
+          onni installs it for this project, points it at your dev server, writes a smoke test and an
           {' '}<code>implement-and-e2e</code> workflow, proves it all passes in a real browser and opens a draft PR for you to merge.
         </p>
         {status.isPending ? <p className="mt-4 text-sm text-muted-foreground">Loading…</p> : null}

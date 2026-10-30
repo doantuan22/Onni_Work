@@ -40,12 +40,12 @@ describe('periodic autosave gate (#471)', () => {
   const savedEnv = process.env.CEZ_AUTOSAVE;
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-autosave-gate-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-autosave-gate-'));
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'base\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot) as unknown as TimerSeam;
     const record = store.createRun({ title: 't', workflow: 'quick-task', task: 't', steps: [] });
     runId = record.id;
@@ -103,10 +103,10 @@ describe('periodic autosave gate (#471)', () => {
     writeFileSync(join(worktreePath, 'work.txt'), 'progress\n');
     expect(await autosaveCommit(worktreePath, 'turn end')).toBe('committed');
     const { stdout } = await run('git', ['log', '-1', '--format=%s'], { cwd: worktreePath });
-    // Keeps the `cezar autosave` prefix so existing log greps still match, and
+    // Keeps the `onni autosave` prefix so existing log greps still match, and
     // names the reason so an opted-out user can tell this flush apart from the
     // periodic timer they disabled (#471 follow-up).
-    expect(stdout.trim()).toBe('cezar autosave (turn end)');
+    expect(stdout.trim()).toBe('onni autosave (turn end)');
   });
 
   it('records the reason, so the gated timer is distinguishable in the log', async () => {
@@ -115,7 +115,7 @@ describe('periodic autosave gate (#471)', () => {
       writeFileSync(join(worktreePath, 'work.txt'), `progress ${reason}\n`);
       expect(await autosaveCommit(worktreePath, reason)).toBe('committed');
       const { stdout } = await run('git', ['log', '-1', '--format=%s'], { cwd: worktreePath });
-      expect(stdout.trim()).toBe(`cezar autosave (${reason})`);
+      expect(stdout.trim()).toBe(`onni autosave (${reason})`);
     }
   });
 

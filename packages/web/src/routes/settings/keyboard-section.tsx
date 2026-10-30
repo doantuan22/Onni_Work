@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 /**
  * Settings → Keyboard (spec 2026-10-17-task-palette): every task-palette command a shortcut can
  * run, its chord, and Record / Remove / Reset. The same overrides ⇧↵ in ⌘P writes. GLOBAL, like
- * Appearance — `~/.cezar/ui-state.json`.
+ * Appearance — `~/.onni/ui-state.json`.
  */
 export function KeyboardSection() {
   const keybindings = useKeybindings()

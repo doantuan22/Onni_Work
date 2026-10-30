@@ -119,7 +119,7 @@ describe('copilot --acp → v2 golden fixtures', () => {
       .toEqual(['cancelled', 'end_turn']);
   });
 
-  it('turns the unauthenticated `session/new` answer into a fatal session error in cezar’s words', () => {
+  it('turns the unauthenticated `session/new` answer into a fatal session error in onni’s words', () => {
     expect(replay('auth-required')).toEqual([
       { type: 'session.error', message: COPILOT_AUTH_FAILURE_MESSAGE, fatal: true },
     ]);
@@ -127,7 +127,7 @@ describe('copilot --acp → v2 golden fixtures', () => {
 
   it('renders nothing at all for the malformed and not-yet-mapped frames', () => {
     // Only the turn's own bookends survive: everything between them is unknown, malformed, or a
-    // kind cezar does not render.
+    // kind onni does not render.
     expect(replay('malformed').map((e) => e.type)).toEqual(['session.started', 'turn.started', 'usage.updated', 'turn.completed']);
   });
 

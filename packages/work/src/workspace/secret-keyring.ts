@@ -22,7 +22,7 @@ export interface DataKeyring {
 }
 
 /** The keychain item's coordinates. One per machine, shared by every `CEZ_HOME`. */
-export const KEYCHAIN_SERVICE = 'cezar';
+export const KEYCHAIN_SERVICE = 'onni';
 export const KEYCHAIN_ACCOUNT = 'secrets-data-key';
 
 /**

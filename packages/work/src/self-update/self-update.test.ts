@@ -10,7 +10,7 @@ describe('semver', () => {
   it('shows a checkout build as -dev of its release', () => {
     expect(devVersion('0.15.2')).toBe('0.15.2-dev');
     expect(devVersion('0.15.2-nightly.20261019.4')).toBe('0.15.2-dev');
-    expect(devVersion('0.15.2+cez-abc12345')).toBe('0.15.2-dev');
+    expect(devVersion('0.15.2+onni-abc12345')).toBe('0.15.2-dev');
   });
 });
 
@@ -19,12 +19,12 @@ describe('managed layout', () => {
   let env: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'cez-self-update-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-self-update-'));
     env = { ...process.env, CEZ_HOME: home };
   });
   afterEach(() => rmSync(home, { recursive: true, force: true }));
 
-  const fakeLink = (id: string, version: string, checkout = join(home, 'repo', 'packages', 'cezar')) => {
+  const fakeLink = (id: string, version: string, checkout = join(home, 'repo', 'packages', 'onni')) => {
     const entry = versionEntry(id, env);
     mkdirSync(join(entry, '..'), { recursive: true });
     writeFileSync(entry, '// entry\n');
@@ -85,7 +85,7 @@ describe('managed layout', () => {
     expect(detectInstallKind(versionEntry('0.11.1', env), env)).toBe('managed');
     expect(detectInstallKind('/Users/x/.npm/_npx/abc123/node_modules/@onni/work/dist/index.js', env)).toBe('npx');
     expect(detectInstallKind('/opt/homebrew/lib/node_modules/@onni/work/dist/index.js', env)).toBe('global-npm');
-    const checkout = join(home, 'repo', 'packages', 'cezar');
+    const checkout = join(home, 'repo', 'packages', 'onni');
     mkdirSync(join(checkout, 'src'), { recursive: true });
     mkdirSync(join(checkout, 'dist'), { recursive: true });
     writeFileSync(join(checkout, 'package.json'), '{}');
@@ -95,12 +95,12 @@ describe('managed layout', () => {
 
   // A worktree linked into versions/ is `managed` by path, yet runs a checkout's code.
   it('counts a checkout linked as a version as running from a checkout', () => {
-    const checkout = join(home, 'repo', 'packages', 'cezar');
+    const checkout = join(home, 'repo', 'packages', 'onni');
     mkdirSync(join(checkout, 'src'), { recursive: true });
     mkdirSync(join(checkout, 'dist'), { recursive: true });
     writeFileSync(join(checkout, 'package.json'), '{}');
     writeFileSync(join(checkout, 'dist', 'index.js'), '');
-    const link = join(versionDir('0.15.2+cez-abc12345', env), 'node_modules', '@onni', 'work');
+    const link = join(versionDir('0.15.2+onni-abc12345', env), 'node_modules', '@onni', 'work');
     mkdirSync(join(link, '..'), { recursive: true });
     symlinkSync(checkout, link, 'dir');
     const entry = join(link, 'dist', 'index.js');
@@ -113,7 +113,7 @@ describe('managed layout', () => {
 
 describe('activeId without a symlink', () => {
   it('reads the text-file fallback, and answers null when nothing is there', () => {
-    const home = mkdtempSync(join(tmpdir(), 'cez-active-'));
+    const home = mkdtempSync(join(tmpdir(), 'onni-active-'));
     const env = { ...process.env, CEZ_HOME: home };
     try {
       expect(activeId(env)).toBeNull();

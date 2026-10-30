@@ -18,7 +18,7 @@ describe.each(['claude', 'opencode', 'pi'] as const)('%s reported cost', (backen
     { label: 'negative', cost: -1, expected: [] },
     { label: 'string', cost: '0', expected: [] },
   ])('preserves $label without fabricating a report', async ({ cost, expected }) => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-cost-wire-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-cost-wire-'));
     const bin = join(dir, 'stub.mjs');
     const costField = cost === undefined ? {} : { cost };
     const frame = backend === 'claude'

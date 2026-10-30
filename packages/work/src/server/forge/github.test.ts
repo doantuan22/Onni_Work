@@ -279,13 +279,13 @@ const page = (
 
 describe('parseOwnerName', () => {
   it('splits a clean owner/name handle', () => {
-    expect(parseOwnerName('open-mercato/cezar')).toEqual({ owner: 'open-mercato', name: 'cezar' });
-    expect(parseOwnerName('  open-mercato/cezar\n')).toEqual({ owner: 'open-mercato', name: 'cezar' });
+    expect(parseOwnerName('open-mercato/onni')).toEqual({ owner: 'open-mercato', name: 'onni' });
+    expect(parseOwnerName('  open-mercato/onni\n')).toEqual({ owner: 'open-mercato', name: 'onni' });
   });
 
   it('returns null for anything that is not exactly two parts', () => {
     expect(parseOwnerName('')).toBeNull();
-    expect(parseOwnerName('cezar')).toBeNull();
+    expect(parseOwnerName('onni')).toBeNull();
     expect(parseOwnerName('a/b/c')).toBeNull();
   });
 });
@@ -1123,9 +1123,9 @@ describe('fetchGithubComments timeline integration (#525)', () => {
       actor: { login: 'pkarw', id: 18116827, avatar_url: 'https://avatars.githubusercontent.com/u/18116827?v=4', type: 'User' },
       id: 5024963753,
       node_id: 'IC_kwDOShuET88AAAABK4LcqQ',
-      url: 'https://api.github.com/repos/open-mercato/cezar/issues/comments/5024963753',
+      url: 'https://api.github.com/repos/open-mercato/onni/issues/comments/5024963753',
       html_url: 'https://github.com/open-mercato/cezar/issues/525#issuecomment-5024963753',
-      issue_url: 'https://api.github.com/repos/open-mercato/cezar/issues/525',
+      issue_url: 'https://api.github.com/repos/open-mercato/onni/issues/525',
       created_at: '2026-07-20T17:07:49Z',
       updated_at: '2026-07-20T17:07:49Z',
       author_association: 'MEMBER',
@@ -1383,9 +1383,9 @@ describe('resolveRepoHandle (#525 Phase 2)', () => {
     });
 
   it('parses the handle and serves the second call from the memo', async () => {
-    ghReturns('open-mercato/cezar');
-    expect(await resolveRepoHandle(repoRoot)).toEqual({ owner: 'open-mercato', name: 'cezar' });
-    expect(await resolveRepoHandle(repoRoot)).toEqual({ owner: 'open-mercato', name: 'cezar' });
+    ghReturns('open-mercato/onni');
+    expect(await resolveRepoHandle(repoRoot)).toEqual({ owner: 'open-mercato', name: 'onni' });
+    expect(await resolveRepoHandle(repoRoot)).toEqual({ owner: 'open-mercato', name: 'onni' });
     expect(execFileMock).toHaveBeenCalledTimes(1); // no second subprocess
   });
 
@@ -1403,8 +1403,8 @@ describe('resolveRepoHandle (#525 Phase 2)', () => {
     });
     expect(await resolveRepoHandle(repoRoot)).toBeNull();
 
-    ghReturns('open-mercato/cezar'); // the blip passes
-    expect(await resolveRepoHandle(repoRoot)).toEqual({ owner: 'open-mercato', name: 'cezar' });
+    ghReturns('open-mercato/onni'); // the blip passes
+    expect(await resolveRepoHandle(repoRoot)).toEqual({ owner: 'open-mercato', name: 'onni' });
     expect(execFileMock).toHaveBeenCalledTimes(2); // it DID retry
   });
 
@@ -3099,7 +3099,7 @@ describe('fetchGithubRefStatus', () => {
     expect(execFileMock.mock.calls.filter((call) => (call[1] as string[])[0] === 'api').length).toBe(2);
   });
 
-  it('re-asks about a reference cezar itself changed', async () => {
+  it('re-asks about a reference onni itself changed', async () => {
     // The self-inflicted staleness: after this server merges a PR, its cached status is a value we
     // KNOW is wrong, and the TTL would hold it for up to a minute. `forgetRefStatus` is what the
     // merge and draft-PR routes call so the next reader pays one query and gets the truth.
@@ -3447,7 +3447,7 @@ describe('GH_HOST pinning (GitHub Enterprise)', () => {
     answer('git@acme.ghe.com:acme/widgets.git');
     await resolveRepoHandle('/repo/ghe-pin');
     expect(ghEnv('/repo/ghe-pin').env?.GH_HOST).toBe('acme.ghe.com');
-    answer('git@github.com:open-mercato/cezar.git');
+    answer('git@github.com:open-mercato/onni.git');
     await resolveRepoHandle('/repo/com-pin');
     expect(ghEnv('/repo/com-pin').env?.GH_HOST).toBeUndefined();
   });

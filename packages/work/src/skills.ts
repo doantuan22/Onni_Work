@@ -10,10 +10,10 @@ import { builtinSkills } from './automations/builtin-skill.ts';
 /**
  * A skill is a Markdown file with optional YAML-ish frontmatter (`name`,
  * `description`). Discovered from the repo's `.ai/skills/` (shared with other
- * agent tooling), `.ai/cezar/skills/` (cez-local), the `npx skills` install
+ * agent tooling), `.ai/onni/skills/` (onni-local), the `npx skills` install
  * dirs (`.agents/skills` + the per-agent mirrors, project and global), and
  * the configured team skills repos (spec 005 — bare clones, no checkout).
- * Adapted from @cezar/core's skill-catalog.
+ * Adapted from @onni/core's skill-catalog.
  */
 export interface Skill {
   name: string;
@@ -22,9 +22,9 @@ export interface Skill {
   interactive?: true;
   body: string;
   path: string;
-  /** `builtin` is the one skill cezar ships itself (`create-cezar-automation`, spec
+  /** `builtin` is the one skill onni ships itself (`create-onni-automation`, spec
    *  2026-09-13-automations-from-prompt) — listed last, and only while automations are reachable. */
-  source: 'ai' | 'cezar' | 'agents' | 'global' | 'team' | 'builtin';
+  source: 'ai' | 'onni' | 'agents' | 'global' | 'team' | 'builtin';
   /** Team skills only: where the definition lives in its skills repo. */
   team?: {
     repo: string;
@@ -48,7 +48,7 @@ export interface Skill {
    process, so adding a dir here without updating the hint makes the hint lie.
    That test pins this list and says where to go. */
 export const SKILL_DIRS: Array<{ dir: string; source: Skill['source'] }> = [
-  { dir: '.ai/cezar/skills', source: 'cezar' },
+  { dir: '.ai/onni/skills', source: 'onni' },
   { dir: '.ai/skills', source: 'ai' },
   { dir: '.agents/skills', source: 'agents' },
   { dir: '.claude/skills', source: 'agents' },
@@ -68,19 +68,19 @@ const GLOBAL_SKILL_DIRS: Array<{ dir: string; source: Skill['source'] }> = [
 
 /**
  * Discover the merged skill catalog for a repo. Name collisions resolve
- * local-first: `.ai/cezar/skills` → `.ai/skills` → `.agents/skills` + agent
+ * local-first: `.ai/onni/skills` → `.ai/skills` → `.agents/skills` + agent
  * mirrors → global (`~/.agents/skills`, `~/.claude/skills`) → team repo
  * ("the user's repo is the source of truth"). Missing directories are fine —
  * an empty catalog is fully supported (steps fall back to their plain
  * prompt). Team skills come from the in-process cache; the first call starts
  * a background load so nothing here ever waits on the network. The built-in skill (the one
- * cezar ships, `automations/builtin-skill.ts`) comes LAST, so every user-authored skill of the
+ * onni ships, `automations/builtin-skill.ts`) comes LAST, so every user-authored skill of the
  * same name shadows it.
  *
  * Opt-out gate: skills from a *default* skills repo appear unless the user has curated them
  * away; Onni Work ships no default source (`DEFAULT_SKILLS_REPOS` is empty, see
  * `gatedSkillsRepos`), so this is inert until a fork configures one. `importedSkills` in this
- * repo's `.ai/cezar/ui-state.json` is a tri-state:
+ * repo's `.ai/onni/ui-state.json` is a tri-state:
  * ABSENT means "not curated" and every default skill shows unless an older workspace-level
  * selection exists (readUiState supplies that as a compatibility fallback); a PRESENT array
  * (even `[]`) means the project has taken control and only those names show. A repo that sets

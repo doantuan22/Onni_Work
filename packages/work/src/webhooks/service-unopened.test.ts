@@ -21,7 +21,7 @@ afterEach(() => {
  * or `waiting` are old work, not a live owner: webhook ownership is exclusive, so the spec's
  * disk-only freshness rules apply. Treating those rows as "recovering" deferred every
  * attention/review/failure delivery until its 72 h expiry — the one scenario the feature exists
- * for (cezar was closed when the task failed) never notified.
+ * for (onni was closed when the task failed) never notified.
  */
 describe('unopened project disk state', () => {
   it('sends a manual failure and supersedes an old question while another run still looks live', async () => {
@@ -29,7 +29,7 @@ describe('unopened project disk state', () => {
     const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-unopened-'));
     roots.push(root);
     execFileSync('git', ['init', '-q'], { cwd: root });
-    const dataDir = join(root, '.ai/cezar');
+    const dataDir = join(root, '.ai/onni');
     let now = Date.parse('2026-10-13T12:00:00Z');
     const send = vi.fn(async (_input: WebhookSend): Promise<SendResult> => ({ kind: 'http', status: 200 }));
     const options = {

@@ -8,7 +8,7 @@ import { DashboardReader } from './dashboard.ts';
 
 const roots: string[] = [];
 const root = () => {
-  const p = mkdtempSync(join(tmpdir(), 'cez-dashboard-'));
+  const p = mkdtempSync(join(tmpdir(), 'onni-dashboard-'));
   roots.push(p);
   return p;
 };
@@ -29,8 +29,8 @@ const record = (id: string, status = 'waiting') => ({
   steps: [],
 });
 function disk(p: string, value: unknown) {
-  mkdirSync(join(p, '.ai/cezar'), { recursive: true });
-  writeFileSync(join(p, '.ai/cezar/runs.json'), JSON.stringify(value));
+  mkdirSync(join(p, '.ai/onni'), { recursive: true });
+  writeFileSync(join(p, '.ai/onni/runs.json'), JSON.stringify(value));
 }
 
 describe('dashboard complete summary snapshots', () => {
@@ -65,7 +65,7 @@ describe('dashboard complete summary snapshots', () => {
   });
   it('does not attach store listeners when project discovery resolves after disposal', async () => {
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const before = store.listenerCount('run');
     let resolve!: (projects: Array<{ id: string; root: string; store: RunStore }>) => void;
     const discovery = new Promise<Array<{ id: string; root: string; store: RunStore }>>((done) => {
@@ -83,7 +83,7 @@ describe('dashboard complete summary snapshots', () => {
   it('does not republish a throttled refresh after disposal', async () => {
     vi.useFakeTimers();
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const before = store.listenerCount('run');
     const r = store.createRun({ title: 'q', workflow: 'build', task: 't', steps: [] });
     store.updateRun(r.id, { status: 'waiting' });
@@ -102,7 +102,7 @@ describe('dashboard complete summary snapshots', () => {
   it('retries a pending throttled refresh after demand discovers a removed project', async () => {
     vi.useFakeTimers();
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const before = store.listenerCount('run');
     const r = store.createRun({ title: 'q', workflow: 'build', task: 't', steps: [] });
     store.updateRun(r.id, { status: 'waiting' });
@@ -125,7 +125,7 @@ describe('dashboard complete summary snapshots', () => {
   it('retains failed owned-store load coverage rather than claiming an empty complete project', async () => {
     const p = root();
     disk(p, [record('valid-review', 'review'), { broken: true }]);
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const reader = new DashboardReader({ projects: async () => [{ id: 'p', root: p, store }] });
     const s = await reader.snapshot();
     expect(s.counts.reviews).toBe(0); // The owning manager does not have this row.
@@ -145,7 +145,7 @@ describe('dashboard complete summary snapshots', () => {
   it('reconciles an owned dirty projection within one second for concurrent demand', async () => {
     vi.useFakeTimers();
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const r = store.createRun({ title: 'q', workflow: 'build', task: 't', steps: [] });
     store.updateRun(r.id, { status: 'waiting' });
     const reader = new DashboardReader({ projects: async () => [{ id: 'p', root: p, store }] });
@@ -162,14 +162,14 @@ describe('dashboard complete summary snapshots', () => {
   });
   it('counts monitoring as a running subset, includes subtasks, and evicts the fourth old snapshot', async () => {
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     for (const patch of [
       { status: 'running' as const, activity: 'monitoring' as const },
       { status: 'running' as const },
       { status: 'queued' as const },
       { status: 'failed' as const, autoResumeAt: '2026-09-19T00:00:00Z' },
       { status: 'failed' as const },
-      // A session closed on an unanswered CEZ:ASK is still a question for the user.
+      // A session closed on an unanswered ONNI:ASK is still a question for the user.
       { status: 'failed' as const, awaitingAnswerSince: '2026-09-19T00:00:00.000Z' },
       { status: 'review' as const, pinned: true },
     ]) {
@@ -206,7 +206,7 @@ describe('dashboard complete summary snapshots', () => {
   });
   it('telemetry uses only running owned samples and never calls the disk-project supplier', async () => {
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const running = store.createRun({ title: 'running', workflow: 'build', task: 't', steps: [] });
     store.updateRun(running.id, { status: 'running' });
     store.createRun({ title: 'queued', workflow: 'build', task: 't', steps: [] });
@@ -234,7 +234,7 @@ describe('dashboard complete summary snapshots', () => {
 
   it('counts old tasks beyond 200 archived rows, redistributes queue places, excludes telemetry', async () => {
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     for (let n = 0; n < 205; n++) {
       const r = store.createRun({ title: 'archive', workflow: 'build', task: 't', steps: [] });
       store.updateRun(r.id, { archived: true });
@@ -255,7 +255,7 @@ describe('dashboard complete summary snapshots', () => {
   });
   it('pages the same ordered identities exactly with totals before paging and exhausted offsets', async () => {
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const ids: string[] = [];
     for (let i = 0; i < 27; i++) {
       const r = store.createRun({ title: `${i}`, workflow: 'build', task: 't', steps: [] });
@@ -281,7 +281,7 @@ describe('dashboard complete summary snapshots', () => {
   });
   it('holds pages immutable across changes, shares revisions, expires and invalidates removed projects', async () => {
     const p = root();
-    const store = RunStore.open(join(p, '.ai/cezar'));
+    const store = RunStore.open(join(p, '.ai/onni'));
     const r = store.createRun({ title: 'before', workflow: 'build', task: 't', steps: [] });
     store.updateRun(r.id, { status: 'waiting' });
     let now = Date.parse('2026-09-18T10:00:00Z');

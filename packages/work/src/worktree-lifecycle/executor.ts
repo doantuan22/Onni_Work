@@ -70,7 +70,7 @@ export async function executeLifecycleCommand(options: LifecycleExecutorOptions)
   if (options.dryRun || process.env.CEZ_DRY_RUN === '1') return { state: 'succeeded', exitCode: 0, quiescent: true, truncated: false };
   if (options.signal?.aborted) return { state: 'interrupted', exitCode: null, reason: 'Stopped before launch', quiescent: true, truncated: false };
   const windows = (options.platform ?? process.platform) === 'win32';
-  const completionMarker = `__cezar_${randomUUID().replaceAll('-', '')}`;
+  const completionMarker = `__onni_${randomUUID().replaceAll('-', '')}`;
   let windowsCommandCode: number | undefined;
   let windowsTermination: Promise<boolean> | undefined;
   let childExited = false;
@@ -138,8 +138,8 @@ export async function executeLifecycleCommand(options: LifecycleExecutorOptions)
   // Keep the Windows supervisor alive until taskkill has captured its tree. The
   // command itself still receives EOF on stdin; the private marker is not output.
   const wrapper = windows
-    ? `IFS= read -r _cezar_launch || exit 125; "$0" -c "$1" </dev/null; _cezar_status=$?; printf '\\n%s:%s\\n' "$2" "$_cezar_status" >&2; IFS= read -r _cezar_shutdown`
-    : 'IFS= read -r _cezar_launch || exit 125; exec "$0" -c "$1"';
+    ? `IFS= read -r _onni_launch || exit 125; "$0" -c "$1" </dev/null; _onni_status=$?; printf '\\n%s:%s\\n' "$2" "$_onni_status" >&2; IFS= read -r _onni_shutdown`
+    : 'IFS= read -r _onni_launch || exit 125; exec "$0" -c "$1"';
   const child = spawn(bash, ['-c', wrapper, bash, options.command, completionMarker], {
     cwd: options.cwd, env: process.env, detached: true, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
   });

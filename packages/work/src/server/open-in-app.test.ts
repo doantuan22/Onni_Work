@@ -71,7 +71,7 @@ describe('detectOpenTargets', () => {
     const STUBS = ['idea', 'pycharm', 'webstorm', 'goland', 'rubymine', 'phpstorm', 'clion', 'rider', 'studio'];
 
     function withStubsOnPath() {
-      stubDir = mkdtempSync(join(tmpdir(), 'cez-open-in-test-'));
+      stubDir = mkdtempSync(join(tmpdir(), 'onni-open-in-test-'));
       for (const name of STUBS) {
         const p = join(stubDir, name);
         // Marker files, not scripts: `resolveOnPath` probes them with `accessSync(X_OK)` and
@@ -207,7 +207,7 @@ describe('resolveOnPath (#469 Windows launcher safety)', () => {
   });
 
   function addStub(name: string): void {
-    stubDir ||= mkdtempSync(join(tmpdir(), 'cez-open-in-path-test-'));
+    stubDir ||= mkdtempSync(join(tmpdir(), 'onni-open-in-path-test-'));
     const stub = join(stubDir, name);
     writeFileSync(stub, '', 'utf8');
     chmodSync(stub, 0o755);
@@ -317,7 +317,7 @@ describe('resolveOnPath (#1066 executable regular files)', () => {
   });
 
   it('ignores directories but resolves executable files and symlinks', () => {
-    root = mkdtempSync(join(tmpdir(), 'cez-open-in-app-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-open-in-app-'));
     mkdirSync(join(root, 'directory-launcher'));
     const executable = join(root, 'file-launcher');
     writeFileSync(executable, '#!/bin/sh\n');
@@ -330,7 +330,7 @@ describe('resolveOnPath (#1066 executable regular files)', () => {
   });
 
   it('keeps Windows direct-spawn suffix rules while rejecting directories', () => {
-    root = mkdtempSync(join(tmpdir(), 'cez-open-in-app-win-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-open-in-app-win-'));
     mkdirSync(join(root, 'code'));
     const executable = join(root, 'editor.exe');
     writeFileSync(executable, 'binary');

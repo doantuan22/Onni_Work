@@ -38,7 +38,7 @@ export class AcpRpcError extends Error {
   }
 }
 
-/** The client's side of `initialize`: cezar proxies no file system and no terminal, so the agent
+/** The client's side of `initialize`: onni proxies no file system and no terminal, so the agent
  *  uses its own tools inside the session's `cwd` (spec § "The shared ACP layer"). */
 export const ACP_PROTOCOL_VERSION = 1;
 export const ACP_CLIENT_CAPABILITIES = {
@@ -57,7 +57,7 @@ export interface AcpClientOptions {
   /**
    * Inbound requests (`session/request_permission`, …). The answer is written back under the
    * request's id. Without a handler — or when it throws — the agent gets `-32601`, so a request
-   * cezar does not understand can never leave the agent waiting on an answer that never comes.
+   * onni does not understand can never leave the agent waiting on an answer that never comes.
    */
   onRequest?: (message: AcpMessage) => AcpRequestAnswer | Promise<AcpRequestAnswer>;
   /** A stdout line that is not a JSON object. Skipped either way; this only reports it. */
@@ -137,7 +137,7 @@ export class AcpClient {
     this.pending.clear();
   }
 
-  // ---- the ACP methods cezar uses -------------------------------------------------------
+  // ---- the ACP methods onni uses -------------------------------------------------------
 
   initialize(timeoutMs?: number): Promise<Record<string, unknown>> {
     return this.request(
@@ -232,7 +232,7 @@ export class AcpClient {
   }
 }
 
-/** An ACP prompt content block (the subset cezar sends: text and base64 images). */
+/** An ACP prompt content block (the subset onni sends: text and base64 images). */
 export type AcpContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image'; data: string; mimeType: string };

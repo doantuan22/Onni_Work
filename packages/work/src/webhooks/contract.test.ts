@@ -68,7 +68,7 @@ describe('outbound webhook contracts', () => {
   });
   it('keeps tests synthetic, forbidding caller text and source metadata', () => {
     const event = schema('webhookEventSchema');
-    const test = { id: base.id, schemaVersion: 1, occurredAt: base.occurredAt, type: 'webhook.test', data: { test: true, format: 'cezar.json.v1' } };
+    const test = { id: base.id, schemaVersion: 1, occurredAt: base.occurredAt, type: 'webhook.test', data: { test: true, format: 'onni.json.v1' } };
     expect(event.safeParse(test).success).toBe(true);
     for (const extra of [{ source: base.source }, { task: base.task }, { sequence: 1 }, { name: 'exfil' }]) {
       expect(event.safeParse({ ...test, ...extra }).success).toBe(false);

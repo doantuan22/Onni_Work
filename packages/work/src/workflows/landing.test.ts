@@ -15,7 +15,7 @@ let other: string;
 
 beforeEach(() => {
   vi.stubEnv('CEZ_DRY_RUN', '');
-  dir = mkdtempSync(join(tmpdir(), 'cez-landing-'));
+  dir = mkdtempSync(join(tmpdir(), 'onni-landing-'));
   remote = join(dir, 'remote.git');
   checkout = join(dir, 'checkout');
   other = join(dir, 'other');
@@ -45,9 +45,9 @@ describe('landInPlace', () => {
     expect(await hasUnlanded(checkout)).toBe(false);
   });
 
-  it("never lands cezar's own state", async () => {
-    execFileSync('mkdir', ['-p', join(checkout, '.ai/cezar')]);
-    writeFileSync(join(checkout, '.ai/cezar/config.json'), '{"landing":"auto"}\n');
+  it("never lands onni's own state", async () => {
+    execFileSync('mkdir', ['-p', join(checkout, '.ai/onni')]);
+    writeFileSync(join(checkout, '.ai/onni/config.json'), '{"landing":"auto"}\n');
     expect(await hasUnlanded(checkout)).toBe(false);
     writeFileSync(join(checkout, 'person.md'), 'x\n');
     expect(await landInPlace(checkout, { describe: async () => 'x', checks: [] })).toMatchObject({ result: 'landed', files: ['person.md'] });
@@ -151,9 +151,9 @@ describe('landInPlace', () => {
     expect(await hasUnlanded(local)).toBe(true);
   });
 
-  it('rebases while a tracked file under .ai/cezar has edits it leaves out', async () => {
-    execFileSync('mkdir', ['-p', join(checkout, '.ai/cezar/workflows')]);
-    writeFileSync(join(checkout, '.ai/cezar/workflows/w.yaml'), 'a: 1\n');
+  it('rebases while a tracked file under .ai/onni has edits it leaves out', async () => {
+    execFileSync('mkdir', ['-p', join(checkout, '.ai/onni/workflows')]);
+    writeFileSync(join(checkout, '.ai/onni/workflows/w.yaml'), 'a: 1\n');
     git(checkout, 'add', '-A');
     git(checkout, 'commit', '-qm', 'workflow');
     git(checkout, 'push', '-q');
@@ -162,10 +162,10 @@ describe('landInPlace', () => {
     git(other, 'add', '-A');
     git(other, 'commit', '-qm', 'theirs');
     git(other, 'push', '-q');
-    writeFileSync(join(checkout, '.ai/cezar/workflows/w.yaml'), 'a: 2\n');
+    writeFileSync(join(checkout, '.ai/onni/workflows/w.yaml'), 'a: 2\n');
     writeFileSync(join(checkout, 'person.md'), 'Bjorn\n');
     expect(await landInPlace(checkout, { describe: async () => 'mine', checks: [] })).toMatchObject({ result: 'landed', pushed: true, files: ['person.md'] });
-    expect(readFileSync(join(checkout, '.ai/cezar/workflows/w.yaml'), 'utf8')).toBe('a: 2\n');
+    expect(readFileSync(join(checkout, '.ai/onni/workflows/w.yaml'), 'utf8')).toBe('a: 2\n');
   });
 });
 

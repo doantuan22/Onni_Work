@@ -8,7 +8,7 @@ import { excludeFromGit, materializeSkillDir } from './skills-remote.ts';
  * run's working directory, where the agent's own skill lookup finds it.
  *
  * A task worktree is a fresh checkout: the `npx skills` install dirs are gitignored, global
- * `~/.agents/skills` is invisible to Claude, and team skills live only in cezar's bare-clone
+ * `~/.agents/skills` is invisible to Claude, and team skills live only in onni's bare-clone
  * cache. So the agent answered "Unknown skill" for the selected skill, and a companion it runs
  * verbatim (`om-auto-review-pr` → `om-code-review`) was found nowhere.
  */
@@ -63,8 +63,8 @@ function skillMarkdown(skill: Skill): string {
   return `---\n${front.join('\n')}\n---\n\n${skill.body.trim()}\n`;
 }
 
-/** First line of the `.gitignore` cezar owns inside a worktree's skills dir. */
-const IGNORE_MARK = '# cezar: skills installed for this task, not part of the repository';
+/** First line of the `.gitignore` onni owns inside a worktree's skills dir. */
+const IGNORE_MARK = '# onni: skills installed for this task, not part of the repository';
 
 /**
  * Keep `<skillsDir>/<name>` out of git in THIS worktree only. The shared `info/exclude` would also
@@ -77,7 +77,7 @@ async function ignoreProvisioned(cwd: string, skillsDir: string, name: string): 
   try {
     prev = await readFile(file, 'utf8');
   } catch {
-    // absent: cezar creates and owns it
+    // absent: onni creates and owns it
   }
   if (prev !== undefined && !prev.startsWith(IGNORE_MARK)) return excludeFromGit(cwd, `${skillsDir}/${name}`);
   const lines = prev?.split('\n').filter(Boolean) ?? [IGNORE_MARK, '/.gitignore'];

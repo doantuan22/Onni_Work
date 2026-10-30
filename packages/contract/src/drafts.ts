@@ -7,9 +7,9 @@ import { attachmentInputSchema, MAX_ATTACHMENTS_PER_MESSAGE } from './runs.ts';
  * inside a task (spec `.ai/specs/2026-08-30-thread-composer-draft-persistence.md`, #939).
  *
  * Server-side by decision, not by habit: a draft has to follow the user across browsers, survive a
- * reload and survive a `cez` restart, which rules out the localStorage stores `/new`
+ * reload and survive a `onni` restart, which rules out the localStorage stores `/new`
  * (`new-task-draft.ts`) and the GitHub hand-off box (`hand-to-agent-draft.ts`) use. It also has its
- * own route family and its own files under `.ai/cezar/drafts/` rather than a key in
+ * own route family and its own files under `.ai/onni/drafts/` rather than a key in
  * `ui-state.json`: that file's PUT is capped at 128 KiB, merges shallowly, and is read whole on
  * every cockpit load — none of which survives contact with a 20 MB attachment draft.
  */

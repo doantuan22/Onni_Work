@@ -97,7 +97,7 @@ describe('RunNotifications', () => {
     expect(constructed).toEqual([
       {
         title: 'Normalize the agent-event protocol',
-        options: { body: 'Task needs you', tag: 'cezar-run-r1' },
+        options: { body: 'Task needs you', tag: 'onni-run-r1' },
       },
     ])
   })
@@ -113,8 +113,8 @@ describe('RunNotifications', () => {
     patch([run({ id: 'a', status: 'review' }), run({ id: 'b', status: 'failed' })])
 
     expect(constructed.map((n) => [n.options?.tag, n.options?.body])).toEqual([
-      ['cezar-run-a', 'Task needs review'],
-      ['cezar-run-b', 'Task failed'],
+      ['onni-run-a', 'Task needs review'],
+      ['onni-run-b', 'Task failed'],
     ])
   })
 

@@ -22,13 +22,13 @@ describe('recover() and a running run with no agent session', () => {
   let store: RunStore;
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-recover-nosession-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-recover-nosession-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
   const frozen = () => new WorkspaceSemaphore({ initial: { maxParallel: 0 } });
@@ -46,7 +46,7 @@ describe('recover() and a running run with no agent session', () => {
   };
 
   const lifecycle = (id: string): string[] =>
-    readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.ndjson`), 'utf8')
+    readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.ndjson`), 'utf8')
       .trim()
       .split('\n')
       .filter(Boolean)
@@ -70,7 +70,7 @@ describe('recover() and a running run with no agent session', () => {
     expect(record?.status).toBe('queued');
     expect(record?.error).toBeUndefined();
     expect(record?.steps.find((s) => s.id === 'work')?.status).toBe('pending');
-    expect(lifecycle(id)).toContain('cezar restarted — the task had not reached its agent session — task re-queued');
+    expect(lifecycle(id)).toContain('onni restarted — the task had not reached its agent session — task re-queued');
   });
 
   it('still resumes a running run that HAS a session, the way it always did', async () => {
@@ -87,7 +87,7 @@ describe('recover() and a running run with no agent session', () => {
 
     // The continuation path: interrupted, then resumed from the recorded session (queued here
     // only because the semaphore is frozen).
-    expect(lifecycle(id)).toContain('cezar restarted — resuming the interrupted task from its last session');
-    expect(lifecycle(id)).not.toContain('cezar restarted — the task had not reached its agent session — task re-queued');
+    expect(lifecycle(id)).toContain('onni restarted — resuming the interrupted task from its last session');
+    expect(lifecycle(id)).not.toContain('onni restarted — the task had not reached its agent session — task re-queued');
   });
 });

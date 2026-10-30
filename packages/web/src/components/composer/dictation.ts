@@ -98,13 +98,13 @@ export function foldResults(
 
 export const DICTATION_INSECURE = 'Dictation needs https or localhost'
 export const DICTATION_NO_SERVICE = 'Dictation is not available in this browser'
-export const DICTATION_OLD_SHELL = 'Dictation needs a newer Cezar app — update it to use the microphone'
+export const DICTATION_OLD_SHELL = 'Dictation needs a newer Onni app — update it to use the microphone'
 
 /** The macOS desktop shell, when it hosts this page: `microphone` says whether it is entitled to
  *  one. Shells before 0.1.10 are not, and macOS refuses every dictation there (telemetry c55c7b0b). */
 function macosShell(): { microphone: boolean } | null {
   const shell = (window as { __CEZ_DESKTOP__?: { platform?: string; microphone?: boolean } }).__CEZ_DESKTOP__
-  if (shell?.platform !== 'macos' && document.documentElement.dataset.cezDesktop !== 'macos') return null
+  if (shell?.platform !== 'macos' && document.documentElement.dataset.onniDesktop !== 'macos') return null
   return { microphone: shell?.microphone === true }
 }
 
@@ -131,12 +131,12 @@ export function dictationNotice(code: string | undefined): DictationNotice | nul
       return null
     case 'no-speech':
       return { message: 'Dictation heard nothing — try again', failure: null }
-    // A refusal is the user's or the browser's answer, not a cezar failure: say how to undo it and
+    // A refusal is the user's or the browser's answer, not a onni failure: say how to undo it and
     // report nothing (telemetry c55c7b0b came back from browsers after #1551 fixed the macOS app).
     case 'not-allowed':
       return {
         message: macosShell()
-          ? 'Microphone blocked — allow Cezar in System Settings → Privacy & Security → Microphone and Speech Recognition'
+          ? 'Microphone blocked — allow Onni in System Settings → Privacy & Security → Microphone and Speech Recognition'
           : "Microphone blocked — allow it for this site in the browser's site settings",
         failure: null,
       }

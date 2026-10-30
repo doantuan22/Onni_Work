@@ -309,7 +309,7 @@ export function ProviderSettings() {
                 </div>
                 {incidentId !== undefined ? (
                   <p className="mt-2 text-xs text-soft-foreground">
-                    Use this after completing the provider sign-in flow. cezar cannot validate the
+                    Use this after completing the provider sign-in flow. onni cannot validate the
                     credential without a task/model request; it will verify it on the next task.
                   </p>
                 ) : null}

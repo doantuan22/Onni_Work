@@ -14,7 +14,7 @@ import {
 
 /**
  * The per-run layout store (spec `.ai/specs/2026-10-07-task-workspace.md` §5.3 — layouts belong
- * to the cezar that OWNS the task, not to a browser).
+ * to the onni that OWNS the task, not to a browser).
  *
  * What these pin beyond "it writes a file": the three rules §5.3 actually states — a task that
  * has never been opened is distinguishable from one the user emptied on purpose, malformed state
@@ -24,7 +24,7 @@ import {
 let dataDir: string;
 
 beforeEach(() => {
-  dataDir = mkdtempSync(join(tmpdir(), 'cezar-layouts-'));
+  dataDir = mkdtempSync(join(tmpdir(), 'onni-layouts-'));
 });
 
 afterEach(() => {

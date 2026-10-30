@@ -25,7 +25,7 @@ export const TASK_ORIGIN_OPTIONS: readonly { value: TaskOrigin; label: string }[
   { value: 'all', label: 'All' },
 ]
 
-export const TASK_ORIGIN_STORAGE_KEY = 'cez-task-origin'
+export const TASK_ORIGIN_STORAGE_KEY = 'onni-task-origin'
 
 /** The provenance keys a run may carry, on either wire shape: the full `RunRecord` has the three
  *  launch records, the slim cross-project `RunIndexEntry` has them folded into `automationId`. */

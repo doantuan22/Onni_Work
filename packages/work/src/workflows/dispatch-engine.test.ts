@@ -40,7 +40,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
   };
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-dispatch-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-dispatch-'));
     for (const key of ['CEZ_DRY_RUN', 'CEZ_DISPATCH', 'CEZ_WEBHOOKS', 'CEZ_CODEX_BIN']) savedEnv[key] = process.env[key];
     delete process.env.CEZ_WEBHOOKS;
     process.env.CEZ_DRY_RUN = '1';
@@ -49,7 +49,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = boot();
     started.length = 0;
   });
@@ -139,7 +139,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     ...(budgetUsd !== undefined ? { budgetUsd } : {}),
   });
   const childOf = (rootId: string, parentId = rootId): RunDispatch => ({ rootRunId: rootId, parentRunId: parentId });
-  const treeDirOf = (rootId: string) => join(repoRoot, '.ai/cezar/dispatch', rootId);
+  const treeDirOf = (rootId: string) => join(repoRoot, '.ai/onni/dispatch', rootId);
   const order = (objective: string, extra: Partial<DispatchInput> = {}): DispatchInput => ({ objective, ...extra });
   /** Start a root that parks as a monitor, so dispatches against it are observable. */
   const parkedRoot = async (budgetUsd?: number): Promise<RunRecord> => {
@@ -178,7 +178,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       expect(child?.autonomous).toBe(true);
       // The child forks off the PARENT's branch, which is what `execute()` reads.
       expect(child?.baseBranch).toBe(store.getRun(parent.id)?.branch);
-      expect(child?.baseBranch).toMatch(/^cez\//);
+      expect(child?.baseBranch).toMatch(/^onni\//);
       // The task order the child receives — its own scope, the fork point, its files.
       expect(child?.task).toContain('## Task order');
       expect(child?.task).toContain('- Scope: src/left/**');
@@ -601,7 +601,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     // A card may now carry up to ASK_MAX_QUESTIONS, but this RECORD field may not: it is read
     // back by an all-or-nothing index parser, so an over-long list in a fresh `runs.json` would
-    // cost an older cezar every task in the project, not just the park.
+    // cost an older onni every task in the project, not just the park.
     it('truncates a six-question park to the record’s bound and counts the rest', async () => {
       const parent = await parkedRoot();
       const child = start('mock:ask-many pick a path', childOf(parent.id), { autonomous: true });
@@ -648,7 +648,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     await waitFor(root.id, (r) => r?.status === 'cancelled');
   }, 40_000);
 
-  // ---- the Guard: an autonomous dispatched run never answers its own CEZ:ASK ------------------
+  // ---- the Guard: an autonomous dispatched run never answers its own ONNI:ASK ------------------
 
   describe('the Guard', () => {
     it('parks a dispatched run at waiting with the ask card instead of nudging it onward', async () => {
@@ -673,7 +673,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const record = start('mock:done plain task');
       await waitFor(record.id, settled);
       expect(store.getRun(record.id)?.dispatch).toBeUndefined();
-      expect(existsSync(join(repoRoot, '.ai/cezar/dispatch'))).toBe(false);
+      expect(existsSync(join(repoRoot, '.ai/onni/dispatch'))).toBe(false);
     }, 40_000);
   });
 });

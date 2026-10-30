@@ -19,9 +19,9 @@ describe('the GitHub PR changes API', () => {
     else process.env.CEZ_DRY_RUN = previous;
   });
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-pr-changes-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-pr-changes-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
   afterEach(() => {
     store.flush();

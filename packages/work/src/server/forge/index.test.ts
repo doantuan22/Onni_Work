@@ -99,7 +99,7 @@ describe('GitHub Enterprise', () => {
   let configDir: string;
   const savedConfigDir = process.env.GH_CONFIG_DIR;
   beforeEach(() => {
-    configDir = mkdtempSync(join(tmpdir(), 'cez-ghe-'));
+    configDir = mkdtempSync(join(tmpdir(), 'onni-ghe-'));
     process.env.GH_CONFIG_DIR = configDir;
     resetGithubHostsCache();
   });

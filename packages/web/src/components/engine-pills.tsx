@@ -105,7 +105,7 @@ export function useResolvedEngine(pick: EnginePick): ResolvedEngine {
 }
 
 /**
- * The remembered engine pick (#906), read out of the same `cez-followup-selection` store that
+ * The remembered engine pick (#906), read out of the same `onni-followup-selection` store that
  * already remembers the workflow and skills pick.
  *
  * It lives here rather than in either route for the reason stated at the top of this file: these

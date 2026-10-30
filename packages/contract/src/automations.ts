@@ -1,7 +1,7 @@
 import { deferredStartStateSchema, deferredCreationRecordSchema } from './deferred-start-state.ts';
 import { z } from 'zod';
 import { trackerAssociationSchema, trackerAutomationEventSchema, trackerFailureSchema } from './tracker.ts';
-// An automation launches an ORDINARY cezar task, so the task it carries is the composer's own
+// An automation launches an ORDINARY onni task, so the task it carries is the composer's own
 // run-creation input minus the keys an automation supplies itself. Consumed rather than
 // redeclared — the same one-way direction `./runs.ts` takes towards `./workflows.ts`.
 import { createRunInputBaseSchema, runStatusSchema } from './runs.ts';
@@ -14,7 +14,7 @@ import { automationScheduleSchema } from './automation-schedule.ts';
  *
  * These shapes exist twice on purpose and only once as a DEFINITION of what the wire carries.
  * `packages/work/src/automations/types.ts` owns the STORAGE schemas: they are `.passthrough()`,
- * because a definitions/state/log file written by a newer cezar must survive a round trip through
+ * because a definitions/state/log file written by a newer onni must survive a round trip through
  * an older one rather than lose keys it has never heard of. The schemas here are the CLOSED wire
  * half of those files — every key the routes actually answer with, and no index signature, so a
  * consumer compiles against a shape rather than against `unknown`. `src/server/

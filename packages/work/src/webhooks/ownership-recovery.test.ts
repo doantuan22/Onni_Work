@@ -17,8 +17,8 @@ function fixture() {
   const root = fs.mkdtempSync(join(fs.realpathSync(tmpdir()), 'webhook-owner-recovery-'));
   cleanups.push(() => fs.rmSync(root, { recursive: true, force: true }));
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const directory = join(root, '.ai/cezar/webhooks'), lock = join(directory, 'owner.lock');
-  const options = { root, dataDir: join(root, '.ai/cezar'), projectId: 'fixture', mode: 'local' as const, serverPorts: () => [], scheduler: new WebhookScheduler(), send: async () => ({ kind: 'http' as const, status: 204 }) };
+  const directory = join(root, '.ai/onni/webhooks'), lock = join(directory, 'owner.lock');
+  const options = { root, dataDir: join(root, '.ai/onni'), projectId: 'fixture', mode: 'local' as const, serverPorts: () => [], scheduler: new WebhookScheduler(), send: async () => ({ kind: 'http' as const, status: 204 }) };
   const open = async () => { const service = (await WebhookService.open(options))!; cleanups.push(() => service.dispose()); return service; };
   return { root, directory, lock, open };
 }

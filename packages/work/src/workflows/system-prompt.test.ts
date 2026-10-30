@@ -82,12 +82,12 @@ describe('composeSystemPrompt', () => {
 });
 
 describe('handoff contract markers', () => {
-  it('teaches the CEZ:ASK structured-question marker with its schema (#473)', () => {
-    expect(HANDOFF_ONLY_INSTRUCTIONS).toContain('CEZ:ASK');
+  it('teaches the ONNI:ASK structured-question marker with its schema (#473)', () => {
+    expect(HANDOFF_ONLY_INSTRUCTIONS).toContain('ONNI:ASK');
     expect(HANDOFF_ONLY_INSTRUCTIONS).toContain('"questions"');
     expect(HANDOFF_ONLY_INSTRUCTIONS).toContain('"multiSelect"');
     // It rides in the combined contract every agent step receives.
-    expect(HANDOFF_INSTRUCTIONS).toContain('CEZ:ASK');
+    expect(HANDOFF_INSTRUCTIONS).toContain('ONNI:ASK');
   });
 });
 
@@ -148,7 +148,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-sysprompt-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-sysprompt-'));
     argsFile = join(repoRoot, 'mock-args.ndjson');
     inheritedTodos = join(repoRoot, 'inherited-todos.json');
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
@@ -177,7 +177,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     // heuristics in demos/e2e); '1' forces the mock path for these tests.
     process.env.CEZ_AUTONAME = '1';
     process.env.CEZ_MOCK_ARGS_FILE = argsFile;
-    // Simulate a nested cezar (an agent running `cez serve` / the test suite):
+    // Simulate a nested onni (an agent running `onni serve` / the test suite):
     // the parent process already carries CEZ_TODOS_FILE. Runners spawn with
     // `{ ...process.env, ...spec.env }`, so `agentEnv` must *shadow* this for
     // every run — never merely omit the key — or an opted-out agent writes
@@ -187,7 +187,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     mkdirSync(join(repoRoot, '.ai/skills/om-auto-review-pr'), { recursive: true });
     writeFileSync(
       join(repoRoot, '.ai/skills/om-auto-review-pr/SKILL.md'),
@@ -195,11 +195,11 @@ describe('systemPrompt end-to-end (dry run)', () => {
       'utf8',
     );
     writeFileSync(
-      join(repoRoot, '.ai/cezar', 'config.json'),
+      join(repoRoot, '.ai/onni', 'config.json'),
       JSON.stringify({ systemPrompt: CONFIG_PROMPT }),
       'utf8',
     );
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     // Cap 1 (workspace-level since step 2.5) serializes the suite's runs.
     manager = new RunManager(store, repoRoot, {
       semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1 } }),
@@ -264,7 +264,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     return prompt.endsWith(suffix) ? prompt.slice(0, -suffix.length) : prompt;
   }
 
-  it('dispatch on (the default): every task is taught the cez task CLI ahead of the base prompt', async () => {
+  it('dispatch on (the default): every task is taught the onni task CLI ahead of the base prompt', async () => {
     delete process.env.CEZ_DISPATCH;
     // The flag alone is not enough — the prompt needs the TRANSPORT the cockpit publishes (spec
     // 2026-09-10-dispatch A2). `serveCommand` sets this; these suites have no server.
@@ -276,14 +276,14 @@ describe('systemPrompt end-to-end (dry run)', () => {
       delete process.env.CEZ_API_URL;
     }
     const prompt = capturedSystemPrompt();
-    expect(prompt).toContain('cez task create');
+    expect(prompt).toContain('onni task create');
     expect(prompt).toContain(CONFIG_PROMPT);
   });
 
-  // The headless hole: `cezar run` builds its own RunManager and never sets CEZ_API_URL/CEZ_BIN, so
-  // `cez task create` can only ever fail — and its refusal tells the agent to STOP and report
+  // The headless hole: `onni run` builds its own RunManager and never sets CEZ_API_URL/CEZ_BIN, so
+  // `onni task create` can only ever fail — and its refusal tells the agent to STOP and report
   // rather than do the work itself. A run that cannot dispatch must not be taught to (A2).
-  it('dispatch on but unreachable (no cockpit, as in headless `cezar run`): no task is taught the CLI', async () => {
+  it('dispatch on but unreachable (no cockpit, as in headless `onni run`): no task is taught the CLI', async () => {
     delete process.env.CEZ_DISPATCH;
     delete process.env.CEZ_API_URL;
     try {
@@ -292,14 +292,14 @@ describe('systemPrompt end-to-end (dry run)', () => {
       process.env.CEZ_DISPATCH = '0';
     }
     const prompt = capturedSystemPrompt();
-    expect(prompt).not.toContain('cez task create');
+    expect(prompt).not.toContain('onni task create');
     expect(prompt).toContain(CONFIG_PROMPT);
   });
 
   // The automations twin of the two dispatch cases above (spec 2026-09-13-automations-from-prompt):
   // the part rides only when the flag is on AND the cockpit is reachable, at the same session
   // sites as the dispatch prompt — so a Continue keeps it too.
-  it('automations on and reachable: every task is taught the cez automation CLI', async () => {
+  it('automations on and reachable: every task is taught the onni automation CLI', async () => {
     process.env.CEZ_AUTOMATIONS = '1';
     process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
     try {
@@ -320,7 +320,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     delete process.env.CEZ_AUTOMATIONS;
     delete process.env.CEZ_API_URL;
     await runToEnd({ task: 'do the thing mock:done' });
-    expect(capturedSystemPrompt()).not.toContain('cez automation');
+    expect(capturedSystemPrompt()).not.toContain('onni automation');
     process.env.CEZ_AUTOMATIONS = '0';
     process.env.CEZ_API_URL = 'http://127.0.0.1:4321';
     try {
@@ -329,7 +329,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
       delete process.env.CEZ_AUTOMATIONS;
       delete process.env.CEZ_API_URL;
     }
-    expect(capturedSystemPrompt()).not.toContain('cez automation');
+    expect(capturedSystemPrompt()).not.toContain('onni automation');
     // Two whole runs in one case: the default 5 s is one slow machine away from a timeout.
   }, 30_000);
 
@@ -379,7 +379,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     const savedBin = process.env.CEZ_CLAUDE_BIN;
     const savedToggle = process.env.CEZ_TITLE_UPDATES;
     delete process.env.CEZ_DRY_RUN;
-    process.env.CEZ_CLAUDE_BIN = '/nonexistent/cez-test-claude';
+    process.env.CEZ_CLAUDE_BIN = '/nonexistent/onni-test-claude';
     try {
       // Env default OFF → skip before any runner call.
       process.env.CEZ_TITLE_UPDATES = '0';
@@ -410,7 +410,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
 
   it('marker declarations outrank the namer (spec 2026-07-18-task-ref-markers)', async () => {
     const record = manager.startRun(skillWorkflow, { task: '437' });
-    await manager.recordTurnEnd(record.id, 'Working on it.\nCEZ:PR=500\nCEZ:TITLE=implementing marker refs');
+    await manager.recordTurnEnd(record.id, 'Working on it.\nONNI:PR=500\nONNI:TITLE=implementing marker refs');
     let after = store.getRun(record.id);
     expect(after?.prNumber).toBe(500);
     expect(after?.titleSummary).toBe('500: implementing marker refs');
@@ -446,7 +446,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
     const textEvents = store.readEvents(id).filter((e) => e.type === 'text');
     expect(textEvents.length).toBeGreaterThan(0);
     for (const event of textEvents) {
-      expect(String(event.text)).not.toMatch(/^CEZ:(?:PR|ISSUE|TITLE)=/m);
+      expect(String(event.text)).not.toMatch(/^ONNI:(?:PR|ISSUE|TITLE)=/m);
     }
   }, 30_000);
 
@@ -522,7 +522,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
   // guard would stop every run from producing inbox entries with the whole suite still green.
   // This suite explicitly enables the global inbox in beforeAll (#471).
   it('on an inbox-enabled server the agent gets the run own inbox, never an inherited one', async () => {
-    const todosFile = join(repoRoot, '.ai/cezar/todos.json');
+    const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
     rmSync(inheritedTodos, { force: true });
     await runToEnd({ task: 'do the thing with follow-ups' });
@@ -532,7 +532,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
   }, 30_000);
 
   it('explicit opt-out keeps handoff behavior but removes inbox prompt and environment', async () => {
-    const todosFile = join(repoRoot, '.ai/cezar/todos.json');
+    const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
     rmSync(inheritedTodos, { force: true });
     const id = await runToEnd({ task: 'do the thing quietly', generateFollowups: false });
@@ -541,10 +541,10 @@ describe('systemPrompt end-to-end (dry run)', () => {
     expect(capturedSystemPrompt()).toBe(composeSystemPrompt(CONFIG_PROMPT, HANDOFF_ONLY_INSTRUCTIONS));
     expect(capturedSystemPrompt()).not.toContain('CEZ_TODOS_FILE');
     expect(existsSync(todosFile)).toBe(false);
-    // The opt-out must survive an inherited CEZ_TODOS_FILE (nested cezar):
+    // The opt-out must survive an inherited CEZ_TODOS_FILE (nested onni):
     // omitting the key instead of shadowing it leaks into the parent's inbox.
     expect(existsSync(inheritedTodos)).toBe(false);
-    expect(readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.handoff.md`), 'utf8')).toContain(
+    expect(readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.handoff.md`), 'utf8')).toContain(
       'mock: implemented the change',
     );
 
@@ -568,7 +568,7 @@ describe('systemPrompt end-to-end (dry run)', () => {
 /**
  * The global inbox gate, end-to-end through the real engine (#471).
  *
- * This drives `RunManager` directly — the same door `cezar run` and the inbox's own "▶ Run" use,
+ * This drives `RunManager` directly — the same door `onni run` and the inbox's own "▶ Run" use,
  * and the reason the ceiling lives in the manager rather than in the HTTP route. A route-level
  * gate would leave every one of those callers writing todos.json on a server that has the inbox
  * off.
@@ -583,7 +583,7 @@ describe('the global follow-up gate (dry run)', () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-followup-gate-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-followup-gate-'));
     argsFile = join(repoRoot, 'mock-args.ndjson');
     inheritedTodos = join(repoRoot, 'inherited-todos.json');
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
@@ -594,20 +594,20 @@ describe('the global follow-up gate (dry run)', () => {
     process.env.CEZ_DRY_RUN = '1';
     process.env.CEZ_DISPATCH = '0'; // base composition only — see the first suite
     process.env.CEZ_MOCK_ARGS_FILE = argsFile;
-    // A parent cezar's inbox, as in the suite above: the gate must not leak into it either.
+    // A parent onni's inbox, as in the suite above: the gate must not leak into it either.
     process.env.CEZ_TODOS_FILE = inheritedTodos;
     delete process.env.CEZ_FOLLOWUPS;
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     writeFileSync(
-      join(repoRoot, '.ai/cezar', 'config.json'),
+      join(repoRoot, '.ai/onni', 'config.json'),
       JSON.stringify({ systemPrompt: CONFIG_PROMPT }),
       'utf8',
     );
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     // Cap 1 (workspace-level since step 2.5) serializes the suite's runs.
     manager = new RunManager(store, repoRoot, {
       semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1 } }),
@@ -651,12 +651,12 @@ describe('the global follow-up gate (dry run)', () => {
   };
 
   it('without CEZ_FOLLOWUPS the agent is never told about the inbox', async () => {
-    const todosFile = join(repoRoot, '.ai/cezar/todos.json');
+    const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
     rmSync(inheritedTodos, { force: true });
 
     // This case asserts the follow-up gate only; keep ambient cockpit flags from
-    // adding the automation prompt when the suite runs inside cezar.
+    // adding the automation prompt when the suite runs inside onni.
     const savedAutomations = process.env.CEZ_AUTOMATIONS;
     const savedApiUrl = process.env.CEZ_API_URL;
     delete process.env.CEZ_AUTOMATIONS;
@@ -674,7 +674,7 @@ describe('the global follow-up gate (dry run)', () => {
     expect(capturedSystemPrompt()).toBe(composeSystemPrompt(CONFIG_PROMPT, HANDOFF_ONLY_INSTRUCTIONS));
     expect(capturedSystemPrompt()).not.toContain('CEZ_TODOS_FILE');
     expect(existsSync(todosFile)).toBe(false);
-    // …and nothing leaked into the parent cezar's inbox either.
+    // …and nothing leaked into the parent onni's inbox either.
     expect(existsSync(inheritedTodos)).toBe(false);
     // The record agrees, so a later continuation reads the same answer.
     expect(store.getRun(id)?.generateFollowups).toBe(false);
@@ -683,20 +683,20 @@ describe('the global follow-up gate (dry run)', () => {
   it('keeps the per-task handoff journal — #471 turns off the inbox, not the notes', async () => {
     const id = await runToEnd({ task: 'do the thing mock:done' });
     expect(capturedSystemPrompt()).toContain('CEZ_HANDOFF_FILE');
-    expect(capturedSystemPrompt()).toContain('CEZ:DONE');
+    expect(capturedSystemPrompt()).toContain('ONNI:DONE');
     // The still-working marker rides in the same handoff contract (#490).
-    expect(capturedSystemPrompt()).toContain('CEZ:MONITORING');
+    expect(capturedSystemPrompt()).toContain('ONNI:MONITORING');
     // The task-reference markers too (spec 2026-07-18-task-ref-markers).
-    expect(capturedSystemPrompt()).toContain('CEZ:PR=<number>');
-    expect(capturedSystemPrompt()).toContain('CEZ:ISSUE=<number>');
-    expect(capturedSystemPrompt()).toContain('CEZ:TITLE=');
-    expect(readFileSync(join(repoRoot, '.ai/cezar/runs', `${id}.handoff.md`), 'utf8')).toContain(
+    expect(capturedSystemPrompt()).toContain('ONNI:PR=<number>');
+    expect(capturedSystemPrompt()).toContain('ONNI:ISSUE=<number>');
+    expect(capturedSystemPrompt()).toContain('ONNI:TITLE=');
+    expect(readFileSync(join(repoRoot, '.ai/onni/runs', `${id}.handoff.md`), 'utf8')).toContain(
       'mock: implemented the change',
     );
   }, 30_000);
 
   it('a client asking for follow-ups cannot override the gate', async () => {
-    const todosFile = join(repoRoot, '.ai/cezar/todos.json');
+    const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
     const id = await runToEnd({ task: 'do the thing mock:done', generateFollowups: true });
     expect(capturedSystemPrompt()).not.toContain('CEZ_TODOS_FILE');
@@ -705,7 +705,7 @@ describe('the global follow-up gate (dry run)', () => {
   }, 30_000);
 
   it('turning the flag on restores the inbox for a new run', async () => {
-    const todosFile = join(repoRoot, '.ai/cezar/todos.json');
+    const todosFile = join(repoRoot, '.ai/onni/todos.json');
     rmSync(todosFile, { force: true });
     process.env.CEZ_FOLLOWUPS = '1';
     try {

@@ -10,7 +10,7 @@ const dirs: string[] = [];
 afterEach(async () => Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))));
 
 async function project(name: string): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), `cezar-templates-${name}-`));
+  const root = await mkdtemp(join(tmpdir(), `onni-templates-${name}-`));
   dirs.push(root);
   return root;
 }
@@ -20,15 +20,15 @@ describe('automationTemplatesOf', () => {
     const storefront = await project('storefront');
     const api = await project('api');
     const me = await project('me');
-    AutomationStore.open(join(storefront, '.ai/cezar')).create({
+    AutomationStore.open(join(storefront, '.ai/onni')).create({
       name: 'Sync translations', enabled: true, kind: 'schedule', schedule: { type: 'weekdays', hour: 9, minute: 0 },
       task: { prompt: 'Pull new keys', workflow: 'quick-task', runner: 'claude', model: 'sonnet', autonomous: true, dispatch: { maxSubtasks: 4 } },
     }, 'sync');
-    AutomationStore.open(join(api, '.ai/cezar')).create({
+    AutomationStore.open(join(api, '.ai/onni')).create({
       name: 'Triage issues', enabled: false, kind: 'github', events: ['issue.opened'], intervalSeconds: 300, filters: { authors: ['patzick'], lookbackDays: 7, maxRecords: 25 },
       task: { prompt: 'Read {{github.url}}', steps: [{ id: 'task', skill: 'om-review', prompt: '{{task}}' }] },
     }, 'triage');
-    AutomationStore.open(join(me, '.ai/cezar')).create({ name: 'Mine', enabled: false, kind: 'schedule', schedule: { type: 'daily' }, task: { prompt: 'x' } }, 'mine');
+    AutomationStore.open(join(me, '.ai/onni')).create({ name: 'Mine', enabled: false, kind: 'schedule', schedule: { type: 'daily' }, task: { prompt: 'x' } }, 'mine');
 
     const templates = automationTemplatesOf(
       [
@@ -45,7 +45,7 @@ describe('automationTemplatesOf', () => {
         task: { prompt: 'Pull new keys', workflow: 'quick-task', runner: 'claude', model: 'sonnet', autonomous: true, dispatch: { maxSubtasks: 4 } },
       },
       {
-        project: { id: 'api', name: expect.stringMatching(/^cezar-templates-api-/) },
+        project: { id: 'api', name: expect.stringMatching(/^onni-templates-api-/) },
         id: 'triage', name: 'Triage issues', kind: 'github', events: ['issue.opened'], intervalSeconds: 300,
         filters: { authors: ['patzick'], lookbackDays: 7, maxRecords: 25 },
         task: { prompt: 'Read {{github.url}}', steps: [{ id: 'task', skill: 'om-review', prompt: '{{task}}' }] },
@@ -56,19 +56,19 @@ describe('automationTemplatesOf', () => {
   it('skips projects that are missing, have no definitions, or cannot be read', async () => {
     const empty = await project('empty');
     const corrupt = await project('corrupt');
-    mkdirSync(join(corrupt, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(corrupt, '.ai/cezar/automations.json'), '{ not json');
+    mkdirSync(join(corrupt, '.ai/onni'), { recursive: true });
+    writeFileSync(join(corrupt, '.ai/onni/automations.json'), '{ not json');
     const unreadable = await project('unreadable');
-    mkdirSync(join(unreadable, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(unreadable, '.ai/cezar/automations.json'), '{}');
-    chmodSync(join(unreadable, '.ai/cezar/automations.json'), 0o000);
+    mkdirSync(join(unreadable, '.ai/onni'), { recursive: true });
+    writeFileSync(join(unreadable, '.ai/onni/automations.json'), '{}');
+    chmodSync(join(unreadable, '.ai/onni/automations.json'), 0o000);
     const templates = automationTemplatesOf([
       { id: 'gone', root: '/nowhere/at/all', status: 'missing' },
       { id: 'empty', root: empty, status: 'ok' },
       { id: 'corrupt', root: corrupt, status: 'ok' },
       { id: 'unreadable', root: unreadable, status: 'ok' },
     ]);
-    chmodSync(join(unreadable, '.ai/cezar/automations.json'), 0o600);
+    chmodSync(join(unreadable, '.ai/onni/automations.json'), 0o600);
     expect(templates).toEqual([]);
   });
 });

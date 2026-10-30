@@ -51,27 +51,27 @@ import { runTrackerConnectionsCommand } from './server/tracker/connections-cli.t
 import { runSecretsCommand } from './workspace/secrets-cli.ts';
 import { launchPageUrl } from './cockpit-address.ts';
 
-const HELP = `cezar — local cockpit for AI agent tasks in your repo
+const HELP = `onni — local cockpit for AI agent tasks in your repo
 
 Usage:
-  cezar                     start the cockpit (server + GUI) for the current repo
-  cezar run "<task>"        run a task headless in the terminal
-  cezar task <create|report|list>  dispatch or report from inside a running task (CEZ_DISPATCH=0 turns it off)
-  cezar automation <add|create|check|run|list|…>  create and manage automations (GitHub polls, schedules) on a running cockpit
-  cezar runs list           list a running cockpit's tasks from a shell (CEZ_API_URL=http://127.0.0.1:4321)
-  cezar init                scaffold .ai/cezar/ (example workflow + skill)
-  cezar projects            list the projects this cockpit serves
+  onni                     start the cockpit (server + GUI) for the current repo
+  onni run "<task>"        run a task headless in the terminal
+  onni task <create|report|list>  dispatch or report from inside a running task (CEZ_DISPATCH=0 turns it off)
+  onni automation <add|create|check|run|list|…>  create and manage automations (GitHub polls, schedules) on a running cockpit
+  onni runs list           list a running cockpit's tasks from a shell (CEZ_API_URL=http://127.0.0.1:4321)
+  onni init                scaffold .ai/onni/ (example workflow + skill)
+  onni projects            list the projects this cockpit serves
                             (also: projects add [<dir>] · projects remove <id>)
-  cezar tracker-connections <list|remove ID>  inspect or delete local project credentials
-  cezar secrets <list|set NAME|unset NAME>  this project's secrets (--workspace: the user's)
+  onni tracker-connections <list|remove ID>  inspect or delete local project credentials
+  onni secrets <list|set NAME|unset NAME>  this project's secrets (--workspace: the user's)
                             (set reads the value from stdin; agents never receive them)
-  cezar server-install      interactive wizard to host cezar on a server
-  cezar server-deploy       redeploy a new version (reload the service) + verify
-  cezar server-uninstall    reverse a server-install
-  cezar link [<dir>]        run a cezar checkout/worktree (default: cwd) as a version — a
+  onni server-install      interactive wizard to host onni on a server
+  onni server-deploy       redeploy a new version (reload the service) + verify
+  onni server-uninstall    reverse a server-install
+  onni link [<dir>]        run a onni checkout/worktree (default: cwd) as a version — a
                             link, not a copy, so rebuilds are live (--use to switch to it now);
-                            the desktop app runs it after a restart or from Cezar ▸ Versions
-  cezar unlink <id|dir>     forget a linked checkout (the checkout itself is untouched)
+                            the desktop app runs it after a restart or from Onni ▸ Versions
+  onni unlink <id|dir>     forget a linked checkout (the checkout itself is untouched)
 
 Options:
   -p, --port <n>              cockpit port (default 4321; server-install: this
@@ -91,16 +91,16 @@ Options:
       --bind-host <host>      host the cockpit binds (default 127.0.0.1). Use with
                               --external-proxy when the proxy runs in a container and
                               cannot reach loopback (e.g. docker bridge 172.17.0.1).
-                              cezar has NO built-in auth — never expose this publicly.
+                              onni has NO built-in auth — never expose this publicly.
       --yes                   server-install: accept safe defaults (never auto-sudo)
       --reconfigure <ids>     server-install: force re-run of step id(s), comma-separated
       --reinstall             server-install: force re-run of every step (full reinstall)
   -h, --help                  show this help
 
 Zero config: uses your logged-in \`claude\` CLI (and \`gh\` for GitHub bits).
-Skills live in .ai/skills/, .ai/cezar/skills/ and any team skills repos you
-configure (none by default — set skillsRepos in .ai/cezar/config.json);
-workflows in .ai/cezar/workflows/.`;
+Skills live in .ai/skills/, .ai/onni/skills/ and any team skills repos you
+configure (none by default — set skillsRepos in .ai/onni/config.json);
+workflows in .ai/onni/workflows/.`;
 
 async function main(): Promise<void> {
   if (process.argv[2] === 'tracker-connections') {
@@ -112,18 +112,18 @@ async function main(): Promise<void> {
     process.exitCode = await runSecretsCommand(process.argv.slice(3));
     return;
   }
-  // `cez task …` (spec 2026-09-10-dispatch) has its own flags, so it is routed before the
+  // `onni task …` (spec 2026-09-10-dispatch) has its own flags, so it is routed before the
   // cockpit's parser can refuse them. It only talks to an already-running cockpit.
   if (process.argv[2] === 'task') {
     process.exitCode = await runTaskCommand(process.argv.slice(3));
     return;
   }
-  // `cez automation …` (spec 2026-09-13-automations-from-prompt): same shape, same reason.
+  // `onni automation …` (spec 2026-09-13-automations-from-prompt): same shape, same reason.
   if (process.argv[2] === 'automation') {
     process.exitCode = await runAutomationCommand(process.argv.slice(3));
     return;
   }
-  // `cez runs …` (#1080): the read-only twin for a person at a shell, same addressing.
+  // `onni runs …` (#1080): the read-only twin for a person at a shell, same addressing.
   if (process.argv[2] === 'runs') {
     process.exitCode = await runRunsCommand(process.argv.slice(3));
     return;
@@ -213,7 +213,7 @@ async function main(): Promise<void> {
       return;
     case 'link':
     case 'unlink':
-      // Managed layout: no server, no repo — only ~/.cezar.
+      // Managed layout: no server, no repo — only ~/.onni.
       process.exitCode = await runSelfUpdateCommand(command, positionals.slice(1), {
         use: Boolean(values.use),
       });
@@ -253,7 +253,7 @@ async function serveCommand(
     store.flush({ pretty: true }); // before the drain too: a second Ctrl-C must not lose run state
     void (httpServer?.shutdownLifecycle() ?? manager.lifecycle.shutdown())
       .catch((error: unknown) => {
-        console.error('cezar: lifecycle shutdown failed', error);
+        console.error('onni: lifecycle shutdown failed', error);
         process.exitCode = 1;
       })
       .then(() => {
@@ -283,7 +283,7 @@ async function serveCommand(
       console.log(`  cleaned ${orphans.length} orphaned worktree(s): ${orphans.map((id) => id.slice(0, 8)).join(', ')}`);
     }
     // Count-based worktree retention (#483): reclaim finished worktrees beyond
-    // the keep-limit (directory only — `cez/<id8>` branch kept, so recoverable).
+    // the keep-limit (directory only — `onni/<id8>` branch kept, so recoverable).
     // Best-effort; never blocks boot.
     const keep = await resolveWorktreeRetention(repoRoot).catch(() => DEFAULT_WORKTREE_RETENTION);
     const reclaimed = await reclaimWorktrees(repoRoot, store, keep, {lifecycle: manager.lifecycle}).catch(() => [] as string[]);
@@ -318,18 +318,18 @@ async function serveCommand(
 
   const port = await pickPort(preferredPort, bindHost);
   webhookPort = port;
-  // SECURITY: cezar executes agents. A non-loopback bind exposes that box to
-  // whatever can reach the interface, and cezar itself has NO auth — it is only
+  // SECURITY: onni executes agents. A non-loopback bind exposes that box to
+  // whatever can reach the interface, and onni itself has NO auth — it is only
   // for a deliberate hosted setup where a reverse proxy in front provides TLS +
   // auth (see `server-install --external-proxy`). Say so, loudly, every start.
   if (bindHost && !['127.0.0.1', 'localhost', '::1'].includes(bindHost)) {
     console.log(
-      `\n  ⚠ binding ${bindHost}:${port} — cezar has no built-in auth.\n` +
+      `\n  ⚠ binding ${bindHost}:${port} — onni has no built-in auth.\n` +
         `    Only do this behind a reverse proxy that enforces authentication,\n` +
         `    and make sure this interface is not reachable from the internet.\n`,
     );
   }
-  // Where a dispatched agent's `cez task` CLI reaches this cockpit (spec 2026-09-10-dispatch).
+  // Where a dispatched agent's `onni task` CLI reaches this cockpit (spec 2026-09-10-dispatch).
   // Set before the first run can start, read by every manager's `agentEnv` while dispatch is on.
   process.env.CEZ_API_URL = apiOrigin(bindHost, port);
   process.env.CEZ_BIN = resolve(process.argv[1] ?? fileURLToPath(import.meta.url));
@@ -349,7 +349,7 @@ async function serveCommand(
   httpServer.once('listening', () => manager.lifecycle.start());
   const url = `http://localhost:${port}`;
 
-  console.log(`\n  cezar v${version} — ${repoRoot}`);
+  console.log(`\n  onni v${version} — ${repoRoot}`);
   console.log(`  ${repo ? `branch ${repo.branch}` : 'not a git repository (tasks run in place, one at a time; repo view is empty)'}`);
   for (const check of checks) {
     const mark = check.available ? '✓' : '✗';
@@ -428,7 +428,7 @@ async function runCommand(
   model: string | undefined,
 ): Promise<void> {
   if (!task) {
-    console.error('usage: cezar run "<task>" [--workflow name] [--model model]');
+    console.error('usage: onni run "<task>" [--workflow name] [--model model]');
     process.exitCode = 1;
     return;
   }
@@ -484,7 +484,7 @@ async function runCommand(
     if (shuttingDown) return;
     shuttingDown = true;
     void manager.lifecycle.shutdown().then(() => process.exit(exitCode)).catch((error: unknown) => {
-      console.error('cezar: lifecycle shutdown failed', error);
+      console.error('onni: lifecycle shutdown failed', error);
       process.exit(1);
     });
   };
@@ -535,9 +535,9 @@ async function runCommand(
   store.flush({ pretty: true });
   const record = store.getRun(run.id);
   if (final === 'review') {
-    console.log(`\n  changes ready for review on branch ${record?.branch ?? '?'} — inspect them in the cockpit: npx cezar`);
+    console.log(`\n  changes ready for review on branch ${record?.branch ?? '?'} — inspect them in the cockpit: npx onni`);
   }
-  console.log(`\nrun ${final} — ${record?.tokensUsed ?? 0} tokens — details in the cockpit: npx cezar`);
+  console.log(`\nrun ${final} — ${record?.tokensUsed ?? 0} tokens — details in the cockpit: npx onni`);
   await manager.lifecycle.shutdown();
   manager.dispose();
   process.off('SIGINT', interrupt);
@@ -607,7 +607,7 @@ async function serverCommand(
       const { createClackUi } = await import('./server-install/ui.ts');
       const answer = await createClackUi().text({
         message:
-          'This host already runs a cezar cockpit. Enter a NEW domain to host a second, independent instance — ' +
+          'This host already runs a onni cockpit. Enter a NEW domain to host a second, independent instance — ' +
           'or leave blank to manage/redeploy the existing one.',
         placeholder: 'shop.example.com',
       });
@@ -675,7 +675,7 @@ async function serverCommand(
     // Only an install decides proxy mode; deploy/uninstall read it back from
     // the recorded state. Preserve an omitted flag as `undefined`: a flag-less
     // resume must keep an external-proxy install external instead of flipping
-    // it back to cezar-managed nginx/SSL.
+    // it back to onni-managed nginx/SSL.
     ...(mode === 'install'
       ? { externalProxy: flags.externalProxy || undefined, bindHost: flags.bindHost }
       : {}),
@@ -693,12 +693,12 @@ async function serverCommand(
           ? await runDeploy(strategy, runOpts)
           : await runUninstall(strategy, runOpts);
     if (mode === 'install' && result.status === 'complete') {
-      console.log(`\n  cezar server-install (${label}) complete.`);
-      console.log(`  Redeploy a new version any time with: cezar server-deploy --platform ${chosen}${domainFlag}\n`);
+      console.log(`\n  onni server-install (${label}) complete.`);
+      console.log(`  Redeploy a new version any time with: onni server-deploy --platform ${chosen}${domainFlag}\n`);
     } else if (mode === 'deploy' && result.status === 'complete') {
-      console.log(`\n  cezar server-deploy (${label}) complete — the service was reloaded and verified.\n`);
+      console.log(`\n  onni server-deploy (${label}) complete — the service was reloaded and verified.\n`);
     } else if (mode === 'uninstall' && result.status === 'complete') {
-      console.log(`\n  cezar server-uninstall (${label}) complete — the changes it made were reversed.\n`);
+      console.log(`\n  onni server-uninstall (${label}) complete — the changes it made were reversed.\n`);
     }
     // complete + cancelled (resumable) exit 0; failed exits 1.
     process.exitCode = result.status === 'failed' ? 1 : 0;
@@ -711,8 +711,8 @@ async function serverCommand(
 // ---- init --------------------------------------------------------------------
 
 function initCommand(repoRoot: string): void {
-  const workflowsDir = join(repoRoot, '.ai/cezar', 'workflows');
-  const skillsDir = join(repoRoot, '.ai/cezar', 'skills');
+  const workflowsDir = join(repoRoot, '.ai/onni', 'workflows');
+  const skillsDir = join(repoRoot, '.ai/onni', 'skills');
   mkdirSync(workflowsDir, { recursive: true });
   mkdirSync(skillsDir, { recursive: true });
 
@@ -757,13 +757,13 @@ description: House rules the agent should follow in this repo.
     }
   }
   ensureDataGitignore(repoRoot);
-  console.log('\nDone. Start the cockpit with: npx cezar');
+  console.log('\nDone. Start the cockpit with: npx onni');
 }
 
 // ---- helpers -----------------------------------------------------------------
 
 function openStore(repoRoot: string, opts?: { keepLive?: boolean }): RunStore {
-  const dataDir = join(repoRoot, '.ai/cezar');
+  const dataDir = join(repoRoot, '.ai/onni');
   const store = RunStore.open(dataDir, opts);
   // Repo-scope the referenced tier (#945) — see `armRepoHandle`. Background, never awaited: a
   // `gh`-less or offline machine keeps working exactly as it did, just unscoped.

@@ -5,14 +5,14 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { AgentBrowser, cezarCli, fixtureServeEnv, stopFixtureServer } from './agent-browser'
+import { AgentBrowser, onniCli, fixtureServeEnv, stopFixtureServer } from './agent-browser'
 
 /**
  * In-task drafts (#939) end-to-end: the exact loop the feature exists for — type a reply to one
  * task, glance at another, come back, and find the message still there.
  *
- * Against a real `cezar` (CEZ_DRY_RUN=1) on a real tmp repo, so the round trip goes through the
- * real routes and the real files under `.ai/cezar/drafts/`. Two runs, because the bug this fixes
+ * Against a real `onni` (CEZ_DRY_RUN=1) on a real tmp repo, so the round trip goes through the
+ * real routes and the real files under `.ai/onni/drafts/`. Two runs, because the bug this fixes
  * only appears when there is somewhere else to go.
  */
 
@@ -40,7 +40,7 @@ async function waitForHealth(url: string): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: the drafts server never answered at ${url}`)
+  throw new Error(`onni e2e: the drafts server never answered at ${url}`)
 }
 
 async function waitForStatus(url: string, id: string, wanted: string[]): Promise<void> {
@@ -49,7 +49,7 @@ async function waitForStatus(url: string, id: string, wanted: string[]): Promise
     if (wanted.includes(record.status)) return
     await new Promise((r) => setTimeout(r, 500))
   }
-  throw new Error(`cezar e2e: run ${id} never reached "${wanted.join('/')}"`)
+  throw new Error(`onni e2e: run ${id} never reached "${wanted.join('/')}"`)
 }
 
 async function startRun(url: string, task: string): Promise<string> {
@@ -73,7 +73,7 @@ async function waitForDraft(url: string, id: string, expected: string): Promise<
     if (body.surfaces?.composer?.text === expected) return
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: run ${id} never stored the composer draft`)
+  throw new Error(`onni e2e: run ${id} never stored the composer draft`)
 }
 
 /** The mirror image: the clear is an optimistic empty PUT, so wait for the SERVER to drop it. */
@@ -85,7 +85,7 @@ async function waitForNoDraft(url: string, id: string): Promise<void> {
     if (body.surfaces?.composer === undefined) return
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: run ${id} never dropped the composer draft after the send`)
+  throw new Error(`onni e2e: run ${id} never dropped the composer draft after the send`)
 }
 
 const DRAFT = 'Actually — check the retry path before you touch the parser.'
@@ -100,11 +100,11 @@ let taskB: string
 const composer = '[data-slot="composer"] textarea'
 
 beforeAll(async () => {
-  dataRoot = mkdtempSync(join(tmpdir(), 'cezar-e2e-drafts-'))
+  dataRoot = mkdtempSync(join(tmpdir(), 'onni-e2e-drafts-'))
   const git = (...args: string[]) => execFileSync('git', ['-C', dataRoot, ...args])
   git('init', '-q', '-b', 'main')
-  git('config', 'user.email', 'e2e@cezar.test')
-  git('config', 'user.name', 'cezar e2e')
+  git('config', 'user.email', 'e2e@onni.test')
+  git('config', 'user.name', 'onni e2e')
   writeFileSync(join(dataRoot, 'README.md'), '# drafts e2e fixture repo\n', 'utf8')
   git('add', '.')
   git('commit', '-qm', 'init')
@@ -113,7 +113,7 @@ beforeAll(async () => {
   baseUrl = `http://localhost:${port}`
   server = spawn(
     process.execPath,
-    [cezarCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
+    [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
     { env: fixtureServeEnv(dataRoot), stdio: 'ignore' },
   )
   await waitForHealth(baseUrl)

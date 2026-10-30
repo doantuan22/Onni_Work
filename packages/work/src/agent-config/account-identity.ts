@@ -51,10 +51,10 @@ const UNREADABLE = 'Could not read this account’s details.';
 
 /** Unsupported providers must each explain their own limitation; a new provider must add a row. */
 const UNSUPPORTED_IDENTITY_REASON: Record<Exclude<ProviderId, 'claude' | 'codex' | 'cursor'>, string> = {
-  opencode: 'OpenCode keeps its login outside its config folder, so cezar cannot read it.',
-  pi: 'cezar does not yet read Pi account details from its config folder.',
-  junie: 'cezar does not yet read Junie account details from its config folder.',
-  copilot: 'cezar does not yet read Copilot account details from its config folder.',
+  opencode: 'OpenCode keeps its login outside its config folder, so onni cannot read it.',
+  pi: 'onni does not yet read Pi account details from its config folder.',
+  junie: 'onni does not yet read Junie account details from its config folder.',
+  copilot: 'onni does not yet read Copilot account details from its config folder.',
 };
 
 /** Read a JSON file under the cap. `null` for absent, unreadable, oversized or malformed. */
@@ -115,7 +115,7 @@ async function readClaudeIdentity(configDir: string): Promise<AccountIdentity> {
  * `refresh_token`, none of which this function so much as names.
  *
  * The signature is NOT verified, and that is correct here: this is a local file the user's own CLI
- * wrote, read to display who they are — not a token cezar is accepting as proof of anything.
+ * wrote, read to display who they are — not a token onni is accepting as proof of anything.
  */
 async function readCodexIdentity(configDir: string): Promise<AccountIdentity> {
   const auth = await readJsonCapped(join(configDir, 'auth.json'));

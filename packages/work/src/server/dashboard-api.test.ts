@@ -24,7 +24,7 @@ const stores: RunStore[] = [];
 const cleanups: Array<() => void> = [];
 const savedHome = process.env.CEZ_HOME;
 beforeEach(() => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-dashboard-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-dashboard-home-'));
   dirs.push(home);
   process.env.CEZ_HOME = home;
 });
@@ -38,11 +38,11 @@ afterEach(() => {
 });
 describe('dashboard workspace routes', () => {
   it('reads cold project automations without opening contexts or changing persisted state', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-dashboard-auto-boot-'));
-    const cold = mkdtempSync(join(tmpdir(), 'cez-dashboard-auto-cold-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-dashboard-auto-boot-'));
+    const cold = mkdtempSync(join(tmpdir(), 'onni-dashboard-auto-cold-'));
     dirs.push(root, cold);
     const project = await registerProject(cold);
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     stores.push(store);
     const contexts = new ProjectContexts({ listProjects });
     cleanups.push(() => contexts.disposeAll());
@@ -55,7 +55,7 @@ describe('dashboard workspace routes', () => {
     expect(empty.status).toBe(200);
     expect(await empty.json()).toMatchObject({ automations: [], timeZone: expect.any(String) });
     expect(existsSync(join(cold, '.ai'))).toBe(false);
-    mkdirSync(join(cold, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(cold, '.ai/onni'), { recursive: true });
     const definition = { id: 'poll', name: 'Poll', revision: 1, enabled: true,
       kind: 'github', events: ['issue.opened'], task: { prompt: 'private prompt' },
       createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z' };
@@ -69,8 +69,8 @@ describe('dashboard workspace routes', () => {
     }, schedule: { nextRunAt: '2026-09-25T12:00:00Z', nextCheckAt: '2026-09-25T13:00:00Z' },
       paused: { nextCheckAt: '2026-09-25T14:00:00Z' },
     } });
-    const path = join(cold, '.ai/cezar/automations.json');
-    const statePath = join(cold, '.ai/cezar/automation-state.json');
+    const path = join(cold, '.ai/onni/automations.json');
+    const statePath = join(cold, '.ai/onni/automation-state.json');
     writeFileSync(path, definitions);
     writeFileSync(statePath, state);
     const data = await (await get()).json();
@@ -89,10 +89,10 @@ describe('dashboard workspace routes', () => {
     // Read-only files/directories remain readable; viewing does not need write permission.
     chmodSync(path, 0o444);
     chmodSync(statePath, 0o444);
-    chmodSync(join(cold, '.ai/cezar'), 0o555);
+    chmodSync(join(cold, '.ai/onni'), 0o555);
     try { expect((await get()).status).toBe(200); }
     finally {
-      chmodSync(join(cold, '.ai/cezar'), 0o755);
+      chmodSync(join(cold, '.ai/onni'), 0o755);
       chmodSync(path, 0o644);
       chmodSync(statePath, 0o644);
     }
@@ -128,9 +128,9 @@ describe('dashboard workspace routes', () => {
   });
 
   it('serves validated overview drilldowns without exposing usage fields', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-dashboard-overview-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-dashboard-overview-'));
     dirs.push(root);
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     stores.push(store);
     const run = store.createRun({
       title: 'Completed outcome',
@@ -173,9 +173,9 @@ describe('dashboard workspace routes', () => {
   });
 
   it('applies independent runtime usage settings to fresh and cached cost responses', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-dashboard-cost-policy-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-dashboard-cost-policy-'));
     dirs.push(root);
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     stores.push(store);
     const run = store.createRun({
       title: 'Reported usage',
@@ -238,9 +238,9 @@ describe('dashboard workspace routes', () => {
   it.each([false, true])(
     'includes unregistered boot tasks, results and telemetry (other project registered: %s)',
     async (otherRegistered) => {
-      const root = mkdtempSync(join(tmpdir(), 'cez-dashboard-unregistered-'));
+      const root = mkdtempSync(join(tmpdir(), 'onni-dashboard-unregistered-'));
       dirs.push(root);
-      const store = RunStore.open(join(root, '.ai/cezar'));
+      const store = RunStore.open(join(root, '.ai/onni'));
       stores.push(store);
       const question = store.createRun({
         title: 'Boot question',
@@ -269,7 +269,7 @@ describe('dashboard workspace routes', () => {
       );
       let otherId: string | undefined;
       if (otherRegistered) {
-        const other = mkdtempSync(join(tmpdir(), 'cez-dashboard-registered-'));
+        const other = mkdtempSync(join(tmpdir(), 'onni-dashboard-registered-'));
         dirs.push(other);
         otherId = (await registerProject(other)).id;
       }
@@ -345,16 +345,16 @@ describe('dashboard workspace routes', () => {
     },
   );
   it('reads cold projects without opening contexts and restricts aggregation in single-project mode', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-dashboard-boot-'));
-    const cold = mkdtempSync(join(tmpdir(), 'cez-dashboard-cold-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-dashboard-boot-'));
+    const cold = mkdtempSync(join(tmpdir(), 'onni-dashboard-cold-'));
     dirs.push(root, cold);
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     stores.push(store);
     const boot = await registerProject(root);
     const other = await registerProject(cold);
-    mkdirSync(join(cold, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(cold, '.ai/onni'), { recursive: true });
     writeFileSync(
-      join(cold, '.ai/cezar/runs.json'),
+      join(cold, '.ai/onni/runs.json'),
       JSON.stringify([
         {
           id: 'cold-review',
@@ -406,9 +406,9 @@ describe('dashboard workspace routes', () => {
     }
   });
   it('chains real routes, validates paging, and returns exactly contract JSON', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-dashboard-api-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-dashboard-api-'));
     dirs.push(root);
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     stores.push(store);
     await registerProject(root);
     const run = store.createRun({ title: 'Question', task: 't', workflow: 'build', steps: [] });

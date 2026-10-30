@@ -22,8 +22,8 @@ import { FolderBrowser, useBrowseTarget } from '@/components/folder-browser'
  * navigates to the new project's scope. The browsing itself — and the three API shapes it is
  * faithful to — lives in `components/folder-browser.tsx`, shared with "Add agent account".
  *
- * A non-git folder is selectable: `isRepo` only earns a badge, because cezar degrades in a
- * non-git folder exactly as `cezar serve` does today, so gating selection on it would invent a
+ * A non-git folder is selectable: `isRepo` only earns a badge, because onni degrades in a
+ * non-git folder exactly as `onni serve` does today, so gating selection on it would invent a
  * restriction the server does not have.
  *
  * The register errors (a home directory, hosted-mode narrowing) are shown VERBATIM: the server
@@ -86,7 +86,7 @@ export function AddProjectDialog({
         <DialogHeader>
           <DialogTitle>Open local folder</DialogTitle>
           <DialogDescription>
-            Pick the folder cezar should run in. Git repos are marked; any folder works.
+            Pick the folder onni should run in. Git repos are marked; any folder works.
           </DialogDescription>
         </DialogHeader>
 

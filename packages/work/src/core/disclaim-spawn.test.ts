@@ -4,14 +4,14 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { DISCLAIM_EXEC_FLAG, disclaimedCommand } from './disclaim-spawn.ts';
 
-const dir = mkdtempSync(join(tmpdir(), 'cez-disclaim-'));
+const dir = mkdtempSync(join(tmpdir(), 'onni-disclaim-'));
 const exe = (name: string, body: string | Buffer = '#!/bin/sh\n') => {
   const path = join(dir, name);
   writeFileSync(path, body);
   chmodSync(path, 0o755);
   return path;
 };
-const trampoline = exe('Cezar');
+const trampoline = exe('Onni');
 const claude = exe('claude');
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 

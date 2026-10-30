@@ -168,7 +168,7 @@ import { parseProviderStatusResponse } from '@/lib/provider-status'
 import {
   API_PREFIX,
   apiPath,
-  createCezarClient,
+  createOnniClient,
   getApiBaseUrl,
   getApiScope,
   queryScope,
@@ -198,7 +198,7 @@ import { uuidv7 } from '@/lib/sid'
  * carrying the server's own words, and does nothing else: no caching, no retries, no
  * reconnect. Freshness is SSE's job and TanStack Query's (queries.ts, and Step 3.2's reconcile).
  *
- * Every call goes through the typed client (`cez`/`unwrap` below), which checks the route against
+ * Every call goes through the typed client (`onni`/`unwrap` below), which checks the route against
  * the server's own handlers. Three functions keep their own `fetch` for a reason `hc` cannot
  * express, and each says which in its own comment: `registerProject` (a 409 is a SUCCESS for the
  * add-project flow), `requestText` (the routes that answer `text/plain`), and `runFileRawUrl`
@@ -296,7 +296,7 @@ function errorFor(status: number, statusText: string, body: string): ApiError {
  * `Record<string, unknown>`) infers a weaker response than the DTO it replaces, so those wait
  * until the server tightens its own return types.
  */
-export const cez = createCezarClient<AppType>({
+export const onni = createOnniClient<AppType>({
   // The base URL is resolved per request, not baked in at construction: this module is imported
   // before `main.tsx` configures it, and a `<meta>`-configured deployment must still take
   // effect. `hc` builds a root-relative URL, so prefixing here is the whole job.
@@ -367,7 +367,7 @@ async function readBody(res: { text(): Promise<string>; url: string }): Promise<
     return await res.text()
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
-    throw new ApiError(0, `cannot reach the cezar server (${res.url})`, { cause })
+    throw new ApiError(0, `cannot reach the onni server (${res.url})`, { cause })
   }
 }
 
@@ -379,7 +379,7 @@ export async function unwrap<R extends ClientResponse<unknown, number, ResponseF
   if (!res.ok) throw errorFor(res.status, res.statusText, body)
   const parsed = parseJson(body)
   if (parsed === undefined) {
-    throw new ApiError(res.status, `the cezar server answered ${label} with a non-JSON body`)
+    throw new ApiError(res.status, `the onni server answered ${label} with a non-JSON body`)
   }
   return parsed as OkJson<R>
 }
@@ -418,7 +418,7 @@ async function unwrapValidated<R extends ClientResponse<unknown, number, Respons
   const parsed = await unwrap(res, label)
   const result = schema.safeParse(parsed)
   if (!result.success) {
-    throw new ApiError(status, `the cezar server answered ${label} with an unexpected body`)
+    throw new ApiError(status, `the onni server answered ${label} with an unexpected body`)
   }
   return result.data
 }
@@ -442,7 +442,7 @@ async function fetchOrThrow(url: string, init?: RequestInit): Promise<Response> 
     return await fetch(url, { ...init, credentials: 'include' })
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
-    throw new ApiError(0, `cannot reach the cezar server (${url})`, { cause })
+    throw new ApiError(0, `cannot reach the onni server (${url})`, { cause })
   }
 }
 
@@ -476,7 +476,7 @@ const runPath = (id: string, suffix = ''): string => `/runs/${encodeURIComponent
 
 /** Version, update check, repo/branch, and the tool probes behind the Tools menu. */
 export async function getHealth(opts?: ReadOptions): Promise<HealthResponse> {
-  return unwrap(await cez.api.v1.health.$get({}, init(opts)), '/health')
+  return unwrap(await onni.api.v1.health.$get({}, init(opts)), '/health')
 }
 
 /**
@@ -485,7 +485,7 @@ export async function getHealth(opts?: ReadOptions): Promise<HealthResponse> {
  * still alive. Workspace-level — the dev server belongs to the machine, not to the project.
  */
 export async function openDesignProxy(input: DesignProxyRequest): Promise<DesignProxyResponse> {
-  return unwrap(await cez.api.v1.preview['design-proxy'].$post({ json: input }), '/preview/design-proxy')
+  return unwrap(await onni.api.v1.preview['design-proxy'].$post({ json: input }), '/preview/design-proxy')
 }
 
 /** Host-local catalog for one discovery runner (`claude`, `codex`, `opencode`, `cursor` — #794, #784).
@@ -494,7 +494,7 @@ export async function getRunnerModels(
   runner: ModelDiscoveryRunner,
   opts?: ReadOptions,
 ): Promise<RunnerModelCatalogResponse> {
-  return unwrap(await cez.api.v1.models.$get({ query: { runner } }, init(opts)), '/models')
+  return unwrap(await onni.api.v1.models.$get({ query: { runner } }, init(opts)), '/models')
 }
 
 /** Host-local authentication state shared by every project. */
@@ -504,7 +504,7 @@ export async function getProviderStatus(
 ): Promise<ProviderStatusResponse> {
   return parseProviderStatusResponse(
     await unwrap(
-      await cez.api.v1.providers.status.$get(
+      await onni.api.v1.providers.status.$get(
         { query: refresh ? { refresh: '1' } : {} },
         init(opts),
       ),
@@ -517,7 +517,7 @@ export async function getProviderStatus(
  *  never rendered, never logged, never put back into a URL. */
 export async function getLaunchKey(opts?: ReadOptions): Promise<LaunchKeyResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['launch-key'].$get(
+    await onni.api.v1.p[':projectId']['launch-key'].$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -532,7 +532,7 @@ export async function getLaunchKey(opts?: ReadOptions): Promise<LaunchKeyRespons
  *  server's handler, and `ProjectsResponse` here is an assertion that the inferred type still
  *  matches the DTO rather than the source of it. */
 export async function getProjects(opts?: ReadOptions): Promise<ProjectsResponse> {
-  return unwrap(await cez.api.v1.projects.$get({}, init(opts)), '/projects')
+  return unwrap(await onni.api.v1.projects.$get({}, init(opts)), '/projects')
 }
 
 /** One directory listing for the folder picker (`GET /api/fs/browse`, step 4.1). `path`
@@ -551,7 +551,7 @@ export async function browseFs(
     // "no path" (the configured browse root) from an empty one only by `?? ''`, but `hc` drops
     // an `undefined` value entirely, which keeps the URL the one this call always sent. Same
     // reason `showHidden` is omitted rather than sent as `0`.
-    await cez.api.v1.fs.browse.$get(
+    await onni.api.v1.fs.browse.$get(
       {
         query: {
           path: path === '' ? undefined : path,
@@ -567,7 +567,7 @@ export async function browseFs(
 /** The authoritative run list — sorted newest-first by the server. */
 export async function getRuns(opts?: ReadOptions): Promise<ApiRun[]> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs.$get({ param: { projectId: queryScope() }, query: {} }, init(opts)),
+    await onni.api.v1.p[':projectId'].runs.$get({ param: { projectId: queryScope() }, query: {} }, init(opts)),
     '/runs',
   )
 }
@@ -577,19 +577,19 @@ export async function getRuns(opts?: ReadOptions): Promise<ApiRun[]> {
  *  already-`/api/p/`-prefixed path passes through `apiPath` untouched, so this stays
  *  correct whatever scope is mounted. */
 export async function getProjectRuns(projectId: string, opts?: ReadOptions): Promise<ApiRun[]> {
-  return unwrap(await cez.api.v1.p[':projectId'].runs.$get({ param: { projectId }, query: {} }, init(opts)), '/runs')
+  return unwrap(await onni.api.v1.p[':projectId'].runs.$get({ param: { projectId }, query: {} }, init(opts)), '/runs')
 }
 
 /** The cross-project task index (`GET /api/v1/workspace/runs-index`) — what lets ⌘K find a task
  *  without knowing which project it lives in. Workspace-level like the registry, so it has no
  *  project-scoped spelling and never takes `queryScope()`. */
 export async function getRunsIndex(opts?: ReadOptions): Promise<RunsIndexResponse> {
-  return unwrap(await cez.api.v1.workspace['runs-index'].$get({}, init(opts)), '/workspace/runs-index')
+  return unwrap(await onni.api.v1.workspace['runs-index'].$get({}, init(opts)), '/workspace/runs-index')
 }
 
 export async function getRun(id: string, opts?: ReadOptions): Promise<ApiRun> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -607,7 +607,7 @@ export async function getRun(id: string, opts?: ReadOptions): Promise<ApiRun> {
  */
 export async function getProjectRun(projectId: string, id: string, opts?: ReadOptions): Promise<ApiRun> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].$get(
       { param: { projectId, id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -623,7 +623,7 @@ export async function getRunHistory(
   opts?: ReadOptions,
 ): Promise<RunHistoryPage> {
   return unwrapValidated(
-    await cez.api.v1.p[':projectId'].runs[':id'].history.$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].history.$get(
       {
         param: { projectId: queryScope(), id: encodeURIComponent(id) },
         query: { ...(cursor !== undefined ? { cursor } : {}) },
@@ -638,7 +638,7 @@ export async function getRunHistory(
 /** The compact current-state context for a run. Validated for the same reason as the page above. */
 export async function getRunHistoryContext(id: string, opts?: ReadOptions): Promise<RunHistoryContext> {
   return unwrapValidated(
-    await cez.api.v1.p[':projectId'].runs[':id']['history-context'].$get(
+    await onni.api.v1.p[':projectId'].runs[':id']['history-context'].$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -649,7 +649,7 @@ export async function getRunHistoryContext(id: string, opts?: ReadOptions): Prom
 
 export async function getUiState(opts?: ReadOptions): Promise<UiState> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['ui-state'].$get(
+    await onni.api.v1.p[':projectId']['ui-state'].$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -659,7 +659,7 @@ export async function getUiState(opts?: ReadOptions): Promise<UiState> {
 
 export async function getWorkflows(opts?: ReadOptions): Promise<WorkflowsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].workflows.$get(
+    await onni.api.v1.p[':projectId'].workflows.$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -669,7 +669,7 @@ export async function getWorkflows(opts?: ReadOptions): Promise<WorkflowsRespons
 
 export async function getSkills(opts?: ReadOptions): Promise<Skill[]> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].skills.$get(
+    await onni.api.v1.p[':projectId'].skills.$get(
       // `query` is required once the route declares one, even when every key in it is optional
       // — `hc` drops the empty search string, so the URL is the one this call always sent.
       { param: { projectId: queryScope() }, query: {} },
@@ -683,7 +683,7 @@ export async function getSkills(opts?: ReadOptions): Promise<Skill[]> {
  * read has rendered, so a cold clone never delays opening a skill picker. */
 export async function getSkillsWhenReady(opts?: ReadOptions): Promise<Skill[]> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].skills.$get(
+    await onni.api.v1.p[':projectId'].skills.$get(
       { param: { projectId: queryScope() }, query: { wait: '1' } },
       init(opts),
     ),
@@ -695,7 +695,7 @@ export async function getSkillsWhenReady(opts?: ReadOptions): Promise<Skill[]> {
  *  the merged catalog — the Settings → Skills "Refresh" button. */
 export async function refreshSkills(): Promise<Skill[]> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].skills.refresh.$post({ param: { projectId: queryScope() } }),
+    await onni.api.v1.p[':projectId'].skills.refresh.$post({ param: { projectId: queryScope() } }),
     '/skills/refresh',
   )
 }
@@ -704,7 +704,7 @@ export async function refreshSkills(): Promise<Skill[]> {
  *  regardless of enabled state. Empty once a repo configures its own `skillsRepos`. */
 export async function getImportableSkills(opts?: ReadOptions): Promise<ImportableSkill[]> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].skills.importable.$get(
+    await onni.api.v1.p[':projectId'].skills.importable.$get(
       { param: { projectId: queryScope() }, query: {} },
       init(opts),
     ),
@@ -716,7 +716,7 @@ export async function getImportableSkills(opts?: ReadOptions): Promise<Importabl
  *  the same cold-cache convergence as `getSkillsWhenReady`, off the panel's first render. */
 export async function getImportableSkillsWhenReady(opts?: ReadOptions): Promise<ImportableSkill[]> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].skills.importable.$get(
+    await onni.api.v1.p[':projectId'].skills.importable.$get(
       { param: { projectId: queryScope() }, query: { wait: '1' } },
       init(opts),
     ),
@@ -726,14 +726,14 @@ export async function getImportableSkillsWhenReady(opts?: ReadOptions): Promise<
 
 export async function getTodos(opts?: ReadOptions): Promise<TodoItem[]> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].todos.$get({ param: { projectId: queryScope() } }, init(opts)),
+    await onni.api.v1.p[':projectId'].todos.$get({ param: { projectId: queryScope() } }, init(opts)),
     '/todos',
   )
 }
 
 export async function getRepo(opts?: ReadOptions): Promise<RepoResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].repo.$get({ param: { projectId: queryScope() } }, init(opts)),
+    await onni.api.v1.p[':projectId'].repo.$get({ param: { projectId: queryScope() } }, init(opts)),
     '/repo',
   )
 }
@@ -741,7 +741,7 @@ export async function getRepo(opts?: ReadOptions): Promise<RepoResponse> {
 /** The Settings → Agents knobs in one read (`GET /api/config`, additive R6 route). */
 export async function getConfig(opts?: ReadOptions): Promise<ConfigResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].config.$get({ param: { projectId: queryScope() } }, init(opts)),
+    await onni.api.v1.p[':projectId'].config.$get({ param: { projectId: queryScope() } }, init(opts)),
     '/config',
   )
 }
@@ -749,7 +749,7 @@ export async function getConfig(opts?: ReadOptions): Promise<ConfigResponse> {
 /** The selected project's agent-owned config catalog and current file state. */
 export async function getAgentConfig(opts: ReadOptions = {}): Promise<AgentConfigListing> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['agent-config'].$get(
+    await onni.api.v1.p[':projectId']['agent-config'].$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -763,7 +763,7 @@ export async function getAgentConfigFile(
   opts: ReadOptions = {},
 ): Promise<AgentConfigFileContent> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['agent-config'][':id'].$get(
+    await onni.api.v1.p[':projectId']['agent-config'][':id'].$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -777,7 +777,7 @@ export async function putAgentConfigFile(
   body: SetAgentConfigInput,
 ): Promise<AgentConfigFileContent> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['agent-config'][':id'].$put({
+    await onni.api.v1.p[':projectId']['agent-config'][':id'].$put({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: body,
     }),
@@ -789,7 +789,7 @@ export async function putAgentConfigFile(
  *  ApiError with the reason) when the server runs outside a git repository. */
 export async function getRepoChanges(opts?: ReadOptions): Promise<ChangesPayload> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].repo.changes.$get(
+    await onni.api.v1.p[':projectId'].repo.changes.$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -803,7 +803,7 @@ export async function getRepoChanges(opts?: ReadOptions): Promise<ChangesPayload
  *  cost nothing. 409 (as an ApiError) outside a git repository. */
 export async function getRepoTree(opts?: ReadOptions): Promise<RepoTree> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].repo.tree.$get({ param: { projectId: queryScope() } }, init(opts)),
+    await onni.api.v1.p[':projectId'].repo.tree.$get({ param: { projectId: queryScope() } }, init(opts)),
     '/repo/tree',
   )
 }
@@ -813,7 +813,7 @@ export async function getRepoTree(opts?: ReadOptions): Promise<RepoTree> {
  *  safe to point at the real checkout. Always the `file` member: every indexed path is a file. */
 export async function getRepoFile(path: string, opts?: ReadOptions): Promise<WorktreeEntry> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].repo.files.$get(
+    await onni.api.v1.p[':projectId'].repo.files.$get(
       { param: { projectId: queryScope() }, query: { path } },
       init(opts),
     ),
@@ -837,7 +837,7 @@ export function repoFileRawUrl(path: string): string {
  *  accepting a route that has no JSON branch at all. */
 export async function getRepoCommit(sha: string, opts?: ReadOptions): Promise<RepoCommitPayload> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].repo.commit[':sha'].$get(
+    await onni.api.v1.p[':projectId'].repo.commit[':sha'].$get(
       { param: { projectId: queryScope(), sha: encodeURIComponent(sha) }, query: { structured: '1' } },
       init(opts),
     ),
@@ -849,7 +849,7 @@ export async function getRepoCommit(sha: string, opts?: ReadOptions): Promise<Re
  *  `#` file search. 409 when the run has no working directory. */
 export async function getRunTree(id: string, opts?: ReadOptions): Promise<RepoTree> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].tree.$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].tree.$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -860,7 +860,7 @@ export async function getRunTree(id: string, opts?: ReadOptions): Promise<RepoTr
 /** A run's own commits (`<base>..HEAD`, newest first) for the task's Commits tab. */
 export async function getRunCommits(id: string, opts?: ReadOptions): Promise<RunCommitsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].commits.$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].commits.$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -875,7 +875,7 @@ export async function getRunCommit(
   opts?: ReadOptions,
 ): Promise<RepoCommitPayload> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].commit[':sha'].$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].commit[':sha'].$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id), sha: encodeURIComponent(sha) } },
       init(opts),
     ),
@@ -890,7 +890,7 @@ export async function getGithub(
   opts?: ReadOptions,
 ): Promise<GithubData> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github.$get(
+    await onni.api.v1.p[':projectId'].github.$get(
       {
         param: { projectId: queryScope() },
         // `refresh: false` sends nothing at all — the server tests `=== '1'`, and a parameter we
@@ -911,65 +911,65 @@ export async function getGithub(
 // ---- read-only issue trackers --------------------------------------------------------------
 
 export async function getTrackerAutomationOptions(query: { search?: string; cursor?: string } = {}, opts?: ReadOptions): Promise<TrackerAutomationOptions> {
-  return unwrap(await cez.api.v1.p[':projectId'].tracker['automation-options'].$get(
+  return unwrap(await onni.api.v1.p[':projectId'].tracker['automation-options'].$get(
     { param: { projectId: queryScope() }, query }, init(opts)), '/tracker/automation-options')
 }
 
 export async function getTrackerConnection(opts?: ReadOptions): Promise<TrackerConnectionResponse> {
-  return unwrap(await cez.api.v1.p[':projectId'].tracker.connection.$get(
+  return unwrap(await onni.api.v1.p[':projectId'].tracker.connection.$get(
     { param: { projectId: queryScope() } }, init(opts)), '/tracker/connection')
 }
 export async function saveTrackerConnection(input: TrackerCredentials): Promise<TrackerConnectionResponse> {
-  return unwrap(await cez.api.v1.p[':projectId'].tracker.connection.$put(
+  return unwrap(await onni.api.v1.p[':projectId'].tracker.connection.$put(
     { param: { projectId: queryScope() }, json: input }), '/tracker/connection')
 }
 export async function removeTrackerConnection(): Promise<TrackerClearedResponse> {
-  return unwrap(await cez.api.v1.p[':projectId'].tracker.connection.$delete(
+  return unwrap(await onni.api.v1.p[':projectId'].tracker.connection.$delete(
     { param: { projectId: queryScope() } }), '/tracker/connection')
 }
 
 // ---- project and workspace secrets (metadata only; a value goes in once and never comes back) ----
 
 export async function getProjectSecrets(opts?: ReadOptions): Promise<SecretsList> {
-  return unwrap(await cez.api.v1.p[':projectId'].secrets.$get(
+  return unwrap(await onni.api.v1.p[':projectId'].secrets.$get(
     { param: { projectId: queryScope() } }, init(opts)), '/secrets')
 }
 export async function getWorkspaceSecrets(opts?: ReadOptions): Promise<SecretsList> {
-  return unwrap(await cez.api.v1.workspace.secrets.$get({}, init(opts)), '/workspace/secrets')
+  return unwrap(await onni.api.v1.workspace.secrets.$get({}, init(opts)), '/workspace/secrets')
 }
 /** Every write answers 204, which has no body for `unwrap` to parse — only the status matters. */
 async function expectNoContent(res: Response): Promise<void> {
   if (!res.ok) throw errorFor(res.status, res.statusText, await readBody(res))
 }
 export async function saveProjectSecret(name: string, input: SecretValueInput): Promise<void> {
-  await expectNoContent(await cez.api.v1.p[':projectId'].secrets[':name'].$put(
+  await expectNoContent(await onni.api.v1.p[':projectId'].secrets[':name'].$put(
     { param: { projectId: queryScope(), name }, json: input }))
 }
 export async function removeProjectSecret(name: string): Promise<void> {
-  await expectNoContent(await cez.api.v1.p[':projectId'].secrets[':name'].$delete(
+  await expectNoContent(await onni.api.v1.p[':projectId'].secrets[':name'].$delete(
     { param: { projectId: queryScope(), name } }))
 }
 export async function saveWorkspaceSecret(name: string, input: SecretValueInput): Promise<void> {
-  await expectNoContent(await cez.api.v1.workspace.secrets[':name'].$put({ param: { name }, json: input }))
+  await expectNoContent(await onni.api.v1.workspace.secrets[':name'].$put({ param: { name }, json: input }))
 }
 export async function removeWorkspaceSecret(name: string): Promise<void> {
-  await expectNoContent(await cez.api.v1.workspace.secrets[':name'].$delete({ param: { name } }))
+  await expectNoContent(await onni.api.v1.workspace.secrets[':name'].$delete({ param: { name } }))
 }
 
 // ---- one-click e2e setup (spec 2026-10-10-e2e-one-click-setup) ----
 
 export async function getE2eStatus(opts?: ReadOptions): Promise<E2eStatus> {
-  return unwrap(await cez.api.v1.p[':projectId'].e2e.$get(
+  return unwrap(await onni.api.v1.p[':projectId'].e2e.$get(
     { param: { projectId: queryScope() } }, init(opts)), '/e2e')
 }
 export async function startE2eSetup(input: E2eSetupInput): Promise<E2eSetupResponse> {
-  return unwrap(await cez.api.v1.p[':projectId'].e2e.setup.$post(
+  return unwrap(await onni.api.v1.p[':projectId'].e2e.setup.$post(
     { param: { projectId: queryScope() }, json: input }), '/e2e/setup')
 }
 
 export async function getTrackerAssociation(opts?: ReadOptions): Promise<TrackerAssociationResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].tracker.association.$get(
+    await onni.api.v1.p[':projectId'].tracker.association.$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -983,7 +983,7 @@ export async function getTrackerCandidates(
   opts?: ReadOptions,
 ): Promise<TrackerCandidatesResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].tracker.candidates.$get(
+    await onni.api.v1.p[':projectId'].tracker.candidates.$get(
       { param: { projectId: queryScope() }, query: { kind, q: params.q, cursor: params.cursor, limit: params.limit === undefined ? undefined : String(params.limit) } },
       init(opts),
     ),
@@ -995,7 +995,7 @@ export async function saveTrackerAssociation(
   input: TrackerAssociationInput,
 ): Promise<TrackerAssociationSavedResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].tracker.association.$put({
+    await onni.api.v1.p[':projectId'].tracker.association.$put({
       param: { projectId: queryScope() },
       json: input,
     }),
@@ -1005,7 +1005,7 @@ export async function saveTrackerAssociation(
 
 export async function clearTrackerAssociation(): Promise<TrackerClearedResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].tracker.association.$delete({
+    await onni.api.v1.p[':projectId'].tracker.association.$delete({
       param: { projectId: queryScope() },
     }),
     '/tracker/association',
@@ -1037,7 +1037,7 @@ export async function getTrackerItems(
   opts?: ReadOptions,
 ): Promise<TrackerItemsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].tracker.$get(
+    await onni.api.v1.p[':projectId'].tracker.$get(
       { param: { projectId: queryScope() }, query: trackerBrowseQuery(params) },
       init(opts),
     ),
@@ -1051,7 +1051,7 @@ export async function searchTrackerItems(
   opts?: ReadOptions,
 ): Promise<TrackerItemsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].tracker.search.$get(
+    await onni.api.v1.p[':projectId'].tracker.search.$get(
       { param: { projectId: queryScope() }, query: { ...trackerBrowseQuery(params), q } },
       init(opts),
     ),
@@ -1061,7 +1061,7 @@ export async function searchTrackerItems(
 
 export async function getTrackerItem(id: string, opts?: ReadOptions & { association?: TrackerAssociation }): Promise<TrackerItemResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].tracker[':id'].$get(
+    await onni.api.v1.p[':projectId'].tracker[':id'].$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) }, query: { expectedScope: opts?.association ? trackerReadScope(opts.association) : undefined } },
       init(opts),
     ),
@@ -1077,7 +1077,7 @@ export async function getGithubChecks(
   opts?: ReadOptions,
 ): Promise<GithubChecksData> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github.checks.$get(
+    await onni.api.v1.p[':projectId'].github.checks.$get(
       { param: { projectId: queryScope() }, query: { prs: prNumbers.join(',') } },
       init(opts),
     ),
@@ -1095,7 +1095,7 @@ export async function getGithubSearch(
   opts?: ReadOptions,
 ): Promise<GithubSearchData> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github.search.$get(
+    await onni.api.v1.p[':projectId'].github.search.$get(
       {
         param: { projectId: queryScope() },
         // The search route validates `limit` with `z.coerce.number()`, so the typed client's
@@ -1125,7 +1125,7 @@ export async function getGithubRefStatus(
   opts?: ReadOptions,
 ): Promise<GithubRefStatusData> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github['ref-status'].$get(
+    await onni.api.v1.p[':projectId'].github['ref-status'].$get(
       {
         param: { projectId },
         query: {
@@ -1150,7 +1150,7 @@ export async function getGithubComments(
   opts?: ReadOptions,
 ): Promise<GithubCommentsData> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github.comments[':kind'][':number'].$get(
+    await onni.api.v1.p[':projectId'].github.comments[':kind'][':number'].$get(
       {
         param: { projectId: queryScope(), kind, number: String(number) },
         // `refresh=1` is what busts the route's 60 s `commentsCache` (server.ts). Without it a
@@ -1170,7 +1170,7 @@ export async function getGithubPrMergeState(
   opts?: ReadOptions,
 ): Promise<GithubPrMergeStateResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github.prs[':number']['merge-state'].$get(
+    await onni.api.v1.p[':projectId'].github.prs[':number']['merge-state'].$get(
       {
         param: { projectId: queryScope(), number: String(number) },
         query: { refresh: params.refresh ? '1' : undefined },
@@ -1186,7 +1186,7 @@ export async function mergeGithubPr(
   input: { method: GithubMergeMethod; expectedHeadSha: string; overrideRules?: boolean },
 ): Promise<GithubMergeResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github.prs[':number'].merge.$post({
+    await onni.api.v1.p[':projectId'].github.prs[':number'].merge.$post({
       param: { projectId: queryScope(), number: String(number) },
       json: input,
     }),
@@ -1200,7 +1200,7 @@ export async function getGithubPrChanges(
   opts?: ReadOptions,
 ): Promise<GithubPrChangesData> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].github.prs[':number'].changes.$get(
+    await onni.api.v1.p[':projectId'].github.prs[':number'].changes.$get(
       {
         param: { projectId: queryScope(), number: String(number) },
         query: { refresh: params.refresh ? '1' : undefined },
@@ -1227,7 +1227,7 @@ export function getRunHandoff(id: string, opts?: ReadOptions): Promise<string> {
  *  aggregate stat. Worktree-off runs read the repo checkout they executed in. */
 export async function getRunChanges(id: string, opts?: ReadOptions): Promise<ChangesPayload> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].changes.$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].changes.$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -1239,7 +1239,7 @@ export async function getRunChanges(id: string, opts?: ReadOptions): Promise<Cha
  *  a directory listing, or a file with content unless binary/too large. */
 export async function getRunFile(id: string, path: string, opts?: ReadOptions): Promise<WorktreeEntry> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].files.$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].files.$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) }, query: { path } },
       init(opts),
     ),
@@ -1259,7 +1259,7 @@ export function runFileRawUrl(id: string, path: string, rev?: string): string {
  *  `git diff --stat` text and the handoff Progress excerpt. 404 for an unknown group. */
 export async function getGroup(groupId: string, opts?: ReadOptions): Promise<GroupResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].groups[':groupId'].$get(
+    await onni.api.v1.p[':projectId'].groups[':groupId'].$get(
       { param: { projectId: queryScope(), groupId: encodeURIComponent(groupId) } },
       init(opts),
     ),
@@ -1282,7 +1282,7 @@ export async function connectProvider(
   profileId?: string,
 ): Promise<ProviderConnectResponse> {
   return unwrap(
-    await cez.api.v1.providers.connect.$post({
+    await onni.api.v1.providers.connect.$post({
       json: { provider, ...(profileId ? { profileId } : {}) },
     }),
     '/providers/connect',
@@ -1293,7 +1293,7 @@ export async function connectProvider(
  *  `command` for the clipboard fallback, or none when the CLI cannot update itself. */
 export async function updateProvider(provider: ProviderId): Promise<ProviderUpdateResponse> {
   return unwrap(
-    await cez.api.v1.providers[':provider'].update.$post({ param: { provider } }),
+    await onni.api.v1.providers[':provider'].update.$post({ param: { provider } }),
     `/providers/${encodeURIComponent(provider)}/update`,
   )
 }
@@ -1304,7 +1304,7 @@ export async function setProviderEnabled(
 ): Promise<ProviderStatusResponse> {
   return parseProviderStatusResponse(
     await unwrap(
-      await cez.api.v1.providers[':provider'].enabled.$put({
+      await onni.api.v1.providers[':provider'].enabled.$put({
         param: { provider },
         json: { enabled },
       }),
@@ -1319,7 +1319,7 @@ export async function retryProviderAuth(
 ): Promise<ProviderStatusResponse> {
   return parseProviderStatusResponse(
     await unwrap(
-      await cez.api.v1.providers[':provider'].retry.$post({
+      await onni.api.v1.providers[':provider'].retry.$post({
         param: { provider },
         json: { authFailureId },
       }),
@@ -1350,7 +1350,7 @@ export async function registerProject(root: string): Promise<RegisterProjectResp
     return parsed as RegisterProjectResponse
   }
   if (!res.ok) throw errorFor(res.status, res.statusText, body)
-  throw new ApiError(res.status, `the cezar server answered ${path} without a project`)
+  throw new ApiError(res.status, `the onni server answered ${path} without a project`)
 }
 
 /**
@@ -1368,7 +1368,7 @@ export async function registerProject(root: string): Promise<RegisterProjectResp
  * stream, keyed by `input.checkoutId`.
  */
 export async function checkoutProject(input: CheckoutProjectInput): Promise<RegisterProjectResponse> {
-  return unwrap(await cez.api.v1.projects.checkout.$post({ json: input }), '/projects/checkout')
+  return unwrap(await onni.api.v1.projects.checkout.$post({ json: input }), '/projects/checkout')
 }
 
 /**
@@ -1378,7 +1378,7 @@ export async function checkoutProject(input: CheckoutProjectInput): Promise<Regi
  * progress arrives as `checkout-progress` keyed by `input.checkoutId`.
  */
 export async function createProject(input: CreateProjectInput): Promise<RegisterProjectResponse> {
-  return unwrap(await cez.api.v1.projects.create.$post({ json: input }), '/projects/create')
+  return unwrap(await onni.api.v1.projects.create.$post({ json: input }), '/projects/create')
 }
 
 /** Who a new GitHub repository may belong to (`GET /api/projects/github-owners`). Workspace-level.
@@ -1386,7 +1386,7 @@ export async function createProject(input: CreateProjectInput): Promise<Register
  *  started before the owner cards, a proxy — must reject the query rather than throw mid-render. */
 export async function getGithubOwners(opts?: ReadOptions): Promise<GithubOwnersResponse> {
   return unwrapValidated(
-    await cez.api.v1.projects['github-owners'].$get({}, init(opts)),
+    await onni.api.v1.projects['github-owners'].$get({}, init(opts)),
     '/projects/github-owners',
     githubOwnersResponseSchema,
   )
@@ -1402,7 +1402,7 @@ export async function getGithubOwners(opts?: ReadOptions): Promise<GithubOwnersR
  */
 export async function removeProject(projectId: string): Promise<RemoveProjectResponse> {
   return unwrap(
-    await cez.api.v1.projects[':projectId'].$delete({ param: { projectId: encodeURIComponent(projectId) } }),
+    await onni.api.v1.projects[':projectId'].$delete({ param: { projectId: encodeURIComponent(projectId) } }),
     `/projects/${encodeURIComponent(projectId)}`,
   )
 }
@@ -1423,7 +1423,7 @@ export async function updateProject(
   input: UpdateProjectInput,
 ): Promise<UpdateProjectResponse> {
   return unwrap(
-    await cez.api.v1.projects[':projectId'].$patch({
+    await onni.api.v1.projects[':projectId'].$patch({
       param: { projectId: encodeURIComponent(projectId) },
       json: input,
     }),
@@ -1436,14 +1436,14 @@ export async function updateProject(
 /** ×1 answers the run record; ×2/×3 answers `{ runs }` — narrow on `'runs' in result`. */
 export async function createRun(input: CreateRunInput): Promise<CreateRunResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs.$post({ param: { projectId: queryScope() }, json: input }),
+    await onni.api.v1.p[':projectId'].runs.$post({ param: { projectId: queryScope() }, json: input }),
     '/runs',
   )
 }
 
 export async function cancelRun(id: string): Promise<CancelResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].cancel.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].cancel.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/cancel'),
@@ -1453,7 +1453,7 @@ export async function cancelRun(id: string): Promise<CancelResponse> {
 /** "Start now": run a queued task over the `maxParallel` cap. 409 when it is no longer queued. */
 export async function startRunNow(id: string): Promise<StartNowResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['start-now'].$post({
+    await onni.api.v1.p[':projectId'].runs[':id']['start-now'].$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/start-now'),
@@ -1463,7 +1463,7 @@ export async function startRunNow(id: string): Promise<StartNowResponse> {
 /** Archives by default; pass `false` to bring a run back into the live list. */
 export async function archiveRun(id: string, archived = true): Promise<RunRecord> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].archive.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].archive.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: { archived },
     }),
@@ -1474,7 +1474,7 @@ export async function archiveRun(id: string, archived = true): Promise<RunRecord
 /** Pins by default; pass `false` to drop the task back into its ordinary bucket (#935). */
 export async function pinRun(id: string, pinned = true): Promise<RunRecord> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].pin.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].pin.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: { pinned },
     }),
@@ -1494,7 +1494,7 @@ export async function pinProjectRun(
   pinned = true,
 ): Promise<RunRecord> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].pin.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].pin.$post({
       param: { projectId, id: encodeURIComponent(id) },
       json: { pinned },
     }),
@@ -1515,7 +1515,7 @@ export async function archiveProjectRun(
   archived = true,
 ): Promise<RunRecord> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].archive.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].archive.$post({
       param: { projectId, id: encodeURIComponent(id) },
       json: { archived },
     }),
@@ -1536,10 +1536,10 @@ export async function setProjectRunRead(
   const route = read ? 'read' : 'unread'
   return unwrap(
     await (read
-      ? cez.api.v1.p[':projectId'].runs[':id'].read.$post({
+      ? onni.api.v1.p[':projectId'].runs[':id'].read.$post({
           param: { projectId, id: encodeURIComponent(id) },
         })
-      : cez.api.v1.p[':projectId'].runs[':id'].unread.$post({
+      : onni.api.v1.p[':projectId'].runs[':id'].unread.$post({
           param: { projectId, id: encodeURIComponent(id) },
         })),
     runPath(id, `/${route}`),
@@ -1551,7 +1551,7 @@ export async function setProjectRunRead(
  *  Idempotent: a task with nothing scheduled answers the same way. */
 export async function cancelAutoResume(id: string): Promise<CancelAutoResumeResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['auto-resume'].$delete({
+    await onni.api.v1.p[':projectId'].runs[':id']['auto-resume'].$delete({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/auto-resume'),
@@ -1562,7 +1562,7 @@ export async function cancelAutoResume(id: string): Promise<CancelAutoResumeResp
  *  the Tasks header's "Archive finished" button. */
 export async function archiveFinished(): Promise<ArchiveFinishedResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs['archive-finished'].$post({
+    await onni.api.v1.p[':projectId'].runs['archive-finished'].$post({
       param: { projectId: queryScope() },
     }),
     '/runs/archive-finished',
@@ -1573,7 +1573,7 @@ export async function archiveFinished(): Promise<ArchiveFinishedResponse> {
  *  the server stamps `seenAt = now` and answers with the updated record. */
 export async function markRunSeen(id: string): Promise<RunRecord> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].read.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].read.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/read'),
@@ -1585,7 +1585,7 @@ export async function markRunSeen(id: string): Promise<RunRecord> {
  *  and answers with the updated record. */
 export async function markRunUnseen(id: string): Promise<RunRecord> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].unread.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].unread.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/unread'),
@@ -1595,7 +1595,7 @@ export async function markRunUnseen(id: string): Promise<RunRecord> {
 /** "Mark all read": stamp every currently-unread finished run in one call. */
 export async function markAllRunsSeen(): Promise<MarkAllReadResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs['read-all'].$post({
+    await onni.api.v1.p[':projectId'].runs['read-all'].$post({
       param: { projectId: queryScope() },
     }),
     '/runs/read-all',
@@ -1605,7 +1605,7 @@ export async function markAllRunsSeen(): Promise<MarkAllReadResponse> {
 /** Close a waiting session gracefully — the run completes as done. 409 when nothing is open. */
 export async function landRun(id: string): Promise<LandResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].land.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].land.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/land'),
@@ -1614,7 +1614,7 @@ export async function landRun(id: string): Promise<LandResponse> {
 
 export async function finishRun(id: string): Promise<FinishResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].finish.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].finish.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/finish'),
@@ -1650,7 +1650,7 @@ export async function continueRun(id: string, opts: ContinueOptions = {}): Promi
     ...(opts.idempotencyKey !== undefined ? { idempotencyKey: opts.idempotencyKey } : {}),
   }
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].continue.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].continue.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: body,
     }),
@@ -1665,7 +1665,7 @@ export async function continueProjectRun(
   opts: ContinueOptions = {},
 ): Promise<ContinueResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].continue.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].continue.$post({
       param: { projectId, id: encodeURIComponent(id) },
       json: {
         ...(opts.text !== undefined ? { text: opts.text } : {}),
@@ -1694,7 +1694,7 @@ export async function createRunPr(id: string, opts: { draft?: boolean } = {}): P
   const projectId = queryScope()
   const post = async () =>
     unwrap(
-      await cez.api.v1.p[':projectId'].runs[':id'].pr.$post({
+      await onni.api.v1.p[':projectId'].runs[':id'].pr.$post({
         param: { projectId, id: encodeURIComponent(id) },
         json: opts,
       }),
@@ -1716,7 +1716,7 @@ export async function createRunPr(id: string, opts: { draft?: boolean } = {}): P
 /** Record the PR the run's agent opened, found on the forge by the run's branch. */
 export async function adoptRunPr(id: string): Promise<AdoptPrResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].pr.adopt.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].pr.adopt.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/pr/adopt'),
@@ -1726,7 +1726,7 @@ export async function adoptRunPr(id: string): Promise<AdoptPrResponse> {
 /** Rename a run (#389): the edit becomes the display title and wins over any auto-summary. */
 export async function patchRun(id: string, patch: PatchRunInput): Promise<RunRecord> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].$patch({
+    await onni.api.v1.p[':projectId'].runs[':id'].$patch({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: patch,
     }),
@@ -1737,7 +1737,7 @@ export async function patchRun(id: string, patch: PatchRunInput): Promise<RunRec
 /** Deletes the run, its transcript, its worktree and its branch. 409 while it is still active. */
 export async function deleteRun(id: string): Promise<DeleteRunResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].$delete({
+    await onni.api.v1.p[':projectId'].runs[':id'].$delete({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id),
@@ -1747,7 +1747,7 @@ export async function deleteRun(id: string): Promise<DeleteRunResponse> {
 /** Inbox "Dismiss" (spec 007): check the follow-up off — the server deletes the entry. */
 export async function removeTodo(id: string): Promise<RemoveTodoResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].todos[':id'].$delete({
+    await onni.api.v1.p[':projectId'].todos[':id'].$delete({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     `/todos/${encodeURIComponent(id)}`,
@@ -1783,7 +1783,7 @@ export async function startTodo(
   // `hc` sends nothing for an `undefined` json — no body AND no content-type, which is the same
   // request `mutate(…, undefined)` used to build.
   return unwrap(
-    await cez.api.v1.p[':projectId'].todos[':id'].start.$post({
+    await onni.api.v1.p[':projectId'].todos[':id'].start.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: Object.keys(body).length > 0 ? body : undefined,
     }),
@@ -1796,7 +1796,7 @@ export async function startTodo(
  *  variant is still active — the server's words come back verbatim in the ApiError. */
 export async function pickVariant(groupId: string, runId: string): Promise<PickVariantResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].groups[':groupId'].pick.$post({
+    await onni.api.v1.p[':projectId'].groups[':groupId'].pick.$post({
       param: { projectId: queryScope(), groupId: encodeURIComponent(groupId) },
       json: { runId },
     }),
@@ -1808,7 +1808,7 @@ export async function pickVariant(groupId: string, runId: string): Promise<PickV
  *  exists. On 409 the ApiError's `command` carries the manual `cd … && <resume>` to copy. */
 export async function openRunInCli(id: string): Promise<OpenInCliResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['open-in-cli'].$post({
+    await onni.api.v1.p[':projectId'].runs[':id']['open-in-cli'].$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/open-in-cli'),
@@ -1819,7 +1819,7 @@ export async function openRunInCli(id: string): Promise<OpenInCliResponse> {
  *  Empty in hosted mode (CEZ_REMOTE). */
 export async function getOpenTargets(opts?: ReadOptions): Promise<OpenTargetsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['open-targets'].$get(
+    await onni.api.v1.p[':projectId']['open-targets'].$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -1832,7 +1832,7 @@ export async function getOpenTargets(opts?: ReadOptions): Promise<OpenTargetsRes
  *  machine does not have or a `cli:` handoff, 409 in hosted mode or when the launch failed. */
 export async function openProjectIn(target: string): Promise<OpenProjectInResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['open-in'].$post({
+    await onni.api.v1.p[':projectId']['open-in'].$post({
       param: { projectId: queryScope() },
       json: { target },
     }),
@@ -1846,7 +1846,7 @@ export async function openRunIn(
   target: string,
 ): Promise<{ opened: boolean; path: string }> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['open-in'].$post({
+    await onni.api.v1.p[':projectId'].runs[':id']['open-in'].$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: { target },
     }),
@@ -1862,7 +1862,7 @@ export async function openRunFileInApp(
   path: string,
 ): Promise<{ opened: boolean; path: string }> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['open-in'].$post({
+    await onni.api.v1.p[':projectId'].runs[':id']['open-in'].$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: { target: 'default', path },
     }),
@@ -1874,7 +1874,7 @@ export async function openRunFileInApp(
  *  clean tree, failing hook, missing identity — is a 409 whose ApiError speaks git's words. */
 export async function commitRun(id: string, message: string): Promise<GitCommitResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].git.commit.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].git.commit.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: { message },
     }),
@@ -1885,7 +1885,7 @@ export async function commitRun(id: string, message: string): Promise<GitCommitR
 /** What the run's worktree holds that has not left it: uncommitted files, unpushed commits. */
 export async function getRunGitStatus(id: string, opts?: ReadOptions): Promise<GitStatusResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].git.status.$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].git.status.$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -1897,7 +1897,7 @@ export async function getRunGitStatus(id: string, opts?: ReadOptions): Promise<G
  *  HEAD and rejected pushes all come back as 409 + reason. */
 export async function pushRun(id: string): Promise<GitPushResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].git.push.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].git.push.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/git/push'),
@@ -1936,7 +1936,7 @@ export async function postMessageWithRetry(
 export async function sendMessage(id: string, message: MessageInput): Promise<MessageResponse> {
   return postMessageWithRetry(async (json) =>
     unwrap(
-      await cez.api.v1.p[':projectId'].runs[':id'].messages.$post({
+      await onni.api.v1.p[':projectId'].runs[':id'].messages.$post({
         param: { projectId: queryScope(), id: encodeURIComponent(id) },
         json,
       }),
@@ -1955,7 +1955,7 @@ export async function sendProjectRunMessage(
 ): Promise<MessageResponse> {
   return postMessageWithRetry(async (json) =>
     unwrap(
-      await cez.api.v1.p[':projectId'].runs[':id'].messages.$post({
+      await onni.api.v1.p[':projectId'].runs[':id'].messages.$post({
         param: { projectId, id: encodeURIComponent(id) },
         json,
       }),
@@ -1973,7 +1973,7 @@ export async function editQueuedMessage(
   message: MessageInput,
 ): Promise<EditQueuedMessageResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['queued-messages'][':msgId'].$patch({
+    await onni.api.v1.p[':projectId'].runs[':id']['queued-messages'][':msgId'].$patch({
       param: { projectId: queryScope(), id: encodeURIComponent(id), msgId: encodeURIComponent(msgId) },
       json: message,
     }),
@@ -1987,7 +1987,7 @@ export async function removeQueuedMessage(
   msgId: string,
 ): Promise<RemoveQueuedMessageResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['queued-messages'][':msgId'].$delete({
+    await onni.api.v1.p[':projectId'].runs[':id']['queued-messages'][':msgId'].$delete({
       param: { projectId: queryScope(), id: encodeURIComponent(id), msgId: encodeURIComponent(msgId) },
     }),
     runPath(id, `/queued-messages/${encodeURIComponent(msgId)}`),
@@ -1997,14 +1997,14 @@ export async function removeQueuedMessage(
 // ---- in-task drafts (#939) ------------------------------------------------------------------
 //
 // The unsent text and attachments of a task's editable inputs. Server-side so a draft follows the
-// user across browsers and survives a reload and a `cez` restart — the one thing the localStorage
+// user across browsers and survives a reload and a `onni` restart — the one thing the localStorage
 // stores behind `/new` and the GitHub hand-off box cannot do. `routes/task-thread/thread-draft.ts`
 // is the cockpit's ONLY caller: no component talks to this API directly.
 
 /** Every surface of one run that holds a draft. */
 export async function getRunDrafts(id: string, opts?: ReadOptions): Promise<RunDraftsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].drafts.$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].drafts.$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -2036,7 +2036,7 @@ export async function putRunDraft(
   const keepalive =
     opts?.keepalive === true && new TextEncoder().encode(JSON.stringify(body)).length <= KEEPALIVE_BODY_MAX
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].$put(
+    await onni.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].$put(
       {
         param: { projectId: queryScope(), id: encodeURIComponent(id), surface },
         json: body,
@@ -2049,7 +2049,7 @@ export async function putRunDraft(
 
 export async function deleteRunDraft(id: string, surface: string): Promise<DeleteDraftResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].$delete({
+    await onni.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].$delete({
       param: { projectId: queryScope(), id: encodeURIComponent(id), surface },
     }),
     runPath(id, `/drafts/${surface}`),
@@ -2064,7 +2064,7 @@ export async function postRunDraftImage(
   image: DraftImageInput,
 ): Promise<DraftImage> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].images.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].images.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id), surface },
       json: image,
     }),
@@ -2075,12 +2075,12 @@ export async function postRunDraftImage(
 /** Stage one attachment the moment it is attached; the message then references it by id
  *  (telemetry 7054e5f2). Workspace-level, so it survives a project switch on `/new`. */
 export async function stageUpload(input: AttachmentInput): Promise<StagedUpload> {
-  return unwrap(await cez.api.v1.workspace.uploads.$post({ json: input }), '/workspace/uploads')
+  return unwrap(await onni.api.v1.workspace.uploads.$post({ json: input }), '/workspace/uploads')
 }
 
 export async function deleteStagedUpload(uploadId: string): Promise<DeleteUploadResponse> {
   return unwrap(
-    await cez.api.v1.workspace.uploads[':uploadId'].$delete({ param: { uploadId } }),
+    await onni.api.v1.workspace.uploads[':uploadId'].$delete({ param: { uploadId } }),
     `/workspace/uploads/${uploadId}`,
   )
 }
@@ -2093,7 +2093,7 @@ export async function getRunDraftImage(
   opts?: ReadOptions,
 ): Promise<DraftImageContent> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].images[':imageId'].$get(
+    await onni.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].images[':imageId'].$get(
       { param: { projectId: queryScope(), id: encodeURIComponent(id), surface, imageId } },
       init(opts),
     ),
@@ -2107,7 +2107,7 @@ export async function deleteRunDraftImage(
   imageId: string,
 ): Promise<DeleteDraftResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].images[':imageId'].$delete({
+    await onni.api.v1.p[':projectId'].runs[':id'].drafts[':surface'].images[':imageId'].$delete({
       param: { projectId: queryScope(), id: encodeURIComponent(id), surface, imageId },
     }),
     runPath(id, `/drafts/${surface}/images/${imageId}`),
@@ -2119,7 +2119,7 @@ export async function deleteRunDraftImage(
  *  all come back as 409 whose ApiError carries git's own reason. */
 export async function createRepoBranch(input: { name: string; from?: string }): Promise<RepoBranchResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].repo.branch.$post({
+    await onni.api.v1.p[':projectId'].repo.branch.$post({
       param: { projectId: queryScope() },
       json: input,
     }),
@@ -2130,7 +2130,7 @@ export async function createRepoBranch(input: { name: string; from?: string }): 
 /** The main checkout against its remote (Source-Control view): offline, as last fetched. */
 export async function getRepoSync(opts?: ReadOptions): Promise<RepoSync> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].repo.sync.$get({ param: { projectId: queryScope() } }, init(opts)),
+    await onni.api.v1.p[':projectId'].repo.sync.$get({ param: { projectId: queryScope() } }, init(opts)),
     '/repo/sync',
   )
 }
@@ -2141,7 +2141,7 @@ export type RepoSyncAction = 'fetch' | 'pull' | 'push' | 'sync'
  *  upstream or an auth failure is a 409 whose ApiError carries git's own reason. */
 export async function runRepoSyncAction(action: RepoSyncAction): Promise<RepoSyncActionResponse> {
   const param = { param: { projectId: queryScope() } }
-  const repo = cez.api.v1.p[':projectId'].repo
+  const repo = onni.api.v1.p[':projectId'].repo
   const res =
     action === 'fetch'
       ? await repo.fetch.$post(param)
@@ -2159,7 +2159,7 @@ export async function runRepoSyncAction(action: RepoSyncAction): Promise<RepoSyn
  *  as a one-step plan with `fallback: true`, never as an error — only transport/validation fail. */
 export async function postPlan(task: string): Promise<PlanResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].plan.$post({
+    await onni.api.v1.p[':projectId'].plan.$post({
       param: { projectId: queryScope() },
       json: { task },
     }),
@@ -2177,7 +2177,7 @@ export async function postPlan(task: string): Promise<PlanResponse> {
  *  availability and the scheduler summary — one read, the whole page. */
 export async function getAutomations(opts?: ReadOptions): Promise<AutomationsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].automations.$get(
+    await onni.api.v1.p[':projectId'].automations.$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -2188,7 +2188,7 @@ export async function getAutomations(opts?: ReadOptions): Promise<AutomationsRes
 /** Create a definition. Always created PAUSED unless `enable` asks for a current-time baseline. */
 export async function createAutomation(input: CreateAutomationInput): Promise<AutomationResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].automations.$post({
+    await onni.api.v1.p[':projectId'].automations.$post({
       param: { projectId: queryScope() },
       json: input,
     }),
@@ -2203,7 +2203,7 @@ export async function updateAutomation(
   input: UpdateAutomationInput,
 ): Promise<AutomationResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].automations[':id'].$put({
+    await onni.api.v1.p[':projectId'].automations[':id'].$put({
       // `hc` does not percent-encode a path param, so ids are pre-encoded at every call site.
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: input,
@@ -2219,8 +2219,8 @@ export async function setAutomationEnabled(id: string, enabled: boolean): Promis
   const label = `/automations/${encodeURIComponent(id)}/${enabled ? 'enable' : 'pause'}`
   return unwrap(
     enabled
-      ? await cez.api.v1.p[':projectId'].automations[':id'].enable.$post({ param })
-      : await cez.api.v1.p[':projectId'].automations[':id'].pause.$post({ param }),
+      ? await onni.api.v1.p[':projectId'].automations[':id'].enable.$post({ param })
+      : await onni.api.v1.p[':projectId'].automations[':id'].pause.$post({ param }),
     label,
   )
 }
@@ -2232,7 +2232,7 @@ export async function checkAutomation(
   mode: 'preview' | 'execute',
 ): Promise<AutomationCheckQueuedResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].automations[':id'].check.$post({
+    await onni.api.v1.p[':projectId'].automations[':id'].check.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: { mode },
     }),
@@ -2244,7 +2244,7 @@ export async function checkAutomation(
  *  project's — the id is the whole address. */
 export async function getAutomationCheck(id: string, opts?: ReadOptions): Promise<AutomationCheck> {
   return unwrap(
-    await cez.api.v1['automation-checks'][':checkId'].$get(
+    await onni.api.v1['automation-checks'][':checkId'].$get(
       { param: { checkId: encodeURIComponent(id) } },
       init(opts),
     ),
@@ -2258,7 +2258,7 @@ export async function getAutomationLog(
   opts?: ReadOptions,
 ): Promise<AutomationLogResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['automation-log'].$get(
+    await onni.api.v1.p[':projectId']['automation-log'].$get(
       { param: { projectId: queryScope() }, query: { automationId: id } },
       init(opts),
     ),
@@ -2271,7 +2271,7 @@ export async function getAutomationLog(
  *  the server's reason when the receipt is not retryable. */
 export async function retryAutomationReceipt(receiptId: string): Promise<AutomationRetryResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['automation-log'][':receiptId'].retry.$post({
+    await onni.api.v1.p[':projectId']['automation-log'][':receiptId'].retry.$post({
       param: { projectId: queryScope(), receiptId: encodeURIComponent(receiptId) },
     }),
     `/automation-log/${encodeURIComponent(receiptId)}/retry`,
@@ -2282,7 +2282,7 @@ export async function retryAutomationReceipt(receiptId: string): Promise<Automat
  *  `enabled` nor the timer changes. A GitHub automation answers 409: it runs through `check`. */
 export async function runAutomationNow(id: string, expectedRevision?: number): Promise<AutomationRunResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].automations[':id'].run.$post({
+    await onni.api.v1.p[':projectId'].automations[':id'].run.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       query: expectedRevision ? { expectedRevision: String(expectedRevision) } : {},
     }),
@@ -2292,7 +2292,7 @@ export async function runAutomationNow(id: string, expectedRevision?: number): P
 
 /** Delete a definition. Its runs, receipts and log rows stay; the id is tombstoned. */
 export async function deleteAutomation(id: string, expectedRevision?: number): Promise<void> {
-  const res = await cez.api.v1.p[':projectId'].automations[':id'].$delete({
+  const res = await onni.api.v1.p[':projectId'].automations[':id'].$delete({
     param: { projectId: queryScope(), id: encodeURIComponent(id) },
       query: expectedRevision ? { expectedRevision: String(expectedRevision) } : {},
   })
@@ -2303,7 +2303,7 @@ export async function deleteAutomation(id: string, expectedRevision?: number): P
  *  (spec 2026-09-14 Q7). Workspace-level; `exclude` keeps the calling project out. */
 export async function getAutomationTemplates(exclude: string | null, opts?: ReadOptions): Promise<AutomationTemplatesResponse> {
   return unwrap(
-    await cez.api.v1.workspace['automation-templates'].$get(
+    await onni.api.v1.workspace['automation-templates'].$get(
       { query: exclude ? { exclude } : {} },
       init(opts),
     ),
@@ -2315,7 +2315,7 @@ export async function getAutomationTemplates(exclude: string | null, opts?: Read
  *  ask the user, then retry with `overwrite: true`. */
 export async function createWorkflow(input: SaveWorkflowInput): Promise<SaveWorkflowResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].workflows.$post({
+    await onni.api.v1.p[':projectId'].workflows.$post({
       param: { projectId: queryScope() },
       json: input,
     }),
@@ -2326,7 +2326,7 @@ export async function createWorkflow(input: SaveWorkflowInput): Promise<SaveWork
 /** Graph workflows (spec 2026-09-30-workflow-node-editor): the palette's node catalog. */
 export async function getWorkflowNodes(opts?: ReadOptions): Promise<WorkflowNodeCatalogResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].workflows.nodes.$get({ param: { projectId: queryScope() } }, init(opts)),
+    await onni.api.v1.p[':projectId'].workflows.nodes.$get({ param: { projectId: queryScope() } }, init(opts)),
     '/workflows/nodes',
   )
 }
@@ -2334,7 +2334,7 @@ export async function getWorkflowNodes(opts?: ReadOptions): Promise<WorkflowNode
 /** Structural problems of a graph (`[]` when sound) — the editor calls it as you edit. */
 export async function validateWorkflowGraph(graph: WorkflowGraph): Promise<ValidateWorkflowGraphResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].workflows.validate.$post({
+    await onni.api.v1.p[':projectId'].workflows.validate.$post({
       param: { projectId: queryScope() },
       json: { graph },
     }),
@@ -2345,7 +2345,7 @@ export async function validateWorkflowGraph(graph: WorkflowGraph): Promise<Valid
 /** Save a `version: 2` graph workflow. A 409 carries `exists: true` like `createWorkflow`. */
 export async function saveWorkflowGraph(input: SaveWorkflowGraphInput): Promise<SaveWorkflowResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].workflows.graph.$post({
+    await onni.api.v1.p[':projectId'].workflows.graph.$post({
       param: { projectId: queryScope() },
       json: input,
     }),
@@ -2357,7 +2357,7 @@ export async function saveWorkflowGraph(input: SaveWorkflowGraphInput): Promise<
  *  YAML (either form) and answers the normalized definition. */
 export async function parseWorkflow(yaml: string): Promise<ParsedWorkflow> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].workflows.parse.$post({
+    await onni.api.v1.p[':projectId'].workflows.parse.$post({
       param: { projectId: queryScope() },
       json: { yaml },
     }),
@@ -2369,7 +2369,7 @@ export async function parseWorkflow(yaml: string): Promise<ParsedWorkflow> {
  *  file and always come back. */
 export async function deleteWorkflow(name: string): Promise<DeleteWorkflowResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].workflows[':name'].$delete({
+    await onni.api.v1.p[':projectId'].workflows[':name'].$delete({
       param: { projectId: queryScope(), name: encodeURIComponent(name) },
     }),
     `/workflows/${encodeURIComponent(name)}`,
@@ -2381,7 +2381,7 @@ export async function deleteWorkflow(name: string): Promise<DeleteWorkflowRespon
 /** Merges server-side (the stored object spread under the patch) and answers the merged state. */
 export async function putUiState(patch: UiState, projectId = queryScope()): Promise<UiState> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['ui-state'].$put({
+    await onni.api.v1.p[':projectId']['ui-state'].$put({
       param: { projectId },
       json: patch,
     }),
@@ -2389,10 +2389,10 @@ export async function putUiState(patch: UiState, projectId = queryScope()): Prom
   )
 }
 
-/** The cross-project GUI state (`~/.cezar/ui-state.json`, step 2.7). Workspace-level:
+/** The cross-project GUI state (`~/.onni/ui-state.json`, step 2.7). Workspace-level:
  *  `apiPath` never prefixes `/api/workspace/*`. */
 export async function getWorkspaceUiState(opts?: ReadOptions): Promise<WorkspaceUiState> {
-  return unwrap(await cez.api.v1.workspace['ui-state'].$get({}, init(opts)), '/workspace/ui-state')
+  return unwrap(await onni.api.v1.workspace['ui-state'].$get({}, init(opts)), '/workspace/ui-state')
 }
 
 /** Shallow top-level merge server-side, same as its per-repo twin — send whole top-level
@@ -2402,7 +2402,7 @@ export async function putWorkspaceUiState(
   opts: { keepalive?: boolean } = {},
 ): Promise<WorkspaceUiState> {
   return unwrap(
-    await cez.api.v1.workspace['ui-state'].$put(
+    await onni.api.v1.workspace['ui-state'].$put(
       { json: patch },
       { init: { keepalive: opts.keepalive } },
     ),
@@ -2411,7 +2411,7 @@ export async function putWorkspaceUiState(
 }
 
 /**
- * The global settings slice of `~/.cezar/config.json` (step 2.7) — Settings → Resources, (step 4.4)
+ * The global settings slice of `~/.onni/config.json` (step 2.7) — Settings → Resources, (step 4.4)
  * the checkout-root field, and the agent defaults.
  *
  * `agentDefaults` is materialized HERE rather than guarded at each read site, for the same reason
@@ -2422,16 +2422,16 @@ export async function putWorkspaceUiState(
  */
 export async function getWorkspaceConfig(opts?: ReadOptions): Promise<WorkspaceConfigResponse> {
   const answer = await unwrap(
-    await cez.api.v1.workspace.config.$get({}, init(opts)),
+    await onni.api.v1.workspace.config.$get({}, init(opts)),
     '/workspace/config',
   )
   return {
     ...answer,
-    // Brand settings are additive; a cockpit served against an older cezar build falls back
+    // Brand settings are additive; a cockpit served against an older onni build falls back
     // cleanly to its built-in identity instead of failing during shell render.
     branding: answer.branding
       ? { ...answer.branding, logoUrl: answer.branding.logoUrl ? resolveApiUrl(answer.branding.logoUrl) : null }
-      : { name: 'cezar', logoUrl: null },
+      : { name: 'onni', logoUrl: null },
     agentDefaults: answer.agentDefaults ?? {},
     // Additive key: an older server omits it.
     orgSkillsRepos: answer.orgSkillsRepos ?? [],
@@ -2455,7 +2455,7 @@ export async function uploadWorkspaceBrandingLogo(file: File): Promise<string | 
   if (!response.ok) throw errorFor(response.status, response.statusText, body)
   const parsed = parseJson(body)
   const result = workspaceBrandingLogoResponseSchema.safeParse(parsed)
-  if (!result.success) throw new ApiError(response.status, 'the cezar server answered /workspace/branding-logo with an unexpected body')
+  if (!result.success) throw new ApiError(response.status, 'the onni server answered /workspace/branding-logo with an unexpected body')
   return result.data.logoUrl ? resolveApiUrl(result.data.logoUrl) : null
 }
 
@@ -2465,7 +2465,7 @@ export async function deleteWorkspaceBrandingLogo(): Promise<string | null> {
   const body = await readBody(response)
   if (!response.ok) throw errorFor(response.status, response.statusText, body)
   const result = workspaceBrandingLogoResponseSchema.safeParse(parseJson(body))
-  if (!result.success) throw new ApiError(response.status, 'the cezar server answered /workspace/branding-logo with an unexpected body')
+  if (!result.success) throw new ApiError(response.status, 'the onni server answered /workspace/branding-logo with an unexpected body')
   return result.data.logoUrl ? resolveApiUrl(result.data.logoUrl) : null
 }
 
@@ -2478,7 +2478,7 @@ export async function deleteWorkspaceBrandingLogo(): Promise<string | null> {
  */
 export async function getWorkspaceHostUsage(opts?: ReadOptions): Promise<HostUsage> {
   return unwrap(
-    await cez.api.v1.workspace['host-usage'].$get({}, init(opts)),
+    await onni.api.v1.workspace['host-usage'].$get({}, init(opts)),
     '/workspace/host-usage',
   )
 }
@@ -2497,7 +2497,7 @@ export async function getWorkspaceHostUsage(opts?: ReadOptions): Promise<HostUsa
  */
 export async function getAgentProfiles(opts?: ReadOptions): Promise<AgentProfilesResponse> {
   const answer = await unwrap(
-    await cez.api.v1.workspace['agent-profiles'].$get({}, init(opts)),
+    await onni.api.v1.workspace['agent-profiles'].$get({}, init(opts)),
     '/workspace/agent-profiles',
   )
   return {
@@ -2514,7 +2514,7 @@ export async function createAgentProfile(
   input: CreateAgentProfileInput,
 ): Promise<AgentProfileResponse> {
   return unwrap(
-    await cez.api.v1.workspace['agent-profiles'].$post({ json: input }),
+    await onni.api.v1.workspace['agent-profiles'].$post({ json: input }),
     '/workspace/agent-profiles',
   )
 }
@@ -2527,7 +2527,7 @@ export async function getAgentAccountStatus(
   opts?: ReadOptions & { refresh?: boolean; recheck?: boolean },
 ): Promise<AgentAccountStatusResponse> {
   return unwrap(
-    await cez.api.v1.workspace['agent-profiles'][':id'].status.$get(
+    await onni.api.v1.workspace['agent-profiles'][':id'].status.$get(
       {
         param: { id: encodeURIComponent(routeId) },
         query: {
@@ -2549,7 +2549,7 @@ export async function getAgentAccountDetails(
   opts?: ReadOptions,
 ): Promise<AgentAccountDetailsResponse> {
   return unwrap(
-    await cez.api.v1.workspace['agent-profiles'][':id'].details.$get(
+    await onni.api.v1.workspace['agent-profiles'][':id'].details.$get(
       { param: { id: encodeURIComponent(routeId) } },
       init(opts),
     ),
@@ -2564,7 +2564,7 @@ export async function openAgentAccountFile(
   input: OpenAgentAccountFileInput,
 ): Promise<OpenAgentAccountFileResponse> {
   return unwrap(
-    await cez.api.v1.workspace['agent-profiles'][':id'].open.$post({
+    await onni.api.v1.workspace['agent-profiles'][':id'].open.$post({
       param: { id: encodeURIComponent(routeId) },
       json: input,
     }),
@@ -2579,7 +2579,7 @@ export async function selectAgentProfile(
   input: SelectAgentProfileInput,
 ): Promise<AgentProfileSelectionsResponse> {
   return unwrap(
-    await cez.api.v1.workspace['agent-profiles'].selection.$put({ json: input }),
+    await onni.api.v1.workspace['agent-profiles'].selection.$put({ json: input }),
     '/workspace/agent-profiles/selection',
   )
 }
@@ -2590,7 +2590,7 @@ export async function updateAgentProfile(
   input: UpdateAgentProfileInput,
 ): Promise<AgentProfileResponse> {
   return unwrap(
-    await cez.api.v1.workspace['agent-profiles'][':id'].$patch({
+    await onni.api.v1.workspace['agent-profiles'][':id'].$patch({
       param: { id: encodeURIComponent(id) },
       json: input,
     }),
@@ -2602,7 +2602,7 @@ export async function updateAgentProfile(
  *  discovered default (the server scrubs their references in the same write). */
 export async function removeAgentProfile(id: string): Promise<RemoveAgentProfileResponse> {
   return unwrap(
-    await cez.api.v1.workspace['agent-profiles'][':id'].$delete({
+    await onni.api.v1.workspace['agent-profiles'][':id'].$delete({
       param: { id: encodeURIComponent(id) },
     }),
     `/workspace/agent-profiles/${encodeURIComponent(id)}`,
@@ -2616,7 +2616,7 @@ export async function getSkillsUpdate(
   opts?: ReadOptions,
 ): Promise<SkillsUpdateState> {
   return unwrap(
-    await cez.api.v1.workspace['skills-update'].$get({ query: { projectId } }, init(opts)),
+    await onni.api.v1.workspace['skills-update'].$get({ query: { projectId } }, init(opts)),
     `/workspace/skills-update?projectId=${encodeURIComponent(projectId)}`,
   )
 }
@@ -2624,7 +2624,7 @@ export async function getSkillsUpdate(
 /** Force a bounded detection pass. The browser supplies identity only, never executable input. */
 export async function checkSkillsUpdate(projectId: string): Promise<SkillsUpdateState> {
   return unwrap(
-    await cez.api.v1.workspace['skills-update'].check.$post({ json: { projectId } }),
+    await onni.api.v1.workspace['skills-update'].check.$post({ json: { projectId } }),
     '/workspace/skills-update/check',
   )
 }
@@ -2632,7 +2632,7 @@ export async function checkSkillsUpdate(projectId: string): Promise<SkillsUpdate
 /** Apply the server-owned, lock-authorized update set. Identity is the only browser input. */
 export async function applySkillsUpdate(projectId: string): Promise<SkillsUpdateState> {
   return unwrap(
-    await cez.api.v1.workspace['skills-update'].apply.$post({ json: { projectId } }),
+    await onni.api.v1.workspace['skills-update'].apply.$post({ json: { projectId } }),
     '/workspace/skills-update/apply',
   )
 }
@@ -2643,7 +2643,7 @@ export async function applySkillsUpdate(projectId: string): Promise<SkillsUpdate
 export async function putWorkspaceConfig(
   patch: SetWorkspaceConfigInput,
 ): Promise<WorkspaceConfigResponse> {
-  const answer = await unwrap(await cez.api.v1.workspace.config.$put({ json: patch }), '/workspace/config')
+  const answer = await unwrap(await onni.api.v1.workspace.config.$put({ json: patch }), '/workspace/config')
   // Same additive-key fallback as getWorkspaceConfig: an older server omits it.
   return { ...answer, orgSkillsRepos: answer.orgSkillsRepos ?? [] }
 }
@@ -2653,7 +2653,7 @@ export async function putWorkspaceConfig(
  *  unrelated user keys survive; `null` clears a knob back to its default. */
 export async function putConfig(patch: SetConfigInput): Promise<SetConfigResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].config.$put({
+    await onni.api.v1.p[':projectId'].config.$put({
       param: { projectId: queryScope() },
       json: patch,
     }),
@@ -2665,7 +2665,7 @@ export async function putConfig(patch: SetConfigInput): Promise<SetConfigRespons
  *  retention state, the total, and the current keep-limit. */
 export async function getWorktrees(opts?: ReadOptions): Promise<WorktreesResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].worktrees.$get(
+    await onni.api.v1.p[':projectId'].worktrees.$get(
       { param: { projectId: queryScope() } },
       init(opts),
     ),
@@ -2677,7 +2677,7 @@ export async function getWorktrees(opts?: ReadOptions): Promise<WorktreesRespons
  *  (directory only — branch kept). Returns the reclaimed run ids. Always 200. */
 export async function reclaimWorktrees(): Promise<ReclaimWorktreesResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].worktrees.reclaim.$post({
+    await onni.api.v1.p[':projectId'].worktrees.reclaim.$post({
       param: { projectId: queryScope() },
       json: {},
     }),
@@ -2689,7 +2689,7 @@ export async function reclaimWorktrees(): Promise<ReclaimWorktreesResponse> {
  *  (the existing spec-006 route). 409 while the run is active. */
 export async function removeRunWorktree(id: string): Promise<RemoveWorktreeResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id']['remove-worktree'].$post({
+    await onni.api.v1.p[':projectId'].runs[':id']['remove-worktree'].$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/remove-worktree'),
@@ -2698,61 +2698,61 @@ export async function removeRunWorktree(id: string): Promise<RemoveWorktreeRespo
 
 // Capture project at observer creation: async continuations never consult a newly selected project.
 export async function openTrackerWatch(projectId: string, input: TrackerWatchInput, signal: AbortSignal) {
-  return trackerWatchHandleSchema.parse(await unwrap(await cez.api.v1.p[':projectId'].tracker.watch.$post(
+  return trackerWatchHandleSchema.parse(await unwrap(await onni.api.v1.p[':projectId'].tracker.watch.$post(
     { param: { projectId }, json: input }, { init: { signal } }), '/tracker/watch'))
 }
 export async function readTrackerWatch(projectId: string, watchId: string, signal: AbortSignal, after?: number) {
-  return trackerWatchSnapshotSchema.parse(await unwrap(await cez.api.v1.p[':projectId'].tracker.watch[':watchId'].$get(
+  return trackerWatchSnapshotSchema.parse(await unwrap(await onni.api.v1.p[':projectId'].tracker.watch[':watchId'].$get(
     { param: { projectId, watchId }, query: { after: after === undefined ? undefined : String(after) } }, { init: { signal } }), '/tracker/watch'))
 }
 export async function refreshTrackerWatch(projectId: string, watchId: string, signal: AbortSignal) {
-  return trackerWatchSnapshotSchema.parse(await unwrap(await cez.api.v1.p[':projectId'].tracker.watch[':watchId'].$post(
+  return trackerWatchSnapshotSchema.parse(await unwrap(await onni.api.v1.p[':projectId'].tracker.watch[':watchId'].$post(
     { param: { projectId, watchId } }, { init: { signal } }), '/tracker/watch'))
 }
 
 // Explicit scope parameters keep late responses and mutations tied to their original project.
 export const webhookApi = {
-  list: async (projectId: string, signal?: AbortSignal) => unwrap(await cez.api.v1.p[':projectId'].webhooks.$get({ param: { projectId } }, { init: { signal } }), '/webhooks'),
-  create: async (projectId: string, json: import('@onni/api-client').CreateWebhook) => unwrap(await cez.api.v1.p[':projectId'].webhooks.$post({ param: { projectId }, json }), '/webhooks'),
-  update: async (projectId: string, id: string, json: import('@onni/api-client').UpdateWebhook) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].$patch({ param: { projectId, id }, json }), '/webhooks'),
-  remove: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].$delete({ param: { projectId, id }, json: { expectedRevision } }), '/webhooks'),
-  activate: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].activate.$post({ param: { projectId, id }, json: { expectedRevision, confirmed: true } }), '/webhooks'),
-  pause: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].pause.$post({ param: { projectId, id }, json: { expectedRevision } }), '/webhooks'),
-  resume: async (projectId: string, id: string, expectedRevision: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].resume.$post({ param: { projectId, id }, json: { expectedRevision, confirmed: true } }), '/webhooks'),
-  rotate: async (projectId: string, id: string, expectedRevision: number, mode: 'graceful' | 'revoke_now') => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id']['rotate-secret'].$post({ param: { projectId, id }, json: { expectedRevision, mode } }), '/webhooks'),
-  test: async (projectId: string, id: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].test.$post({ param: { projectId, id }, json }), '/webhooks'),
-  retry: async (projectId: string, deliveryId: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].retry.$post({ param: { projectId, deliveryId }, json }), '/webhooks'),
-  replay: async (projectId: string, deliveryId: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await cez.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].replay.$post({ param: { projectId, deliveryId }, json: { ...json, confirmed: true } }), '/webhooks'),
-  acknowledge: async (projectId: string, expectedChangeSequence: number) => unwrap(await cez.api.v1.p[':projectId'].webhooks.notice.acknowledge.$post({ param: { projectId }, json: { expectedChangeSequence } }), '/webhooks'),
-  history: async (projectId: string, cursor?: string) => unwrap(await cez.api.v1.p[':projectId'].webhooks.history.$get({ param: { projectId }, query: { limit: '100', ...(cursor ? { cursor } : {}) } }), '/webhooks/history'),
-  deliveries: async (projectId: string, id: string, cursor?: string, taskId?: string) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].deliveries.$get({ param: { projectId, id }, query: { limit: '100', ...(cursor ? { cursor } : {}), ...(taskId ? { taskId } : {}) } }), '/webhooks/deliveries'),
-  activity: async (projectId: string, id: string) => unwrap(await cez.api.v1.p[':projectId'].webhooks[':id'].activity.$get({ param: { projectId, id } }), '/webhooks/activity'),
+  list: async (projectId: string, signal?: AbortSignal) => unwrap(await onni.api.v1.p[':projectId'].webhooks.$get({ param: { projectId } }, { init: { signal } }), '/webhooks'),
+  create: async (projectId: string, json: import('@onni/api-client').CreateWebhook) => unwrap(await onni.api.v1.p[':projectId'].webhooks.$post({ param: { projectId }, json }), '/webhooks'),
+  update: async (projectId: string, id: string, json: import('@onni/api-client').UpdateWebhook) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].$patch({ param: { projectId, id }, json }), '/webhooks'),
+  remove: async (projectId: string, id: string, expectedRevision: number) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].$delete({ param: { projectId, id }, json: { expectedRevision } }), '/webhooks'),
+  activate: async (projectId: string, id: string, expectedRevision: number) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].activate.$post({ param: { projectId, id }, json: { expectedRevision, confirmed: true } }), '/webhooks'),
+  pause: async (projectId: string, id: string, expectedRevision: number) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].pause.$post({ param: { projectId, id }, json: { expectedRevision } }), '/webhooks'),
+  resume: async (projectId: string, id: string, expectedRevision: number) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].resume.$post({ param: { projectId, id }, json: { expectedRevision, confirmed: true } }), '/webhooks'),
+  rotate: async (projectId: string, id: string, expectedRevision: number, mode: 'graceful' | 'revoke_now') => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id']['rotate-secret'].$post({ param: { projectId, id }, json: { expectedRevision, mode } }), '/webhooks'),
+  test: async (projectId: string, id: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].test.$post({ param: { projectId, id }, json }), '/webhooks'),
+  retry: async (projectId: string, deliveryId: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await onni.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].retry.$post({ param: { projectId, deliveryId }, json }), '/webhooks'),
+  replay: async (projectId: string, deliveryId: string, json: import('@onni/api-client').WebhookOperation) => unwrap(await onni.api.v1.p[':projectId'].webhooks.deliveries[':deliveryId'].replay.$post({ param: { projectId, deliveryId }, json: { ...json, confirmed: true } }), '/webhooks'),
+  acknowledge: async (projectId: string, expectedChangeSequence: number) => unwrap(await onni.api.v1.p[':projectId'].webhooks.notice.acknowledge.$post({ param: { projectId }, json: { expectedChangeSequence } }), '/webhooks'),
+  history: async (projectId: string, cursor?: string) => unwrap(await onni.api.v1.p[':projectId'].webhooks.history.$get({ param: { projectId }, query: { limit: '100', ...(cursor ? { cursor } : {}) } }), '/webhooks/history'),
+  deliveries: async (projectId: string, id: string, cursor?: string, taskId?: string) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].deliveries.$get({ param: { projectId, id }, query: { limit: '100', ...(cursor ? { cursor } : {}), ...(taskId ? { taskId } : {}) } }), '/webhooks/deliveries'),
+  activity: async (projectId: string, id: string) => unwrap(await onni.api.v1.p[':projectId'].webhooks[':id'].activity.$get({ param: { projectId, id } }), '/webhooks/activity'),
 }
 
 /** Worktree lifecycle reads/actions share the existing scope and authenticated transport. */
 export async function getWorktreeLifecycle(query: z.output<typeof lifecycleListQuerySchema> = { limit: 50 }, opts?: ReadOptions): Promise<z.infer<typeof lifecycleListResponseSchema>> {
-  return unwrap(await cez.api.v1.p[':projectId']['worktree-lifecycle'].$get({
+  return unwrap(await onni.api.v1.p[':projectId']['worktree-lifecycle'].$get({
     param: { projectId: queryScope() },
     query: { cursor: query.cursor, limit: query.limit, attentionOnly: query.attentionOnly === undefined ? undefined : query.attentionOnly ? 'true' : 'false' },
   }, init(opts)), '/worktree-lifecycle')
 }
 export async function getWorktreeLifecycleDetail(worktreeId: string, opts?: ReadOptions): Promise<z.infer<typeof lifecycleDetailResponseSchema>> {
-  return unwrap(await cez.api.v1.p[':projectId']['worktree-lifecycle'][':worktreeId'].$get({ param: { projectId: queryScope(), worktreeId } }, init(opts)), '/worktree-lifecycle')
+  return unwrap(await onni.api.v1.p[':projectId']['worktree-lifecycle'][':worktreeId'].$get({ param: { projectId: queryScope(), worktreeId } }, init(opts)), '/worktree-lifecycle')
 }
 export async function getLifecycleOperation(operationId: string, opts?: ReadOptions): Promise<z.infer<typeof lifecycleOperationResponseSchema>> {
-  return unwrap(await cez.api.v1.p[':projectId']['worktree-lifecycle'].operations[':operationId'].$get({ param: { projectId: queryScope(), operationId } }, init(opts)), '/worktree-lifecycle/operations')
+  return unwrap(await onni.api.v1.p[':projectId']['worktree-lifecycle'].operations[':operationId'].$get({ param: { projectId: queryScope(), operationId } }, init(opts)), '/worktree-lifecycle/operations')
 }
 export async function getLifecycleOutput(operationId: string, afterSeq = 0, opts?: ReadOptions): Promise<LifecycleOutputResponse> {
-  return unwrap(await cez.api.v1.p[':projectId']['worktree-lifecycle'].operations[':operationId'].output.$get({ param: { projectId: queryScope(), operationId }, query: { afterSeq, limit: 100 } }, init(opts)), '/worktree-lifecycle/operations/output')
+  return unwrap(await onni.api.v1.p[':projectId']['worktree-lifecycle'].operations[':operationId'].output.$get({ param: { projectId: queryScope(), operationId }, query: { afterSeq, limit: 100 } }, init(opts)), '/worktree-lifecycle/operations/output')
 }
 export async function startLifecycleRemoval(input: StartLifecycleRemovalInput): Promise<z.infer<typeof lifecycleOperationResponseSchema>> {
-  return unwrap(await cez.api.v1.p[':projectId']['worktree-lifecycle'].operations.$post({ param: { projectId: queryScope() }, json: input }), '/worktree-lifecycle/operations')
+  return unwrap(await onni.api.v1.p[':projectId']['worktree-lifecycle'].operations.$post({ param: { projectId: queryScope() }, json: input }), '/worktree-lifecycle/operations')
 }
 export async function actOnLifecycleOperation(operationId: string, input: LifecycleActionInput): Promise<z.infer<typeof lifecycleOperationResponseSchema>> {
-  return unwrap(await cez.api.v1.p[':projectId']['worktree-lifecycle'].operations[':operationId'].actions.$post({ param: { projectId: queryScope(), operationId }, json: input }), '/worktree-lifecycle/operations/actions')
+  return unwrap(await onni.api.v1.p[':projectId']['worktree-lifecycle'].operations[':operationId'].actions.$post({ param: { projectId: queryScope(), operationId }, json: input }), '/worktree-lifecycle/operations/actions')
 }
 export async function previewLifecycleCommand(input: z.infer<typeof lifecyclePreviewInputSchema>): Promise<LifecyclePreviewResponse> {
-  return unwrap(await cez.api.v1.p[':projectId']['worktree-lifecycle'].preview.$post({ param: { projectId: queryScope() }, json: input }), '/worktree-lifecycle/preview')
+  return unwrap(await onni.api.v1.p[':projectId']['worktree-lifecycle'].preview.$post({ param: { projectId: queryScope() }, json: input }), '/worktree-lifecycle/preview')
 }
 
 /** Hand the session off to a real terminal (spec 003), in the run's worktree when it still
@@ -2767,7 +2767,7 @@ export async function previewLifecycleCommand(input: z.infer<typeof lifecyclePre
 
 export async function getRunTerminal(id: string): Promise<TerminalState> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal.$get({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal.$get({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/terminal'),
@@ -2776,7 +2776,7 @@ export async function getRunTerminal(id: string): Promise<TerminalState> {
 
 export async function createRunTerminal(id: string, body: TerminalCreateInput): Promise<TerminalSession> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
       json: body,
     }),
@@ -2786,7 +2786,7 @@ export async function createRunTerminal(id: string, body: TerminalCreateInput): 
 
 export async function readRunTerminal(id: string, sessionId: string, cursor: number): Promise<TerminalOutput> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].output.$get({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].output.$get({
       param: { projectId: queryScope(), id: encodeURIComponent(id), sessionId },
       query: { cursor: String(cursor) },
     }),
@@ -2796,7 +2796,7 @@ export async function readRunTerminal(id: string, sessionId: string, cursor: num
 
 export async function writeRunTerminal(id: string, sessionId: string, data: string): Promise<void> {
   await unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].input.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].input.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id), sessionId },
       json: { data },
     }),
@@ -2806,7 +2806,7 @@ export async function writeRunTerminal(id: string, sessionId: string, data: stri
 
 export async function resizeRunTerminal(id: string, sessionId: string, cols: number, rows: number): Promise<void> {
   await unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].resize.$post({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].resize.$post({
       param: { projectId: queryScope(), id: encodeURIComponent(id), sessionId },
       json: { cols, rows },
     }),
@@ -2816,7 +2816,7 @@ export async function resizeRunTerminal(id: string, sessionId: string, cols: num
 
 export async function stopRunTerminal(id: string, sessionId: string): Promise<void> {
   await unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].$delete({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal[':sessionId'].$delete({
       param: { projectId: queryScope(), id: encodeURIComponent(id), sessionId },
     }),
     runPath(id, `/terminal/${sessionId}`),
@@ -2827,7 +2827,7 @@ export async function stopRunTerminal(id: string, sessionId: string): Promise<vo
  *  (spec §7). Nothing is opened by reading this — that is the user's click. */
 export async function getRunTerminalUrls(id: string): Promise<DetectedUrlsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal.urls.$get({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal.urls.$get({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/terminal/urls'),
@@ -2837,7 +2837,7 @@ export async function getRunTerminalUrls(id: string): Promise<DetectedUrlsRespon
 /** Commands the task's own project defines, each with the file it came from (spec §6). */
 export async function getRunTerminalCommands(id: string): Promise<DiscoveredCommandsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].terminal.commands.$get({
+    await onni.api.v1.p[':projectId'].runs[':id'].terminal.commands.$get({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/terminal/commands'),
@@ -2847,7 +2847,7 @@ export async function getRunTerminalCommands(id: string): Promise<DiscoveredComm
 /** The project's start recipes, the team's and this user's (spec `2026-10-09-design-mode` §7c). */
 export async function getStartApp(): Promise<StartAppState> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['start-app'].$get({ param: { projectId: queryScope() } }),
+    await onni.api.v1.p[':projectId']['start-app'].$get({ param: { projectId: queryScope() } }),
     '/start-app',
   )
 }
@@ -2855,19 +2855,19 @@ export async function getStartApp(): Promise<StartAppState> {
 /** Save or (with `recipe: null`) remove one scope's start recipe. */
 export async function setStartApp(body: StartAppSet): Promise<StartAppState> {
   return unwrap(
-    await cez.api.v1.p[':projectId']['start-app'].$put({ param: { projectId: queryScope() }, json: body }),
+    await onni.api.v1.p[':projectId']['start-app'].$put({ param: { projectId: queryScope() }, json: body }),
     '/start-app',
   )
 }
 
 /**
- * A task's saved workspace layouts, from the cezar that owns the task (spec
+ * A task's saved workspace layouts, from the onni that owns the task (spec
  * `.ai/specs/2026-10-07-task-workspace.md` §5.3). `layouts: null` means the task has never been
  * opened — distinct from an empty list, which is a workspace the user emptied on purpose.
  */
 export async function getRunLayouts(id: string): Promise<WorkspaceLayoutsResponse> {
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].layouts.$get({
+    await onni.api.v1.p[':projectId'].runs[':id'].layouts.$get({
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id, '/layouts'),
@@ -2884,7 +2884,7 @@ export async function putRunLayouts(
   const keepalive =
     opts?.keepalive === true && new TextEncoder().encode(JSON.stringify(body)).length <= KEEPALIVE_BODY_MAX
   return unwrap(
-    await cez.api.v1.p[':projectId'].runs[':id'].layouts.$put(
+    await onni.api.v1.p[':projectId'].runs[':id'].layouts.$put(
       {
         param: { projectId: queryScope(), id: encodeURIComponent(id) },
         json: body,
@@ -2896,12 +2896,12 @@ export async function putRunLayouts(
 }
 
 export async function previewDeferredStart(body: import('@onni/api-client').DeferredPreviewInput) {
-  return unwrap(await cez.api.v1.p[':projectId']['deferred-start'].preview.$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start/preview')
+  return unwrap(await onni.api.v1.p[':projectId']['deferred-start'].preview.$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start/preview')
 }
 export async function createDeferredStart(body: import('@onni/api-client').DeferredCreateInput) {
-  return unwrap(await cez.api.v1.p[':projectId']['deferred-start'].$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start')
+  return unwrap(await onni.api.v1.p[':projectId']['deferred-start'].$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start')
 }
 
 export async function getDeferredStartOptions(body: import('@onni/api-client').DeferredOptionsInput) {
-  return unwrap(await cez.api.v1.p[':projectId']['deferred-start'].options.$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start/options')
+  return unwrap(await onni.api.v1.p[':projectId']['deferred-start'].options.$post({ param: { projectId: queryScope() }, json: body }), '/deferred-start/options')
 }

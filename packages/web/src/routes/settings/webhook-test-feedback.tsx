@@ -9,7 +9,7 @@ import { reasonLabel } from './webhook-presentation'
 // Destination-policy refusals (destination.ts codes): nothing was sent, and the same configuration is refused again.
 const policyHints: Record<string, string> = {
   local_consent_required: 'This address is on this computer or a private network. Edit the receiver and turn on “Allow a receiver on this computer or private network”.',
-  server_port: 'This address points at the cezar server itself. Use your receiver\'s own port.',
+  server_port: 'This address points at the onni server itself. Use your receiver\'s own port.',
   https_required: 'This server only sends to HTTPS receivers. Use an https:// URL.',
   public_destination_required: 'This server only sends to public receivers. Use a publicly reachable HTTPS URL.',
   metadata_hostname: 'Cloud metadata hostnames are never allowed as receivers.',

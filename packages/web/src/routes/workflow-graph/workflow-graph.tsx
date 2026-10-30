@@ -114,7 +114,7 @@ import { writeClipboard } from '@/lib/clipboard'
  */
 
 const RUNNERS = ['claude', 'codex', 'opencode', 'cursor', 'pi'] as const
-const DRAG_MIME = 'application/x-cezar-node'
+const DRAG_MIME = 'application/x-onni-node'
 
 type FlowNodeData = {
   node: WorkflowGraphNode
@@ -1443,7 +1443,7 @@ function Inspector({
           )}
           {node.verdicts?.length ? (
             <p className="rounded-md bg-accent/50 p-2 text-[11px] text-muted-foreground">
-              The agent ends its turn with {node.verdicts.map((v) => `CEZ:VERDICT ${v}`).join(' or ')}. No verdict → one
+              The agent ends its turn with {node.verdicts.map((v) => `ONNI:VERDICT ${v}`).join(' or ')}. No verdict → one
               reminder, then <span style={{ color: TONE.failure }}>failed</span>.
             </p>
           ) : null}

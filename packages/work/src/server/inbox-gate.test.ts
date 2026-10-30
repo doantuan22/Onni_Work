@@ -33,8 +33,8 @@ describe('inbox gate (#471)', () => {
   const savedRemote = process.env.CEZ_REMOTE;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-inbox-'));
-    dataDir = join(repoRoot, '.ai/cezar');
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-inbox-'));
+    dataDir = join(repoRoot, '.ai/onni');
     store = RunStore.open(dataDir);
     mkdirSync(dataDir, { recursive: true });
     // A pre-existing entry: the gate must hide it, never delete it.

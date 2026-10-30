@@ -21,7 +21,7 @@ async function fixture() {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-followup-')); cleanups.push(() => rmSync(root, { recursive: true, force: true }));
   execFileSync('git', ['init', '-q'], { cwd: root });
   let now = Date.parse('2026-10-13T12:00:00Z');
-  const dataDir = join(root, '.ai/cezar'), directory = join(dataDir, 'webhooks');
+  const dataDir = join(root, '.ai/onni'), directory = join(dataDir, 'webhooks');
   const send = vi.fn(async (): Promise<SendResult> => ({ kind: 'http', status: 200, response: 'legacy synthetic_token_12345' }));
   const options = { root, dataDir, projectId: 'fixture', mode: 'local' as const, serverPorts: () => [], scheduler: new WebhookScheduler(), now: () => now, send };
   const open = async () => { const service = (await WebhookService.open(options))!; cleanups.push(() => service.dispose()); return service; };

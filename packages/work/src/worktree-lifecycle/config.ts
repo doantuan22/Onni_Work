@@ -20,7 +20,7 @@ export function lifecycleConfigFromRaw(raw: unknown): LifecycleConfigSnapshot {
 }
 
 export async function readLifecycleConfigRaw(projectRoot: string): Promise<Record<string, unknown>> {
-  const path = join(projectRoot, '.ai', 'cezar', 'config.json');
+  const path = join(projectRoot, '.ai', 'onni', 'config.json');
   await assertLifecyclePath(path, projectRoot);
   let text: string;
   try { text = await readFile(path, 'utf8'); }
@@ -35,14 +35,14 @@ export async function readLifecycleConfigRaw(projectRoot: string): Promise<Recor
   } catch { throw new LifecycleConfigError('Project configuration is malformed; worktree transition is paused'); }
 }
 const UNCONFIGURED: LifecycleConfigSnapshot = { config: { afterCreate: [], beforeRemove: [] }, revision: null, configured: false };
-export const TRACKED_CONFIG_ERROR = 'Worktree scripts in a git-tracked .ai/cezar/config.json are not run: scripts come only from local, untracked configuration. Untrack the file or remove its worktreeLifecycle key.';
+export const TRACKED_CONFIG_ERROR = 'Worktree scripts in a git-tracked .ai/onni/config.json are not run: scripts come only from local, untracked configuration. Untrack the file or remove its worktreeLifecycle key.';
 
 /** A committed hook list would run on every clone with no consent (spec: local configuration only). */
 export async function isLifecycleConfigTracked(projectRoot: string): Promise<boolean> {
-  return promisify(execFile)('git', ['ls-files', '--error-unmatch', '--', join('.ai', 'cezar', 'config.json')], { cwd: projectRoot })
+  return promisify(execFile)('git', ['ls-files', '--error-unmatch', '--', join('.ai', 'onni', 'config.json')], { cwd: projectRoot })
     .then(() => true, () => false);
 }
-/** The scripts Cezar may execute. Fails closed on an invalid list; a committed list counts as none. */
+/** The scripts Onni may execute. Fails closed on an invalid list; a committed list counts as none. */
 export async function readLifecycleConfig(projectRoot: string): Promise<LifecycleConfigSnapshot> {
   return trusted(projectRoot, lifecycleConfigFromRaw(await readLifecycleConfigRaw(projectRoot)));
 }
@@ -65,7 +65,7 @@ async function trusted(projectRoot: string, snapshot: LifecycleConfigSnapshot): 
   return scripts > 0 && await isLifecycleConfigTracked(projectRoot) ? UNCONFIGURED : snapshot;
 }
 export async function withLifecycleConfigLock<T>(projectRoot: string, action: () => Promise<T>): Promise<T> {
-  const path = join(projectRoot, '.ai', 'cezar', 'config.lifecycle.lock');
+  const path = join(projectRoot, '.ai', 'onni', 'config.lifecycle.lock');
   await assertLifecyclePath(path, projectRoot);
   return withLifecycleFileLock(path, action);
 }
@@ -97,7 +97,7 @@ export function applyLifecycleConfigUpdate(raw: Record<string, unknown>, config:
 export async function writeLifecycleConfig(projectRoot: string, config: WorktreeLifecycleConfig | null, expectedRevision: string | null): Promise<LifecycleConfigSnapshot> {
   return withLifecycleConfigLock(projectRoot, async () => {
     const next = applyLifecycleConfigUpdate(await readLifecycleConfigRaw(projectRoot), config, expectedRevision);
-    await atomicLifecycleWrite(join(projectRoot, '.ai', 'cezar', 'config.json'), next);
+    await atomicLifecycleWrite(join(projectRoot, '.ai', 'onni', 'config.json'), next);
     return lifecycleConfigFromRaw(next);
   });
 }

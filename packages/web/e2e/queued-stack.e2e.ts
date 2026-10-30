@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { AgentBrowser, cezarCli, stopFixtureServer } from './agent-browser'
+import { AgentBrowser, onniCli, stopFixtureServer } from './agent-browser'
 
 /**
  * Stacking, editing and removing a queued run's prompt (#472), end-to-end against a LIVE
- * dry-run cezar — the one state the cockpit used to forbid editing in.
+ * dry-run onni — the one state the cockpit used to forbid editing in.
  *
  * The queue is forced with `{"resources":{"maxParallel":1}}` in the throwaway
  * workspace's `CEZ_HOME/config.json`, and the slot is held by a `mock:slow` run
@@ -49,7 +49,7 @@ async function waitForHealth(url: string): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 250))
   }
-  throw new Error(`cezar e2e: the queued-stack server never answered at ${url}`)
+  throw new Error(`onni e2e: the queued-stack server never answered at ${url}`)
 }
 
 async function getRun(url: string, id: string): Promise<{ status: string; task: string; queuedMessages?: Array<{ id: string; text: string }> }> {
@@ -77,7 +77,7 @@ async function waitForStatus(url: string, id: string, wanted: string[], tries = 
     if (wanted.includes(status)) return status
     await new Promise((r) => setTimeout(r, 500))
   }
-  throw new Error(`cezar e2e: run ${id} never reached status "${wanted.join('/')}"`)
+  throw new Error(`onni e2e: run ${id} never reached status "${wanted.join('/')}"`)
 }
 
 const startRun = async (url: string, task: string): Promise<string> => {
@@ -98,21 +98,21 @@ let baseUrl: string
 let queuedId: string
 
 beforeAll(async () => {
-  dataRoot = mkdtempSync(join(tmpdir(), 'cezar-e2e-queued-'))
+  dataRoot = mkdtempSync(join(tmpdir(), 'onni-e2e-queued-'))
   const git = (...args: string[]) => execFileSync('git', ['-C', dataRoot, ...args])
   git('init', '-q', '-b', 'main')
-  git('config', 'user.email', 'e2e@cezar.test')
-  git('config', 'user.name', 'cezar e2e')
+  git('config', 'user.email', 'e2e@onni.test')
+  git('config', 'user.name', 'onni e2e')
   writeFileSync(join(dataRoot, 'README.md'), '# queued-stack e2e fixture repo\n', 'utf8')
   git('add', '.')
   git('commit', '-qm', 'init')
 
   // One workspace-wide agent slot, so the second run demonstrably waits in the queue.
   // CEZ_HOME keeps this test isolated from the developer's real workspace config.
-  const cezHome = join(dataRoot, '.cez-home')
-  mkdirSync(cezHome, { recursive: true })
+  const onniHome = join(dataRoot, '.onni-home')
+  mkdirSync(onniHome, { recursive: true })
   writeFileSync(
-    join(cezHome, 'config.json'),
+    join(onniHome, 'config.json'),
     JSON.stringify({ resources: { maxParallel: 1 } }),
     'utf8',
   )
@@ -121,8 +121,8 @@ beforeAll(async () => {
   baseUrl = `http://localhost:${port}`
   server = spawn(
     process.execPath,
-    [cezarCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
-    { env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: cezHome }, stdio: 'ignore' },
+    [onniCli, 'serve', '--repo', dataRoot, '--port', String(port), '--no-open'],
+    { env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: onniHome }, stdio: 'ignore' },
   )
   await waitForHealth(baseUrl)
 

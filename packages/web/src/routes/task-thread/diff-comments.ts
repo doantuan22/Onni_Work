@@ -211,7 +211,7 @@ export function slashCommandOf(text: string): string | undefined {
 }
 
 /**
- * May the comments ride this message? Not when it opens with a slash command cezar does not know
+ * May the comments ride this message? Not when it opens with a slash command onni does not know
  * as a registry skill: that is a BACKEND command (`/compact`, `/clear`, …), and anything appended
  * becomes its arguments — the send succeeds, the comments are cleared, and the agent never saw a
  * review. A registry skill is fine: the server expands it and the review stays the request. While

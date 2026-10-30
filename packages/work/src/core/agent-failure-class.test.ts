@@ -76,7 +76,7 @@ describe('accountStateHint', () => {
     expect(accountStateHint('context_too_large', 'claude')).toMatch(/start a new task from this one's handoff/);
   });
 
-  it('says nothing where cezar already acts or has nothing to add', () => {
+  it('says nothing where onni already acts or has nothing to add', () => {
     expect(accountStateHint('usage_limit', 'claude', { resetKnown: true })).toBeUndefined();
     expect(accountStateHint('transient', 'claude')).toBeUndefined();
     expect(accountStateHint('other', 'claude')).toBeUndefined();

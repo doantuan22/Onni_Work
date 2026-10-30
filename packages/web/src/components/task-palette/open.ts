@@ -1,6 +1,6 @@
 /** The programmatic-open seam for ⌘P, like `openCommandPalette` for ⌘K: a window event, so ⌘K
  *  can hand a task over without the two palettes sharing state. */
-export const OPEN_TASK_PALETTE_EVENT = 'cezar:open-task-palette'
+export const OPEN_TASK_PALETTE_EVENT = 'onni:open-task-palette'
 
 export interface TaskPaletteSubject {
   runId: string

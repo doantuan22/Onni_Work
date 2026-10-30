@@ -15,7 +15,7 @@ export async function runTrackerConnectionsCommand(
       await store.removeId(args[1]!);
       output.log('Local credential entry removed. This does not revoke the vendor token.');
     } else {
-      output.error('Usage: cez tracker-connections list | remove <64-hex-id>');
+      output.error('Usage: onni tracker-connections list | remove <64-hex-id>');
       return 1;
     }
     return 0;

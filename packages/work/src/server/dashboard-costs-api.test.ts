@@ -19,9 +19,9 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
 });
 it('reads raw cold records without writes, validates queries and reapplies current policy to pages', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'cez-costs-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-costs-'));
   roots.push(root);
-  const dir = join(root, '.ai/cezar');
+  const dir = join(root, '.ai/onni');
   mkdirSync(dir, { recursive: true });
   const records = Array.from({ length: 225 }, (_, i) => ({
     id: `task-${i}`,
@@ -121,9 +121,9 @@ it('reads raw cold records without writes, validates queries and reapplies curre
 
 
 it('reapplies cost visibility to operational snapshots, pages and feed without mutating cached rows', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'cez-policy-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-policy-'));
   roots.push(root);
-  const dir = join(root, '.ai/cezar');
+  const dir = join(root, '.ai/onni');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'runs.json'), JSON.stringify(['review', 'done'].map((status) => ({
     id: status, title: status, workflow: 'build', task: 'private', status,

@@ -10,8 +10,8 @@ let root: string;
 let dataDir: string;
 
 beforeEach(async () => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), 'cez-start-app-')));
-  dataDir = join(root, '.ai/cezar');
+  root = realpathSync(mkdtempSync(join(tmpdir(), 'onni-start-app-')));
+  dataDir = join(root, '.ai/onni');
   await mergeWriteWorkspaceConfig((config) => {
     config.projects = [{ id: 'demo', root, name: 'demo', addedAt: '', lastOpenedAt: '', source: 'local' }];
   });
@@ -64,10 +64,10 @@ describe('the start recipe', () => {
     writeFileSync(join(dataDir, 'config.json'), JSON.stringify({ startApp: { services: [] } }));
     expect((await readStartApp(dataDir, root)).project).toBeNull();
 
-    const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'cez-start-app-other-')));
+    const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'onni-start-app-other-')));
     try {
-      expect((await readStartApp(join(elsewhere, '.ai/cezar'), elsewhere)).personalAvailable).toBe(false);
-      expect(await writeStartApp(join(elsewhere, '.ai/cezar'), elsewhere, 'personal', { services: ['x'] })).toBe(false);
+      expect((await readStartApp(join(elsewhere, '.ai/onni'), elsewhere)).personalAvailable).toBe(false);
+      expect(await writeStartApp(join(elsewhere, '.ai/onni'), elsewhere, 'personal', { services: ['x'] })).toBe(false);
     } finally {
       rmSync(elsewhere, { recursive: true, force: true });
     }

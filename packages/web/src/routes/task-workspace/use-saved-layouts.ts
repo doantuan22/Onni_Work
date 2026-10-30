@@ -16,7 +16,7 @@ import { isReservedLayoutName, isViewId, type SavedLayout } from './layout-state
 const NONE: readonly SavedLayout[] = []
 
 /** The file's list, minus every entry the PUT schema would refuse: the GET answers the file
- *  verbatim, and one bad entry (hand-edited, a newer cezar's view) must neither crash a reader nor
+ *  verbatim, and one bad entry (hand-edited, a newer onni's view) must neither crash a reader nor
  *  make every later write 400 — the `keybindings` rule (BACKWARD_COMPATIBILITY.md §2). */
 export function readSavedLayouts(raw: unknown): SavedWorkspaceLayout[] {
   if (!Array.isArray(raw)) return []
@@ -28,7 +28,7 @@ export function readSavedLayouts(raw: unknown): SavedWorkspaceLayout[] {
 
 /**
  * The layouts the user saved by name — one list for every task of every project, kept in
- * `~/.cezar/ui-state.json` (`savedLayouts`). The `useProjectOrder` shape: the ui-state query is the
+ * `~/.onni/ui-state.json` (`savedLayouts`). The `useProjectOrder` shape: the ui-state query is the
  * single copy, a write is optimistic, and writes are serialized so a slow answer cannot resurrect
  * a list the user has already changed.
  */

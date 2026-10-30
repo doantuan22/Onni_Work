@@ -14,8 +14,8 @@ describe('GET /runs omits workflowDef', () => {
   let id: string;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-runs-slim-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-runs-slim-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     id = store.createRun({ title: 't', workflow: 'w', task: 't', steps: [] }).id;
     store.updateRun(id, { workflowDef: { name: 'w', steps: [], source: 'file' } });
   });

@@ -26,13 +26,13 @@ const roots: string[] = [];
 const savedEnv: Record<string, string | undefined> = {};
 
 function fixtureRepo(config?: Record<string, unknown>): string {
-  const root = mkdtempSync(join(tmpdir(), 'cez-branch-naming-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-branch-naming-'));
   roots.push(root);
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
   execFileSync('git', [...GIT_ID, 'commit', '--allow-empty', '-q', '-m', 'base'], { cwd: root });
   if (config) {
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(root, '.ai/cezar/config.json'), JSON.stringify(config));
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    writeFileSync(join(root, '.ai/onni/config.json'), JSON.stringify(config));
   }
   return root;
 }
@@ -63,7 +63,7 @@ afterEach(() => {
 describe('branch naming instructions', () => {
   it('forks the task on the namer\'s branch when instructions are configured', async () => {
     const root = fixtureRepo({ branchNaming: 'start with feature/, dashes between words' });
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     try {
       const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });
@@ -82,7 +82,7 @@ describe('branch naming instructions', () => {
   it('suffixes the id8 when the generated name is already a branch', async () => {
     const root = fixtureRepo({ branchNaming: 'start with feature/' });
     execFileSync('git', ['branch', 'feature/implementing-cr-fixes'], { cwd: root });
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     try {
       const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });
@@ -94,18 +94,18 @@ describe('branch naming instructions', () => {
     }
   }, 30_000);
 
-  it('keeps cez/<id8> when an existing branch blocks the generated name as a path prefix', async () => {
+  it('keeps onni/<id8> when an existing branch blocks the generated name as a path prefix', async () => {
     // `feature` exists, so git can never create `feature/…` — the run must still start.
     const root = fixtureRepo({ branchNaming: 'start with feature/' });
     execFileSync('git', ['branch', 'feature'], { cwd: root });
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     try {
       const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });
       await waitForDone(store, record.id);
       const run = store.getRun(record.id);
       expect(run?.status).toBe('done');
-      expect(run?.branch).toBe(`cez/${record.id.slice(0, 8)}`);
+      expect(run?.branch).toBe(`onni/${record.id.slice(0, 8)}`);
       const notes = store.readEvents(record.id).filter((e) => e.type === 'note').map((e) => String(e.message));
       expect(notes.some((n) => n.includes('not usable'))).toBe(true);
     } finally {
@@ -114,30 +114,30 @@ describe('branch naming instructions', () => {
     }
   }, 30_000);
 
-  it('keeps cez/<id8> without instructions, even though the namer runs', async () => {
+  it('keeps onni/<id8> without instructions, even though the namer runs', async () => {
     const root = fixtureRepo();
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     try {
       const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });
       await waitForDone(store, record.id);
-      expect(store.getRun(record.id)?.branch).toBe(`cez/${record.id.slice(0, 8)}`);
+      expect(store.getRun(record.id)?.branch).toBe(`onni/${record.id.slice(0, 8)}`);
     } finally {
       manager.dispose();
       store.flush();
     }
   }, 30_000);
 
-  it('keeps cez/<id8> when naming is off, without waiting on a namer that never runs', async () => {
+  it('keeps onni/<id8> when naming is off, without waiting on a namer that never runs', async () => {
     process.env.CEZ_AUTONAME = '0';
     const root = fixtureRepo({ branchNaming: 'start with feature/' });
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     try {
       const started = Date.now();
       const record = manager.startRun(CHECK_ONLY, { task: 'implement the cr fixes' });
       await waitForDone(store, record.id);
-      expect(store.getRun(record.id)?.branch).toBe(`cez/${record.id.slice(0, 8)}`);
+      expect(store.getRun(record.id)?.branch).toBe(`onni/${record.id.slice(0, 8)}`);
       expect(Date.now() - started).toBeLessThan(4_000);
     } finally {
       manager.dispose();

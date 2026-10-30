@@ -61,7 +61,7 @@ export const graphNodeSchema = z.discriminatedUnion('type', [
     allowedTools: z.array(z.string()).optional(),
     bashAllowlist: z.array(z.string()).optional(),
     /** Author-declared outcomes (D10/D17). The agent picks one by ending its turn with
-     *  `CEZ:VERDICT <name>`; each becomes an output port in place of `done`. */
+     *  `ONNI:VERDICT <name>`; each becomes an output port in place of `done`. */
     verdicts: z.array(verdictName).min(1).optional(),
     /** Reopen another agent node's session instead of starting fresh (D6). */
     session: z.object({ continue: nodeId }).optional(),
@@ -80,7 +80,7 @@ export const graphNodeSchema = z.discriminatedUnion('type', [
     /** The secrets this command may read (see `workflowStepSchema.secrets`). */
     secrets: stepSecretsSchema.optional(),
   }),
-  // ---- phase 1c: nodes cezar executes itself (no agent session) ----
+  // ---- phase 1c: nodes onni executes itself (no agent session) ----
   /** Pause for the user's approve / reject (an ask card with two options). */
   z.object({ ...nodeBase, type: z.literal('gate.human'), message: z.string().min(1), timeoutMs: waitMs.optional() }),
   /** Ask the user a question; the answer is `{{nodes.<id>.answer}}`. */
@@ -142,7 +142,7 @@ export const graphNodeSchema = z.discriminatedUnion('type', [
     addLabels: z.array(z.string().min(1)).optional(),
     reviewers: z.array(z.string().min(1)).optional(),
   }),
-  /** Comment on the task's issue (`CEZ:ISSUE`, or the issue the task is about), or on `issue`. */
+  /** Comment on the task's issue (`ONNI:ISSUE`, or the issue the task is about), or on `issue`. */
   z.object({ ...nodeBase, type: z.literal('github.issue-comment'), issue: z.number().int().positive().optional(), body: z.string().min(1) }),
   /** POST to a URL — a network call, so it only runs with `CEZ_WORKFLOW_WEBHOOKS=1`. */
   z.object({ ...nodeBase, type: z.literal('notify.webhook'), url: z.string().url().regex(/^https?:\/\//, 'http(s) URLs only'), body: z.string().optional() }),
@@ -272,7 +272,7 @@ export function parseEdgeFrom(from: string, nodes: readonly GraphNode[]): { node
   return portsOfNode(best).includes(port) ? { node: best.id, port } : null;
 }
 
-const VERDICT_MARKER_RE = /CEZ:VERDICT[ \t:=]+([A-Za-z0-9][A-Za-z0-9_-]*)\s*$/;
+const VERDICT_MARKER_RE = /ONNI:VERDICT[ \t:=]+([A-Za-z0-9][A-Za-z0-9_-]*)\s*$/;
 
 /** The verdict a turn ended with, if it is one the node declared (D17). */
 export function parseVerdict(turnText: string, verdicts: readonly string[]): string | null {
@@ -282,12 +282,12 @@ export function parseVerdict(turnText: string, verdicts: readonly string[]): str
 
 /** Strip a trailing verdict marker from displayed text (same caveat as the other markers). */
 export function stripVerdictMarker(text: string): string {
-  return text.replace(/\s*CEZ:VERDICT[ \t:=]+[A-Za-z0-9_-]+\s*$/, '');
+  return text.replace(/\s*ONNI:VERDICT[ \t:=]+[A-Za-z0-9_-]+\s*$/, '');
 }
 
 /** The instruction appended to a verdict node's prompt. */
 export function verdictInstruction(verdicts: readonly string[]): string {
-  const list = verdicts.map((v) => `\`CEZ:VERDICT ${v}\``).join(', ');
+  const list = verdicts.map((v) => `\`ONNI:VERDICT ${v}\``).join(', ');
   return (
     `When you finish this step, end your final message with exactly one verdict marker on its own ` +
     `last line — one of: ${list}. The workflow branches on it.`
@@ -417,7 +417,7 @@ export function graphToSteps(graph: WorkflowGraph): WorkflowStepDef[] {
 }
 
 /** Every executable node (not start/end/loop) in walk order, as the run rail lists them. Nodes
- *  cezar runs itself (gates, PRs, CI waits…) ride the rail as `check`-kind rows: they are not
+ *  onni runs itself (gates, PRs, CI waits…) ride the rail as `check`-kind rows: they are not
  *  agent sessions, which is the only distinction the rail's `kind` draws. */
 export function graphRailSteps(graph: WorkflowGraph): { id: string; name: string; kind: 'agent' | 'check' }[] {
   const label = (type: GraphNodeType) => NODE_CATALOG.find((c) => c.type === type)?.label ?? type;

@@ -40,7 +40,7 @@ describe('dashboard insights', () => {
         issueNumber: 9,
       }),
       run({ prRefs: [{ number: 7, origin: 'derived', at: '2026-09-29T11:00:00.000Z' }] }),
-      // Legacy record: a bare URL is the PR cezar opened.
+      // Legacy record: a bare URL is the PR onni opened.
       run({ prNumber: 8, pullRequestUrl: 'https://github.com/o/r/pull/8' }),
       run({ status: 'failed', diffStat: { adds: 99, dels: 99, files: 99 }, error: 'boom' }),
     ]);

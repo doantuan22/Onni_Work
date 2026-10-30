@@ -44,12 +44,12 @@ describe('workspace runs index API', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-runs-index-home-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-runs-index-boot-'));
-    otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-runs-index-other-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-runs-index-home-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-runs-index-boot-'));
+    otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-runs-index-other-'));
     process.env.CEZ_HOME = home;
     process.env.CEZ_DRY_RUN = '1';
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     clearProjectProbeCache();
   });
 
@@ -73,8 +73,8 @@ describe('workspace runs index API', () => {
 
   /** Give `root` a `runs.json` without ever opening a store on it — a genuinely COLD project. */
   const seedColdProject = (root: string, runs: unknown[]) => {
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(root, '.ai/cezar/runs.json'), JSON.stringify(runs), 'utf8');
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
+    writeFileSync(join(root, '.ai/onni/runs.json'), JSON.stringify(runs), 'utf8');
   };
 
   it('answers an empty index for an empty registry — never a 404', async () => {
@@ -467,8 +467,8 @@ describe('workspace runs index API', () => {
   it('skips a project whose folder is gone and degrades a corrupt index to no rows', async () => {
     await registerProject(repoRoot);
     await registerProject(otherRoot);
-    mkdirSync(join(otherRoot, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(otherRoot, '.ai/cezar/runs.json'), '{ not json', 'utf8');
+    mkdirSync(join(otherRoot, '.ai/onni'), { recursive: true });
+    writeFileSync(join(otherRoot, '.ai/onni/runs.json'), '{ not json', 'utf8');
     const live = store.createRun({ title: 'Boot task', workflow: 'build', task: 't', steps: [] });
 
     const body = await getIndex();

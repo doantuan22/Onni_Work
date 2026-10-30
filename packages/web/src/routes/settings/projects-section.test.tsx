@@ -30,9 +30,9 @@ let failPatches: string | null = null
 
 const PROJECTS: ProjectListEntry[] = [
   {
-    id: 'cezar',
-    name: 'cezar',
-    root: '/home/piotr/Projects/cezar',
+    id: 'onni',
+    name: 'onni',
+    root: '/home/piotr/Projects/onni',
     addedAt: '2026-07-20T09:00:00.000Z',
     lastOpenedAt: '2026-07-20T09:00:00.000Z',
     source: 'local',
@@ -42,7 +42,7 @@ const PROJECTS: ProjectListEntry[] = [
   {
     id: 'shop-backend',
     name: 'shop-backend',
-    root: '/home/piotr/cezar/projects/shop-backend',
+    root: '/home/piotr/onni/projects/shop-backend',
     addedAt: '2026-07-20T09:00:00.000Z',
     lastOpenedAt: '2026-07-20T09:00:00.000Z',
     source: 'checkout',
@@ -63,7 +63,7 @@ const PROJECTS: ProjectListEntry[] = [
   },
 ]
 
-/** The folder cezar is serving without having saved it — `GET /api/v1/projects` leads the list
+/** The folder onni is serving without having saved it — `GET /api/v1/projects` leads the list
  *  with this since boot registration became seed-once. */
 const UNREGISTERED_BOOT: ProjectListEntry = {
   id: 'scratch',
@@ -100,14 +100,14 @@ function serve(answers: Answers = {}) {
           ...PROJECTS.map((p) => ({ ...p })),
         ]
       : PROJECTS.map((p) => ({ ...p })),
-    bootProject: answers.unregisteredBoot ? UNREGISTERED_BOOT.id : 'cezar',
-    projectsDir: '~/cezar/projects',
+    bootProject: answers.unregisteredBoot ? UNREGISTERED_BOOT.id : 'onni',
+    projectsDir: '~/onni/projects',
   }
   const config: WorkspaceConfigResponse = {
-    branding: { name: 'cezar', logoUrl: null },
+    branding: { name: 'onni', logoUrl: null },
     agentDefaults: {},
     browseRoot: '~/',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
     skillsAutoUpdate: null,
     effectiveSkillsAutoUpdate: true,
     orgSkillsRepos: [],
@@ -194,14 +194,14 @@ function serve(answers: Answers = {}) {
 /** Seeds the step-3.2 route gates so the (unscoped) global settings shell renders immediately. */
 function gateSeededClient(unregisteredBoot = false, notAddable = false) {
   const client = createQueryClient()
-  const bootProject = unregisteredBoot ? UNREGISTERED_BOOT.id : 'cezar'
+  const bootProject = unregisteredBoot ? UNREGISTERED_BOOT.id : 'onni'
   client.setQueryData(queryKeys.health, { bootProject })
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: unregisteredBoot
       ? [notAddable ? { ...UNREGISTERED_BOOT, notAddable: true as const } : UNREGISTERED_BOOT, ...PROJECTS]
       : PROJECTS,
     bootProject,
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   return client
 }
@@ -259,7 +259,7 @@ describe('Global settings → Projects', () => {
     serve()
     renderProjects()
     await waitFor(() => expect(rows()).toHaveLength(3))
-    expect(row('shop-backend')?.textContent).toContain('/home/piotr/cezar/projects/shop-backend')
+    expect(row('shop-backend')?.textContent).toContain('/home/piotr/onni/projects/shop-backend')
     expect(row('shop-backend')?.textContent).toContain('checkout')
     // The `missing` row (step 3.3 greys it out in the sidebar) is actionable HERE.
     expect(row('old-spike')?.textContent).toContain('folder not found')
@@ -274,7 +274,7 @@ describe('Global settings → Projects', () => {
     // Unified settings (spec 2026-10-13): this pane renders OUTSIDE every project scope, so the
     // path must carry its own `/p/<id>` — a scoped Link would have nothing to prefix with.
     expect(link('shop-backend')?.getAttribute('href')).toBe('/p/shop-backend/settings')
-    expect(link('cezar')?.getAttribute('href')).toBe('/p/cezar/settings')
+    expect(link('onni')?.getAttribute('href')).toBe('/p/onni/settings')
     expect(link('old-spike')).toBeNull()
   })
 
@@ -363,7 +363,7 @@ describe('Global settings → Projects', () => {
         { method: 'PUT', url: '/api/v1/workspace/config', body: { browseRoot: '~/source' } },
       ]),
     )
-    expect(rootInput()!.value).toBe('~/cezar/projects')
+    expect(rootInput()!.value).toBe('~/onni/projects')
     expect(requests.filter((r) => r.method === 'GET' && r.url === '/api/v1/projects')).toHaveLength(0)
     await waitFor(() => expect(client.getQueryState(workspaceQueryKeys.fsBrowse(null))?.isInvalidated).toBe(true))
   })
@@ -482,8 +482,8 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'infra' } })
-      fireEvent.keyDown(tagInput('cezar')!, { key: ',' })
+      fireEvent.change(tagInput('onni')!, { target: { value: 'infra' } })
+      fireEvent.keyDown(tagInput('onni')!, { key: ',' })
       await waitFor(() => expect(patches().at(-1)!.body).toEqual({ tags: ['infra'] }))
     })
 
@@ -492,15 +492,15 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'infra' } })
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
-      await waitFor(() => expect(tagChips('cezar')).toEqual(['infra']))
+      fireEvent.change(tagInput('onni')!, { target: { value: 'infra' } })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
+      await waitFor(() => expect(tagChips('onni')).toEqual(['infra']))
 
       // Same tag in a different case: the server would dedupe it away and answer 200, which
       // would look like it worked.
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'INFRA' } })
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
-      await waitFor(() => expect(tagInput('cezar')!.value).toBe(''))
+      fireEvent.change(tagInput('onni')!, { target: { value: 'INFRA' } })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
+      await waitFor(() => expect(tagInput('onni')!.value).toBe(''))
       expect(patches()).toHaveLength(1)
     })
 
@@ -510,19 +510,19 @@ describe('Global settings → Projects', () => {
       await waitFor(() => expect(rows()).toHaveLength(3))
 
       for (const tag of ['api', 'web']) {
-        fireEvent.change(tagInput('cezar')!, { target: { value: tag } })
-        fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
-        await waitFor(() => expect(tagChips('cezar')).toContain(tag))
+        fireEvent.change(tagInput('onni')!, { target: { value: tag } })
+        fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
+        await waitFor(() => expect(tagChips('onni')).toContain(tag))
       }
 
       fireEvent.click(
-        row('cezar')!.querySelector<HTMLButtonElement>('[data-action="project-tag-remove"]')!,
+        row('onni')!.querySelector<HTMLButtonElement>('[data-action="project-tag-remove"]')!,
       )
-      await waitFor(() => expect(tagChips('cezar')).toEqual(['web']))
+      await waitFor(() => expect(tagChips('onni')).toEqual(['web']))
 
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Backspace' })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Backspace' })
       await waitFor(() => expect(patches().at(-1)!.body).toEqual({ tags: [] }))
-      await waitFor(() => expect(tagChips('cezar')).toEqual([]))
+      await waitFor(() => expect(tagChips('onni')).toEqual([]))
     })
 
     it('autocompletes from the tags already used in the workspace', async () => {
@@ -533,15 +533,15 @@ describe('Global settings → Projects', () => {
       await waitFor(() => expect(rows()).toHaveLength(3))
 
       // Focusing the empty field answers "which tags exist here?" before a keystroke.
-      fireEvent.focus(tagInput('cezar')!)
+      fireEvent.focus(tagInput('onni')!)
       await waitFor(() => expect(suggestions()).toEqual(['backend', 'storefront']))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'stor' } })
+      fireEvent.change(tagInput('onni')!, { target: { value: 'stor' } })
       await waitFor(() => expect(suggestions()).toEqual(['storefront']))
 
       fireEvent.click(document.querySelector('[data-slot="project-tag-suggestion"]')!)
       await waitFor(() => expect(patches().at(-1)!.body).toEqual({ tags: ['storefront'] }))
-      await waitFor(() => expect(tagChips('cezar')).toEqual(['storefront']))
+      await waitFor(() => expect(tagChips('onni')).toEqual(['storefront']))
     })
 
     it('stays open on the very click that opened it', async () => {
@@ -553,15 +553,15 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.focus(tagInput('cezar')!)
+      fireEvent.focus(tagInput('onni')!)
       await waitFor(() => expect(suggestions()).toEqual(['backend', 'storefront']))
 
-      fireEvent.focusIn(tagInput('cezar')!)
-      fireEvent.pointerDown(tagInput('cezar')!)
-      fireEvent.mouseDown(tagInput('cezar')!)
+      fireEvent.focusIn(tagInput('onni')!)
+      fireEvent.pointerDown(tagInput('onni')!)
+      fireEvent.mouseDown(tagInput('onni')!)
 
       expect(suggestions()).toEqual(['backend', 'storefront'])
-      expect(tagInput('cezar')!.getAttribute('aria-expanded')).toBe('true')
+      expect(tagInput('onni')!.getAttribute('aria-expanded')).toBe('true')
     })
 
     it('closes when focus really does leave the field', async () => {
@@ -570,10 +570,10 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.focus(tagInput('cezar')!)
+      fireEvent.focus(tagInput('onni')!)
       await waitFor(() => expect(suggestions()).toHaveLength(2))
 
-      fireEvent.blur(tagInput('cezar')!)
+      fireEvent.blur(tagInput('onni')!)
       await waitFor(() => expect(suggestions()).toEqual([]))
     })
 
@@ -593,18 +593,18 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.focus(tagInput('cezar')!)
+      fireEvent.focus(tagInput('onni')!)
       await waitFor(() => expect(suggestions()).toEqual(['backend', 'storefront']))
 
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'ArrowDown' })
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'ArrowDown' })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'ArrowDown' })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'ArrowDown' })
       await waitFor(() =>
-        expect(tagInput('cezar')!.getAttribute('aria-activedescendant')).toBe(
-          'project-tag-suggestions-cezar-1',
+        expect(tagInput('onni')!.getAttribute('aria-activedescendant')).toBe(
+          'project-tag-suggestions-onni-1',
         ),
       )
 
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
       await waitFor(() => expect(patches().at(-1)!.body).toEqual({ tags: ['storefront'] }))
     })
 
@@ -613,10 +613,10 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'brand-new' } })
+      fireEvent.change(tagInput('onni')!, { target: { value: 'brand-new' } })
       // Nothing to suggest — the field is a plain token input again.
       await waitFor(() => expect(suggestions()).toEqual([]))
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
       await waitFor(() => expect(patches().at(-1)!.body).toEqual({ tags: ['brand-new'] }))
     })
 
@@ -625,13 +625,13 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'stor' } })
+      fireEvent.change(tagInput('onni')!, { target: { value: 'stor' } })
       await waitFor(() => expect(suggestions()).toEqual(['storefront']))
 
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Escape' })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Escape' })
       await waitFor(() => expect(suggestions()).toEqual([]))
       // Dismissing a suggestion list is not the same gesture as abandoning the draft.
-      expect(tagInput('cezar')!.value).toBe('stor')
+      expect(tagInput('onni')!.value).toBe('stor')
     })
 
     it('keeps the first tag when a second is added before the refetch lands', async () => {
@@ -644,16 +644,16 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'api' } })
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
-      await waitFor(() => expect(tagChips('cezar')).toEqual(['api']))
+      fireEvent.change(tagInput('onni')!, { target: { value: 'api' } })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
+      await waitFor(() => expect(tagChips('onni')).toEqual(['api']))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'web' } })
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
+      fireEvent.change(tagInput('onni')!, { target: { value: 'web' } })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
 
       // The second request carries BOTH — it read the list the first one just produced.
       await waitFor(() => expect(patches().at(-1)!.body).toEqual({ tags: ['api', 'web'] }))
-      await waitFor(() => expect(tagChips('cezar')).toEqual(['api', 'web']))
+      await waitFor(() => expect(tagChips('onni')).toEqual(['api', 'web']))
     })
 
     it('puts the row back when the server refuses the edit', async () => {
@@ -661,14 +661,14 @@ describe('Global settings → Projects', () => {
       renderProjects()
       await waitFor(() => expect(rows()).toHaveLength(3))
 
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'infra' } })
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
-      await waitFor(() => expect(tagChips('cezar')).toEqual(['infra']))
+      fireEvent.change(tagInput('onni')!, { target: { value: 'infra' } })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
+      await waitFor(() => expect(tagChips('onni')).toEqual(['infra']))
 
       // A 400 from here on: the optimistic chip must not survive a refusal.
       failPatches = 'tag too long'
-      fireEvent.change(tagInput('cezar')!, { target: { value: 'nope' } })
-      fireEvent.keyDown(tagInput('cezar')!, { key: 'Enter' })
+      fireEvent.change(tagInput('onni')!, { target: { value: 'nope' } })
+      fireEvent.keyDown(tagInput('onni')!, { key: 'Enter' })
 
       // `getAllByRole`: the successful first add left its own toast up, so there are two.
       await waitFor(() =>
@@ -676,7 +676,7 @@ describe('Global settings → Projects', () => {
           screen.getAllByRole('status').some((toast) => toast.textContent?.includes('tag too long')),
         ).toBe(true),
       )
-      await waitFor(() => expect(tagChips('cezar')).toEqual(['infra']))
+      await waitFor(() => expect(tagChips('onni')).toEqual(['infra']))
     })
 
     it('never touches maxParallel when only tags change', async () => {
@@ -698,20 +698,20 @@ describe('Global settings → Projects', () => {
     })
   })
 
-  it('disables Remove for the project cezar is serving', async () => {
+  it('disables Remove for the project onni is serving', async () => {
     serve()
     renderProjects()
     await waitFor(() => expect(rows()).toHaveLength(3))
     // The server refuses it too (it is serving that repo); disabling explains it first.
-    expect(removeButton('cezar')?.disabled).toBe(true)
-    expect(removeButton('cezar')?.title).toContain('is serving this project')
+    expect(removeButton('onni')?.disabled).toBe(true)
+    expect(removeButton('onni')?.title).toContain('is serving this project')
   })
 
   /**
-   * Starting cezar in a folder no longer registers it, so this pane is where that folder gets
+   * Starting onni in a folder no longer registers it, so this pane is where that folder gets
    * saved — and the only row whose registry edits (Remove, Max parallel) have nothing to act on.
    */
-  it('offers Add — not Remove or a cap — for the folder cezar is serving but has not saved', async () => {
+  it('offers Add — not Remove or a cap — for the folder onni is serving but has not saved', async () => {
     serve({ unregisteredBoot: true })
     renderProjects(true)
     await waitFor(() => expect(rows()).toHaveLength(4))
@@ -747,16 +747,16 @@ describe('Global settings → Projects', () => {
   })
 
   it('surfaces the server’s refusal when the served folder is not addable', async () => {
-    // `$HOME` and cezar's own task worktrees are boot roots the register route refuses; the
+    // `$HOME` and onni's own task worktrees are boot roots the register route refuses; the
     // button does not pre-judge which folders qualify, it shows what the server said.
     serve({
       unregisteredBoot: true,
-      post: { status: 400, payload: { error: 'not a project folder: ~ is your home directory or a cezar task worktree' } },
+      post: { status: 400, payload: { error: 'not a project folder: ~ is your home directory or a onni task worktree' } },
     })
     renderProjects(true)
     await waitFor(() => expect(rows()).toHaveLength(4))
 
     fireEvent.click(row('scratch')!.querySelector<HTMLButtonElement>('[data-action="project-add-boot"]')!)
-    expect(await screen.findByText(/is your home directory or a cezar task worktree/)).not.toBeNull()
+    expect(await screen.findByText(/is your home directory or a onni task worktree/)).not.toBeNull()
   })
 })

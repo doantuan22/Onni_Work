@@ -22,13 +22,13 @@ let launchCheck: ((spec: AgentRunSpec) => void) | undefined;
 let semaphore: WorkspaceSemaphore;
 
 async function project() {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), 'cez-lifecycle-manager-')));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'onni-lifecycle-manager-')));
   await exec('git', ['init', '-q', '-b', 'main'], { cwd: root });
-  writeFileSync(join(root, '.gitignore'), '.ai/cezar/\n');
+  writeFileSync(join(root, '.gitignore'), '.ai/onni/\n');
   writeFileSync(join(root, 'tracked.txt'), 'base\n');
   await exec('git', ['add', '.'], { cwd: root });
   await exec('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'base'], { cwd: root });
-  const store = RunStore.open(join(root, '.ai/cezar'));
+  const store = RunStore.open(join(root, '.ai/onni'));
   const manager = new RunManager(store, root, { semaphore });
   const result = { root, store, manager }; projects.push(result); return result;
 }
@@ -70,7 +70,7 @@ describe('RunManager worktree lifecycle admission', { timeout: 20_000 }, () => {
     await (p.manager as unknown as {retentionPass: Promise<void>}).retentionPass;
     const worktreePath = p.store.getRun(run.id)!.worktreePath!;
     const head = (await exec('git', ['rev-parse', 'HEAD'], {cwd: p.root})).stdout.trim();
-    const ref = 'refs/cezar/pr/42';
+    const ref = 'refs/onni/pr/42';
     await exec('git', ['update-ref', ref, head], {cwd: p.root});
     p.store.updateRun(run.id, {prHead: {number: 42, repo: 'fixture/project', headRepo: 'fixture/project', headRef: 'feature', headSha: head, baseRef: 'main', ref}});
     p.manager.lifecycle.start();
@@ -98,7 +98,7 @@ describe('RunManager worktree lifecycle admission', { timeout: 20_000 }, () => {
     writeFileSync(join(p.root, 'release'), 'go');
     await wait(() => expect(p.store.getRun(run.id)?.status).toBe('done'));
     expect(launched).toHaveLength(1);
-    expect(launched[0]?.cwd).toBe(join(p.root, '.ai/cezar/worktrees', run.id));
+    expect(launched[0]?.cwd).toBe(join(p.root, '.ai/onni/worktrees', run.id));
     expect((await p.manager.lifecycle.store.readWorktree(run.id))?.preparedBy).toBe('completed');
   });
 
@@ -150,7 +150,7 @@ describe('RunManager worktree lifecycle admission', { timeout: 20_000 }, () => {
     const run = p.manager.startRun(workflow, { task: 'config repair', runner: 'claude' });
     await wait(() => expect(p.store.getRun(run.id)?.status).toBe('waiting'));
     const record = await p.manager.lifecycle.store.readWorktree(run.id);
-    writeFileSync(join(p.root, '.ai/cezar/config.json'), '{malformed');
+    writeFileSync(join(p.root, '.ai/onni/config.json'), '{malformed');
     expect(await p.manager.lifecycle.requiresGate(run.id)).toBe(true);
     await expect(readLifecycleConfig(p.root)).rejects.toThrow('malformed');
     await p.manager.lifecycle.reclaim(run.id);
@@ -167,7 +167,7 @@ describe('RunManager worktree lifecycle admission', { timeout: 20_000 }, () => {
     await wait(() => expect(p.store.getRun(run.id)?.status).toBe('waiting'));
     const operationId = p.store.getRun(run.id)!.worktreeLifecycle!.activeOperationId!;
     p.manager.dispose(); p.store.flush();
-    p.store = RunStore.open(join(p.root, '.ai/cezar'), { keepLive: true });
+    p.store = RunStore.open(join(p.root, '.ai/onni'), { keepLive: true });
     p.manager = new RunManager(p.store, p.root, { semaphore });
     await p.manager.recover();
     expect(p.store.getRun(run.id)?.status).toBe('waiting');
@@ -313,7 +313,7 @@ describe('RunManager worktree lifecycle admission', { timeout: 20_000 }, () => {
     const p = await project();
     await writeLifecycleConfig(p.root, { afterCreate: [entry('printf started > setup-started; sleep 30')], beforeRemove: [entry('test -f setup-started; printf cleanup > {{ root_path }}/setup-variant-cleanup')] }, null);
     const run = p.manager.startRun(workflow, { task: 'variant discarded during setup', runner: 'claude' });
-    const worktreePath = join(p.root, '.ai/cezar/worktrees', run.id);
+    const worktreePath = join(p.root, '.ai/onni/worktrees', run.id);
     await wait(() => expect(existsSync(join(worktreePath, 'setup-started'))).toBe(true));
     const before = await p.manager.lifecycle.store.readWorktree(run.id);
     const setupId = before!.activeOperationId!;

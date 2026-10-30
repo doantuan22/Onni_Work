@@ -61,7 +61,7 @@ describe('TemplatePalette', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'From your other projects' }))
     await waitFor(() => expect(screen.getByText('No automations in your other projects yet.')).not.toBeNull())
     expect(paths).toContain('/api/v1/workspace/automation-templates')
-    expect(screen.getByText('Registered in ~/.cezar/config.json')).not.toBeNull()
+    expect(screen.getByText('Registered in ~/.onni/config.json')).not.toBeNull()
   })
 
   it('renders another project\'s automation with its project chip and trigger', async () => {

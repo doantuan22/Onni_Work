@@ -51,7 +51,7 @@ const AUTH_FAILURE_PATTERNS = [
   /no copilot (?:subscription|entitlement|access)/i,
 ] as const;
 
-/** True for the Copilot auth failures cezar has seen on the wire (see the fixtures). */
+/** True for the Copilot auth failures onni has seen on the wire (see the fixtures). */
 export function isCopilotAuthFailure(text: string): boolean {
   return AUTH_FAILURE_PATTERNS.some((pattern) => pattern.test(text));
 }

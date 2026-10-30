@@ -62,7 +62,7 @@ export class WorktreeLifecycleCoordinator {
   }) {
     try { this.root = realpathSync(root); } catch { /* missing roots remain a local attention failure */ }
     this.cleanupStarted = !options.deferCleanup;
-    this.store = new LifecycleStore(join(this.root, '.ai/cezar'), this.root);
+    this.store = new LifecycleStore(join(this.root, '.ai/onni'), this.root);
     this.offSemaphore = options.semaphore.register({
       busySlots: () => this.executing.size,
       oldestQueuedAt: () => Math.min(...this.queue.values()) === Infinity ? null : Math.min(...this.queue.values()),
@@ -119,7 +119,7 @@ export class WorktreeLifecycleCoordinator {
     }
     if (resolve(record.projectRoot) !== resolve(this.root) || resolve(record.worktreePath) !== expected) throw new LifecycleConflict('Worktree context does not belong to this project');
     if (existsSync(expected) && realpathSync(expected) !== expected) throw new LifecycleConflict('Worktree path resolves outside its managed location');
-    return {root_path: this.root, worktree_path: expected, worktree_id: `cez-${record.worktreeId}`, task_id: record.runId};
+    return {root_path: this.root, worktree_path: expected, worktree_id: `onni-${record.worktreeId}`, task_id: record.runId};
   }
   private async recordById(id: string): Promise<WorktreeLifecycleRecord> {
     const { records } = await this.store.listWorktrees();
@@ -152,7 +152,7 @@ export class WorktreeLifecycleCoordinator {
       generation: 1, preparedBy: 'completed', autoCleanupSuppressed: false, createdAt: now(), updatedAt: now()};
     this.context(record); await this.store.writeWorktree(record); return record;
   }
-  /** A named branch git still refuses degrades to `cez/<id8>` only when it was freshly generated. */
+  /** A named branch git still refuses degrades to `onni/<id8>` only when it was freshly generated. */
   private async materialize<T>(choice: LifecycleBranchChoice, create: (branch?: string) => Promise<T>): Promise<T> {
     try { return await create(choice.branch); }
     catch (error) {
@@ -719,7 +719,7 @@ export class WorktreeLifecycleCoordinator {
       const config = await readLifecycleConfig(this.root);
       if (config.config.afterCreate.length || config.config.beforeRemove.length) {
         const known = new Set(summaries.map(item => item.runId));
-        for (const entry of await readdir(join(this.root, '.ai/cezar/worktrees'), {withFileTypes: true}).catch(() => [])) {
+        for (const entry of await readdir(join(this.root, '.ai/onni/worktrees'), {withFileTypes: true}).catch(() => [])) {
           if (entry.isDirectory() && /^[a-zA-Z0-9_-]{1,128}$/.test(entry.name) && !known.has(entry.name) && !this.runs.getRun(entry.name)) {
             summaries.push(this.attentionSummary(entry.name, 'Managed-path orphan has no lifecycle context; retained for manual recovery'));
           }
@@ -739,7 +739,7 @@ export class WorktreeLifecycleCoordinator {
   }
   async preview(input: {command: string; worktreeId?: string}): Promise<LifecyclePreviewResponse> {
     const variables: LifecycleTemplateContext = input.worktreeId ? this.context(await this.recordById(input.worktreeId))
-      : {root_path: '/example/project', worktree_path: '/example/project/.ai/cezar/worktrees/example-task', worktree_id: 'cez-00000000-0000-4000-8000-000000000000', task_id: '00000000-0000-4000-8000-000000000000'};
+      : {root_path: '/example/project', worktree_path: '/example/project/.ai/onni/worktrees/example-task', worktree_id: 'onni-00000000-0000-4000-8000-000000000000', task_id: '00000000-0000-4000-8000-000000000000'};
     const secrets = collectSecretValues(process.env);
     return {renderedCommand: redactSecrets(renderLifecycleCommand(input.command, variables), secrets),
       variables: Object.fromEntries(Object.entries(variables).map(([key,value]) => [key,redactSecrets(value,secrets)])) as LifecycleTemplateContext,
@@ -771,8 +771,8 @@ export class WorktreeLifecycleCoordinator {
           if (!operation) throw new Error('Lifecycle operation is missing');
           if (operation.state === 'running' || operation.state === 'committing') {
             operation.state = 'interrupted'; operation.error = operation.agentQuiescencePending
-              ? 'Variant cancellation was interrupted. Cezar cannot verify that its previous agent exited; worktree retained for manual recovery.'
-              : 'Cezar stopped before completion was recorded; choose an explicit recovery action';
+              ? 'Variant cancellation was interrupted. Onni cannot verify that its previous agent exited; worktree retained for manual recovery.'
+              : 'Onni stopped before completion was recorded; choose an explicit recovery action';
             for (const execution of operation.executions) if (execution.state === 'running') execution.state = 'interrupted';
             await this.save(record, operation);
           } else this.changed(record, operation);

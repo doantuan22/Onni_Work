@@ -50,7 +50,7 @@ for (const destination of destinations) {
     const renamed = screen.getByRole('article').filter({ hasText: `${destination.name} renamed fixture` })
     await expect(renamed.getByRole('button', 'Pause')).toBeVisible()
     await renamed.getByRole('button', 'Edit').tap()
-    await screen.getByLabel('Destination').selectOption({ value: 'cezar.json.v1' })
+    await screen.getByLabel('Destination').selectOption({ value: 'onni.json.v1' })
     await screen.getByLabel('Receiver URL').fill('https://receiver.invalid/converted')
     await screen.getByRole('button', 'Review changes').tap()
     await expect(screen.getByRole('dialog')).toContainText('use Rotate key and copy the new signing key')
@@ -65,7 +65,7 @@ for (const destination of destinations) {
 test('custom receiver preserves signing-key setup and rotation', async ({ app, screen }) => {
   await app.open('/p/default/settings/webhooks')
   await screen.getByRole('button', 'Add receiver').tap()
-  await expect(screen.getByLabel('Destination')).toHaveValue('cezar.json.v1')
+  await expect(screen.getByLabel('Destination')).toHaveValue('onni.json.v1')
   await screen.getByLabel('Name').fill('Custom browser fixture')
   await screen.getByLabel('Receiver URL').fill('https://receiver.invalid/fictional')
   await screen.getByRole('button', 'Save receiver').tap()

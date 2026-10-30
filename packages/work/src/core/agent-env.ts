@@ -7,7 +7,7 @@
  * attacker-controlled prompt can drive. Instead we build an explicit,
  * curated child env: a base allowlist of the non-secret vars a shell / dev
  * toolchain genuinely needs, plus the specific auth vars the chosen backend
- * requires, plus cezar's own `CEZ_*` namespace and the per-run `spec.env`.
+ * requires, plus onni's own `CEZ_*` namespace and the per-run `spec.env`.
  * Everything else — notably arbitrary secrets — is dropped by default.
  *
  * Zero-config: the safe env is the default and needs no configuration. Two
@@ -234,7 +234,7 @@ export const BACKEND_ALLOW_PREFIXES: Record<AgentBackend, readonly string[]> = {
   // junie's default auth (JetBrains account) lives entirely under `~/.junie/`
   // (already reachable via the base `HOME` allowlist — no env var needed). Its BYOK
   // path is CLI flags (`--anthropic-api-key=<text>` etc, `junie --help`), which
-  // cezar never passes, and nothing documents junie reading the provider env vars —
+  // onni never passes, and nothing documents junie reading the provider env vars —
   // so no provider prefix is granted on the strength of a flag.
   junie: ['JUNIE_'],
   // Copilot routes every model through GitHub, so it needs only its own family. The `gh` names
@@ -331,7 +331,7 @@ export function buildChildEnv(opts: BuildChildEnvOptions): NodeJS.ProcessEnv {
   // and a per-run `TEMP` are the same variable spelled two ways — leaving both
   // in the child env hands the backend the host value under one of them. That
   // is exactly the temp-directory bug #785 fixes, so the override has to be
-  // total. `extra` is cezar's own, never a host secret, and always wins.
+  // total. `extra` is onni's own, never a host secret, and always wins.
   const overridden = upperSet(Object.keys(extra));
 
   // Escape hatch: restore legacy full-inheritance (opt-in, off by default).
@@ -375,14 +375,14 @@ export function buildChildEnv(opts: BuildChildEnvOptions): NodeJS.ProcessEnv {
     if (overridden.has(name.toUpperCase())) continue; // the per-run value replaces it, whatever the spelling
     if (allow(name)) out[name] = value;
   }
-  // Per-run env last — it is cezar's own, never a host secret, and must win.
+  // Per-run env last — it is onni's own, never a host secret, and must win.
   for (const [name, value] of Object.entries(extra)) out[name] = value;
   return out;
 
   /** `name` is matched normalized; the caller keeps the original spelling. */
   function allow(name: string): boolean {
     const key = name.toUpperCase();
-    // cezar's own namespace (CEZ_DRY_RUN plumbing, mock hooks, run wiring).
+    // onni's own namespace (CEZ_DRY_RUN plumbing, mock hooks, run wiring).
     if (key.startsWith('CEZ_')) return true;
     // Backend auth + gh handoff + the cloud creds an active Bedrock/Vertex
     // toggle needs: forwarded even though they are secrets — the backend cannot

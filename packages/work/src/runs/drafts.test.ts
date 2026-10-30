@@ -23,7 +23,7 @@ describe('run draft store', () => {
   let dataDir: string;
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-drafts-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-drafts-'));
   });
 
   afterEach(() => {
@@ -204,7 +204,7 @@ describe('run draft store', () => {
 
     it('lists an attachment WITHOUT reading its bytes', () => {
       // The property this pins is a performance one stated as behaviour: a listing and a `PUT`
-      // must not read or parse the blob. `cezar serve` is single-threaded and is streaming agent
+      // must not read or parse the blob. `onni serve` is single-threaded and is streaming agent
       // output over SSE while the user types, and four attachments at the ~5 MB cap cost ~80 ms of
       // blocked event loop to parse — twice per typing pause, on the feature's own headline path.
       // Corrupting the blob's CONTENT while leaving the file in place is how that is observable:

@@ -249,8 +249,8 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
       </div>}
       {value && !disabledReason && <>
         {value.start.kind === 'usage-reset' && currentOptions?.usageReset.available && <p className="text-sm text-muted-foreground">{currentOptions.usageReset.provider === 'claude'
-          ? 'The task waits until your Claude usage limit resets, then starts. Cezar knows the reset time from limits your earlier Claude tasks hit.'
-          : 'The task waits until your Codex usage limit resets, then starts. Cezar reads the reset time from Codex.'}</p>}
+          ? 'The task waits until your Claude usage limit resets, then starts. Onni knows the reset time from limits your earlier Claude tasks hit.'
+          : 'The task waits until your Codex usage limit resets, then starts. Onni reads the reset time from Codex.'}</p>}
         {value.start.kind === 'usage-reset' && !resetReason && !ready && !message && <p role="status" className="text-sm text-muted-foreground">{blocked}</p>}
         {value.start.kind === 'usage-reset' && !resetReason && (ready || (message && retry)) && <Button type="button" variant="outline" size="sm" disabled={busy || !task.task.trim()} onClick={() => void check()}>{message ? 'Try again' : 'Refresh'}</Button>}
         {value.start.kind === 'at' && retry && <Button type="button" variant="outline" disabled={busy || !!fieldMessage || !task.task.trim()} onClick={() => void check()}>Retry</Button>}

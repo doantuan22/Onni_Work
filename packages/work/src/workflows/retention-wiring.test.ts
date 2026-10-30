@@ -25,7 +25,7 @@ describe('worktree retention fires on a terminal transition (#483)', () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-retention-wire-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-retention-wire-'));
     savedEnv.CEZ_DRY_RUN = process.env.CEZ_DRY_RUN;
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
@@ -33,13 +33,13 @@ describe('worktree retention fires on a terminal transition (#483)', () => {
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
     // keep=1: with two finished worktrees, the older is over budget.
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     writeFileSync(
-      join(repoRoot, '.ai/cezar/config.json'),
+      join(repoRoot, '.ai/onni/config.json'),
       JSON.stringify({ worktreeRetention: 1 }),
       'utf8',
     );
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
   });
 

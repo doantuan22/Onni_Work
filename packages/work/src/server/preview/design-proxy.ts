@@ -36,7 +36,7 @@ import { PICKER_PATH, pickerScript } from './picker-script.ts';
  *  a page that large is not a dev server's document, and holding it would be the wrong trade. */
 const HTML_BUFFER_MAX = 4 * 1024 * 1024;
 
-const SCRIPT_TAG = `<script src="${PICKER_PATH}" data-cezar-design></script>`;
+const SCRIPT_TAG = `<script src="${PICKER_PATH}" data-onni-design></script>`;
 
 /** Hop-by-hop headers: they describe one connection and must not be copied onto the next. */
 const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'te', 'trailer', 'upgrade']);
@@ -140,7 +140,7 @@ export class DesignProxies {
     const upstream = target.url;
     const refused = new Set([parentOrigin, ...(input.forbidden ?? [])].flatMap(loopbackAliases));
     if (loopbackAliases(upstream.origin).some((alias) => refused.has(alias))) {
-      return { ok: false, reason: 'Design Mode cannot be pointed at cezar itself' };
+      return { ok: false, reason: 'Design Mode cannot be pointed at onni itself' };
     }
 
     const key = `${upstream.origin}|${parentOrigin}`;

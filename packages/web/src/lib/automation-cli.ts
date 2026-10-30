@@ -2,8 +2,8 @@ import { cronOf, hm, normalizeSchedule, type AutomationDefinition, type Automati
 
 /**
  * The editor's "Copy as CLI" card (spec 2026-09-14-automations-redesign Q1): the flag form of
- * `cez automation add` when the definition is expressible in flags, the JSON form of
- * `cez automation create` otherwise. Both build the same request body server-side, so either
+ * `onni automation add` when the definition is expressible in flags, the JSON form of
+ * `onni automation create` otherwise. Both build the same request body server-side, so either
  * line recreates exactly what the cockpit would save.
  *
  * Flag-expressible: any schedule; a poll whose filters are at most `anyLabels` (`--label`) and
@@ -52,7 +52,7 @@ export function flagExpressible(definition: CliDefinition): boolean {
 
 /** The flag form. Callers check `flagExpressible` first; an inexpressible poll gets JSON. */
 export function cliFlagsOf(definition: CliDefinition): string {
-  const parts = ['cez automation add', `--name ${shellQuote(definition.name || 'untitled')}`]
+  const parts = ['onni automation add', `--name ${shellQuote(definition.name || 'untitled')}`]
   if (definition.kind === 'schedule' && definition.schedule?.type === 'once') {
     const s = normalizeSchedule(definition.schedule)
     parts.push(`--at ${shellQuote(`${s.date} ${hm(s.hour, s.minute)}`)}`)
@@ -93,7 +93,7 @@ export function cliJsonOf(definition: CliDefinition): string {
     task: definition.task,
     ...(definition.enable ? { enable: true } : {}),
   }
-  return `cez automation create --json '${JSON.stringify(body).replace(/'/g, `'\\''`)}'`
+  return `onni automation create --json '${JSON.stringify(body).replace(/'/g, `'\\''`)}'`
 }
 
 /** What the card prints. */

@@ -24,13 +24,13 @@ describe('RunManager.startNow', () => {
   const savedDryRun = process.env.CEZ_DRY_RUN;
 
   beforeEach(async () => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-start-now-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-start-now-'));
     process.env.CEZ_DRY_RUN = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
     writeFileSync(join(repoRoot, 'a.txt'), 'one\n');
     await run('git', ['add', '-A'], { cwd: repoRoot });
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 1 } });
     // Another project holding the only workspace slot for the whole test.
     heldAccounts = new Set();

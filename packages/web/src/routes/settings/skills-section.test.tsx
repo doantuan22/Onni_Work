@@ -14,9 +14,9 @@ let requests: Array<{ method: string; url: string; body?: unknown }> = []
 function serve(overrides: Partial<WorkspaceConfigResponse> = {}) {
   requests = []
   const config: WorkspaceConfigResponse = {
-    branding: { name: 'cezar', logoUrl: null },
+    branding: { name: 'onni', logoUrl: null },
     browseRoot: '~/',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
     skillsAutoUpdate: null,
     effectiveSkillsAutoUpdate: true,
     orgSkillsRepos: [],
@@ -71,7 +71,7 @@ function renderSkills() {
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: [],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   render(
     <QueryClientProvider client={client}>

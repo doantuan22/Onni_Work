@@ -286,7 +286,7 @@ export function taskSections<T extends Pick<RunRecord, 'id' | 'pinned' | 'dispat
  *  - `queued` — oldest first, which is FIFO and therefore exactly the `#1 in queue` position the
  *    row already prints beside itself. Newest-first rendered those positions backwards.
  *
- * ISO-8601 strings compare lexicographically because every timestamp cezar writes is UTC
+ * ISO-8601 strings compare lexicographically because every timestamp onni writes is UTC
  * (`toISOString()` → trailing `Z`), the same reason `read-state.ts` compares them directly.
  *
  * This is the SIDEBAR's order, whose bucket headers explain the ranks. The Tasks tables use

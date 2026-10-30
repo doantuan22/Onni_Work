@@ -94,7 +94,7 @@ export function __resetGitStepFlights(): void {
  * is one), so the merged/closed/conflict/CI answers are known.
  */
 export function useRunGitStep(run: ApiRun): RunGitStep {
-  // The PR this task OWNS — created or declared (`CEZ:PR`), never one scraped from its transcript
+  // The PR this task OWNS — created or declared (`ONNI:PR`), never one scraped from its transcript
   // (see `ownedTaskPr`): a task working on an existing PR is never offered a second Create PR, and
   // a link the agent merely read never becomes the PR it is told to merge or fix.
   const owned = ownedTaskPr(run)
@@ -143,7 +143,7 @@ export function useRunGitStep(run: ApiRun): RunGitStep {
   // Read at the moment a flight ends, not when the effect was created.
   const prUrlRef = useRef(prUrl)
   prUrlRef.current = prUrl
-  // The agent opened the PR itself: record it by branch, even if it never declared CEZ:PR.
+  // The agent opened the PR itself: record it by branch, even if it never declared ONNI:PR.
   const adoptIfCreatePr = (ended: Flight) => {
     if (isCreatePr(ended.id) && !prUrlRef.current) void adoptPr()
   }
@@ -183,7 +183,7 @@ export function useRunGitStep(run: ApiRun): RunGitStep {
       const adopted = await adoptRunPr(run.id)
       if (adopted.found) void invalidateRuns() // the record now carries pullRequestUrl
     } catch {
-      // Best-effort: the agent's own CEZ:PR declaration still records it.
+      // Best-effort: the agent's own ONNI:PR declaration still records it.
     }
   }
   /** Send one git step to the agent, by its name (`Create PR`, …). */

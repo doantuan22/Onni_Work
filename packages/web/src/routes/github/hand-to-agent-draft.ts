@@ -39,7 +39,7 @@ export interface FollowupSelection {
 
 const EMPTY_SELECTION: FollowupSelection = { workflow: null, skills: [], runner: null, model: null }
 
-const SELECTION_KEY = 'cez-followup-selection'
+const SELECTION_KEY = 'onni-followup-selection'
 
 const KNOWN_RUNNERS: readonly Runner[] = RUNNERS.map((option) => option.id)
 
@@ -51,7 +51,7 @@ function normalizeSelection(raw: unknown): FollowupSelection {
   return {
     workflow: typeof obj.workflow === 'string' ? obj.workflow : null,
     skills: Array.isArray(obj.skills) ? obj.skills.filter((s): s is string => typeof s === 'string') : [],
-    // A runner this build does not know (an older/newer cezar, or a hand-edited value) is not a
+    // A runner this build does not know (an older/newer onni, or a hand-edited value) is not a
     // runner — the pill would render nothing selectable and the POST would name a dead backend.
     runner: KNOWN_RUNNERS.includes(obj.runner as Runner) ? (obj.runner as Runner) : null,
     model: typeof obj.model === 'string' ? obj.model : null,
@@ -91,7 +91,7 @@ export function resetFollowupSelection(): void {
   }
 }
 
-const PROMPT_KEY_PREFIX = 'cez-followup-prompt:'
+const PROMPT_KEY_PREFIX = 'onni-followup-prompt:'
 
 /** An untouched item (never typed into, or already spent by a successful run) answers ''. */
 export function readFollowupPrompt(itemUrl: string): string {

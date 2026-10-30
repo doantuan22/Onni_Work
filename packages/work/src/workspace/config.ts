@@ -8,16 +8,16 @@ import { readFileWithRetry, renameSyncWithRetry, renameWithRetry } from '../fs-r
 // are imported rather than repeated.
 import { PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH } from '@onni/contract';
 import { PROVIDER_IDS, type ProviderId } from '../core/provider-auth.ts';
-import { assertCezarHomeWriteIsSandboxed, isAbsolutePath, workspaceConfigPath } from '../paths.ts';
+import { assertOnniHomeWriteIsSandboxed, isAbsolutePath, workspaceConfigPath } from '../paths.ts';
 
 /**
- * `~/.cezar/config.json` — the per-user workspace config + project registry
+ * `~/.onni/config.json` — the per-user workspace config + project registry
  * (spec 2026-07-20-multi-project-workspace). House rules from the spec's Data
  * Model, applied verbatim:
  *
  * - every field optional/defaulted with `.catch`, so a bad value degrades
  *   per-key instead of discarding the file;
- * - `.passthrough()` at every object level, so keys a *newer* cezar wrote
+ * - `.passthrough()` at every object level, so keys a *newer* onni wrote
  *   survive a round-trip through an older one;
  * - `.max()` bounds on strings (this file is parsed on every boot);
  * - atomic tmp+rename writes with mode `0600` (dir `0700`);
@@ -27,7 +27,7 @@ import { assertCezarHomeWriteIsSandboxed, isAbsolutePath, workspaceConfigPath } 
  *   load path restores from before degrading — NOT re-registration: since boot
  *   registration became seed-once (`shouldAutoRegisterProject`), opening a
  *   project no longer writes it back, so a registry lost with its snapshot is
- *   re-added with `cezar projects add <dir>` (or the cockpit's Add project),
+ *   re-added with `onni projects add <dir>` (or the cockpit's Add project),
  *   one gesture per project. Nothing inside any repo is ever at stake.
  */
 
@@ -55,11 +55,11 @@ const workspaceProjectSchema = z
     /** Per-project cap on concurrently running tasks. Absent = inherit the
      *  workspace `resources.maxParallel`. Bounded like the workspace cap; a bad
      *  value degrades to "inherit" (`.catch(undefined)`) rather than a hard
-     *  default, and `.passthrough()` preserves the key across cezar round-trips. */
+     *  default, and `.passthrough()` preserves the key across onni round-trips. */
     maxParallel: z.number().int().min(1).max(16).optional().catch(undefined),
     /** Free-form labels grouping connected repositories (`storefront`, `infra`), used by the
      *  global Tasks page to filter and group across projects. Absent = untagged; the writers
-     *  (`PATCH /api/projects/:id`, `cezar projects tag`) delete the key rather than storing `[]`,
+     *  (`PATCH /api/projects/:id`, `onni projects tag`) delete the key rather than storing `[]`,
      *  so an untagged project costs nothing in the file. Bounds mirror the PATCH schema exactly,
      *  so a value that route accepts can never be degraded away by the next load's `.catch`. */
     tags: z
@@ -74,9 +74,9 @@ export type WorkspaceProject = z.infer<typeof workspaceProjectSchema>;
 
 /**
  * Zero-config cadence, in minutes, for re-checking a run parked with
- * `CEZ:MONITORING` (#810). The single source of truth for that default — the
+ * `ONNI:MONITORING` (#810). The single source of truth for that default — the
  * schema below and `WorkspaceSemaphore`'s fallback both read it, so an install
- * with no `~/.cezar/config.json` and a semaphore built without boot wiring
+ * with no `~/.onni/config.json` and a semaphore built without boot wiring
  * agree. `null` (explicit park) is a user choice and is never replaced by it.
  */
 export const DEFAULT_MONITORING_WAKE_MINUTES = 5;
@@ -88,9 +88,9 @@ const resourcesSchema = z
   .object({
     /** Workspace-wide parallel-task cap (moved from per-repo config.json). */
     maxParallel: z.number().int().min(1).max(16).default(2).catch(2),
-    /** Extra durable `CEZ:MONITORING` sessions exempt from the active-task cap. */
+    /** Extra durable `ONNI:MONITORING` sessions exempt from the active-task cap. */
     maxMonitoringSessions: z.number().int().min(0).max(16).default(2).catch(2),
-    /** Plain `waiting`/`CEZ:ASK` session idle timeout; null or 0 disables this safeguard. */
+    /** Plain `waiting`/`ONNI:ASK` session idle timeout; null or 0 disables this safeguard. */
     idleTimeoutMinutes: z.number().int().min(0).max(1440).nullable().default(DEFAULT_IDLE_TIMEOUT_MINUTES).catch(DEFAULT_IDLE_TIMEOUT_MINUTES),
     /**
      * Cadence for re-checking monitored work; `null` parks at zero model cost until a
@@ -98,8 +98,8 @@ const resourcesSchema = z
      *
      * Default-ON at 5 minutes (#810). It shipped as `null` and that made monitoring a
      * dead end: #661 removed the 15-minute idle timer that used to bound a parked
-     * monitor, so with no wake timer a `CEZ:MONITORING` run has NO timer at all — and
-     * cezar has no other resume path (no process-exit callback, no CI webhook, no
+     * monitor, so with no wake timer a `ONNI:MONITORING` run has NO timer at all — and
+     * onni has no other resume path (no process-exit callback, no CI webhook, no
      * sub-agent-completion event). Tasks sat in `monitoring` for hours until a human
      * typed something. Same reasoning as `autoResumeOnUsageLimit` below: it spends
      * nothing while the downstream work is genuinely pending and it finishes the work
@@ -140,7 +140,7 @@ const composerDefaultsSchema = z
 /**
  * What a repo that has said nothing runs (spec 2026-07-29-agent-profiles).
  *
- * The point is not to configure every checkout: a repo's own `.ai/cezar/config.json` still wins
+ * The point is not to configure every checkout: a repo's own `.ai/onni/config.json` still wins
  * key by key, and this is only consulted where that file is SILENT. Which is why every key here is
  * optional with no default — an absent `runner` has to stay distinguishable from one someone chose,
  * or "fall back to the machine default" collapses into "always claude".
@@ -207,7 +207,7 @@ const workspaceConfigSchema = z
     /** Checkout root for GUI-cloned projects. Stored as written (a literal
      *  `~` is expanded by the checkout flow, not here); validated writable
      *  when *changed*, never at load. */
-    projectsDir: workspacePathSchema('CEZ_PROJECTS_DIR', '~/cezar/projects'),
+    projectsDir: workspacePathSchema('CEZ_PROJECTS_DIR', '~/onni/projects'),
     /** Optional auto-update override. Absence inherits the environment/default
      *  and must stay absent on unrelated merge-writes. */
     skillsAutoUpdate: z.boolean().optional().catch(undefined),
@@ -296,10 +296,10 @@ export function defaultWorkspaceConfig(): WorkspaceConfig {
  * disk, a stray process — costs the user every entry. One extra file, no
  * configuration, and `loadWorkspaceConfig` falls back to it.
  *
- * Removing `~/.cezar` still resets cezar completely; removing only
+ * Removing `~/.onni` still resets onni completely; removing only
  * `config.json` no longer does, because this snapshot restores it.
  *
- * A cezar older than this change does not refresh the snapshot, so on a machine
+ * A onni older than this change does not refresh the snapshot, so on a machine
  * that alternates between versions it can lag behind the registry — which only
  * shows if the config file is also lost, and the worst case is a project the
  * user unregistered reappearing. Cheap next to losing the whole list.
@@ -342,7 +342,7 @@ async function loadWorkspaceConfigBackup(path: string): Promise<WorkspaceConfig 
 export class WorkspaceConfigUnreadableError extends Error {}
 
 /**
- * Read `~/.cezar/config.json` on demand — never cached, never throws. A
+ * Read `~/.onni/config.json` on demand — never cached, never throws. A
  * missing file is the zero-config default (silent); an unreadable or
  * malformed one degrades to the same default with a one-line warning and is
  * left on disk untouched (the next successful merge-write replaces it).
@@ -385,31 +385,31 @@ async function readWorkspaceConfig(path: string, strict: boolean): Promise<Works
   if (restored) {
     const cause = unreadable !== undefined ? 'is unreadable' : raw === null ? 'is missing' : 'is empty or corrupt';
     console.warn(
-      `[cez] workspace config ${path} ${cause} — restored ${restored.projects.length} project(s) from ${backupPath}`,
+      `[onni] workspace config ${path} ${cause} — restored ${restored.projects.length} project(s) from ${backupPath}`,
     );
     return restored;
   }
   if (unreadable !== undefined) {
     const code = (unreadable.error as NodeJS.ErrnoException).code ?? 'error';
     if (strict) {
-      throw new WorkspaceConfigUnreadableError(`[cez] cannot read ${unreadable.path} (${code}) — refusing to overwrite it`, {
+      throw new WorkspaceConfigUnreadableError(`[onni] cannot read ${unreadable.path} (${code}) — refusing to overwrite it`, {
         cause: unreadable.error,
       });
     }
-    console.warn(`[cez] workspace config ${unreadable.path} is unreadable (${code}) — using defaults for now`);
+    console.warn(`[onni] workspace config ${unreadable.path} is unreadable (${code}) — using defaults for now`);
     return defaultWorkspaceConfig();
   }
   if (raw === null) return defaultWorkspaceConfig();
   console.warn(
-    `[cez] workspace config ${path} is corrupt — using defaults (re-add projects with \`cezar projects add\`)`,
+    `[onni] workspace config ${path} is corrupt — using defaults (re-add projects with \`onni projects add\`)`,
   );
   return defaultWorkspaceConfig();
 }
 
 /**
  * The tmp path an atomic write stages through — UNIQUE PER WRITE, never a
- * fixed `${path}.tmp`. `~/.cezar/` is shared by every cezar process on the
- * machine (a `serve` per repo, `cezar run`s, a settings PUT), and two writers
+ * fixed `${path}.tmp`. `~/.onni/` is shared by every onni process on the
+ * machine (a `serve` per repo, `onni run`s, a settings PUT), and two writers
  * staging through the same tmp name interleave: writer B's `O_TRUNC` open can
  * empty the file between writer A's write and rename, so A renames a
  * truncated/half-written file into place — and B's own rename then throws
@@ -425,7 +425,7 @@ export function atomicTmpPath(path: string): string {
  *  shared by the workspace config and ui-state writers. Throws on write
  *  failure (e.g. a read-only home) — degrading is the caller's policy. */
 export function atomicWriteJsonSync(path: string, value: unknown): void {
-  assertCezarHomeWriteIsSandboxed(path);
+  assertOnniHomeWriteIsSandboxed(path);
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const tmp = atomicTmpPath(path);
   let fd = -1;
@@ -462,7 +462,7 @@ export function atomicWriteJsonSync(path: string, value: unknown): void {
  *  sync retry blocks the event loop, so a reader's open handle — which is what makes a win32
  *  rename fail EPERM — can never close until the budget is spent (telemetry 4a7c9f6c). */
 export async function atomicWriteJson(path: string, value: unknown): Promise<void> {
-  assertCezarHomeWriteIsSandboxed(path);
+  assertOnniHomeWriteIsSandboxed(path);
   await fsp.mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const tmp = atomicTmpPath(path);
   try {

@@ -71,9 +71,9 @@ async function ready() {
 
 describe('useProjectOrder', () => {
   it('reads and normalizes the stored order', async () => {
-    file = { sidebar: { projectOrder: ['shop', 'shop', '', 'cezar'] } }
+    file = { sidebar: { projectOrder: ['shop', 'shop', '', 'onni'] } }
     const view = await ready()
-    expect(view.result.current.order).toEqual(['shop', 'cezar'])
+    expect(view.result.current.order).toEqual(['shop', 'onni'])
   })
 
   it('is not reorderable until the authoritative GET lands', async () => {
@@ -86,17 +86,17 @@ describe('useProjectOrder', () => {
   })
 
   it('writes the whole sidebar object, keeping the legacy collapse map', async () => {
-    file = { sidebar: { collapsed: { cezar: true }, other: 1 }, appearance: { accent: 'violet' } }
+    file = { sidebar: { collapsed: { onni: true }, other: 1 }, appearance: { accent: 'violet' } }
     const view = await ready()
 
-    act(() => view.result.current.setOrder(['shop', 'cezar']))
+    act(() => view.result.current.setOrder(['shop', 'onni']))
     await waitFor(() => expect(puts).toHaveLength(1))
     expect(puts[0]).toEqual({
-      sidebar: { collapsed: { cezar: true }, other: 1, projectOrder: ['shop', 'cezar'] },
+      sidebar: { collapsed: { onni: true }, other: 1, projectOrder: ['shop', 'onni'] },
     })
     // …and the sibling top-level keys are untouched, because they were never in the patch.
     expect(file.appearance).toEqual({ accent: 'violet' })
-    await waitFor(() => expect(view.result.current.order).toEqual(['shop', 'cezar']))
+    await waitFor(() => expect(view.result.current.order).toEqual(['shop', 'onni']))
   })
 
   it('applies the new order optimistically, before the write answers', async () => {
@@ -111,12 +111,12 @@ describe('useProjectOrder', () => {
   })
 
   it('drops the key on reset rather than writing an empty list', async () => {
-    file = { sidebar: { collapsed: { cezar: true }, projectOrder: ['shop', 'cezar'] } }
+    file = { sidebar: { collapsed: { onni: true }, projectOrder: ['shop', 'onni'] } }
     const view = await ready()
 
     act(() => view.result.current.reset())
     await waitFor(() => expect(puts).toHaveLength(1))
-    expect(puts[0]).toEqual({ sidebar: { collapsed: { cezar: true } } })
+    expect(puts[0]).toEqual({ sidebar: { collapsed: { onni: true } } })
     expect(view.result.current.order).toEqual([])
   })
 
@@ -147,13 +147,13 @@ describe('useProjectOrder', () => {
   })
 
   it('falls back to server truth when the write fails', async () => {
-    file = { sidebar: { projectOrder: ['cezar', 'shop'] } }
+    file = { sidebar: { projectOrder: ['onni', 'shop'] } }
     const view = await ready()
     failWrites = 'disk is read-only'
 
-    act(() => view.result.current.setOrder(['shop', 'cezar']))
+    act(() => view.result.current.setOrder(['shop', 'onni']))
     // The refetch that follows the failure answers the file as it really is — never the order
     // the user dragged to, which would be a cockpit quietly diverged from its own state.
-    await waitFor(() => expect(view.result.current.order).toEqual(['cezar', 'shop']))
+    await waitFor(() => expect(view.result.current.order).toEqual(['onni', 'shop']))
   })
 })

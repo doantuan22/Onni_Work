@@ -42,16 +42,16 @@ describe('terminals stop on every archive / worktree-removal path', () => {
   let ptys: FakePty[];
 
   beforeEach(() => {
-    home = mkdtempSync(join(realpathSync(tmpdir()), 'cez-term-home-'));
-    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-term-boot-'));
-    otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'cez-term-other-'));
+    home = mkdtempSync(join(realpathSync(tmpdir()), 'onni-term-home-'));
+    repoRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-term-boot-'));
+    otherRoot = mkdtempSync(join(realpathSync(tmpdir()), 'onni-term-other-'));
     worktree = join(repoRoot, 'wt');
     mkdirSync(worktree, { recursive: true });
     process.env.CEZ_HOME = home;
     delete process.env.CEZ_REMOTE;
     process.env.CEZ_DRY_RUN = '1';
     clearProjectProbeCache();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     ptys = [];
     const binding = async (): Promise<PtyBinding> => ({
       available: true,

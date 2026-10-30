@@ -53,7 +53,7 @@ export class AutomationCoordinator {
    * ROOT → store, one instance per directory. `AutomationStore` is file-backed
    * with an in-memory snapshot taken at `open()` — `list()` serves that snapshot
    * and `setState()` rewrites the whole state file from the writer's own copy —
-   * so two instances over one `.ai/cezar` diverge permanently the first time
+   * so two instances over one `.ai/onni` diverge permanently the first time
    * either writes. Keying by id let that happen as soon as one folder had two
    * ids: the cockpit wrote through the boot alias while the scheduler polled a
    * second store, so a disabled automation kept firing and cursors rolled back.
@@ -88,7 +88,7 @@ export class AutomationCoordinator {
         continue;
       }
       this.roots.set(project.id, project.root);
-      const definitions = join(project.root, '.ai/cezar/automations.json');
+      const definitions = join(project.root, '.ai/onni/automations.json');
       if (existsSync(definitions)) this.store(project.id, project.root);
     }
   }
@@ -101,7 +101,7 @@ export class AutomationCoordinator {
     const key = rootKey(projectRoot);
     let store = this.stores.get(key);
     if (!store) {
-      store = AutomationStore.open(join(projectRoot, '.ai/cezar'), { warn: this.options.warn });
+      store = AutomationStore.open(join(projectRoot, '.ai/onni'), { warn: this.options.warn });
       this.stores.set(key, store);
     }
     return store;
@@ -116,7 +116,7 @@ export class AutomationCoordinator {
    * boot context anyway, but the scheduler's `launch` only takes the boot
    * manager and store when it is handed the boot id; given the slug it would
    * build a SECOND `ProjectContext` over the boot root, double-opening the
-   * `.ai/cezar` state the server takes care never to open twice.
+   * `.ai/onni` state the server takes care never to open twice.
    */
   enabledProjectIds(): string[] {
     const chosen = new Map<string, string>();

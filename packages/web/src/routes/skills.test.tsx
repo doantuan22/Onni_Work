@@ -34,7 +34,7 @@ const SKILLS: Skill[] = [
     description: 'A global skill',
   }),
   skill({ name: 'om-fix', source: 'ai', description: 'Fix an issue end to end' }),
-  skill({ name: 'om-review', source: 'cezar', path: '.ai/cezar/skills/om-review.md' }),
+  skill({ name: 'om-review', source: 'onni', path: '.ai/onni/skills/om-review.md' }),
 ]
 
 const openMercatoSkill = (name: string): Skill =>
@@ -153,7 +153,7 @@ function gateSeededClient() {
   client.setQueryData(workspaceQueryKeys.projects, {
     projects: [],
     bootProject: 'boot',
-    projectsDir: '~/cezar/projects',
+    projectsDir: '~/onni/projects',
   })
   return client
 }
@@ -320,7 +320,7 @@ describe('the catalog list and skill preview', () => {
         },
       ],
       bootProject: 'boot',
-      projectsDir: '~/cezar/projects',
+      projectsDir: '~/onni/projects',
     })
     renderAt('/p/other/skills', client)
     const toggle = await screen.findByRole('switch', { name: 'Disable team-review' })
@@ -365,7 +365,7 @@ describe('the catalog list and skill preview', () => {
         },
       ],
       bootProject: 'boot',
-      projectsDir: '~/cezar/projects',
+      projectsDir: '~/onni/projects',
     })
     renderAt('/p/other/skills', client)
 
@@ -433,7 +433,7 @@ describe('the catalog list and skill preview', () => {
         },
       ],
       bootProject: 'boot',
-      projectsDir: '~/cezar/projects',
+      projectsDir: '~/onni/projects',
     })
     let navigate!: ReturnType<typeof useNavigate>
     renderAt('/p/boot/skills', client, (value) => {
@@ -483,7 +483,7 @@ describe('the catalog list and skill preview', () => {
     await waitFor(() => {
       const text = document.querySelector('[data-slot="skill-rows"]')?.textContent ?? ''
       expect(text).toContain('.ai/skills/')
-      expect(text).toContain('.ai/cezar/skills/')
+      expect(text).toContain('.ai/onni/skills/')
       expect(text).toContain('.agents/skills/')
     })
   })

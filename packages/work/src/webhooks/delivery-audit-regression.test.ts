@@ -22,7 +22,7 @@ async function fixture() {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-delivery-audit-'));
   cleanup.push(() => rmSync(root, { recursive: true, force: true }));
   execFileSync('git', ['init', '-q'], { cwd: root });
-  let now = Date.parse('2026-10-15T12:00:00Z'); const dataDir = join(root, '.ai/cezar');
+  let now = Date.parse('2026-10-15T12:00:00Z'); const dataDir = join(root, '.ai/onni');
   const send = vi.fn(async (_: WebhookSend): Promise<SendResult> => ({ kind: 'http', status: 200 }));
   const options = { root, dataDir, projectId: 'test', mode: 'local' as const, serverPorts: () => [], scheduler: new WebhookScheduler(), now: () => now, send };
   const open = async () => { const service = (await WebhookService.open(options))!; cleanup.push(() => service.dispose()); return service; };

@@ -36,7 +36,7 @@ const roots: string[] = [];
 const RUN_DEADLINE_MS = 15_000;
 
 function fixtureRepo(): string {
-  const root = mkdtempSync(join(tmpdir(), 'cez-root-isolation-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-root-isolation-'));
   roots.push(root);
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
   execFileSync('git', [...GIT_ID, 'commit', '--allow-empty', '-q', '-m', 'base'], { cwd: root });
@@ -69,10 +69,10 @@ afterEach(() => {
 
 describe('RunManager repository-root isolation', { timeout: 20_000 }, () => {
   it('runs the first task in place with the root lease before a repository has a commit', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-unborn-isolation-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-unborn-isolation-'));
     roots.push(root);
     execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     try {
       const record = manager.startRun({
@@ -92,7 +92,7 @@ describe('RunManager repository-root isolation', { timeout: 20_000 }, () => {
 
   it('fails closed without executing a workflow step when worktree creation fails', async () => {
     const root = fixtureRepo();
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     const workflow: WorkflowDef = {
       name: 'must-not-run-in-root',
@@ -115,7 +115,7 @@ describe('RunManager repository-root isolation', { timeout: 20_000 }, () => {
 
   it('serializes parallel runs that explicitly opt out of worktrees', async () => {
     const root = fixtureRepo();
-    const store = RunStore.open(join(root, '.ai/cezar'));
+    const store = RunStore.open(join(root, '.ai/onni'));
     const manager = new RunManager(store, root);
     const workflow: WorkflowDef = {
       name: 'root-lock-check',
@@ -147,7 +147,7 @@ describe('RunManager repository-root isolation', { timeout: 20_000 }, () => {
     process.env.CEZ_DISABLE_REPO_LOCK = '1';
     try {
       const root = fixtureRepo();
-      const store = RunStore.open(join(root, '.ai/cezar'));
+      const store = RunStore.open(join(root, '.ai/onni'));
       const manager = new RunManager(store, root);
       const workflow: WorkflowDef = {
         name: 'root-lock-bypass-check',

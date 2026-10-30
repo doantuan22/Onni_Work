@@ -1,5 +1,5 @@
 /**
- * Finding cezar's own checkout — what `cezar link` needs to turn a directory into a version the
+ * Finding onni's own checkout — what `onni link` needs to turn a directory into a version the
  * desktop shell can run: the `@onni/work` package root inside it and the branch it is
  * on. The switch itself is `linkCheckout` in layout.ts.
  */
@@ -22,9 +22,9 @@ function packageVersion(dir: string): string | null {
   }
 }
 
-/** The cezar package root inside a checkout, or null when the tree is not cezar's. */
-export function cezarPackageRoot(worktree: string): string | null {
-  for (const dir of [join(worktree, 'packages', 'cezar'), worktree]) {
+/** The onni package root inside a checkout, or null when the tree is not onni's. */
+export function onniPackageRoot(worktree: string): string | null {
+  for (const dir of [join(worktree, 'packages', 'onni'), worktree]) {
     if (packageVersion(dir)) return dir;
   }
   return null;

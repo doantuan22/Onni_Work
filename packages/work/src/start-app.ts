@@ -9,7 +9,7 @@ import { loadWorkspaceConfig, mergeWriteWorkspaceConfig } from './workspace/conf
 
 /**
  * A project's start recipe (spec `2026-10-09-design-mode` §7c): `startApp` in the repo's
- * `.ai/cezar/config.json` (the team's) and in the project's entry of `~/.cezar/config.json`
+ * `.ai/onni/config.json` (the team's) and in the project's entry of `~/.onni/config.json`
  * (yours, which wins). Optional in both; a value that does not parse counts as absent.
  */
 const KEY = 'startApp';
@@ -71,7 +71,7 @@ export async function writeStartApp(
       if (!(error instanceof LifecycleStoreError)) throw error;
       const text = await readFile(path, 'utf8').catch(() => null);
       const raw = text === null ? {} : parseObject(text);
-      if (!raw) throw new LifecycleConfigError('Project configuration is malformed; fix .ai/cezar/config.json first');
+      if (!raw) throw new LifecycleConfigError('Project configuration is malformed; fix .ai/onni/config.json first');
       await mkdir(dataDir, { recursive: true });
       await writeFile(path, `${JSON.stringify(apply(raw), null, 2)}\n`, 'utf8');
     }

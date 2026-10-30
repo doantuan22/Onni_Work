@@ -24,8 +24,8 @@ describe('request-origin guard (#426)', () => {
   const savedDryRun = process.env.CEZ_DRY_RUN;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-guard-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-guard-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     delete process.env.CEZ_REMOTE;
     process.env.CEZ_DRY_RUN = '1'; // keeps the /api/v1/health probe off the network
     // Capturing stub (the start-run.test.ts pattern) — the guard runs before
@@ -297,7 +297,7 @@ describe('request-origin guard (#426)', () => {
 });
 
 /**
- * Hosted mode (CEZ_REMOTE=1 — spec §"Deployment modes"): cezar binds loopback
+ * Hosted mode (CEZ_REMOTE=1 — spec §"Deployment modes"): onni binds loopback
  * behind a reverse proxy that forwards the real public Host, so the loopback
  * allowlist must stand down there. CSRF protection stays on — Origin still has
  * to match the served Host.
@@ -309,8 +309,8 @@ describe('request-origin guard — hosted mode (#426)', () => {
   const savedRemote = process.env.CEZ_REMOTE;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-guard-hosted-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-guard-hosted-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     process.env.CEZ_REMOTE = '1';
     const manager = {
       startRun: (_workflow: WorkflowDef, input: StartRunInput) =>
@@ -341,13 +341,13 @@ describe('request-origin guard — hosted mode (#426)', () => {
     });
 
   it('allows the public-domain same-origin write (Origin === forwarded Host) → 201', async () => {
-    const res = await postRuns({ host: 'cez.example.com', origin: 'https://cez.example.com' });
+    const res = await postRuns({ host: 'onni.example.com', origin: 'https://onni.example.com' });
     expect(res.status).toBe(201);
     expect(store.listRuns()).toHaveLength(1);
   });
 
   it('still rejects a cross-origin write in hosted mode → 403', async () => {
-    const res = await postRuns({ host: 'cez.example.com', origin: 'https://evil.tld' });
+    const res = await postRuns({ host: 'onni.example.com', origin: 'https://evil.tld' });
     expect(res.status).toBe(403);
     expect(store.listRuns()).toHaveLength(0);
   });

@@ -515,7 +515,7 @@ describe('openDeepLink', () => {
 })
 
 describe('round trip through the host', () => {
-  // Layouts live on the cezar that owns the task now (spec §5.3), so the browser's half of the
+  // Layouts live on the onni that owns the task now (spec §5.3), so the browser's half of the
   // contract is simply that whatever it sends comes back meaning the same thing.
   const throughHost = (state: WorkspaceState) => reviveState(JSON.parse(JSON.stringify(state)))
   /**
@@ -571,7 +571,7 @@ describe('reviveState', () => {
   })
 
   it('drops a column naming a view this build does not have', () => {
-    // A layout saved by a LATER cezar, carrying a view this build has never heard of.
+    // A layout saved by a LATER onni, carrying a view this build has never heard of.
     const state = reviveState({
       layouts: [{ name: 'Mixed', columns: [{ view: 'session', width: 50 }, { view: 'hologram', width: 50 }] }],
       active: 'Mixed',
@@ -581,7 +581,7 @@ describe('reviveState', () => {
 
   it('applies the column cap to what SURVIVES, not to what arrived', () => {
     // The cap used to be a `slice(0, MAX_COLUMNS)` taken before unknown views were filtered. A
-    // layout from a later cezar whose first three columns named views this build lacks therefore
+    // layout from a later onni whose first three columns named views this build lacks therefore
     // lost the two VALID ones behind them — and then, having nothing left, was dropped whole and
     // the task recovered to the default cards. Two real columns is the honest reading.
     const state = reviveState({

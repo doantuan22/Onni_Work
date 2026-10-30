@@ -11,7 +11,7 @@ import { forgetRefStatus } from './github.ts';
 import { createApp } from './server.ts';
 
 /**
- * The two places cezar changes a pull request itself — and therefore the two places it must stop
+ * The two places onni changes a pull request itself — and therefore the two places it must stop
  * trusting what it cached about one.
  *
  * Everything else about a reference has to be polled: GitHub cannot push to a cockpit with no
@@ -28,7 +28,7 @@ vi.mock('./github.ts', async (importActual) => {
   return { ...actual, forgetRefStatus: vi.fn(actual.forgetRefStatus) };
 });
 
-describe('a reference cezar changes itself is forgotten, not waited out', () => {
+describe('a reference onni changes itself is forgotten, not waited out', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
@@ -44,14 +44,14 @@ describe('a reference cezar changes itself is forgotten, not waited out', () => 
 
   beforeEach(() => {
     vi.mocked(forgetRefStatus).mockClear();
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-refinvalidate-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-refinvalidate-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
     execFileSync('git', ['init', '-b', 'main'], { cwd: repoRoot });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoRoot });
     execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoRoot });
     execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: repoRoot });
     execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/acme/demo.git'], { cwd: repoRoot });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,
@@ -94,14 +94,14 @@ describe('a reference cezar changes itself is forgotten, not waited out', () => 
 
   it('forgets the pull request it opened', async () => {
     // A number asked about BEFORE the pull request existed is cached as "this repository has no
-    // such number" — exactly what a `CEZ:PR=N` marker declared ahead of the push looks like.
-    const worktree = mkdtempSync(join(tmpdir(), 'cez-refinvalidate-wt-'));
-    execFileSync('git', ['init', '-b', 'cez/abc'], { cwd: worktree });
+    // such number" — exactly what a `ONNI:PR=N` marker declared ahead of the push looks like.
+    const worktree = mkdtempSync(join(tmpdir(), 'onni-refinvalidate-wt-'));
+    execFileSync('git', ['init', '-b', 'onni/abc'], { cwd: worktree });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: worktree });
     execFileSync('git', ['config', 'user.name', 'Test'], { cwd: worktree });
     execFileSync('git', ['commit', '--allow-empty', '-m', 'work'], { cwd: worktree });
     const run = store.createRun({ title: 'Ship it', task: 'ship it', workflow: 'quick-task', steps: [] });
-    store.updateRun(run.id, { status: 'review', worktreePath: worktree, branch: 'cez/abc' });
+    store.updateRun(run.id, { status: 'review', worktreePath: worktree, branch: 'onni/abc' });
 
     const created = await apiRequest(app, `/api/v1/runs/${run.id}/pr`, {
       method: 'POST',

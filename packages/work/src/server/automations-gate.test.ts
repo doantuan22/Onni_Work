@@ -43,8 +43,8 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
   const savedRemote = process.env.CEZ_REMOTE;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-automations-gate-'));
-    dataDir = join(repoRoot, '.ai/cezar');
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-automations-gate-'));
+    dataDir = join(repoRoot, '.ai/onni');
     mkdirSync(dataDir, { recursive: true });
     store = RunStore.open(dataDir);
     // A pre-existing definition, written while the feature was on: the gate must hide it and
@@ -182,7 +182,7 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
     let home: string;
 
     beforeEach(() => {
-      home = mkdtempSync(join(tmpdir(), 'cez-automations-gate-home-'));
+      home = mkdtempSync(join(tmpdir(), 'onni-automations-gate-home-'));
       process.env.CEZ_HOME = home;
       process.env.CEZ_DRY_RUN = '1';
     });
@@ -254,7 +254,7 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
     let staleId: string;
 
     beforeEach(() => {
-      home = mkdtempSync(join(tmpdir(), 'cez-automations-gate-rebaseline-home-'));
+      home = mkdtempSync(join(tmpdir(), 'onni-automations-gate-rebaseline-home-'));
       process.env.CEZ_HOME = home;
       process.env.CEZ_DRY_RUN = '1';
       const seed = AutomationStore.open(dataDir);

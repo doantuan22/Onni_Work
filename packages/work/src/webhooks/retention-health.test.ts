@@ -15,7 +15,7 @@ async function fixture(profile: 'minimal' | 'standard' = 'minimal', graceSeconds
   vi.stubEnv('CEZ_WEBHOOKS', '1');
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'webhook-retention-health-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
-  const dataDir = join(root, '.ai/cezar'), start = Date.parse('2026-10-13T12:00:00Z'); let now = start;
+  const dataDir = join(root, '.ai/onni'), start = Date.parse('2026-10-13T12:00:00Z'); let now = start;
   const send = vi.fn(async () => ({ kind: 'http' as const, status: 204 }));
   const options = { root, dataDir, projectId: 'fixture', mode: 'local' as const, serverPorts: () => [], scheduler: new WebhookScheduler(), now: () => now, send };
   let service = (await WebhookService.open(options))!;

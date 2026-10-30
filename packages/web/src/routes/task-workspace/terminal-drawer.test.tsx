@@ -165,7 +165,7 @@ describe('TerminalDrawer — choosing a shell', () => {
   })
 
   it('leaves the choice out when the server sends no list', async () => {
-    // An older cezar. The cockpit must not invent shells it was never offered.
+    // An older onni. The cockpit must not invent shells it was never offered.
     getRunTerminal.mockResolvedValue({ available: true, sessions: [session('s-1')] })
     createRunTerminal.mockResolvedValue(session('s-2'))
     drawer()

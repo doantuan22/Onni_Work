@@ -8,10 +8,10 @@ import { ProjectSecretsSection, WorkspaceSecretsSection } from './secrets-sectio
 
 afterEach(() => { cleanup(); setApiScope(null); vi.unstubAllGlobals() })
 
-type Stored = { name: string; audiences: ('checks' | 'cezar')[]; updatedAt: string }
+type Stored = { name: string; audiences: ('checks' | 'onni')[]; updatedAt: string }
 const DEFAULT: Stored[] = [
   { name: 'OPENAI_API_KEY', audiences: ['checks'], updatedAt: '2026-10-10T00:00:00Z' },
-  { name: 'STAGING_TOKEN', audiences: ['checks', 'cezar'], updatedAt: '2026-10-10T00:00:00Z' },
+  { name: 'STAGING_TOKEN', audiences: ['checks', 'onni'], updatedAt: '2026-10-10T00:00:00Z' },
 ]
 
 function setup(options: { secrets?: Stored[]; putStatus?: number; keyBackend?: 'keychain' | 'file'; scope?: 'project' | 'workspace' } = {}) {
@@ -34,7 +34,7 @@ describe('Secrets settings', () => {
     setup()
     await screen.findByText('OPENAI_API_KEY')
     expect(screen.getByText('STAGING_TOKEN')).toBeTruthy()
-    expect(screen.getByText('Check steps · cezar itself')).toBeTruthy()
+    expect(screen.getByText('Check steps · onni itself')).toBeTruthy()
     expect(screen.getByText(/kept in your OS keychain/)).toBeTruthy()
     // No value is rendered anywhere: the only inputs with content are the audience checkboxes.
     expect(screen.queryAllByDisplayValue(/.+/).every((el) => (el as HTMLInputElement).type === 'checkbox')).toBe(true)
@@ -53,13 +53,13 @@ describe('Secrets settings', () => {
     await screen.findByText('OPENAI_API_KEY')
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'NEW_KEY' } })
     fireEvent.change(screen.getByLabelText('Value'), { target: { value: 's3cret' } })
-    fireEvent.click(screen.getByLabelText(/cezar itself/))
+    fireEvent.click(screen.getByLabelText(/onni itself/))
     fireEvent.click(screen.getByRole('button', { name: /save secret/i }))
     await waitFor(() => expect((screen.getByLabelText('Value') as HTMLInputElement).value).toBe(''))
     const put = calls.find((c) => c.method === 'PUT')!
     expect(put.url).toMatch(/\/secrets\/NEW_KEY$/)
     expect(put.url).not.toContain('/workspace/')
-    expect(JSON.parse(put.body!)).toEqual({ value: 's3cret', audiences: ['checks', 'cezar'] })
+    expect(JSON.parse(put.body!)).toEqual({ value: 's3cret', audiences: ['checks', 'onni'] })
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('')
     expect(screen.queryByText('s3cret')).toBeNull()
   })

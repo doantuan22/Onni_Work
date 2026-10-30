@@ -11,14 +11,14 @@
     />
     <!-- Relative so Vite bundles the legacy logo out of web/ instead of duplicating it under a public dir. -->
     <link rel="icon" href="/icon.svg" />
-    <title>cezar</title>
+    <title>onni</title>
     <!-- Theme before first paint — no flash. Mirrors resolveTheme()/applyResolvedTheme() in
-         src/lib/theme.ts; keep the two in sync. Shares the legacy cockpit's `cez-theme` key
+         src/lib/theme.ts; keep the two in sync. Shares the legacy cockpit's `onni-theme` key
          ('light' | 'dark' | 'system'); anything else falls back to dark, as legacy does. -->
     <script>
       (function () {
         try {
-          var pref = localStorage.getItem('cez-theme')
+          var pref = localStorage.getItem('onni-theme')
           var light =
             pref === 'light' ||
             (pref === 'system' && matchMedia('(prefers-color-scheme: light)').matches)
@@ -30,14 +30,14 @@
         // Accent + density + reading width before first paint, from the localStorage MIRROR of ui-state.json
         // (src/lib/appearance.ts owns the contract; keep the two in sync). Defaults are the
         // absence of the attribute, so only the known deviations are stamped. A pre-upgrade
-        // `cez-width=narrow` mirror can flash once before the server migration settles.
+        // `onni-width=narrow` mirror can flash once before the server migration settles.
         try {
-          if (localStorage.getItem('cez-accent') === 'violet')
+          if (localStorage.getItem('onni-accent') === 'violet')
             document.documentElement.dataset.accent = 'violet'
-          var density = localStorage.getItem('cez-density')
+          var density = localStorage.getItem('onni-density')
           if (density === 'compact' || density === 'ultra')
             document.documentElement.dataset.density = density
-          if (localStorage.getItem('cez-width') === 'narrow')
+          if (localStorage.getItem('onni-width') === 'narrow')
             document.documentElement.dataset.width = 'narrow'
         } catch (e) {
           // Storage unavailable — lime/comfortable defaults already apply.

@@ -9,8 +9,8 @@ afterEach(cleanup)
 
 describe('pathnameProjectId', () => {
   it('reads the /p/:projectId prefix', () => {
-    expect(pathnameProjectId('/p/cezar/tasks/abc')).toBe('cezar')
-    expect(pathnameProjectId('/p/cezar')).toBe('cezar')
+    expect(pathnameProjectId('/p/onni/tasks/abc')).toBe('onni')
+    expect(pathnameProjectId('/p/onni')).toBe('onni')
     expect(pathnameProjectId('/p/my%20proj/git')).toBe('my proj')
   })
 
@@ -24,9 +24,9 @@ describe('pathnameProjectId', () => {
 
 describe('stripProjectPrefix', () => {
   it('returns the flat route-map pathname', () => {
-    expect(stripProjectPrefix('/p/cezar/git/commits')).toBe('/git/commits')
-    expect(stripProjectPrefix('/p/cezar')).toBe('/')
-    expect(stripProjectPrefix('/p/cezar/')).toBe('/')
+    expect(stripProjectPrefix('/p/onni/git/commits')).toBe('/git/commits')
+    expect(stripProjectPrefix('/p/onni')).toBe('/')
+    expect(stripProjectPrefix('/p/onni/')).toBe('/')
   })
 
   it('is the identity for unprefixed paths', () => {
@@ -37,14 +37,14 @@ describe('stripProjectPrefix', () => {
 
 describe('scopeTo', () => {
   it('prefixes string targets, keeping search and hash', () => {
-    expect(scopeTo('cezar', '/new')).toBe('/p/cezar/new')
-    expect(scopeTo('cezar', '/skills?skill=x')).toBe('/p/cezar/skills?skill=x')
-    expect(scopeTo('cezar', '/')).toBe('/p/cezar/')
+    expect(scopeTo('onni', '/new')).toBe('/p/onni/new')
+    expect(scopeTo('onni', '/skills?skill=x')).toBe('/p/onni/skills?skill=x')
+    expect(scopeTo('onni', '/')).toBe('/p/onni/')
   })
 
   it('prefixes partial-path objects', () => {
-    expect(scopeTo('cezar', { pathname: '/skills', search: '?skill=x' })).toEqual({
-      pathname: '/p/cezar/skills',
+    expect(scopeTo('onni', { pathname: '/skills', search: '?skill=x' })).toEqual({
+      pathname: '/p/onni/skills',
       search: '?skill=x',
     })
   })
@@ -54,8 +54,8 @@ describe('scopeTo', () => {
   })
 
   it('leaves relative and already-scoped targets alone', () => {
-    expect(scopeTo('cezar', 'commits')).toBe('commits')
-    expect(scopeTo('cezar', '/p/other/tasks/x')).toBe('/p/other/tasks/x')
+    expect(scopeTo('onni', 'commits')).toBe('commits')
+    expect(scopeTo('onni', '/p/other/tasks/x')).toBe('/p/other/tasks/x')
   })
 
   it('percent-encodes the project id', () => {
@@ -66,22 +66,22 @@ describe('scopeTo', () => {
 describe('Link', () => {
   it('scopes from the ProjectScopeProvider when one is mounted', () => {
     render(
-      <MemoryRouter initialEntries={['/p/cezar/']}>
-        <ProjectScopeProvider projectId="cezar">
+      <MemoryRouter initialEntries={['/p/onni/']}>
+        <ProjectScopeProvider projectId="onni">
           <Link to="/new">New task</Link>
         </ProjectScopeProvider>
       </MemoryRouter>,
     )
-    expect(screen.getByRole('link', { name: 'New task' }).getAttribute('href')).toBe('/p/cezar/new')
+    expect(screen.getByRole('link', { name: 'New task' }).getAttribute('href')).toBe('/p/onni/new')
   })
 
   it("falls back to the URL's own prefix — the app shell renders outside the provider", () => {
     render(
-      <MemoryRouter initialEntries={['/p/cezar/git']}>
+      <MemoryRouter initialEntries={['/p/onni/git']}>
         <Link to="/new">New task</Link>
       </MemoryRouter>,
     )
-    expect(screen.getByRole('link', { name: 'New task' }).getAttribute('href')).toBe('/p/cezar/new')
+    expect(screen.getByRole('link', { name: 'New task' }).getAttribute('href')).toBe('/p/onni/new')
   })
 
   it('is the plain react-router Link on a flat URL (component tests, mid-redirect)', () => {

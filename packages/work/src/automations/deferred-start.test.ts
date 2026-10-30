@@ -15,7 +15,7 @@ const dirs: string[] = [];
 afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); vi.restoreAllMocks(); });
 const AT = Date.parse('2026-12-01T09:00:00Z');
 function setup() {
-  const dir = mkdtempSync(join(tmpdir(), 'cez-deferred-')); dirs.push(dir);
+  const dir = mkdtempSync(join(tmpdir(), 'onni-deferred-')); dirs.push(dir);
   const store = AutomationStore.open(dir);
   const definition = store.create({ name: 'Later', kind: 'schedule', enabled: true, schedule: { type: 'once', date: '2026-12-01', hour: 9, minute: 0 },
     task: { prompt: 'Keep {{user.id}} and {{date}} literal', workflow: 'quick-task', autonomous: false },

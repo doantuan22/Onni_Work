@@ -2,10 +2,10 @@ import { connect } from 'node:net';
 
 /**
  * Addresses a task's terminals printed (spec `.ai/specs/2026-10-07-task-workspace.md` §7:
- * "Cezar may detect URLs printed in terminal output and list them above the terminal,
+ * "Onni may detect URLs printed in terminal output and list them above the terminal,
  * deduplicated by address. Show whether each detected server is running.").
  *
- * Detection is the whole of cezar's automation here. Nothing is opened, fetched, or probed for
+ * Detection is the whole of onni's automation here. Nothing is opened, fetched, or probed for
  * content — the spec is explicit that a detected address opens only when the user clicks
  * `Otwórz w Przeglądarce`, and the liveness check below is a TCP connect and nothing more.
  */
@@ -109,7 +109,7 @@ const PROBE_TIMEOUT_MS = 400;
 /**
  * Is anything listening there?
  *
- * A TCP connect, deliberately — not an HTTP request. cezar must not send a request to a server
+ * A TCP connect, deliberately — not an HTTP request. onni must not send a request to a server
  * a task started: that server is worktree code, the request could have side effects, and the
  * question being asked is only "is the port open". The socket is destroyed the instant it
  * connects.

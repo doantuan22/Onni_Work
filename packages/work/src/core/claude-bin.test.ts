@@ -25,7 +25,7 @@ describe.skipIf(process.platform === 'win32')('resolveClaudeBin', () => {
   let candidates: string[];
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-claude-bin-'));
+    root = mkdtempSync(join(tmpdir(), 'onni-claude-bin-'));
     home = join(root, 'home');
     pathDir = join(root, 'bin');
     nodeBinDir = join(root, 'node-bin');
@@ -49,7 +49,7 @@ describe.skipIf(process.platform === 'win32')('resolveClaudeBin', () => {
     expect(resolveClaudeBin({ PATH: pathDir }, home, 'linux', candidates)).toBe(local);
   });
 
-  it('finds an `npm install -g` claude next to the running node — what cezar\'s own installer uses', () => {
+  it('finds an `npm install -g` claude next to the running node — what onni\'s own installer uses', () => {
     const npmGlobal = join(nodeBinDir, 'claude');
     writeExecutable(npmGlobal);
     expect(resolveClaudeBin({ PATH: pathDir }, home, 'darwin', candidates)).toBe(npmGlobal);
@@ -191,7 +191,7 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
   });
 
   it('is the resolved path when one was found off PATH', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-claude-shell-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       const bin = join(dir, 'claude');
       writeExecutable(bin);
@@ -202,7 +202,7 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
   });
 
   it('honours an executable CEZ_CLAUDE_BIN', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-claude-shell-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       const bin = join(dir, 'claude');
       writeExecutable(bin);
@@ -231,7 +231,7 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
    * missing one, which is a different bug rather than a fix for it.
    */
   it('falls through a bogus CEZ_CLAUDE_BIN to a real candidate instead of giving up', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-claude-shell-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       const bin = join(dir, 'claude');
       writeExecutable(bin);
@@ -243,7 +243,7 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
   });
 
   it('ignores a CEZ_CLAUDE_BIN that points at a directory', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-claude-shell-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       mkdirSync(join(dir, 'claude'), { recursive: true });
       expect(claudeShellCommand({ PATH: '', CEZ_CLAUDE_BIN: join(dir, 'claude') }, '/nonexistent-home', 'linux', NONE))
@@ -254,7 +254,7 @@ describe.skipIf(process.platform === 'win32')('claudeShellCommand', () => {
   });
 
   it('is null when claude is on PATH — the caller already has a working bare command there', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-claude-shell-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-claude-shell-'));
     try {
       writeExecutable(join(dir, 'claude'));
       expect(claudeShellCommand({ PATH: dir }, '/nonexistent-home', 'linux', NONE)).toBeNull();

@@ -31,8 +31,8 @@ const fetchMock = vi.fn<typeof fetch>()
 
 const HEALTH_REMOTE = {
   version: '0.1.3',
-  repoRoot: '/srv/cezar',
-  repo: { root: '/srv/cezar', branch: 'main' },
+  repoRoot: '/srv/onni',
+  repo: { root: '/srv/onni', branch: 'main' },
   checks: [],
   defaultRunner: 'claude',
   capabilities: { localHandoff: false, followups: false, singleProject: false, automations: false },

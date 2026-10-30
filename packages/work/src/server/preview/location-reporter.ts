@@ -3,20 +3,20 @@
  * own — `pushState`, `replaceState`, a hash change — which fires no `load` and leaves a
  * cross-origin frame's address unreadable from outside. The Design Mode picker carries it; the
  * desktop shell injects its own copy into every frame (`FRAME_SCRIPT` in
- * `packages/desktop/src-tauri/src/lib.rs`), and the first to run claims `__cezarLocation`.
+ * `packages/desktop/src-tauri/src/lib.rs`), and the first to run claims `__onniLocation`.
  *
- * It only REPORTS — `{ source: 'cezar-preview', type: 'location', url, how }` to its parent at one
+ * It only REPORTS — `{ source: 'onni-preview', type: 'location', url, how }` to its parent at one
  * origin — and obeys nothing. `how` is `load`, `push`, `replace` or `pop` (a traversal, or a hash
  * change that added no entry). Plain ES5-flavoured source, for the same reasons as the picker.
  */
 export function locationReporterScript(parentOrigin: string): string {
-  return LOCATION_REPORTER_SOURCE.replace('__CEZAR_PARENT_ORIGIN__', () => JSON.stringify(parentOrigin).replace(/</g, '\\u003c'));
+  return LOCATION_REPORTER_SOURCE.replace('__ONNI_PARENT_ORIGIN__', () => JSON.stringify(parentOrigin).replace(/</g, '\\u003c'));
 }
 
 const LOCATION_REPORTER_SOURCE = String.raw`(function (parentOrigin) {
   'use strict';
-  if (window.parent === window || window.__cezarLocation) return;
-  window.__cezarLocation = true;
+  if (window.parent === window || window.__onniLocation) return;
+  window.__onniLocation = true;
   var last = null;
   var length = history.length;
   function report(how) {
@@ -24,7 +24,7 @@ const LOCATION_REPORTER_SOURCE = String.raw`(function (parentOrigin) {
     if (url === last) return;
     last = url;
     length = history.length;
-    try { window.parent.postMessage({ source: 'cezar-preview', type: 'location', url: url, how: how }, parentOrigin); } catch (e) { /* parent gone */ }
+    try { window.parent.postMessage({ source: 'onni-preview', type: 'location', url: url, how: how }, parentOrigin); } catch (e) { /* parent gone */ }
   }
   function wrap(name, how) {
     var original = history[name];
@@ -41,5 +41,5 @@ const LOCATION_REPORTER_SOURCE = String.raw`(function (parentOrigin) {
   window.addEventListener('popstate', moved);
   window.addEventListener('hashchange', moved);
   report('load');
-})(__CEZAR_PARENT_ORIGIN__);
+})(__ONNI_PARENT_ORIGIN__);
 `;

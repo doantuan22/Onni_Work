@@ -398,7 +398,7 @@ export function Composer({
 
   const onPaste = (event: ClipboardEvent) => {
     // `kind: 'file'` rather than an `image/` type test (#950): the clipboard carries a pasted
-    // `.md` as a file item too, and `screenFiles` is what decides whether cezar takes it. The
+    // `.md` as a file item too, and `screenFiles` is what decides whether onni takes it. The
     // text half of the clipboard is left alone so an ordinary ⌘V still types.
     const files = [...(event.clipboardData?.items ?? [])]
       .filter((item) => item.kind === 'file')

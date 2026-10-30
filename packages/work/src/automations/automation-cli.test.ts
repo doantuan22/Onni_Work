@@ -7,10 +7,10 @@ function containsRunnerToken(text: string, runner: string): boolean {
   return new RegExp(`(?:^|[^A-Za-z0-9_-])${runner}(?=$|[^A-Za-z0-9_-])`).test(text);
 }
 
-/** The `cez automation` CLI is a thin client: what is pinned is the request it builds from the
+/** The `onni automation` CLI is a thin client: what is pinned is the request it builds from the
  *  definition and env, how it relays a refusal, and that it never talks to a server it was not
  *  given — never the routes, which have their own tests (`server/automations-api.test.ts`). */
-describe('cez automation', () => {
+describe('onni automation', () => {
   const env = { CEZ_API_URL: 'http://127.0.0.1:4321/', CEZ_PROJECT_ID: 'proj' };
 
   const definition = {
@@ -57,7 +57,7 @@ describe('cez automation', () => {
     expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual(definition);
     expect(h.out[0]).toContain('created automation auto-1 "Review new PRs" — paused');
     expect(h.out[1]).toBe('cockpit: http://127.0.0.1:4321/p/proj/automations/auto-1');
-    expect(h.out[2]).toContain('cez automation check auto-1');
+    expect(h.out[2]).toContain('onni automation check auto-1');
   });
 
   it('create --enable (or a definition carrying enabled: true) sends the route’s enable flag, never a body key it refuses', async () => {
@@ -100,7 +100,7 @@ describe('cez automation', () => {
   it('create relays the cockpit’s refusal — the automations-off 409 included — with a non-zero exit', async () => {
     const h = harness([{ status: 409, body: { error: 'GitHub automations are disabled — set CEZ_AUTOMATIONS=1 to enable them' } }]);
     expect(await runAutomationCommand(['create', '--json', JSON.stringify(definition)], env, h.io)).toBe(1);
-    expect(h.err[0]).toBe('cez automation: create refused — GitHub automations are disabled — set CEZ_AUTOMATIONS=1 to enable them');
+    expect(h.err[0]).toBe('onni automation: create refused — GitHub automations are disabled — set CEZ_AUTOMATIONS=1 to enable them');
   });
 
   it('update reads the current definition, merges the patch over its editable keys, restates enabled and echoes the revision', async () => {
@@ -204,7 +204,7 @@ describe('cez automation', () => {
   it('outside a task, a missing address is explained to the person instead of calling it task-only (#1080)', async () => {
     const none = harness([]);
     expect(await runAutomationCommand(['list'], {}, none.io)).toBe(2);
-    expect(none.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 cez automation list');
+    expect(none.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 onni automation list');
     expect(none.err[0]).not.toContain('only works inside a task');
     expect(none.calls).toHaveLength(0);
   });
@@ -219,7 +219,7 @@ describe('cez automation', () => {
   it('prints usage for help and for an unknown command', async () => {
     const help = harness([]);
     expect(await runAutomationCommand(['help'], {}, help.io)).toBe(0);
-    expect(help.out[0]).toContain('cez automation create');
+    expect(help.out[0]).toContain('onni automation create');
     for (const runner of RUNNER_IDS) expect(containsRunnerToken(help.out[0] ?? '', runner)).toBe(true);
     const unknown = harness([]);
     expect(await runAutomationCommand(['frobnicate'], env, unknown.io)).toBe(2);
@@ -229,7 +229,7 @@ describe('cez automation', () => {
   });
 });
 
-describe('cez automation add / run (spec 2026-09-14)', () => {
+describe('onni automation add / run (spec 2026-09-14)', () => {
   const env = { CEZ_API_URL: 'http://127.0.0.1:4321', CEZ_PROJECT_ID: 'proj' };
   const harness = (replies: Array<{ status: number; body?: unknown }>) => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -258,7 +258,7 @@ describe('cez automation add / run (spec 2026-09-14)', () => {
       task: { prompt: 'Bump deps on {{date}}', worktree: true, autonomous: true, workflow: 'fix-and-verify', runner: 'claude', model: 'sonnet', dispatch: { maxSubtasks: 4, reviewChild: true } },
     });
     expect(h.out[0]).toContain('paused — every day at 04:00');
-    expect(h.out[2]).toContain('cez automation run s1');
+    expect(h.out[2]).toContain('onni automation run s1');
   });
 
   it('add --on posts a GitHub poll with labels, authors and the interval; --enable rides along', async () => {
@@ -277,7 +277,7 @@ describe('cez automation add / run (spec 2026-09-14)', () => {
     const h = harness([]);
     expect(await runAutomationCommand(['add', '--name', 'x', '--cron', '*/15 * * * *', '--prompt', 'p'], env, h.io)).toBe(2);
     expect(h.err[0]).toContain('not one of the shapes');
-    expect(h.err[0]).toContain('cez automation schema');
+    expect(h.err[0]).toContain('onni automation schema');
     expect(await runAutomationCommand(['add', '--name', 'x', '--prompt', 'p'], env, h.io)).toBe(2);
     expect(await runAutomationCommand(['add', '--cron', '0 4 * * *', '--prompt', 'p'], env, h.io)).toBe(2);
     expect(await runAutomationCommand(['add', '--name', 'x', '--cron', '0 4 * * *', '--on', 'issue.opened', '--prompt', 'p'], env, h.io)).toBe(2);

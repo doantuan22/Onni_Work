@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 async function fixtureRepo(): Promise<string> {
-  const root = mkdtempSync(join(tmpdir(), 'cez-retention-remat-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-retention-remat-'));
   roots.push(root);
   await run('git', ['init', '-q', '-b', 'main'], { cwd: root });
   writeFileSync(join(root, 'base.txt'), 'base\n');
@@ -172,11 +172,11 @@ describe('a resume racing a retention pass (27d2e432)', () => {
     expect(existsSync(a.path)).toBe(true);
   });
 
-  it('re-attaches a worktree removed outside cezar onto its surviving branch', async () => {
+  it('re-attaches a worktree removed outside onni onto its surviving branch', async () => {
     const repo = await fixtureRepo();
     const runId = 'cccccccc-0000-4000-8000-000000000001';
     const wt = await createWorktree(repo, runId, 'main');
-    rmSync(wt.path, { recursive: true, force: true }); // no stamp: nothing in cezar did this
+    rmSync(wt.path, { recursive: true, force: true }); // no stamp: nothing in onni did this
     const record = finished(runId, wt.path, wt.branch, '2026-07-01T00:00:00.000Z');
 
     expect(await rematerializeReclaimedWorktree(repo, fakeStore(record), runId)).toBe(true);

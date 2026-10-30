@@ -25,11 +25,11 @@ describe('createDraftPr pre-PR autosave (#471 follow-up)', () => {
   const input = () => ({
     repoRoot: repo,
     handoffText: '# Goal\n\nship it\n',
-    run: { worktreePath: repo, branch: 'cez/abc123', task: 'do the thing' } as RunRecord,
+    run: { worktreePath: repo, branch: 'onni/abc123', task: 'do the thing' } as RunRecord,
   });
 
   beforeEach(async () => {
-    repo = mkdtempSync(join(tmpdir(), 'cez-draft-pr-'));
+    repo = mkdtempSync(join(tmpdir(), 'onni-draft-pr-'));
     await git(['init', '-q', '-b', 'main']);
     writeFileSync(join(repo, 'a.txt'), 'base\n');
     await git(['add', '-A']);
@@ -47,11 +47,11 @@ describe('createDraftPr pre-PR autosave (#471 follow-up)', () => {
   it('disables terminal credential prompts for raw git pushes', async () => {
     vi.stubEnv('CEZ_DRY_RUN', '0');
     vi.stubEnv('GIT_TERMINAL_PROMPT', '1');
-    const remote = mkdtempSync(join(tmpdir(), 'cez-push-remote-'));
+    const remote = mkdtempSync(join(tmpdir(), 'onni-push-remote-'));
     try {
       await run('git', ['init', '--bare', '-q', remote]);
       await git(['remote', 'add', 'origin', remote]);
-      await git(['branch', 'cez/abc123']);
+      await git(['branch', 'onni/abc123']);
       writeFileSync(join(repo, '.git', 'hooks', 'pre-push'),
         '#!/bin/sh\necho "prompt-setting=$GIT_TERMINAL_PROMPT" >&2\nexit 1\n', { mode: 0o755 });
       const outcome = await createDraftPr(input());
@@ -94,7 +94,7 @@ describe('createDraftPr pre-PR autosave (#471 follow-up)', () => {
     expect(outcome.ok).toBe(true);
     // The final state landed on the branch before publishing.
     const { stdout } = await run('git', ['log', '-1', '--format=%s'], { cwd: repo });
-    expect(stdout.trim()).toBe('cezar autosave (pre-PR)');
+    expect(stdout.trim()).toBe('onni autosave (pre-PR)');
   });
 
   it('publishes when there was nothing left to flush', async () => {
@@ -113,16 +113,16 @@ describe('createDraftPr draft flag', () => {
   const git = (args: string[]) => run('git', args, { cwd: repo });
 
   beforeEach(async () => {
-    repo = mkdtempSync(join(tmpdir(), 'cez-pr-draft-'));
-    remote = mkdtempSync(join(tmpdir(), 'cez-pr-draft-remote-'));
-    bin = mkdtempSync(join(tmpdir(), 'cez-pr-draft-bin-'));
+    repo = mkdtempSync(join(tmpdir(), 'onni-pr-draft-'));
+    remote = mkdtempSync(join(tmpdir(), 'onni-pr-draft-remote-'));
+    bin = mkdtempSync(join(tmpdir(), 'onni-pr-draft-bin-'));
     await run('git', ['init', '--bare', '-q', remote]);
     await git(['init', '-q', '-b', 'main']);
     writeFileSync(join(repo, 'a.txt'), 'base\n');
     await git(['add', '-A']);
     await git([...GIT_ID, 'commit', '-q', '-m', 'base']);
     await git(['remote', 'add', 'origin', remote]);
-    await git(['checkout', '-q', '-b', 'cez/abc123']);
+    await git(['checkout', '-q', '-b', 'onni/abc123']);
     // A stand-in `gh` that records its argv and answers like `gh pr create` does.
     writeFileSync(
       join(bin, 'gh'),
@@ -143,7 +143,7 @@ describe('createDraftPr draft flag', () => {
   const input = (draft?: boolean) => ({
     repoRoot: repo,
     handoffText: '# Goal\n\nship it\n',
-    run: { worktreePath: repo, branch: 'cez/abc123', task: 'do the thing', title: 't' } as RunRecord,
+    run: { worktreePath: repo, branch: 'onni/abc123', task: 'do the thing', title: 't' } as RunRecord,
     ...(draft === undefined ? {} : { draft }),
   });
   const argv = () => readFileSync(join(bin, 'argv'), 'utf8').split('\n');
@@ -184,16 +184,16 @@ describe('createDraftPr recovery', () => {
   const calls = () => readFileSync(join(bin, 'calls'), 'utf8').trim().split('\n');
 
   beforeEach(async () => {
-    repo = mkdtempSync(join(tmpdir(), 'cez-pr-recover-'));
-    remote = mkdtempSync(join(tmpdir(), 'cez-pr-recover-remote-'));
-    bin = mkdtempSync(join(tmpdir(), 'cez-pr-recover-bin-'));
+    repo = mkdtempSync(join(tmpdir(), 'onni-pr-recover-'));
+    remote = mkdtempSync(join(tmpdir(), 'onni-pr-recover-remote-'));
+    bin = mkdtempSync(join(tmpdir(), 'onni-pr-recover-bin-'));
     await run('git', ['init', '--bare', '-q', remote]);
     await git(['init', '-q', '-b', 'main']);
     writeFileSync(join(repo, 'a.txt'), 'base\n');
     await git(['add', '-A']);
     await git([...GIT_ID, 'commit', '-q', '-m', 'base']);
     await git(['remote', 'add', 'origin', remote]);
-    await git(['checkout', '-q', '-b', 'cez/abc123']);
+    await git(['checkout', '-q', '-b', 'onni/abc123']);
     vi.stubEnv('CEZ_DRY_RUN', '0');
     vi.stubEnv('PATH', `${bin}:${process.env.PATH ?? ''}`);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -208,12 +208,12 @@ describe('createDraftPr recovery', () => {
   const input = () => ({
     repoRoot: repo,
     handoffText: '# Goal\n\nship it\n',
-    run: { worktreePath: repo, branch: 'cez/abc123', task: 'do the thing', title: 't' } as RunRecord,
+    run: { worktreePath: repo, branch: 'onni/abc123', task: 'do the thing', title: 't' } as RunRecord,
   });
 
   it('adopts the open PR that already exists for the branch', async () => {
     fakeGh(
-      `echo 'a pull request for branch "cez/abc123" into branch "main" already exists:' >&2; echo https://github.com/acme/demo/pull/5 >&2; exit 1`,
+      `echo 'a pull request for branch "onni/abc123" into branch "main" already exists:' >&2; echo https://github.com/acme/demo/pull/5 >&2; exit 1`,
       '[{"url":"https://github.com/acme/demo/pull/5","headRepositoryOwner":{"login":"acme"}}]',
     );
     const outcome = await createDraftPr(input());
@@ -232,7 +232,7 @@ describe('createDraftPr recovery', () => {
 
   it('does not retry a permanent failure, and names an empty branch plainly', async () => {
     fakeGh(
-      `echo "pull request create failed: GraphQL: No commits between main and cez/abc123 (createPullRequest)" >&2; exit 1`,
+      `echo "pull request create failed: GraphQL: No commits between main and onni/abc123 (createPullRequest)" >&2; exit 1`,
       '[]',
     );
     const outcome = await createDraftPr(input());
@@ -248,7 +248,7 @@ describe('createDraftPr recovery', () => {
     const outcome = await createDraftPr({ ...input(), run: { ...input().run, baseBranch: 'main' } });
     expect(outcome).toEqual({ ok: false, error: expect.stringContaining('nothing to propose') });
     expect(existsSync(join(bin, 'calls'))).toBe(false);
-    const { stdout } = await run('git', ['ls-remote', '--heads', remote, 'cez/abc123']);
+    const { stdout } = await run('git', ['ls-remote', '--heads', remote, 'onni/abc123']);
     expect(stdout.trim()).toBe('');
   });
 

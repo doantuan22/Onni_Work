@@ -710,7 +710,7 @@ describe('ClaudeCliRunner v2 wiring (against the bundled mock CLI)', () => {
   const mockBin = join(HERE, '..', '..', 'scripts', 'mock-claude.mjs');
 
   it('preserves an is_error result message as an authoritative v1 error signal', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'cez-claude-auth-error-'));
+    const cwd = await mkdtemp(join(tmpdir(), 'onni-claude-auth-error-'));
     try {
       const runner = new ClaudeCliRunner({ bin: mockBin, timeoutMs: 60_000 });
       const v1: AgentEvent[] = [];
@@ -732,7 +732,7 @@ describe('ClaudeCliRunner v2 wiring (against the bundled mock CLI)', () => {
   }, 30_000);
 
   it('emits v2 events through opts.onUiEvent while v1 events keep flowing', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'cez-ui-mapper-'));
+    const cwd = await mkdtemp(join(tmpdir(), 'onni-ui-mapper-'));
     try {
       const runner = new ClaudeCliRunner({ bin: mockBin, timeoutMs: 60_000 });
       const v1: AgentEvent[] = [];
@@ -781,7 +781,7 @@ describe('ClaudeCliRunner v2 wiring (against the bundled mock CLI)', () => {
   }, 30_000);
 
   it('streams assistant text as item.delta before the whole block completes', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'cez-ui-mapper-delta-'));
+    const cwd = await mkdtemp(join(tmpdir(), 'onni-ui-mapper-delta-'));
     try {
       const runner = new ClaudeCliRunner({ bin: mockBin, timeoutMs: 60_000 });
       const v1: AgentEvent[] = [];
@@ -819,7 +819,7 @@ describe('ClaudeCliRunner v2 wiring (against the bundled mock CLI)', () => {
   // it the dock is unreachable offline, so QA, screenshots and the e2e smoke all
   // depend on this wire shape staying correct.
   it('mock:subagents fans out two parented Task agents', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'cez-ui-mapper-sub-'));
+    const cwd = await mkdtemp(join(tmpdir(), 'onni-ui-mapper-sub-'));
     try {
       const runner = new ClaudeCliRunner({ bin: mockBin, timeoutMs: 60_000 });
       const v2: UiEvent[] = [];

@@ -147,7 +147,7 @@ export interface TaskPrRef {
 }
 
 /**
- * The PR this task OWNS — the one it created, or the one it declared as its subject (`CEZ:PR`) —
+ * The PR this task OWNS — the one it created, or the one it declared as its subject (`ONNI:PR`) —
  * and never one merely scraped from its transcript (`referencedPullRequestUrl`, the `legacy` and
  * `derived` origins). This is the one to ACT on: the run header's git button offers Create PR,
  * Commit, Push, Resolve conflicts or Fix errors against it, so a link the agent only read
@@ -190,7 +190,7 @@ export function taskPrRefs(run: TaskReferenceInput, repoBase?: string): TaskPrRe
  * conversation is about (#407). Both are real and can coexist — a review task can open a
  * follow-up PR of its own — which is why this is a list and `taskPrUrl` is merely its head.
  *
- * The one suppression is #526: a run whose declared subject is an ISSUE (CEZ:ISSUE) and that
+ * The one suppression is #526: a run whose declared subject is an ISSUE (ONNI:ISSUE) and that
  * declared no PR must not adopt an incidental transcript PR as "its" PR — an `om-prepare-issue`
  * run linking a stray PR that merely appeared in its output is a false, misleading association.
  * It lives HERE, once, so the singular and plural accessors cannot drift apart on it.
@@ -211,11 +211,11 @@ function prUrls(run: TaskReferenceInput): string[] {
  * a discovered URL or nothing. */
 export function taskIssueUrl(run: TaskReferenceInput, repoBase?: string): string | undefined {
   if (run.referencedIssueUrl) return run.referencedIssueUrl
-  // #526: an issue-subject run (om-prepare-issue) knows its issue number from the CEZ:ISSUE
+  // #526: an issue-subject run (om-prepare-issue) knows its issue number from the ONNI:ISSUE
   // marker even when no full `…/issues/N` link was ever scanned into referencedIssueUrl.
   // Synthesize the link from the PROJECT's repo only — never from `referenced*Candidates` or
   // `referenced*Url`, which are transcript scrapings that routinely name other repositories:
-  // `CEZ:ISSUE=524` beside an incidental `github.com/other/repo/pull/1` would rebuild the exact
+  // `ONNI:ISSUE=524` beside an incidental `github.com/other/repo/pull/1` would rebuild the exact
   // wrong-link defect #526 exists to kill, just pointing at an issue instead of a PR.
   const number = run.markerRefs?.issue ?? run.issueNumber
   if (!number || !repoBase) return undefined
@@ -308,7 +308,7 @@ export function prioritizeTaskReferences(
  * next kind of reference is one entry here and nothing else — and the PR half is `prUrls`, the
  * same list `taskPrUrl` takes its head from, so the two can never disagree about #407 or #526.
  * Order is strongest-first — the PR a task created, the PR it is about, then the issue — with one
- * thing ahead of all of them: a `CEZ:PR` declaration that NO scraped URL corroborates.
+ * thing ahead of all of them: a `ONNI:PR` declaration that NO scraped URL corroborates.
  *
  * That exception is narrow on purpose. Normally the declaration is already one of the URLs below
  * (the marker contract asks the agent to re-declare once it opens a PR of its own), and then
@@ -414,7 +414,7 @@ function chipIssueNumber(run: TaskReferenceInput, repoBase?: string): number | u
 /**
  * The PR half of the same rule (#854), and the place the two halves are reconciled.
  *
- * `prNumber` reaches a run exactly the two ways `issueNumber` does — declared by a `CEZ:PR` marker,
+ * `prNumber` reaches a run exactly the two ways `issueNumber` does — declared by a `ONNI:PR` marker,
  * or seeded by the auto-namer, which scrapes the transcript. A task driving ANOTHER repository's
  * pull request scrapes that repository's numbers, so the auto-namer can seed a `prNumber` that is
  * not this project's; rebuilt against the project repo by `synthesizeUrl` it is the same confident

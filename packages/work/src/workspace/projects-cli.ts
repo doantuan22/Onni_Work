@@ -11,11 +11,11 @@ import {
 } from './projects.ts';
 
 /**
- * `cezar projects` (spec 2026-07-20-multi-project-workspace, step 5.2) — the
+ * `onni projects` (spec 2026-07-20-multi-project-workspace, step 5.2) — the
  * terminal twin of Settings → Projects, for the operator who is on a server (or
  * an ssh session) and has no cockpit in front of them.
  *
- * It talks to `~/.cezar/config.json` through `./projects.js` directly, NOT over
+ * It talks to `~/.onni/config.json` through `./projects.js` directly, NOT over
  * HTTP: the whole point is that it works with no server running, on a box where
  * the cockpit is behind an nginx login. `CEZ_HOME` therefore selects which
  * workspace it operates on, exactly as it does for `serve`.
@@ -32,10 +32,10 @@ const defaultIo: ProjectsCommandIo = {
 };
 
 const USAGE = `usage:
-  cezar projects [list]        list the registered projects
-  cezar projects add [<dir>]   register a folder (default: --repo, else cwd)
-  cezar projects remove <id>   drop a registry entry (the repo is untouched)
-  cezar projects tag <id> [<tag>…]
+  onni projects [list]        list the registered projects
+  onni projects add [<dir>]   register a folder (default: --repo, else cwd)
+  onni projects remove <id>   drop a registry entry (the repo is untouched)
+  onni projects tag <id> [<tag>…]
                                set the grouping tags of a project (none clears them)
 
   add/remove/tag are unavailable when CEZ_SINGLE_PROJECT=1`;
@@ -109,7 +109,7 @@ async function listCommand(
       : await listProjects();
   if (projects.length === 0) {
     io.log('\n  no projects registered yet');
-    io.log('  start the cockpit in a repo (npx cezar) or add one: cezar projects add <dir>\n');
+    io.log('  start the cockpit in a repo (npx onni) or add one: onni projects add <dir>\n');
     return 0;
   }
   const idWidth = Math.max(...projects.map((p) => p.id.length));
@@ -137,7 +137,7 @@ async function addCommand(root: string, io: ProjectsCommandIo): Promise<number> 
   // is served happily but never registered, and asking for it explicitly does
   // not buy an exemption.
   if (!(await shouldRegisterProject(root))) {
-    io.error(`refusing to register ${root} — cezar task worktrees and your home directory are not projects`);
+    io.error(`refusing to register ${root} — onni task worktrees and your home directory are not projects`);
     return 1;
   }
   const known = new Set((await loadWorkspaceConfig()).projects.map((p) => p.id));
@@ -158,18 +158,18 @@ async function removeCommand(id: string | undefined, io: ProjectsCommandIo): Pro
   // sidebar, and the CLI runs with no server and no boot project. Removing the
   // repo you normally serve is therefore allowed — and, since boot registration
   // became seed-once (`shouldAutoRegisterProject`), it STAYS removed: the next
-  // `cezar serve` in it will serve the folder without re-registering it. The
+  // `onni serve` in it will serve the folder without re-registering it. The
   // line below says what was and was not touched; `add` puts it back.
   if (!(await removeProject(id))) {
     io.error(`unknown project: ${id}`);
     return 1;
   }
-  io.log(`  - ${id} (registry entry only — the repo and its .ai/cezar/ are untouched)`);
+  io.log(`  - ${id} (registry entry only — the repo and its .ai/onni/ are untouched)`);
   return 0;
 }
 
 /**
- * `cezar projects tag <id> [<tag>…]` — the terminal twin of the Tags cell in
+ * `onni projects tag <id> [<tag>…]` — the terminal twin of the Tags cell in
  * Settings → Projects.
  *
  * Replaces the WHOLE list, like the PATCH route does, and for the same reason:

@@ -17,7 +17,7 @@ const state = (over: Partial<SkillsUpdateState>): SkillsUpdateState => ({
   ...over,
 })
 
-const unreachable = () => new ApiError(0, 'cannot reach the cezar server (/api/v1/workspace/skills-update/apply)')
+const unreachable = () => new ApiError(0, 'cannot reach the onni server (/api/v1/workspace/skills-update/apply)')
 const wait = () => Promise.resolve()
 
 /** The apply POST lost its connection while npx kept running server-side. */
@@ -50,7 +50,7 @@ describe('applySkillsUpdateSettled', () => {
 
   it('keeps the original error when the server stays unreachable', async () => {
     const error = unreachable()
-    const read = vi.fn().mockRejectedValue(new ApiError(0, 'cannot reach the cezar server'))
+    const read = vi.fn().mockRejectedValue(new ApiError(0, 'cannot reach the onni server'))
     await expect(
       applySkillsUpdateSettled('p', null, { apply: vi.fn().mockRejectedValue(error), read, wait }),
     ).rejects.toBe(error)

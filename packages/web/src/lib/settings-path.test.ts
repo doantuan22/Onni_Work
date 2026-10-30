@@ -7,8 +7,8 @@ describe('isSettingsPathname', () => {
     '/settings/global',
     '/settings/global/',
     '/settings/global/appearance',
-    '/p/cezar/settings',
-    '/p/cezar/settings/agents',
+    '/p/onni/settings',
+    '/p/onni/settings/agents',
     '/p/default/settings/worktrees',
     // Legacy flat spellings — one frame before their redirect lands on a family above.
     '/settings',
@@ -20,11 +20,11 @@ describe('isSettingsPathname', () => {
 
   it.each([
     '/',
-    '/p/cezar/',
-    '/p/cezar/skills',
-    '/p/cezar/settingsfoo',
+    '/p/onni/',
+    '/p/onni/skills',
+    '/p/onni/settingsfoo',
     '/settingsfoo',
-    '/p/cezar/tasks/run-1',
+    '/p/onni/tasks/run-1',
     '/new',
   ])('%s is not', (pathname) => {
     expect(isSettingsPathname(pathname)).toBe(false)

@@ -16,7 +16,7 @@ function titlePart(value: string | null): string | null {
 export function documentTitleOf({ projectName, pageLabel, brandName }: DocumentTitleParts): string {
   const project = titlePart(projectName)
   const page = titlePart(pageLabel)
-  const brand = titlePart(brandName ?? null) ?? 'cezar'
+  const brand = titlePart(brandName ?? null) ?? 'onni'
 
   if (project && page) return `${project} — ${page} · ${brand}`
   if (project) return `${project} · ${brand}`

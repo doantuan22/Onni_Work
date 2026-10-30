@@ -29,7 +29,7 @@ describe('the tree directory', () => {
   const CHILD = 'bbbbbbbb-1111-2222-3333-444444444444';
 
   beforeEach(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'cez-tree-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-tree-'));
   });
   afterEach(() => {
     rmSync(dataDir, { recursive: true, force: true });

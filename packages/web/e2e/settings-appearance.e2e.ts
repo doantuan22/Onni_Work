@@ -20,12 +20,12 @@ const sessionId = `e2e-settings-${process.pid}`
 const DESKTOP = { width: 1440, height: 900 }
 
 // Appearance persists in the WORKSPACE ui-state since step 3.5. `.ai/scripts/test-env-up.sh`
-// pins `CEZ_HOME` under `.ai/qa/cez-home`, so that — not the developer's `~/.cezar`, and not
-// the repo's `.ai/cezar` — is the file this suite reads and restores.
-const cezHomeDir = resolve(import.meta.dirname, '../../../.ai/qa/cez-home')
-const uiStateFile = resolve(cezHomeDir, 'ui-state.json')
+// pins `CEZ_HOME` under `.ai/qa/onni-home`, so that — not the developer's `~/.onni`, and not
+// the repo's `.ai/onni` — is the file this suite reads and restores.
+const onniHomeDir = resolve(import.meta.dirname, '../../../.ai/qa/onni-home')
+const uiStateFile = resolve(onniHomeDir, 'ui-state.json')
 const brandingFiles = ['config.json', 'config.json.bak', 'branding-logo', '.png', '.jpg', '.webp', '.gif', '.avif', '.svg']
-  .map((name) => resolve(cezHomeDir, name.startsWith('config.json') || name === 'branding-logo' ? name : `branding-logo${name}`))
+  .map((name) => resolve(onniHomeDir, name.startsWith('config.json') || name === 'branding-logo' ? name : `branding-logo${name}`))
 const stateFiles = [uiStateFile, ...brandingFiles]
 
 let browser: AgentBrowser

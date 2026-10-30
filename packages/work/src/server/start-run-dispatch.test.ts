@@ -24,9 +24,9 @@ describe('POST /runs and the dispatch intent', () => {
   const savedFlag = process.env.CEZ_DISPATCH;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-startrun-dispatch-'));
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-startrun-dispatch-'));
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     inputs = [];
     delete process.env.CEZ_DISPATCH;
     const manager = {

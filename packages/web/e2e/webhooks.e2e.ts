@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { AgentBrowser, bootProjectId, cezarCli, fixtureServeEnv } from './agent-browser'
+import { AgentBrowser, bootProjectId, onniCli, fixtureServeEnv } from './agent-browser'
 const artifacts = resolve(import.meta.dirname, '../../../.ai/qa/artifacts_e2e')
 let browser: AgentBrowser, server: ChildProcess, root: string, url: string, project: string
 async function availablePort(): Promise<number> {
@@ -19,9 +19,9 @@ const fill = (label: string, value: string) => {
   browser.fill(`[id=${JSON.stringify(id)}]`, value)
 }
 beforeAll(async () => {
-  root = mkdtempSync(join(tmpdir(), 'cezar-e2e-webhooks-')); execFileSync('git', ['init', '-q'], { cwd: root })
+  root = mkdtempSync(join(tmpdir(), 'onni-e2e-webhooks-')); execFileSync('git', ['init', '-q'], { cwd: root })
   const port = await availablePort(); url = `http://127.0.0.1:${port}`
-  server = spawn(process.execPath, [cezarCli, 'serve', '--repo', root, '--port', String(port), '--no-open'], { env: fixtureServeEnv(root, { CEZ_WEBHOOKS: '1' }), stdio: 'ignore' })
+  server = spawn(process.execPath, [onniCli, 'serve', '--repo', root, '--port', String(port), '--no-open'], { env: fixtureServeEnv(root, { CEZ_WEBHOOKS: '1' }), stdio: 'ignore' })
   for (let i = 0; i < 80; i++) { try { if ((await api('/health')).ok) break } catch { /* boot */ } await new Promise(r => setTimeout(r, 250)) }
   project = await bootProjectId(url); browser = AgentBrowser.open(`e2e-webhooks-${process.pid}`); browser.setViewport(1440, 1000)
 }, 90000)

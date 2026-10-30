@@ -34,7 +34,7 @@ function render(command: string, context?: LifecycleTemplateContext): string {
       const end = command.indexOf('}}', i + 2);
       if (end < 0) throw new LifecycleTemplateError('Close the template with }}', i);
       if (top || hereDocument) throw new LifecycleTemplateError(`Place template variables unquoted in ordinary shell arguments, outside ${top?.kind ?? 'here-documents'}`, i);
-      if (command[i - 1] === '$') throw new LifecycleTemplateError('Do not prefix a template with $; Cezar adds shell quoting', i);
+      if (command[i - 1] === '$') throw new LifecycleTemplateError('Do not prefix a template with $; Onni adds shell quoting', i);
       const name = command.slice(i + 2, end).trim();
       if (!(LIFECYCLE_VARIABLES as readonly string[]).includes(name)) throw new LifecycleTemplateError(`Unknown variable ${JSON.stringify(name)}; available: ${LIFECYCLE_VARIABLES.join(', ')}`, i);
       const value = context?.[name as keyof LifecycleTemplateContext];

@@ -119,8 +119,8 @@ describe('workflowLabel', () => {
 
 describe('filterRuns', () => {
   const runs = [
-    run({ id: 'a', title: 'Bump zod to v4', branch: 'cez/99aa11bb', workflow: 'quick-task' }),
-    run({ id: 'b', title: 'README tagline', branch: 'cez/e5f6a7b8', workflow: 'plan-then-do' }),
+    run({ id: 'a', title: 'Bump zod to v4', branch: 'onni/99aa11bb', workflow: 'quick-task' }),
+    run({ id: 'b', title: 'README tagline', branch: 'onni/e5f6a7b8', workflow: 'plan-then-do' }),
     run({
       id: 'c',
       title: 'Inbox follow-up',
@@ -233,7 +233,7 @@ describe('taskPrUrl', () => {
   })
 
   it('does not adopt an incidental PR for an issue-subject run that declared no PR (#526)', () => {
-    // om-prepare-issue for #524: CEZ:ISSUE declared, no CEZ:PR — #454 was only incidental
+    // om-prepare-issue for #524: ONNI:ISSUE declared, no ONNI:PR — #454 was only incidental
     // transcript text and must never surface as "the run's PR".
     const r = run({
       markerRefs: { issue: 524 },
@@ -460,7 +460,7 @@ describe('taskReferences', () => {
   it('drops a number-only PR a candidate proves is another repo’s (#854)', () => {
     // The PR half of #819's rule. `prNumber` reaches a run the same two ways `issueNumber` does,
     // and the auto-namer scrapes it off a transcript — so a task driving open-mercato's #1977
-    // seeds a number cezar does not own. Rebuilt here it is `…/cezar/pull/1977`, a 404.
+    // seeds a number onni does not own. Rebuilt here it is `…/onni/pull/1977`, a 404.
     expect(
       taskReferences(
         run({
@@ -527,7 +527,7 @@ describe('taskIssueUrl', () => {
     expect(taskIssueUrl(run({ issueNumber: 544 }))).toBeUndefined()
   })
 
-  it('synthesizes the issue link from the CEZ:ISSUE marker + the project repo (#526)', () => {
+  it('synthesizes the issue link from the ONNI:ISSUE marker + the project repo (#526)', () => {
     // The om-prepare-issue #524 record: issue known via the marker, but no `…/issues/524`
     // link was ever scanned. The cockpit's own repo makes the created issue reachable.
     const r = run({
@@ -554,10 +554,10 @@ describe('taskIssueUrl', () => {
   })
 
   it('synthesizes nothing when a candidate names this number in another repo (#819)', () => {
-    // The reported record: `/om-auto-fix-pr …/open-mercato/pull/1977` run inside the cezar
-    // project. No CEZ:ISSUE marker, so the auto-namer seeded `issueNumber` from the transcript —
-    // open-mercato's 4143, not cezar's. Rebuilt against the project repo it produced
-    // `…/open-mercato/cezar/issues/4143`, a confident 404. The candidate carrying 4143 under
+    // The reported record: `/om-auto-fix-pr …/open-mercato/pull/1977` run inside the onni
+    // project. No ONNI:ISSUE marker, so the auto-namer seeded `issueNumber` from the transcript —
+    // open-mercato's 4143, not onni's. Rebuilt against the project repo it produced
+    // `…/open-mercato/onni/issues/4143`, a confident 404. The candidate carrying 4143 under
     // another repo is the proof the number is not ours.
     const r = run({
       issueNumber: 4143,
@@ -601,7 +601,7 @@ describe('taskIssueUrl', () => {
   })
 
   it('suppresses a foreign-numbered marker too, since a marker names no repo (#819)', () => {
-    // CEZ:ISSUE declares the task's subject, not the project on screen — a run driving another
+    // ONNI:ISSUE declares the task's subject, not the project on screen — a run driving another
     // repo's issue declares that repo's number, and rebuilding it locally is the same 404.
     const r = run({
       markerRefs: { issue: 4143 },
@@ -626,8 +626,8 @@ describe('githubRepoBase', () => {
     ['https://github.com/open-mercato/cezar.git', 'https://github.com/open-mercato/cezar'],
     ['https://github.com/open-mercato/cezar', 'https://github.com/open-mercato/cezar'],
     ['https://user:token@github.com/open-mercato/cezar.git', 'https://github.com/open-mercato/cezar'],
-    ['git@github.com:open-mercato/cezar.git', 'https://github.com/open-mercato/cezar'],
-    ['ssh://git@github.com:22/open-mercato/cezar.git', 'https://github.com/open-mercato/cezar'],
+    ['git@github.com:open-mercato/onni.git', 'https://github.com/open-mercato/cezar'],
+    ['ssh://git@github.com:22/open-mercato/onni.git', 'https://github.com/open-mercato/cezar'],
     ['https://github.com/open-mercato/cezar/', 'https://github.com/open-mercato/cezar'],
   ])('normalizes %s', (remote, expected) => {
     expect(githubRepoBase(remote)).toBe(expected)
@@ -639,7 +639,7 @@ describe('githubRepoBase', () => {
     ['a GitLab remote', 'git@gitlab.com:o/r.git'],
     ['a self-hosted forge', 'https://git.example.com/o/r.git'],
     ['a local path', '/srv/git/repo.git'],
-    ['a bare host with no owner', 'https://github.com/cezar'],
+    ['a bare host with no owner', 'https://github.com/onni'],
   ])('has no GitHub base for %s', (_name, remote) => {
     expect(githubRepoBase(remote)).toBeUndefined()
   })

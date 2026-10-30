@@ -14,7 +14,7 @@ import type { ScheduleAutomationDefinition } from './types.ts';
 let root: string;
 beforeEach(() => {
   root = realpathSync(mkdtempSync(join(tmpdir(), 'deferred-graph-')));
-  mkdirSync(join(root, '.ai/cezar/workflows'), { recursive: true });
+  mkdirSync(join(root, '.ai/onni/workflows'), { recursive: true });
   for (const dir of ['claude', 'codex', 'override', 'home']) mkdirSync(join(root, dir));
   vi.stubEnv('CEZ_HOME', join(root, 'home'));
   vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'claude'));
@@ -26,7 +26,7 @@ afterEach(() => { vi.unstubAllEnvs(); rmSync(root, { recursive: true, force: tru
 const task = { task: 'Later', workflow: 'parent', runner: 'claude' as const };
 const start = { kind: 'at' as const, date: '2099-01-01', hour: 9, minute: 0 };
 function write(name: string, definition: object) {
-  writeFileSync(join(root, '.ai/cezar/workflows', `${name}.yaml`), stringify({ name, ...definition }));
+  writeFileSync(join(root, '.ai/onni/workflows', `${name}.yaml`), stringify({ name, ...definition }));
 }
 function graph(name: string, nodes: object[]) {
   write(name, { version: 2, nodes: [{ id: 'start', type: 'start' }, ...nodes.map((n, i) => ({ id: `n${i}`, ...n }))],
@@ -58,7 +58,7 @@ it.each(['prompt', 'model', 'provider', 'deleted', 'invalid'])('invalidates laun
   child();
   const definition = await saved();
   await expect(validateDeferredBinding(root, definition)).resolves.toBeUndefined();
-  if (change === 'deleted') rmSync(join(root, '.ai/cezar/workflows/child.yaml'));
+  if (change === 'deleted') rmSync(join(root, '.ai/onni/workflows/child.yaml'));
   else if (change === 'invalid') write('child', { steps: [] });
   else child(change === 'model' ? 'opus' : 'sonnet', change === 'prompt' ? 'changed' : 'original', change === 'provider' ? 'codex' : 'claude');
   await expect(validateDeferredBinding(root, definition)).rejects.toBeInstanceOf(DeferredBindingError);

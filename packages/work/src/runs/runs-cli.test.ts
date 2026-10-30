@@ -3,9 +3,9 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runRunsCommand, type RunsCliIo } from './runs-cli.ts';
 
-/** `cez runs` is a thin read-only client: what is pinned is the URL it builds, the filtering and
+/** `onni runs` is a thin read-only client: what is pinned is the URL it builds, the filtering and
  *  the printed rows — never the route, which has its own tests. */
-describe('cez runs', () => {
+describe('onni runs', () => {
   const env = { CEZ_API_URL: 'http://127.0.0.1:4321/', CEZ_PROJECT_ID: 'proj' };
 
   const run = (id: string, overrides: Record<string, unknown> = {}) => ({
@@ -37,7 +37,7 @@ describe('cez runs', () => {
   };
 
   const runs = [
-    run('aaaaaaaa-1', { createdAt: '2026-09-01T10:00:00.000Z', costUsd: 1.5, branch: 'cez/aaaaaaaa' }),
+    run('aaaaaaaa-1', { createdAt: '2026-09-01T10:00:00.000Z', costUsd: 1.5, branch: 'onni/aaaaaaaa' }),
     run('bbbbbbbb-2', { createdAt: '2026-09-03T10:00:00.000Z', status: 'running', activity: 'monitoring' }),
     run('cccccccc-3', { createdAt: '2026-09-02T10:00:00.000Z', archived: true }),
   ];
@@ -48,7 +48,7 @@ describe('cez runs', () => {
     expect(h.calls).toEqual(['http://127.0.0.1:4321/api/v1/p/proj/runs']);
     expect(h.out).toEqual([
       'bbbbbbbb  running/monitoring  task bbbbbbbb-2',
-      'aaaaaaaa  done  $1.50  task aaaaaaaa-1  [cez/aaaaaaaa]',
+      'aaaaaaaa  done  $1.50  task aaaaaaaa-1  [onni/aaaaaaaa]',
     ]);
   });
 
@@ -58,7 +58,7 @@ describe('cez runs', () => {
     expect(h.calls).toEqual(['http://127.0.0.1:1/api/v1/runs']);
     expect(h.out).toEqual([
       'cccccccc  done  task cccccccc-3  (archived)',
-      'aaaaaaaa  done  $1.50  task aaaaaaaa-1  [cez/aaaaaaaa]',
+      'aaaaaaaa  done  $1.50  task aaaaaaaa-1  [onni/aaaaaaaa]',
     ]);
   });
 
@@ -78,7 +78,7 @@ describe('cez runs', () => {
   it('relays a server error with a non-zero exit', async () => {
     const h = harness({ status: 404, body: { error: 'unknown project: proj' } });
     expect(await runRunsCommand(['list'], env, h.io)).toBe(1);
-    expect(h.err[0]).toBe('cez runs: could not list runs — unknown project: proj');
+    expect(h.err[0]).toBe('onni runs: could not list runs — unknown project: proj');
   });
 
   it('says so when nothing matches', async () => {
@@ -93,14 +93,14 @@ describe('cez runs', () => {
   it('without an address it explains how to set one and never guesses a cockpit', async () => {
     const h = harness({ status: 200, body: runs });
     expect(await runRunsCommand(['list'], {}, h.io)).toBe(2);
-    expect(h.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 cez runs list');
+    expect(h.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 onni runs list');
     expect(h.calls).toHaveLength(0);
   });
 
   it('prints usage for help and refuses an unknown command', async () => {
     const help = harness({ status: 200, body: [] });
     expect(await runRunsCommand(['--help'], env, help.io)).toBe(0);
-    expect(help.out[0]).toContain('cez runs list');
+    expect(help.out[0]).toContain('onni runs list');
     const unknown = harness({ status: 200, body: [] });
     expect(await runRunsCommand(['cancel', 'x'], env, unknown.io)).toBe(2);
     expect(unknown.err[0]).toContain('unknown command "cancel"');
@@ -131,7 +131,7 @@ describe('cez runs', () => {
     const malformed = { title: 'no id', status: 'done', createdAt: '2026-09-01T10:00:00.000Z', archived: false };
     const h = harness({ status: 200, body: [good, malformed] });
     expect(await runRunsCommand(['list'], env, h.io)).toBe(0);
-    expect(h.err).toEqual(['cez runs: ignored 1 record the cockpit sent in a shape this CLI does not recognize']);
+    expect(h.err).toEqual(['onni runs: ignored 1 record the cockpit sent in a shape this CLI does not recognize']);
     expect(h.out).toEqual(['aaaaaaaa  done  task aaaaaaaa-1']);
   });
 
@@ -139,7 +139,7 @@ describe('cez runs', () => {
     const malformed = [{ title: 'no id' }, { title: 'also no id' }];
     const h = harness({ status: 200, body: malformed });
     expect(await runRunsCommand(['list'], env, h.io)).toBe(1);
-    expect(h.err).toEqual(['cez runs: ignored 2 records the cockpit sent in a shape this CLI does not recognize']);
+    expect(h.err).toEqual(['onni runs: ignored 2 records the cockpit sent in a shape this CLI does not recognize']);
     expect(h.out).toHaveLength(0);
 
     const jsonH = harness({ status: 200, body: malformed });
@@ -149,11 +149,11 @@ describe('cez runs', () => {
 });
 
 /** The request has a bounded deadline that covers reading the body, not only the connect/headers
- *  phase — a cockpit that stalls after answering with a 200 must not hang `cez runs list` forever
+ *  phase — a cockpit that stalls after answering with a 200 must not hang `onni runs list` forever
  *  (#1133 review). A real loopback server, not a hand-rolled fetch mock: the point under test is
  *  the interaction between `AbortSignal.timeout` and the platform `fetch`, which a mock would have
  *  to reimplement to be worth anything. */
-describe('cez runs — request timeout', () => {
+describe('onni runs — request timeout', () => {
   const servers: Server[] = [];
 
   afterEach(async () => {
@@ -190,7 +190,7 @@ describe('cez runs — request timeout', () => {
     const err: string[] = [];
     const code = await runRunsCommand(['list'], { CEZ_API_URL: base }, io(out, err));
     expect(code).toBe(1);
-    expect(err).toEqual(['cez runs: the cockpit did not answer within 50ms']);
+    expect(err).toEqual(['onni runs: the cockpit did not answer within 50ms']);
   });
 
   it('times out and exits 1 when the cockpit answers but never finishes the body', async () => {
@@ -203,6 +203,6 @@ describe('cez runs — request timeout', () => {
     const err: string[] = [];
     const code = await runRunsCommand(['list'], { CEZ_API_URL: base }, io(out, err));
     expect(code).toBe(1);
-    expect(err).toEqual(['cez runs: the cockpit did not answer within 50ms']);
+    expect(err).toEqual(['onni runs: the cockpit did not answer within 50ms']);
   });
 });

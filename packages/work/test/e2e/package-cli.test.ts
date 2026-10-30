@@ -15,7 +15,7 @@ const npmCli = process.env.npm_execpath;
 
 test('the release tarball installs and runs the dry-run CLI workflow', { timeout: 120_000 }, async () => {
   assert.ok(npmCli, 'run this suite through npm run test:package');
-  const root = await mkdtemp(join(tmpdir(), 'cezar-package-e2e-'));
+  const root = await mkdtemp(join(tmpdir(), 'onni-package-e2e-'));
 
   try {
     const packDir = join(root, 'pack');
@@ -47,20 +47,19 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
 
     const packageRoot = join(consumerDir, 'node_modules', '@onni', 'work');
     const manifest = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')) as {
-      bin: { cezar: string; cez: string; 'cezar-cli': string; 'cezar-run': string };
+      bin: { onni: string; 'onni-cli': string; 'onni-run': string };
     };
-    assert.equal(manifest.bin.cezar, 'dist/index.js');
-    assert.equal(manifest.bin.cez, 'dist/index.js');
-    assert.equal(manifest.bin['cezar-cli'], 'dist/index.js');
-    assert.equal(manifest.bin['cezar-run'], 'dist/index.js');
-    const cliPath = join(packageRoot, manifest.bin.cezar);
+    assert.equal(manifest.bin.onni, 'dist/index.js');
+    assert.equal(manifest.bin['onni-cli'], 'dist/index.js');
+    assert.equal(manifest.bin['onni-run'], 'dist/index.js');
+    const cliPath = join(packageRoot, manifest.bin.onni);
 
     const help = await execFile(process.execPath, [cliPath, '--help'], {
       cwd: consumerDir,
       maxBuffer: 10 * 1024 * 1024,
     });
-    assert.match(help.stdout, /cezar — local cockpit/);
-    assert.match(help.stdout, /cezar run "<task>"/);
+    assert.match(help.stdout, /onni — local cockpit/);
+    assert.match(help.stdout, /onni run "<task>"/);
 
     const fixtureRepo = join(root, 'fixture-repo');
     await mkdir(fixtureRepo);
@@ -69,31 +68,31 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
     await execFile('git', ['add', 'README.md'], { cwd: fixtureRepo });
     await execFile(
       'git',
-      ['-c', 'user.name=Cezar CI', '-c', 'user.email=ci@example.invalid', 'commit', '-m', 'test fixture'],
+      ['-c', 'user.name=Onni CI', '-c', 'user.email=ci@example.invalid', 'commit', '-m', 'test fixture'],
       { cwd: fixtureRepo },
     );
 
     // CEZ_HOME pins every workspace write (migrations, project registry,
     // server.json) to a temp dir — booting the real CLI must never touch the
-    // developer's real ~/.cezar.
-    const cezHome = join(root, 'cez-home');
+    // developer's real ~/.onni.
+    const onniHome = join(root, 'onni-home');
     const run = await execFile(process.execPath, [cliPath, 'run', 'mock:done', '--repo', fixtureRepo], {
       cwd: consumerDir,
-      env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: cezHome },
+      env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: onniHome },
       timeout: 60_000,
       maxBuffer: 10 * 1024 * 1024,
     });
     assert.match(run.stdout, /run (done|review)/);
 
-    const runs = JSON.parse(await readFile(join(fixtureRepo, '.ai', 'cezar', 'runs.json'), 'utf8')) as Array<{
+    const runs = JSON.parse(await readFile(join(fixtureRepo, '.ai', 'onni', 'runs.json'), 'utf8')) as Array<{
       status: string;
     }>;
     assert.equal(runs.length, 1);
     assert.ok(['done', 'review'].includes(runs[0]?.status ?? ''), 'the dry-run workflow should finish successfully');
 
     // Boot wiring (spec 2026-07-20-multi-project-workspace, step 1.5): the
-    // headless run migrated ~/.cezar and registered the boot repo.
-    const workspace = JSON.parse(await readFile(join(cezHome, 'config.json'), 'utf8')) as {
+    // headless run migrated ~/.onni and registered the boot repo.
+    const workspace = JSON.parse(await readFile(join(onniHome, 'config.json'), 'utf8')) as {
       schemaVersion: number;
       disabledProviders?: string[];
       projects: Array<{ name: string; root: string }>;
@@ -105,11 +104,11 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
     );
 
     workspace.disabledProviders = ['claude'];
-    await writeFile(join(cezHome, 'config.json'), `${JSON.stringify(workspace, null, 2)}\n`, 'utf8');
+    await writeFile(join(onniHome, 'config.json'), `${JSON.stringify(workspace, null, 2)}\n`, 'utf8');
     await assert.rejects(
       execFile(process.execPath, [cliPath, 'run', 'mock:done must stay blocked', '--repo', fixtureRepo], {
         cwd: consumerDir,
-        env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: cezHome },
+        env: { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: onniHome },
         timeout: 60_000,
         maxBuffer: 10 * 1024 * 1024,
       }),
@@ -121,11 +120,11 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
       'headless run must honor the global provider preference',
     );
     const runsAfterDisabledAttempt = JSON.parse(
-      await readFile(join(fixtureRepo, '.ai', 'cezar', 'runs.json'), 'utf8'),
+      await readFile(join(fixtureRepo, '.ai', 'onni', 'runs.json'), 'utf8'),
     ) as Array<{ status: string }>;
     assert.equal(runsAfterDisabledAttempt.length, 1, 'a disabled provider must not create a run');
     workspace.disabledProviders = [];
-    await writeFile(join(cezHome, 'config.json'), `${JSON.stringify(workspace, null, 2)}\n`, 'utf8');
+    await writeFile(join(onniHome, 'config.json'), `${JSON.stringify(workspace, null, 2)}\n`, 'utf8');
 
     const claudeShim = join(root, 'claude-shim.mjs');
     await writeFile(
@@ -149,20 +148,20 @@ if (args.join(' ') === 'auth status --json') {
         env: {
           ...process.env,
           CEZ_CLAUDE_BIN: claudeShim,
-          CEZ_HOME: cezHome,
+          CEZ_HOME: onniHome,
         },
         timeout: 60_000,
         maxBuffer: 10 * 1024 * 1024,
       },
     ).catch(() => undefined);
     const runsAfterAuthFailure = JSON.parse(
-      await readFile(join(fixtureRepo, '.ai', 'cezar', 'runs.json'), 'utf8'),
+      await readFile(join(fixtureRepo, '.ai', 'onni', 'runs.json'), 'utf8'),
     ) as Array<{ id: string }>;
     assert.equal(runsAfterAuthFailure.length, 2, 'the runtime-auth fixture creates exactly one run');
     const authFailureRun = runsAfterAuthFailure.at(0);
     assert.ok(authFailureRun, 'the auth-failure fixture creates a run');
     const authFailureEvents = (await readFile(
-      join(fixtureRepo, '.ai', 'cezar', 'runs', `${authFailureRun.id}.ndjson`),
+      join(fixtureRepo, '.ai', 'onni', 'runs', `${authFailureRun.id}.ndjson`),
       'utf8',
     )).trim().split('\n').map((line) => JSON.parse(line) as Record<string, unknown>);
     assert.ok(
@@ -173,11 +172,11 @@ if (args.join(' ') === 'auth status --json') {
       'headless runtime rejection must persist provider recovery guidance',
     );
 
-    // `cezar projects` (step 5.2) reads the same registry with no server
+    // `onni projects` (step 5.2) reads the same registry with no server
     // running — the ssh-into-the-box view of Settings → Projects.
     const projects = await execFile(process.execPath, [cliPath, 'projects'], {
       cwd: consumerDir,
-      env: { ...process.env, CEZ_HOME: cezHome },
+      env: { ...process.env, CEZ_HOME: onniHome },
       timeout: 30_000,
       maxBuffer: 10 * 1024 * 1024,
     });
@@ -185,9 +184,9 @@ if (args.join(' ') === 'auth status --json') {
     assert.match(projects.stdout, /1 project\(s\)/);
 
     // server-install / server-uninstall dry-run round-trip. A separate CEZ_HOME
-    // isolates ~/.cezar/server.json from the project-registry fixture above;
+    // isolates ~/.onni/server.json from the project-registry fixture above;
     // CEZ_DRY_RUN performs no real sudo.
-    assert.match(help.stdout, /cezar server-install/);
+    assert.match(help.stdout, /onni server-install/);
     const serverHome = join(root, 'server-home');
     const serverEnv = { ...process.env, CEZ_DRY_RUN: '1', CEZ_HOME: serverHome };
     const serverExec = { cwd: consumerDir, env: serverEnv, timeout: 60_000, maxBuffer: 10 * 1024 * 1024 } as const;
@@ -233,7 +232,7 @@ if (args.join(' ') === 'auth status --json') {
       steps: Record<string, unknown>;
     };
     assert.equal(resumedExternal.externalProxy, true, 'a flag-less resume preserves external-proxy mode');
-    assert.ok(!resumedExternal.steps['nginx-proxy'], 'a flag-less resume does not add cezar-managed nginx');
+    assert.ok(!resumedExternal.steps['nginx-proxy'], 'a flag-less resume does not add onni-managed nginx');
 
     // Unknown platform exits non-zero.
     await assert.rejects(

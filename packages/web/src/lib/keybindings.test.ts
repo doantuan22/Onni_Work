@@ -65,7 +65,7 @@ describe('chords', () => {
     expect(formatChord('Mod+/', true)).toBe('⌘/')
   })
 
-  it('refuses typing keys and chords the browser or cezar owns', () => {
+  it('refuses typing keys and chords the browser or onni owns', () => {
     expect(chordProblem('P')).toBeDefined()
     expect(chordProblem('Shift+P')).toBeDefined()
     expect(chordProblem('Mod+K')).toBeDefined()

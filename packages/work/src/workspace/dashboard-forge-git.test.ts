@@ -41,7 +41,7 @@ describe.skipIf(process.platform === 'win32')('dashboard Git remote read failure
     vi.resetModules();
     originalPath = process.env.PATH!;
     realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
-    root = realpathSync(mkdtempSync(join(tmpdir(), 'cez-dashboard-git-')));
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'onni-dashboard-git-')));
     git('init', '-q', '-b', 'main');
     git('-c', 'user.name=Test', '-c', 'user.email=test@example.com',
       'commit', '--allow-empty', '-q', '-m', 'init');

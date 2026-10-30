@@ -37,8 +37,8 @@ describe('POST /api/v1/open-in — the project folder in a local app', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-openproject-'));
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-openproject-'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     delete process.env.CEZ_REMOTE;
   });
 

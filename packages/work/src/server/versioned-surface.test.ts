@@ -33,16 +33,16 @@ describe('the versioned API surface', () => {
   let bootId: string;
 
   beforeEach(async () => {
-    home = mkdtempSync(join(tmpdir(), 'cez-v1-home-'));
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-v1-boot-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-v1-home-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-v1-boot-'));
     process.env.CEZ_HOME = home;
     process.env.CEZ_DRY_RUN = '1';
     // `skillsRepos: []` keeps the workflow catalog hermetic — no background clone can warm a
     // cache between the legacy request and the versioned one.
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(repoRoot, '.ai/cezar', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    writeFileSync(join(repoRoot, '.ai/onni', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
     clearProjectProbeCache();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     contexts = new ProjectContexts({ listProjects });
     bootId = (await registerProject(repoRoot)).id;
     app = createApp({

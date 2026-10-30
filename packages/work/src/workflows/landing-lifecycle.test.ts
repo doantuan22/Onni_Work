@@ -14,13 +14,13 @@ const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encodi
 beforeEach(() => {
   vi.stubEnv('CEZ_DRY_RUN', '1');
   vi.stubEnv('CEZ_AUTO_NAMING', '0');
-  root = mkdtempSync(join(tmpdir(), 'cez-landing-lifecycle-'));
+  root = mkdtempSync(join(tmpdir(), 'onni-landing-lifecycle-'));
   git('init', '-q', '-b', 'main');
   writeFileSync(join(root, 'a.txt'), 'base\n');
   git('add', '.');
   git('-c', 'user.name=test', '-c', 'user.email=test@local', 'commit', '-qm', 'base');
-  mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-  store = RunStore.open(join(root, '.ai/cezar'));
+  mkdirSync(join(root, '.ai/onni'), { recursive: true });
+  store = RunStore.open(join(root, '.ai/onni'));
   manager = new RunManager(store, root, { semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 0 } }) });
 });
 afterEach(() => {
@@ -38,7 +38,7 @@ function record() {
   return run;
 }
 function config(checks: string[] = []) {
-  writeFileSync(join(root, '.ai/cezar/config.json'), JSON.stringify({ landing: 'auto', requiredChecks: checks }));
+  writeFileSync(join(root, '.ai/onni/config.json'), JSON.stringify({ landing: 'auto', requiredChecks: checks }));
 }
 // Observe the promise launched by the PUBLIC Finish API; never substitute the landing.
 function finish(runId: string): Promise<void> {
@@ -79,9 +79,9 @@ it.each(['review', 'done', 'cancelled'] as const)('explicit Commit from %s prese
 for (const action of ['commit', 'finish'] as const) {
   for (const defer of [false, true]) {
     it.each([0, 1])(`${action} cannot settle or reopen a cancelled ${defer ? 'deferred' : 'direct'} continuation (check exit=%s)`, async exitCode => {
-      const entered = join(root, '.ai/cezar/entered');
-      const release = join(root, '.ai/cezar/release');
-      const script = join(root, '.ai/cezar/gate.cjs');
+      const entered = join(root, '.ai/onni/entered');
+      const release = join(root, '.ai/onni/release');
+      const script = join(root, '.ai/onni/gate.cjs');
       writeFileSync(script, `const fs=require('fs');fs.writeFileSync(${JSON.stringify(entered)},'');let n=0;const t=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)})){clearInterval(t);process.exit(${exitCode})}if(++n>500){clearInterval(t);process.exit(1)}},20);`);
       config([`node ${script}`]);
       const run = record();

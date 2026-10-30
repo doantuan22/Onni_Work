@@ -20,7 +20,7 @@ let store: RunStore;
 let app: ReturnType<typeof createApp>;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'tracker-read-scope-api-'));
-  store = RunStore.open(join(root, '.ai/cezar'));
+  store = RunStore.open(join(root, '.ai/onni'));
   read.mockReset().mockResolvedValue({ available: false, code: 'unavailable', reason: 'Vendor reached' });
   mocks.driver.mockReset().mockResolvedValue({ association, listIssues: read, searchItems: read, getItem: read });
   app = createApp({ repoRoot: root, store, manager: {} as never, version: 'test' });

@@ -1,14 +1,14 @@
 /**
- * `cez runs …` — read a running cockpit's tasks from a shell (#1080).
+ * `onni runs …` — read a running cockpit's tasks from a shell (#1080).
  *
- * A thin, read-only HTTP client over `GET /api/v1/runs`, addressed like `cez task` and
- * `cez automation`: `CEZ_API_URL` (the cockpit) and optionally `CEZ_PROJECT_ID` (which project;
+ * A thin, read-only HTTP client over `GET /api/v1/runs`, addressed like `onni task` and
+ * `onni automation`: `CEZ_API_URL` (the cockpit) and optionally `CEZ_PROJECT_ID` (which project;
  * without it the cockpit answers for the project it was started in). No server: the command says
  * so and exits 2 — the address is never guessed, see `cockpit-address.ts`.
  *
  * Read-only on purpose. Cancelling or relaunching a task from a shell is a separate surface with
  * its own questions (which verbs, what an agent may do with them); listing is what a person needs
- * first, instead of reading `.ai/cezar/runs.json` by hand.
+ * first, instead of reading `.ai/onni/runs.json` by hand.
  *
  * The request carries a bounded deadline (`AbortSignal.timeout`, covering the body read as well as
  * connect/headers — measured in `runs-cli.test.ts`): a cockpit that stalls or a proxy that keeps an
@@ -38,9 +38,9 @@ export interface RunsCliIo {
  *  (#1133 review) — a plain, generous bound for a call to a cockpit on the same machine. */
 const RUNS_REQUEST_TIMEOUT_MS = 10_000;
 
-const USAGE = `cez runs — read the tasks of a running cockpit from a shell (CEZ_API_URL, optional CEZ_PROJECT_ID)
+const USAGE = `onni runs — read the tasks of a running cockpit from a shell (CEZ_API_URL, optional CEZ_PROJECT_ID)
 
-  cez runs list [--status <status>[,<status>]] [--all] [--json]
+  onni runs list [--status <status>[,<status>]] [--all] [--json]
                     this project's tasks, newest first: id, status, cost, title and branch;
                     --status keeps only ${runStatusSchema.options.join('|')};
                     --all includes archived tasks; --json prints the matching records as the API sends them`;
@@ -121,15 +121,15 @@ export async function runRunsCommand(
     return 0;
   }
   if (command !== 'list') {
-    io.error(`cez runs: unknown command "${command}"\n\n${USAGE}`);
+    io.error(`onni runs: unknown command "${command}"\n\n${USAGE}`);
     return 2;
   }
   const scope = base(env);
   if (!scope) {
     io.error(missingCockpitMessage({
-      command: 'cez runs',
-      example: 'cez runs list',
-      insideTask: 'this cockpit did not give the task an address. Read your own task tree with `cez task list` instead, or stop and report that the cockpit is unreachable.',
+      command: 'onni runs',
+      example: 'onni runs list',
+      insideTask: 'this cockpit did not give the task an address. Read your own task tree with `onni task list` instead, or stop and report that the cockpit is unreachable.',
     }, env));
     return 2;
   }
@@ -173,7 +173,7 @@ export async function runRunsCommand(
     const rejected = parsed.data.length - runs.length;
     const allRejected = parsed.data.length > 0 && runs.length === 0;
     if (rejected > 0) {
-      io.error(`cez runs: ignored ${rejected} record${rejected === 1 ? '' : 's'} the cockpit sent in a shape this CLI does not recognize`);
+      io.error(`onni runs: ignored ${rejected} record${rejected === 1 ? '' : 's'} the cockpit sent in a shape this CLI does not recognize`);
     }
     const kept = runs
       .filter(({ run }) => (values.all || !run.archived) && (!statuses || statuses.has(run.status as RunStatus)))
@@ -196,7 +196,7 @@ export async function runRunsCommand(
     }
     return 0;
   } catch (error) {
-    io.error(`cez runs: ${error instanceof Error ? error.message : String(error)}`);
+    io.error(`onni runs: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
 }

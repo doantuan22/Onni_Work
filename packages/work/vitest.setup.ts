@@ -3,7 +3,7 @@ import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, afterEach, beforeEach } from 'vitest'
 
-// Inside a cezar task TMP is `<repo>/.ai/cezar/tmp/<run>` — the user's own checkout. Cases that
+// Inside a onni task TMP is `<repo>/.ai/onni/tmp/<run>` — the user's own checkout. Cases that
 // take a fresh `tmpdir()` folder for "outside any repo" then ran git there: `commitAll` committed
 // the user's dirty files and a landing path pushed HEAD to their remote. So before anything else
 // takes a temp dir, move TMP/TEMP/TMPDIR to a system temp that no git work tree contains.
@@ -30,12 +30,12 @@ if (insideGitWorkTree(realpathSync(tmpdir()))) {
       : ['/tmp', '/var/tmp']
   const outside = candidates.find((dir) => existsSync(dir) && isWritable(dir) && !insideGitWorkTree(realpathSync(dir)))
   if (!outside) {
-    throw new Error(`[cez] tmpdir ${tmpdir()} is inside a git work tree and no system temp outside one exists — refusing to run git fixtures in it`)
+    throw new Error(`[onni] tmpdir ${tmpdir()} is inside a git work tree and no system temp outside one exists — refusing to run git fixtures in it`)
   }
   process.env.TMPDIR = process.env.TMP = process.env.TEMP = outside
 }
 
-// Nothing in this suite may write to the developer's own `~/.cezar`. Most cases pin
+// Nothing in this suite may write to the developer's own `~/.onni`. Most cases pin
 // `CEZ_HOME` themselves, but the pin is one global for the whole worker and their
 // `afterEach` deletes it — so a write that outlives its test (a timeout is enough)
 // used to resolve the real home and replace the project registry with the fixture's.
@@ -45,7 +45,7 @@ if (insideGitWorkTree(realpathSync(tmpdir()))) {
 // the NEXT write pointed at the sandbox. A test that wants the unpinned default
 // deletes the variable inside its own body (see `src/paths.test.ts`) — that still
 // works, because this hook runs after the test, not during it. The write guard in
-// `assertCezarHomeWriteIsSandboxed` catches whatever still slips through.
+// `assertOnniHomeWriteIsSandboxed` catches whatever still slips through.
 // Fixture repos commit constantly; a developer's global `commit.gpgsign=true` turns each
 // commit into a gpg round-trip (~0.35s) and pushes git-heavy cases past the 5s timeout
 // under parallel load. Signing is irrelevant to every fixture, so switch it off here —
@@ -57,15 +57,15 @@ if (!process.env.GIT_CONFIG_COUNT) {
 }
 
 // Fixtures under `tmpdir()` that are deliberately NOT repositories must stay that way when the
-// temp dir itself sits inside a checkout — a cezar task points TMPDIR into the repo's
-// `.ai/cezar/tmp/`, and git would otherwise discover the cezar repo above every fixture.
+// temp dir itself sits inside a checkout — a onni task points TMPDIR into the repo's
+// `.ai/onni/tmp/`, and git would otherwise discover the onni repo above every fixture.
 process.env.GIT_CEILING_DIRECTORIES = [
   ...new Set([tmpdir(), realpathSync(tmpdir())]),
   ...(process.env.GIT_CEILING_DIRECTORIES ? [process.env.GIT_CEILING_DIRECTORIES] : []),
 ].join(':')
 
 // The variables a cockpit sets for its own agents and check steps (.env.example). Run inside a
-// cezar task, the suite would inherit them — and the engine forwards CEZ_API_URL/CEZ_BIN to every
+// onni task, the suite would inherit them — and the engine forwards CEZ_API_URL/CEZ_BIN to every
 // run it starts — so the env a case asserts would depend on where it ran. A case that needs one
 // sets it itself.
 for (const name of [
@@ -80,11 +80,11 @@ for (const name of [
 // `gh`'s signed-in hosts decide which remotes count as GitHub Enterprise (`src/github-hosts.ts`);
 // a developer's own `hosts.yml` must not change what the suite classifies. A case that wants
 // a host sets `GH_CONFIG_DIR` itself.
-process.env.GH_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'cez-gh-config-'))
+process.env.GH_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'onni-gh-config-'))
 delete process.env.GH_HOST
 
 // LLM task naming is on by default (`autoNamingActive`), so any case that starts a run on
-// a real backend spawned `claude -p "[cez-namer] Name this task."` on the developer's own
+// a real backend spawned `claude -p "[onni-namer] Name this task."` on the developer's own
 // subscription — the same canned tasks, every run. Off for the whole suite; a test that
 // exercises the namer sets `CEZ_AUTONAME=1` itself (against mock-claude). Forced at load so
 // a shell's own value cannot leak in, and re-pinned around every case like `CEZ_HOME`, so a
@@ -102,7 +102,7 @@ afterEach(pinAutonameOff)
 // turn held open says `mock:pause`/`mock:slow`, which never scale.
 if (process.env.CEZ_MOCK_PACE === undefined) process.env.CEZ_MOCK_PACE = '0'
 
-const sandboxHome = mkdtempSync(join(realpathSync(tmpdir()), 'cez-vitest-home-'))
+const sandboxHome = mkdtempSync(join(realpathSync(tmpdir()), 'onni-vitest-home-'))
 
 const pinSandboxHome = (): void => {
   if (!process.env.CEZ_HOME) process.env.CEZ_HOME = sandboxHome

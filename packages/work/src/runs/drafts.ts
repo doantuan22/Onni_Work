@@ -18,10 +18,10 @@ import { atomicWriteJsonSync } from '../workspace/config.ts';
  * The per-run draft store (spec `.ai/specs/2026-08-30-thread-composer-draft-persistence.md`,
  * #939): the unsent text and pasted screenshots of every editable input inside a task, kept as
  * plain files so a half-written message survives navigating away, a reload, a second browser and
- * a `cez` restart.
+ * a `onni` restart.
  *
  * ```
- * .ai/cezar/drafts/<runId>/
+ * .ai/onni/drafts/<runId>/
  *   draft.json                    { surfaces: { <surfaceId>: { text, images: [<imageId>], updatedAt } } }
  *   images/<imageId>.json         { id, mediaType, name, bytes, data }   ← the blob
  *   images/<imageId>.meta.json    { id, mediaType, name, bytes }         ← the same facts, without the bytes
@@ -32,7 +32,7 @@ import { atomicWriteJsonSync } from '../workspace/config.ts';
  * file written in the same breath as the blob. That sidecar is not an index and cannot diverge
  * from one — it is written once, never rewritten, and its absence means exactly what a missing
  * blob means (the attachment is gone). It exists because a LISTING must not cost a multi-megabyte
- * `readFileSync` + `JSON.parse`: `cezar serve` is single-threaded and is streaming agent output
+ * `readFileSync` + `JSON.parse`: `onni serve` is single-threaded and is streaming agent output
  * over SSE while the user types, so a per-typing-pause draft write that parsed every attached
  * screenshot would stall the whole cockpit. Only `GET …/images/:imageId` — the route that is
  * ASKING for the bytes — reads the blob.
@@ -628,7 +628,7 @@ function enforceStoreBudget(dataDir: string, keepRunId: string, incomingBytes: n
   storeBytesEstimate.set(dataDir, total + incomingBytes);
   if (evicted.length > 0) {
     console.warn(
-      `[cezar] drafts store exceeded ${Math.round(DRAFT_STORE_MAX_BYTES / 1024 / 1024)} MiB — ` +
+      `[onni] drafts store exceeded ${Math.round(DRAFT_STORE_MAX_BYTES / 1024 / 1024)} MiB — ` +
         `evicted ${evicted.length} least-recently-touched draft(s)`,
     );
   }

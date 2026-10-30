@@ -22,7 +22,7 @@
  */
 import { locationReporterScript } from './location-reporter.ts';
 
-export const PICKER_PATH = '/__cezar_design__/picker.js';
+export const PICKER_PATH = '/__onni_design__/picker.js';
 
 export const PICK_HTML_MAX = 1500;
 export const PICK_TEXT_MAX = 200;
@@ -39,17 +39,17 @@ export function pickerScript(config: PickerConfig): string {
   // costs nothing and keeps the config inert if that ever changes.
   const json = JSON.stringify({ ...config, htmlMax: PICK_HTML_MAX, textMax: PICK_TEXT_MAX }).replace(/</g, '\\u003c');
   // The page's address rides along, so the Preview's bar follows in-page moves through the mirror.
-  return PICKER_SOURCE.replace('__CEZAR_DESIGN_CONFIG__', () => json) + locationReporterScript(config.parentOrigin);
+  return PICKER_SOURCE.replace('__ONNI_DESIGN_CONFIG__', () => json) + locationReporterScript(config.parentOrigin);
 }
 
 const PICKER_SOURCE = String.raw`(function () {
   'use strict';
-  if (window.__cezarDesign) return;
-  window.__cezarDesign = true;
+  if (window.__onniDesign) return;
+  window.__onniDesign = true;
   // Only as a framed page: opened in a tab of its own there is no cockpit to report to.
   if (window.parent === window) return;
 
-  var cfg = __CEZAR_DESIGN_CONFIG__;
+  var cfg = __ONNI_DESIGN_CONFIG__;
   var active = false;
   var box = null;
   var tag = null;
@@ -65,7 +65,7 @@ const PICKER_SOURCE = String.raw`(function () {
   var markTimer = null;
 
   function post(message) {
-    message.source = 'cezar-design';
+    message.source = 'onni-design';
     try { window.parent.postMessage(message, cfg.parentOrigin); } catch (e) { /* parent gone */ }
   }
 
@@ -78,7 +78,7 @@ const PICKER_SOURCE = String.raw`(function () {
   }
 
   function ownNode(node) {
-    return node === box || node === tag || (node && node.getAttribute && node.getAttribute('data-cezar-design') === 'mark');
+    return node === box || node === tag || (node && node.getAttribute && node.getAttribute('data-onni-design') === 'mark');
   }
 
   // ---- marks -------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ const PICKER_SOURCE = String.raw`(function () {
   function ensureMark(entry) {
     if (entry.node) return;
     entry.node = document.createElement('div');
-    entry.node.setAttribute('data-cezar-design', 'mark');
+    entry.node.setAttribute('data-onni-design', 'mark');
     entry.node.style.cssText = 'position:fixed;z-index:2147483645;pointer-events:none;box-sizing:border-box;' +
       'border:2px solid #a3e635;background:rgba(163,230,53,.14);border-radius:4px;';
     document.documentElement.appendChild(entry.node);
@@ -360,11 +360,11 @@ const PICKER_SOURCE = String.raw`(function () {
   function ensureUi() {
     if (box) return;
     box = document.createElement('div');
-    box.setAttribute('data-cezar-design', 'box');
+    box.setAttribute('data-onni-design', 'box');
     box.style.cssText = 'position:fixed;z-index:2147483646;pointer-events:none;box-sizing:border-box;' +
       'border:2px solid #4f8cff;background:rgba(79,140,255,.14);border-radius:2px;display:none;';
     tag = document.createElement('div');
-    tag.setAttribute('data-cezar-design', 'tag');
+    tag.setAttribute('data-onni-design', 'tag');
     tag.style.cssText = 'position:fixed;z-index:2147483647;pointer-events:none;display:none;' +
       'font:500 11px/1.4 ui-sans-serif,system-ui,sans-serif;color:#fff;background:#2563eb;' +
       'padding:2px 6px;border-radius:3px;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis;';
@@ -477,7 +477,7 @@ const PICKER_SOURCE = String.raw`(function () {
   window.addEventListener('message', function (event) {
     if (event.origin !== cfg.parentOrigin || event.source !== window.parent) return;
     var data = event.data;
-    if (!data || data.source !== 'cezar-design-host') return;
+    if (!data || data.source !== 'onni-design-host') return;
     if (data.type === 'set-active') setActive(!!data.active);
     else if (data.type === 'set-marks' && Array.isArray(data.marks)) setMarks(data.marks.slice(0, 50));
   });

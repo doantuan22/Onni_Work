@@ -6,9 +6,9 @@ function containsRunnerToken(text: string, runner: string): boolean {
   return new RegExp(`(?:^|[^A-Za-z0-9_-])${runner}(?=$|[^A-Za-z0-9_-])`).test(text);
 }
 
-/** The `cez task` CLI is a thin client: what is pinned is the request it builds from flags and
+/** The `onni task` CLI is a thin client: what is pinned is the request it builds from flags and
  *  env, and how it answers a refusal — never the engine, which has its own tests. */
-describe('cez task', () => {
+describe('onni task', () => {
   const env = { CEZ_API_URL: 'http://127.0.0.1:4321/', CEZ_PROJECT_ID: 'proj', CEZ_TASK_ID: 'run-1' };
 
   const harness = (reply: { status: number; body: unknown }) => {
@@ -27,9 +27,9 @@ describe('cez task', () => {
   };
 
   it('create posts the task order to the parent’s dispatch route, scoped to the project', async () => {
-    const h = harness({ status: 201, body: { id: 'child-1', branch: 'cez/child1' } });
+    const h = harness({ status: 201, body: { id: 'child-1', branch: 'onni/child1' } });
     const code = await runTaskCommand(
-      ['create', 'Review the login flow', '--title', 'Review login', '--kind', 'review', '--review-of', 'cez/abc', '--budget', '2.5', '--tools', 'Read,Bash', '--scope', 'src/auth/**'],
+      ['create', 'Review the login flow', '--title', 'Review login', '--kind', 'review', '--review-of', 'onni/abc', '--budget', '2.5', '--tools', 'Read,Bash', '--scope', 'src/auth/**'],
       env,
       h.io,
     );
@@ -39,12 +39,12 @@ describe('cez task', () => {
       objective: 'Review the login flow',
       title: 'Review login',
       kind: 'review',
-      review_of: ['cez/abc'],
+      review_of: ['onni/abc'],
       scope: 'src/auth/**',
       max_cost: 2.5,
       allowed_tools: ['Read', 'Bash'],
     });
-    expect(h.out[0]).toContain('dispatched child-1 on branch cez/child1');
+    expect(h.out[0]).toContain('dispatched child-1 on branch onni/child1');
   });
 
   it('create surfaces a refusal with the server’s reason and a non-zero exit', async () => {
@@ -84,7 +84,7 @@ describe('cez task', () => {
     expect(none.calls).toHaveLength(0);
     const shell = harness({ status: 200, body: {} });
     expect(await runTaskCommand(['tree', 'r1'], {}, shell.io)).toBe(2);
-    expect(shell.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 cez task tree <run id>');
+    expect(shell.err[0]).toContain('CEZ_API_URL=http://127.0.0.1:4321 onni task tree <run id>');
     expect(shell.err[0]).not.toContain('only works inside a task');
     expect(shell.calls).toHaveLength(0);
   });
@@ -92,7 +92,7 @@ describe('cez task', () => {
   it('answers --help on a subcommand instead of refusing it as an unknown option', async () => {
     const h = harness({ status: 200, body: {} });
     expect(await runTaskCommand(['create', '--help'], env, h.io)).toBe(0);
-    expect(h.out[0]).toContain('cez task create');
+    expect(h.out[0]).toContain('onni task create');
     expect(h.calls).toHaveLength(0);
   });
 
@@ -107,7 +107,7 @@ describe('cez task', () => {
       status: 200,
       body: [
         { id: 'root-0000', title: 'Root', status: 'running', costUsd: 1.5, dispatch: { rootRunId: 'root-0000' } },
-        { id: 'run-1', title: 'Me', status: 'running', costUsd: 0.2, branch: 'cez/run1', dispatch: { rootRunId: 'root-0000', parentRunId: 'root-0000' } },
+        { id: 'run-1', title: 'Me', status: 'running', costUsd: 0.2, branch: 'onni/run1', dispatch: { rootRunId: 'root-0000', parentRunId: 'root-0000' } },
         { id: 'kid-0000', title: 'Kid', status: 'done', costUsd: 0.1, dispatch: { rootRunId: 'root-0000', parentRunId: 'run-1', kind: 'review', report: { status: 'done', verdict: 'approve' } } },
         { id: 'other', title: 'Unrelated', status: 'done' },
       ],
@@ -115,7 +115,7 @@ describe('cez task', () => {
     expect(await runTaskCommand(['list'], env, h.io)).toBe(0);
     expect(h.out).toEqual([
       'root-000  running $1.50  Root',
-      '  run-1  running $0.20  Me  [cez/run1]',
+      '  run-1  running $0.20  Me  [onni/run1]',
       '    kid-0000  done $0.10  Kid → done (approve)',
     ]);
   });

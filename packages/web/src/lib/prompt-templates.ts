@@ -73,25 +73,25 @@ export const DEFAULT_PROMPT_TEMPLATES: readonly PromptTemplate[] = [
       "Check this repository's open pull requests that still need a review "
       + '(use `gh pr list --state open --json number,title,headRefName,isDraft,reviewDecision` '
       + 'and skip drafts and PRs already approved). For each one, dispatch a separate review task '
-      + 'with `cez task create --kind review --review-of <headRefName> --title "Review PR '
+      + 'with `onni task create --kind review --review-of <headRefName> --title "Review PR '
       + '#<number>" "Review pull request #<number> (<title>) on branch <headRefName>: read the '
       + 'diff, run the tests, and report a verdict with findings."`, at most '
       + `${DISPATCH_MAX_IN_FLIGHT} at a time. Then `
-      + 'end your turn with CEZ:MONITORING and, when their reports arrive, summarise every '
-      + 'verdict in one message. If `cez task create` is refused or unavailable, stop and report '
+      + 'end your turn with ONNI:MONITORING and, when their reports arrive, summarise every '
+      + 'verdict in one message. If `onni task create` is refused or unavailable, stop and report '
       + 'that dispatch is disabled on this cockpit — do not review the PRs yourself and do not '
       + 'use sub-agents instead.',
   },
   // The one built-in that AUTHORS AN AUTOMATION (spec `.ai/specs/2026-09-13-automations-from-prompt.md`).
-  // Assigned to the cockpit's built-in `create-cezar-automation` skill, so picking that skill
+  // Assigned to the cockpit's built-in `create-onni-automation` skill, so picking that skill
   // pre-fills the two questions every automation needs answered; it also inserts by hand. Gated
   // with `AUTOMATIONS_TEMPLATE_IDS`: on a cockpit without `capabilities.automations` the skill is
-  // not listed and `cez automation` is refused, so the template would only send a run into a
+  // not listed and `onni automation` is refused, so the template would only send a run into a
   // refusal.
   {
     id: 'create-automation',
     label: 'Create an automation',
-    skills: ['create-cezar-automation'],
+    skills: ['create-onni-automation'],
     text:
       'Create an automation for this repository.\n'
       + 'Trigger: <when — e.g. every new pull request; every issue labelled `needs-agent`; every day at 04:00; weekdays at 07:30; every 6 hours>.\n'
@@ -102,7 +102,7 @@ export const DEFAULT_PROMPT_TEMPLATES: readonly PromptTemplate[] = [
 
 /**
  * Templates that only make sense when the server can dispatch (`capabilities.dispatch`): the
- * built-in "Review open PRs" tells the agent to run `cez task create`, and on a cockpit started
+ * built-in "Review open PRs" tells the agent to run `onni task create`, and on a cockpit started
  * with `CEZ_DISPATCH=0` that call is refused. Offering the template there sends an autonomous
  * run into a refusal it then works around at full cost — the live-session failure behind this
  * gate. Hidden from the composers while the capability is off or still unknown; Settings keeps
@@ -114,8 +114,8 @@ export const DISPATCH_TEMPLATE_IDS: ReadonlySet<string> = new Set(['review-open-
 /**
  * Templates that only make sense when the server runs GitHub automations
  * (`capabilities.automations`, spec 2026-09-13-automations-from-prompt): the built-in "Create an
- * automation" briefs the agent for the `create-cezar-automation` skill, which the server only
- * lists — and whose `cez automation` CLI only answers — with `CEZ_AUTOMATIONS=1`. Same gate, same
+ * automation" briefs the agent for the `create-onni-automation` skill, which the server only
+ * lists — and whose `onni automation` CLI only answers — with `CEZ_AUTOMATIONS=1`. Same gate, same
  * reasoning as `DISPATCH_TEMPLATE_IDS`; Settings keeps listing it so the text stays editable.
  */
 export const AUTOMATIONS_TEMPLATE_IDS: ReadonlySet<string> = new Set(['create-automation'])

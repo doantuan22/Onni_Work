@@ -4,7 +4,7 @@ import { runnerSchema } from './health.ts';
 /**
  * The DISPATCH family of `/api/v1`: a task may dispatch other tasks (spec
  * `.ai/specs/2026-09-10-dispatch.md`). There are no ranks — any run with the capability on may
- * call `POST /runs/:id/dispatch`, usually from inside its own agent through the `cez task` CLI.
+ * call `POST /runs/:id/dispatch`, usually from inside its own agent through the `onni task` CLI.
  * A dispatched child runs in its own worktree forked off the parent's branch, reports when it
  * settles, and its unspent budget returns to the parent.
  *
@@ -16,7 +16,7 @@ import { runnerSchema } from './health.ts';
 /**
  * How many of a parked ask's question texts the run record carries (see
  * `dispatchSchema.pendingAsk.questions`). Frozen at 4 on purpose: raising it would make a
- * freshly written `runs.json` unreadable to an older cezar's all-or-nothing index reader.
+ * freshly written `runs.json` unreadable to an older onni's all-or-nothing index reader.
  */
 export const PENDING_ASK_MAX_QUESTIONS = 4;
 
@@ -26,7 +26,7 @@ export const DISPATCH_KINDS = ['implement', 'review'] as const;
 export const dispatchKindSchema = z.enum(DISPATCH_KINDS);
 export type DispatchKind = z.infer<typeof dispatchKindSchema>;
 
-/** `POST /runs/:id/report` — how a dispatched task reports upward (the `cez task report` CLI). */
+/** `POST /runs/:id/report` — how a dispatched task reports upward (the `onni task report` CLI). */
 export const dispatchReportSchema = z.object({
   status: z.enum(['done', 'partial', 'failed', 'blocked']),
   result: z.string().max(4000),
@@ -110,8 +110,8 @@ export const dispatchSchema = z.object({
        * At most `PENDING_ASK_MAX_QUESTIONS` texts, and that bound does NOT follow
        * `ASK_MAX_QUESTIONS` upward. This is a persisted record field, and
        * `readRunIndexFromDisk` is all-or-nothing (`return []` on a parse failure): a
-       * record written with more entries than an older cezar's copy of this schema
-       * accepts empties that cezar's WHOLE project index — every task gone from the
+       * record written with more entries than an older onni's copy of this schema
+       * accepts empties that onni's WHOLE project index — every task gone from the
        * palette and from search — over one parked question. The writer truncates and
        * counts the rest in `omittedQuestions` instead; the parent gets every question
        * in full through the Guard inbox message, which is a markdown file under no

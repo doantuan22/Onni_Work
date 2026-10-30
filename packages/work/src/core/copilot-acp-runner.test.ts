@@ -19,7 +19,7 @@ const MOCK = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'scrip
 
 let cwd: string;
 beforeEach(() => {
-  cwd = realpathSync(mkdtempSync(join(tmpdir(), 'cez-copilot-run-')));
+  cwd = realpathSync(mkdtempSync(join(tmpdir(), 'onni-copilot-run-')));
 });
 afterEach(() => {
   rmSync(cwd, { recursive: true, force: true });
@@ -219,11 +219,11 @@ describe('CopilotAcpRunner — session lifecycle', () => {
     const toolStatuses = c.ui.flatMap((e) =>
       e.type === 'item.completed' && e.item.kind === 'tool' ? [e.item.status] : []);
     expect(toolStatuses.at(-1)).toBe('failed');
-    // cezar asked for the stop, so its own teardown signal is not reported as an agent failure.
+    // onni asked for the stop, so its own teardown signal is not reported as an agent failure.
     expect(c.events.filter((e) => e.type === 'error')).toEqual([]);
   });
 
-  it('end() during a turn is cezar closing the session, not an agent failure (telemetry 2e3b122d)', async () => {
+  it('end() during a turn is onni closing the session, not an agent failure (telemetry 2e3b122d)', async () => {
     const c = collect();
     const session = new CopilotAcpRunner({ bin: MOCK }).startSession(
       { userPrompt: 'go', cwd, env: { CEZ_MOCK_COPILOT_PROMPT_HANGS: '1' } },
@@ -264,14 +264,14 @@ describe('CopilotAcpRunner — session lifecycle', () => {
 
     expect(c.events).toContainEqual({
       type: 'note',
-      message: 'Copilot asked permission for $ echo dry-run; auto-approved (allow_always) — cezar runs Copilot in auto mode',
+      message: 'Copilot asked permission for $ echo dry-run; auto-approved (allow_always) — onni runs Copilot in auto mode',
     });
     // The choice really reached the agent, and the turn continued to a normal end.
     expect(result.text).toContain('[permission:allow-always]');
     expect(c.ui).toContainEqual(expect.objectContaining({ type: 'turn.completed', stopReason: 'end_turn' }));
   });
 
-  it('never leaves an inbound request cezar does not understand unanswered', async () => {
+  it('never leaves an inbound request onni does not understand unanswered', async () => {
     // Without an answer the agent waits forever. The transport answers -32601 on its own; this
     // pins that the runner's handler does not swallow the request instead.
     const c = collect();

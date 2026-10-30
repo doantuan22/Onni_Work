@@ -25,9 +25,9 @@ const MAX_DARWIN_PID = 99_999;
 const MAX_WIN32_PID = 0xffff_ffff;
 const VERIFY_ERROR = 'Cannot verify process identity';
 /** Printed last by the Windows probe so a script that died mid-way is never read as "no such pid". */
-const WINDOWS_PROBE_SENTINEL = 'cez-probe-complete';
+const WINDOWS_PROBE_SENTINEL = 'onni-probe-complete';
 /** Printed last by the combined own-process probe; start and boot must come from one complete run. */
-const WINDOWS_OWN_PROBE_SENTINEL = 'cez-own-probe-complete';
+const WINDOWS_OWN_PROBE_SENTINEL = 'onni-own-probe-complete';
 
 async function probe(command: string, args: string[], partial = false, environment: NodeJS.ProcessEnv = process.env): Promise<string> {
   return new Promise((resolve, reject) => {

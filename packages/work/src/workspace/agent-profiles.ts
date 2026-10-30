@@ -11,11 +11,11 @@ import {
 } from './agent-accounts.ts';
 
 /**
- * Resolving an agent account against `~/.cezar/agent-accounts.json` — the I/O half of
+ * Resolving an agent account against `~/.onni/agent-accounts.json` — the I/O half of
  * `src/core/agent-profiles.ts` (which stays pure and owns the vendor knowledge).
  *
- * Nothing here is cached. `~/.cezar/` is shared by every cezar process on the machine (a `serve`
- * per repo, headless `cezar run`s, a settings PUT), so a snapshot is a staleness bug waiting to
+ * Nothing here is cached. `~/.onni/` is shared by every onni process on the machine (a `serve`
+ * per repo, headless `onni run`s, a settings PUT), so a snapshot is a staleness bug waiting to
  * happen — and one small JSON read is free next to spawning an agent CLI.
  */
 
@@ -43,7 +43,7 @@ export interface ResolvedAgentProfile {
  *
  * `pi` is the one honest fallback: it ships no per-user home of its own (`agentHomePaths` has no
  * entry for it, same reason `PROFILE_ENV_VAR.pi` is `null`), so its row keeps the long-standing
- * Claude-home behavior rather than inventing a path cezar cannot verify.
+ * Claude-home behavior rather than inventing a path onni cannot verify.
  */
 const PROVIDER_HOME: Record<ProviderId, (home: ReturnType<typeof agentHomePaths>) => string> = {
   claude: (home) => home.claude,
@@ -58,7 +58,7 @@ const PROVIDER_HOME: Record<ProviderId, (home: ReturnType<typeof agentHomePaths>
 /**
  * The implicit account for a provider: whatever `agentHomePaths()` discovers, which already
  * honours the vendors' own `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `CURSOR_CONFIG_DIR` /
- * `COPILOT_HOME` / `XDG_CONFIG_HOME`. Setting one of those on the cezar process therefore moves
+ * `COPILOT_HOME` / `XDG_CONFIG_HOME`. Setting one of those on the onni process therefore moves
  * the DEFAULT account rather than being ignored.
  */
 export function defaultAgentProfile(
@@ -140,7 +140,7 @@ export function selectProfile(
  *
  * `{}` for the default account, which is the whole point: the zero-config path adds nothing to the
  * child environment. Reads the store per call (see the module note) and never throws — an
- * unreadable home degrades to the default account, which is the behaviour cezar had before
+ * unreadable home degrades to the default account, which is the behaviour onni had before
  * accounts existed.
  */
 export async function resolveProfileEnvForRoot(

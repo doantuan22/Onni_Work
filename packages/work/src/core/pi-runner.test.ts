@@ -30,7 +30,7 @@ describe('backend-detect handles an absent pi CLI', () => {
 
   beforeEach(() => {
     delete process.env.CEZ_DRY_RUN; // real probe, not the mock short-circuit
-    process.env.CEZ_PI_BIN = join(tmpdir(), 'cez-pi-does-not-exist-xyz');
+    process.env.CEZ_PI_BIN = join(tmpdir(), 'onni-pi-does-not-exist-xyz');
   });
   afterEach(() => {
     if (saved.bin === undefined) delete process.env.CEZ_PI_BIN;
@@ -54,7 +54,7 @@ describe('a dry-run pi session emits normalized AgentEvents', () => {
 
   beforeEach(() => {
     process.env.CEZ_DRY_RUN = '1'; // swap in the shared mock CLI
-    cwd = mkdtempSync(join(tmpdir(), 'cez-pi-run-'));
+    cwd = mkdtempSync(join(tmpdir(), 'onni-pi-run-'));
   });
   afterEach(() => {
     if (saved === undefined) delete process.env.CEZ_DRY_RUN;

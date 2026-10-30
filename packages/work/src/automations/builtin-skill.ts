@@ -1,7 +1,7 @@
 /**
- * The built-in `create-cezar-automation` skill (spec `.ai/specs/2026-09-13-automations-from-prompt.md`).
+ * The built-in `create-onni-automation` skill (spec `.ai/specs/2026-09-13-automations-from-prompt.md`).
  *
- * cezar ships no skill files of its own — every skill is discovered from the repo, the `npx
+ * onni ships no skill files of its own — every skill is discovered from the repo, the `npx
  * skills` dirs or a team repo — and this is the one deliberate exception: the playbook for
  * turning a prompt into a GitHub automation belongs to the cockpit that runs the automations, not
  * to a repository. It is a TypeScript constant rather than a Markdown file in the tarball so the
@@ -9,7 +9,7 @@
  *
  * Gated like everything else an agent is TOLD about automations (`automationsReachable`): the
  * skill lists only on a cockpit that has automations on AND can be reached over `CEZ_API_URL` — a
- * headless `cezar run` or a cockpit with the flag off would hand the agent a playbook whose every
+ * headless `onni run` or a cockpit with the flag off would hand the agent a playbook whose every
  * command is refused. Lowest precedence in the catalog: a repo that ships its own skill of this
  * name wins ("the user's repo is the source of truth").
  */

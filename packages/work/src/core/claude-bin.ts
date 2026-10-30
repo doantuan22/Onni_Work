@@ -6,15 +6,15 @@ import { dirname, join } from 'node:path';
 /**
  * Where Claude Code's own installers put a binary this process can SPAWN, most specific first.
  *
- * cezar inherits the PATH of whatever launched it, and that PATH often lacks these dirs: the
+ * onni inherits the PATH of whatever launched it, and that PATH often lacks these dirs: the
  * native installer (`curl -fsSL https://claude.ai/install.sh | bash`) writes `~/.local/bin/claude`
- * and only adds the dir to the user's shell rc, so a cezar started from an IDE, a launcher,
+ * and only adds the dir to the user's shell rc, so a onni started from an IDE, a launcher,
  * `npx`, or a shell that never sourced that rc reported claude "not installed" on a host that has
  * it — while a Homebrew install (whose bin dir is on the system PATH) was found. Probing the
  * known locations after PATH keeps detection zero-config.
  *
  * `nodeBinDir` is the directory holding the running node, which is also where `npm install -g`
- * puts its shims under nvm, fnm, volta or a user `npm prefix`. (cezar's own Ubuntu installer
+ * puts its shims under nvm, fnm, volta or a user `npm prefix`. (onni's own Ubuntu installer
  * shells out to `sudo npm -g` under the SYSTEM node, so it lands in `/usr/bin` or `/usr/local/bin`
  * rather than here — those are covered below.)
  *
@@ -115,7 +115,7 @@ function onSearchPath(
  * The Claude Code binary to SPAWN: `CEZ_CLAUDE_BIN`, else `claude` when it is on PATH, else the
  * first installed candidate from {@link claudeInstallCandidates}, else a bare `claude` (so the
  * spawn fails with the usual "not found" and its install hint). Re-resolved on every call — a
- * handful of `access()` probes — so installing claude while cezar runs needs no restart.
+ * handful of `access()` probes — so installing claude while onni runs needs no restart.
  *
  * `CEZ_CLAUDE_BIN` is returned verbatim and unvalidated on purpose: an operator who points it at
  * the wrong path should get a loud failure naming their path, not a silent fallback.

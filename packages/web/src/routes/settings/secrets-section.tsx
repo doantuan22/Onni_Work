@@ -14,14 +14,14 @@ import { toast } from '@/components/ui/toaster'
 /** What each audience means to the person storing the secret. */
 const AUDIENCE_LABELS: Record<SecretAudience, string> = {
   checks: 'Check steps (workflow commands)',
-  cezar: 'cezar itself (its own features — not the agents)',
+  onni: 'onni itself (its own features — not the agents)',
 }
 
 /** The backend line under the list: a file fallback is never silent. */
 function keyBackendNote(keyBackend: SecretsList['keyBackend']): string {
   return keyBackend === 'keychain'
     ? 'Encrypted with a data key kept in your OS keychain.'
-    : 'Encrypted with a data key in ~/.cezar/secrets/.key (0600) — no OS keychain is available on this machine, so this is a private file, not a vault.'
+    : 'Encrypted with a data key in ~/.onni/secrets/.key (0600) — no OS keychain is available on this machine, so this is a private file, not a vault.'
 }
 
 interface SecretsSectionProps {
@@ -75,7 +75,7 @@ function SecretsSection({ scope, list, save, remove, invalidate }: SecretsSectio
   const title = scope === 'project' ? 'Project secrets' : 'Workspace secrets'
   const intro = scope === 'project'
     ? 'Values for this project only — an e2e runner’s model key, a staging login. They reach the audiences you pick and never an agent session.'
-    : 'Values shared by every project on this machine — a key cezar’s own features use, a token every project’s checks need. A project secret of the same name wins. They never reach an agent session.'
+    : 'Values shared by every project on this machine — a key onni’s own features use, a token every project’s checks need. A project secret of the same name wins. They never reach an agent session.'
   const secrets = list.data?.secrets ?? []
 
   return (

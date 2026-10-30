@@ -26,7 +26,7 @@ describe('diskHealth', () => {
     const probe = () => ({ freeBytes: 3000 * MIB, totalBytes: 500 * GIB });
     const sizer = vi.fn(async () => 7 * GIB);
     expect(diskHealth('/repo', probe, sizer).disk).toEqual({ freeBytes: 3000 * MIB, totalBytes: 500 * GIB, level: 'low' });
-    expect(sizer).toHaveBeenCalledWith(expect.stringMatching(/\.ai[\\/]cezar[\\/]worktrees$/));
+    expect(sizer).toHaveBeenCalledWith(expect.stringMatching(/\.ai[\\/]onni[\\/]worktrees$/));
     await vi.waitFor(() => expect(diskHealth('/repo', probe, sizer).disk?.worktreesBytes).toBe(7 * GIB));
   });
 

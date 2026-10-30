@@ -1,8 +1,8 @@
 /**
- * `cez automation …` — the CLI a running agent (or a human at a shell) uses to create and manage
+ * `onni automation …` — the CLI a running agent (or a human at a shell) uses to create and manage
  * GitHub automations on a running cockpit (spec `.ai/specs/2026-09-13-automations-from-prompt.md`).
  *
- * A thin HTTP client over the automations family, addressed like `cez task` is: `CEZ_API_URL`
+ * A thin HTTP client over the automations family, addressed like `onni task` is: `CEZ_API_URL`
  * (the cockpit) and `CEZ_PROJECT_ID` (which project the run belongs to), both put in every agent's
  * environment by the engine while the cockpit is reachable; a person at a shell sets them by hand.
  * No server: the command says so (`cockpit-address.ts`, worded for whoever is asking) and exits 2.
@@ -40,33 +40,33 @@ export interface AutomationCliIo {
   sleep?: (ms: number) => Promise<void>;
 }
 
-const USAGE = `cez automation — create and manage automations (GitHub/Jira/Linear event polls and schedules) on a running cockpit
+const USAGE = `onni automation — create and manage automations (GitHub/Jira/Linear event polls and schedules) on a running cockpit
 
-  cez automation schema                         print the definition shape, bounds and prompt placeholders
-  cez automation create [--file <def.json> | --json '<json>'] [--enable]
+  onni automation schema                         print the definition shape, bounds and prompt placeholders
+  onni automation create [--file <def.json> | --json '<json>'] [--enable]
                                                 create one from a JSON definition (stdin when neither flag is given);
                                                 paused unless --enable
-  cez automation add --name <name> (--cron "<M H * * *>" | --at "YYYY-MM-DD HH:MM" | --on <event>[,<event>] --every <5m|1h>)
+  onni automation add --name <name> (--cron "<M H * * *>" | --at "YYYY-MM-DD HH:MM" | --on <event>[,<event>] --every <5m|1h>)
                      [--prompt <text> | --prompt-file <path>] [--workflow <w>] [--runner ${RUNNER_IDS.join('|')}]
                      [--model <m>] [--autonomous | --no-autonomous] [--dispatch [--max-subtasks N] [--review-child]]
                      [--label <l>]... [--author <a>]... [--enable]
                                                 the same, from flags: --cron takes "M H * * *" (daily), "M H * * 1-5"
                                                 (weekdays), "M H * * D" (one weekday, 0 or 7 = Sunday) or "0 */N * * *"
                                                 (every N hours, N in 1,2,3,4,6,8,12); anything else needs the JSON form
-  cez automation add --kind tracker --name <name> --on issue.status_changed --to-status <status-id>
+  onni automation add --kind tracker --name <name> --on issue.status_changed --to-status <status-id>
                      [--changed-label <label-id>] [--require-label <name>]... [--every 30m] --prompt <text> [--enable]
                                                 use this project's configured tracker; only advertised events are accepted
-  cez automation update <id> [--file | --json]  replace the definition's editable keys (name, description, kind,
+  onni automation update <id> [--file | --json]  replace the definition's editable keys (name, description, kind,
                                                 events, intervalSeconds, filters, schedule, task); keys you omit keep
                                                 their value
-  cez automation check <id> [--execute]         event poll: run the filter now — preview counts matches and launches
+  onni automation check <id> [--execute]         event poll: run the filter now — preview counts matches and launches
                                                 nothing, --execute launches a task per match exactly as a poll would
-  cez automation run <id>                       schedule: launch it once, now, by hand (paused or not)
-  cez automation list                           every automation of this project, with state and counts
-  cez automation show <id>                      one definition with its runtime state, as JSON
-  cez automation enable <id>                    enable it from a current-time baseline (the backlog is never launched)
-  cez automation pause <id>                     pause it (the definition and its history stay)
-  cez automation delete <id>                    delete it`;
+  onni automation run <id>                       schedule: launch it once, now, by hand (paused or not)
+  onni automation list                           every automation of this project, with state and counts
+  onni automation show <id>                      one definition with its runtime state, as JSON
+  onni automation enable <id>                    enable it from a current-time baseline (the backlog is never launched)
+  onni automation pause <id>                     pause it (the definition and its history stay)
+  onni automation delete <id>                    delete it`;
 
 const CHECK_POLL_MS = 500;
 const CHECK_TIMEOUT_MS = 120_000;
@@ -122,7 +122,7 @@ async function readDefinition(
   } catch (error) {
     throw new Error(`the definition is not valid JSON — ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (!isRecord(parsed)) throw new Error('the definition must be a JSON object (see cez automation schema)');
+  if (!isRecord(parsed)) throw new Error('the definition must be a JSON object (see onni automation schema)');
   return parsed;
 }
 
@@ -193,7 +193,7 @@ export function bodyFromAddFlags(values: {
   } else if (values.cron) {
     const schedule: AutomationSchedule | null = parseCron(values.cron);
     if (!schedule) {
-      throw new Error(`--cron "${values.cron}" is not one of the shapes a recurring schedule can take (${SCHEDULE_TYPES.filter((type) => type !== 'once').join(', ')}): "M H * * *", "M H * * 1-5", "M H * * D" (0 or 7 = Sunday) or "0 */N * * *" (N in 1,2,3,4,6,8,12). For a single run use --at; for anything else use the JSON form: cez automation schema`);
+      throw new Error(`--cron "${values.cron}" is not one of the shapes a recurring schedule can take (${SCHEDULE_TYPES.filter((type) => type !== 'once').join(', ')}): "M H * * *", "M H * * 1-5", "M H * * D" (0 or 7 = Sunday) or "0 */N * * *" (N in 1,2,3,4,6,8,12). For a single run use --at; for anything else use the JSON form: onni automation schema`);
     }
     body.kind = 'schedule';
     body.schedule = schedule;
@@ -245,8 +245,8 @@ export async function runAutomationCommand(
   const api = base(env);
   if (!api) {
     io.error(missingCockpitMessage({
-      command: 'cez automation',
-      example: 'cez automation list',
+      command: 'onni automation',
+      example: 'onni automation list',
       insideTask: 'this command only works inside a task run by a cockpit with automations on. Do not substitute a cron job, a GitHub Action or a polling script: stop and report that automations are unavailable.',
     }, env));
     return 2;
@@ -264,8 +264,8 @@ export async function runAutomationCommand(
     io.log(`cockpit: ${pageUrl(api, automation.id)}`);
     if (!automation.enabled) {
       io.log(automation.kind === 'schedule'
-        ? `Launch it once now with: cez automation run ${automation.id} — enable it with: cez automation enable ${automation.id}`
-        : `Preview its matches with: cez automation check ${automation.id} — then enable it with: cez automation enable ${automation.id}`);
+        ? `Launch it once now with: onni automation run ${automation.id} — enable it with: onni automation enable ${automation.id}`
+        : `Preview its matches with: onni automation check ${automation.id} — then enable it with: onni automation enable ${automation.id}`);
     }
     return 0;
   };
@@ -302,7 +302,7 @@ export async function runAutomationCommand(
           },
         });
         if (values.prompt && values['prompt-file']) {
-          io.error('cez automation: give the prompt as --prompt OR --prompt-file, not both');
+          io.error('onni automation: give the prompt as --prompt OR --prompt-file, not both');
           return 2;
         }
         const prompt = values['prompt-file']
@@ -314,7 +314,7 @@ export async function runAutomationCommand(
         } catch (error) {
           // A flag the command cannot express is a usage error (exit 2), not a refusal (exit 1):
           // the agent should reach for the JSON form, not stop and report.
-          io.error(`cez automation: ${error instanceof Error ? error.message : String(error)}`);
+          io.error(`onni automation: ${error instanceof Error ? error.message : String(error)}`);
           return 2;
         }
         if (body.kind === 'tracker') {
@@ -328,7 +328,7 @@ export async function runAutomationCommand(
       }
       case 'run': {
         const id = rest[0];
-        if (!id) throw new Error('an automation id is required: cez automation run <id>');
+        if (!id) throw new Error('an automation id is required: onni automation run <id>');
         const response = await json(`${api.scope}/automations/${encodeURIComponent(id)}/run`, { method: 'POST' });
         if (!response.ok) throw new Error(`run refused — ${await readError(response)}`);
         const { runId } = (await response.json()) as { runId: string };
@@ -343,7 +343,7 @@ export async function runAutomationCommand(
           options: { file: { type: 'string' }, json: { type: 'string' } },
         });
         const id = positionals[0];
-        if (!id) throw new Error('an automation id is required: cez automation update <id> --file <def.json>');
+        if (!id) throw new Error('an automation id is required: onni automation update <id> --file <def.json>');
         const patch = await readDefinition(values, io);
         const current = await json(`${api.scope}/automations/${encodeURIComponent(id)}`);
         if (!current.ok) throw new Error(`could not read automation ${id} — ${await readError(current)}`);
@@ -371,7 +371,7 @@ export async function runAutomationCommand(
           options: { execute: { type: 'boolean', default: false } },
         });
         const id = positionals[0];
-        if (!id) throw new Error('an automation id is required: cez automation check <id>');
+        if (!id) throw new Error('an automation id is required: onni automation check <id>');
         const mode = values.execute ? 'execute' : 'preview';
         const queued = await json(`${api.scope}/automations/${encodeURIComponent(id)}/check`, { method: 'POST', body: JSON.stringify({ mode }) });
         if (!queued.ok) throw new Error(`check refused — ${await readError(queued)}`);
@@ -431,7 +431,7 @@ export async function runAutomationCommand(
       }
       case 'show': {
         const id = rest[0];
-        if (!id) throw new Error('an automation id is required: cez automation show <id>');
+        if (!id) throw new Error('an automation id is required: onni automation show <id>');
         const response = await io.fetch(`${api.scope}/automations/${encodeURIComponent(id)}`);
         if (!response.ok) throw new Error(`could not read automation ${id} — ${await readError(response)}`);
         io.log(JSON.stringify(await response.json(), null, 2));
@@ -440,7 +440,7 @@ export async function runAutomationCommand(
       case 'enable':
       case 'pause': {
         const id = rest[0];
-        if (!id) throw new Error(`an automation id is required: cez automation ${command} <id>`);
+        if (!id) throw new Error(`an automation id is required: onni automation ${command} <id>`);
         const response = await json(`${api.scope}/automations/${encodeURIComponent(id)}/${command}`, { method: 'POST' });
         if (!response.ok) throw new Error(`${command} refused — ${await readError(response)}`);
         const { automation } = (await response.json()) as { automation: { id: string; name: string } };
@@ -454,18 +454,18 @@ export async function runAutomationCommand(
       }
       case 'delete': {
         const id = rest[0];
-        if (!id) throw new Error('an automation id is required: cez automation delete <id>');
+        if (!id) throw new Error('an automation id is required: onni automation delete <id>');
         const response = await io.fetch(`${api.scope}/automations/${encodeURIComponent(id)}`, { method: 'DELETE' });
         if (!response.ok) throw new Error(`delete refused — ${await readError(response)}`);
         io.log(`deleted automation ${id}`);
         return 0;
       }
       default:
-        io.error(`cez automation: unknown command "${command}"\n\n${USAGE}`);
+        io.error(`onni automation: unknown command "${command}"\n\n${USAGE}`);
         return 2;
     }
   } catch (error) {
-    io.error(`cez automation: ${error instanceof Error ? error.message : String(error)}`);
+    io.error(`onni automation: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
 }

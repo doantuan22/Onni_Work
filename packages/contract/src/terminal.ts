@@ -102,7 +102,7 @@ export type TerminalOutput = z.infer<typeof terminalOutputSchema>;
  *
  * Collected, never opened: the spec is explicit that a detected address opens only when the user
  * clicks `Otwórz w Przeglądarce`. `running` is the answer to a TCP connect and nothing more —
- * cezar does not send a request to a server a task started.
+ * onni does not send a request to a server a task started.
  */
 export const detectedUrlSchema = z.object({
   url: z.string(),

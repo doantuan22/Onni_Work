@@ -22,7 +22,7 @@ export type DashboardInsightsQuery = z.infer<typeof dashboardInsightsQuerySchema
 /** Tasks that finished `done` in the window, and what they left behind. */
 export const dashboardDeliveredSchema = z.object({
   completedTasks: count,
-  /** PRs cezar itself opened for those tasks (`prRefs` origin `created`, or a legacy URL). */
+  /** PRs onni itself opened for those tasks (`prRefs` origin `created`, or a legacy URL). */
   prsOpened: count,
   /** Every distinct PR those tasks are associated with, opened or only worked on. */
   prsTouched: count,

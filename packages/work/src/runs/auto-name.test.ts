@@ -20,7 +20,7 @@ describe('buildNamerPrompt', () => {
       skillName: 'om-auto-review-pr',
       skillDescription: 'Review a PR by number.',
     });
-    expect(prompt.startsWith('[cez-namer]')).toBe(true);
+    expect(prompt.startsWith('[onni-namer]')).toBe(true);
     expect(prompt).toContain('Selected skill: /om-auto-review-pr');
     expect(prompt).toContain('review pr 437 with autofix');
     expect(prompt).toContain('pr 437');
@@ -150,7 +150,7 @@ describe('composeNameResult — branch (spec 2026-10-11-branch-naming-instructio
     expect(result).toEqual({ titleSummary: 'fixing login redirect', branch: 'feature/fix-login-redirect' });
   });
 
-  it('ignores a volunteered branch without instructions — zero-config stays cez/<id8>', () => {
+  it('ignores a volunteered branch without instructions — zero-config stays onni/<id8>', () => {
     const result = composeNameResult(answer, { task: 'fix the login redirect' });
     expect(result).toEqual({ titleSummary: 'fixing login redirect' });
   });
@@ -169,7 +169,7 @@ describe('generateRunName (dry run)', () => {
       const { mkdtempSync, rmSync } = await import('node:fs');
       const { tmpdir } = await import('node:os');
       const { join } = await import('node:path');
-      const root = mkdtempSync(join(tmpdir(), 'cez-namer-'));
+      const root = mkdtempSync(join(tmpdir(), 'onni-namer-'));
       try {
         const { generateRunName } = await import('./auto-name.ts');
         const result = await generateRunName(root, { task: '437', skillName: 'om-auto-review-pr' });

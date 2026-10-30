@@ -27,8 +27,8 @@ function g(dir: string, ...args: string[]): string {
 
 function initRepo(dir: string): void {
   g(dir, 'init', '-b', 'main');
-  g(dir, 'config', 'user.email', 'test@cezar.local');
-  g(dir, 'config', 'user.name', 'cezar-test');
+  g(dir, 'config', 'user.email', 'test@onni.local');
+  g(dir, 'config', 'user.name', 'onni-test');
   g(dir, 'config', 'commit.gpgsign', 'false');
 }
 
@@ -54,7 +54,7 @@ describe('listRepoPaths — the repository path index', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-repotree-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-repotree-'));
     initRepo(dir);
   });
 
@@ -120,7 +120,7 @@ describe('listRepoPaths — the repository path index', () => {
   });
 
   it('answers `{ ok: false }` outside a git repository', async () => {
-    const plain = mkdtempSync(join(tmpdir(), 'cez-notrepo-'));
+    const plain = mkdtempSync(join(tmpdir(), 'onni-notrepo-'));
     try {
       const result = await listRepoPaths(plain);
       expect(result.ok).toBe(false);
@@ -138,7 +138,7 @@ describe('repoIndexContains — the Q5 membership guard', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-repoidx-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-repoidx-'));
     initRepo(dir);
     writeFileSync(join(dir, '.gitignore'), 'ignored.env\n');
     writeFileSync(join(dir, 'tracked.ts'), 'ok\n');
@@ -173,7 +173,7 @@ describe('repo file-browser routes', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-repofiles-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-repofiles-'));
     initRepo(repoRoot);
     // The RunStore lives inside the repo — ignore it, plus the untracked secret this suite is about.
     writeFileSync(join(repoRoot, '.gitignore'), '.ai/\nsecret.env\nnode_modules/\n');
@@ -198,7 +198,7 @@ describe('repo file-browser routes', () => {
     mkdirSync(join(repoRoot, 'node_modules'));
     writeFileSync(join(repoRoot, 'node_modules/evil.js'), 'require("fs")\n');
 
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,
@@ -333,7 +333,7 @@ describe('repo file-browser routes', () => {
   });
 
   it('refuses a submodule entry as a non-file rather than inventing a view', async () => {
-    const sub = mkdtempSync(join(tmpdir(), 'cez-submodule-'));
+    const sub = mkdtempSync(join(tmpdir(), 'onni-submodule-'));
     try {
       initRepo(sub);
       writeFileSync(join(sub, 'inner.txt'), 'inner\n');
@@ -362,9 +362,9 @@ describe('repo file-browser routes', () => {
   });
 
   it('GET /repo/tree outside a repository is the same 409 wording as /repo/changes', async () => {
-    const plain = mkdtempSync(join(tmpdir(), 'cez-plain-'));
+    const plain = mkdtempSync(join(tmpdir(), 'onni-plain-'));
     try {
-      const plainStore = RunStore.open(join(plain, '.ai/cezar'));
+      const plainStore = RunStore.open(join(plain, '.ai/onni'));
       const plainApp = createApp({
         repoRoot: plain,
         store: plainStore,
@@ -383,9 +383,9 @@ describe('repo file-browser routes', () => {
   });
 
   it('GET /repo/files outside a repository is a 409, not a 500', async () => {
-    const plain = mkdtempSync(join(tmpdir(), 'cez-plain2-'));
+    const plain = mkdtempSync(join(tmpdir(), 'onni-plain2-'));
     try {
-      const plainStore = RunStore.open(join(plain, '.ai/cezar'));
+      const plainStore = RunStore.open(join(plain, '.ai/onni'));
       const plainApp = createApp({
         repoRoot: plain,
         store: plainStore,

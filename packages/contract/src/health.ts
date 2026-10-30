@@ -64,7 +64,7 @@ export const capabilitiesSchema = z.object({
   webhooksUnavailableReason: z.literal('unsupported_platform').optional(),
   /**
    * `true` means task dispatch is on — the default; `CEZ_DISPATCH=0` turns it off (spec
-   * `.ai/specs/2026-09-10-dispatch.md`): every task learns the `cez task` CLI in its system
+   * `.ai/specs/2026-09-10-dispatch.md`): every task learns the `onni task` CLI in its system
    * prompt and the `/runs/:id/{dispatch,report}` routes answer. Off, those routes answer 409 and
    * no prompt mentions dispatching.
    */

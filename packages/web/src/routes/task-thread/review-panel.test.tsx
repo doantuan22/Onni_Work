@@ -368,7 +368,7 @@ describe('the review gate on the thread', () => {
 
   it('Draft PR asks the task’s agent — the same "Create draft PR" as the header', async () => {
     const sent = stubFetch()
-    renderWithProviders(<ReviewPanel run={run('review', { worktreePath: '/tmp/wt/r1', branch: 'cez/r1', baseBranch: 'main' })} />)
+    renderWithProviders(<ReviewPanel run={run('review', { worktreePath: '/tmp/wt/r1', branch: 'onni/r1', baseBranch: 'main' })} />)
 
     const button = screen.getByRole<HTMLButtonElement>('button', { name: /Draft PR/ })
     await waitFor(() => expect(button.title).toContain('Ask the agent'))
@@ -383,7 +383,7 @@ describe('the review gate on the thread', () => {
     expect(button.disabled).toBe(true)
   })
 
-  it('no agent to ask: Draft PR falls back to cezar — POSTs /pr and the toast carries the returned URL', async () => {
+  it('no agent to ask: Draft PR falls back to onni — POSTs /pr and the toast carries the returned URL', async () => {
     const sent = stubFetch({
       'POST /api/v1/runs/r1/pr': () => jsonResponse({ url: 'https://github.com/x/y/pull/7', dryRun: true }, 201),
     })
@@ -398,17 +398,17 @@ describe('the review gate on the thread', () => {
     expect(sent.filter((r) => r.method === 'POST' && r.path === '/api/v1/runs/r1/pr')).toHaveLength(1)
   })
 
-  it('Draft PR 409 (no agent, cezar opens it): the server message as a danger toast + the copyable manual merge line', async () => {
+  it('Draft PR 409 (no agent, onni opens it): the server message as a danger toast + the copyable manual merge line', async () => {
     stubFetch({
       'POST /api/v1/runs/r1/pr': () =>
-        jsonResponse({ error: 'gh pr create failed: not logged in', manual: 'git merge cez/r1' }, 409),
+        jsonResponse({ error: 'gh pr create failed: not logged in', manual: 'git merge onni/r1' }, 409),
     })
     renderWithProviders(<ReviewPanel run={run('review', { steps: [{ id: 'task', name: 'Do the task', kind: 'agent', status: 'done', iterations: 1, tokensUsed: 0 }] })} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Draft PR/ }))
     await waitFor(() => {
       expect(document.querySelector('[data-slot="review-manual"]')?.textContent).toContain(
-        'manual path: git merge cez/r1',
+        'manual path: git merge onni/r1',
       )
     })
     const toastEl = document.querySelector('[data-slot="toast"]')

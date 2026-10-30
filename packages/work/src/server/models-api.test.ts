@@ -13,8 +13,8 @@ describe('workspace model catalog API', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'cez-models-api-'));
-    store = RunStore.open(join(root, '.ai/cezar'));
+    root = mkdtempSync(join(tmpdir(), 'onni-models-api-'));
+    store = RunStore.open(join(root, '.ai/onni'));
   });
 
   afterEach(() => {
@@ -124,7 +124,7 @@ describe('workspace model catalog API', () => {
     });
   });
 
-  // Every runner cezar ships now discovers, so only a MISSING or unknown `runner` is rejected.
+  // Every runner onni ships now discovers, so only a MISSING or unknown `runner` is rejected.
   it.each(['/api/v1/models', '/api/v1/models?runner=nope'])('rejects invalid query %s', async (path) => {
     const response = await apiRequest(app(async () => []), path);
     expect(response.status).toBe(400);

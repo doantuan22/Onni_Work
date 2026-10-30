@@ -23,7 +23,7 @@ function setup(options: { status?: E2eStatus; runStatus?: string; postStatus?: n
         ? new Response(JSON.stringify({ runId: 'run-1234abcd' }), { status: 201 })
         : new Response(JSON.stringify({ error: 'an e2e setup is already in progress' }), { status: postStatus })
     }
-    if (url.includes('/runs/')) return new Response(JSON.stringify({ id: status.setup?.runId, status: runStatus ?? status.setup?.status, branch: 'cez/run-1', ...(prUrl ? { pullRequestUrl: prUrl } : {}) }), { status: 200 })
+    if (url.includes('/runs/')) return new Response(JSON.stringify({ id: status.setup?.runId, status: runStatus ?? status.setup?.status, branch: 'onni/run-1', ...(prUrl ? { pullRequestUrl: prUrl } : {}) }), { status: 200 })
     return new Response(JSON.stringify(status), { status: 200 })
   }))
   render(
@@ -86,7 +86,7 @@ describe('TesterArmy e2e card', () => {
 
   it('tells the user to merge a finished setup whose config has not landed (review gate off by default)', async () => {
     setup({ status: { ...EMPTY, setup: { runId: 'run-1', status: 'done' } } })
-    await screen.findByText(/Setup finished — merge branch cez\/run-1 to finish/)
+    await screen.findByText(/Setup finished — merge branch onni\/run-1 to finish/)
   })
 
   it('names the tool: TesterArmy logo, its repository and a status badge', async () => {

@@ -103,7 +103,7 @@ const server = createServer((req, res) => {
     }
     if (req.method === 'POST' && url === '/session') {
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ id: SESSION_ID, title: 'cezar task' }));
+      res.end(JSON.stringify({ id: SESSION_ID, title: 'onni task' }));
       return;
     }
     // The current reply route, or — under `MOCK_LEGACY_PERMISSION=1`, a server

@@ -19,7 +19,7 @@ export class DialogErrorBoundary extends Component<
   }
 
   override componentDidCatch(error: unknown): void {
-    console.error(`[cezar] ${this.props.label} failed to render`, error)
+    console.error(`[onni] ${this.props.label} failed to render`, error)
     toast(`${this.props.label} failed to open: ${error instanceof Error ? error.message : String(error)}`, {
       tone: 'danger',
     })

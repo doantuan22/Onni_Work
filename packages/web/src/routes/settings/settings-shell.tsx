@@ -67,7 +67,7 @@ type TreeProject = Pick<ProjectListEntry, 'id' | 'name' | 'status'>
 /**
  * What the nav's project tree shows, derived from the registry and the URL:
  *  - the REGISTERED projects, most recently opened first (the sidebar's order, so the two
- *    lists agree) — and nothing else. cezar started from a task worktree is the boot project
+ *    lists agree) — and nothing else. onni started from a task worktree is the boot project
  *    but not a registered one (`shouldRegisterProject` skips worktrees on purpose), and the
  *    owner's call is that it is not a project to list;
  *  - the one exception is the page ABOUT such a project (`/p/<unregistered>/settings/…`,
@@ -460,7 +460,7 @@ function SettingsSidebarContent({
   const version = health?.version ?? null
   // White-label branding (main): the same name and logo the app sidebar's lockup and chips show.
   const branding = useWorkspaceConfig().data?.branding
-  const brandName = branding?.name ?? 'cezar'
+  const brandName = branding?.name ?? 'onni'
   const brandLogoUrl = branding?.logoUrl ?? null
 
   return (
@@ -516,7 +516,7 @@ function SettingsSidebarContent({
         })}
         {/* Global settings are per USER, not per repo — worth saying once, where the choice to
             write there is being made. */}
-        <p className="shrink-0 px-2.5 pt-1 pb-2 text-[11px] text-soft-foreground">Stored in ~/.cezar</p>
+        <p className="shrink-0 px-2.5 pt-1 pb-2 text-[11px] text-soft-foreground">Stored in ~/.onni</p>
 
         {tree.projects.length > 0 ? (
           <div data-slot="settings-project-tree" className="mt-1 flex shrink-0 flex-col gap-0.5 border-t border-border pt-3">

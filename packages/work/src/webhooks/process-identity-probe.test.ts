@@ -92,7 +92,7 @@ describe('probe fail-closed behaviour', async () => {
     const probeScript = String((probe.mock.calls[0]?.[1] as string[])?.[3]);
     expect(probeScript).toContain('Get-Process -ErrorAction Stop');
     expect(probeScript).not.toContain('SilentlyContinue');
-    expect(probeScript).toContain('cez-own-probe-complete');
+    expect(probeScript).toContain('onni-own-probe-complete');
     expect(WINDOWS_BOOT_SCRIPT).toBe('(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToUniversalTime().Ticks');
   });
 });

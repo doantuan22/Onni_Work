@@ -55,7 +55,7 @@ import { cn } from '@/lib/utils'
 /** The programmatic-open seam: a window event rather than a context, so chrome that must stay
  *  presentational (the sidebar hint today, an onboarding nudge tomorrow) can open the palette
  *  without threading a setter through the tree. */
-export const OPEN_COMMAND_PALETTE_EVENT = 'cezar:open-command-palette'
+export const OPEN_COMMAND_PALETTE_EVENT = 'onni:open-command-palette'
 
 export function openCommandPalette(): void {
   window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))
@@ -409,7 +409,7 @@ const taskKey = (task: Pick<PaletteTask, 'projectId' | 'id'>): string =>
  * The section holds finished tasks you have not opened since they finished — `isUnread` from
  * `lib/read-state`, the SAME decider behind the Tasks nav badge and the sidebar rows, not a
  * re-derivation. It is headed "Recently finished" rather than "Unread" because that is what it
- * reads as: cezar only stamps a read receipt when you open a thread in the cockpit, so a task you
+ * reads as: onni only stamps a read receipt when you open a thread in the cockpit, so a task you
  * followed in the terminal, or simply never clicked, stays technically unread for as long as it
  * exists. Sorted by when they FINISHED (not created) — the question is "what landed while I was
  * away", and that is the order to work through them in.
@@ -511,7 +511,7 @@ export function paletteTaskPath(task: Pick<PaletteTask, 'projectId' | 'id'>, suf
 }
 
 /** The two palettes are one surface at a time: opening either closes the other. */
-export const PALETTE_OPENED_EVENT = 'cezar:palette-opened'
+export const PALETTE_OPENED_EVENT = 'onni:palette-opened'
 
 export function announcePaletteOpened(which: 'command' | 'task'): void {
   window.dispatchEvent(new CustomEvent(PALETTE_OPENED_EVENT, { detail: which }))

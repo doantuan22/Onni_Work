@@ -48,9 +48,9 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
   let runId: string;
 
   beforeEach(async () => {
-    home = mkdtempSync(join(tmpdir(), 'cez-parity-home-'));
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-parity-boot-'));
-    otherRoot = mkdtempSync(join(tmpdir(), 'cez-parity-other-'));
+    home = mkdtempSync(join(tmpdir(), 'onni-parity-home-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-parity-boot-'));
+    otherRoot = mkdtempSync(join(tmpdir(), 'onni-parity-other-'));
     process.env.CEZ_HOME = home; // paths.ts sends all workspace paths here
     delete process.env.CEZ_REMOTE;
     delete process.env.CEZ_FOLLOWUPS;
@@ -68,11 +68,11 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     // `skillsRepos: []` disables team skills — no background clone can warm a
     // cache between the first and third spelling of the /skills sweep.
     for (const root of [repoRoot, otherRoot]) {
-      mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-      writeFileSync(join(root, '.ai/cezar', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
+      mkdirSync(join(root, '.ai/onni'), { recursive: true });
+      writeFileSync(join(root, '.ai/onni', 'config.json'), '{"skillsRepos": []}\n', 'utf8');
     }
     clearProjectProbeCache();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'), { keepLive: true });
+    store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     runId = store.createRun({
       title: 'parity',
       workflow: 'quick-task',

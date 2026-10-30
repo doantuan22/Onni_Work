@@ -36,7 +36,7 @@ describe.skipIf(!enabled)('copilot runner against the real `copilot --acp` (opt-
   let sessionId: string | undefined;
 
   beforeAll(() => {
-    cwd = mkdtempSync(join(tmpdir(), 'cez-copilot-smoke-'));
+    cwd = mkdtempSync(join(tmpdir(), 'onni-copilot-smoke-'));
     execFileSync('git', ['init', '-q'], { cwd });
     writeFileSync(join(cwd, 'README.md'), '# smoke\n');
   });

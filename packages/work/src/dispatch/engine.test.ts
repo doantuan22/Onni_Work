@@ -87,7 +87,7 @@ describe('remainingBudgetUsd', () => {
   });
 
   it('keeps the reservation when a stored zero aggregate includes an unreported executed step', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-dispatch-cost-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-dispatch-cost-'));
     const store = RunStore.open(dir);
     try {
       const child = store.createRun({
@@ -127,12 +127,12 @@ describe('remainingBudgetUsd', () => {
 describe('childTaskEnvelope', () => {
   it('spells out a review task’s kind and what it reviews', () => {
     const text = childTaskEnvelope(
-      { title: 'Review the left flank', objective: 'judge it', kind: 'review', review_of: ['cez/abcd1234'] },
+      { title: 'Review the left flank', objective: 'judge it', kind: 'review', review_of: ['onni/abcd1234'] },
       { id: 'p' },
     );
     expect(text).toContain('- Kind: review');
     expect(text).toContain('you do not implement it');
-    expect(text).toContain('- Review of: cez/abcd1234');
+    expect(text).toContain('- Review of: onni/abcd1234');
     // an implementer's order says nothing about kind — the pre-existing envelope
     expect(childTaskEnvelope({ title: 't', objective: 'o' }, { id: 'p' })).not.toContain('Kind:');
   });
@@ -141,13 +141,13 @@ describe('childTaskEnvelope', () => {
   it('lists only the fields the order actually carries, plus the fork point and the commander', () => {
     const text = childTaskEnvelope(
       { title: 'Left flank', objective: 'take the left half', scope: 'src/left/**', max_cost: 2.5 },
-      { id: 'p1', branch: 'cez/abc12345' },
+      { id: 'p1', branch: 'onni/abc12345' },
     );
     expect(text.startsWith('take the left half')).toBe(true);
     expect(text).toContain('## Task order');
     expect(text).toContain('- Scope: src/left/**');
     expect(text).toContain('- Max cost: $2.50');
-    expect(text).toContain('- Parent branch (your fork point): cez/abc12345');
+    expect(text).toContain('- Parent branch (your fork point): onni/abc12345');
     expect(text).toContain('- Ordered by: run p1');
     // Nothing invented for the keys the commander left out.
     expect(text).not.toContain('Success criteria');
@@ -167,8 +167,8 @@ describe('childSettleReport', () => {
       id: 'c9',
       title: 'Left flank',
       status: 'done',
-      branch: 'cez/9999',
-      baseBranch: 'cez/parent',
+      branch: 'onni/9999',
+      baseBranch: 'onni/parent',
       costUsd: 0.42,
       diffStat: { files: 2, adds: 12, dels: 3 },
       dispatch: {
@@ -185,10 +185,10 @@ describe('childSettleReport', () => {
       },
     });
     const { text, report } = childSettleReport(child);
-    expect(report.status).toBe('partial'); // the child's own words, not cezar's status
+    expect(report.status).toBe('partial'); // the child's own words, not onni's status
     expect(text).toContain('Report from task "Left flank"');
-    expect(text).toContain('branch cez/9999 off cez/parent');
-    expect(text).toContain('status partial (cezar: done)');
+    expect(text).toContain('branch onni/9999 off onni/parent');
+    expect(text).toContain('status partial (onni: done)');
     expect(text).toContain('evidence: npm test → 4 passed');
     expect(text).toContain('errors: the other half needs a decision');
     expect(text).toContain('cost $0.42');
@@ -196,7 +196,7 @@ describe('childSettleReport', () => {
   });
 
   it('still reports for a child that never emitted one — silence is indistinguishable from working', () => {
-    const cancelled = childSettleReport(record({ status: 'cancelled', branch: 'cez/1' }), {
+    const cancelled = childSettleReport(record({ status: 'cancelled', branch: 'onni/1' }), {
       resumeNotes: 'was halfway through the migration',
     });
     expect(cancelled.report.status).toBe('blocked'); // stopped, not failed
@@ -213,10 +213,10 @@ describe('childSettleReport', () => {
 
   /**
    * The Guard's premise (spec Q4): a run that settled while parked on its own question was
-   * BLOCKED, whatever cezar's terminal status says — a restart force-settles `waiting` as `done`,
+   * BLOCKED, whatever onni's terminal status says — a restart force-settles `waiting` as `done`,
    * and reporting that upward as success is exactly the lie the pending question exists to stop.
    */
-  it('reports an unanswered question as blocked, naming it — even when cezar says done', () => {
+  it('reports an unanswered question as blocked, naming it — even when onni says done', () => {
     const asking = childSettleReport(
       record({
         status: 'done',
@@ -231,7 +231,7 @@ describe('childSettleReport', () => {
     expect(asking.report.status).toBe('blocked');
     expect(asking.report.result).toContain('Delete the old migration?');
     expect(asking.report.result).toContain('before a reply arrived');
-    expect(asking.text).toContain('status blocked (cezar: done)');
+    expect(asking.text).toContain('status blocked (onni: done)');
   });
 
   // The record keeps at most 4 question texts, however many the card carried. Without the count

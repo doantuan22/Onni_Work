@@ -18,7 +18,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 const fetchMock = vi.fn<typeof fetch>()
 
 beforeEach(() => {
-  document.title = 'cezar'
+  document.title = 'onni'
   vi.stubGlobal('fetch', fetchMock)
   // jsdom ships no matchMedia; the shell's breakpoint effect and the theme toggle need one.
   vi.stubGlobal(
@@ -39,8 +39,8 @@ const HEALTH: HealthResponse = {
   version: '0.1.3',
   projects: [],
   bootProject: 'default',
-  repoRoot: '/home/me/Projects/cezar',
-  repo: { root: '/home/me/Projects/cezar', branch: 'feat/cockpit', remote: 'origin' },
+  repoRoot: '/home/me/Projects/onni',
+  repo: { root: '/home/me/Projects/onni', branch: 'feat/cockpit', remote: 'origin' },
   checks: [],
   defaultRunner: 'claude',
   forge: null,
@@ -49,9 +49,9 @@ const HEALTH: HealthResponse = {
 
 /** One registered project — the degenerate workspace every existing install upgrades into. */
 const PROJECT = {
-  id: 'cezar',
-  name: 'cezar',
-  root: '/home/me/Projects/cezar',
+  id: 'onni',
+  name: 'onni',
+  root: '/home/me/Projects/onni',
   addedAt: '2026-07-01T00:00:00.000Z',
   lastOpenedAt: '2026-07-20T12:00:00.000Z',
   source: 'local' as const,
@@ -155,9 +155,9 @@ const navBadge = () => document.querySelector('[data-slot="nav-badge"]')
 
 describe('repoChipOf', () => {
   it.each([
-    { name: 'a plain root', root: '/home/me/Projects/cezar', expected: 'cezar' },
-    { name: 'a trailing slash', root: '/home/me/cezar/', expected: 'cezar' },
-    { name: 'a windows path', root: 'C:\\Users\\me\\cezar', expected: 'cezar' },
+    { name: 'a plain root', root: '/home/me/Projects/onni', expected: 'onni' },
+    { name: 'a trailing slash', root: '/home/me/onni/', expected: 'onni' },
+    { name: 'a windows path', root: 'C:\\Users\\me\\onni', expected: 'onni' },
     { name: 'the filesystem root as a repo', root: '/', expected: null },
   ])('takes the basename of $name', ({ root, expected }) => {
     const chip = repoChipOf({ ...HEALTH, repo: { root, branch: 'main' } })
@@ -218,7 +218,7 @@ describe('sidebar wiring', () => {
 
     await waitFor(() => expect(repoChip()).not.toBeNull())
     // Basename of the root, then the branch — not the whole path.
-    expect(repoChip()?.textContent).toBe('cezar / feat/cockpit')
+    expect(repoChip()?.textContent).toBe('onni / feat/cockpit')
     expect(versionChip()?.textContent).toBe('v0.1.3')
   })
 
@@ -336,7 +336,7 @@ describe('sidebar wiring', () => {
     renderShell()
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
-    // The honest empty state: cezar cannot answer what repo it is on, so it says nothing.
+    // The honest empty state: onni cannot answer what repo it is on, so it says nothing.
     // It does not invent one, and it does not take the whole cockpit down with it.
     expect(repoChip()).toBeNull()
     expect(versionChip()).toBeNull()
@@ -353,7 +353,7 @@ describe('sidebar wiring', () => {
         capabilities: { ...HEALTH.capabilities, singleProject: true },
       },
       '/api/v1/todos': [],
-      '/api/v1/projects': { projects: [PROJECT], bootProject: 'cezar', projectsDir: '/home/me/cezar/projects' },
+      '/api/v1/projects': { projects: [PROJECT], bootProject: 'onni', projectsDir: '/home/me/onni/projects' },
       '/api/v1/runs': [],
     })
     renderShell()
@@ -362,7 +362,7 @@ describe('sidebar wiring', () => {
     expect(document.querySelector('[data-slot="project-groups"]')).toBeNull()
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeTruthy()
     expect(document.querySelector('[data-slot="task-quick-list"]')).not.toBeNull()
-    expect(repoChip()?.textContent).toBe('cezar / feat/cockpit')
+    expect(repoChip()?.textContent).toBe('onni / feat/cockpit')
   })
 
   it('hides add-project chrome when health reports single-project mode', async () => {
@@ -372,7 +372,7 @@ describe('sidebar wiring', () => {
         capabilities: { ...HEALTH.capabilities, singleProject: true },
       },
       '/api/v1/todos': [],
-      '/api/v1/projects': { projects: [PROJECT], bootProject: 'cezar', projectsDir: '/home/me/cezar/projects' },
+      '/api/v1/projects': { projects: [PROJECT], bootProject: 'onni', projectsDir: '/home/me/onni/projects' },
       '/api/v1/runs': [],
     })
     renderShell()
@@ -389,11 +389,11 @@ describe('sidebar wiring', () => {
       '/api/v1/todos': [],
       '/api/v1/projects': {
         projects: [PROJECT, { ...PROJECT, id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' }],
-        bootProject: 'cezar',
-        projectsDir: '/home/me/cezar/projects',
+        bootProject: 'onni',
+        projectsDir: '/home/me/onni/projects',
       },
       '/api/v1/workspace/ui-state': {},
-      '/api/v1/p/cezar/runs': [],
+      '/api/v1/p/onni/runs': [],
     })
     renderShell()
 
@@ -415,32 +415,32 @@ describe('sidebar wiring', () => {
       { ...PROJECT, id: 'docs', name: 'docs', root: '/home/me/Projects/docs' },
     ]
     serve({
-      '/api/v1/health': { ...HEALTH, bootProject: 'cezar' },
+      '/api/v1/health': { ...HEALTH, bootProject: 'onni' },
       '/api/v1/todos': [],
-      '/api/v1/projects': { projects: others, bootProject: 'cezar', projectsDir: '/home/me/cezar/projects' },
+      '/api/v1/projects': { projects: others, bootProject: 'onni', projectsDir: '/home/me/onni/projects' },
     })
-    renderShell('/p/cezar/')
+    renderShell('/p/onni/')
 
     await waitFor(() =>
       expect(document.querySelectorAll('[data-slot="project-group"]')).toHaveLength(3),
     )
     const header = document.querySelector('[data-slot="project-group-header"][aria-current="true"]')
-    expect(header?.textContent).toContain('cezar')
+    expect(header?.textContent).toContain('onni')
     expect(header?.querySelector('[data-slot="project-unregistered"]')?.textContent).toBe('not saved')
     expect(header?.querySelector('[data-slot="project-branch"]')?.textContent).toBe('feat/cockpit')
   })
 
   it('leaves the unregistered launch folder out while another project is on screen', async () => {
     serve({
-      '/api/v1/health': { ...HEALTH, bootProject: 'cezar' },
+      '/api/v1/health': { ...HEALTH, bootProject: 'onni' },
       '/api/v1/todos': [],
       '/api/v1/projects': {
         projects: [
           { ...PROJECT, id: 'shop', name: 'shop', root: '/home/me/Projects/shop' },
           { ...PROJECT, id: 'docs', name: 'docs', root: '/home/me/Projects/docs' },
         ],
-        bootProject: 'cezar',
-        projectsDir: '/home/me/cezar/projects',
+        bootProject: 'onni',
+        projectsDir: '/home/me/onni/projects',
       },
     })
     renderShell('/p/shop/')
@@ -455,14 +455,14 @@ describe('sidebar wiring', () => {
     const bootRun = run({ id: 'boot-run', titleSummary: 'Boot task' })
     const shopRun = run({ id: 'shop-run', titleSummary: 'Shop task' })
     serve({
-      '/api/v1/health': { ...HEALTH, bootProject: 'cezar' },
+      '/api/v1/health': { ...HEALTH, bootProject: 'onni' },
       '/api/v1/todos': [],
       '/api/v1/projects': {
         projects: [PROJECT, { ...PROJECT, id: 'shop', name: 'shop', lastOpenedAt: '2026-07-21T00:00:00.000Z' }],
-        bootProject: 'cezar',
-        projectsDir: '/home/me/cezar/projects',
+        bootProject: 'onni',
+        projectsDir: '/home/me/onni/projects',
       },
-      '/api/v1/p/cezar/runs': [bootRun],
+      '/api/v1/p/onni/runs': [bootRun],
       '/api/v1/p/shop/runs': [shopRun],
       '/api/v1/workspace/ui-state': {},
     })
@@ -480,7 +480,7 @@ describe('sidebar wiring', () => {
     serve({ '/api/v1/health': { ...HEALTH, repo: null }, '/api/v1/todos': [] })
     renderShell()
 
-    // Running cezar outside a repo is supported: no repo chip, but the rest of the chrome is
+    // Running onni outside a repo is supported: no repo chip, but the rest of the chrome is
     // real and must not vanish with it.
     await waitFor(() => expect(versionChip()).not.toBeNull())
     expect(versionChip()?.textContent).toBe('v0.1.3')
@@ -500,7 +500,7 @@ describe('sidebar wiring', () => {
         ],
       },
     })
-    renderShell('/p/cezar/')
+    renderShell('/p/onni/')
 
     const banner = await screen.findByRole('status')
     expect(banner.textContent).toContain('No agent provider credentials were found.')
@@ -520,7 +520,7 @@ describe('sidebar wiring', () => {
         ],
       },
     })
-    renderShell('/p/cezar/')
+    renderShell('/p/onni/')
 
     const alert = await screen.findByRole('alert')
     expect(alert.textContent).toContain(
@@ -575,10 +575,10 @@ describe('sidebar wiring', () => {
 describe('document title wiring', () => {
   const REGISTRY = {
     projects: [PROJECT],
-    bootProject: 'cezar',
-    projectsDir: '/home/me/cezar/projects',
+    bootProject: 'onni',
+    projectsDir: '/home/me/onni/projects',
   }
-  const HEALTH_WITH_BOOT = { ...HEALTH, bootProject: 'cezar' }
+  const HEALTH_WITH_BOOT = { ...HEALTH, bootProject: 'onni' }
 
   it('combines the selected project with scoped page context', async () => {
     serve({
@@ -592,14 +592,14 @@ describe('document title wiring', () => {
     })
     renderShell('/p/shop/git')
 
-    await waitFor(() => expect(document.title).toBe('Storefront — Git · cezar'))
+    await waitFor(() => expect(document.title).toBe('Storefront — Git · onni'))
   })
 
   it('falls back to the boot repository name when the registry is unavailable', async () => {
     serve({ '/api/v1/health': HEALTH_WITH_BOOT, '/api/v1/todos': [], '/api/v1/runs': [] })
-    renderShell('/p/cezar/')
+    renderShell('/p/onni/')
 
-    await waitFor(() => expect(document.title).toBe('cezar — Tasks · cezar'))
+    await waitFor(() => expect(document.title).toBe('onni — Tasks · onni'))
   })
 
   it('keeps global settings and a no-repo task route free of invented project context', async () => {
@@ -611,11 +611,11 @@ describe('document title wiring', () => {
     })
     const global = renderShell('/settings/global/projects')
 
-    await waitFor(() => expect(document.title).toBe('Settings · cezar'))
+    await waitFor(() => expect(document.title).toBe('Settings · onni'))
     global.unmount()
 
     renderShell('/tasks/missing')
-    await waitFor(() => expect(document.title).toBe('cezar'))
+    await waitFor(() => expect(document.title).toBe('onni'))
   })
 
   it('updates after in-app navigation without remounting the shell', async () => {
@@ -625,11 +625,11 @@ describe('document title wiring', () => {
       '/api/v1/projects': REGISTRY,
       '/api/v1/runs': [],
     })
-    renderShell('/p/cezar/')
+    renderShell('/p/onni/')
 
-    await waitFor(() => expect(document.title).toBe('cezar — Tasks · cezar'))
+    await waitFor(() => expect(document.title).toBe('onni — Tasks · onni'))
     fireEvent.click(screen.getByRole('link', { name: 'Git' }))
-    await waitFor(() => expect(document.title).toBe('cezar — Git · cezar'))
+    await waitFor(() => expect(document.title).toBe('onni — Git · onni'))
   })
 
   it('reacts to live project and task title cache updates', async () => {
@@ -647,7 +647,7 @@ describe('document title wiring', () => {
     const { client } = renderShell('/p/shop/tasks/run-1')
 
     await waitFor(() =>
-      expect(document.title).toBe('Storefront — Implement page titles · cezar'),
+      expect(document.title).toBe('Storefront — Implement page titles · onni'),
     )
 
     act(() => {
@@ -661,7 +661,7 @@ describe('document title wiring', () => {
     })
 
     await waitFor(() =>
-      expect(document.title).toBe('Renamed storefront — Rename browser titles · cezar'),
+      expect(document.title).toBe('Renamed storefront — Rename browser titles · onni'),
     )
   })
 })
@@ -686,7 +686,7 @@ describe('forge follows the active project, not the boot folder (#1410)', () => 
       '/api/v1/projects': { projects: [{ ...PROJECT, forge: 'github' }], bootProject: 'home', projectsDir: '/repos' },
       '/api/v1/todos': [],
     })
-    renderScopedShell('/p/cezar/', 'cezar')
+    renderScopedShell('/p/onni/', 'onni')
 
     expect(await screen.findByRole('link', { name: /GitHub/ })).toBeTruthy()
     expect(await toolsNote()).toBeNull()
@@ -712,7 +712,7 @@ describe('forge follows the active project, not the boot folder (#1410)', () => 
       '/api/v1/projects': { projects: [{ ...PROJECT, forge: 'github' }], bootProject: 'home', projectsDir: '/repos' },
       '/api/v1/todos': [],
     })
-    renderScopedShell('/p/cezar/', 'cezar')
+    renderScopedShell('/p/onni/', 'onni')
 
     // A recognized remote keeps its tab; the GitHub page explains the failure and retries.
     expect(await screen.findByRole('link', { name: /GitHub/ })).toBeTruthy()

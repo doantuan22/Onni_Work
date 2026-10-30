@@ -24,7 +24,7 @@ describe('supervised lifecycle executor', () => {
   });
   it('records nonzero exit and missing Bash without throwing', async () => {
     expect(await executeLifecycleCommand({ command: 'exit 7', cwd })).toMatchObject({ state: 'failed', exitCode: 7 });
-    expect(await executeLifecycleCommand({ command: 'true', cwd, bashPath: '/missing/cezar-bash' })).toMatchObject({ state: 'failed', quiescent: true });
+    expect(await executeLifecycleCommand({ command: 'true', cwd, bashPath: '/missing/onni-bash' })).toMatchObject({ state: 'failed', quiescent: true });
   });
   it('times out silent children and confirms process-group quiescence', async () => {
     const result = await executeLifecycleCommand({ command: 'sleep 30 & wait', cwd, timeoutSeconds: 1 });
@@ -75,7 +75,7 @@ describe('Windows supervision with a taskkill fixture', () => {
     expect(result).toMatchObject({state: 'failed', exitCode: 7, quiescent: true});
     expect((await readFile(join(cwd, 'taskkill-args'), 'utf8')).trim().split('\n')).toEqual(['/PID', String(result.identity!.pid), '/T', '/F']);
     expect(frames.map(frame => frame.text).join('')).toContain('command');
-    expect(frames.map(frame => frame.text).join('')).not.toContain('__cezar_');
+    expect(frames.map(frame => frame.text).join('')).not.toContain('__onni_');
   });
   it('returns uncertain quiescence when native taskkill fails', async () => {
     await taskkillFixture(true);

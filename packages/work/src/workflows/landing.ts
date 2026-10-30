@@ -1,5 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
-import { CEZAR_DATA_EXCLUDE } from '../data-gitignore.ts';
+import { ONNI_DATA_EXCLUDE } from '../data-gitignore.ts';
 import { gitHasIdentity, unresolvedConflicts } from '../git-worktree.ts';
 
 /**
@@ -29,9 +29,9 @@ export interface LandOptions {
   runCheck?: (command: string, cwd: string, env?: NodeJS.ProcessEnv) => Promise<{ ok: boolean; output: string }>;
 }
 
-// cezar's own state never lands: committing `.ai/cezar/config.json` would track it, and a tracked
+// onni's own state never lands: committing `.ai/onni/config.json` would track it, and a tracked
 // config can no longer grant auto-land.
-const PATHSPEC = ['--', '.', CEZAR_DATA_EXCLUDE];
+const PATHSPEC = ['--', '.', ONNI_DATA_EXCLUDE];
 const NETWORK_TIMEOUT_MS = 60_000;
 const CHECK_TIMEOUT_MS = 10 * 60_000;
 const CHECK_OUTPUT_TAIL = 8_000;
@@ -109,8 +109,8 @@ export async function landInPlace(root: string, options: LandOptions): Promise<L
       error: `the checkout is on ${branch}, but this project lands on ${options.baseBranch}`,
     };
   }
-  // The commit AND the rebase that rewrites it need a committer; a machine with no identity gets cezar's.
-  const identity = (await gitHasIdentity(root)) ? [] : ['-c', 'user.name=cezar', '-c', 'user.email=cezar@local'];
+  // The commit AND the rebase that rewrites it need a committer; a machine with no identity gets onni's.
+  const identity = (await gitHasIdentity(root)) ? [] : ['-c', 'user.name=onni', '-c', 'user.email=onni@local'];
   const upstream = await upstreamOf(root);
   const dryRun = process.env.CEZ_DRY_RUN === '1';
   if (!upstream) {
@@ -245,7 +245,7 @@ export async function hasUnlanded(root: string): Promise<boolean> {
 
 /**
  * The checkout's git status for an in-place task's git step (spec 2026-10-20-trunk-based-projects):
- * uncommitted files outside `.ai/cezar/`, and commits against the last-fetched upstream. Offline.
+ * uncommitted files outside `.ai/onni/`, and commits against the last-fetched upstream. Offline.
  * `null` counts mean there is no upstream.
  */
 export async function checkoutGitStatus(
@@ -272,17 +272,17 @@ async function runChecks(root: string, options: LandOptions): Promise<LandResult
 }
 
 /** What the agent is told when the owner enabled auto-land — the Guard's written permission. An
- *  interactive run lands only after the user reviews it; an autonomous one lands on CEZ:DONE. */
+ *  interactive run lands only after the user reviews it; an autonomous one lands on ONNI:DONE. */
 export function landingPromptPart(baseBranch: string | undefined, checks: string[], autonomous: boolean): string {
   const target = baseBranch ?? 'the checked-out base branch';
   const checkLine = checks.length ? ` runs the required checks (${checks.map((c) => `\`${c}\``).join(', ')})` : '';
   return [
     `Landing: the project owner enabled AUTO-LAND for this project. You work directly in the repository checkout on ${target}.`,
     autonomous
-      ? `When you end a turn with CEZ:DONE, cezar commits your changes, rebases onto the remote,${checkLine} and pushes to ${target} itself.`
-      : `When you end a turn with CEZ:DONE, the user reviews your changes and may ask for corrections; when they approve, cezar commits, rebases onto the remote,${checkLine} and pushes to ${target} itself.`,
-    'Pushing to the base branch is therefore authorized for this project, but leave it to cezar: do not commit, create branches, open pull requests, or push yourself.',
-    'If landing fails, cezar sends you the error (a rebase conflict or a failing check): fix it and end with CEZ:DONE again.',
+      ? `When you end a turn with ONNI:DONE, onni commits your changes, rebases onto the remote,${checkLine} and pushes to ${target} itself.`
+      : `When you end a turn with ONNI:DONE, the user reviews your changes and may ask for corrections; when they approve, onni commits, rebases onto the remote,${checkLine} and pushes to ${target} itself.`,
+    'Pushing to the base branch is therefore authorized for this project, but leave it to onni: do not commit, create branches, open pull requests, or push yourself.',
+    'If landing fails, onni sends you the error (a rebase conflict or a failing check): fix it and end with ONNI:DONE again.',
   ].join('\n');
 }
 

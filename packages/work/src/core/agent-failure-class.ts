@@ -1,6 +1,6 @@
 /**
  * Why an agent CLI's terminal error happened, when the reason is not a bug in the agent or in
- * cezar: the provider was briefly unavailable (`transient`), or the account / conversation is in
+ * onni: the provider was briefly unavailable (`transient`), or the account / conversation is in
  * a state only the user can change. The run engine retries the first and explains the rest; the
  * telemetry reporter keeps both out of the AgentError groups (fingerprints in the fixtures).
  *
@@ -19,7 +19,7 @@ export type AgentFailureClass = 'transient' | 'auth' | 'billing' | 'usage_limit'
 const RUN_ERROR_PREFIX_RE = /^(?:continue failed: |step "[^"]*" failed: )/;
 
 /** Claude Code losing the OAuth refresh race to another of its processes on the same login (204c5e03)
- *  — cezar's own parallelism causes it, and the CLI itself says to retry in a minute. */
+ *  — onni's own parallelism causes it, and the CLI itself says to retry in a minute. */
 const OAUTH_REFRESH_RACE_RE = /\banother claude code process is refreshing\b/i;
 
 const BILLING_RES = [

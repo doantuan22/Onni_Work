@@ -19,7 +19,7 @@ const MIB = 1024 ** 2;
 
 describe('probeDiskSpace (9cdcedc3)', () => {
   it('answers for a path that does not exist yet, from its nearest existing ancestor', () => {
-    const space = probeDiskSpace(join(tmpdir(), 'cez-disk-probe-never-created', 'worktrees'));
+    const space = probeDiskSpace(join(tmpdir(), 'onni-disk-probe-never-created', 'worktrees'));
     expect(space).toBeDefined();
     expect(space!.totalBytes).toBeGreaterThan(0);
     expect(space!.freeBytes).toBeGreaterThanOrEqual(0);

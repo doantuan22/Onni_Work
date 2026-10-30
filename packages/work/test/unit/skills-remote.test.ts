@@ -107,10 +107,10 @@ test('ensureBareClone throws on an unsafe remote instead of shelling out', async
 // ---- integration: local clone still works, SHA pins, bad ref degrades --------
 
 test('listRemoteSkills clones a local repo, pins the SHA, and refuses a bad ref', async (t) => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
-  const srcDir = mkdtempSync(join(tmpdir(), 'cez-src-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
+  const srcDir = mkdtempSync(join(tmpdir(), 'onni-src-'));
   const prevHome = process.env.HOME;
-  process.env.HOME = home; // redirect the ~/.cache/cez skills cache into temp
+  process.env.HOME = home; // redirect the ~/.cache/onni skills cache into temp
   t.after(() => {
     if (prevHome === undefined) delete process.env.HOME;
     else process.env.HOME = prevHome;
@@ -156,9 +156,9 @@ test('listRemoteSkills clones a local repo, pins the SHA, and refuses a bad ref'
 // ---- per-project team-skills cache isolation (multi-project workspace, 2.6) --
 
 test('team-skills cache is keyed by repoRoot — projects never see each other\'s skills', async (t) => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevHome = process.env.HOME;
-  process.env.HOME = home; // redirect the ~/.cache/cez skills cache into temp
+  process.env.HOME = home; // redirect the ~/.cache/onni skills cache into temp
   const dirs: string[] = [home];
   t.after(() => {
     if (prevHome === undefined) delete process.env.HOME;
@@ -168,7 +168,7 @@ test('team-skills cache is keyed by repoRoot — projects never see each other\'
 
   /** One local skills repo carrying a single directory skill named `name`. */
   const makeSkillsRepo = (name: string): string => {
-    const src = mkdtempSync(join(tmpdir(), `cez-src-${name}-`));
+    const src = mkdtempSync(join(tmpdir(), `onni-src-${name}-`));
     dirs.push(src);
     const g = (args: string[]) => execFileSync('git', args, { cwd: src, encoding: 'utf8' });
     g(['-c', 'init.defaultBranch=main', 'init']);
@@ -181,13 +181,13 @@ test('team-skills cache is keyed by repoRoot — projects never see each other\'
     return src;
   };
 
-  /** One project root whose `.ai/cezar/config.json` points at its own skills repo. */
+  /** One project root whose `.ai/onni/config.json` points at its own skills repo. */
   const makeProjectRoot = (skillsRepo: string): string => {
-    const root = mkdtempSync(join(tmpdir(), 'cez-root-'));
+    const root = mkdtempSync(join(tmpdir(), 'onni-root-'));
     dirs.push(root);
-    mkdirSync(join(root, '.ai/cezar'), { recursive: true });
+    mkdirSync(join(root, '.ai/onni'), { recursive: true });
     writeFileSync(
-      join(root, '.ai/cezar', 'config.json'),
+      join(root, '.ai/onni', 'config.json'),
       JSON.stringify({ skillsRepos: [{ repo: skillsRepo, ref: 'main' }] }),
     );
     return root;
@@ -210,11 +210,11 @@ test('team-skills cache is keyed by repoRoot — projects never see each other\'
 // ---- organisation skills repos from the workspace config (Global settings) ----
 
 test('workspace org skills repos join every project\'s team skills; invalidation re-reads them', async (t) => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevHome = process.env.HOME;
   const prevCez = process.env.CEZ_HOME;
   process.env.HOME = home;
-  process.env.CEZ_HOME = join(home, '.cezar');
+  process.env.CEZ_HOME = join(home, '.onni');
   const dirs: string[] = [home];
   t.after(() => {
     if (prevHome === undefined) delete process.env.HOME;
@@ -224,7 +224,7 @@ test('workspace org skills repos join every project\'s team skills; invalidation
     for (const d of dirs) rmSync(d, { recursive: true, force: true });
   });
 
-  const src = mkdtempSync(join(tmpdir(), 'cez-src-org-'));
+  const src = mkdtempSync(join(tmpdir(), 'onni-src-org-'));
   dirs.push(src);
   const g = (args: string[]) => execFileSync('git', args, { cwd: src, encoding: 'utf8' });
   g(['-c', 'init.defaultBranch=main', 'init']);
@@ -235,10 +235,10 @@ test('workspace org skills repos join every project\'s team skills; invalidation
   g(['add', '-A']);
   g(['commit', '-m', 'init']);
 
-  const root = mkdtempSync(join(tmpdir(), 'cez-root-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-root-'));
   dirs.push(root);
-  mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-  writeFileSync(join(root, '.ai/cezar', 'config.json'), JSON.stringify({ skillsRepos: [] }));
+  mkdirSync(join(root, '.ai/onni'), { recursive: true });
+  writeFileSync(join(root, '.ai/onni', 'config.json'), JSON.stringify({ skillsRepos: [] }));
 
   assert.deepEqual((await refreshTeamSkills(root)).map((s) => s.name), []);
 
@@ -257,8 +257,8 @@ test('workspace org skills repos join every project\'s team skills; invalidation
     config.orgSkillsRepos = [{ repo: src, ref: 'main' }];
   });
 
-  // An entry written by a newer cezar keeps its unknown keys through an unrelated merge-write.
-  const file = join(home, '.cezar', 'config.json');
+  // An entry written by a newer onni keeps its unknown keys through an unrelated merge-write.
+  const file = join(home, '.onni', 'config.json');
   const raw = JSON.parse(readFileSync(file, 'utf8'));
   raw.orgSkillsRepos[0].future = 'kept';
   writeFileSync(file, JSON.stringify(raw));
@@ -279,10 +279,10 @@ test('workspace org skills repos join every project\'s team skills; invalidation
 });
 
 test('skillsDirOnly: only files under a skills/ folder are skills, at any depth', async (t) => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevHome = process.env.HOME;
   process.env.HOME = home;
-  const src = mkdtempSync(join(tmpdir(), 'cez-src-depth-'));
+  const src = mkdtempSync(join(tmpdir(), 'onni-src-depth-'));
   t.after(() => {
     if (prevHome === undefined) delete process.env.HOME;
     else process.env.HOME = prevHome;
@@ -318,10 +318,10 @@ test('skillsDirOnly: only files under a skills/ folder are skills, at any depth'
 });
 
 test('no team-skill source ships by default, so nothing is ever gated', async (t) => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevCez = process.env.CEZ_HOME;
-  process.env.CEZ_HOME = join(home, '.cezar');
-  const root = mkdtempSync(join(tmpdir(), 'cez-root-'));
+  process.env.CEZ_HOME = join(home, '.onni');
+  const root = mkdtempSync(join(tmpdir(), 'onni-root-'));
   t.after(() => {
     if (prevCez === undefined) delete process.env.CEZ_HOME;
     else process.env.CEZ_HOME = prevCez;
@@ -336,18 +336,18 @@ test('no team-skill source ships by default, so nothing is ever gated', async (t
 });
 
 test('a project listing its own skillsRepos loads them ungated, and an invalid value degrades to the default', async (t) => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevCez = process.env.CEZ_HOME;
-  process.env.CEZ_HOME = join(home, '.cezar');
-  const root = mkdtempSync(join(tmpdir(), 'cez-root-'));
+  process.env.CEZ_HOME = join(home, '.onni');
+  const root = mkdtempSync(join(tmpdir(), 'onni-root-'));
   t.after(() => {
     if (prevCez === undefined) delete process.env.CEZ_HOME;
     else process.env.CEZ_HOME = prevCez;
     rmSync(home, { recursive: true, force: true });
     rmSync(root, { recursive: true, force: true });
   });
-  mkdirSync(join(root, '.ai/cezar'), { recursive: true });
-  const cfg = join(root, '.ai/cezar', 'config.json');
+  mkdirSync(join(root, '.ai/onni'), { recursive: true });
+  const cfg = join(root, '.ai/onni', 'config.json');
   writeFileSync(cfg, JSON.stringify({ skillsRepos: [{ repo: 'acme/skills' }] }));
   assert.equal((await projectGatedSkillsRepos(root)).size, 0);
   writeFileSync(cfg, JSON.stringify({ skillsRepos: 'nonsense' }));
@@ -355,11 +355,11 @@ test('a project listing its own skillsRepos loads them ungated, and an invalid v
 });
 
 test('a project listing one repo at two refs keeps both; org repos only drop duplicates by identity', async (t) => {
-  const home = mkdtempSync(join(tmpdir(), 'cez-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'onni-home-'));
   const prevHome = process.env.HOME;
   const prevCez = process.env.CEZ_HOME;
   process.env.HOME = home;
-  process.env.CEZ_HOME = join(home, '.cezar');
+  process.env.CEZ_HOME = join(home, '.onni');
   const dirs: string[] = [home];
   t.after(() => {
     if (prevHome === undefined) delete process.env.HOME;
@@ -368,7 +368,7 @@ test('a project listing one repo at two refs keeps both; org repos only drop dup
     else process.env.CEZ_HOME = prevCez;
     for (const d of dirs) rmSync(d, { recursive: true, force: true });
   });
-  const src = mkdtempSync(join(tmpdir(), 'cez-src-refs-'));
+  const src = mkdtempSync(join(tmpdir(), 'onni-src-refs-'));
   dirs.push(src);
   const g = (args: string[]) => execFileSync('git', args, { cwd: src, encoding: 'utf8' });
   g(['-c', 'init.defaultBranch=main', 'init']);
@@ -385,11 +385,11 @@ test('a project listing one repo at two refs keeps both; org repos only drop dup
   g(['add', '-A']);
   g(['commit', '-m', 'next']);
 
-  const root = mkdtempSync(join(tmpdir(), 'cez-root-'));
+  const root = mkdtempSync(join(tmpdir(), 'onni-root-'));
   dirs.push(root);
-  mkdirSync(join(root, '.ai/cezar'), { recursive: true });
+  mkdirSync(join(root, '.ai/onni'), { recursive: true });
   writeFileSync(
-    join(root, '.ai/cezar', 'config.json'),
+    join(root, '.ai/onni', 'config.json'),
     JSON.stringify({ skillsRepos: [{ repo: src, ref: 'main' }, { repo: src, ref: 'next' }] }),
   );
   const names = (await refreshTeamSkills(root)).map((s) => s.name).sort();

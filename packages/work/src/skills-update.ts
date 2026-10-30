@@ -200,7 +200,7 @@ export class SkillsUpdateService {
       const state = { ...this.makeState(scopes), status: 'current' as const, checkedAt };
       this.states.set(repoRoot, state); return state;
     }
-    const lockPath = join(this.home, '.cache', 'cez', 'skills-update.lock');
+    const lockPath = join(this.home, '.cache', 'onni', 'skills-update.lock');
     let release: (() => Promise<void>) | undefined;
     try {
       release = await this.acquireLock(lockPath, rejectIfBusy);
@@ -250,7 +250,7 @@ export class SkillsUpdateService {
     if (!current?.checkedAt) current = await this.performCheck(repoRoot, false, rejectIfBusy);
     if (!current.available) return current;
 
-    const lockPath = join(this.home, '.cache', 'cez', 'skills-update.lock');
+    const lockPath = join(this.home, '.cache', 'onni', 'skills-update.lock');
     let release: (() => Promise<void>) | undefined;
     const completed = new Set<SkillsUpdateScope>();
     const outcomes: SkillsUpdateScopeState[] = [];

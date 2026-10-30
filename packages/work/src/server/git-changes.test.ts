@@ -52,8 +52,8 @@ function gAt(dir: string, iso: string, ...args: string[]): string {
 /** Fresh repo with identity configured and one initial commit on `main`. */
 function initRepo(dir: string): void {
   g(dir, 'init', '-b', 'main');
-  g(dir, 'config', 'user.email', 'test@cezar.local');
-  g(dir, 'config', 'user.name', 'cezar-test');
+  g(dir, 'config', 'user.email', 'test@onni.local');
+  g(dir, 'config', 'user.name', 'onni-test');
   g(dir, 'config', 'commit.gpgsign', 'false');
 }
 
@@ -61,7 +61,7 @@ describe('collectChanges — structured diff vs base', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-changes-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-changes-'));
     initRepo(dir);
   });
 
@@ -151,13 +151,13 @@ describe('collectChanges — structured diff vs base', () => {
     writeFileSync(join(dir, 'reviewed.txt'), 'resolved locally by this review task\n');
     g(dir, 'add', 'reviewed.txt');
 
-    const result = await collectChanges(dir, 'main', { taskBranch: 'cez/task1234' });
+    const result = await collectChanges(dir, 'main', { taskBranch: 'onni/task1234' });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.changes.files.map((file) => file.path)).toEqual(['reviewed.txt']);
     expect(result.changes.repointedHead).toEqual({
       headBranch: 'review/pr-42',
-      taskBranch: 'cez/task1234',
+      taskBranch: 'onni/task1234',
     });
   });
 
@@ -181,7 +181,7 @@ describe('collectChanges — structured diff vs base', () => {
     writeFileSync(join(dir, 'wip.txt'), 'uncommitted, also the run\'s\n');
 
     const result = await collectChanges(dir, 'main', {
-      taskBranch: 'cez/task1234',
+      taskBranch: 'onni/task1234',
       runStartedAt: '2026-06-01T00:00:00Z',
     });
     expect(result.ok).toBe(true);
@@ -189,7 +189,7 @@ describe('collectChanges — structured diff vs base', () => {
     expect(result.changes.files.map((file) => file.path).sort()).toEqual(['mine.txt', 'wip.txt']);
     expect(result.changes.repointedHead).toEqual({
       headBranch: 'review/pr-42',
-      taskBranch: 'cez/task1234',
+      taskBranch: 'onni/task1234',
     });
   });
 
@@ -197,12 +197,12 @@ describe('collectChanges — structured diff vs base', () => {
     writeFileSync(join(dir, 'base.txt'), 'base\n');
     g(dir, 'add', '-A');
     g(dir, 'commit', '-m', 'base');
-    g(dir, 'checkout', '-b', 'cez/task1234');
+    g(dir, 'checkout', '-b', 'onni/task1234');
     writeFileSync(join(dir, 'task.txt'), 'task change\n');
     g(dir, 'add', '-A');
     g(dir, 'commit', '-m', 'task change');
 
-    const result = await collectChanges(dir, 'main', { taskBranch: 'cez/task1234' });
+    const result = await collectChanges(dir, 'main', { taskBranch: 'onni/task1234' });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.changes.files.map((file) => file.path)).toEqual(['task.txt']);
@@ -222,15 +222,15 @@ describe('collectChanges — structured diff vs base', () => {
     expect(result.changes.files[0]?.patch).toContain('… (patch truncated)');
   });
 
-  it("excludeCezarData leaves cezar's own .ai/cezar files out of an in-place task's Changes", async () => {
+  it("excludeOnniData leaves onni's own .ai/onni files out of an in-place task's Changes", async () => {
     writeFileSync(join(dir, 'tracked.txt'), 'a\n');
     g(dir, 'add', '-A');
     g(dir, 'commit', '-m', 'base');
-    mkdirSync(join(dir, '.ai/cezar'), { recursive: true });
-    for (const name of ['.gitignore', 'config.json', 'ui-state.json']) writeFileSync(join(dir, '.ai/cezar', name), '{}\n');
+    mkdirSync(join(dir, '.ai/onni'), { recursive: true });
+    for (const name of ['.gitignore', 'config.json', 'ui-state.json']) writeFileSync(join(dir, '.ai/onni', name), '{}\n');
     writeFileSync(join(dir, 'summary.md'), 'notes\n');
 
-    const scoped = await collectChanges(dir, 'main', { intentToAdd: false, excludeCezarData: true });
+    const scoped = await collectChanges(dir, 'main', { intentToAdd: false, excludeOnniData: true });
     expect(scoped.ok && scoped.changes.files.map((f) => f.path)).toEqual(['summary.md']);
     // The repo-wide view still shows everything.
     const all = await collectChanges(dir, 'main', { intentToAdd: false });
@@ -283,7 +283,7 @@ describe('collectChanges — structured diff vs base', () => {
 
     const result = await collectChanges(dir, 'main', {
       intentToAdd: false,
-      taskBranch: 'cez/task1234',
+      taskBranch: 'onni/task1234',
       runStartedAt: '2026-06-01T00:00:00Z',
     });
     expect(result.ok).toBe(true);
@@ -368,7 +368,7 @@ describe('patchByPath — maps a diff section to the file it describes', () => {
 describe('collectRunCommits — the run branch commits since base', () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-runcommits-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-runcommits-'));
     initRepo(dir);
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -393,7 +393,7 @@ describe('collectRunCommits — the run branch commits since base', () => {
       'first task commit',
     ]);
     // The base commit is excluded, and every commit carries a full sha + author.
-    expect(result.commits.every((c) => /^[0-9a-f]{40}$/.test(c.sha) && c.author === 'cezar-test')).toBe(true);
+    expect(result.commits.every((c) => /^[0-9a-f]{40}$/.test(c.sha) && c.author === 'onni-test')).toBe(true);
   });
 
   it('is empty (not an error) when the branch has no commits past base', async () => {
@@ -410,7 +410,7 @@ describe('readWorktreePath — Files tab browsing', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-files-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-files-'));
     mkdirSync(join(dir, '.git')); // stand-in for repo internals
     mkdirSync(join(dir, 'sub'));
     writeFileSync(join(dir, 'a.txt'), 'alpha\n');
@@ -463,7 +463,7 @@ describe('readWorktreePath — Files tab browsing', () => {
 
   it('rejects reads THROUGH an intermediate symlinked directory (#blocker-symlink-traversal)', async () => {
     // A secret file outside the worktree, reached via a symlinked directory inside it.
-    const outside = mkdtempSync(join(tmpdir(), 'cez-secret-'));
+    const outside = mkdtempSync(join(tmpdir(), 'onni-secret-'));
     writeFileSync(join(outside, 'credentials.txt'), 'SECRET\n');
     symlinkSync(outside, join(dir, 'linkdir'));
 
@@ -499,7 +499,7 @@ describe('readImageAtRev — an image as committed at a sha', () => {
   let sha: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-image-rev-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-image-rev-'));
     initRepo(dir);
     writeFileSync(join(dir, 'a.png'), Buffer.from([137, 80, 78, 71, 0, 1]));
     writeFileSync(join(dir, 'big.png'), Buffer.alloc(FILE_CONTENT_CAP + 1));
@@ -567,14 +567,14 @@ describe('session git API routes', () => {
   let repoBaseSha: string;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-gitapi-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-gitapi-'));
     initRepo(repoRoot);
     writeFileSync(join(repoRoot, '.gitignore'), '.ai/\nwt/\n');
     writeFileSync(join(repoRoot, 'root-base.txt'), 'base\n');
     g(repoRoot, 'add', '-A');
     g(repoRoot, 'commit', '-m', 'root base');
     repoBaseSha = g(repoRoot, 'rev-parse', 'HEAD').trim();
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,
@@ -646,14 +646,14 @@ describe('session git API routes', () => {
   });
 
   it('GET /git/status answers for an in-place write task from the checkout, never for a read-only one', async () => {
-    mkdirSync(join(repoRoot, '.ai/cezar'), { recursive: true });
-    writeFileSync(join(repoRoot, '.ai/cezar/config.json'), '{}\n');
+    mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+    writeFileSync(join(repoRoot, '.ai/onni/config.json'), '{}\n');
     writeFileSync(join(repoRoot, 'summary.md'), 'notes\n');
     const inPlace = store.createRun({ title: 'in place', workflow: 'quick-task', task: 'x', steps: [] });
     store.updateRun(inPlace.id, { worktree: false });
     const res = await apiRequest(app, `/api/v1/runs/${inPlace.id}/git/status`);
     expect(res.status).toBe(200);
-    // cezar's own files are not the task's work; no upstream means null counts.
+    // onni's own files are not the task's work; no upstream means null counts.
     expect(await res.json()).toMatchObject({ uncommitted: 1, unpushed: null, behind: null });
 
     const asked = store.createRun({ title: 'ask', workflow: 'quick-task', task: 'x', steps: [] });
@@ -756,7 +756,7 @@ describe('session git API routes', () => {
     const removed = store.createRun({ title: 'removed', workflow: 'quick-task', task: 'removed', steps: [] });
     store.updateRun(removed.id, {
       worktreePath: join(repoRoot, 'removed-worktree'),
-      branch: 'cez/removed',
+      branch: 'onni/removed',
       baseBranch: repoBaseSha,
     });
     store.updateRun(removed.id, { worktreePath: undefined, branch: undefined });
@@ -998,7 +998,7 @@ describe('session git API routes', () => {
       // No remote, no target: nothing to look up.
       expect(await (await adopt()).json()).toEqual({ found: false });
 
-      g(worktree, 'remote', 'add', 'origin', 'git@github.com:open-mercato/cezar.git');
+      g(worktree, 'remote', 'add', 'origin', 'git@github.com:open-mercato/onni.git');
       store.updateRun(run.id, { status: 'waiting' });
       const url = 'https://github.com/open-mercato/demo/pull/777';
       expect(await (await adopt()).json()).toEqual({ found: true, url });
@@ -1018,7 +1018,7 @@ describe('session git API routes', () => {
   });
 
   it('POST git/push sets upstream on first push to a real remote', async () => {
-    const remote = mkdtempSync(join(tmpdir(), 'cez-remote-'));
+    const remote = mkdtempSync(join(tmpdir(), 'onni-remote-'));
     try {
       execFileSync('git', ['init', '--bare', remote], { encoding: 'utf8' });
       g(worktree, 'remote', 'add', 'origin', remote);
@@ -1043,15 +1043,15 @@ describe('repo git API routes (R5 Step 1.3 — main working tree)', () => {
   let store: RunStore;
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'cez-repoapi-'));
+    repoRoot = mkdtempSync(join(tmpdir(), 'onni-repoapi-'));
     initRepo(repoRoot);
-    // The RunStore lives inside the repo (.ai/cezar) — ignore it so it never
+    // The RunStore lives inside the repo (.ai/onni) — ignore it so it never
     // shows up in /api/v1/repo/changes.
     writeFileSync(join(repoRoot, '.gitignore'), '.ai/\n');
     writeFileSync(join(repoRoot, 'base.txt'), 'base\n');
     g(repoRoot, 'add', '-A');
     g(repoRoot, 'commit', '-m', 'base');
-    store = RunStore.open(join(repoRoot, '.ai/cezar'));
+    store = RunStore.open(join(repoRoot, '.ai/onni'));
     app = createApp({
       repoRoot,
       store,
@@ -1209,7 +1209,7 @@ describe('repo git API routes (R5 Step 1.3 — main working tree)', () => {
     };
     expect(body.sha).toBe(sha);
     expect(body.subject).toBe('second: edit + add');
-    expect(body.author).toBe('cezar-test');
+    expect(body.author).toBe('onni-test');
     expect(body.when.length).toBeGreaterThan(0);
     const byPath = new Map(body.files.map((f) => [f.path, f]));
     expect(byPath.get('base.txt')).toMatchObject({ status: 'modified', adds: 1, dels: 1 });
@@ -1317,7 +1317,7 @@ describe('createOrSwitchBranch — dash-guard on both operands (#431)', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-dashguard-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-dashguard-'));
     initRepo(dir);
     writeFileSync(join(dir, 'a.txt'), 'a\n');
     g(dir, 'add', '-A');
@@ -1352,7 +1352,7 @@ describe('createOrSwitchBranch — a branch another worktree holds (telemetry da
   let other: string;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'cez-held-'));
+    dir = mkdtempSync(join(tmpdir(), 'onni-held-'));
     other = `${dir}-wt`;
     initRepo(dir);
     writeFileSync(join(dir, 'a.txt'), 'a\n');
@@ -1386,7 +1386,7 @@ describe('createOrSwitchBranch — a branch another worktree holds (telemetry da
 
 describe('commitAll / pushCurrentBranch — direct degradation paths', () => {
   it('commitAll on a non-repo dir fails with a reason, never throws', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-norepo-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-norepo-'));
     try {
       const res = await commitAll(dir, 'msg');
       expect(res.ok).toBe(false);
@@ -1397,7 +1397,7 @@ describe('commitAll / pushCurrentBranch — direct degradation paths', () => {
   });
 
   it('pushCurrentBranch reports detached HEAD as a reason', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-detached-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-detached-'));
     try {
       initRepo(dir);
       writeFileSync(join(dir, 'a.txt'), 'a\n');
@@ -1415,7 +1415,7 @@ describe('commitAll / pushCurrentBranch — direct degradation paths', () => {
 
 describe('worktreeGitStatus — what has not left the worktree', () => {
   it('counts uncommitted files (untracked and renamed included) and reports no upstream as null', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-gitstatus-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-gitstatus-'));
     try {
       initRepo(dir);
       writeFileSync(join(dir, 'a.txt'), 'a\n');
@@ -1435,8 +1435,8 @@ describe('worktreeGitStatus — what has not left the worktree', () => {
   });
 
   it('counts commits the upstream has not seen', async () => {
-    const remote = mkdtempSync(join(tmpdir(), 'cez-gitstatus-remote-'));
-    const dir = mkdtempSync(join(tmpdir(), 'cez-gitstatus-local-'));
+    const remote = mkdtempSync(join(tmpdir(), 'onni-gitstatus-remote-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-gitstatus-local-'));
     try {
       g(remote, 'init', '--bare', '-q');
       initRepo(dir);
@@ -1457,8 +1457,8 @@ describe('worktreeGitStatus — what has not left the worktree', () => {
   });
 
   it('behind: counts base commits the branch lacks, preferring origin/<base>; null for a sha or a missing base', async () => {
-    const remote = mkdtempSync(join(tmpdir(), 'cez-gitstatus-behind-remote-'));
-    const dir = mkdtempSync(join(tmpdir(), 'cez-gitstatus-behind-'));
+    const remote = mkdtempSync(join(tmpdir(), 'onni-gitstatus-behind-remote-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-gitstatus-behind-'));
     try {
       g(remote, 'init', '--bare', '-q');
       initRepo(dir);
@@ -1500,9 +1500,9 @@ describe('worktreeGitStatus — what has not left the worktree', () => {
   });
 
   it('behind: measures a fork clone against the PR-target remote, not the fork origin (#1383)', async () => {
-    const fork = mkdtempSync(join(tmpdir(), 'cez-gitstatus-fork-'));
-    const canonical = mkdtempSync(join(tmpdir(), 'cez-gitstatus-canonical-'));
-    const dir = mkdtempSync(join(tmpdir(), 'cez-gitstatus-forkclone-'));
+    const fork = mkdtempSync(join(tmpdir(), 'onni-gitstatus-fork-'));
+    const canonical = mkdtempSync(join(tmpdir(), 'onni-gitstatus-canonical-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-gitstatus-forkclone-'));
     try {
       g(fork, 'init', '--bare', '-q');
       g(canonical, 'init', '--bare', '-q');
@@ -1537,7 +1537,7 @@ describe('worktreeGitStatus — what has not left the worktree', () => {
   });
 
   it('a non-repo dir fails with a reason, never throws', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cez-gitstatus-norepo-'));
+    const dir = mkdtempSync(join(tmpdir(), 'onni-gitstatus-norepo-'));
     try {
       const res = await worktreeGitStatus(dir);
       expect(res.ok).toBe(false);
