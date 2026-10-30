@@ -1,13 +1,13 @@
-//! cezar desktop: a native window around a locally built cezar.
+//! Onni Work desktop: a native window around a locally built onni.
 //!
 //! The shell is deliberately thin. It resolves the entry file of the engine it will run — a
-//! checkout named by `ONNI_DESKTOP_ENTRY`, else the active link (`~/.cezar/versions/current` that
-//! `cezar link --use` set) — runs it as a sidecar through the user's login shell (so the
-//! `node`, `claude`, `gh` on their PATH are the ones cezar sees — a GUI app inherits none of
+//! checkout named by `ONNI_DESKTOP_ENTRY`, else the active link (`~/.onni/versions/current` that
+//! `onni link --use` set) — runs it as a sidecar through the user's login shell (so the
+//! `node`, `claude`, `gh` on their PATH are the ones onni sees — a GUI app inherits none of
 //! that), waits for `/api/v1/health`, and points the webview at the cockpit.
 //!
 //! Onni Work ships no signed update channel, so the shell never downloads, installs or replaces
-//! cezar; updating the engine is a rebuild plus `cezar link --use` in the checkout. What the
+//! onni; updating the engine is a rebuild plus `onni link --use` in the checkout. What the
 //! shell does on its own is the SUPERVISOR's job: launch whatever `current` points at, relaunch
 //! it when the Versions menu switches the link, and say plainly when no built engine is there.
 //!
@@ -60,14 +60,14 @@ struct Shell {
     running_version: Mutex<Option<String>>,
     /// True while a supervisor thread is alive.
     supervising: AtomicBool,
-    /// Set once the failure page's "Restart cezar" is under way; a second click does nothing.
+    /// Set once the failure page's "Restart Onni Work" is under way; a second click does nothing.
     restarting: AtomicBool,
     /// The last page of ours the window finished loading — where it returns after a foreign page.
     cockpit_url: Mutex<Option<url::Url>>,
 }
 
 /// Runs at document start on EVERY page the window loads — the splash and, after navigation,
-/// the cockpit. The cockpit reads `data-cez-desktop` to paint the title band the traffic lights
+/// the cockpit. The cockpit reads `data-onni-desktop` to paint the title band the traffic lights
 /// sit in (see `packages/web/src/components/app-shell.tsx`); a browser tab on the same server
 /// never sees it.
 const INIT_SCRIPT: &str = r#"
@@ -87,21 +87,21 @@ const INIT_SCRIPT: &str = r#"
     // traffic lights.
     var pendingVersion = null;
     function items() {
-      var strip = document.querySelector('[data-cez-legacy-titlebar]');
+      var strip = document.querySelector('[data-onni-legacy-titlebar]');
       if (!strip) return null;
-      var row = document.querySelector('[data-cez-titlebar-items]');
+      var row = document.querySelector('[data-onni-titlebar-items]');
       if (row) return row;
       row = document.createElement('div');
-      row.setAttribute('data-cez-titlebar-items', '');
+      row.setAttribute('data-onni-titlebar-items', '');
       row.style.cssText = 'position:fixed;top:5px;left:80px;height:18px;z-index:2147483001;display:flex;' +
         'align-items:center;gap:6px;color:inherit;' +
         'font:600 11px/1 -apple-system,BlinkMacSystemFont,Inter,system-ui,sans-serif;';
       var style = document.createElement('style');
       style.textContent =
-        '[data-cez-titlebar-items] button{appearance:none;height:18px;display:inline-flex;align-items:center;' +
+        '[data-onni-titlebar-items] button{appearance:none;height:18px;display:inline-flex;align-items:center;' +
         'gap:6px;padding:0 8px;border-radius:999px;color:inherit;font:inherit;cursor:pointer;-webkit-app-region:no-drag}' +
-        '[data-cez-version-chip]{border:1px solid color-mix(in srgb,currentColor 22%,transparent);background:transparent;opacity:.75}' +
-        '[data-cez-version-chip]:hover{opacity:1;background:color-mix(in srgb,currentColor 10%,transparent)}';
+        '[data-onni-version-chip]{border:1px solid color-mix(in srgb,currentColor 22%,transparent);background:transparent;opacity:.75}' +
+        '[data-onni-version-chip]:hover{opacity:1;background:color-mix(in srgb,currentColor 10%,transparent)}';
       document.head.appendChild(style);
       (document.querySelector('[data-slot="app-shell"]') || document.body).appendChild(row);
       return row;
@@ -112,12 +112,12 @@ const INIT_SCRIPT: &str = r#"
     function renderVersion(version) {
       var row = items();
       if (!row) { pendingVersion = version; return; }
-      var chip = row.querySelector('[data-cez-version-chip]');
+      var chip = row.querySelector('[data-onni-version-chip]');
       if (!chip) {
         chip = document.createElement('button');
         chip.type = 'button';
-        chip.setAttribute('data-cez-version-chip', '');
-        chip.title = 'Switch cezar version';
+        chip.setAttribute('data-onni-version-chip', '');
+        chip.title = 'Switch Onni Work version';
         chip.onclick = function () { invoke('show_versions_menu'); };
         row.insertBefore(chip, row.firstChild);
       }
@@ -149,7 +149,7 @@ const INIT_SCRIPT: &str = r#"
       // colour read once here would not.
       var strip = document.createElement('div');
       strip.setAttribute('data-tauri-drag-region', '');
-      strip.setAttribute('data-cez-legacy-titlebar', '');
+      strip.setAttribute('data-onni-legacy-titlebar', '');
       strip.style.cssText = 'position:fixed;top:0;left:0;right:0;height:28px;z-index:2147483000;' +
         '-webkit-user-select:none;user-select:none;';
       shell.appendChild(strip);
@@ -159,7 +159,7 @@ const INIT_SCRIPT: &str = r#"
         // which are `div`s under the same parent: inset too, the row grew to 28px and pushed
         // the version chip out of the band, onto the brand row.
         '[data-slot="app-shell"]>aside[data-slot="sidebar"],' +
-        '[data-slot="app-shell"]>div:not([data-cez-legacy-titlebar]):not([data-cez-titlebar-items]){padding-top:28px!important}' +
+        '[data-slot="app-shell"]>div:not([data-onni-legacy-titlebar]):not([data-onni-titlebar-items]){padding-top:28px!important}' +
         '[data-slot="sidebar-content"]>div:first-child{padding-top:6px!important}';
       document.head.appendChild(style);
       if (pendingVersion) { var v = pendingVersion; pendingVersion = null; renderVersion(v); }
@@ -174,11 +174,11 @@ const INIT_SCRIPT: &str = r#"
 /// to the parent's own origin, and only when that parent is a cockpit origin.
 const FRAME_SCRIPT: &str = r#"
   (function () {
-    if (window.parent === window || window.parent !== window.top || window.__cezarLocation) return;
+    if (window.parent === window || window.parent !== window.top || window.__onniLocation) return;
     var ancestors = location.ancestorOrigins;
     var parentOrigin = ancestors && ancestors.length > 0 ? ancestors[0] : null;
     if (!parentOrigin || !/^(https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?|tauri:\/\/localhost|https?:\/\/tauri\.localhost)$/.test(parentOrigin)) return;
-    window.__cezarLocation = true;
+    window.__onniLocation = true;
     var last = null;
     var length = history.length;
     function report(how) {
@@ -186,7 +186,7 @@ const FRAME_SCRIPT: &str = r#"
       if (url === last) return;
       last = url;
       length = history.length;
-      try { window.parent.postMessage({ source: 'cezar-preview', type: 'location', url: url, how: how }, parentOrigin); } catch (e) {}
+      try { window.parent.postMessage({ source: 'onni-preview', type: 'location', url: url, how: how }, parentOrigin); } catch (e) {}
     }
     function wrap(name, how) {
       var original = history[name];
@@ -220,7 +220,7 @@ fn build_main_window(app: &AppHandle, shell: &Arc<Shell>) -> tauri::Result<Webvi
     let shell_for_navigation = shell.clone();
     let shell_for_page_load = shell.clone();
     let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-        .title("Cezar")
+        .title("Onni Work")
         .inner_size(1360.0, 900.0)
         .min_inner_size(720.0, 480.0)
         .center()
@@ -304,7 +304,7 @@ fn build_menu(app: &AppHandle, shell: &Shell) -> tauri::Result<()> {
     refresh_versions_menu(app, shell);
     let app_menu = Submenu::with_items(
         app,
-        "Cezar",
+        "Onni Work",
         true,
         &[
             &PredefinedMenuItem::about(app, None, None)?,
@@ -350,11 +350,11 @@ fn build_menu(app: &AppHandle, shell: &Shell) -> tauri::Result<()> {
 /// The app's home when its window is closed: closing hides, only Quit (or Cmd/Ctrl+Q) exits.
 /// Without a tray that would be a window nobody can bring back.
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "tray-open", "Open Cezar", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "tray-open", "Open Onni Work", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "tray-quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &quit])?;
-    let mut builder = TrayIconBuilder::with_id("cezar")
-        .tooltip("Cezar")
+    let mut builder = TrayIconBuilder::with_id("onni")
+        .tooltip("Onni Work")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
@@ -389,10 +389,10 @@ struct InstalledVersion {
     active: bool,
 }
 
-/// Every complete install under `~/.cezar/versions` (a manifest AND an entry file), newest
+/// Every complete install under `~/.onni/versions` (a manifest AND an entry file), newest
 /// install first.
 fn installed_versions() -> Vec<InstalledVersion> {
-    let dir = cezar_home().join("versions");
+    let dir = onni_home().join("versions");
     let active = active_id(&dir);
     let mut rows: Vec<(String, InstalledVersion)> = Vec::new();
     if let Ok(entries) = std::fs::read_dir(&dir) {
@@ -401,11 +401,11 @@ fn installed_versions() -> Vec<InstalledVersion> {
             if id == "current" || id.starts_with('.') {
                 continue;
             }
-            let manifest = std::fs::read_to_string(entry.path().join(".cezar-install.json"))
+            let manifest = std::fs::read_to_string(entry.path().join(".onni-install.json"))
                 .ok()
                 .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok());
             let Some(manifest) = manifest else { continue };
-            if !entry.path().join("node_modules").join("@open-mercato").join("cezar").join("dist").join("index.js").is_file() {
+            if !entry.path().join("node_modules").join("@onni").join("work").join("dist").join("index.js").is_file() {
                 continue;
             }
             let version = manifest.get("version").and_then(|v| v.as_str()).unwrap_or(&id).to_string();
@@ -420,7 +420,7 @@ fn installed_versions() -> Vec<InstalledVersion> {
 }
 
 /// How the Versions submenu names an install: a local build says so, and a linked checkout
-/// (`cezar link`, a worktree run in place) reads as its branch — that is what a developer
+/// (`onni link`, a worktree run in place) reads as its branch — that is what a developer
 /// switching between task worktrees is looking for.
 fn version_label(version: &str, source: &str, branch: Option<&str>) -> String {
     match (source, branch) {
@@ -454,12 +454,12 @@ fn refresh_versions_menu(app: &AppHandle, shell: &Shell) {
     }
 }
 
-/// How long a stopping sidecar gets to run its own shutdown before it is killed. cezar's SIGTERM
+/// How long a stopping sidecar gets to run its own shutdown before it is killed. onni's SIGTERM
 /// handler flushes run state, bounded at 1.5 s.
 #[cfg(target_os = "macos")]
 const SIDECAR_STOP_GRACE: Duration = Duration::from_secs(2);
 
-/// Stop the sidecar the way Ctrl-C in a terminal would: SIGTERM first, so cezar's own shutdown
+/// Stop the sidecar the way Ctrl-C in a terminal would: SIGTERM first, so onni's own shutdown
 /// runs (`store.flush()`), then SIGKILL if it is still there after `SIDECAR_STOP_GRACE`. A bare
 /// `kill()` is SIGKILL — it skipped all of that. Only macOS links `libc` (Cargo.toml); elsewhere
 /// this keeps the hard kill.
@@ -482,8 +482,8 @@ fn stop_sidecar(child: &mut Child) {
 
 /// Point `current` at an installed id (atomic rename over the old link) and relaunch.
 fn switch_version(shell: &Shell, id: &str) -> bool {
-    let dir = cezar_home().join("versions");
-    if !dir.join(id).join("node_modules").join("@open-mercato").join("cezar").join("dist").join("index.js").is_file() {
+    let dir = onni_home().join("versions");
+    if !dir.join(id).join("node_modules").join("@onni").join("work").join("dist").join("index.js").is_file() {
         return false;
     }
     if activate(&dir, id).is_err() {
@@ -546,7 +546,7 @@ pub fn run() {
     let shell_for_run = shell.clone();
     let shell_for_events = shell.clone();
     // SIGTERM/SIGINT (a `kill`, a logout, a supervisor of our own) never reach Tauri's Exit
-    // event, and a cezar older than the parent watch would then outlive us — take the sidecar
+    // event, and an onni older than the parent watch would then outlive us — take the sidecar
     // down here, then leave.
     let shell_for_signal = shell.clone();
     let _ = ctrlc::set_handler(move || {
@@ -594,7 +594,7 @@ pub fn run() {
                 let shell = shell_for_menu.clone();
                 std::thread::spawn(move || {
                     if let Some(window) = app.get_webview_window("main") {
-                        splash_reset(&window, "Switching cezar…", &format!("Activating {target}."));
+                        splash_reset(&window, "Switching Onni Work…", &format!("Activating {target}."));
                     }
                     if !switch_version(&shell, &target) {
                         refresh_versions_menu(&app, &shell);
@@ -617,7 +617,7 @@ pub fn run() {
                     }
                     shell_for_events.geometry_dirty.store(true, Ordering::SeqCst);
                 }
-                // `cezar link` / `cezar use` in a terminal change what is installed behind the
+                // `onni link` / `onni use` in a terminal change what is installed behind the
                 // app's back; coming back to the window is the moment the list must be true.
                 WindowEvent::Focused(true) => {
                     let app = window.app_handle().clone();
@@ -639,7 +639,7 @@ pub fn run() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("failed to build the cezar desktop shell")
+        .expect("failed to build the onni desktop shell")
         .run(move |app, event| match event {
             #[cfg(target_os = "macos")]
             RunEvent::Reopen { .. } => {
@@ -699,13 +699,13 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         shell.port.store(port, Ordering::SeqCst);
         let project = pick_project();
         refresh_versions_menu(&app, &shell);
-        splash_reset(&window, "Starting cezar…", &entry.to_string_lossy());
+        splash_reset(&window, "Starting Onni Work…", &entry.to_string_lossy());
 
         let log: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
         let mut child = match spawn_sidecar(&entry, port, project.as_deref(), log.clone()) {
             Ok(child) => child,
             Err(error) => {
-                fail(&window, "cezar could not start", &error, "");
+                fail(&window, "Onni Work could not start", &error, "");
                 return;
             }
         };
@@ -741,7 +741,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
             });
         } else {
             let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
-            fail(&window, "cezar did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail);
+            fail(&window, "Onni Work did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail);
             let _ = child.kill();
             return;
         }
@@ -765,12 +765,12 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         let requested = shell.restart_requested.swap(false, Ordering::SeqCst);
         match status.and_then(|s| s.code()) {
             _ if requested => {
-                splash_reset(&window, "Restarting cezar…", "Switching to the newly installed version.");
+                splash_reset(&window, "Restarting Onni Work…", "Switching to the newly installed version.");
                 continue;
             }
             Some(code) => {
                 let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
-                fail(&window, "cezar stopped", &stopped_detail(code), &tail);
+                fail(&window, "Onni Work stopped", &stopped_detail(code), &tail);
                 return;
             }
             None => return,
@@ -822,7 +822,7 @@ fn node_version(mut command: Command) -> Result<String, String> {
     }
     let major = version.split('.').next().and_then(|m| m.parse::<u32>().ok()).unwrap_or(0);
     if major < 20 {
-        return Err(format!("Node.js {version} is installed, but cezar needs 20 or newer."));
+        return Err(format!("Node.js {version} is installed, but Onni Work needs 20 or newer."));
     }
     Ok(version)
 }
@@ -867,7 +867,7 @@ fn output_with_timeout(command: &mut Command, timeout: Duration) -> Option<(bool
     Some((status.success(), out))
 }
 
-/// The failure page's "Restart cezar": stop the sidecar, then start the whole app again from a
+/// The failure page's "Restart Onni Work": stop the sidecar, then start the whole app again from a
 /// fresh process.
 #[tauri::command]
 fn restart_app(app: AppHandle, window: WebviewWindow, shell: tauri::State<'_, Arc<Shell>>) {
@@ -876,7 +876,7 @@ fn restart_app(app: AppHandle, window: WebviewWindow, shell: tauri::State<'_, Ar
     }
     let shell = shell.inner().clone();
     std::thread::spawn(move || {
-        splash_reset(&window, "Restarting cezar…", "");
+        splash_reset(&window, "Restarting Onni Work…", "");
         if let Some(mut child) = shell.child.lock().unwrap().take() {
             stop_sidecar(&mut child);
             let _ = child.wait();
@@ -893,7 +893,7 @@ fn require_node(window: &WebviewWindow) -> bool {
         Err(reason) => {
             fail(
                 window,
-                "cezar could not start Node.js",
+                "Onni Work could not start Node.js",
                 &format!("{reason} Install Node.js 20 or newer from https://nodejs.org, then press Restart."),
                 "",
             );
@@ -909,7 +909,7 @@ fn require_node(window: &WebviewWindow) -> bool {
 fn engine_missing(window: &WebviewWindow) {
     fail(
         window,
-        "No cezar engine found",
+        "No Onni Work engine found",
         "In this repository run npm install once, then npm run build, and register the build with \
          node packages/work/dist/index.js link --use. Alternatively set ONNI_DESKTOP_ENTRY to \
          packages/work/dist/index.js and ONNI_DESKTOP_CWD to the repository. Then press Restart.",
@@ -924,17 +924,17 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
     let mut command = tool_command(&node_program(), &args.iter().map(String::as_str).collect::<Vec<_>>());
     command
         // Never the project itself: on macOS a project under Desktop/Documents/Downloads the app may
-        // not read fails getcwd, and cezar exited 1 before answering.
+        // not read fails getcwd, and onni exited 1 before answering.
         .current_dir(home_dir())
         .env("ONNI_DESKTOP", "1")
         .env("ONNI_SUPERVISED", "1")
-        // cezar polls this pid and exits when it is gone — a force-quit of the shell never
+        // onni polls this pid and exits when it is gone — a force-quit of the shell never
         // leaves a headless cockpit behind (the Exit handler only runs on a clean quit).
         .env("ONNI_SUPERVISOR_PID", std::process::id().to_string())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    // cezar starts agents through this binary so macOS privacy prompts name the agent, not the
+    // onni starts agents through this binary so macOS privacy prompts name the agent, not the
     // app (`disclaim.rs`). The cockpit server itself stays the app's own.
     if cfg!(target_os = "macos") {
         if let Ok(exe) = std::env::current_exe() {
@@ -1245,7 +1245,7 @@ fn shell_quote(value: &str) -> String {
 // serves macOS, Linux and Windows.
 
 fn entry_under(root: &Path) -> PathBuf {
-    root.join("node_modules").join("@open-mercato").join("cezar").join("dist").join("index.js")
+    root.join("node_modules").join("@onni").join("work").join("dist").join("index.js")
 }
 
 /// A version id becomes a directory name under `versions/`: a plain version and nothing else.
@@ -1258,7 +1258,7 @@ fn valid_version_id(id: &str) -> bool {
 }
 
 /// The id `current` points at: a link (a symlink, or a junction on Windows), else a text file
-/// holding the id — what cezar writes where it could create neither.
+/// holding the id — what onni writes where it could create neither.
 fn active_id(versions: &Path) -> Option<String> {
     let current = versions.join("current");
     std::fs::read_link(&current)
@@ -1510,14 +1510,14 @@ fn pick_port() -> u16 {
 
 // ---- window geometry -----------------------------------------------------------------------
 //
-// Position and size are remembered in LOGICAL points (`~/.cezar/desktop-window.json`), never
+// Position and size are remembered in LOGICAL points (`~/.onni/desktop-window.json`), never
 // physical pixels: macOS's global coordinate space is in points, so a logical rectangle means
 // the same thing on a Retina laptop panel and a 1x external display. (tauri-plugin-window-state
 // saves physical pixels and restores the position before the size, so a window carried to a
 // monitor with a different scale came back at the wrong size — the bug this replaces.)
 
 fn geometry_path() -> PathBuf {
-    cezar_home().join("desktop-window.json")
+    onni_home().join("desktop-window.json")
 }
 
 fn save_geometry(window: &WebviewWindow) {
@@ -1596,19 +1596,19 @@ fn home_dir() -> PathBuf {
     std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."))
 }
 
-fn cezar_home() -> PathBuf {
-    std::env::var_os("ONNI_HOME").filter(|value| !value.is_empty()).map(PathBuf::from).unwrap_or_else(|| home_dir().join(".cezar"))
+fn onni_home() -> PathBuf {
+    std::env::var_os("ONNI_HOME").filter(|value| !value.is_empty()).map(PathBuf::from).unwrap_or_else(|| home_dir().join(".onni"))
 }
 
 /// `ONNI_DESKTOP_ENTRY` (a checkout's `packages/work/dist/index.js` while developing), else the
-/// `current` entry `cezar link --use` registered under `~/.cezar/versions`.
+/// `current` entry `onni link --use` registered under `~/.onni/versions`.
 fn resolve_entry() -> Option<PathBuf> {
     if let Some(explicit) = std::env::var_os("ONNI_DESKTOP_ENTRY").map(PathBuf::from) {
         if explicit.is_file() {
             return Some(explicit);
         }
     }
-    managed_entry(&cezar_home().join("versions"))
+    managed_entry(&onni_home().join("versions"))
 }
 
 /// `serve` on `port`, booting into `project` through `--repo` (the sidecar's cwd is always home).
@@ -1622,7 +1622,7 @@ fn sidecar_args(entry: &Path, port: u16, project: Option<&Path>) -> Vec<String> 
 }
 
 /// The boot folder: `ONNI_DESKTOP_CWD`, else the most recently opened registered project, else
-/// none — cezar boots in the home directory, which it never registers as a project, and the
+/// none — onni boots in the home directory, which it never registers as a project, and the
 /// cockpit shows the registry.
 fn pick_project() -> Option<PathBuf> {
     if let Some(explicit) = std::env::var_os("ONNI_DESKTOP_CWD").map(PathBuf::from) {
@@ -1630,7 +1630,7 @@ fn pick_project() -> Option<PathBuf> {
             return Some(explicit);
         }
     }
-    let config = cezar_home().join("config.json");
+    let config = onni_home().join("config.json");
     let raw = std::fs::read_to_string(config).ok()?;
     let json = serde_json::from_str::<serde_json::Value>(&raw).ok()?;
     let mut best: Option<(String, PathBuf)> = None;
@@ -1683,7 +1683,7 @@ fn probe_ipc(window: &WebviewWindow) {
         let _ = window.unmaximize();
         std::thread::sleep(Duration::from_millis(500));
         // Legacy strip present? Signal it the same way (a maximize) — the only channel we have.
-        let _ = window.eval("document.querySelector('[data-cez-legacy-titlebar]') && window.__TAURI_INTERNALS__.invoke('plugin:window|internal_toggle_maximize')");
+        let _ = window.eval("document.querySelector('[data-onni-legacy-titlebar]') && window.__TAURI_INTERNALS__.invoke('plugin:window|internal_toggle_maximize')");
         std::thread::sleep(Duration::from_millis(1500));
         let legacy_strip = window.is_maximized().unwrap_or(false);
         let _ = window.unmaximize();
@@ -1692,7 +1692,7 @@ fn probe_ipc(window: &WebviewWindow) {
         let own_strip = own_strip_probe.is_ok() && window.is_maximized().unwrap_or(false);
         let _ = window.unmaximize();
         std::thread::sleep(Duration::from_secs(6));
-        let _ = window.eval("document.querySelector('[data-cez-update-pill]') && window.__TAURI_INTERNALS__.invoke('plugin:window|internal_toggle_maximize')");
+        let _ = window.eval("document.querySelector('[data-onni-update-pill]') && window.__TAURI_INTERNALS__.invoke('plugin:window|internal_toggle_maximize')");
         std::thread::sleep(Duration::from_millis(1500));
         let legacy_update = window.is_maximized().unwrap_or(false);
         let _ = window.unmaximize();
@@ -1724,7 +1724,7 @@ fn fail(window: &WebviewWindow, title: &str, detail: &str, log: &str) {
     }
 }
 
-/// cezar exits 0 only through its own graceful shutdown — a SIGINT or SIGTERM from outside the
+/// onni exits 0 only through its own graceful shutdown — a SIGINT or SIGTERM from outside the
 /// shell. That is a stop someone asked for, not a crash: the page still offers a restart.
 fn stopped_detail(code: i32) -> String {
     if code == 0 {
@@ -1758,7 +1758,7 @@ mod tests {
         url::Url::parse(raw).unwrap()
     }
 
-    /// The boot project rides `--repo`, never the cwd: a cwd the app may not read made cezar
+    /// The boot project rides `--repo`, never the cwd: a cwd the app may not read made onni
     /// exit 1 before answering.
     #[test]
     fn the_sidecar_boots_its_project_through_repo() {
@@ -1812,8 +1812,8 @@ mod tests {
     fn the_legacy_inset_spares_what_the_shell_adds() {
         let rule = INIT_SCRIPT.split("padding-top:28px!important").next().unwrap();
         let selector = rule.rsplit("style.textContent").next().unwrap();
-        assert!(selector.contains(":not([data-cez-legacy-titlebar])"), "{selector}");
-        assert!(selector.contains(":not([data-cez-titlebar-items])"), "{selector}");
+        assert!(selector.contains(":not([data-onni-legacy-titlebar])"), "{selector}");
+        assert!(selector.contains(":not([data-onni-titlebar-items])"), "{selector}");
     }
 
     #[test]
@@ -1831,7 +1831,7 @@ mod tests {
     fn the_splash_script_parses() {
         let html = include_str!("../../ui/index.html");
         let script = html.split("<script>").nth(1).and_then(|rest| rest.split("</script>").next()).expect("an inline script");
-        let file = std::env::temp_dir().join(format!("cezar-splash-{}.js", std::process::id()));
+        let file = std::env::temp_dir().join(format!("onni-splash-{}.js", std::process::id()));
         std::fs::write(&file, script).unwrap();
         let output = Command::new("node").arg("--check").arg(&file).output().expect("node on PATH");
         let _ = std::fs::remove_file(&file);
@@ -1890,7 +1890,7 @@ mod tests {
     struct Scratch(PathBuf);
     impl Scratch {
         fn new(name: &str) -> Self {
-            let dir = std::env::temp_dir().join(format!("cezar-desktop-test-{name}-{}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("onni-desktop-test-{name}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dir);
             std::fs::create_dir_all(&dir).unwrap();
             Scratch(dir)
@@ -1927,14 +1927,14 @@ mod tests {
         assert!(activate(&versions, "..").is_err());
     }
 
-    /// What `cezar link` leaves behind: a manifest, a built entry, and no `current` until the
+    /// What `onni link` leaves behind: a manifest, a built entry, and no `current` until the
     /// version is activated.
     fn fake_version(versions: &Path, id: &str) {
         let entry = entry_under(&versions.join(id));
         std::fs::create_dir_all(entry.parent().unwrap()).unwrap();
         std::fs::write(&entry, format!("// {id}
 ")).unwrap();
-        std::fs::write(versions.join(id).join(".cezar-install.json"), format!("{{\"version\":\"{id}\",\"source\":\"link\"}}
+        std::fs::write(versions.join(id).join(".onni-install.json"), format!("{{\"version\":\"{id}\",\"source\":\"link\"}}
 ")).unwrap();
     }
 
@@ -1980,7 +1980,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn known_install_folders_are_listed_newest_manager_install_first() {
-        let home = std::env::temp_dir().join(format!("cez-desktop-dirs-{}", std::process::id()));
+        let home = std::env::temp_dir().join(format!("onni-desktop-dirs-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&home);
         for dir in [
             ".nvm/versions/node/v18.20.0/bin",
@@ -2026,7 +2026,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn the_first_install_folder_with_node_20_wins() {
-        let root = std::env::temp_dir().join(format!("cez-desktop-find-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("onni-desktop-find-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         fake_node(&root.join("old"), "18.19.0");
         fake_node(&root.join("broken"), "");
@@ -2042,7 +2042,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn the_found_node_folder_goes_first_on_path() {
-        let root = std::env::temp_dir().join(format!("cez-desktop-prefix-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("onni-desktop-prefix-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         fake_node(&root.join("system"), "old");
         fake_node(&root.join("nvm"), "new");
@@ -2071,7 +2071,7 @@ mod tests {
     #[cfg(not(windows))]
     #[test]
     fn the_interactive_path_sees_what_only_an_rc_file_adds() {
-        let home = std::env::temp_dir().join(format!("cez-desktop-rc-{}", std::process::id()));
+        let home = std::env::temp_dir().join(format!("onni-desktop-rc-{}", std::process::id()));
         std::fs::create_dir_all(&home).unwrap();
         std::fs::write(home.join(".zshrc"), "echo noise; export PATH=\"/from/zshrc:$PATH\"\n").unwrap();
         let script = format!("ZDOTDIR={} exec /bin/zsh \"$@\"", shell_quote(&home.to_string_lossy()));
@@ -2090,7 +2090,7 @@ mod tests {
     #[test]
     fn a_hung_rc_file_degrades_instead_of_blocking() {
         use std::os::unix::fs::PermissionsExt;
-        let shim = std::env::temp_dir().join(format!("cez-desktop-hung-{}", std::process::id()));
+        let shim = std::env::temp_dir().join(format!("onni-desktop-hung-{}", std::process::id()));
         std::fs::write(&shim, "#!/bin/sh\nexec sleep 30\n").unwrap();
         std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755)).unwrap();
         let started = Instant::now();
@@ -2110,7 +2110,7 @@ mod tests {
         assert!(version.split('.').next().unwrap().parse::<u32>().unwrap() >= 20, "{version}");
     }
 
-    /// The sidecar's whole launch: node is started with the entry and the arguments cezar
+    /// The sidecar's whole launch: node is started with the entry and the arguments onni
     /// expects, the project as `--repo` (not the cwd), the right environment, and its health
     /// answers on the port.
     #[test]

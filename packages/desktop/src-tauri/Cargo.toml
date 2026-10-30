@@ -1,5 +1,5 @@
 [package]
-name = "cezar-desktop"
+name = "onni-desktop"
 version = "0.1.11"
 description = "Desktop shell for Onni Work"
 edition = "2021"
@@ -9,7 +9,7 @@ authors = ["DOANTUANIT"]
 repository = "https://github.com/doantuan22/Onni_Work"
 
 [lib]
-name = "cezar_desktop_lib"
+name = "onni_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

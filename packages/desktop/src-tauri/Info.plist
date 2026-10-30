@@ -5,8 +5,8 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Cezar uses the microphone when you dictate a message to an agent.</string>
+  <string>Onni Work uses the microphone when you dictate a message to an agent.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
-  <string>Cezar turns your dictation into text for the message box.</string>
+  <string>Onni Work turns your dictation into text for the message box.</string>
 </dict>
 </plist>

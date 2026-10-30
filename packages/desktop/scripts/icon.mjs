@@ -53,7 +53,7 @@ ${inner}
 const iconsDir = join(desktop, 'src-tauri', 'icons')
 writeFileSync(join(iconsDir, 'source.svg'), wrapper)
 
-const work = mkdtempSync(join(tmpdir(), 'cezar-icon-'))
+const work = mkdtempSync(join(tmpdir(), 'onni-icon-'))
 const png = join(work, 'icon-1024.png')
 const wrapperPath = join(work, 'source.svg')
 writeFileSync(wrapperPath, wrapper)

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Cezar",
+  "productName": "Onni Work",
   "version": "0.1.11",
-  "identifier": "com.openmercato.cezar",
+  "identifier": "com.onni.work",
   "build": {
     "frontendDist": "../ui"
   },

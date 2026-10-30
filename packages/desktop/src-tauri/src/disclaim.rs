@@ -1,16 +1,16 @@
-//! `<this exe> --cez-disclaim-exec <program> <args…>`: become `program`, disclaiming the app.
+//! `<this exe> --onni-disclaim-exec <program> <args…>`: become `program`, disclaiming the app.
 //!
 //! macOS privacy (TCC) prompts name the RESPONSIBLE process, and everything the app starts —
 //! the cockpit server, the agents it runs, the tools they call — inherits the app as that
-//! process. So an agent listing `~/Documents` asked in Cezar's name, and one Allow granted every
-//! agent. cezar (`ONNI_DISCLAIM_EXEC`, set by `spawn_sidecar`) starts agents through this
+//! process. So an agent listing `~/Documents` asked in Onni Work's name, and one Allow granted every
+//! agent. onni (`ONNI_DISCLAIM_EXEC`, set by `spawn_sidecar`) starts agents through this
 //! trampoline instead: `posix_spawn` with `POSIX_SPAWN_SETEXEC` replaces this process in place
-//! — same pid, same stdio, so cezar's process handle stays valid — and the disclaim attribute
+//! — same pid, same stdio, so onni's process handle stays valid — and the disclaim attribute
 //! makes the new image its own responsible process. The prompt then names the agent.
 //!
 //! It runs before Tauri initializes anything, and never returns on success.
 
-pub const FLAG: &str = "--cez-disclaim-exec";
+pub const FLAG: &str = "--onni-disclaim-exec";
 
 /// Exec the requested program when invoked as the trampoline; return otherwise.
 pub fn disclaim_exec_if_asked() {
