@@ -333,7 +333,7 @@ describe('reduceThread — legacy per-delta transcripts (codex/opencode runs rec
   const full = 'QA done — see github.com/open-mercato/onni/pull/628\n\nONNI:DONE'
   // Per-token persistence: the server stripped markers per event (a split marker slips
   // through: CE / Z / :D / ONE) and dropped whitespace-only deltas entirely.
-  const tokens = ['QA', ' done', ' —', ' see', ' github', '.com', '/open', '-merc', 'ato', '/ce', 'zar', '/p', 'ull', '/', '628', 'CE', 'Z', ':D', 'ONE']
+  const tokens = ['QA', ' done', ' —', ' see', ' github', '.com', '/open', '-merc', 'ato', '/on', 'ni', '/p', 'ull', '/', '628', 'ON', 'NI', ':D', 'ONE']
 
   it('drops a token run that reassembles the v2 message — including the split ONNI:DONE', () => {
     const events: RunEvent[] = [

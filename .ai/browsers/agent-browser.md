@@ -98,7 +98,7 @@ if ! "$AGENT_BROWSER_BIN" doctor --json >/dev/null 2>&1 && [ "$(uname -s 2>/dev/
   fi
 fi
 browser_probe() {
-  BROWSER_PROBE_SESSION="cez-provider-probe-$$"
+  BROWSER_PROBE_SESSION="onni-provider-probe-$$"
   if "$AGENT_BROWSER_BIN" --session "$BROWSER_PROBE_SESSION" open about:blank --json >/dev/null 2>&1; then
     "$AGENT_BROWSER_BIN" --session "$BROWSER_PROBE_SESSION" close --json >/dev/null 2>&1 || true
     return 0

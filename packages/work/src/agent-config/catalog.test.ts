@@ -66,8 +66,6 @@ describe('agent-config catalog', () => {
   it('holdsMcp is set exactly where MCP servers actually live', () => {
     const mcp = CONFIG_FILES.filter((f) => f.holdsMcp).map((f) => f.id).sort();
     expect(mcp).toEqual([
-      // onni's own private, per-project servers (spec 2026-10-07-private-project-mcp).
-      'onni.private.mcp',
       'claude.project.mcp',
       'codex.project.config',
       'codex.user.config',
@@ -75,6 +73,8 @@ describe('agent-config catalog', () => {
       'copilot.user.mcp',
       'cursor.project.mcp',
       'cursor.user.mcp',
+      // Onni Work's own private, per-project servers (spec 2026-10-07-private-project-mcp).
+      'onni.private.mcp',
       'opencode.project.config',
       'opencode.user.config',
     ]);
