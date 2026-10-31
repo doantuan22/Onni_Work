@@ -585,7 +585,7 @@ the API below.
 
 ### Limits and unattended safety
 
-Every run carries a snapshot of its **limits** (Settings → Limits, the composer's *Limits* pill, or
+Every run carries a snapshot of its **limits** (Settings → Resources → Limits, the composer's *Limits* pill, or
 the CLI): *Capped* applies exactly the ceilings you give — max cost (USD), max tokens
 (cost-weighted: cache reads count at 10%), max minutes of active running time, max agent steps —
 and a blank ceiling is no limit on that axis; *Unlimited* (`∞`) applies none. A fresh install is
@@ -601,7 +601,7 @@ onni run "explore freely" --no-limit          # refused inside an agent task
 onni stop --all [--port 4321]                 # emergency stop: every queued and live task
 ```
 
-These stay on in **both** modes (Settings → Limits → *Advanced*): an autonomous or dispatched
+These stay on in **both** modes (Settings → Resources → Limits → *Advanced*): an autonomous or dispatched
 task that waits for an answer longer than `safety.waitExpiryMinutes` (default 30) ends `failed`
 (Continue answers it); dispatch depth (default 1), subtasks per tree (default 12) and `retry_limit`.
 Autonomous and dispatched runs also never auto-land: `landing: "auto"` applies to attended in-place
@@ -760,7 +760,7 @@ none of its own.
 ## Configuration (optional)
 
 Workspace-wide defaults for run limits (`limits`) and the hang/dispatch guards (`safety`) live in
-`~/.onni/config.json` and are edited in Settings → Limits; they take no environment variable.
+`~/.onni/config.json` and are edited in Settings → Resources → Limits; they take no environment variable.
 
 Zero config is the default — everything below is opt-in via
 `.ai/onni/config.json` (a missing or invalid file simply uses the defaults, and
