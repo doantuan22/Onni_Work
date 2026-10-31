@@ -522,6 +522,8 @@ interface ActiveRun {
   idleTimer?: NodeJS.Timeout;
   /** The inactivity watchdog closed this session; a plain final wait is not success evidence. */
   idleClosed?: boolean;
+  /** The idle close was the unattended wait expiry (docs/design/unattended-safety.md §3). */
+  waitExpired?: boolean;
   /** The user pressed Finish on this owner; a repeat while it settles is the same request (6a3cecee). */
   finishRequested?: boolean;
   /** Finish pressed at a graph wait — not `finishRequested`, which would also turn the settle into
@@ -5280,7 +5282,7 @@ export class RunManager {
       } else if (this.active.get(runId) === state && (await this.idleClosedFails(runId, state))) {
         // Review Git can outlive cancellation and retirement of this continuation.
         if (state.cancelled || this.active.get(runId) !== state) return;
-        const message = this.inactivityFailureMessage();
+        const message = this.inactivityFailureMessage(runId, state);
         const failedAt = finishedAt();
         this.store.updateStep(runId, stepId, { status: 'failed', error: message, finishedAt: failedAt });
         this.store.updateRun(runId, {
@@ -5736,7 +5738,7 @@ export class RunManager {
     } else if (askPark === 'waiting') {
       this.settleUnansweredPark(runId, finishedAt, monitorHandoff);
     } else if (idleFailed) {
-      const error = this.inactivityFailureMessage();
+      const error = this.inactivityFailureMessage(runId, state);
       const run = this.store.getRun(runId);
       for (const s of run?.steps ?? []) {
         if (s.status === 'running' || s.status === 'waiting') {
@@ -5986,7 +5988,7 @@ export class RunManager {
         // inactivity is not evidence that the task completed. The review-gate path remains a
         // needs-you state with its changes available to the user.
         if (await this.idleClosedFails(runId, state)) {
-          const error = this.inactivityFailureMessage();
+          const error = this.inactivityFailureMessage(runId, state);
           this.finishStep(runId, node.id, 'failed', error, emit);
           return error;
         }
@@ -7765,8 +7767,10 @@ export class RunManager {
     }
     // Continue reopens the session through `runContinuation`, a standalone continuation rather
     // than a re-entry into `execute`, so steps the park never reached stay `pending`.
-    const error =
-      monitorHandoff && !stepsLeft
+    const expired = this.active.get(runId)?.waitExpired === true;
+    const error = expired
+      ? 'nobody answered in time — the unattended run ended; its worktree and session are kept, continue to answer'
+      : monitorHandoff && !stepsLeft
         ? 'the session closed before you replied — continue to reply'
         : 'the session closed before the question was answered — continue to answer it' +
           (stepsLeft ? ', but the remaining workflow steps will not resume automatically' : '');
@@ -7778,6 +7782,7 @@ export class RunManager {
       askParked: undefined,
       // The question is still unanswered: the run stays under "needs you".
       awaitingAnswerSince: finishedAt,
+      ...(expired ? { waitExpiredAt: finishedAt } : {}),
     });
     this.store.appendEvent(runId, { type: 'lifecycle', message: `run stopped — ${error}` });
   }
@@ -8191,7 +8196,11 @@ export class RunManager {
    * fallback keeps an ordinary unfinished wait from wearing a success badge
    * while preserving the existing Continue path.
    */
-  private inactivityFailureMessage(): string {
+  private inactivityFailureMessage(runId?: string, state?: ActiveRun): string {
+    if (runId && state?.waitExpired) {
+      this.store.updateRun(runId, { waitExpiredAt: new Date().toISOString() });
+      return 'nobody answered in time — the unattended run ended; its worktree and session are kept, continue to resume it';
+    }
     return 'the session closed after inactivity before the task declared completion — continue to resume it';
   }
 
@@ -8530,15 +8539,21 @@ export class RunManager {
 
   private armIdleTimer(runId: string, state: ActiveRun): void {
     this.clearIdleTimer(state);
-    const timeoutMinutes = this.semaphore.idleTimeoutMinutes();
+    // An unattended run never waits forever: the structural expiry replaces the (disable-able)
+    // idle timeout, whatever the user set there.
+    const unattended = isUnattended(this.store.getRun(runId));
+    const timeoutMinutes = unattended ? this.semaphore.safety().waitExpiryMinutes : this.semaphore.idleTimeoutMinutes();
     if (timeoutMinutes === null || timeoutMinutes === 0) return;
     const timeoutMs = timeoutMinutes * 60_000;
     state.idleTimer = setTimeout(() => {
       if (state.session?.open && !state.cancelled) {
         state.idleClosed = true;
+        if (unattended) state.waitExpired = true;
         this.store.appendEvent(runId, {
           type: 'lifecycle',
-          message: `session closed after ${Math.round(timeoutMs / 60_000)}m of inactivity`,
+          message: unattended
+            ? `no answer after ${Math.round((timeoutMs / 60_000) * 10) / 10}m — the unattended run is ending; its worktree and session are kept`
+            : `session closed after ${Math.round(timeoutMs / 60_000)}m of inactivity`,
         });
         state.session.end();
       }
