@@ -137,3 +137,74 @@ Ghi chú định dạng bổ sung: `denied_actions[]` chỉ có `{action, displa
 8. §5 "token": runner cộng usage từng step của tiến trình, **không** dùng `result.usage` (cộng dồn cả hội thoại sau `--conversation`; kiểm chứng trên mẫu resume: 23119 so với 8033 của riêng tiến trình).
 9. Spike bước 0 dùng **8 prompt thật**, không phải 6: hai lệnh `-p` ở mục (e) chạy thành công dù HOME rỗng (xem Phụ lục A), ngoài kế hoạch.
 10. Bộ rule đề xuất cho vai manager chỉ nằm trong ADR 0007; code chỉ có bộ của worker/solo vì `canManage = false`.
+
+---
+
+## Phụ lục C. Ngữ nghĩa allow-rule và dọn tiến trình (trước khi merge)
+
+Agy 1.4.12, Windows 11, **10/10 prompt thật** (không vượt). Mỗi thử nghiệm chạy trong một thư mục tạm riêng (repo vứt đi + bare repo cục bộ làm `origin` + thư mục anh em `sibling/`), bằng file *sentinel* làm bằng chứng. Prompt 1–8 và 10 chạy bằng spawn trực tiếp (để đặt `--settings` tuỳ ý); prompt 9 chạy **qua `AntigravityRunner`** với bộ rule mặc định thật.
+
+### C.1 Điều đo được về cách agy chạy headless (ảnh hưởng mọi thử nghiệm)
+
+- **Lần từ chối đầu tiên kết thúc cả lượt.** Mọi prompt có từ chối đều dừng ngay tại đó: `response` rỗng, `result.status = SUCCESS`, `denied_actions` có 1 phần tử (prompt 1, 3, 4, 5, 6, 7, 8, 10). Nên mỗi prompt chỉ kiểm được các lệnh *trước* lệnh bị từ chối đầu tiên.
+- **Lô song song: `DONE` không có nghĩa đã chạy.** Prompt 2 phát 10 lệnh một lượt: lệnh bị từ chối ở vị trí 2 báo `ERROR`, 8 lệnh sau báo `DONE` nhưng **không tạo sentinel nào** (kể cả `node --version > file` hợp lệ). Trạng thái `DONE` của engine sau một lần từ chối không đáng tin; chỉ sentinel đáng tin.
+- **Shell của `run_command` trên Windows là PowerShell** (xem C.2, mục g).
+
+### C.2 Bảng mục 1
+
+| Mục | Lệnh (rule cấp) | Sentinel | Engine / agy báo | Kết luận |
+|---|---|---|---|---|
+| ctl | `node -e "…S_ctl…"` (chỉ cấp `node --version`) | không | ERROR, denied (p1, p2) | AN TOÀN: lệnh không được cấp bị từ chối |
+| a | `git status --short` (cấp `command(git status)`) | — | ERROR, denied (p6) | AN TOÀN: đối số thêm vào làm lệnh mất khớp |
+| a | `git add -A` (cấp `command(git add)`) | — | ERROR, denied (p5) | AN TOÀN, nhưng rule tiền tố **không** có tác dụng |
+| a | `git add -A` (cấp `command(git add -A)`) | staged | DONE, chạy thật (p6) | rule khớp **nguyên dòng** |
+| a | `git add -A` (cấp `command(git add *)`) | — | ERROR, denied (p4) | `*` **không** là wildcard |
+| a | `node --version --no-warnings` | — | chưa kiểm được (p1 dừng trước; lô p2 không đáng tin) | KHÔNG KẾT LUẬN (cùng cơ chế với `git status --short`) |
+| redirect | `node --version > S_a_redirect.txt` (cấp `node --version`) | không | ERROR, denied (p3) | AN TOÀN: redirect làm lệnh mất khớp |
+| b | `git status ; git push origin main` (cấp `git status`) | remote không đổi | ERROR, denied (p10) | AN TOÀN: vế đầu được cấp vẫn không kéo vế sau |
+| b | `node --version && node -e …` (cấp `node --version`) | không | ERROR, denied (lần thử trước, c6) | AN TOÀN |
+| b | `;` chỉ với `node -e`, và `&` | — | chưa chạy riêng (prompt hết) | KHÔNG KẾT LUẬN từng cái; cùng cơ chế khớp nguyên dòng |
+| c | `git status \| node -e "…S_c_pipe…"` (cấp `git status`, **qua runner**) | không | denied; run fail, nêu hành động (p9) | AN TOÀN |
+| d | `git status $(node -e "…S_d_subst…")` (cấp `git status`) | không | ERROR, denied (p7) | AN TOÀN |
+| d | ``git status `node -e "…S_d_backtick…"` `` (cấp `git status`) | không | ERROR, denied (p8) | AN TOÀN |
+| e | `command(git diff *)`, `command(git add *)` | — | không khớp `git add -A` (p4) | wildcard `*` KHÔNG hỗ trợ; muốn cho nhiều dạng phải liệt kê từng dòng |
+| e | `git push origin main` | remote không đổi | nằm trong dòng bị từ chối của p10; đứng riêng chưa chạy | AN TOÀN theo cùng cơ chế (không được cấp) |
+| f | `node --version > ../sibling/…` (redirect ra ngoài worktree) | — | chưa chạy riêng; redirect trong cwd đã bị từ chối (p3) | KHÔNG KẾT LUẬN riêng; redirect nào cũng làm dòng lệnh mất khớp |
+| f | **công cụ ghi file** tạo `../sibling/S_f_tool_write.txt` | **có** | chạy, `isError=false` (p9) | **KHÔNG AN TOÀN**: không bị rule `command()` chặn |
+| f | **công cụ đọc file** đọc `../sibling/secret.txt`, chép vào worktree | **có** (nội dung khớp) | chạy (p9) | **KHÔNG AN TOÀN**: đọc được ngoài worktree |
+| f | agent tự gọi `search_web` | — | chạy, `isError=false` (p9) | **KHÔNG AN TOÀN**: truy cập mạng qua công cụ, không qua `command()` |
+| g | `node "$ONNI_BIN" task report one` (cấp đúng dòng đó) | **không** | DONE nhưng `$ONNI_BIN` **không** được mở rộng (PowerShell) (p10) | rule khớp theo văn bản gốc; dạng `$ONNI_BIN` không chạy được trên Windows |
+| g | `node "$env:ONNI_BIN" task report two` (cấp đúng dòng đó) | **có** (`S_g_task_report_two.txt`) | DONE, chạy thật (p10) | rule khớp văn bản **trước** khi mở rộng; dạng PowerShell chạy |
+
+Cấu hình agy trên máy này có `nonWorkspaceFileAccessPolicy: ALLOW` (đọc từ `~/.gemini/config/config.json`, không đổi); các dòng "KHÔNG AN TOÀN" của mục f phụ thuộc cấu hình đó và Onni không đổi được nó.
+
+**Kết luận về cơ chế:** `command(<dòng>)` = khớp **cả dòng lệnh**. Không có đối số thêm, redirect, pipe, nối lệnh hay thay thế nào lọt qua rule trong các dạng đã thử, nên không có đường chạy lệnh ngoài rule bằng cú pháp shell. Điều **không** được rule chặn là các công cụ không phải shell (file, web).
+
+### C.3 Nghiên cứu miễn phí (không gọi model)
+
+- `agy changelog`: rule "luôn cho phép" được tạo ở dạng đối số tuỳ ý cho một số subcommand (go, repo…); lệnh nối được phân tích; "check every subcommand in pipelines". Lỗi model/API khi chạy `-p` in một dòng `AGY_ERROR: {…}` ra stderr (trạng thái chuẩn, mã HTTP/gRPC, có thử lại được không, id lỗi) và thoát với mã **3**. Daemon chạy nền bị dọn khi run kết thúc. Biến `GEMINI_API_KEY` có tồn tại (đường API-key; không dùng).
+- Chuỗi trong binary: giao diện rule hỏi "Command prefix or *", có cả `PREFIXMATCH`/`SUFFIXMATCH`; thực đo cho thấy `command()` trong `--settings` khớp nguyên dòng. Không dựa vào tên key của `AGY_ERROR` (không có tài liệu).
+
+### C.4 Tiến trình để lại trên Windows (mục 4)
+
+Đo bằng danh sách tiến trình (tên, PID, ppid, dòng lệnh, working set) trước và sau mỗi lần chạy, và 4 giây sau:
+
+| Lần chạy | Số lần | Tiến trình agy còn lại sau khi thoát | Đỉnh trong lúc chạy | Xoá worktree ngay sau |
+|---|---|---|---|---|
+| `agy models` (không tốn prompt) | 3 | 0 | — (3–4 s) | được 3/3 |
+| `agy --version` (không tốn prompt) | 2 | 0 | — | được 2/2 |
+| `agy -p …` (prompt thật, spawn trực tiếp) | 9 | 0 | 1 tiến trình agy.exe, 199–206 MB (p4: 2 tiến trình tạm, 206 MB) | được 9/9 |
+| `agy -p …` qua `AntigravityRunner` | 1 | 0 | — | được 1/1 |
+
+Tiến trình "còn lại" ghi nhận được đều không phải của agy (Search, WMI, Chrome, AsusHotkey, NVIDIA Overlay, git của harness) và đã được lọc. Không có tiến trình lạc, không daemon dùng chung, không khoá thư mục worktree, RAM sau run không tăng. Run chậm nhất: prompt 9 (189,7 s) vì agent tự gọi `search_web`; các run còn lại 12,6–25,2 s.
+
+**Quyết định:** không cần sửa cơ chế dọn (đã có kill cả cây khi dừng/watchdog). Bổ sung **test** chứng minh interrupt và watchdog giết cả tiến trình cháu (`mock:grandchild`). Khoảng trống còn lại, chưa quan sát được: lệnh agy để lại *sau khi agy tự thoát* (Windows không còn cha để `taskkill /T`); changelog nói agy tự dọn daemon khi kết thúc.
+
+### C.5 Chưa đăng nhập (mục 5)
+
+Vẫn chưa bắt được thông điệp thật. Runner: đóng stdin ngay khi spawn (đã xác nhận agy thật chạy bình thường với stdin đóng, p9), watchdog kill nếu im lặng, và nhận diện "cần đăng nhập" từ stderr/`AGY_ERROR`/dòng không phải JSON. Thông điệp lỗi chứa "authentication failed — not signed in" nên `classifyAgentFailure` xếp vào `auth` (run ghi dòng hướng dẫn, `RunRecord.failureClass = 'auth'`, bản tóm tắt buổi sáng hiện "needs sign-in"). Test dùng kịch bản synthetic (`mock:login-eof`, `mock:login-hang`) theo định dạng đã được tài liệu hoá; test đỏ khi bỏ `stdin.end()`.
+
+### C.6 Chỗ lệch mới so với Phụ lục B
+
+11. §4 và ADR: allow-rule là **khớp nguyên dòng**, không phải tiền tố; bộ mặc định thành sáu dòng đọc-git và bỏ `git commit` (thông điệp luôn khác; Onni tự autosave commit cuối lượt) và `onni task report` (không có đối số thì vô nghĩa). Mức Narrow được gắn **"experimental"** trong UI và docs.
+12. `$ONNI_BIN` (dạng trong prompt dispatch) **không chạy** trên shell PowerShell của agy; dạng `$env:ONNI_BIN` chạy. Điều kiện cho `canManage` ghi ở ADR.

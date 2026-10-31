@@ -154,8 +154,15 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   (no commands); `allow-rules` and `bypass` are Settings → Agent permissions choices, `bypass` needs
   `confirmBypass: true` and is **never** applied to an unattended run (`effectiveAntigravityLevel`). A turn
   that was blocked and answered nothing **fails** — `agy` itself reports it as success (ADR 0007). It is a
-  worker only (`RUNNER_CAPABILITIES.canManage`, enforced by `rosterSchema`) until its allow-rules are verified
-  for the manager commands. It reports tokens, never USD. Do not add `--add-dir` or `agy-acp-bridge`.
+  worker only (`RUNNER_CAPABILITIES.canManage`, enforced by `rosterSchema`); turning that on takes the four
+  things listed in ADR 0007 ("To enable `canManage`"), not a flag flip. It reports tokens, never USD. Do not
+  add `--add-dir` or `agy-acp-bridge`.
+  An agy `command(<line>)` grant matches the **whole command line** (measured, 10 real prompts): it is never a
+  prefix and never a pattern, so a step's `bashAllowlist` entry becomes one exact line for this backend, and the
+  `allow-rules` level is **experimental**. Those rules gate shell commands only — agy's own file and web tools
+  are not limited by them. stdin is closed at spawn so a login is never waited for; a "not signed in" turn is
+  an `auth` failure (`RunRecord.failureClass`). Windows runs agy's commands in PowerShell: `$env:ONNI_BIN`,
+  not `$ONNI_BIN`.
 
 ## Changing a mechanism that already works
 

@@ -648,8 +648,8 @@ Settings → **Agent permissions** (global; `agentPermissions.antigravity` in `~
 
 | Level | What it passes to `agy` | What it can do |
 |---|---|---|
-| **Files only** (default) | nothing | Edit files in the task worktree. Any shell command (tests, builds, git) is denied. |
-| **Narrow allow-rules** | `--settings` with `command(<prefix>)` grants | Also `git status/diff/log/show/add/commit`, `node "$ONNI_BIN" task report`, the step's own test/build commands, and the handoff directory. `git push`, network tools and bulk delete are never granted and stay denied. Whether a grant also matches the same command with extra arguments is **not verified**; if it does not, the command is denied and the run says so. |
+| **Files only** (default) | nothing | No shell commands: tests, builds and git are denied. agy's own file and web tools are not limited by this level either, so it can still read and write outside the worktree and search the web. |
+| **Narrow allow-rules** *(experimental)* | `--settings` with `command(<line>)` grants | Only these **exact lines**, each as the whole command: `git status`, `git status --short`, `git diff`, `git diff --stat`, `git log --oneline`, `git add -A`, plus the step's own test/build commands (`bashAllowlist` entries — for this backend each is one exact line, not a prefix). Anything added to a line — an argument, a redirect, a pipe, `&&`, `;`, `$()` — is denied, and so are `git push`, network tools and bulk delete. **It limits shell commands only:** agy's own file and web tools are not limited by it (they can read and write outside the worktree and search the web, per agy's own policy). `git commit` is not granted — Onni's autosave commits the worktree at the end of a turn. |
 | **Skip all confirmations** | `--dangerously-skip-permissions` | Everything agy asks for is auto-approved — shell, browser and web tools included. Chosen explicitly (a confirmation dialog; the server rejects `bypass` without `confirmBypass: true`). |
 
 `Skip all confirmations` is **never applied to an unattended task** (autonomous, or any dispatched worker): those
