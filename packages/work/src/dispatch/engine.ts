@@ -227,3 +227,18 @@ export function pendingReportsBlock(reports: readonly DispatchPendingReport[]): 
   });
   return `## Reports from your dispatched tasks\n${lines.join('\n')}`;
 }
+
+/** Generations between a run and its tree's root: the root is 0, its children 1, and so on. */
+export function dispatchDepth(runs: readonly Pick<RunRecord, 'id' | 'dispatch'>[], run: Pick<RunRecord, 'id' | 'dispatch'>): number {
+  let depth = 0;
+  let current = run;
+  const seen = new Set<string>([run.id]);
+  while (current.dispatch?.parentRunId) {
+    const next = runs.find((r) => r.id === current.dispatch?.parentRunId);
+    if (!next || seen.has(next.id)) break;
+    seen.add(next.id);
+    depth++;
+    current = next;
+  }
+  return depth;
+}

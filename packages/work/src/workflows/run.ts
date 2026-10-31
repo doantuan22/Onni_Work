@@ -121,6 +121,7 @@ import {
   childSettleReport,
   childTaskEnvelope,
   childrenOf,
+  dispatchDepth,
   handoffSectionExcerpt,
   inFlightChildren,
   isTerminalStatus,
@@ -2899,14 +2900,35 @@ export class RunManager {
       note(`dispatch refused — ${refused}`, 'danger');
       return { refused };
     }
-    if (intent?.maxSubtasks !== undefined) {
+    // Structural brakes (docs/design/unattended-safety.md §4): on in every limits mode.
+    const safety = this.semaphore.safety();
+    const depth = dispatchDepth(runs, parent);
+    if (depth + 1 > safety.dispatchMaxDepth) {
+      const refused = `dispatch depth is capped at ${safety.dispatchMaxDepth} — a task at depth ${depth} cannot dispatch further. Do the work yourself and report.`;
+      note(`dispatch refused — ${refused}`, 'danger');
+      return { refused };
+    }
+    // The user's cap when the root was started with one, else the workspace default: a tree
+    // without an `intent` is still bounded.
+    const subtaskCap = intent?.maxSubtasks ?? safety.dispatchMaxSubtasks;
+    {
       const rootId = parent.dispatch?.rootRunId ?? parent.id;
       const total = runs.filter((r) => r.dispatch?.rootRunId === rootId && r.id !== rootId).length;
-      if (total + 1 > intent.maxSubtasks) {
-        const refused = `this tree already has ${total} subtask${total === 1 ? '' : 's'}; the user capped it at ${intent.maxSubtasks}. Finish with what exists and report.`;
+      if (total + 1 > subtaskCap) {
+        const refused = `this tree already has ${total} subtask${total === 1 ? '' : 's'}; ${intent?.maxSubtasks !== undefined ? `the user capped it at ${subtaskCap}` : `the cap is ${subtaskCap}`}. Finish with what exists and report.`;
         note(`dispatch refused — ${refused}`, 'danger');
         return { refused };
       }
+    }
+    // `retry_limit`: how many times the SAME order (same title under this parent) may be tried
+    // again after it failed or was cancelled. An order may only lower the workspace ceiling.
+    const orderTitle = input.title ?? input.objective.split('\n')[0]?.slice(0, 120) ?? 'dispatched task';
+    const retryLimit = Math.min(input.retry_limit ?? safety.dispatchRetryLimit, safety.dispatchRetryLimit);
+    const failedTries = childrenOf(runs, parentId).filter((r) => r.title === orderTitle && (r.status === 'failed' || r.status === 'cancelled')).length;
+    if (failedTries > retryLimit) {
+      const refused = `"${orderTitle}" already failed ${failedTries} time${failedTries === 1 ? '' : 's'}; its retry limit is ${retryLimit}. Report the failure instead of dispatching it again.`;
+      note(`dispatch refused — ${refused}`, 'danger');
+      return { refused };
     }
 
     // The parent becomes a root on its first dispatch; a dispatched parent keeps its tree.
