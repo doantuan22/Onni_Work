@@ -18,6 +18,7 @@ import type {
 import { resetToasts, Toaster } from '@/components/ui/toaster'
 
 import { readDraft, resetDraft, writeDraft } from './new-task-draft'
+import { NEW_TASK_PANEL_OPEN_KEY } from '@/lib/new-task-panel-state'
 import { NewTaskRoute } from './new-task'
 
 /**
@@ -34,6 +35,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   resetDraft()
+  // The panel's open/collapsed state is per-browser; a test that collapses it must not leak.
+  localStorage.removeItem(NEW_TASK_PANEL_OPEN_KEY)
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -301,6 +304,10 @@ function serve(overrides: {
       if (url === '/api/v1/config' && method === 'PUT')
         return json({ baseBranch: (body as { baseBranch: string | null }).baseBranch, defaultRunner: 'claude' })
       if (url === '/api/v1/workspace/config' && method === 'GET') return json(data.workspaceConfig)
+      if (url === '/api/v1/workspace/config' && method === 'PUT') {
+        data.workspaceConfig = { ...data.workspaceConfig, ...(body as Partial<WorkspaceConfigResponse>) }
+        return json(data.workspaceConfig)
+      }
       if (url === '/api/v1/workspace/agent-profiles' && method === 'GET' && data.agentProfiles) {
         return json(data.agentProfiles)
       }
@@ -370,6 +377,17 @@ async function pillReady(label = 'Skill') {
 const startTask = async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Start task' }))
   await waitFor(() => expect(requests.some((r) => r.method === 'POST' && r.url === '/api/v1/runs')).toBe(true))
+}
+
+/** Advanced is collapsed by default (ADR 0008). On the drawer branch the panel itself opens
+ *  first, from the summary line's settings control. */
+async function openAdvanced() {
+  if (!document.querySelector('[data-slot="task-settings-panel"]')
+    && !document.querySelector('[data-slot="task-settings-drawer"]')) {
+    fireEvent.click(document.querySelector('[data-slot="task-settings-open"]') as HTMLButtonElement)
+  }
+  const toggle = await screen.findByRole('button', { name: 'Advanced' })
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
 }
 
 const postedBody = () => requests.find((r) => r.method === 'POST' && r.url === '/api/v1/runs')?.body
@@ -565,10 +583,10 @@ describe('picker data flows', () => {
       await pillReady()
       expect(note()).toBe('Runs in an isolated worktree — review everything before it lands.')
 
-      // Unchecking the chip changes where the work lands, so it has to change what the header
-      // says. This is the regression: the line was printed unconditionally, so it kept promising
-      // isolation for a run that was about to edit the user's checkout directly.
-      fireEvent.click(document.querySelector('[data-slot="worktree-toggle"]') as HTMLButtonElement)
+      // Picking the direct-checkout state changes where the work lands, so it has to change what
+      // the header says. This is the regression: the line was printed unconditionally, so it kept
+      // promising isolation for a run that was about to edit the user's checkout directly.
+      fireEvent.click(document.querySelector('[data-slot="direct-checkout"]') as HTMLButtonElement)
       await waitFor(() => expect(note())
         .toBe('Runs in the repo working tree — your checkout is modified directly.'))
     })
@@ -1176,9 +1194,13 @@ describe('submit', () => {
       serve(testCase.overrides)
       renderNewTask()
       await pillReady(testCase.label)
-      const worktree = document.querySelector('[data-slot="worktree-toggle"]') as HTMLButtonElement
+      // A skill run is autonomous by default (source-dependent) and Autonomous requires the
+      // isolated worktree, so opting into a direct checkout means turning it off first.
+      const autonomous = document.querySelector('[data-slot="autonomous-toggle"]') as HTMLButtonElement
+      if (autonomous.getAttribute('aria-checked') === 'true') fireEvent.click(autonomous)
+      const worktree = document.querySelector('[data-slot="direct-checkout"]') as HTMLButtonElement
       fireEvent.click(worktree)
-      expect(worktree.getAttribute('aria-checked')).toBe('false')
+      expect(worktree.getAttribute('aria-checked')).toBe('true')
       fireEvent.change(textarea(), { target: { value: `Run ${testCase.label} in place` } })
       await startTask()
       expect(postedBody()).toMatchObject({ ...testCase.expected, worktree: false })
@@ -1304,6 +1326,7 @@ describe('submit', () => {
     serve()
     renderNewTask()
     await pillReady()
+    await openAdvanced()
     const toggle = document.querySelector(
       '[data-slot="generate-followups-toggle"]',
     ) as HTMLButtonElement
@@ -1326,6 +1349,7 @@ describe('submit', () => {
     serve({ uiState: { lastGenerateFollowups: false } })
     renderNewTask()
     await pillReady()
+    await openAdvanced()
     expect(
       document
         .querySelector('[data-slot="generate-followups-toggle"]')
@@ -1376,10 +1400,10 @@ describe('submit', () => {
     renderNewTask()
     await pillReady('fix-and-verify')
 
-    const worktree = document.querySelector('[data-slot="worktree-toggle"]') as HTMLButtonElement
+    const worktree = document.querySelector('[data-slot="direct-checkout"]') as HTMLButtonElement
     expect(worktree.disabled).toBe(false)
     fireEvent.click(worktree)
-    expect(worktree.getAttribute('aria-checked')).toBe('false')
+    expect(worktree.getAttribute('aria-checked')).toBe('true')
     fireEvent.change(textarea(), { target: { value: 'Run the whole workflow in place' } })
     await startTask()
     expect(postedBody()).toMatchObject({ workflow: 'fix-and-verify', worktree: false })
@@ -1496,6 +1520,7 @@ describe('drafts and prefill', () => {
     serve()
     renderNewTask('/new?skill=deploy&ref=ship%20it&todo=t1')
     await pillReady('deploy')
+    await openAdvanced()
     fireEvent.click(
       document.querySelector('[data-slot="generate-followups-toggle"]') as HTMLElement,
     )
@@ -1800,13 +1825,14 @@ describe('prompt templates on the new-task composer', () => {
     fireEvent.click(document.querySelector(`[data-slot="source-option"][data-source-ref="${ref}"]`)!)
   }
 
-  it('the trigger is icon-only here — the footer pill row is already full', async () => {
+  it('is labelled in the panel — no icon-only control', async () => {
     serve()
     renderNewTask()
     await pillReady()
+    await openAdvanced()
 
-    // No "templates" word next to the icon, unlike the roomier GitHub/Inbox composers.
-    expect(templateTrigger().textContent).toBe('')
+    // The panel has the room the footer never did, so the trigger says what it inserts.
+    expect(templateTrigger().textContent).toContain('templates')
     expect(templateTrigger().querySelector('svg')).not.toBeNull()
   })
 
@@ -1814,6 +1840,7 @@ describe('prompt templates on the new-task composer', () => {
     serve()
     renderNewTask()
     await pillReady()
+    await openAdvanced()
 
     fireEvent.change(textarea(), { target: { value: 'Ship it' } })
     fireEvent.click(templateTrigger())
@@ -2149,11 +2176,13 @@ describe('the Dispatch toggle', () => {
   const settingsTrigger = () =>
     document.querySelector('[data-slot="dispatch-settings-trigger"]') as HTMLButtonElement | null
 
-  /** Render with dispatch on the server and wait for the icon to be there. */
+  /** Render with dispatch on the server and wait for the icon to be there. Dispatch lives in
+   *  Advanced (ADR 0008), so the panel and its Advanced block open first. */
   async function readyWithDispatch(overrides: Parameters<typeof serve>[0] = {}) {
     serve({ health: HEALTH_DISPATCH, ...overrides })
     renderNewTask()
     await pillReady()
+    await openAdvanced()
     await waitFor(() => expect(dispatchToggle()).not.toBeNull())
     return dispatchToggle()!
   }
@@ -2201,13 +2230,14 @@ describe('the Dispatch toggle', () => {
 
     // The hint line under the composer, and the header's one-liner, both say what changed.
     expect(hint()?.textContent).toContain('Dispatch is on.')
-    expect(hint()?.textContent).toContain('Long-press the icon for limits.')
+    expect(hint()?.textContent).toContain('Its own limits are in Advanced.')
     expect(note()).toBe('Runs on its own and fans work out to subtasks — it will not pause for you.')
 
     // Subtasks fork off this task's commits, so the worktree is no longer the user's call.
-    expect(worktreeToggle().disabled).toBe(true)
+    const direct = document.querySelector('[data-slot="direct-checkout"]') as HTMLButtonElement
+    expect(direct.disabled).toBe(true)
+    expect(direct.title).toBe("Dispatch forks this task's commits — subtasks need a worktree")
     expect(worktreeToggle().getAttribute('aria-checked')).toBe('true')
-    expect(worktreeToggle().title).toBe("Dispatch forks this task's commits — subtasks need a worktree")
     expect(autonomousToggle().getAttribute('aria-checked')).toBe('true')
 
     fireEvent.change(textarea(), { target: { value: 'Review every open PR' } })
@@ -2225,11 +2255,11 @@ describe('the Dispatch toggle', () => {
     expect(autonomousToggle().getAttribute('aria-checked')).toBe('false')
     expect(note()).toBe('Fans work out to subtasks in isolated worktrees.')
 
-    // Off again: the ordinary note and an enabled worktree chip come back.
+    // Off again: the ordinary note and an enabled direct-checkout option come back.
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-checked')).toBe('false')
     expect(hint()).toBeNull()
-    expect(worktreeToggle().disabled).toBe(false)
+    expect((document.querySelector('[data-slot="direct-checkout"]') as HTMLButtonElement).disabled).toBe(false)
     expect(note()).toBe('Runs in an isolated worktree — review everything before it lands.')
   })
 
@@ -2391,6 +2421,7 @@ describe('trunk-based projects (spec 2026-10-20-trunk-based-projects)', () => {
     serve({ config: TRUNK_CONFIG, skills: TRUNK_SKILLS })
     renderNewTask()
     await pillReady('ingest')
+    await openAdvanced()
     fireEvent.change(textarea(), { target: { value: "what's open with Daniel?" } })
     await waitFor(() => expect(document.querySelector('[data-slot="ask-toggle"]')?.getAttribute('aria-checked')).toBe('true'))
     expect(document.querySelector('[data-slot="worktree-toggle"]')).toBeNull()
@@ -2672,4 +2703,341 @@ it.each(['launched', 'cancelled'] as const)('recovers a terminal %s result witho
   expect(sessionStorage.getItem('onni-pending-schedule:default')).toBeNull()
   expect(requests.filter(r => r.url.endsWith('/deferred-start'))).toHaveLength(1)
   expect(postedBody()).toBeUndefined()
+})
+
+// ---- the Task settings panel (ADR 0008) --------------------------------------------------------
+
+describe('Task settings panel on /new', () => {
+  const DISPATCH_HEALTH: HealthResponse = {
+    ...HEALTH,
+    capabilities: { ...HEALTH.capabilities, dispatch: true },
+  }
+  const ROSTER = {
+    manager: { runner: 'claude' as const },
+    workers: [{ runner: 'codex' as const, role: '', maxConcurrent: 1 }],
+  }
+  const ROSTER_WORKSPACE: WorkspaceConfigResponse = {
+    ...WORKSPACE_CONFIG,
+    managerWorker: {
+      presets: [{ id: 'pair', name: 'Review pair', roster: ROSTER }],
+      defaultPresetId: 'pair',
+    },
+  }
+
+  const panel = () => document.querySelector('[data-slot="task-settings-panel"]') as HTMLElement | null
+  const drawer = () => document.querySelector('[data-slot="task-settings-drawer"]') as HTMLElement | null
+  const summary = (key: string) =>
+    document.querySelector(`[data-slot="summary-${key}"]`) as HTMLElement | null
+  const worktreeOption = () =>
+    document.querySelector('[data-slot="worktree-toggle"]') as HTMLButtonElement
+  const directOption = () =>
+    document.querySelector('[data-slot="direct-checkout"]') as HTMLButtonElement
+  const autonomousToggle = () =>
+    document.querySelector('[data-slot="autonomous-toggle"]') as HTMLButtonElement
+  const newBranchToggle = () =>
+    document.querySelector('[data-slot="new-branch-toggle"]') as HTMLButtonElement
+  const limitsPill = () => document.querySelector('[data-slot="limits-pill"]') as HTMLButtonElement
+  const effectiveLimitsText = () =>
+    document.querySelector('[data-slot="limits-effective"]')?.textContent ?? ''
+  const presetCard = (name: string) =>
+    Array.from(document.querySelectorAll<HTMLElement>('[data-slot="task-preset"]')).find((card) =>
+      card.querySelector('button[aria-pressed]')?.textContent?.includes(name),
+    ) ?? null
+  const presetButton = (name: string) =>
+    presetCard(name)?.querySelector('button[aria-pressed]') as HTMLButtonElement
+
+  async function ready(overrides: Parameters<typeof serve>[0] = {}) {
+    serve(overrides)
+    renderNewTask()
+    await pillReady()
+    await waitFor(() => expect(panel()).not.toBeNull())
+  }
+
+  /** The composer alone — the Skill control lives INSIDE the panel, so a collapsed panel or a
+   *  closed drawer legitimately holds no source pill. */
+  async function composerReady() {
+    await waitFor(() => expect(textarea().disabled).toBe(false))
+  }
+
+  async function applyPreset(name: string) {
+    fireEvent.click(presetButton(name))
+    await waitFor(() => expect(presetButton(name).getAttribute('aria-pressed')).toBe('true'))
+  }
+
+  async function chooseUnlimited() {
+    fireEvent.click(limitsPill())
+    await waitFor(() => expect(document.querySelector('[data-slot="limits-mode"]')).not.toBeNull())
+    fireEvent.change(document.querySelector('[data-slot="limits-mode"]') as HTMLSelectElement, {
+      target: { value: 'none' },
+    })
+    fireEvent.click(await screen.findByText('Choose Unlimited'))
+  }
+
+  const putBodies = () =>
+    requests
+      .filter((request) => request.method === 'PUT' && request.url === '/api/v1/workspace/config')
+      .map((request) => request.body as { taskPresets?: { name: string }[] })
+
+  it('opens on the right with presets first and each section in order', async () => {
+    await ready()
+    expect(panel()?.getAttribute('aria-label')).toBe('Task settings')
+    const sections = Array.from(panel()!.querySelectorAll('[data-section]')).map((section) =>
+      section.getAttribute('data-section'),
+    )
+    expect(sections).toEqual(['presets', 'who', 'where', 'autonomy', 'skill', 'advanced'])
+    expect(presetCard('Quick')).not.toBeNull()
+    expect(presetCard('Overnight (safe)')).not.toBeNull()
+    expect(presetCard('Manager–Worker')).not.toBeNull()
+    // Advanced is folded until asked — nothing icon-only, the toggle is a worded button.
+    expect(document.querySelector('#task-settings-advanced-body')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+    expect(document.querySelector('#task-settings-advanced-body')).not.toBeNull()
+  })
+
+  it('applies Quick over a hand-tuned run: one variant, isolated worktree, autonomous off, workspace limits', async () => {
+    await ready()
+    fireEvent.click(autonomousToggle())
+    await waitFor(() => expect(autonomousToggle().getAttribute('aria-checked')).toBe('true'))
+    expect(summary('autonomous')).not.toBeNull()
+
+    await applyPreset('Quick')
+
+    await waitFor(() => expect(autonomousToggle().getAttribute('aria-checked')).toBe('false'))
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('true')
+    expect(summary('autonomous')).toBeNull()
+    expect(summary('worktree')?.textContent).toBe('worktree')
+    expect(summary('limits')?.textContent).toBe('limits: default')
+    expect(presetButton('Quick').textContent).not.toContain('(modified)')
+    await waitFor(() => expect(readDraft().presetId).toBe('builtin-quick'))
+    expect(readDraft()).toMatchObject({ variants: 1, worktree: true, autonomous: false })
+    expect(readDraft().limits).toBeUndefined()
+  })
+
+  it('Overnight (safe) never goes unlimited, even when the workspace itself is uncapped', async () => {
+    await ready({ workspaceConfig: { ...WORKSPACE_CONFIG, limits: { mode: 'none' } } })
+
+    await applyPreset('Overnight (safe)')
+
+    await waitFor(() => expect(autonomousToggle().getAttribute('aria-checked')).toBe('true'))
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('true')
+    expect(newBranchToggle().getAttribute('aria-checked')).toBe('true')
+    expect(summary('limits')?.textContent).toBe('limits: custom')
+    expect(summary('limits')?.textContent).not.toContain('∞')
+    expect(effectiveLimitsText()).toContain('$10')
+    await waitFor(() =>
+      expect(readDraft().limits).toEqual({
+        mode: 'capped',
+        maxCostUsd: 10,
+        maxTokens: 10_000_000,
+        maxWallClockMinutes: 240,
+        maxStepIterations: 30,
+      }),
+    )
+  })
+
+  it('applies the Manager–Worker preset with the Settings default roster and names the workers', async () => {
+    await ready({
+      health: DISPATCH_HEALTH,
+      providerStatus: PROVIDERS_MULTI,
+      workspaceConfig: ROSTER_WORKSPACE,
+    })
+
+    await applyPreset('Manager–Worker')
+
+    await waitFor(() => expect(summary('manager')?.textContent).toBe('manager + 1 worker'))
+    expect(summary('manager')?.getAttribute('data-tone')).toBe('warning')
+    await waitFor(() => expect(readDraft().roster).toEqual(ROSTER))
+  })
+
+  it('shows "(modified)" after an edit and Restore puts the preset back', async () => {
+    await ready()
+    await applyPreset('Quick')
+
+    fireEvent.click(autonomousToggle())
+    await waitFor(() => expect(presetButton('Quick').textContent).toContain('Quick (modified)'))
+    const restore = presetCard('Quick')?.querySelector(
+      '[data-slot="restore-task-preset"]',
+    ) as HTMLButtonElement
+    expect(restore).not.toBeNull()
+
+    fireEvent.click(restore)
+
+    await waitFor(() => expect(presetButton('Quick').textContent).not.toContain('(modified)'))
+    expect(autonomousToggle().getAttribute('aria-checked')).toBe('false')
+    expect(presetCard('Quick')?.querySelector('[data-slot="restore-task-preset"]')).toBeNull()
+  })
+
+  it('saves the current settings as a preset, renames it and deletes it through the workspace config', async () => {
+    await ready()
+    fireEvent.click(document.querySelector('[data-slot="new-task-preset"]') as HTMLButtonElement)
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
+      target: { value: 'Night shift' },
+    })
+    fireEvent.click(document.querySelector('[data-slot="save-task-preset"]') as HTMLButtonElement)
+
+    await waitFor(() => expect(presetCard('Night shift')).not.toBeNull())
+    await waitFor(() => expect(putBodies()).toHaveLength(1))
+    expect(putBodies()[0]?.taskPresets?.map((preset) => preset.name)).toEqual(['Night shift'])
+    expect(presetButton('Night shift').getAttribute('aria-pressed')).toBe('true')
+    expect(readDraft().presetId).not.toBe('builtin-quick')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Night shift' }))
+    const renameInput = await screen.findByLabelText('Preset name')
+    fireEvent.change(renameInput, { target: { value: 'Late shift' } })
+    fireEvent.click(within(presetCard('Night shift')!).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(presetCard('Late shift')).not.toBeNull())
+    await waitFor(() => expect(putBodies()).toHaveLength(2))
+    expect(putBodies()[1]?.taskPresets?.map((preset) => preset.name)).toEqual(['Late shift'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Late shift' }))
+    fireEvent.click(
+      document.querySelector('[data-slot="confirm-delete-preset"]') as HTMLButtonElement,
+    )
+
+    await waitFor(() => expect(presetCard('Late shift')).toBeNull())
+    await waitFor(() => expect(putBodies()).toHaveLength(3))
+    expect(putBodies()[2]?.taskPresets).toEqual([])
+  })
+
+  it('warns in the summary for autonomous, unlimited limits and a direct checkout', async () => {
+    await ready()
+
+    fireEvent.click(autonomousToggle())
+    await waitFor(() => expect(summary('autonomous')?.textContent).toBe('autonomous'))
+    expect(summary('autonomous')?.getAttribute('data-tone')).toBe('danger')
+
+    fireEvent.click(autonomousToggle())
+    await waitFor(() => expect(summary('autonomous')).toBeNull())
+    fireEvent.click(directOption())
+    await waitFor(() => expect(summary('worktree')?.textContent).toBe('direct checkout'))
+    expect(summary('worktree')?.getAttribute('data-tone')).toBe('danger')
+
+    await chooseUnlimited()
+    await waitFor(() => expect(summary('limits')?.textContent).toBe('limits: ∞'))
+    expect(summary('limits')?.getAttribute('data-tone')).toBe('danger')
+    await waitFor(() => expect(readDraft().limits).toBeUndefined())
+  })
+
+  it('defaults to the isolated worktree', async () => {
+    await ready()
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('true')
+    expect(directOption().getAttribute('aria-checked')).toBe('false')
+    expect(summary('worktree')?.textContent).toBe('worktree')
+    expect(document.querySelector('[data-slot="run-mode-note"]')?.textContent).toContain(
+      'isolated worktree',
+    )
+  })
+
+  it('follows a Settings override to run in the checkout directly', async () => {
+    await ready({
+      workspaceConfig: {
+        ...WORKSPACE_CONFIG,
+        composerDefaults: { ...WORKSPACE_CONFIG.composerDefaults, worktree: false },
+      },
+    })
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('false')
+    expect(directOption().getAttribute('aria-checked')).toBe('true')
+    expect(summary('worktree')?.textContent).toBe('direct checkout')
+  })
+
+  it('turns isolated on with Autonomous, and refuses a direct checkout while it is on', async () => {
+    await ready()
+    fireEvent.click(directOption())
+    await waitFor(() => expect(directOption().getAttribute('aria-checked')).toBe('true'))
+
+    fireEvent.click(autonomousToggle())
+    await waitFor(() => expect(autonomousToggle().getAttribute('aria-checked')).toBe('true'))
+    // The same action moved the run into an isolated worktree…
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('true')
+    // …and direct checkout is refused, with the reason on the control.
+    expect(directOption().disabled).toBe(true)
+    expect(directOption().title).toContain('Autonomous runs must use an isolated worktree')
+    fireEvent.click(directOption())
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('true')
+
+    // Turning Autonomous off hands the choice back.
+    fireEvent.click(autonomousToggle())
+    await waitFor(() => expect(directOption().disabled).toBe(false))
+    fireEvent.click(directOption())
+    await waitFor(() => expect(directOption().getAttribute('aria-checked')).toBe('true'))
+    expect(document.querySelector('[data-slot="worktree-error"]')).toBeNull()
+  })
+
+  it('remembers a collapsed panel per browser', async () => {
+    await ready()
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse task settings' }))
+    await waitFor(() => expect(panel()).toBeNull())
+    expect(localStorage.getItem(NEW_TASK_PANEL_OPEN_KEY)).toBe('0')
+
+    cleanup()
+    serve()
+    renderNewTask()
+    await composerReady()
+    // Collapsed survives the remount…
+    expect(panel()).toBeNull()
+    fireEvent.click(document.querySelector('[data-slot="task-settings-open"]') as HTMLButtonElement)
+    await waitFor(() => expect(panel()).not.toBeNull())
+    expect(localStorage.getItem(NEW_TASK_PANEL_OPEN_KEY)).toBe('1')
+  })
+
+  it('is a right drawer below the breakpoint, opened from the summary and closed with Escape', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query !== '(min-width: 1100px)',
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => true,
+    }))
+    serve()
+    renderNewTask()
+    await composerReady()
+    expect(panel()).toBeNull()
+    expect(drawer()).toBeNull()
+
+    fireEvent.click(document.querySelector('[data-slot="summary-agent"]') as HTMLButtonElement)
+    await waitFor(() => expect(drawer()).not.toBeNull())
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute('data-section')).toBe('who'),
+    )
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(drawer()).toBeNull())
+  })
+
+  it('restores every panel field from the draft, and never restores unlimited', async () => {
+    await ready()
+    await applyPreset('Overnight (safe)')
+    await waitFor(() => expect(readDraft().presetId).toBe('builtin-overnight'))
+
+    cleanup()
+    serve()
+    renderNewTask()
+    await pillReady()
+    await waitFor(() => expect(panel()).not.toBeNull())
+
+    await waitFor(() =>
+      expect(presetButton('Overnight (safe)').getAttribute('aria-pressed')).toBe('true'),
+    )
+    expect(presetButton('Overnight (safe)').textContent).not.toContain('(modified)')
+    expect(autonomousToggle().getAttribute('aria-checked')).toBe('true')
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('true')
+    expect(newBranchToggle().getAttribute('aria-checked')).toBe('true')
+    expect(summary('limits')?.textContent).toBe('limits: custom')
+
+    await chooseUnlimited()
+    await waitFor(() => expect(summary('limits')?.textContent).toBe('limits: ∞'))
+    await waitFor(() => expect(readDraft().limits).toBeUndefined())
+
+    cleanup()
+    serve()
+    renderNewTask()
+    await pillReady()
+    await waitFor(() => expect(panel()).not.toBeNull())
+    expect(summary('limits')?.textContent).toBe('limits: default')
+    expect(limitsPill().getAttribute('data-state')).toBe('off')
+  })
 })
