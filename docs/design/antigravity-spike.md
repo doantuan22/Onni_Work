@@ -133,3 +133,7 @@ Ghi chú định dạng bổ sung: `denied_actions[]` chỉ có `{action, displa
 4. §4: quyền có ba mức theo từng backend (Chỉ ghi file mặc định, Allow-rule hẹp, Bỏ qua mọi xác nhận), không thừa kế ngầm cho task con hay preset.
 5. Mới: cờ `canManage`; antigravity chỉ là worker cho tới khi allow-rule được kiểm chứng đủ cho vai manager (xem ADR 0007).
 6. §4 "Thư mục làm việc": không dùng `--add-dir` (mục d). §4 "Xác thực": credential ngoài `~/.gemini` (mục e).
+7. Quyết định cuối được ghi ở [ADR 0007](../adr/0007-antigravity-backend.md). Chỗ diễn giải thêm ngoài thông điệp duyệt: **"không thừa kế ngầm cho task con"** được hiểu là run không giám sát (autonomous hoặc con dispatch) luôn dùng `allow-rules` dù Settings là `bypass`, kèm một note trong run; preset không có chỗ chứa mức quyền (`rosterSchema` đóng). Hệ quả: một worker không bao giờ bỏ qua xác nhận.
+8. §5 "token": runner cộng usage từng step của tiến trình, **không** dùng `result.usage` (cộng dồn cả hội thoại sau `--conversation`; kiểm chứng trên mẫu resume: 23119 so với 8033 của riêng tiến trình).
+9. Spike bước 0 dùng **8 prompt thật**, không phải 6: hai lệnh `-p` ở mục (e) chạy thành công dù HOME rỗng (xem Phụ lục A), ngoài kế hoạch.
+10. Bộ rule đề xuất cho vai manager chỉ nằm trong ADR 0007; code chỉ có bộ của worker/solo vì `canManage = false`.

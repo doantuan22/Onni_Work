@@ -497,6 +497,7 @@ Useful environment variables:
 | `ONNI_CURSOR_AGENT_BIN=/path/to/cursor-agent` | Override which Cursor Agent CLI binary is used. Unset: `cursor-agent` on PATH, then `~/.local/bin/cursor-agent`, then `agent` on PATH. |
 | `ONNI_PI_BIN=/path/to/pi` | Override which `pi` binary is used. |
 | `ONNI_COPILOT_BIN=/path/to/copilot` | Override which GitHub Copilot CLI binary is used. |
+| `ONNI_ANTIGRAVITY_BIN=/path/to/agy` | Override which Antigravity CLI (`agy`) binary is used. Unset: `agy` on PATH, then the installer's directory (`%LOCALAPPDATA%\agy\bin` on Windows, `~/.local/bin` elsewhere). |
 | `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | The agents' **own** variables, honoured where the vendor documents one. Setting one moves that agent's **default account** — the config folder Onni Work discovers. A *second* login of the same CLI is deliberately not an environment setting, since one process-wide value cannot differ per project: add it under **Settings → Agent accounts** and pick it per project. |
 | `ONNI_BROWSE_ROOT=~/` | Default root for **Add project → Open local folder…**. The picker cannot navigate above it; a saved workspace value overrides the environment default and must name an existing folder. |
 | `ONNI_PROJECTS_DIR=~/onni/projects` | Default destination for **Clone from GitHub**. Saved workspace settings override it, and missing directories are created recursively. |
@@ -591,7 +592,7 @@ the CLI): *Capped* applies exactly the ceilings you give — max cost (USD), max
 and a blank ceiling is no limit on that axis; *Unlimited* (`∞`) applies none. A fresh install is
 capped at 10 USD, 10 000 000 tokens, 240 minutes and 30 steps. Changing the setting affects new runs
 only. A dispatched task inherits its parent's mode and may never be looser; a tree shares its root's
-ceilings. Backends that report no USD (codex, copilot, cursor) ignore the cost ceiling, and cursor
+ceilings. Backends that report no USD (antigravity, codex, copilot, cursor) ignore the cost ceiling, and cursor
 reports no tokens either. A run that hits a ceiling is cancelled with the reason on the record; its
 worktree and session stay, and Continue asks before raising the ceiling by one more allowance.
 
@@ -635,6 +636,25 @@ and a top-level task created over raw HTTP is not bound to a roster. Cost, token
 the subtask cap and the wait expiry apply to the whole tree (see Limits above); `POST /runs` accepts
 `roster`, and workspace presets live in `~/.onni/config.json` (`managerWorker`).
 
+A backend can be a **worker only**: `RUNNER_CAPABILITIES[<backend>].canManage` in the contract is `false` for
+`antigravity`, whose headless allow-rules are not yet verified for the manager's commands (`onni task create`,
+`git merge`). The server refuses it as a manager (400, with the reason) — in `POST /runs`, `onni run --manager`
+and saved presets alike — and the composer and Settings list it among the workers only.
+
+### Antigravity permissions
+
+Settings → **Agent permissions** (global; `agentPermissions.antigravity` in `~/.onni/config.json`) chooses what
+`agy` may do without asking, because it cannot ask when Onni drives it:
+
+| Level | What it passes to `agy` | What it can do |
+|---|---|---|
+| **Files only** (default) | nothing | Edit files in the task worktree. Any shell command (tests, builds, git) is denied. |
+| **Narrow allow-rules** | `--settings` with `command(<prefix>)` grants | Also `git status/diff/log/show/add/commit`, `node "$ONNI_BIN" task report`, the step's own test/build commands, and the handoff directory. `git push`, network tools and bulk delete are never granted and stay denied. Whether a grant also matches the same command with extra arguments is **not verified**; if it does not, the command is denied and the run says so. |
+| **Skip all confirmations** | `--dangerously-skip-permissions` | Everything agy asks for is auto-approved — shell, browser and web tools included. Chosen explicitly (a confirmation dialog; the server rejects `bypass` without `confirmBypass: true`). |
+
+`Skip all confirmations` is **never applied to an unattended task** (autonomous, or any dispatched worker): those
+run on `Narrow allow-rules` and the run says so. A manager–worker preset cannot carry a level.
+
 ### The HTTP API
 
 - **Everything is under `/api/v1`.** The unversioned `/api/*` spelling was
@@ -672,6 +692,7 @@ Onni Work is not married to one vendor. Every agent step runs through a single
 | **OpenCode** _(experimental)_ | [`opencode`](https://opencode.ai) | `opencode serve` — a local HTTP server with an SSE event stream. | Ignores `allowedTools` entirely; every permission is auto-approved. |
 | **Cursor** | [`agent`](https://cursor.com/docs/cli/overview) (Cursor Agent CLI) | Headless print mode: `agent -p --force --trust --output-format stream-json`. Continue is fresh-session in v1 (print mode exits per turn). Its documented output carries no token/cost figures, so a Cursor run's header always reads zero tokens and no cost — that is the backend not reporting usage, not the run using nothing. | Ignores `allowedTools`; `--force` / `--trust` auto-approves tool use for unattended runs. |
 | **pi** _(experimental)_ | [`pi`](https://github.com/badlogic/pi-mono) | Persistent `--mode rpc` over JSONL; models are picked with the `provider/model` convention. | Maps `allowedTools` onto pi's `--tools` allowlist; a configured `bashAllowlist` disables Bash because pi cannot express command-prefix rules. |
+| **Antigravity** | [`agy`](https://antigravity.google) (Google Antigravity CLI) | Headless print mode: `agy -p <prompt> --output-format stream-json` over a pipe, one process per turn; Continue resumes with `--conversation <id>`. Reports tokens only — no USD. Needs `agy` signed in (checked with `agy models`, no model call). | **Fails closed.** agy cannot ask for approval headless, so by default (`Files only`) it edits files and a shell command is denied. A turn that was blocked and answered nothing **fails**, naming what was denied; one that answered anyway keeps going with a warning per denied action. See *Antigravity permissions* below. |
 | **GitHub Copilot** | [`copilot`](https://github.com/github/copilot-cli) | `copilot --acp --allow-all-tools --no-auto-update` — ACP over stdio, one long-lived child per task. | Ignores `allowedTools` / `bashAllowlist`; `--allow-all-tools` is the auto permission mode, and a permission request that still arrives is auto-approved. |
 
 > ⚠️ **Junie, pi and OpenCode support are experimental.** All three runners work
@@ -783,6 +804,8 @@ none of its own.
 
 Workspace-wide defaults for run limits (`limits`) and the hang/dispatch guards (`safety`) live in
 `~/.onni/config.json` and are edited in Settings → Resources → Limits; they take no environment variable.
+The Antigravity permission level (`agentPermissions.antigravity`: `files-only` · `allow-rules` · `bypass`) lives
+there too, edited in Settings → Agent permissions.
 
 Zero config is the default — everything below is opt-in via
 `.ai/onni/config.json` (a missing or invalid file simply uses the defaults, and
@@ -803,7 +826,7 @@ never blocks startup; configured lifecycle transitions pause on malformed config
   // `skills/` (any depth) is picked up from them: `…/skills/<name>/SKILL.md` is a directory skill
   // (its other files are its references), any other `…/skills/**/*.md` a flat one.
   "worktreeRetention": 10,   // keep the last N finished worktrees on disk; 0 = unlimited (branch always kept)
-  "defaultRunner": "claude", // agent backend: "claude" (default) · "codex" · "opencode" · "cursor" · "pi" · "junie" · "copilot"
+  "defaultRunner": "claude", // agent backend: "claude" (default) · "codex" · "opencode" · "cursor" · "pi" · "junie" · "copilot" · "antigravity"
   "modelsLocked": true,      // optional: native per-runner model is fixed/read-only; runner stays selectable
   "plannerModel": "sonnet",  // model the "Plan first" button uses to draft chains
   "baseBranch": "develop",   // branch worktrees fork from + PRs target (also settable in the Git tab)
