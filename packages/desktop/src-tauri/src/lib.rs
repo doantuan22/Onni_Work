@@ -64,6 +64,9 @@ struct Shell {
     restarting: AtomicBool,
     /// The last page of ours the window finished loading — where it returns after a foreign page.
     cockpit_url: Mutex<Option<url::Url>>,
+    /// The window's first page, recorded as it loads. In `tauri dev` the splash is served by the
+    /// CLI's dev server on a random loopback port, which no static origin rule can name.
+    splash_url: Mutex<Option<url::Url>>,
 }
 
 /// Runs at document start on EVERY page the window loads — the splash and, after navigation,
@@ -254,7 +257,17 @@ fn build_main_window(app: &AppHandle, shell: &Arc<Shell>) -> tauri::Result<Webvi
         // back to where it was. The shell is not a general browser.
         .on_page_load(move |window, payload| {
             let url = payload.url();
-            if is_own_origin(url, shell_for_page_load.port.load(Ordering::SeqCst)) {
+            // The window's first page is ours by construction. In `tauri dev` that is the CLI's
+            // dev server on a random loopback port, which no static rule can name — without
+            // remembering it the shell hands its own splash to the browser, once per load event.
+            let own = {
+                let mut splash = shell_for_page_load.splash_url.lock().unwrap();
+                if splash.is_none() {
+                    *splash = Some(url.clone());
+                }
+                owns_page(url, shell_for_page_load.port.load(Ordering::SeqCst), splash.as_ref())
+            };
+            if own {
                 if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
                     *shell_for_page_load.cockpit_url.lock().unwrap() = Some(url.clone());
                 }
@@ -540,6 +553,7 @@ pub fn run() {
         supervising: AtomicBool::new(false),
         restarting: AtomicBool::new(false),
         cockpit_url: Mutex::new(None),
+        splash_url: Mutex::new(None),
     });
     let shell_for_setup = shell.clone();
     let shell_for_menu = shell.clone();
@@ -874,7 +888,7 @@ fn output_with_timeout(command: &mut Command, timeout: Duration) -> Option<(bool
 /// fresh process.
 #[tauri::command]
 fn restart_app(app: AppHandle, window: WebviewWindow, shell: tauri::State<'_, Arc<Shell>>) {
-    if !caller_is_splash(&window) || shell.restarting.swap(true, Ordering::SeqCst) {
+    if !caller_is_splash(&window, shell.inner()) || shell.restarting.swap(true, Ordering::SeqCst) {
         return;
     }
     let shell = shell.inner().clone();
@@ -1322,6 +1336,16 @@ fn is_own_origin(url: &url::Url, port: u16) -> bool {
     }
 }
 
+fn same_origin(a: &url::Url, b: &url::Url) -> bool {
+    a.scheme() == b.scheme() && a.host_str() == b.host_str() && a.port_or_known_default() == b.port_or_known_default()
+}
+
+/// A page this shell owns: a tauri:// origin, the sidecar's own loopback port, or the window's
+/// first page — `tauri dev` serves the splash from the CLI's dev server, port chosen at launch.
+fn owns_page(url: &url::Url, port: u16, splash: Option<&url::Url>) -> bool {
+    is_own_origin(url, port) || splash.is_some_and(|first| same_origin(url, first))
+}
+
 /// What an iframe of the cockpit may load — the task Preview frames any web page. Everything
 /// else (`mailto:`, `file:`, …) is the browser's or the OS's to open.
 fn may_be_a_frame(url: &url::Url) -> bool {
@@ -1335,9 +1359,11 @@ fn caller_is_trusted(window: &WebviewWindow, shell: &Shell) -> bool {
 }
 
 /// The failure page's command (`restart_app`): the splash only, never the
-/// cockpit — port 0 trusts nothing on loopback.
-fn caller_is_splash(window: &WebviewWindow) -> bool {
-    window.url().is_ok_and(|url| is_own_origin(&url, 0))
+/// cockpit — port 0 trusts nothing on loopback, and in dev the splash is the recorded first page.
+fn caller_is_splash(window: &WebviewWindow, shell: &Shell) -> bool {
+    window.url().is_ok_and(|url| {
+        is_own_origin(&url, 0) || shell.splash_url.lock().unwrap().as_ref().is_some_and(|first| same_origin(&url, first))
+    })
 }
 
 fn open_url(url: &str) {
@@ -1825,6 +1851,18 @@ mod tests {
         assert!(is_own_origin(&url("http://tauri.localhost/"), 4321));
         assert!(is_own_origin(&url("http://127.0.0.1:4321/p/x/tasks"), 4321));
         assert!(is_own_origin(&url("http://localhost:4321/"), 4321));
+    }
+
+    /// `tauri dev` serves the splash from the CLI's dev server; without the recorded first page
+    /// the shell handed its own splash to the browser on every load event (two tabs per launch).
+    #[test]
+    fn the_windows_first_page_is_ours_whatever_port_dev_picked() {
+        let splash = url("http://127.0.0.1:1430/");
+        assert!(owns_page(&url("http://127.0.0.1:1430/index.html"), 4321, Some(&splash)));
+        assert!(!owns_page(&url("http://127.0.0.1:1431/"), 4321, Some(&splash)));
+        assert!(!owns_page(&url("http://localhost:1430/"), 4321, Some(&splash)));
+        assert!(owns_page(&url("http://127.0.0.1:4321/"), 4321, Some(&splash)));
+        assert!(!owns_page(&url("http://127.0.0.1:1430/"), 4321, None));
     }
 
     /// The splash's script runs only inside the app, so nothing else would notice a syntax error
