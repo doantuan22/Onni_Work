@@ -168,13 +168,14 @@ describe('trunk-based projects', { timeout: 20_000 }, () => {
     expect(await clean()).toBe('');
   }, 30_000);
 
-  it('lands an autonomous task on ONNI:DONE without stopping for review', async () => {
+  // docs/adr/0005-unattended-safety.md: nothing unattended auto-lands, whatever the config says.
+  it('never lands an autonomous task: it settles done and leaves its change uncommitted', async () => {
     writeConfig({ taskWorkspace: 'in-place', landing: 'auto' });
     writeFileSync(join(repoRoot, 'person.md'), 'Bjorn\n');
     const record = manager.startRun(SINGLE_STEP, { task: 'mock:done', autonomous: true });
     await waitFor(record.id, (r) => r?.status === 'done');
-    expect(store.getRun(record.id)?.landing).toMatchObject({ status: 'landed' });
-    expect(await clean()).toBe('');
+    expect(store.getRun(record.id)?.landing).toBeUndefined();
+    expect(await clean()).not.toBe('');
   });
 
   it('sends a failing required check on Finish back to the agent instead of landing', async () => {
