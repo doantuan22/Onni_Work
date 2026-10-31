@@ -1,0 +1,5 @@
+# synthetic: hand-written to cover a case the spike could not record from the real agy (see docs/design/antigravity-spike.md). Not a live capture.
+# The real message could not be captured: the credential is not under ~/.gemini (an empty HOME still authenticated), and logging out was off-limits.
+# Placeholder text only; detection must not rely on this wording.
+exit=1
+stderr: not signed in

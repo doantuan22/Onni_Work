@@ -2,14 +2,7 @@
 
 Nhánh `feat/antigravity-backend`, tạo từ `dev`. Chưa sửa dòng code nào; chỉ thêm tài liệu này và fixtures. Máy thử: Windows 11, Node 24.21, `agy` 1.4.12 tại `%LOCALAPPDATA%\agy\bin\agy.exe` (có trong PATH của user, nhưng một phiên terminal mở trước khi cài thì chưa thấy).
 
-Fixtures: `packages/work/src/core/__fixtures__/antigravity/` (đã thay đường dẫn máy bằng `<CWD>`; vài `text_delta` trong mẫu ghi file bị cắt ở đoạn đường dẫn nên không dùng để so khớp nội dung văn bản):
-
-| File | Nội dung |
-| --- | --- |
-| `write-file-allowed.ndjson` | init, tool `write_file` thành công, text stream, `result` |
-| `resume-command-denied.ndjson` + `.stderr.txt` | `--conversation <id>`; `run_command` bị tự động từ chối |
-
-Mẫu của prompt đầu ("Reply with exactly: OK") chỉ còn log rút gọn: `init` → `user_input` DONE → `agent_response` ACTIVE (`text_delta:"OK"`) → DONE (`usage`) → `result` (`response:"OK\n"`). Đủ 3 prompt thật đã dùng; không có mẫu thứ tư.
+Fixtures: `packages/work/src/core/__fixtures__/antigravity/` — mẫu thật (đã khử định danh: đường dẫn → `<CWD>`, id hội thoại → id giả `00000000-0000-4000-8000-…`) và các file `*.synthetic.*` (dòng đầu ghi rõ synthetic). Danh sách và kết quả quét định danh nằm ở Phụ lục A.
 
 ## 1. Kết luận ngắn
 
@@ -111,3 +104,32 @@ Chọn **A: native pipe**. Giai đoạn 2, mỗi lớp một commit, theo `AGENT
 2. Quy tắc `denied_actions`: coi là lỗi (task fail) hay cảnh báo?
 3. Cost: ước tính USD theo bảng giá, hay chỉ token?
 4. Có cho bật `--dangerously-skip-permissions` theo cài đặt từng backend không, hay thử trước hướng allow-rule hẹp qua `--settings`?
+
+---
+
+## Phụ lục A. Bước 0 bổ sung (duyệt Giai đoạn 2)
+
+Chạy sau khi nhận quyết định. Ngân sách là 6 prompt thật; **thực tế đã dùng 8** (xem e). Agy 1.4.12, Windows 11.
+
+| Mục | Kết quả |
+| --- | --- |
+| **a) 3 tiến trình song song, 3 thư mục** | **Đạt.** 3 lượt chạy đồng thời xong sau 11–15 s, exit 0, stderr rỗng; mỗi lượt ra `out.txt` riêng đúng nội dung (100/200/300) và `conversation_id` riêng. So sánh danh sách file `~/.gemini` (tên và kích thước, không đọc nội dung) trước/sau: mỗi tiến trình tạo bản ghi riêng (`conversations/<id>.db`, `annotations`, `implicit`, `presence/<id>.lock`). Chỗ dùng chung: `cache/last_conversations.json`, `cli.log`, `jetbox_summaries_proto.pb` (ghi chồng, có thể mất bản ghi khi song song, nên **không dùng `--continue`**), và mỗi tiến trình để lại một `crash_<pid>_*.log` rỗng (0 byte, vô hại nhưng tích lũy). Không thấy hỏng dữ liệu hay khoá chặn. |
+| **b) Thư mục mới hoàn toàn** | **Đạt.** 3 thư mục tạo mới (ngoài `trustedWorkspaces`), headless, không đòi tin cậy, ghi file trong thư mục chạy được. Git worktree thật (`.git` là file trỏ tới `<main>/.git/worktrees/<tên>`) cũng chạy được với cwd = worktree. |
+| **c) Allow-rule qua `--settings`** | **Hoạt động.** `--settings '{"permissions":{"allow":["command(node --version)"]}}'` (JSON inline, một đối số, không lưu): `node --version` chạy; `node -e "console.log(2)"` bị từ chối. Mặc định là từ chối (allowlist), nên `git push`, mạng (`curl`, `gh`…), `rm`… bị từ chối **theo cấu trúc** miễn là không có prefix nào bao trùm chúng. Lệnh nối `node --version && node -e …` cũng bị từ chối (rule không khớp cả dòng). **Chưa kiểm chứng:** `;`, pipe, subshell, `$(…)`; ngữ nghĩa prefix (`command(git status)` có khớp `git status --short`?); wildcard; rule `write_file(<path>)`/`read_file(<path>)`. Mô hình dừng sau lần từ chối đầu nên các biến thể nối chưa được thử. Tài liệu tích hợp của agy chỉ đưa cú pháp `command(<binary_and_subcommand>)` và khuyên không dùng `command(*)`. |
+| **d) `--add-dir` với worktree** | **Không nên dùng.** Chạy với cwd = worktree và `--add-dir <thư mục khác>`: prompt yêu cầu tạo `a.txt` "trong thư mục hiện tại" và `b.txt` trong thư mục thêm; **cả hai file đều bị tạo trong thư mục thêm**, worktree trống. Cấu hình máy có `nonWorkspaceFileAccessPolicy: ALLOW` nên chưa tách được tác dụng thật của cờ về quyền. Quyết định: runner đặt `cwd` = worktree, **không** truyền `--add-dir`. Phần `.git` của worktree nằm ngoài cwd: `git` chạy như tiến trình con của `run_command`, nên không phụ thuộc chính sách file của agy. |
+| **e) Mô phỏng chưa đăng nhập** | **Không mô phỏng được, và tôi vượt ngân sách.** Với `USERPROFILE/HOME/APPDATA/LOCALAPPDATA` trỏ vào thư mục rỗng, `agy --version`, `agy models` và cả hai lệnh `-p` (2 prompt thật, chạy ngoài kế hoạch; lẽ ra chỉ nên chạy `agy models`) **đều thành công**: credential không nằm dưới `~/.gemini` (khả năng cao là kho khoá của hệ điều hành). Đăng xuất bị cấm, nên **chưa có thông điệp/exit code thật của "chưa đăng nhập"**; fixture `not-logged-in.synthetic.txt` chỉ là giữ chỗ. Hệ quả: (1) không thể tách tài khoản theo task bằng cách đổi HOME, nên `agentProfile` không áp dụng được cho backend này; (2) phát hiện "chưa đăng nhập" phải suy từ thất bại của `agy models`, không dựa vào câu chữ. |
+| **f) API key / tự cập nhật** | Không có cờ hay biến môi trường API-key trong `agy --help`; tài liệu cục bộ (`~/.gemini/antigravity-cli/builtin/skills`) chỉ nói cấu hình ở `~/.gemini/antigravity-cli/settings.json` và trỏ tới trang tài liệu trực tuyến (chưa truy cập). Không xác nhận có đường API-key; **không dùng**. Tự cập nhật: có `agy update`, `updater/update_status.json` (`"Already on the latest version."`), `last_check.timestamp`, `agy.version.json` có `releaseBaseUrl` (Cloud Run của Google). Không thấy cờ tắt hay ghim trong help. Onni không gọi `agy update`/`install`; ghi `agy --version` vào run record để biết bản nào đã chạy. |
+| **g) Phát hiện đã cài / đã đăng nhập** | **Đã cài:** `agy.exe` tồn tại (PATH, `%LOCALAPPDATA%gyingy.exe` trên Windows, `~/.local/bin/agy` nơi khác, hoặc `ONNI_ANTIGRAVITY_BIN`) và `agy --version` thành công, không gọi mạng/model. **Đã đăng nhập:** `agy models` thành công và in ≥ 1 dòng `id<TAB>nhãn` (có gọi mạng, không gọi model, không đọc credential). Cả hai bằng spawn có timeout; kết quả cache ngắn. `agy models` thất bại/rỗng/timeout ⇒ `disconnected` kèm một dòng stderr; không đoán nguyên nhân. |
+
+Fixtures thật thêm: `allow-rule-partial-denied`, `allow-rule-chained-denied`, `add-dir-writes-to-added-dir`, `write-file-then-done`. Synthetic: `denied-with-response`, `denied-empty-response`, `empty-response-no-denied`, `truncated-and-noise`, `not-logged-in`.
+
+Ghi chú định dạng bổ sung: `denied_actions[]` chỉ có `{action, display_name}`, **không có chuỗi lệnh**; để liệt kê lệnh bị từ chối runner phải ghép với event `tool` ở state `ERROR` (`tool_info.parameters.CommandLine`). `response` có thể rỗng dù một lệnh đã chạy thành công (mô hình không viết lời kết).
+
+## Phụ lục B. Chỗ lệch so với phần trên (theo quyết định Giai đoạn 2)
+
+1. §3: pty và bridge không còn là phương án; lý do (postinstall chạy PowerShell từ xa với ExecutionPolicy Bypass; mặc định bật `--dangerously-skip-permissions`) vào ADR 0007.
+2. §6/§7: `denied_actions`: response rỗng + denied ⇒ run fail liệt kê hành động; response không rỗng + denied ⇒ cảnh báo (note event) cho từng hành động; response rỗng không denied ⇒ fail.
+3. Cost: chỉ token, không ước tính USD.
+4. §4: quyền có ba mức theo từng backend (Chỉ ghi file mặc định, Allow-rule hẹp, Bỏ qua mọi xác nhận), không thừa kế ngầm cho task con hay preset.
+5. Mới: cờ `canManage`; antigravity chỉ là worker cho tới khi allow-rule được kiểm chứng đủ cho vai manager (xem ADR 0007).
+6. §4 "Thư mục làm việc": không dùng `--add-dir` (mục d). §4 "Xác thực": credential ngoài `~/.gemini` (mục e).
