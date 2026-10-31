@@ -145,6 +145,7 @@ import { resolveProfileEnvForRoot } from '../workspace/agent-profiles.ts';
 import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
+import { UNATTENDED_DENIED_TOOLS, pushGuardEnv, pushRefusal } from './push-guard.ts';
 import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf } from './limits.ts';
 import type { LimitHit, RunLimits, RunLimitsRequest } from '@onni/contract';
 import { WorkspaceSemaphore, type AccountHolds } from '../workspace/semaphore.ts';
@@ -1583,6 +1584,8 @@ export class RunManager {
       ...(apiUrl && process.env.ONNI_BIN ? { ONNI_BIN: process.env.ONNI_BIN } : {}),
       // The tree directory — brief, notes, inbox — for a run in a dispatch tree only.
       ...(dispatch ? { ONNI_TREE_DIR: treeDir(this.dataDir, dispatch.rootRunId) } : {}),
+      // A fence for unattended agents' own `git push` (see push-guard.ts) — never for a person's run.
+      ...(isUnattended(this.store.getRun(runId)) ? pushGuardEnv(this.dataDir, this.store.getRun(runId) ?? {}) : {}),
     };
   }
 
@@ -5234,6 +5237,7 @@ export class RunManager {
           cwd: state.cwd,
           allowedTools: state.readOnly ? READ_ONLY_TOOLS : toolsStep?.allowedTools ?? DEFAULT_ALLOWED_TOOLS,
           bashAllowlist: state.readOnly ? undefined : toolsStep?.bashAllowlist,
+          ...(isUnattended(this.store.getRun(runId)) ? { deniedTools: [...UNATTENDED_DENIED_TOOLS] } : {}),
           additionalDirectories: agentDirectories(
             join(this.dataDir, 'runs'),
             state.grantedAttachmentLibrary,
@@ -6487,6 +6491,11 @@ export class RunManager {
           note('this task has no branch of its own to push (it runs in the repository working tree)', 'danger');
           return 'failed';
         }
+        const refusal = pushRefusal(run.branch, [run.baseBranch]);
+        if (refusal) {
+          note(refusal, 'danger');
+          return 'failed';
+        }
         await autosaveCommit(state.cwd, 'pre-PR');
         const res = await pushBranch(state.cwd, run.branch);
         if (!res.ok) {
@@ -7345,6 +7354,7 @@ export class RunManager {
           cwd: state.cwd,
           allowedTools: state.readOnly ? READ_ONLY_TOOLS : step.allowedTools ?? DEFAULT_ALLOWED_TOOLS,
           bashAllowlist: state.readOnly ? undefined : step.bashAllowlist,
+          ...(isUnattended(this.store.getRun(runId)) ? { deniedTools: [...UNATTENDED_DENIED_TOOLS] } : {}),
           // The handoff file lives outside the worktree — grant access.
           additionalDirectories: agentDirectories(
             join(this.dataDir, 'runs'),

@@ -807,10 +807,11 @@ export function parseShortstat(s: string): DiffStat {
 /** Push `branch` to the push remote (the graph `git.push` node). Never throws; `ONNI_DRY_RUN=1` is a no-op. */
 export async function pushBranch(dir: string, branch: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (process.env.ONNI_DRY_RUN === '1') return { ok: true };
-  if (!isSafeGitRef(branch)) return { ok: false, error: `refusing option-like branch: ${branch}` };
+  if (!isSafeGitRef(branch) || branch.startsWith('+')) return { ok: false, error: `refusing option-like or forced branch: ${branch}` };
   const { push: remote } = await taskRemotes(dir);
   if (!remote) return { ok: false, error: 'no git remote' };
-  const push = await git(dir, ['-c', 'credential.interactive=false', 'push', '-u', remote, branch]);
+  // The same-named ref on both sides, never a forced one: a push can only move this branch.
+  const push = await git(dir, ['-c', 'credential.interactive=false', 'push', '-u', remote, `refs/heads/${branch}:refs/heads/${branch}`]);
   return push.ok ? { ok: true } : { ok: false, error: (push.stderr || push.stdout).trim().split('\n')[0] || 'git push failed' };
 }
 
