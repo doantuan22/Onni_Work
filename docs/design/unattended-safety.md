@@ -224,3 +224,47 @@ cockpit đóng chỉ có webhook, nên webhook là kênh chính.
 - **Q3 (hạng mục 2).** `retry_limit`: thực thi (đề xuất) hay gỡ?
 - **Q4 (hạng mục 6).** Có chấp nhận thêm plugin Tauri `notification` (phụ thuộc mới) hay chỉ dùng webhook +
   Notification trình duyệt?
+
+---
+
+## Phụ lục — quyết định đã duyệt và chỗ lệch so với bản thiết kế trên (2026-11-01)
+
+Theo tin nhắn duyệt, **tin nhắn thắng** khi mâu thuẫn với các mục phía trên. Chỗ lệch:
+
+| Mục thiết kế gốc | Thực tế đã làm | Lý do |
+| --- | --- | --- |
+| Q1: autonomous đẩy `onni/<id8>`, base chỉ khi opt-in | **Cấm auto-land hoàn toàn** cho run autonomous và task con; không có env/config/agent nào bật được. `landing:'auto'` còn lại cho run in-place có người dùng | Quyết định của owner |
+| Q2: mặc định 20 USD / 20M / 480 / 30, riêng cho autonomous | Hai chế độ (`capped`/`none`), áp cho **mọi** run; mặc định cài mới 10 USD / 10M token / 240 phút / 30 vòng; "Không giới hạn" cần xác nhận | Quyết định của owner |
+| Q3: retry_limit "thực thi" | Thực thi: `min(order, safety.dispatchRetryLimit)` lần thử lại cùng một order (cùng `title` dưới cùng parent) sau failed/cancelled; mặc định 1 | |
+| Q4: Tauri notification là câu hỏi | Đã thêm `tauri-plugin-notification`, `cargo check` pass | Owner cho phép (mục 8) |
+| Chạm trần → `failed` | Chạm trần → **`cancelled`** + `limitHit` + `error` nêu trần | Tái dùng đường `cancel()` (cascade cây, giải phóng slot, giữ worktree/session); `failed` sẽ bị đọc như lỗi agent. UI hiện nhãn `limit: <loại>` |
+| Pre-push hook "riêng cho từng worktree" | Hook **riêng cho từng run**, bật bằng biến `GIT_CONFIG_COUNT/KEY/VALUE` (cần git ≥ 2.31) trỏ `core.hooksPath` tới `<dataDir>/hooks` | Đã kiểm `extensions.worktreeConfig`: khả thi về kỹ thuật nhưng bật cờ extension cho **cả repo** (git/công cụ cũ không đọc được repo), để lại config sau khi run kết thúc, và agent vẫn gỡ được. Env không đụng repo của người dùng |
+| `onni run` / `continue` từ phía agent không được nới trần | CLI: `--no-limit`/`--limit` bị từ chối khi có `ONNI_TASK_ID`. Dispatch: trần con luôn bị kẹp bởi phần còn lại của cha, bỏ qua mọi thứ order xin ngoài `max_cost` (chỉ hạ). **HTTP thô không phân biệt được agent với người** (cùng loopback, không xác thực): một agent chủ động `curl POST /runs` vẫn đặt được `limits` | Giới hạn của kiến trúc "không có xác thực" (xem FEATURES §16); nêu là rủi ro còn lại |
+| Hạ quyền Bash cho backend khác Claude | Chỉ Claude có `--disallowedTools`; codex/cursor/copilot/junie/opencode/pi không có seam deny cho Bash → ghi nhận giới hạn, không dịch | Dịch sai còn tệ hơn không dịch (xem `copilot-acp-runner.ts:106`) |
+| Tạo cờ `--unattended` | Không thêm; "không giám sát" = `autonomous` hoặc con dispatch (câu trả lời của owner) | |
+| Biến môi trường mới | **Không có** — mọi cấu hình ở Settings (`~/.onni/config.json`: `limits`, `safety`). `.env.example` ghi rõ điều đó | "Unlimited" phải là lựa chọn có xác nhận, không phải cờ env |
+
+### `tokensUsed` có tính cache read không?
+
+**Có, nhưng đã chiết khấu.** `tokensUsed` là số **cost-weighted** (`core/usage.ts`): input + output +
+cache-creation × 1,25 + cache-read × **0,1**. Claude/pi áp công thức này (`claude-cli-runner.ts` qua
+`costWeightedTokens`, `pi-runner.ts:333`). opencode cộng `input + output + reasoning` (không có cache),
+codex/copilot lấy tổng do backend báo (`codex-ui-mapper.ts:841-866`, `copilot-acp-runner.ts:477`) và có thể
+gồm cả token cache ở trọng số 1. Hệ quả cho mặc định 10 000 000: với Claude, 10 USD gần như luôn chạm
+trước 10M token (10M token trọng số ≈ vài chục USD), nên trần token chỉ là lưới an toàn thứ hai; với
+codex/copilot (không có USD) trần token là **trần chi phí duy nhất**, và 10M có thể rất rộng nếu tổng tính cả
+cache. **Đề xuất:** giữ 10M như owner đã chỉ định, nhưng cân nhắc hạ xuống **3–5M** nếu bạn dùng chủ yếu
+codex/copilot qua đêm; chưa đổi vì chưa đo được số thực.
+
+### Continue sau khi chạm trần
+
+Mặc định phải xác nhận (UI hỏi, API từ chối nếu thiếu `raiseLimits`). Quy tắc nới: trần đã chạm của run
+(và của root nếu chạm ở phạm vi cây) += **một suất nữa** (`used + limit`); các trần khác giữ nguyên;
+chế độ `none` không có gì để nới. Một task con cũng nới trần của root khi trần bị chạm là trần cây, nhưng
+các anh chị em đã bị cancel kèm vẫn mang `limitHit` riêng và phải được Continue từng cái.
+
+### Bộ đếm
+
+Thời gian = thời gian **đang chạy** (`status === 'running'`) cộng dồn mỗi 15 giây vào
+`limitUsage.wallMs` (restart mất tối đa một chu kỳ); thời gian của cây = thời gian của root. Số vòng =
+tổng `iterations` của các step. Kiểm tra mỗi 15 giây nên một turn dài có thể vượt trần cost đến hết turn.

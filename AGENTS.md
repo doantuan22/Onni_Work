@@ -31,7 +31,8 @@ resetting it.
   flag that is OFF by default — the safe default is also the zero-config default.
 - Owner-approved default-on exceptions, each with an off switch and brakes in the engine:
   dispatch (`ONNI_DISPATCH=0`), automations (`ONNI_AUTOMATIONS=0`), the GitHub fork-parent lookup (`ONNI_DRY_RUN=1` skips it), and
-  Design Mode (`ONNI_DESIGN_MODE=0`, always off on a hosted cockpit).
+  Design Mode (`ONNI_DESIGN_MODE=0`, always off on a hosted cockpit). Run limits are the reverse
+  case: capped by default, and "Unlimited" is a Settings choice, never an env var.
 - A missing dependency, an absent peer or a read-only home degrades to a smaller cockpit — never
   a failed boot.
 - Never trade a working default for a knob. Adding, renaming or removing a `ONNI_*` variable —
@@ -116,6 +117,13 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   it). With the gate off, a successful run settles `done` and its diff simply stays in the
   worktree. Opening a draft PR goes through `gh`; merging a PR is an explicit click
   (`POST /api/v1/github/prs/:number/merge`).
+- **Unattended runs are fenced.** An unattended run is `autonomous` or a dispatched child
+  (`workflows/unattended.ts`). It never auto-lands (`landingPolicy`), never inherits `landing:'auto'`,
+  and gets the pre-push fence (`workflows/push-guard.ts`) plus Claude's deny rules. Every run snapshots
+  its `limits` at start; children inherit the parent's mode and may never be looser; the sweep
+  (`RunManager.sweepLimits`) and the wait expiry bound cost, time and hangs in both limits modes.
+  The fence is a barrier, not a sandbox — do not describe it as one. Dispatch depth, subtasks per
+  tree and `retry_limit` stay on in "Unlimited". See `docs/adr/0005-unattended-safety.md`.
 - **Local-first.** No account, no database, no cloud, no upload. `gh` and the agent CLIs run as
   the user.
 - **The API is `/api/v1` only, described by zod.** Every request and response shape is a schema
@@ -242,6 +250,7 @@ The supported dev machine here is Windows 11 with Git Bash.
 | Runs, queue, review gate | `packages/contract/src/runs.ts`, `packages/work/src/runs/store.ts`, `packages/work/src/workflows/run.ts` |
 | Git, worktrees, diff base | `packages/work/src/git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` |
 | Workspace registry, `~/.onni` | `packages/work/src/paths.ts`, `workspace/config.ts`, `workspace/projects.ts` |
+| Run limits, unattended safety | `packages/contract/src/limits.ts`, `packages/work/src/workflows/limits.ts`, `push-guard.ts`, `unattended.ts` |
 | Live signals | `.ai/specs/2026-07-23-websocket-subscriptions.md`, `server/ws.ts`, `web/src/api/ws.ts` |
 | Cockpit UI | `packages/web/src/app.tsx`, `routes.tsx`, `api/` |
 | Agent config files | `packages/work/src/agent-config/` (`catalog.ts` owns vendor knowledge) |

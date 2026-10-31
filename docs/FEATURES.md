@@ -140,9 +140,10 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | Budget cho con | `budgetUsd` (trần 10 000 USD) carve cho con; `enforceDispatchBudget` đậu run `waiting` khi spent ≥ budget | `contract/dispatch.ts:78,130` · `run.ts:2827-2842,3004-3020` · `engine.ts:54` | composer · `onni task create --budget` | ĐÃ XÁC MINH | `dispatch/engine.test.ts` pass |
 | Report buffer | giữ tối đa 20 report mới nhất cho cha | `dispatch/engine.ts:30,209-211` | tự động | ĐÃ XÁC MINH | `dispatch/engine.test.ts` pass |
 | Trần con đang chạy | 4 in-flight (`DISPATCH_MAX_IN_FLIGHT`) | `contract/dispatch.ts:57` · `engine.ts:25` | env/composer chỉ hạ được | ĐÃ XÁC MINH | `contract-parity.dispatch.test.ts` pass |
-| Trần số subtask user xin | `maxSubtasks` ≤ 50 ở boundary, nhưng engine **không đếm** — chỉ ghi "at most N subtasks" vào prompt | `contract/dispatch.ts:59,70` · `dispatch/prompts.ts:60` | composer · automation | NỬA VỜI | `automations/types.test.ts:106` pass (chặn 0); không có bộ đếm enforcement |
+| Trần số subtask | `dispatch()` đếm con theo `rootRunId` và từ chối khi vượt: `intent.maxSubtasks` nếu root có, **nếu không thì `safety.dispatchMaxSubtasks` (mặc định 12)** — cây không `intent` cũng bị chặn. (Bản chụp 2026-10-30 ghi "engine không đếm": **sai**, bộ đếm đã có ở `run.ts` từ trước; nhánh `feat/unattended-safety` chỉ thêm mặc định cho cây không `intent`) | `workflows/run.ts` (`dispatch()`, "Structural brakes") · `contract/limits.ts` | composer · automation · Settings → Limits → Advanced | ĐÃ XÁC MINH | `workflows/dispatch-structure.test.ts`, `dispatch-engine.test.ts` pass |
 | Prompt cho con | briefing/return format | `dispatch/prompts.ts` | tự động | ĐÃ XÁC MINH | `dispatch/prompts.test.ts` pass |
-| Depth cap | **không có** — con có thể dispatch tiếp vô hạn (chỉ bị trần in-flight) | — | — | NỬA VỜI | xem §16 |
+| Depth cap | `safety.dispatchMaxDepth`, mặc định **1** (worker không dispatch tiếp), tối đa 3; độ sâu tính bằng cách đi ngược `parentRunId` | `dispatch/engine.ts` (`dispatchDepth`) · `workflows/run.ts` (`dispatch()`) | Settings → Limits → Advanced | ĐÃ XÁC MINH | `workflows/dispatch-structure.test.ts` pass |
+| `retry_limit` | Được thực thi: cùng một order (cùng `title` dưới cùng parent) chỉ được dispatch lại tối đa `min(retry_limit, safety.dispatchRetryLimit)` lần sau khi failed/cancelled; order chỉ được hạ trần, không nâng | `workflows/run.ts` (`dispatch()`) | `onni task create --retry-limit` | ĐÃ XÁC MINH | `workflows/dispatch-structure.test.ts` pass |
 
 ## 6. Automations, webhooks, tracker
 
@@ -281,7 +282,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | fs browse privacy | chặn duyệt ra ngoài repo | `server/fs-browse-privacy.ts` | API | ĐÃ XÁC MINH | `fs-browse-privacy.test.ts` pass |
 | Telemetry | **đã xoá hẳn**, không phải tắt | ADR 0002 | — | ĐÃ VÔ HIỆU | không còn route `/telemetry` nào |
 | Self-update từ registry | **đã xoá**; `self-update/` chỉ còn version layout (5 file đều phục vụ layout/link: `layout.ts`, `checkouts.ts`, `cli.ts`, `semver.ts`; `self-update.test.ts` test layout). 2026-10-31: bỏ nốt `WorkspaceSemaphore.activeRuns()/idle()` chỉ phục vụ dialog update-when-idle | `packages/work/src/self-update/` | `onni link` | ĐÃ VÔ HIỆU | `self-update.test.ts` pass |
-| Token/cost cap | run thường **không có** trần chi phí; `ONNI_HIDE_*` chỉ ẩn số liệu. Chỉ run dispatch mới có brake (`budgetUsd`) | `capabilities.ts:236-238` · xem §5 | Settings | NỬA VỜI | `run.ts:2827-2842` |
+| Token/cost cap | **Có** (2026-11-01): mỗi run chụp `limits` lúc bắt đầu (`capped` hoặc `none`), trần cost/token/phút/vòng; xem §17. `ONNI_HIDE_*` vẫn chỉ ẩn số liệu | `workflows/limits.ts` · `contract/limits.ts` | Settings → Limits · composer · `onni run --limit` | ĐÃ XÁC MINH | `workflows/limits.test.ts`, `limits-run.test.ts` pass |
 
 ---
 
@@ -342,12 +343,12 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | --- | --- | --- |
 | Step status `review` và `skipped` | Khai báo trong `stepStatusSchema` nhưng **không có chỗ nào ghi**: cả 2 chỗ `status:'review'` trong repo đều là cấp run (`store.updateRun`). UI vẫn có nhánh render `skipped` không bao giờ chạy | `contract/runs.ts:69-78` · `server.ts:5829` · `run.ts:7714` · `web/src/routes/task-thread/step-rail.tsx:31,41` |
 | `ONNI_AUTO_NAMING` | 2 test stub biến này nhưng **không source nào đọc**; biến thật là `ONNI_AUTONAME` | `workflows/landing-lifecycle.test.ts:16`, `lifecycle-settlement.test.ts:28` vs `runs/auto-name.ts:25` |
-| Dispatch depth | Không có trần độ sâu; con lại dispatch được con của con, chỉ bị trần 4 in-flight | `contract/dispatch.ts:57` không có `depth` |
-| `retry_limit` dispatch | Trường có trong schema nhưng engine không dùng để chặn | `contract/dispatch.ts:151` |
-| `maxSubtasks` dispatch | User xin bao nhiêu con cũng được, miễn ≤50 ở boundary; engine không giữ sổ, chỉ ghi câu "at most N subtasks" vào prompt | `contract/dispatch.ts:70` · `dispatch/prompts.ts:60` |
+| ~~Dispatch depth~~ | **Đã xử lý 2026-11-01**: trần độ sâu mặc định 1 — xem §5 và §17 | |
+| ~~`retry_limit` dispatch~~ | **Đã xử lý 2026-11-01**: được thực thi — xem §5 | |
+| ~~`maxSubtasks` dispatch~~ | Ghi nhận sai trong bản chụp: bộ đếm có sẵn khi root có `intent`; từ 2026-11-01 cây không `intent` cũng bị trần mặc định 12 | |
 | Planner | Chỉ POST được (`server.ts:3869`), **không có nút UI**, plan không lưu: trả về rồi dựng workflow tạm `'(planned)'` (`server.ts:4678`) | `workflows/planner.ts:69` cũng khoá Claude-only |
 | Không có xác thực | Mọi thứ dựa vào loopback + origin guard; `server.ts:1610` tự nói "not a perimeter" | chỉ host/port, không session/token |
-| Không có trần chi phí cho run thường | `ONNI_HIDE_COST/TOKEN_METRICS/USAGE` chỉ ẩn số liệu; brake `enforceDispatchBudget` **chỉ** áp dụng cho run có `dispatch.budgetUsd` | `capabilities.ts:236-238` · `run.ts:2827-2842` |
+| ~~Không có trần chi phí cho run thường~~ | **Đã xử lý 2026-11-01** (§17). Bản cài mới mặc định "Bật trần" 10 USD / 10M token / 240 phút / 30 vòng; "Không giới hạn" phải được chọn rõ ràng | |
 | `git-worktree` recovery trên Windows | `createWorktree` idempotent trả `path` **forward-slash** lần thứ 2 (`git worktree list`), back-slash lần đầu → `expect(second).toEqual(first)` fail | `git-worktree.test.ts:161` fail; branch/baseBranch vẫn khớp |
 | Xoá tracker connection | Xoá file `.env` local, **không revoke** token phía Jira/Linear | `server/tracker/connections-cli.ts:9` |
 | `.ai/cezar/` | State runtime của tên cũ (`attachments`, `launch-key`, `runs`, `runs.json`, `tmp`) còn trên đĩa, untracked | `git status` khi chụp |
@@ -370,3 +371,27 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | `AGENT_PROTOCOL.md` | v1 `AgentEvent` + v2 `UiEvent` | Khớp: `core/agent-runner.ts:161`, `core/ui-events.ts:392` |
 | Review gate | Nhiều tài liệu gọi nó là "gate" như thể mặc định bật | Mặc định **TẮT** (`review-gate.ts:16-21`: chỉ `'1'` mới bật; `'true'`/`'yes'` không có tác dụng) và run autonomous luôn bỏ qua |
 | Skills | Tài liệu từng gợi ý repo skill có thể cung cấp workflow | `skills.ts` không bao giờ nạp workflow; workflow **chỉ** từ `.ai/onni/workflows/` (`load.ts:15`) |
+
+---
+
+## 17. An toàn khi không giám sát (2026-11-01, nhánh `feat/unattended-safety`)
+
+"Run không giám sát" = `autonomous === true` **hoặc** task con trong cây dispatch (`workflows/unattended.ts`). Thiết kế: [`docs/design/unattended-safety.md`](design/unattended-safety.md); quyết định: [ADR 0005](adr/0005-unattended-safety.md).
+
+| Chức năng | Mô tả ngắn | Nơi trong code | Cách dùng | Trạng thái | Căn cứ |
+| --- | --- | --- | --- | --- | --- |
+| Hai chế độ trần | `none` = không áp trần nào; `capped` = chỉ áp số đã nhập, ô trống = không giới hạn mục đó. Chụp vào `RunRecord.limits` lúc start | `contract/limits.ts` · `workflows/limits.ts` · `workflows/run.ts` (`startRun`, `sweepLimits`) | Settings → Limits · composer "Limits" · `onni run --no-limit` / `--limit cost=5,time=120,tokens=5000000,iterations=20` | ĐÃ XÁC MINH | `limits.test.ts`, `limits-run.test.ts`, `runs/stop-cli.test.ts` pass |
+| Mặc định cài mới | Bật trần 10 USD · 10 000 000 token · 240 phút · 30 vòng | `contract/limits.ts` (`DEFAULT_RUN_LIMITS`) | Settings → Limits | ĐÃ XÁC MINH | `limits-run.test.ts` |
+| Bộ đếm bền | cost/token cộng từ step; thời gian chạy tích lũy `limitUsage.wallMs` mỗi 15 s; `recover()` không reset | `workflows/run.ts` (`sweepLimits`) | tự động | ĐÃ XÁC MINH | `limits-run.test.ts` (đọc lại store từ đĩa) |
+| Cây dùng chung trần gốc | tổng cả cây không vượt trần của root; con nhận phần còn lại của cha, không bao giờ nới hơn cha; con thừa kế chế độ cha | `workflows/limits.ts` (`carveChildLimits`, `evaluateLimits`) | tự động | ĐÃ XÁC MINH | `limits.test.ts`, `limits-run.test.ts` |
+| Backend không báo USD | codex, copilot, cursor: trần USD không áp; cursor không báo cả token → chỉ trần thời gian/vòng | `contract/limits.ts` (`RUNNERS_WITHOUT_COST/TOKENS`) | UI ghi "not reported" | ĐÃ XÁC MINH | `limits.test.ts`, `lib/run-limits.test.ts` |
+| Chạm trần | run (hoặc cả cây) bị cancel với `limitHit` + `error` nêu trần nào; worktree và session giữ nguyên; Continue yêu cầu `raiseLimits` (cộng thêm một suất của trần đã chạm) | `workflows/run.ts` (`stopForLimit`, `raiseAfterLimit`) | nút Continue hỏi xác nhận | ĐÃ XÁC MINH | `limits-run.test.ts` |
+| Chờ trả lời hết hạn | run không giám sát ở `waiting` quá `safety.waitExpiryMinutes` (mặc định 30, 1–1440, không tắt được) → `failed`, `waitExpiredAt`, giữ worktree+session. `waiting`/`review` không giữ slot; `review` không hết hạn | `workflows/run.ts` (`armIdleTimer`) | Settings → Limits → Advanced | ĐÃ XÁC MINH | `wait-expiry.test.ts` |
+| Cấm auto-land | `landingPolicy` trả `undefined` cho run autonomous/con dispatch bất kể config | `workflows/run.ts` · `workflows/unattended.ts` | — | ĐÃ XÁC MINH | `unattended-landing.test.ts` (fail khi gỡ fix) |
+| Rào push | hook `pre-push` qua `GIT_CONFIG_*` env cho run không giám sát: chỉ cho `refs/heads/onni/*` + nhánh của run; Claude thêm `--disallowedTools` (`git push`, `gh pr merge`, `git remote add/set-url`); `git.push` node từ chối nhánh base/protected, refspec cố định, không bao giờ `+` | `workflows/push-guard.ts` · `git-worktree.ts` (`pushBranch`) | tự động | ĐÃ XÁC MINH | `push-guard.test.ts` (push thật tới remote bare) |
+| Dừng khẩn | `RunManager.cancelAll()` + reap tiến trình con; `POST /api/v1/workspace/stop-all`; nút "Stop all"; `onni stop --all` | `workflows/run.ts` · `server/server.ts` · `runs/stop-cli.ts` | Tasks header · Settings → Limits | ĐÃ XÁC MINH | `limits-run.test.ts`, `runs/stop-cli.test.ts` |
+| Tóm tắt buổi sáng | Inbox: run xong / lỗi / chạm trần / cần chú ý trong N giờ (1–48, mặc định 12), kèm cost/token | `web/src/lib/morning-digest.ts` · `components/morning-digest.tsx` | Inbox | ĐÃ XÁC MINH | `lib/morning-digest.test.ts` |
+| Thông báo desktop | `tauri-plugin-notification` + `__TAURI_INTERNALS__.invoke`, dùng chung công tắc Settings → Notifications; chỉ khi cửa sổ ẩn | `desktop/src-tauri` · `web/src/lib/desktop-notify.ts` | Settings → Notifications | CÓ TRONG CODE | `desktop-notify.test.ts` pass; `cargo check` pass; chưa chạy shell thật |
+
+**Giới hạn đã biết:** hook pre-push và deny rule là *rào*, không phải sandbox — `git push --no-verify`, agent gỡ biến môi trường, ghi ngoài worktree, `$HOME` và mạng không bị chặn (backend khác Claude không có seam deny).
+
