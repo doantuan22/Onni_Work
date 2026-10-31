@@ -83,9 +83,15 @@ describe('Settings → Agent permissions', () => {
     expect(radio('allow-rules').checked).toBe(false)
     expect(radio('bypass').checked).toBe(false)
     const text = document.querySelector('[data-slot="agent-permissions-section"]')!.textContent!
-    expect(text).toContain('Shell commands')
-    expect(text).toContain('git push, network tools and bulk delete stay denied')
+    expect(text).toContain('No shell commands')
     expect(text).toContain('Never applied to an unattended task')
+    // The narrow level is labelled experimental, and says what it does NOT cover (measured, ADR 0007).
+    const narrow = document.querySelector('[data-level="allow-rules"]')!.textContent!
+    expect(narrow).toContain('experimental')
+    expect(narrow).toContain('each as the whole line')
+    expect(narrow).toContain('are NOT limited by this level')
+    expect(narrow).toContain('git push, network tools and delete')
+    expect(document.querySelector('[data-level="files-only"]')!.textContent).toContain('can read and write outside the task worktree')
     expect(document.querySelector('[data-slot="agent-permission-bypass-active"]')).toBeNull()
   })
 

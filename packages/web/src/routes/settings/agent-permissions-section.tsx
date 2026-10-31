@@ -15,12 +15,12 @@ export const PERMISSION_LEVELS: readonly { id: AgentPermissionLevel; label: stri
   {
     id: 'files-only',
     label: 'Files only (default)',
-    hint: 'Edits files in the task worktree. Shell commands — tests, builds, git — are denied. A task that needed one stops and says what it was denied.',
+    hint: 'No shell commands: tests, builds and git are denied, and a task that needed one stops and says what it was denied. Antigravity’s own file and web tools are not limited by this level — they can read and write outside the task worktree and search the web.',
   },
   {
     id: 'allow-rules',
-    label: 'Narrow allow-rules',
-    hint: 'Also allows git status/diff/log/add/commit, the task report, and the step’s own test/build commands. git push, network tools and bulk delete stay denied. Rule matching for extra arguments is not yet verified, so a command can still be denied.',
+    label: 'Narrow allow-rules — experimental',
+    hint: 'Allows only these exact commands: git status, git status --short, git diff, git diff --stat, git log --oneline, git add -A, and the step’s own test/build commands, each as the whole line. Anything added — an argument, a redirect, a pipe, a chain, a substitution — is denied, and so are git push, network tools and delete. Antigravity’s own file and web tools are NOT limited by this level. Experimental: a few forms are still untested.',
   },
   {
     id: 'bypass',
