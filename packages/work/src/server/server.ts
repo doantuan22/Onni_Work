@@ -3344,6 +3344,8 @@ export function createApp(deps: ServerDeps) {
     projectsDir: config.projectsDir,
     orgSkillsRepos: config.orgSkillsRepos ?? [],
     systemPrompt: config.systemPrompt ?? null,
+    limits: config.limits,
+    safety: config.safety,
     composerDefaults: {
       autonomous: config.composerDefaults.autonomous ?? null,
       worktree: config.composerDefaults.worktree ?? null,
@@ -3395,6 +3397,7 @@ export function createApp(deps: ServerDeps) {
     .put('/workspace/config', jsonZodValidator(() => setWorkspaceConfigInputSchema), async (c) => {
       const parsed = { data: c.req.valid('json') };
       const { browseRoot, projectsDir, orgSkillsRepos, systemPrompt, composerDefaults, resources, agentDefaults, branding } = parsed.data;
+      const { limits: limitsPatch, safety: safetyPatch } = parsed.data;
       for (const src of orgSkillsRepos ?? []) {
         if (safeRemoteFor(src.repo) === null || !isSafeRef(src.ref)) {
           return c.json({ error: `unsafe skills repo: ${src.repo}@${src.ref}` }, 400);
@@ -3446,6 +3449,8 @@ export function createApp(deps: ServerDeps) {
           }
           if (systemPrompt === null || systemPrompt === '') delete config.systemPrompt;
           else if (systemPrompt !== undefined) config.systemPrompt = systemPrompt;
+          if (limitsPatch !== undefined) config.limits = limitsPatch;
+          if (safetyPatch !== undefined) config.safety = { ...config.safety, ...safetyPatch };
           if (composerDefaults?.autonomous === null) delete config.composerDefaults.autonomous;
           else if (composerDefaults?.autonomous !== undefined) {
             config.composerDefaults.autonomous = composerDefaults.autonomous;
@@ -3492,7 +3497,7 @@ export function createApp(deps: ServerDeps) {
       }
       // A resource change takes effect WITHOUT a restart: refresh the shared
       // semaphore's in-memory snapshot and pump every manager (step 2.5's hook).
-      if (resources !== undefined) await deps.semaphore?.refresh();
+      if (resources !== undefined || limitsPatch !== undefined || safetyPatch !== undefined) await deps.semaphore?.refresh();
       return c.json(workspaceConfigBody(written));
     })
 

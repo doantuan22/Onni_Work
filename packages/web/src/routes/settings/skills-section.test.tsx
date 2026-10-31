@@ -19,6 +19,8 @@ function serve(overrides: Partial<WorkspaceConfigResponse> = {}) {
     projectsDir: '~/onni/projects',
     orgSkillsRepos: [],
     systemPrompt: null,
+    limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10000000, maxWallClockMinutes: 240, maxStepIterations: 30 },
+    safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
     composerDefaults: {
       autonomous: null,
       worktree: null,

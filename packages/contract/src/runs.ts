@@ -15,6 +15,7 @@ export type RunsListQuery = z.infer<typeof runsListQuerySchema>;
 // one. `src/runs/store.ts` imports the SAME value for its persistence twin, so the two halves of
 // `contract-parity.runs.test.ts` cannot drift apart by construction.
 import { dispatchIntentSchema, dispatchSchema } from './dispatch.ts';
+import { limitHitSchema, limitUsageSchema, runLimitsRequestSchema, runLimitsSchema } from './limits.ts';
 import { trackerAssociationSchema, trackerAutomationEventSchema } from './tracker.ts';
 
 /**
@@ -188,6 +189,14 @@ export const runRecordSchema = z.object({
   /** Autonomous mode (#autonomous): the run never parks at `waiting` or the terminal `review`
    *  gate. Absent = falsy = not autonomous. */
   autonomous: z.boolean().optional(),
+  /** The cost / token / time / iteration ceilings this run started with (snapshot; absent on old runs). */
+  limits: runLimitsSchema.optional(),
+  /** Durable usage the steps cannot rebuild (active wall-clock). */
+  limitUsage: limitUsageSchema.optional(),
+  /** Set when a ceiling ended the run; Continue asks to raise it. */
+  limitHit: limitHitSchema.optional(),
+  /** ISO time an unanswered `waiting` run was ended by the unattended expiry. */
+  waitExpiredAt: z.string().optional(),
   /**
    * Provenance for a task a project GitHub automation launched (#694). Absent on every ordinary
    * run, which is what makes it additive — the cockpit shows the "from automation" link only when
@@ -1211,6 +1220,8 @@ export const createRunInputBaseSchema = z
      *  a dispatch tree, with the user's limits. Omit for an ordinary task. Ignored — the run is
      *  still created — on a server with `capabilities.dispatch` off. */
     dispatch: dispatchIntentSchema.optional(),
+    /** Limits for this run: omitted / `default` = the workspace default. User surfaces only. */
+    limits: runLimitsRequestSchema.optional(),
   });
 
 /** A task may be attachments alone (a pasted screenshot is a brief), but never nothing at all. */
@@ -1267,6 +1278,8 @@ export const continueInputSchema = z.object({
   agentProfile: z.string().max(64).optional(),
   /** One per Continue, reused by its retries: a key that already landed is not continued again. */
   idempotencyKey: z.string().uuid().optional(),
+  /** Continue a run a ceiling stopped: extend the ceiling that was hit by one more allowance. */
+  raiseLimits: z.boolean().optional(),
 });
 export type ContinueInput = z.input<typeof continueInputSchema>;
 

@@ -6,7 +6,7 @@ import { readFileWithRetry, renameSyncWithRetry, renameWithRetry } from '../fs-r
 // Contract VALUES, like `workspaceUiStateSchema` in workspace/migrations.ts: the tag bounds this
 // file must not `.catch` away are the same constants the PATCH route validates against, so they
 // are imported rather than repeated.
-import { PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH } from '@onni/contract';
+import { DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH, runLimitsSchema } from '@onni/contract';
 import { PROVIDER_IDS, type ProviderId } from '../core/provider-auth.ts';
 import { assertOnniHomeWriteIsSandboxed, isAbsolutePath, workspaceConfigPath } from '../paths.ts';
 
@@ -83,6 +83,16 @@ export const DEFAULT_MONITORING_WAKE_MINUTES = 5;
 
 /** Plain user-wait sessions retain a bounded liveness safeguard by default (#992). */
 export const DEFAULT_IDLE_TIMEOUT_MINUTES = 15;
+
+const limitsConfigSchema = runLimitsSchema.catch(() => ({ ...DEFAULT_RUN_LIMITS }));
+const safetyConfigSchema = z
+  .object({
+    waitExpiryMinutes: z.number().int().min(1).max(1440).default(DEFAULT_SAFETY_SETTINGS.waitExpiryMinutes).catch(DEFAULT_SAFETY_SETTINGS.waitExpiryMinutes),
+    dispatchMaxDepth: z.number().int().min(1).max(3).default(DEFAULT_SAFETY_SETTINGS.dispatchMaxDepth).catch(DEFAULT_SAFETY_SETTINGS.dispatchMaxDepth),
+    dispatchMaxSubtasks: z.number().int().min(1).max(50).default(DEFAULT_SAFETY_SETTINGS.dispatchMaxSubtasks).catch(DEFAULT_SAFETY_SETTINGS.dispatchMaxSubtasks),
+    dispatchRetryLimit: z.number().int().min(0).max(3).default(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit).catch(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit),
+  })
+  .prefault(() => ({}));
 
 const resourcesSchema = z
   .object({
@@ -234,6 +244,10 @@ const workspaceConfigSchema = z
     // Function-form default/catch: mutators (step 1.3's registerProject) edit
     // these objects in place, so parses must never share one reference.
     resources: resourcesSchema.prefault(() => ({})).catch(() => resourcesSchema.parse({})),
+    /** Default cost / token / time / iteration ceilings for new runs (a fresh install is capped). */
+    limits: limitsConfigSchema.default(() => ({ ...DEFAULT_RUN_LIMITS })),
+    /** Hang guards and dispatch structure — on in every limits mode. */
+    safety: safetyConfigSchema.catch(() => safetyConfigSchema.parse({})),
     /** Optional New Task policy. Missing keys inherit exact 0/1 environment seeds. */
     composerDefaults: composerDefaultsSchema.default(() => ({})).catch(() => ({})),
     /** Host-wide provider preferences; absent means every provider is enabled. */

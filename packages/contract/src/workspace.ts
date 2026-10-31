@@ -27,7 +27,12 @@ import { MAX_SAVED_WORKSPACE_LAYOUTS, savedWorkspaceLayoutSchema } from './works
  * `resources.maxMonitoringSessions` and `resources.monitoringWakeIntervalMinutes` optional, which
  * was wider than the server has ever been.
  */
+import { runLimitsSchema, safetySettingsSchema } from './limits.ts';
 export const workspaceConfigResponseSchema = z.object({
+  /** Default cost / token / time / iteration ceilings for new runs. */
+  limits: runLimitsSchema,
+  /** Hang guards and dispatch structure (Settings → Advanced); on in every limits mode. */
+  safety: safetySettingsSchema,
   branding: z.object({
     name: z.string(),
     logoUrl: z.string().nullable(),
@@ -108,6 +113,10 @@ export const setWorkspaceConfigInputSchema = z.object({
       worktree: z.boolean().nullable().optional(),
     })
     .optional(),
+  /** Replaces the default run limits. Switching to `none` is the UI's one-time confirmation. */
+  limits: runLimitsSchema.optional(),
+  /** Partial: absent keys stay untouched. */
+  safety: safetySettingsSchema.partial().optional(),
   /** Machine-wide agent defaults. `null` on a key CLEARS it back to "no opinion", which a bare
    *  absent key cannot say in a partial patch. */
   agentDefaults: z

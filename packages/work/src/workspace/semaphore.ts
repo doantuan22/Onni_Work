@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, type RunLimits, type SafetySettings } from '@onni/contract';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES, DEFAULT_MONITORING_WAKE_MINUTES, loadWorkspaceConfig } from './config.ts';
 
 /**
@@ -56,6 +57,10 @@ export interface WorkspaceResourceLimits {
    * project has an override", i.e. every project inherits.
    */
   projectLimits?: ReadonlyMap<string, number>;
+  /** Workspace default run limits (docs/design/unattended-safety.md); absent = the shipped default. */
+  runLimits?: RunLimits;
+  /** Hang guards and dispatch structure; absent = the shipped defaults. */
+  safety?: SafetySettings;
 }
 
 /** Realpath-normalize a root the same way the registry does
@@ -128,7 +133,7 @@ const DEFAULT_LIMITS: WorkspaceResourceLimits = {
  *  The registry `root` is already realpath-normalized (`registerProject`), so
  *  the keys match `normalizeRootSync`'s output at lookup time. */
 async function loadResourceLimits(): Promise<WorkspaceResourceLimits> {
-  const { resources, projects } = await loadWorkspaceConfig();
+  const { resources, projects, limits, safety } = await loadWorkspaceConfig();
   const projectLimits = new Map<string, number>();
   for (const project of projects) {
     if (typeof project.maxParallel === 'number') projectLimits.set(project.root, project.maxParallel);
@@ -141,6 +146,8 @@ async function loadResourceLimits(): Promise<WorkspaceResourceLimits> {
     autoResumeOnUsageLimit: resources.autoResumeOnUsageLimit,
     memoryLimitMb: resources.memoryLimitMb,
     projectLimits,
+    runLimits: limits,
+    safety,
   };
 }
 
@@ -201,6 +208,16 @@ export class WorkspaceSemaphore {
 
   maxMonitoringSessions(): number {
     return this.limits.maxMonitoringSessions ?? 2;
+  }
+
+  /** The workspace default for new runs' cost / token / time / iteration ceilings. */
+  runLimitsDefault(): RunLimits {
+    return { ...(this.limits.runLimits ?? DEFAULT_RUN_LIMITS) };
+  }
+
+  /** Hang-guard and dispatch-structure settings (on in every limits mode). */
+  safety(): SafetySettings {
+    return { ...DEFAULT_SAFETY_SETTINGS, ...this.limits.safety };
   }
 
   idleTimeoutMinutes(): number | null {

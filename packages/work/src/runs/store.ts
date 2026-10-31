@@ -33,6 +33,7 @@ import { MAX_REF } from './task-refs.ts';
 import { workflowDefSchema } from '../workflows/types.ts';
 // A contract VALUE, like `workspaceUiStateSchema` in `workspace/migrations.ts`: the persisted
 // `dispatch` object and its wire half are literally the same schema, so they cannot drift.
+import { limitHitSchema, limitUsageSchema, runLimitsSchema } from '@onni/contract';
 import { dispatchSchema, trackerAssociationSchema, trackerAutomationEventSchema, webhookAttentionRequestSchema, webhookCompletionReasonSchema, worktreeLifecycleProjectionSchema } from '@onni/contract';
 
 import { RUNNER_IDS } from '../core/agent-runner.ts';
@@ -212,6 +213,11 @@ export const runRecordSchema = z.object({
    *  group-pick winner-park read it). Additive-safe: absent = falsy = not
    *  autonomous. Set at creation from `WorkflowInput.autonomous`. */
   autonomous: z.boolean().optional(),
+  /** Cost / token / time / iteration ceilings snapshotted at start (docs/design/unattended-safety.md). */
+  limits: runLimitsSchema.optional().catch(undefined),
+  limitUsage: limitUsageSchema.optional().catch(undefined),
+  limitHit: limitHitSchema.optional().catch(undefined),
+  waitExpiredAt: z.string().optional(),
   /** Optional provenance for tasks launched by a project GitHub automation. */
   automation: z
     .object({
