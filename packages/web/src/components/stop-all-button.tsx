@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { OctagonXIcon } from 'lucide-react'
+import { useState } from 'react'
 
 import { stopAllRuns } from '@/api/client'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 
@@ -10,14 +12,9 @@ import { toast } from '@/components/ui/toaster'
  * every project. Worktrees and sessions are kept, so Continue still works. One confirmation, then
  * it acts — a runaway night is not the moment for a second dialog.
  */
-export function StopAllButton({
-  confirm = (message: string) => window.confirm(message),
-  className,
-}: {
-  confirm?: (message: string) => boolean
-  className?: string
-}) {
+export function StopAllButton({ className }: { className?: string }) {
   const queryClient = useQueryClient()
+  const [confirming, setConfirming] = useState(false)
   const stop = useMutation({
     mutationFn: stopAllRuns,
     onSuccess: ({ stopped }) => {
@@ -27,21 +24,28 @@ export function StopAllButton({
     onError: (error: Error) => toast(error.message, { tone: 'danger' }),
   })
   return (
-    <Button
-      type="button"
-      variant="danger-ghost"
-      size="sm"
-      data-slot="stop-all"
-      disabled={stop.isPending}
-      className={className}
-      onClick={() => {
-        if (confirm('Stop every queued and running task in every project? Worktrees and sessions are kept; Continue still works.')) {
-          stop.mutate()
-        }
-      }}
-    >
-      <OctagonXIcon className="size-[14px]" aria-hidden="true" />
-      Stop all
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="danger-ghost"
+        size="sm"
+        data-slot="stop-all"
+        disabled={stop.isPending}
+        className={className}
+        onClick={() => setConfirming(true)}
+      >
+        <OctagonXIcon className="size-[14px]" aria-hidden="true" />
+        Stop all
+      </Button>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Stop every task?"
+        description="Cancels every queued and running task in every project. Worktrees and sessions are kept; Continue still works."
+        confirmLabel="Stop all"
+        danger
+        onConfirm={() => stop.mutate()}
+      />
+    </>
   )
 }

@@ -41,7 +41,7 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
             data-slot="digest-hours"
             value={hours}
             onChange={(event) => changeHours(Number(event.target.value))}
-            className="rounded-md border border-input bg-card px-2 py-1 text-[12px]"
+            className="rounded-md border border-input bg-card px-2 py-1 text-[12px] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             {DIGEST_HOURS.map((h) => <option key={h} value={h}>{h} h</option>)}
           </select>

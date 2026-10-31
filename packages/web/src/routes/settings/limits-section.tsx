@@ -1,11 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ShieldAlertIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { putWorkspaceConfig } from '@/api/client'
-import { useWorkspaceConfig, workspaceQueryKeys } from '@/api/queries'
+import { workspaceQueryKeys } from '@/api/queries'
 import type { SetWorkspaceConfigInput, WorkspaceConfigResponse } from '@onni/api-client'
-import { CenteredState } from '@/components/centered-state'
 import { IntegerStepper } from '@/components/integer-stepper'
 import { RunLimitsFields } from '@/components/run-limits-fields'
 import { StopAllButton } from '@/components/stop-all-button'
@@ -19,18 +17,8 @@ import { SettingsField } from './settings-field'
  * much a run may spend, plus the guards that stay on in every mode ("Advanced"). A run snapshots
  * the default when it starts, so a change here applies to new runs only.
  */
-export function LimitsSection() {
-  const config = useWorkspaceConfig()
-  if (config.isPending) {
-    return <p data-slot="limits-loading" className="p-4 text-[13px] text-soft-foreground md:p-6">Loading limits…</p>
-  }
-  if (config.isError) {
-    return <CenteredState icon={<ShieldAlertIcon />} tone="danger" title="Limits did not load" subtitle={config.error.message} heading="h2" />
-  }
-  return <LimitsForm config={config.data} />
-}
-
-function LimitsForm({ config }: { config: WorkspaceConfigResponse }) {
+/** Limits live inside Settings → Resources: same host-protection theme, no extra nav entry. */
+export function LimitsPanel({ config }: { config: WorkspaceConfigResponse }) {
   const queryClient = useQueryClient()
   const save = useMutation({
     mutationFn: (patch: SetWorkspaceConfigInput) => putWorkspaceConfig(patch),
@@ -51,7 +39,7 @@ function LimitsForm({ config }: { config: WorkspaceConfigResponse }) {
   const safety = config.safety
 
   return (
-    <div data-slot="limits-section" className="mx-auto flex w-full max-w-2xl flex-col gap-7 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
+    <div data-slot="limits-section" className="flex flex-col gap-7">
       <SettingsField
         title="Run limits"
         hint="The default for new runs. Capped applies only the numbers you enter (blank = no limit on that axis); Unlimited applies none. Each run keeps the values it started with, and a task tree shares its root's ceilings."

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 import { hasAccountChoice, useAgentAccounts } from '@/api/agent-accounts'
 import { continueRun } from '@/api/client'
@@ -100,16 +100,17 @@ export function useContinueAction(run: ApiRun): ContinueAction {
     ? pickedAccount
     : null
 
+  const raiseArmed = useRef(false)
   const mutation = useMutation({
     mutationFn: ({ text, images, idempotencyKey }: { text: string; images: AttachmentEntry[]; idempotencyKey?: string }) => {
       if (!canContinue) {
         return Promise.reject(new Error(continuation.reason ?? 'Connect an agent provider to continue.'))
       }
-      // A ceiling ended this run: continuing means raising it by one more allowance, so ask first.
-      if (run.limitHit && !window.confirm(`${run.error ?? 'A run ceiling ended this task.'}
-
-Raise that ceiling by one more allowance and continue?`)) {
-        return Promise.reject(new Error('Continue cancelled — the ceiling was not raised.'))
+      // A ceiling ended this run: continuing raises it by one more allowance, so the first press
+      // only says so and the second one (this same Continue) goes through.
+      if (run.limitHit && !raiseArmed.current) {
+        raiseArmed.current = true
+        return Promise.reject(new Error(`${run.error ?? 'A run ceiling ended this task.'} Press Continue again to raise it by one more allowance.`))
       }
       return continueRun(run.id, {
         ...(run.limitHit ? { raiseLimits: true } : {}),

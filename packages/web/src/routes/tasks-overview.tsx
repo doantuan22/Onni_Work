@@ -130,6 +130,7 @@ export function TasksOverview({
   onViewChange,
   onArchiveFinished,
   onMarkAllRead,
+  headerExtras,
   onRename,
   onTogglePin,
   now,
@@ -155,6 +156,8 @@ export function TasksOverview({
   onArchiveFinished: () => void
   /** "Mark all read" (#unread-done-items) — stamps every unread finished run. */
   onMarkAllRead: () => void
+  /** Extra controls at the right of the desktop header (the container passes the emergency stop). */
+  headerExtras?: React.ReactNode
   /** Inline rename from the table's Task cell (spec step 15) — the route wires this to
    *  `PATCH /api/runs/:id`, the same flow as the run header's pencil. */
   onRename: (id: string, title: string) => void
@@ -287,7 +290,7 @@ export function TasksOverview({
           </OverviewTab>
         </div>
         <div className="flex-1" />
-        <StopAllButton />
+        {headerExtras}
         {/* Count-gated, like the broom beside it: offered only while there is unread history to
             clear (#unread-done-items). Archived runs are never unread, so this only ever lights
             on the Active tab in practice — no need to also gate on `view`. */}
@@ -1641,6 +1644,7 @@ export function TasksOverviewRoute() {
         onViewChange={setView}
         onArchiveFinished={() => archive.mutate()}
         onMarkAllRead={() => markAllRead.mutate()}
+        headerExtras={<StopAllButton />}
         onRename={onRename}
         onTogglePin={onTogglePin}
         showTokens={metricVisibility.tokens}

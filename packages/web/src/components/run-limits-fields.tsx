@@ -1,10 +1,11 @@
-import type { ChangeEvent } from 'react'
+import { useState, type ChangeEvent } from 'react'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import type { LimitsDraft } from '@/lib/run-limits'
 
 /** Shown before "Unlimited" is accepted — anywhere it can be chosen. */
 export const UNLIMITED_WARNING =
-  'Unlimited removes every cost, token, time and step ceiling for this run. An unattended run can keep spending until you stop it. Hang guards and dispatch limits stay on. Continue?'
+  'Unlimited removes every cost, token, time and step ceiling for this run. An unattended run can keep spending until you stop it. Hang guards and dispatch limits stay on.'
 
 const inputClass =
   'block w-full rounded-md border border-input bg-card px-2.5 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50'
@@ -12,25 +13,27 @@ const inputClass =
 /**
  * The mode selector plus the four ceilings, shared by Settings (workspace default) and the
  * composer (one run). A blank number is "no limit on that axis" — the form never invents one.
- * Choosing Unlimited asks once, through `confirm`, so a stray click cannot remove the brakes.
+ * Choosing Unlimited asks once, so a stray click cannot remove the brakes.
  */
 export function RunLimitsFields({
   draft,
   onChange,
   allowDefault,
   disabled,
-  confirm = (message: string) => window.confirm(message),
 }: {
   draft: LimitsDraft
   onChange: (next: LimitsDraft) => void
   /** The composer offers "Default"; Settings edits the default itself. */
   allowDefault: boolean
   disabled?: boolean
-  confirm?: (message: string) => boolean
 }) {
+  const [confirmingUnlimited, setConfirmingUnlimited] = useState(false)
   const setMode = (event: ChangeEvent<HTMLSelectElement>) => {
     const mode = event.target.value as LimitsDraft['mode']
-    if (mode === 'none' && draft.mode !== 'none' && !confirm(UNLIMITED_WARNING)) return
+    if (mode === 'none' && draft.mode !== 'none') {
+      setConfirmingUnlimited(true)
+      return
+    }
     onChange({ ...draft, mode })
   }
   const field = (key: 'cost' | 'tokens' | 'time' | 'iterations', label: string, hint: string) => (
@@ -78,6 +81,15 @@ export function RunLimitsFields({
           ∞ No cost, token, time or step ceiling. Hang guards and dispatch limits still apply.
         </p>
       ) : null}
+      <ConfirmDialog
+        open={confirmingUnlimited}
+        onOpenChange={setConfirmingUnlimited}
+        title="Remove all ceilings?"
+        description={UNLIMITED_WARNING}
+        confirmLabel="Choose Unlimited"
+        danger
+        onConfirm={() => onChange({ ...draft, mode: 'none' })}
+      />
     </div>
   )
 }

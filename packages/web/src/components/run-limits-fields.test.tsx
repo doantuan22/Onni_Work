@@ -19,15 +19,16 @@ describe('RunLimitsFields', () => {
     expect(screen.getByText(/No cost, token, time or step ceiling/)).toBeTruthy()
   })
 
-  it('asks once before choosing Unlimited, and does not switch when declined', () => {
+  it('asks once before choosing Unlimited, and does not switch until confirmed', async () => {
     const onChange = vi.fn()
-    const confirm = vi.fn(() => false)
-    render(<RunLimitsFields draft={capped} onChange={onChange} allowDefault confirm={confirm} />)
+    render(<RunLimitsFields draft={capped} onChange={onChange} allowDefault />)
     fireEvent.change(screen.getByLabelText('Run limits'), { target: { value: 'none' } })
-    expect(confirm).toHaveBeenCalledWith(UNLIMITED_WARNING)
+    expect(await screen.findByText(UNLIMITED_WARNING)).toBeTruthy()
     expect(onChange).not.toHaveBeenCalled()
-    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(onChange).not.toHaveBeenCalled()
     fireEvent.change(screen.getByLabelText('Run limits'), { target: { value: 'none' } })
+    fireEvent.click(await screen.findByText('Choose Unlimited'))
     expect(onChange).toHaveBeenCalledWith({ ...capped, mode: 'none' })
   })
 

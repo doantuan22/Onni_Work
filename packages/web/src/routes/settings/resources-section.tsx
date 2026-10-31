@@ -10,6 +10,7 @@ import { CenteredState } from '@/components/centered-state'
 import { IntegerStepper } from '@/components/integer-stepper'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
+import { LimitsPanel } from './limits-section'
 import { MachineCard } from './machine-card'
 import { SettingsField } from './settings-field'
 
@@ -344,6 +345,8 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           Interactive skills may recommend both off. Multi-step and parallel runs remain isolated.
         </p>
       </SettingsField>
+
+      <LimitsPanel config={config} />
     </div>
   )
 }
