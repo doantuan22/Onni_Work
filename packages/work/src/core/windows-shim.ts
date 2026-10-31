@@ -8,6 +8,11 @@
  * the target out of it and spawns that directly: same program, no shell. The `.ps1` twin npm writes
  * beside it (what PowerShell's `Get-Command` names) is read the same way (telemetry 3626ac13), and
  * a `.js` override gets the same treatment.
+ *
+ * A bare `codex` never reached the shim: Node hands the name to CreateProcess, which appends only
+ * `.exe` and knows nothing of `PATH`'s `.cmd`. So a bare name is first resolved the way cmd.exe
+ * finds it — `PATH` × `PATHEXT` — and the hit then unwrapped. Nothing is cached: a CLI installed
+ * while the server runs is found by the next probe.
  */
 import { closeSync, existsSync, openSync, readSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
@@ -26,6 +31,8 @@ export interface ShimOptions {
   platform?: NodeJS.Platform;
   /** The node to run a script with when the shim has none beside it; defaults to this process's. */
   nodePath?: string;
+  /** Where `PATH` and `PATHEXT` come from; defaults to `process.env`. */
+  env?: NodeJS.ProcessEnv;
 }
 
 /** What a shim launches: a node script, or a native binary it calls directly (opencode). */
@@ -92,6 +99,33 @@ export function shimScript(shimPath: string): string | null {
 }
 
 /**
+ * `program` as an absolute path on `PATH`, the way cmd.exe finds a bare name: `PATH` × `PATHEXT`.
+ * Null for anything that is already a path, so a missing absolute path keeps its own ENOENT.
+ */
+function resolveOnPath(program: string, env: NodeJS.ProcessEnv): string | null {
+  if (isAbsolute(program) || /[\\/]/.test(program)) return null;
+  const path = env.PATH ?? env.Path ?? env.path;
+  if (!path) return null;
+  // An extensionless bin on PATH is npm's POSIX twin — Windows cannot execute it — so a bare
+  // name only ever gets PATHEXT candidates. Windows ignores case; lower-casing keeps the lookup
+  // the same on a case-sensitive host (tests).
+  const exts = (env.PATHEXT ?? env.Pathext ?? env.pathext ?? '.COM;.EXE;.BAT;.CMD')
+    .split(';')
+    .map((ext) => ext.trim().toLowerCase())
+    .filter(Boolean);
+  const names = extname(program) ? [program] : exts.map((ext) => program + ext);
+  for (const entry of path.split(';')) {
+    const dir = entry.trim().replace(/^"|"$/g, '');
+    if (!dir) continue;
+    for (const name of names) {
+      const candidate = join(dir, name);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+/**
  * `[file, args]` that run `program` without a shell. Untouched off Windows and for anything that
  * is not a recognisable shim or script, so a bad path still fails the spawn with its own error.
  */
@@ -101,11 +135,12 @@ export function spawnableCommand(
   opts: ShimOptions = {},
 ): [string, string[]] {
   if ((opts.platform ?? process.platform) !== 'win32') return [program, [...args]];
-  const ext = extname(program).toLowerCase();
+  const found = resolveOnPath(program, opts.env ?? process.env) ?? program;
+  const ext = extname(found).toLowerCase();
   const nodePath = opts.nodePath ?? process.execPath;
-  if (SCRIPT_EXTENSIONS.has(ext) && existsSync(program)) return [nodePath, [program, ...args]];
-  if (!SHIM_EXTENSIONS.has(ext)) return [program, [...args]];
-  const shimPath = isAbsolute(program) ? program : resolve(program);
+  const shimPath = isAbsolute(found) ? found : resolve(found);
+  if (SCRIPT_EXTENSIONS.has(ext) && existsSync(shimPath)) return [nodePath, [shimPath, ...args]];
+  if (!SHIM_EXTENSIONS.has(ext)) return [found, [...args]];
   const target = shimTarget(shimPath);
   if (!target) return [program, [...args]];
   if (target.kind === 'native') return [target.path, [...args]];

@@ -4,6 +4,9 @@ import { RunnerModelCatalog, type ModelOption } from './runner-model-catalog.ts'
 const models: ModelOption[] = [
   { id: 'gpt-latest', label: 'GPT Latest', description: 'Latest model' },
 ];
+const nextModels: ModelOption[] = [
+  { id: 'gpt-newer', label: 'GPT Newer', description: 'Shipped by an update' },
+];
 
 describe('RunnerModelCatalog', () => {
   it('returns a live discovery, then a cached value for five minutes', async () => {
@@ -22,6 +25,34 @@ describe('RunnerModelCatalog', () => {
 
     now += 1;
     await catalog.get('codex');
+    expect(discover).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes at once when the CLI changes, and only then', async () => {
+    let now = 0;
+    let fingerprint = 'codex:100:1000';
+    const discover = vi.fn()
+      .mockResolvedValueOnce(models)
+      .mockResolvedValueOnce(nextModels);
+    const catalog = new RunnerModelCatalog({
+      adapters: { codex: { discover, fingerprint: () => fingerprint } },
+      now: () => now,
+      ttlMs: 1_000,
+      usableTtlMs: 10_000,
+    });
+
+    await catalog.get('codex');
+    now = 1;
+    // An update rewrote the binary: don't wait out the five-minute freshness window.
+    await expect(catalog.get('codex')).resolves.toEqual({
+      runner: 'codex', models, source: 'cache', stale: false,
+    });
+    expect(discover).toHaveBeenCalledTimes(1);
+
+    fingerprint = 'codex:101:2000';
+    await expect(catalog.get('codex')).resolves.toEqual({
+      runner: 'codex', models: nextModels, source: 'live', stale: false,
+    });
     expect(discover).toHaveBeenCalledTimes(2);
   });
 

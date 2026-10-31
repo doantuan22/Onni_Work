@@ -18,6 +18,12 @@ export interface RunnerModelCatalogResult {
 
 export interface RunnerModelCatalogAdapter {
   discover(): Promise<ModelOption[]>;
+  /**
+   * A cheap token that changes when the CLI binary does (see `programFingerprint`). A different
+   * token refreshes the catalog at once instead of waiting out the TTL, so a CLI update that
+   * ships new models reaches the picker on the next read. Omitted by adapters that cannot tell.
+   */
+  fingerprint?(): string | null;
 }
 
 export interface RunnerModelCatalogOptions {
@@ -33,6 +39,8 @@ interface CachedCatalog {
   refreshAfter: number;
   expiresAt: number;
   failureReason?: string;
+  /** The adapter's token when this entry was written; `undefined` when it has none. */
+  fingerprint?: string | null;
 }
 
 const DEFAULT_TTL_MS = 5 * 60 * 1_000;
@@ -57,7 +65,10 @@ export class RunnerModelCatalog {
   get(runner: RunnerId): Promise<RunnerModelCatalogResult> {
     const cached = this.#cache.get(runner);
     const now = this.#now();
-    if (cached && now < cached.refreshAfter) {
+    // A CLI update rewrites the binary (or the script an npm shim runs), so its token differs.
+    // Waiting out the TTL would keep showing the old catalog while the new models are installed.
+    const outdated = cached !== undefined && this.#fingerprint(runner) !== cached.fingerprint;
+    if (cached && !outdated && now < cached.refreshAfter) {
       if (cached.failureReason) {
         return Promise.resolve({
           runner,
@@ -71,7 +82,7 @@ export class RunnerModelCatalog {
     }
 
     // Keep discovery latency off the picker path while a healthy answer is still usable.
-    if (cached && !cached.failureReason && cached.models.length > 0 && now < cached.expiresAt) {
+    if (cached && !outdated && !cached.failureReason && cached.models.length > 0 && now < cached.expiresAt) {
       this.#refreshInBackground(runner, cached);
       return Promise.resolve({ runner, models: cached.models, source: 'cache', stale: false });
     }
@@ -101,6 +112,9 @@ export class RunnerModelCatalog {
     runner: RunnerId,
     cached: CachedCatalog | undefined,
   ): Promise<RunnerModelCatalogResult> {
+    // Read before discovering: a binary replaced mid-probe then reads as a change on the next
+    // request instead of being recorded as already current.
+    const fingerprint = this.#fingerprint(runner);
     try {
       const adapter = this.#adapters[runner];
       if (!adapter) throw new Error('adapter unavailable');
@@ -110,6 +124,7 @@ export class RunnerModelCatalog {
         models: [...models],
         refreshAfter: now + this.#ttlMs,
         expiresAt: now + this.#usableTtlMs,
+        fingerprint,
       };
       this.#cache.set(runner, value);
       return { runner, models: value.models, source: 'live', stale: false };
@@ -121,6 +136,7 @@ export class RunnerModelCatalog {
           refreshAfter: this.#now() + this.#ttlMs,
           expiresAt: cached.expiresAt,
           failureReason: reason,
+          fingerprint,
         });
         return { runner, models: cached.models, source: 'cache', stale: true, reason };
       }
@@ -130,8 +146,20 @@ export class RunnerModelCatalog {
         refreshAfter: now + this.#ttlMs,
         expiresAt: now,
         failureReason: reason,
+        fingerprint,
       });
       return { runner, models: [], source: 'unavailable', stale: false, reason };
+    }
+  }
+
+  #fingerprint(runner: RunnerId): string | null | undefined {
+    const adapter = this.#adapters[runner];
+    if (!adapter?.fingerprint) return undefined;
+    try {
+      return adapter.fingerprint();
+    } catch {
+      // A fingerprint that cannot be read is no signal, not a change.
+      return undefined;
     }
   }
 }

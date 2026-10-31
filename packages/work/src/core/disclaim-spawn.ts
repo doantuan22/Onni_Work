@@ -66,7 +66,9 @@ export function disclaimedCommand(
   childEnv: NodeJS.ProcessEnv | undefined,
   opts: DisclaimOptions = {},
 ): [string, string[]] {
-  if (!disclaimActive(opts)) return spawnableCommand(program, args, { platform: opts.platform });
+  if (!disclaimActive(opts)) {
+    return spawnableCommand(program, args, { platform: opts.platform, env: childEnv });
+  }
   const trampoline = (opts.hostEnv ?? process.env).ONNI_DISCLAIM_EXEC!;
   const path = childEnv?.PATH ?? process.env.PATH;
   const resolved = resolveProgram(program, path);

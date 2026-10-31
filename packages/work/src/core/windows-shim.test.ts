@@ -119,7 +119,27 @@ describe('spawnableCommand (telemetry a330744e)', () => {
     writeFileSync(join(dir, 'gone.cmd'), NPM_SHIM);
     expect(spawnableCommand(join(dir, 'gone.cmd'), [], { platform: 'win32' })).toEqual([join(dir, 'gone.cmd'), []]);
     expect(spawnableCommand(join(dir, 'missing.cmd'), [], { platform: 'win32' })).toEqual([join(dir, 'missing.cmd'), []]);
-    expect(spawnableCommand('codex', ['a'], { platform: 'win32' })).toEqual(['codex', ['a']]);
+    // No PATH, no resolution: the spawn keeps the caller's own name and error.
+    expect(spawnableCommand('codex', ['a'], { platform: 'win32', env: { PATH: '' } })).toEqual(['codex', ['a']]);
+  });
+
+  // Node hands a bare name to CreateProcess, which appends only `.exe`; npm installed the CLI as
+  // `codex.cmd`, so `codex` must be found on PATH here or the probe reports "not installed".
+  it('finds a bare CLI name on PATH and unwraps it, and does not remember a miss', () => {
+    const { script } = npmInstall();
+    // npm keeps the POSIX twin beside the shim; Windows cannot execute it, so it must be skipped.
+    writeFileSync(join(dir, 'codex'), '#!/bin/sh\n');
+    const env = { Path: dir, PATHEXT: '.COM;.EXE;.BAT;.CMD' };
+    expect(spawnableCommand('codex', ['a'], { platform: 'win32', env: { PATH: '' } })).toEqual(['codex', ['a']]);
+    expect(spawnableCommand('codex', ['login'], { platform: 'win32', nodePath: 'NODE', env }))
+      .toEqual(['NODE', [script, 'login']]);
+  });
+
+  it('resolves a bare native binary on PATH to its absolute path', () => {
+    const exe = join(dir, 'agy.exe');
+    writeFileSync(exe, '');
+    expect(spawnableCommand('agy', ['--version'], { platform: 'win32', env: { PATH: dir } }))
+      .toEqual([exe, ['--version']]);
   });
 
   it('changes nothing off Windows', () => {

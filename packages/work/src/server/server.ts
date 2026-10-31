@@ -111,12 +111,17 @@ import { RUNNER_IDS } from '../core/agent-runner.ts';
 import type { ContentBlock } from '../core/agent-runner.ts';
 import { AGENT_MODELS_LOCKED_ERROR, agentModelsLocked } from '../core/agent-model-policy.ts';
 import { discoverClaudeModels } from '../core/claude-model-catalog.ts';
+import { resolveClaudeExecutable } from '../core/claude-cli-runner.ts';
 import { discoverCodexModels } from '../core/codex-model-catalog.ts';
-import { resolveAntigravityBin } from '../core/antigravity-bin.ts';
+import { resolveCodexExecutable } from '../core/codex-app-server-transport.ts';
+import { resolveAntigravityBin, resolveAntigravityExecutable } from '../core/antigravity-bin.ts';
 import { discoverAntigravityModels } from '../core/antigravity-cli.ts';
 import { discoverCursorModels } from '../core/cursor-model-catalog.ts';
-import { discoverOpencodeModels } from '../core/opencode-model-catalog.ts';
+import { discoverOpencodeModels, resolveOpencodeExecutable } from '../core/opencode-model-catalog.ts';
 import { discoverJunieModels } from '../core/junie-model-catalog.ts';
+import { resolveJunieExecutable } from '../core/junie-acp-transport.ts';
+import { discoverPiModels, resolvePiExecutable } from '../core/pi-model-catalog.ts';
+import { programFingerprint } from '../core/cli-fingerprint.ts';
 import {
   PROVIDER_IDS,
   ProviderAuthService,
@@ -1348,14 +1353,38 @@ export function createApp(deps: ServerDeps) {
   // turns into a compile error instead.
   const bootRoot = deps.repoRoot;
   const bootDataDir = join(bootRoot, '.ai/onni');
+  // Each adapter fingerprints the file its CLI runs, so a CLI update invalidates the cached
+  // catalog at once instead of leaving the picker on the old model list until the TTL expires.
   const modelCatalog = deps.modelCatalog ?? new RunnerModelCatalog({
     adapters: {
-      claude: { discover: () => discoverClaudeModels({ cwd: bootRoot }) },
-      codex: { discover: () => discoverCodexModels({ cwd: bootRoot }) },
-      opencode: { discover: () => discoverOpencodeModels({ cwd: bootRoot }) },
-      junie: { discover: () => discoverJunieModels({ cwd: bootRoot }) },
-      cursor: { discover: () => discoverCursorModels() },
-      antigravity: { discover: () => discoverAntigravityModels() },
+      claude: {
+        discover: () => discoverClaudeModels({ cwd: bootRoot }),
+        fingerprint: () => programFingerprint(resolveClaudeExecutable()),
+      },
+      codex: {
+        discover: () => discoverCodexModels({ cwd: bootRoot }),
+        fingerprint: () => programFingerprint(resolveCodexExecutable()),
+      },
+      opencode: {
+        discover: () => discoverOpencodeModels({ cwd: bootRoot }),
+        fingerprint: () => programFingerprint(resolveOpencodeExecutable()),
+      },
+      junie: {
+        discover: () => discoverJunieModels({ cwd: bootRoot }),
+        fingerprint: () => programFingerprint(resolveJunieExecutable()),
+      },
+      cursor: {
+        discover: () => discoverCursorModels(),
+        fingerprint: () => programFingerprint(resolveCursorAgentBin()),
+      },
+      antigravity: {
+        discover: () => discoverAntigravityModels(),
+        fingerprint: () => programFingerprint(resolveAntigravityExecutable()),
+      },
+      pi: {
+        discover: () => discoverPiModels({ cwd: bootRoot }),
+        fingerprint: () => programFingerprint(resolvePiExecutable()),
+      },
     },
   });
   const providerAuth = deps.providerAuth
@@ -2040,7 +2069,7 @@ export function createApp(deps: ServerDeps) {
     // `modelDiscoveryRunnerSchema` is the contract's own list of the runners with an
     // authoritative host-local catalog (#794, #784), so the client compiles against exactly what
     // this validates. A runner absent from it has no discovery path and this 400s.
-    .get('/models', queryZodValidator(z.object({ runner: z.union([z.string(), z.array(z.string()).transform((v) => v[0] as string)]).pipe(modelDiscoveryRunnerSchema) }), { message: 'runner must be claude, codex, opencode, cursor, or junie' }), async (c) => {
+    .get('/models', queryZodValidator(z.object({ runner: z.union([z.string(), z.array(z.string()).transform((v) => v[0] as string)]).pipe(modelDiscoveryRunnerSchema) }), { message: 'runner must be claude, codex, opencode, cursor, pi, junie, or antigravity' }), async (c) => {
       const query = { data: c.req.valid('query') };
       return c.json(await modelCatalog.get(query.data.runner));
     });
