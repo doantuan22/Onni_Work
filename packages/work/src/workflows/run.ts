@@ -144,6 +144,8 @@ import { resolveProfileEnvForRoot } from '../workspace/agent-profiles.ts';
 import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
+import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf } from './limits.ts';
+import type { LimitHit, RunLimits, RunLimitsRequest } from '@onni/contract';
 import { WorkspaceSemaphore, type AccountHolds } from '../workspace/semaphore.ts';
 import { SecretStore } from '../workspace/secrets.ts';
 import { PROJECT_ID_RE, loadWorkspaceConfig } from '../workspace/config.ts';
@@ -496,6 +498,8 @@ interface ContinueRunOptions {
   /** Agent account for the reopened session (spec 2026-07-29-agent-profiles). Omitted = the
    *  account the run is already on. */
   agentProfile?: string;
+  /** Continue a run a ceiling stopped, extending the ceiling that was hit (user surfaces only). */
+  raiseLimits?: boolean;
 }
 
 interface ActiveRun {
@@ -727,6 +731,9 @@ export const AUTO_RESUME_MISSED_WINDOW_MS = 24 * 60 * 60_000;
  * in-memory checks), unref'd, and it only ever acts when idling has no justification left.
  */
 export const QUEUE_WATCHDOG_MS = 60_000;
+
+/** How often active wall-clock is accumulated and the run limits are checked. */
+export const LIMIT_SWEEP_MS = 15_000;
 /** Shared empty holds for the common "nothing is held" pump — avoids allocating per sweep. */
 const NO_HOLDS: AccountHolds = { deadline: new Set(), inFlight: new Set() };
 
@@ -903,6 +910,10 @@ export interface StartRunInput {
   /** Internal (#1300): this job resumes the agent step a usage limit interrupted. Set only by
    *  `fireAutoResume` (and a restart that revives that queued job), never derived in `execute`. */
   usageLimitResume?: boolean;
+  /** Cost / token / time / iteration ceilings requested for this run (user surfaces only). */
+  limits?: RunLimitsRequest;
+  /** Internal: an exact snapshot (a dispatched child's carved share). Wins over `limits`. */
+  limitsSnapshot?: RunLimits;
 }
 
 /**
@@ -1332,6 +1343,10 @@ export class RunManager {
   /** The stalled-queue watchdog (see `rescueStalledQueue`). */
   private readonly queueWatchdog: ReturnType<typeof setInterval>;
 
+  /** Accumulates active wall-clock and enforces run limits (see `sweepLimits`). */
+  private readonly limitSweepTimer: ReturnType<typeof setInterval>;
+  private lastLimitTick = Date.now();
+
   /** Set by the watchdog for exactly one sweep: ignore the usage-limit hold and make progress. */
   private forceNextPump = false;
 
@@ -1429,6 +1444,8 @@ export class RunManager {
     this.offUsage = onUsage((snapshot) => void this.enforceMemoryLimit(snapshot));
     this.queueWatchdog = setInterval(() => void this.rescueStalledQueue(), QUEUE_WATCHDOG_MS);
     this.queueWatchdog.unref?.();
+    this.limitSweepTimer = setInterval(() => this.sweepLimits(), LIMIT_SWEEP_MS);
+    this.limitSweepTimer.unref?.();
   }
 
   /**
@@ -1449,6 +1466,7 @@ export class RunManager {
     this.offUsage();
     this.offSemaphore();
     clearInterval(this.queueWatchdog);
+    clearInterval(this.limitSweepTimer);
     for (const [runId, state] of this.active) {
       this.clearIdleTimer(state);
       this.clearMonitoringWakeTimer(state, runId);
@@ -1721,7 +1739,11 @@ export class RunManager {
     });
     // Persist the full definition so a queued run survives a restart (#367) —
     // ad-hoc "(planned)" chains exist nowhere else to re-resolve from.
-    this.store.updateRun(run.id, { workflowDef: workflow });
+    this.store.updateRun(run.id, {
+      workflowDef: workflow,
+      // Snapshot, never re-read: a later settings change affects new runs only.
+      limits: input.limitsSnapshot ?? resolveLimits(input.limits, this.semaphore.runLimitsDefault()),
+    });
     // On the record, not only the input: restart recovery rebuilds the run from it.
     if (run.worktree === false && input.newBranch) {
       this.store.updateRun(run.id, { inPlaceBranch: true, ...(input.branch ? { branch: input.branch } : {}) });
@@ -2928,6 +2950,9 @@ export class RunManager {
       runner: childRunner,
       ...(childModel ? { model: childModel } : {}),
       autonomous: true,
+      // The parent's mode, with each ceiling carved from what its subtree has left: a child is
+      // never looser than its parent, whatever the agent's order asked for.
+      limitsSnapshot: carveChildLimits(this.store.getRun(parentId) ?? parent, runs, input.max_cost !== undefined ? { maxCostUsd: input.max_cost } : undefined),
       dispatch: {
         rootRunId,
         parentRunId: parentId,
@@ -3784,6 +3809,56 @@ export class RunManager {
   }
 
   /**
+   * The unattended brake (docs/design/unattended-safety.md §2). Adds the elapsed time to every
+   * `running` run's durable wall-clock (a restart loses at most one interval), then ends any live
+   * run whose ceiling is crossed. A tree-scope breach ends the whole tree from its root. The
+   * worktree and session stay, so Continue can pick the task up once the user raises the ceiling.
+   */
+  sweepLimits(now: number = Date.now()): void {
+    const elapsed = Math.max(0, Math.min(now - this.lastLimitTick, 5 * 60_000));
+    this.lastLimitTick = now;
+    if (elapsed > 0) {
+      for (const run of this.store.listRuns()) {
+        if (run.status === 'running') {
+          this.store.updateRun(run.id, { limitUsage: { wallMs: (run.limitUsage?.wallMs ?? 0) + elapsed } });
+        }
+      }
+    }
+    const runs = this.store.listRuns();
+    for (const run of runs) {
+      if (isTerminalStatus(run.status)) continue;
+      const hit = evaluateLimits(run, runs);
+      if (hit) this.stopForLimit(run.id, hit);
+    }
+  }
+
+  private stopForLimit(runId: string, hit: LimitHit): void {
+    const run = this.store.getRun(runId);
+    if (!run || isTerminalStatus(run.status)) return;
+    const targetId = hit.scope === 'tree' ? (run.dispatch?.rootRunId ?? runId) : runId;
+    const message = `stopped — ${describeHit(hit)}. The worktree and session are kept; Continue to raise the ceiling.`;
+    for (const member of subtreeOf(this.store.listRuns(), targetId)) {
+      if (isTerminalStatus(member.status)) continue;
+      this.store.updateRun(member.id, { limitHit: hit, error: describeHit(hit) });
+      this.store.appendEvent(member.id, { type: 'lifecycle', message, tone: 'danger' });
+    }
+    this.cancel(targetId);
+  }
+
+  /** "Continue anyway" after a ceiling: extend the ceiling that was hit on this run and its root. */
+  private raiseAfterLimit(run: RunRecord): void {
+    const hit = run.limitHit;
+    if (!hit) return;
+    this.store.updateRun(run.id, { limits: raiseLimits(run.limits, hit), limitHit: undefined, error: undefined });
+    const rootId = run.dispatch?.rootRunId;
+    const root = rootId && rootId !== run.id ? this.store.getRun(rootId) : undefined;
+    if (root && hit.scope === 'tree') {
+      this.store.updateRun(root.id, { limits: raiseLimits(root.limits, hit), limitHit: undefined, error: undefined });
+    }
+    this.store.appendEvent(run.id, { type: 'lifecycle', message: `ceiling raised after: ${describeHit(hit)}` });
+  }
+
+  /**
    * Cancel a run — and, when it commands any, its whole subtree first (spec
    * 2026-09-10-dispatch §Engine, `cancelDescendants` — the third budget brake).
    *
@@ -4465,6 +4540,12 @@ export class RunManager {
       return { ok: true };
     }
     if (!run) return { ok: false, error: 'not found' };
+    if (run.limitHit) {
+      if (!opts.raiseLimits) {
+        return { ok: false, error: `${describeHit(run.limitHit)}. Continue with the ceiling raised (one more allowance) to proceed.` };
+      }
+      this.raiseAfterLimit(run);
+    }
     // `review` is continuable too — that's the "Send back" path (spec 009).
     if (!CONTINUABLE_STATUSES.includes(run.status)) {
       return { ok: false, error: `cannot continue a ${run.status} run` };

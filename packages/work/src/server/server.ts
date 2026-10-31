@@ -102,7 +102,7 @@ import {
   openProjectInSchema,
   updateProjectInputSchema,
 } from '@onni/contract';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -787,6 +787,9 @@ const startRunSchema = z
     // Autonomous mode (#autonomous): the run never parks at `waiting` — it
     // auto-continues until the agent signals done. No "needs you" is raised.
     autonomous: z.boolean().optional(),
+    // Cost / token / time / iteration ceilings (docs/design/unattended-safety.md). Omitted =
+    // the workspace default; refused when the request comes from inside an agent task.
+    limits: runLimitsRequestSchema.optional(),
     // Generate follow-up inbox entries (spec 007, #444). Honoured only while
     // the `followups` capability is on (#471) — off, the server pins it to
     // false whatever the client asked for. Omitted still means "enabled" for
@@ -4667,6 +4670,7 @@ export function createApp(deps: ServerDeps) {
         branch: parsed.data.branch,
         ...(parsed.data.readOnly ? { readOnly: true } : {}),
         autonomous: parsed.data.autonomous,
+        ...(parsed.data.limits ? { limits: parsed.data.limits } : {}),
         // Opt-in inbox (#471): the capability is the ceiling, so a client asking
         // for follow-ups on a server that has them off gets a plain `false`
         // rather than an error — the run is still perfectly valid without them.
@@ -4971,6 +4975,7 @@ export function createApp(deps: ServerDeps) {
           runner: parsed.data.runner,
           model: parsed.data.model,
           agentProfile: parsed.data.agentProfile,
+          ...(parsed.data.raiseLimits ? { raiseLimits: true } : {}),
         });
         if (!result.ok) return c.json({ error: result.error }, 409);
         return c.json((answered = { continued: true as const }));
