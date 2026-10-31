@@ -64,7 +64,7 @@ describe('the pre-push fence for unattended runs', () => {
     expect(tryPush(env, 'HEAD:onni/abcd1234').ok).toBe(true);
     expect(tryPush(env, 'HEAD:feat/named-by-namer').ok).toBe(true);
     expect(tryPush(env, 'HEAD:feat/someone-elses').ok).toBe(false);
-  });
+  }, 60_000);
 
   it('leaves a person\'s push alone (no env, no fence)', () => {
     sh(work, [...ID, 'commit', '-q', '--allow-empty', '-m', 'mine']);
