@@ -49,6 +49,7 @@ import { runRunsCommand } from './runs/runs-cli.ts';
 import type { RunLimitsRequest } from '@onni/contract';
 import { runStopCommand } from './runs/stop-cli.ts';
 import { limitsFromFlags } from './runs/limits-cli.ts';
+import { parseRosterFlags, startManagedRun } from './runs/roster-cli.ts';
 
 import { runTrackerConnectionsCommand } from './server/tracker/connections-cli.ts';
 import { runSecretsCommand } from './workspace/secrets-cli.ts';
@@ -105,6 +106,7 @@ Skills live in .ai/skills/, .ai/onni/skills/ and any team skills repos you
 configure (none by default — set skillsRepos in .ai/onni/config.json);
 workflows in .ai/onni/workflows/.
 
+Manager/workers: onni run "<task>" --manager claude:opus --workers codex,opencode (needs a running cockpit)
 Limits: onni run "<task>" --no-limit, or --limit cost=5,time=120,tokens=5000000,iterations=20
         (default: the workspace setting). onni stop --all cancels every live task.`;
 
@@ -141,6 +143,8 @@ async function main(): Promise<void> {
   }
   const { values, positionals } = parseArgs({
     options: {
+      manager: { type: 'string' },
+      workers: { type: 'string' },
       'no-limit': { type: 'boolean', default: false },
       limit: { type: 'string' },
       port: { type: 'string', short: 'p', default: '4321' },
@@ -191,6 +195,20 @@ async function main(): Promise<void> {
         } catch (error) {
           console.error(`onni run: ${error instanceof Error ? error.message : String(error)}`);
           process.exitCode = 2;
+          return;
+        }
+        // `--manager` starts a manager–worker task on a running cockpit (a headless run has no
+        // cockpit for the manager's dispatch CLI to reach).
+        if (values.manager !== undefined || values.workers !== undefined) {
+          try {
+            const task = positionals.slice(1).join(' ').trim();
+            if (!task) throw new Error('usage: onni run "<task>" --manager <backend[:model]> --workers <backend[:model],…>');
+            const roster = parseRosterFlags(values.manager ?? '', values.workers);
+            process.exitCode = await startManagedRun({ task, roster, ...(limits ? { limits } : {}), port: values.port });
+          } catch (error) {
+            console.error(`onni run: ${error instanceof Error ? error.message : String(error)}`);
+            process.exitCode = 2;
+          }
           return;
         }
         await runCommand(repoRoot, positionals.slice(1).join(' ').trim(), values.workflow, values.model, limits);

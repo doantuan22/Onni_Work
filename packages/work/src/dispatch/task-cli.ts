@@ -28,7 +28,7 @@ const USAGE = `onni task — dispatch onni tasks from inside a task (on by defau
 
   onni task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch|run>]
                   [--scope "…"] [--budget <usd>] [--success "…"] [--evidence "…"] [--tools A,B]
-                  [--runner ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>]
+                  [--backend ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>]
   onni task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
                   [--verdict approve|changes|reject] [--suggestions "…"]… [--confidence <0-1>]
                   [--side-effect "…"]… [--error "…"]… [--next "…"]
@@ -99,6 +99,7 @@ export async function runTaskCommand(
             success: { type: 'string' },
             evidence: { type: 'string' },
             tools: { type: 'string' },
+            backend: { type: 'string' },
             runner: { type: 'string' },
             model: { type: 'string' },
             'retry-limit': { type: 'string' },
@@ -117,6 +118,8 @@ export async function runTaskCommand(
           ...(values.success ? { success_criteria: values.success } : {}),
           ...(values.evidence ? { required_evidence: values.evidence } : {}),
           ...(values.tools ? { allowed_tools: values.tools.split(',').map((tool) => tool.trim()).filter(Boolean) } : {}),
+          // --backend is the name; --runner stays as the compatible alias.
+          ...(values.backend ? { backend: values.backend } : {}),
           ...(values.runner ? { runner: values.runner } : {}),
           ...(values.model ? { model: values.model } : {}),
           ...(values['retry-limit'] !== undefined ? { retry_limit: number(values['retry-limit'], 'retry-limit') } : {}),

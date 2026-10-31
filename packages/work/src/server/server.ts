@@ -102,7 +102,7 @@ import {
   openProjectInSchema,
   updateProjectInputSchema,
 } from '@onni/contract';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, runLimitsRequestSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -790,6 +790,8 @@ const startRunSchema = z
     // Cost / token / time / iteration ceilings (docs/design/unattended-safety.md). Omitted =
     // the workspace default; refused when the request comes from inside an agent task.
     limits: runLimitsRequestSchema.optional(),
+    // Manager–worker (docs/design/manager-worker.md): this task manages the listed workers.
+    roster: rosterSchema.optional(),
     // Generate follow-up inbox entries (spec 007, #444). Honoured only while
     // the `followups` capability is on (#471) — off, the server pins it to
     // false whatever the client asked for. Omitted still means "enabled" for
@@ -4641,7 +4643,22 @@ export function createApp(deps: ServerDeps) {
         workflow = workflows.find((w) => w.name === parsed.data.workflow);
         if (!workflow) return c.json({ error: `unknown workflow: ${parsed.data.workflow}` }, 404);
       }
-      const fallback = parsed.data.runner ?? (await loadConfig(repoRoot)).defaultRunner;
+      const roster = parsed.data.roster;
+      if (roster) {
+        if (!capabilities().dispatch) {
+          return c.json({ error: 'manager–worker needs task dispatch, which this cockpit has turned off (ONNI_DISPATCH=0)' }, 409);
+        }
+        if ((parsed.data.variants ?? 1) > 1) return c.json({ error: 'a manager–worker task cannot also run as parallel variants' }, 400);
+        if (!(await getRepoInfo(repoRoot))) {
+          return c.json({ error: 'manager–worker needs a git repository: every worker runs in its own worktree' }, 400);
+        }
+        // Only backends that are connected and enabled right now may be chosen — the roster is a
+        // list of agents the user picked from what this machine can actually run.
+        const rosterBackends = [...new Set([roster.manager.runner, ...roster.workers.map((w) => w.runner)])];
+        const unavailable = await providerActionError(rosterBackends, { repoRoot });
+        if (unavailable) return c.json({ error: unavailable }, 409);
+      }
+      const fallback = roster ? roster.manager.runner : parsed.data.runner ?? (await loadConfig(repoRoot)).defaultRunner;
       const blocked = await providerActionError(providersRequiredByWorkflow(workflow, fallback), {
         repoRoot,
         profileFor: (provider) => (provider === fallback ? parsed.data.agentProfile : undefined),
@@ -4684,6 +4701,7 @@ export function createApp(deps: ServerDeps) {
         ...(parsed.data.readOnly ? { readOnly: true } : {}),
         autonomous: parsed.data.autonomous,
         ...(parsed.data.limits ? { limits: parsed.data.limits } : {}),
+        ...(roster ? { roster } : {}),
         // Opt-in inbox (#471): the capability is the ceiling, so a client asking
         // for follow-ups on a server that has them off gets a plain `false`
         // rather than an error — the run is still perfectly valid without them.
