@@ -143,6 +143,7 @@ import { reviewGateEnabled } from '../runs/review-gate.ts';
 import { resolveProfileEnvForRoot } from '../workspace/agent-profiles.ts';
 import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
+import { isUnattended } from './unattended.ts';
 import { WorkspaceSemaphore, type AccountHolds } from '../workspace/semaphore.ts';
 import { SecretStore } from '../workspace/secrets.ts';
 import { PROJECT_ID_RE, loadWorkspaceConfig } from '../workspace/config.ts';
@@ -7764,6 +7765,11 @@ export class RunManager {
     note?: (message: string) => void,
   ): Promise<ActiveRun['autoLand']> {
     if (!run || run.worktree !== false || run.readOnly || run.inPlaceBranch || config.landing !== 'auto') return undefined;
+    // Nothing unattended pushes to the base branch: no env, config or agent request can grant it.
+    if (isUnattended(run)) {
+      note?.('auto-land is off — an autonomous or dispatched run only commits in its own worktree');
+      return undefined;
+    }
     const repo = await getRepoInfo(this.repoRoot);
     if (!repo) return undefined;
     if (await isLifecycleConfigTracked(this.repoRoot).catch(() => true)) {
