@@ -271,16 +271,15 @@ async function runChecks(root: string, options: LandOptions): Promise<LandResult
   return undefined;
 }
 
-/** What the agent is told when the owner enabled auto-land — the Guard's written permission. An
- *  interactive run lands only after the user reviews it; an autonomous one lands on ONNI:DONE. */
-export function landingPromptPart(baseBranch: string | undefined, checks: string[], autonomous: boolean): string {
+/** What the agent is told when the owner enabled auto-land (the Guard's written permission). The
+ *  run lands only after the user reviews it. Nothing unattended ever gets this text: the policy
+ *  (`landingPolicy`) is undefined for autonomous and dispatched runs (ADR 0005). */
+export function landingPromptPart(baseBranch: string | undefined, checks: string[]): string {
   const target = baseBranch ?? 'the checked-out base branch';
   const checkLine = checks.length ? ` runs the required checks (${checks.map((c) => `\`${c}\``).join(', ')})` : '';
   return [
     `Landing: the project owner enabled AUTO-LAND for this project. You work directly in the repository checkout on ${target}.`,
-    autonomous
-      ? `When you end a turn with ONNI:DONE, onni commits your changes, rebases onto the remote,${checkLine} and pushes to ${target} itself.`
-      : `When you end a turn with ONNI:DONE, the user reviews your changes and may ask for corrections; when they approve, onni commits, rebases onto the remote,${checkLine} and pushes to ${target} itself.`,
+    `When you end a turn with ONNI:DONE, the user reviews your changes and may ask for corrections; when they approve, onni commits, rebases onto the remote,${checkLine} and pushes to ${target} itself.`,
     'Pushing to the base branch is therefore authorized for this project, but leave it to onni: do not commit, create branches, open pull requests, or push yourself.',
     'If landing fails, onni sends you the error (a rebase conflict or a failing check): fix it and end with ONNI:DONE again.',
   ].join('\n');

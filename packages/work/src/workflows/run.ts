@@ -5526,7 +5526,7 @@ export class RunManager {
       ? original.systemPrompt
       : composeSystemPrompt(
         resolveExtraSystemPrompt(input.systemPrompt, config.systemPrompt, (await loadWorkspaceConfig().catch(() => null))?.systemPrompt),
-        state.autoLand ? landingPromptPart(state.autoLand.baseLabel, state.autoLand.checks, state.autonomous === true) : undefined,
+        state.autoLand ? landingPromptPart(state.autoLand.baseLabel, state.autoLand.checks) : undefined,
         state.readOnly ? READ_ONLY_PROMPT : undefined,
       ) || undefined;
     // Canonical provider/model identity (#405) — the normalised `provider/model`
@@ -8099,13 +8099,12 @@ export class RunManager {
   }
 
   /**
-   * `ONNI:DONE` on an auto-land run. An autonomous run lands before its session closes; an
-   * interactive one parks for review instead, and the user's Finish lands it (`finish`). True
-   * when it took the turn over. Both turn-end handlers call it.
+   * `ONNI:DONE` on an auto-land run: it parks for review and the user's Finish lands it
+   * (`finish`). Only attended runs have an `autoLand` (ADR 0005), so there is no autonomous
+   * branch. True when it took the turn over. Both turn-end handlers call it.
    */
   private landOnDone(runId: string, state: ActiveRun, stepId: string | undefined, close: () => void): boolean {
     if (!state.autoLand || state.cancelled) return false;
-    if (state.autonomous) return this.landWithAgent(runId, state, stepId, close) !== undefined;
     void hasUnlanded(this.repoRoot).then((pending) => {
       if (state.cancelled || this.active.get(runId) !== state) return;
       if (!pending) {
@@ -8292,9 +8291,9 @@ export class RunManager {
     if (!run || run.worktree !== false || run.readOnly) return undefined;
     const policy = await this.landingPolicy(run, await loadConfig(this.repoRoot));
     if (!canLand() || !policy || !(await hasUnlanded(this.repoRoot)) || !canLand()) return undefined;
-    // Only an autonomous run or the user's Finish may land; anything else rests at review.
+    // Only the user's Finish may land (an autonomous run has no policy and returned above).
     const state = this.active.get(runId);
-    if (run.autonomous !== true && state?.finishRequested !== true) return 'review';
+    if (state?.finishRequested !== true) return 'review';
     // Land only while holding the tree: this run's own lease, else a fresh one (restart recovery).
     const holdsTree = Boolean(state?.releaseRepoRoot) && !state?.repoRootParked;
     if (!holdsTree && this.repoRootBusy > 0) return 'review';

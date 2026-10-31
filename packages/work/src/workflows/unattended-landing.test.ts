@@ -7,6 +7,7 @@ import { RunStore } from '../runs/store.ts';
 import { RunManager } from './run.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { isUnattended } from './unattended.ts';
+import { landingPromptPart } from './landing.ts';
 
 let root: string, store: RunStore, manager: RunManager;
 const workflow = { name: 'quick-task', source: 'built-in' as const, steps: [{ id: 'task', name: 'Task', prompt: '{{task}}' }] };
@@ -63,4 +64,25 @@ it.each([
 it('landing:auto still lands an attended in-place run', async () => {
   const run = inPlaceRun();
   expect((await manager.land(run.id)).outcome).toBe('landed');
+});
+
+// The landing text ("onni pushes to the base branch itself") reaches an agent only through
+// `landingPolicy` -> `state.autoLand` -> `landingPromptPart`, and the policy is the gate.
+it.each([
+  ['autonomous', { autonomous: true }],
+  ['dispatched child', { dispatch: { rootRunId: 'root', parentRunId: 'parent' } }],
+])('no landing policy, so no landing instructions, for a %s run', async (_name, patch) => {
+  const run = inPlaceRun(patch);
+  const policy = (manager as unknown as { landingPolicy(r: unknown, c: unknown): Promise<unknown> }).landingPolicy;
+  expect(await policy.call(manager, store.getRun(run.id), { landing: 'auto' })).toBeUndefined();
+});
+
+it('an attended in-place run still gets the policy, and its text says the user reviews first', async () => {
+  const run = inPlaceRun();
+  const policy = (manager as unknown as { landingPolicy(r: unknown, c: unknown): Promise<{ baseLabel: string; checks: string[] } | undefined> }).landingPolicy;
+  const granted = await policy.call(manager, store.getRun(run.id), { landing: 'auto' });
+  expect(granted).toBeDefined();
+  const text = landingPromptPart(granted!.baseLabel, granted!.checks);
+  expect(text).toContain('the user reviews your changes');
+  expect(text).not.toMatch(/ONNI:DONE, onni commits/);
 });
