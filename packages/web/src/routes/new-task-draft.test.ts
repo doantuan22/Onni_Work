@@ -355,6 +355,62 @@ describe('handOffComposition', () => {
   })
 })
 
+describe('run limits, roster and preset in the draft store', () => {
+  const roster = {
+    manager: { runner: 'claude' as const },
+    workers: [{ runner: 'codex' as const, role: '', maxConcurrent: 1 }],
+  }
+
+  it('round-trips a custom cap, the roster and the preset it came from', () => {
+    writeDraft({
+      ...readDraft(),
+      limits: { mode: 'capped', maxCostUsd: 5, maxWallClockMinutes: 30 },
+      roster,
+      presetId: 'task-preset-2',
+    })
+    resetDraftCacheOnly()
+    expect(readDraft()).toMatchObject({
+      limits: { mode: 'capped', maxCostUsd: 5, maxWallClockMinutes: 30 },
+      roster,
+      presetId: 'task-preset-2',
+    })
+  })
+
+  it('never restores unlimited limits — that is a per-run choice', () => {
+    localStorage.setItem('onni-new-task-draft', JSON.stringify({ limits: { mode: 'none' } }))
+    resetDraftCacheOnly()
+    expect(readDraft().limits).toBeUndefined()
+  })
+
+  it('treats "use the workspace default" as no stored choice', () => {
+    localStorage.setItem('onni-new-task-draft', JSON.stringify({ limits: { mode: 'default' } }))
+    resetDraftCacheOnly()
+    expect(readDraft().limits).toBeUndefined()
+  })
+
+  it('drops a ceiling or roster the contract would refuse', () => {
+    localStorage.setItem('onni-new-task-draft', JSON.stringify({
+      limits: { mode: 'capped', maxCostUsd: -1 },
+      roster: { manager: { runner: 'nope' }, workers: [] },
+      presetId: 42,
+    }))
+    resetDraftCacheOnly()
+    expect(readDraft().limits).toBeUndefined()
+    expect(readDraft().roster).toBeUndefined()
+    expect(readDraft().presetId).toBeUndefined()
+  })
+
+  it('keeps both when a task starts — they are a way of working', () => {
+    writeDraft({ ...readDraft(), text: 'go', limits: { mode: 'capped', maxTokens: 900 }, roster })
+    clearStartedDraft()
+    expect(readDraft()).toMatchObject({
+      text: '',
+      limits: { mode: 'capped', maxTokens: 900 },
+      roster,
+    })
+  })
+})
+
 describe('normalizeDispatchIntent', () => {
   it('keeps only the contract keys, within the contract ranges', () => {
     expect(normalizeDispatchIntent({

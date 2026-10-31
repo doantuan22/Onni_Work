@@ -1,8 +1,12 @@
 import {
   DISPATCH_MAX_IN_FLIGHT,
   DISPATCH_MAX_SUBTASKS,
+  rosterSchema,
+  runLimitsRequestSchema,
   type DispatchIntent,
+  type Roster,
   type Runner,
+  type RunLimitsRequest,
 } from '@onni/api-client'
 import type { PendingAttachment } from '@/components/composer/composer-attachments'
 import { RUNNERS, type TaskSource } from './new-task-form'
@@ -52,6 +56,14 @@ export interface NewTaskDraft {
   /** The Ask chip (spec 2026-10-20-trunk-based-projects): a read-only task. Absent = the
    *  project decides (a trunk-based project asks when the message is a question). Per task, never sticky. */
   readOnly?: boolean
+  /** The ceiling chosen in Task settings. Only a custom cap is remembered: `default` is the
+   *  absence of a choice, and `none` (unlimited) must be chosen again for every run — a draft
+   *  restored a week later must not silently lift every ceiling. See ADR 0008. */
+  limits?: RunLimitsRequest
+  /** The Manager–Worker roster chosen for this task; absent = off. Sticky like Dispatch. */
+  roster?: Roster
+  /** The task preset the settings came from, so the panel can show "(modified)" after a reload. */
+  presetId?: string
 }
 
 export interface ComposerRunModeInput {
@@ -208,6 +220,8 @@ function storageKey(projectId: string | null): string {
  *  store must survive a hand-edited or older-shape localStorage value without throwing. */
 function normalize(raw: unknown): NewTaskDraft {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const limits = normalizeLimits(obj.limits)
+  const roster = normalizeRoster(obj.roster)
   return {
     text: typeof obj.text === 'string' ? obj.text : '',
     source: isSource(obj.source) ? obj.source : null,
@@ -224,7 +238,26 @@ function normalize(raw: unknown): NewTaskDraft {
       typeof obj.generateFollowups === 'boolean' ? obj.generateFollowups : null,
     dispatch: normalizeDispatchIntent(obj.dispatch),
     ...(typeof obj.readOnly === 'boolean' ? { readOnly: obj.readOnly } : {}),
+    ...(limits ? { limits } : {}),
+    ...(roster ? { roster } : {}),
+    ...(typeof obj.presetId === 'string' && obj.presetId ? { presetId: obj.presetId } : {}),
   }
+}
+
+/**
+ * A stored ceiling is restored only when it is still a contract-valid CUSTOM cap. `default` is
+ * not a choice worth storing and `none` is deliberately dropped (see `NewTaskDraft.limits`).
+ */
+export function normalizeLimits(raw: unknown): RunLimitsRequest | undefined {
+  const parsed = runLimitsRequestSchema.safeParse(raw)
+  if (!parsed.success || parsed.data.mode !== 'capped') return undefined
+  return parsed.data
+}
+
+/** A stored roster is restored only when the contract would still accept it at run start. */
+export function normalizeRoster(raw: unknown): Roster | undefined {
+  const parsed = rosterSchema.safeParse(raw)
+  return parsed.success ? parsed.data : undefined
 }
 
 /**
