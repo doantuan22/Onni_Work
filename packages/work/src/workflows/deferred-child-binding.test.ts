@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { RunStore, type RunRecord } from '../runs/store.ts';
 import { RunManager } from './run.ts';
+import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import type { WorkflowDef } from './types.ts';
 import { forkShape, type WorkflowGraph } from './graph.ts';
 
@@ -24,7 +25,8 @@ type Runtime = {
 };
 const runtime = () => manager as unknown as Runtime;
 function boot() {
-  manager = new RunManager(store, root);
+  // This file exercises nested admissions, so it lifts the default dispatch depth cap of 1.
+  manager = new RunManager(store, root, { semaphore: new WorkspaceSemaphore({ initial: { safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 3, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 } } }) });
   // Exercise real admission and persistence; keep every child queued, without a provider.
   vi.spyOn(runtime(), 'pump').mockResolvedValue();
 }
