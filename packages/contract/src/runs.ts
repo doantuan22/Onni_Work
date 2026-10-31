@@ -196,6 +196,10 @@ export const runRecordSchema = z.object({
   roster: rosterSchema.optional(),
   /** Set when a manager finished without handing any task to a worker. */
   managerDidNotDelegate: z.boolean().optional(),
+  /** `--version` of the agent CLI that last ran this task (antigravity updates itself between runs). */
+  agentVersion: z.string().optional(),
+  /** What the backend refused while the turn still answered (antigravity `denied_actions`, ADR 0007); newest last. */
+  deniedActions: z.array(z.string()).max(50).optional(),
   /** Durable usage the steps cannot rebuild (active wall-clock). */
   limitUsage: limitUsageSchema.optional(),
   /** Set when a ceiling ended the run; Continue asks to raise it. */
