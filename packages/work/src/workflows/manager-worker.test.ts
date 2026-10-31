@@ -186,6 +186,31 @@ describe('manager–worker engine (dry-run)', () => {
     expect(store.readEvents(m.id).some((e) => String((e as { message?: unknown }).message ?? '').includes('could not be committed'))).toBe(true);
   }, 60_000);
 
+  it('refuses the dispatch when another git process holds the index (index.lock), without touching the worktree or creating a child', async () => {
+    const m = await parked();
+    const wt = store.getRun(m.id)!.worktreePath!;
+    const gitDir = (await run('git', ['rev-parse', '--absolute-git-dir'], { cwd: wt })).stdout.trim();
+    const lock = join(gitDir, 'index.lock');
+    writeFileSync(join(wt, 'half-written.txt'), 'partial conte');
+    writeFileSync(lock, '');
+    try {
+      const reason = await refused(m.id, 'mock:done fork', { backend: 'pi', title: 'fork' });
+      expect(reason).toContain('could not be committed before forking');
+      expect(store.listRuns().some((x) => x.dispatch?.parentRunId === m.id)).toBe(false);
+      // Nothing was damaged: the lock is still the other process's, and the file is untouched and uncommitted.
+      expect(existsSync(lock)).toBe(true);
+      expect(readFileSync(join(wt, 'half-written.txt'), 'utf8')).toBe('partial conte');
+      const { stdout: status } = await run('git', ['status', '--porcelain'], { cwd: wt }).catch(() => ({ stdout: '??' }));
+      expect(status).toContain('half-written.txt');
+    } finally {
+      rmSync(lock, { force: true });
+    }
+    // Once the other process lets go, the same dispatch goes through and the WIP is committed.
+    const child = await ok(m.id, 'mock:done fork', { backend: 'pi', title: 'fork' });
+    const { stdout: tree } = await run('git', ['ls-tree', '--name-only', store.getRun(child.id)!.baseBranch!], { cwd: repoRoot });
+    expect(tree).toContain('half-written.txt');
+  }, 60_000);
+
   it.each([1, 2])('maxParallel=%i: a monitoring manager does not starve its workers or deadlock', async (maxParallel) => {
     boot({ maxParallel, maxMonitoringSessions: 0 });
     const stdinFile = join(repoRoot, 'mock-stdin.ndjson');
@@ -199,6 +224,40 @@ describe('manager–worker engine (dry-run)', () => {
     await waitFor(a.id, (x) => x?.status === 'done' || x?.status === 'review', 40_000);
     await waitFor(b.id, (x) => x?.status === 'done' || x?.status === 'review', 40_000);
   }, 120_000);
+
+  it.each([1, 2, 3])('capacity at maxParallel=%i: three workers run at the cap, the manager holds a slot only while its turn runs', async (maxParallel) => {
+    boot({ maxParallel, maxMonitoringSessions: 0 });
+    const wide: Roster = rosterSchema.parse({ manager: { runner: 'claude', model: 'opus' }, workers: [{ runner: 'claude', model: 'haiku', role: 'any', maxConcurrent: 3 }] });
+    const stdinFile = join(repoRoot, 'mock-stdin.ndjson');
+    process.env.ONNI_MOCK_STDIN_FILE = stdinFile;
+    const busy = () => (manager as unknown as { busySlots(): number }).busySlots();
+    const m = startManager('mock:pause plan the work', wide, { autonomous: true });
+    await waitFor(m.id, () => existsSync(stdinFile) && readFileSync(stdinFile, 'utf8').includes('plan the work'));
+    // Phase A — the manager's turn is running and it dispatches three workers.
+    const kids = [] as string[];
+    for (let i = 0; i < 3; i += 1) kids.push((await ok(m.id, `mock:pause mock:done part ${i}`, { backend: 'claude', model: 'haiku', title: `part ${i}` })).id);
+    const turnSlots = busy();
+    // Phase B — the turn ends, the manager parks as a monitor; sample until every worker has settled.
+    let parkedSlots: number | undefined;
+    let maxRunning = 0;
+    const deadline = Date.now() + 100_000;
+    const settled = (id: string) => ['done', 'review', 'failed', 'cancelled'].includes(store.getRun(id)?.status ?? '');
+    while (!kids.every(settled)) {
+      if (Date.now() > deadline) throw new Error('workers did not finish: ' + kids.map((id) => store.getRun(id)?.status).join(','));
+      if (store.getRun(m.id)?.activity === 'monitoring') {
+        parkedSlots ??= busy() - kids.filter((id) => store.getRun(id)?.status === 'running').length;
+        maxRunning = Math.max(maxRunning, kids.filter((id) => store.getRun(id)?.status === 'running').length);
+      }
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    // eslint-disable-next-line no-console
+    console.log(`CAPACITY maxParallel=${maxParallel} managerSlotsDuringTurn=${turnSlots} managerSlotsParked=${parkedSlots} maxWorkersRunning=${maxRunning}`);
+    expect(turnSlots).toBe(1);
+    expect(parkedSlots).toBe(0);
+    expect(maxRunning).toBeLessThanOrEqual(maxParallel);
+    expect(maxRunning).toBeGreaterThanOrEqual(1);
+    expect(kids.every((id) => ['done', 'review'].includes(store.getRun(id)!.status))).toBe(true);
+  }, 150_000);
 
   it('maxConcurrent is per roster entry: the second task of a full entry waits while others start', async () => {
     const stdinFile = join(repoRoot, 'mock-stdin.ndjson');

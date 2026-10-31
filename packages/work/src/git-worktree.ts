@@ -529,7 +529,14 @@ export async function autosaveCommit(
     console.warn(`[onni] skipping ${reason} autosave in ${dir}: ${unresolved}`);
     return 'refused';
   }
-  await git(dir, ['add', '-A']);
+  const added = await git(dir, ['add', '-A']);
+  // A failed `add` (another git process holds index.lock, an unreadable file) must not read as
+  // "nothing staged": the caller would conclude there was nothing to save and fork from an older
+  // commit without the work.
+  if (!added.ok) {
+    await git(dir, ['reset', '--quiet']);
+    return 'failed';
+  }
   // Command/check steps may leave useful artifacts in the worktree. Keep those
   // paths dirty for inspection, while allowing the agent's checkpoint to be
   // committed alongside them. The paths are passed as argv entries, never
