@@ -3384,6 +3384,7 @@ export function createApp(deps: ServerDeps) {
     limits: config.limits,
     safety: config.safety,
     managerWorker: config.managerWorker,
+    taskPresets: config.taskPresets,
     agentPermissions: config.agentPermissions,
     composerDefaults: {
       autonomous: config.composerDefaults.autonomous ?? null,
@@ -3444,9 +3445,12 @@ export function createApp(deps: ServerDeps) {
     .put('/workspace/config', jsonZodValidator(() => setWorkspaceConfigInputSchema), async (c) => {
       const parsed = { data: c.req.valid('json') };
       const { browseRoot, projectsDir, orgSkillsRepos, systemPrompt, composerDefaults, resources, agentDefaults, branding } = parsed.data;
-      const { limits: limitsPatch, safety: safetyPatch, managerWorker: managerWorkerPatch, agentPermissions: permissionsPatch } = parsed.data;
+      const { limits: limitsPatch, safety: safetyPatch, managerWorker: managerWorkerPatch, agentPermissions: permissionsPatch, taskPresets: taskPresetsPatch } = parsed.data;
       if (managerWorkerPatch && managerWorkerPatch.defaultPresetId !== null && !managerWorkerPatch.presets.some((p) => p.id === managerWorkerPatch.defaultPresetId)) {
         return c.json({ error: 'the default preset must be one of the saved presets' }, 400);
+      }
+      if (taskPresetsPatch && new Set(taskPresetsPatch.map((preset) => preset.id)).size !== taskPresetsPatch.length) {
+        return c.json({ error: 'task preset ids must be unique' }, 400);
       }
       for (const src of orgSkillsRepos ?? []) {
         if (safeRemoteFor(src.repo) === null || !isSafeRef(src.ref)) {
@@ -3501,6 +3505,7 @@ export function createApp(deps: ServerDeps) {
           else if (systemPrompt !== undefined) config.systemPrompt = systemPrompt;
           if (limitsPatch !== undefined) config.limits = limitsPatch;
           if (managerWorkerPatch !== undefined) config.managerWorker = managerWorkerPatch;
+          if (taskPresetsPatch !== undefined) config.taskPresets = taskPresetsPatch;
           if (permissionsPatch?.antigravity !== undefined) config.agentPermissions = { ...config.agentPermissions, antigravity: permissionsPatch.antigravity };
           if (safetyPatch !== undefined) config.safety = { ...config.safety, ...safetyPatch };
           if (composerDefaults?.autonomous === null) delete config.composerDefaults.autonomous;

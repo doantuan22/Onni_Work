@@ -6,7 +6,7 @@ import { readFileWithRetry, renameSyncWithRetry, renameWithRetry } from '../fs-r
 // Contract VALUES, like `workspaceUiStateSchema` in workspace/migrations.ts: the tag bounds this
 // file must not `.catch` away are the same constants the PATCH route validates against, so they
 // are imported rather than repeated.
-import { agentPermissionLevelSchema, DEFAULT_AGENT_PERMISSIONS, DEFAULT_AGENT_PERMISSION_LEVEL, DEFAULT_MANAGER_WORKER_SETTINGS, DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, managerPresetSchema, MANAGER_PRESETS_MAX, PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH, runLimitsSchema } from '@onni/contract';
+import { agentPermissionLevelSchema, DEFAULT_AGENT_PERMISSIONS, DEFAULT_AGENT_PERMISSION_LEVEL, DEFAULT_MANAGER_WORKER_SETTINGS, DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, managerPresetSchema, MANAGER_PRESETS_MAX, PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH, runLimitsSchema, taskPresetSchema, TASK_PRESETS_MAX } from '@onni/contract';
 import { PROVIDER_IDS, type ProviderId } from '../core/provider-auth.ts';
 import { assertOnniHomeWriteIsSandboxed, isAbsolutePath, workspaceConfigPath } from '../paths.ts';
 
@@ -110,6 +110,23 @@ const managerWorkerConfigSchema = z
   })
   .prefault(() => ({ presets: [] as unknown[], defaultPresetId: null as string | null }))
   .transform((value) => ({ ...value, defaultPresetId: value.presets.some((p) => p.id === value.defaultPresetId) ? value.defaultPresetId : null }));
+
+const taskPresetsConfigSchema = z
+  .array(z.unknown())
+  .catch(() => [])
+  // Per-entry salvage, and first-wins on ids so a hand-edited duplicate cannot make the panel
+  // edit one row and save another.
+  .transform((raw) => {
+    const seen = new Set<string>();
+    return raw
+      .flatMap((item) => {
+        const parsed = taskPresetSchema.safeParse(item);
+        if (!parsed.success || seen.has(parsed.data.id)) return [];
+        seen.add(parsed.data.id);
+        return [parsed.data];
+      })
+      .slice(0, TASK_PRESETS_MAX);
+  });
 
 const resourcesSchema = z
   .object({
@@ -267,6 +284,8 @@ export const workspaceConfigSchema = z
     safety: safetyConfigSchema.catch(() => safetyConfigSchema.parse({})),
     /** Manager–worker presets (shared by every project) and the composer's default. */
     managerWorker: managerWorkerConfigSchema.catch(() => ({ ...DEFAULT_MANAGER_WORKER_SETTINGS })),
+    /** User-saved task presets for the `/new` Task settings panel (ADR 0008). */
+    taskPresets: taskPresetsConfigSchema,
     /** Per-backend permission level for headless backends (ADR 0007); `files-only` unless set. */
     agentPermissions: agentPermissionsConfigSchema.catch(() => ({ ...DEFAULT_AGENT_PERMISSIONS })),
     /** Optional New Task policy. Missing keys inherit exact 0/1 environment seeds. */

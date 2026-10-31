@@ -30,11 +30,14 @@ import { MAX_SAVED_WORKSPACE_LAYOUTS, savedWorkspaceLayoutSchema } from './works
 import { runLimitsSchema, safetySettingsSchema } from './limits.ts';
 import { agentPermissionsPatchSchema, agentPermissionsSchema } from './agent-permissions.ts';
 import { managerPresetSchema, managerWorkerSettingsSchema, MANAGER_PRESETS_MAX } from './roster.ts';
+import { TASK_PRESETS_MAX, taskPresetSchema } from './task-presets.ts';
 export const workspaceConfigResponseSchema = z.object({
   /** Default cost / token / time / iteration ceilings for new runs. */
   limits: runLimitsSchema,
   /** Saved manager–worker presets and the composer's default. */
   managerWorker: managerWorkerSettingsSchema,
+  /** The user's saved task presets (ADR 0008). Built-ins are not stored — the cockpit has them. */
+  taskPresets: z.array(taskPresetSchema).max(TASK_PRESETS_MAX),
   /** Per-backend permission level for headless backends (ADR 0007); `files-only` by default. */
   agentPermissions: agentPermissionsSchema,
   /** Hang guards and dispatch structure (Settings → Advanced); on in every limits mode. */
@@ -127,6 +130,8 @@ export const setWorkspaceConfigInputSchema = z.object({
     presets: z.array(managerPresetSchema).max(MANAGER_PRESETS_MAX),
     defaultPresetId: z.string().nullable(),
   }).optional(),
+  /** Replaces the task-preset list (ADR 0008). Legacy manager presets stay usable read-only. */
+  taskPresets: z.array(taskPresetSchema).max(TASK_PRESETS_MAX).optional(),
   /** Partial: absent keys stay untouched. `bypass` needs `confirmBypass: true`. */
   agentPermissions: agentPermissionsPatchSchema.optional(),
   /** Partial: absent keys stay untouched. */

@@ -169,6 +169,31 @@ describe('workspace config', () => {
     expect((await loadWorkspaceConfig()).composerDefaults).toEqual({ worktree: false, future: 42 });
   });
 
+  it('salvages task presets per entry and keeps the first of a duplicate id', async () => {
+    const preset = {
+      id: 'task-preset-1',
+      name: 'Overnight',
+      settings: {
+        runner: null,
+        model: null,
+        variants: 1,
+        worktree: true,
+        newBranch: true,
+        autonomous: true,
+        limits: { mode: 'capped', maxCostUsd: 5 },
+        roster: null,
+      },
+    };
+    write({
+      taskPresets: [
+        preset,
+        { id: 'broken', name: '', settings: {} },
+        { ...preset, name: 'Duplicate id', settings: { ...preset.settings, variants: 3 } },
+      ],
+    });
+    expect((await loadWorkspaceConfig()).taskPresets).toEqual([preset]);
+  });
+
   it('preserves unknown keys (including the retired skillsAutoUpdate) on unrelated writes', async () => {
     write({ skillsAutoUpdate: false, futureKey: true });
     await mergeWriteWorkspaceConfig((config) => {

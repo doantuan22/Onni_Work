@@ -40,6 +40,7 @@ function serve(overrides: Partial<WorkspaceConfigResponse> = {}) {
     },
     agentDefaults: {},
     ...overrides,
+    taskPresets: overrides.taskPresets ?? [],
   }
   const json = (payload: unknown) =>
     new Response(JSON.stringify(payload), {

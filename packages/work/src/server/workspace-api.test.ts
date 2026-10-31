@@ -110,6 +110,11 @@ describe('the workspace settings API (step 2.7)', () => {
       // keys mean "this machine has no opinion", which is what makes them defaults a repo can be
       // silent about rather than settings every checkout inherits a value from.
       agentDefaults: {},
+      taskPresets: [],
+      limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10_000_000, maxWallClockMinutes: 240, maxStepIterations: 30 },
+      safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
+      managerWorker: { presets: [], defaultPresetId: null },
+      agentPermissions: { antigravity: 'files-only' },
     });
     // Absolute project roots belong on /api/v1/projects; schemaVersion is a
     // migration cursor, not a setting.
@@ -305,6 +310,11 @@ describe('the workspace settings API (step 2.7)', () => {
       // Untouched by a resources write, and still empty — the two live in the same file but answer
       // unrelated questions, so one must never materialize the other.
       agentDefaults: {},
+      taskPresets: [],
+      limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10_000_000, maxWallClockMinutes: 240, maxStepIterations: 30 },
+      safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
+      managerWorker: { presets: [], defaultPresetId: null },
+      agentPermissions: { antigravity: 'files-only' },
     });
     // Round-trip through GET and the raw file.
     expect(((await (await getConfig()).json()) as WorkspaceConfigResponse).resources.maxParallel).toBe(5);
@@ -399,6 +409,31 @@ describe('the workspace settings API (step 2.7)', () => {
 
     await putConfig({ composerDefaults: { worktree: null } });
     expect(rawConfig().composerDefaults).toEqual({ autonomous: false });
+  });
+
+  it('stores task presets and refuses duplicate ids without writing', async () => {
+    const preset = {
+      id: 'task-preset-1',
+      name: 'Overnight',
+      settings: {
+        runner: null,
+        model: null,
+        variants: 1,
+        worktree: true,
+        newBranch: true,
+        autonomous: true,
+        limits: { mode: 'capped', maxCostUsd: 5 },
+        roster: null,
+      },
+    };
+    const saved = await putConfig({ taskPresets: [preset] });
+    expect(saved.status).toBe(200);
+    expect(((await saved.json()) as WorkspaceConfigResponse).taskPresets).toEqual([preset]);
+    expect(rawConfig().taskPresets).toEqual([preset]);
+
+    const duplicate = await putConfig({ taskPresets: [preset, preset] });
+    expect(duplicate.status).toBe(400);
+    expect(rawConfig().taskPresets).toEqual([preset]);
   });
 
   it('rejects out-of-bounds resources with 400 and writes nothing', async () => {
