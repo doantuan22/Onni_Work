@@ -5,6 +5,7 @@ import {
   type RunLimits,
   type RunLimitsRequest,
   type Runner,
+  type TaskPreset as StoredTaskPreset,
 } from '@onni/api-client'
 
 import type { LimitsDraft } from './run-limits'
@@ -174,6 +175,21 @@ export function mergeManagerWorkerPresets(
   return [...taskPresets, ...legacy]
 }
 
+/** Stored presets become panel presets; only user presets are ever written back. */
+export function userTaskPresets(stored: readonly StoredTaskPreset[]): TaskPreset[] {
+  return stored.map((preset) => ({
+    ...preset,
+    settings: { ...preset.settings, variants: clampVariants(preset.settings.variants) },
+    origin: 'user',
+  }))
+}
+
+export function storedTaskPresets(presets: readonly TaskPreset[]): StoredTaskPreset[] {
+  return presets
+    .filter((preset) => preset.origin === 'user')
+    .map(({ id, name, settings }) => ({ id, name, settings }))
+}
+
 /** Structural equality for the "modified" flag. Keys are sorted so object order never matters. */
 export function taskSettingsEqual(a: unknown, b: unknown): boolean {
   return canonical(a) === canonical(b)
@@ -225,6 +241,20 @@ export function setWorktreeMode(
   return { settings: { ...settings, worktree } }
 }
 
+/**
+ * The worktree the panel actually runs with. `resolveComposerRunMode` stays the engine-facing
+ * resolver (an interactive skill's recommendation can still produce autonomous + in-place for a
+ * backend that permits it); the PANEL is stricter and pins the worktree whenever Autonomy is on.
+ * Without git there is no worktree to pin, so the run stays in place.
+ */
+export function resolvePanelWorktree(
+  worktree: boolean,
+  autonomous: boolean,
+  hasGit: boolean,
+): boolean {
+  return hasGit && (worktree || autonomous)
+}
+
 /** The workspace/project default for "where it runs" — isolated worktree unless configured off. */
 export function configuredWorktreeDefault(input: {
   taskWorkspace?: 'worktree' | 'in-place' | null
@@ -255,6 +285,26 @@ export function effectiveLimits(workspace: RunLimits | undefined, request: RunLi
     ...(request.maxWallClockMinutes !== undefined ? { maxWallClockMinutes: request.maxWallClockMinutes } : {}),
     ...(request.maxStepIterations !== undefined ? { maxStepIterations: request.maxStepIterations } : {}),
   }
+}
+
+/**
+ * What the draft store may remember about the ceiling. `default` is the absence of a choice and
+ * `none` (unlimited) must be chosen again for every task — a draft restored a week later must
+ * never silently lift every brake (ADR 0008).
+ */
+export function persistedLimits(request: RunLimitsRequest): RunLimitsRequest | undefined {
+  return request.mode === 'capped' ? request : undefined
+}
+
+/** The ceilings in words, for the panel's "Effective" line. */
+export function describeRunLimits(limits: RunLimits): string {
+  if (limits.mode === 'none') return 'no ceilings'
+  const parts: string[] = []
+  if (limits.maxCostUsd !== undefined) parts.push(`$${limits.maxCostUsd}`)
+  if (limits.maxTokens !== undefined) parts.push(`${limits.maxTokens} tokens`)
+  if (limits.maxWallClockMinutes !== undefined) parts.push(`${limits.maxWallClockMinutes} min`)
+  if (limits.maxStepIterations !== undefined) parts.push(`${limits.maxStepIterations} steps`)
+  return parts.length > 0 ? parts.join(' · ') : 'no ceilings'
 }
 
 export type SummaryTone = 'normal' | 'warning' | 'danger'

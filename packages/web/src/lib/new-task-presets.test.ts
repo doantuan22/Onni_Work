@@ -14,17 +14,22 @@ import {
   clampVariants,
   configuredWorktreeDefault,
   deleteTaskPreset,
+  describeRunLimits,
   effectiveLimits,
   limitsDraftFromRequest,
   mergeManagerWorkerPresets,
   nextTaskPresetId,
+  persistedLimits,
   presetDisplayName,
   renameTaskPreset,
+  resolvePanelWorktree,
   saveTaskPreset,
   setAutonomous,
   setWorktreeMode,
+  storedTaskPresets,
   taskSettingsEqual,
   taskSummarySegments,
+  userTaskPresets,
   type TaskPreset,
   type TaskSettingsSnapshot,
 } from './new-task-presets'
@@ -183,6 +188,18 @@ describe('the default run mode', () => {
   })
 })
 
+describe('the resolved panel worktree', () => {
+  it('pins a worktree whenever Autonomy is on, in a git repo', () => {
+    expect(resolvePanelWorktree(false, true, true)).toBe(true)
+    expect(resolvePanelWorktree(true, false, true)).toBe(true)
+    expect(resolvePanelWorktree(false, false, true)).toBe(false)
+  })
+
+  it('cannot isolate where there is no repository', () => {
+    expect(resolvePanelWorktree(true, true, false)).toBe(false)
+  })
+})
+
 describe('limits in the panel', () => {
   it('shows the ceilings the run will actually use', () => {
     const workspace: RunLimits = { mode: 'capped', maxCostUsd: 3 }
@@ -198,6 +215,24 @@ describe('limits in the panel', () => {
       .toEqual({ mode: 'capped', cost: '2.5', tokens: '', time: '', iterations: '7' })
     expect(limitsDraftFromRequest({ mode: 'default' }))
       .toEqual({ mode: 'default', cost: '', tokens: '', time: '', iterations: '' })
+  })
+
+  it('remembers a custom cap but never unlimited', () => {
+    expect(persistedLimits({ mode: 'capped', maxCostUsd: 5 })).toEqual({ mode: 'capped', maxCostUsd: 5 })
+    expect(persistedLimits({ mode: 'default' })).toBeUndefined()
+    expect(persistedLimits({ mode: 'none' })).toBeUndefined()
+  })
+
+  it('names the effective ceilings', () => {
+    expect(describeRunLimits({ mode: 'none' })).toBe('no ceilings')
+    expect(describeRunLimits({
+      mode: 'capped',
+      maxCostUsd: 10,
+      maxTokens: 2_000_000,
+      maxWallClockMinutes: 240,
+      maxStepIterations: 30,
+    })).toBe('$10 · 2000000 tokens · 240 min · 30 steps')
+    expect(describeRunLimits({ mode: 'capped' })).toBe('no ceilings')
   })
 })
 
@@ -278,6 +313,15 @@ describe('task-preset CRUD', () => {
     const twice = saveTaskPreset(once, 'Review', { ...snapshot, model: 'opus' })
     expect(twice.map((preset) => preset.name)).toEqual(['Review', 'Review (2)'])
     expect(saveTaskPreset(twice, '   ', snapshot)).toHaveLength(2)
+  })
+
+  it('round-trips user presets through the workspace store and drops the panel-only ones', () => {
+    const stored = [
+      { id: 'task-preset-2', name: 'Mine', settings: snapshot },
+    ]
+    const panel = userTaskPresets(stored)
+    expect(panel[0]).toMatchObject({ id: 'task-preset-2', name: 'Mine', origin: 'user' })
+    expect(storedTaskPresets([...builtinTaskPresets({}), ...panel])).toEqual(stored)
   })
 
   it('renames and deletes only user presets', () => {
