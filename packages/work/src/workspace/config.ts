@@ -6,7 +6,7 @@ import { readFileWithRetry, renameSyncWithRetry, renameWithRetry } from '../fs-r
 // Contract VALUES, like `workspaceUiStateSchema` in workspace/migrations.ts: the tag bounds this
 // file must not `.catch` away are the same constants the PATCH route validates against, so they
 // are imported rather than repeated.
-import { DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH, runLimitsSchema } from '@onni/contract';
+import { DEFAULT_MANAGER_WORKER_SETTINGS, DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, managerPresetSchema, MANAGER_PRESETS_MAX, PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH, runLimitsSchema } from '@onni/contract';
 import { PROVIDER_IDS, type ProviderId } from '../core/provider-auth.ts';
 import { assertOnniHomeWriteIsSandboxed, isAbsolutePath, workspaceConfigPath } from '../paths.ts';
 
@@ -93,6 +93,16 @@ const safetyConfigSchema = z
     dispatchRetryLimit: z.number().int().min(0).max(3).default(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit).catch(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit),
   })
   .prefault(() => ({}));
+
+const managerWorkerConfigSchema = z
+  .object({
+    // Per-entry salvage: one corrupt preset is dropped, the rest survive.
+    presets: z.array(z.unknown()).catch([]).transform((raw) =>
+      raw.flatMap((item) => { const parsed = managerPresetSchema.safeParse(item); return parsed.success ? [parsed.data] : []; }).slice(0, MANAGER_PRESETS_MAX)),
+    defaultPresetId: z.string().nullable().catch(null),
+  })
+  .prefault(() => ({ presets: [] as unknown[], defaultPresetId: null as string | null }))
+  .transform((value) => ({ ...value, defaultPresetId: value.presets.some((p) => p.id === value.defaultPresetId) ? value.defaultPresetId : null }));
 
 const resourcesSchema = z
   .object({
@@ -202,7 +212,7 @@ const orgSkillsRepoSchema = z
   .object({ repo: z.string().min(1).max(500), ref: z.string().min(1).max(200).default('main') })
   .passthrough();
 
-const workspaceConfigSchema = z
+export const workspaceConfigSchema = z
   .object({
     /** Optional instance name shown in the cockpit; absent keeps the product default. */
     branding: z.object({
@@ -248,6 +258,8 @@ const workspaceConfigSchema = z
     limits: limitsConfigSchema.default(() => ({ ...DEFAULT_RUN_LIMITS })),
     /** Hang guards and dispatch structure — on in every limits mode. */
     safety: safetyConfigSchema.catch(() => safetyConfigSchema.parse({})),
+    /** Manager–worker presets (shared by every project) and the composer's default. */
+    managerWorker: managerWorkerConfigSchema.catch(() => ({ ...DEFAULT_MANAGER_WORKER_SETTINGS })),
     /** Optional New Task policy. Missing keys inherit exact 0/1 environment seeds. */
     composerDefaults: composerDefaultsSchema.default(() => ({})).catch(() => ({})),
     /** Host-wide provider preferences; absent means every provider is enabled. */

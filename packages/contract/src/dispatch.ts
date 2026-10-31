@@ -86,6 +86,8 @@ export type DispatchIntent = z.infer<typeof dispatchIntentSchema>;
 export const dispatchSchema = z.object({
   /** The tree's root run id (the root names itself). */
   rootRunId: z.string(),
+  /** On a worker started under a roster: which roster entry it occupies (`backend:model`). */
+  workerKey: z.string().optional(),
   /** On a ROOT started with the composer's Dispatch toggle: what the user asked for. */
   intent: dispatchIntentSchema.optional(),
   /** Absent on the root; present on every dispatched child. */
@@ -149,6 +151,8 @@ export const dispatchInputSchema = z
     success_criteria: z.string().max(1000).optional(),
     required_evidence: z.string().max(1000).optional(),
     retry_limit: z.number().int().min(0).max(3).optional(),
+    /** The worker backend — the primary name; `runner` stays as the compatible alias. */
+    backend: runnerSchema.optional(),
     /** The child's backend and model. Absent = the parent's. */
     runner: runnerSchema.optional(),
     model: z.string().max(200).optional(),

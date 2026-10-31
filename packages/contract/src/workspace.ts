@@ -28,9 +28,12 @@ import { MAX_SAVED_WORKSPACE_LAYOUTS, savedWorkspaceLayoutSchema } from './works
  * was wider than the server has ever been.
  */
 import { runLimitsSchema, safetySettingsSchema } from './limits.ts';
+import { managerPresetSchema, managerWorkerSettingsSchema, MANAGER_PRESETS_MAX } from './roster.ts';
 export const workspaceConfigResponseSchema = z.object({
   /** Default cost / token / time / iteration ceilings for new runs. */
   limits: runLimitsSchema,
+  /** Saved manager–worker presets and the composer's default. */
+  managerWorker: managerWorkerSettingsSchema,
   /** Hang guards and dispatch structure (Settings → Advanced); on in every limits mode. */
   safety: safetySettingsSchema,
   branding: z.object({
@@ -115,6 +118,11 @@ export const setWorkspaceConfigInputSchema = z.object({
     .optional(),
   /** Replaces the default run limits. Switching to `none` is the UI's one-time confirmation. */
   limits: runLimitsSchema.optional(),
+  /** Replaces the preset list; the default must name a preset in it (or be null). */
+  managerWorker: z.object({
+    presets: z.array(managerPresetSchema).max(MANAGER_PRESETS_MAX),
+    defaultPresetId: z.string().nullable(),
+  }).optional(),
   /** Partial: absent keys stay untouched. */
   safety: safetySettingsSchema.partial().optional(),
   /** Machine-wide agent defaults. `null` on a key CLEARS it back to "no opinion", which a bare

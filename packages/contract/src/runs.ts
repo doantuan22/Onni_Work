@@ -15,6 +15,7 @@ export type RunsListQuery = z.infer<typeof runsListQuerySchema>;
 // one. `src/runs/store.ts` imports the SAME value for its persistence twin, so the two halves of
 // `contract-parity.runs.test.ts` cannot drift apart by construction.
 import { dispatchIntentSchema, dispatchSchema } from './dispatch.ts';
+import { rosterSchema } from './roster.ts';
 import { limitHitSchema, limitUsageSchema, runLimitsRequestSchema, runLimitsSchema } from './limits.ts';
 import { trackerAssociationSchema, trackerAutomationEventSchema } from './tracker.ts';
 
@@ -191,6 +192,8 @@ export const runRecordSchema = z.object({
   autonomous: z.boolean().optional(),
   /** The cost / token / time / iteration ceilings this run started with (snapshot; absent on old runs). */
   limits: runLimitsSchema.optional(),
+  /** Manager–worker roster of this task tree (on the root; snapshotted at start). */
+  roster: rosterSchema.optional(),
   /** Durable usage the steps cannot rebuild (active wall-clock). */
   limitUsage: limitUsageSchema.optional(),
   /** Set when a ceiling ended the run; Continue asks to raise it. */
@@ -1225,6 +1228,8 @@ export const createRunInputBaseSchema = z
     dispatch: dispatchIntentSchema.optional(),
     /** Limits for this run: omitted / `default` = the workspace default. User surfaces only. */
     limits: runLimitsRequestSchema.optional(),
+    /** Start this task as the MANAGER of a worker roster (needs dispatch; forces a worktree). */
+    roster: rosterSchema.optional(),
   });
 
 /** A task may be attachments alone (a pasted screenshot is a brief), but never nothing at all. */

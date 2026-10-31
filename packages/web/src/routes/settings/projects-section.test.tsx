@@ -112,7 +112,8 @@ function serve(answers: Answers = {}) {
     systemPrompt: null,
     limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10000000, maxWallClockMinutes: 240, maxStepIterations: 30 },
     safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
-    composerDefaults: {
+    managerWorker: { presets: [], defaultPresetId: null },
+composerDefaults: {
       autonomous: null,
       worktree: null,
       inheritedAutonomous: 'source-dependent',

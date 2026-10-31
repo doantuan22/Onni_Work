@@ -3349,6 +3349,7 @@ export function createApp(deps: ServerDeps) {
     systemPrompt: config.systemPrompt ?? null,
     limits: config.limits,
     safety: config.safety,
+    managerWorker: config.managerWorker,
     composerDefaults: {
       autonomous: config.composerDefaults.autonomous ?? null,
       worktree: config.composerDefaults.worktree ?? null,
@@ -3408,7 +3409,10 @@ export function createApp(deps: ServerDeps) {
     .put('/workspace/config', jsonZodValidator(() => setWorkspaceConfigInputSchema), async (c) => {
       const parsed = { data: c.req.valid('json') };
       const { browseRoot, projectsDir, orgSkillsRepos, systemPrompt, composerDefaults, resources, agentDefaults, branding } = parsed.data;
-      const { limits: limitsPatch, safety: safetyPatch } = parsed.data;
+      const { limits: limitsPatch, safety: safetyPatch, managerWorker: managerWorkerPatch } = parsed.data;
+      if (managerWorkerPatch && managerWorkerPatch.defaultPresetId !== null && !managerWorkerPatch.presets.some((p) => p.id === managerWorkerPatch.defaultPresetId)) {
+        return c.json({ error: 'the default preset must be one of the saved presets' }, 400);
+      }
       for (const src of orgSkillsRepos ?? []) {
         if (safeRemoteFor(src.repo) === null || !isSafeRef(src.ref)) {
           return c.json({ error: `unsafe skills repo: ${src.repo}@${src.ref}` }, 400);
@@ -3461,6 +3465,7 @@ export function createApp(deps: ServerDeps) {
           if (systemPrompt === null || systemPrompt === '') delete config.systemPrompt;
           else if (systemPrompt !== undefined) config.systemPrompt = systemPrompt;
           if (limitsPatch !== undefined) config.limits = limitsPatch;
+          if (managerWorkerPatch !== undefined) config.managerWorker = managerWorkerPatch;
           if (safetyPatch !== undefined) config.safety = { ...config.safety, ...safetyPatch };
           if (composerDefaults?.autonomous === null) delete config.composerDefaults.autonomous;
           else if (composerDefaults?.autonomous !== undefined) {
