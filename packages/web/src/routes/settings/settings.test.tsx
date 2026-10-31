@@ -175,6 +175,8 @@ const GLOBAL_SECTIONS = [
   // Task-palette shortcuts (spec 2026-10-17-task-palette) — the person at the keyboard.
   'keyboard',
   'resources',
+  // Manager–worker presets (docs/design/manager-worker.md): which agents may work for which.
+  'manager-worker',
   'skills',
   'global-instructions',
   // Agent accounts (spec 2026-07-29-agent-profiles) sit beside Projects: both describe the
@@ -204,7 +206,7 @@ describe('the section registry', () => {
     // Accounts survives: a single-project cockpit still runs on ONE of possibly several logins,
     // so "which account" is orthogonal to "how many projects".
     expect(visibleSettingsSections('global', { singleProject: true }).map((s) => s.id)).toEqual([
-      'appearance', 'notifications', 'keyboard', 'resources', 'skills', 'global-instructions', 'workspace-secrets', 'accounts',
+      'appearance', 'notifications', 'keyboard', 'resources', 'manager-worker', 'skills', 'global-instructions', 'workspace-secrets', 'accounts',
     ])
     expect(visibleSettingsSections('global', { singleProject: false }).map((s) => s.id)).toEqual(GLOBAL_SECTIONS)
     expect(visibleSettingsSections('global').map((s) => s.id)).toEqual(GLOBAL_SECTIONS)

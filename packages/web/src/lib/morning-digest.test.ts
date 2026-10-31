@@ -32,6 +32,12 @@ describe('buildDigest', () => {
     expect(digest.total).toBe(5)
   })
 
+  it('lists managers that finished without delegating', () => {
+    const digest = buildDigest([...runs, run('lazy', { status: 'done', finishedAt: hoursAgo(2), managerDidNotDelegate: true })], NOW, 12)
+    expect(digest.notDelegated.map((r) => r.id)).toEqual(['lazy'])
+    expect(buildDigest(runs, NOW, 12).notDelegated).toEqual([])
+  })
+
   it('widens with the window, and always keeps a task that is still waiting on you', () => {
     expect(buildDigest(runs, NOW, 24).groups.find((g) => g.key === 'done')?.runs.map((r) => r.id)).toEqual(['ok', 'old'])
     expect(buildDigest(runs, NOW, 1).groups.map((g) => g.key)).toEqual(['attention'])

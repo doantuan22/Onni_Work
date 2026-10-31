@@ -6,6 +6,7 @@ import type {
   BackendCheck,
   CreateRunInput,
   RunLimitsRequest,
+  Roster,
   CreateRunResponse,
   AttachmentEntry,
   DispatchIntent,
@@ -363,6 +364,8 @@ export function buildCreateRunBody(opts: {
   dispatch?: DispatchIntent | null
   /** A read-only Ask task (spec 2026-10-20-trunk-based-projects) — single runs only. */
   readOnly?: boolean
+  /** Manager–worker (docs/design/manager-worker.md): the roster this task manages. */
+  roster?: Roster | null
   /** Per-run ceilings; `default` (or absent) stays off the wire so the workspace default applies. */
   limits?: RunLimitsRequest
   /** The project defaults to in-place, so an isolated worktree must be asked for explicitly. */
@@ -387,6 +390,7 @@ export function buildCreateRunBody(opts: {
     todoId,
     dispatch,
     limits,
+    roster,
     readOnly,
     inPlaceByDefault,
   } = opts
@@ -420,6 +424,7 @@ export function buildCreateRunBody(opts: {
     todoId: todoId || undefined,
     dispatch: dispatch ?? undefined,
     ...(limits && limits.mode !== 'default' ? { limits } : {}),
+    ...(roster ? { roster } : {}),
   }
 }
 

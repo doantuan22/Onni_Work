@@ -1,8 +1,9 @@
+import { ManagerWorkerPill } from '@/components/manager-worker-pill'
 import { RunLimitsFields } from '@/components/run-limits-fields'
 import { requestFromDraft, type LimitsDraft } from '@/lib/run-limits'
 import { previewSettingsKey, StartTimePicker, type StartChoice } from '@/components/start-time-picker'
 import { ApiError, createDeferredStart } from '@/api/client'
-import { deferredCreateInputSchema } from '@onni/api-client'
+import { deferredCreateInputSchema, type Roster } from '@onni/api-client'
 import { markScheduledTasks } from '@/lib/scheduled-tasks-gate'
 import { automationsQueryKey } from './automations/use-automations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -351,6 +352,8 @@ export function NewTaskRoute() {
   // the persisted draft on purpose — "unlimited" must be chosen again for each task, never inherited.
   const [limitsDraft, setLimitsDraft] = useState<LimitsDraft>({ mode: 'default', cost: '', tokens: '', time: '', iterations: '' })
   const limitsRequest = requestFromDraft(limitsDraft)
+  // Manager–worker roster from the composer block (null = off). Not persisted with the draft.
+  const [roster, setRoster] = useState<Roster | null>(null)
   const [dispatchSettingsOpen, setDispatchSettingsOpen] = useState(false)
   const dispatchHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const changeDispatch = (next: DispatchIntent | null) => {
@@ -598,6 +601,7 @@ export function NewTaskRoute() {
         branch: draft.branchName,
         autonomous: autonomousOn,
         ...(limitsRequest.ok ? { limits: limitsRequest.request } : {}),
+        roster,
         generateFollowups: generateFollowupsOn,
         // #374: when the Inbox's "Run" sent us here, hand the entry's id back so the server
         // records this run on it and it leaves the inbox — the audit trail the old
@@ -885,6 +889,7 @@ export function NewTaskRoute() {
                 on={autonomousOn}
                 onChange={(on) => update({ autonomous: on })}
               />
+              {dispatchAvailable ? <ManagerWorkerPill onRoster={setRoster} /> : null}
               <details data-slot="limits-pill" className="relative">
                 <summary className="cursor-pointer select-none rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
                   Limits: {limitsDraft.mode === 'default' ? 'default' : limitsDraft.mode === 'none' ? '∞ unlimited' : 'custom'}

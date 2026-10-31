@@ -29,6 +29,7 @@ import { Link, useNavigate } from '@/lib/project-router'
 
 import { archiveFinished, markAllRunsSeen, patchRun } from '@/api/client'
 import { useRunUsage } from '@/api/global-events'
+import { RunBackendBadge } from '@/components/run-backend-badge'
 import { RunLimitMeter } from '@/components/run-limit-meter'
 import { StopAllButton } from '@/components/stop-all-button'
 import { queryKeys, useHealth, usePinRun, useReferenceProjectId, useRepo, useRuns, writePatchedRunToCaches } from '@/api/queries'
@@ -1114,6 +1115,7 @@ function TaskTableCell({
             onRename={onRename}
             onTogglePin={onTogglePin}
           />
+          <RunBackendBadge run={run} />
         </td>
       )
     case 'workflow':
@@ -1487,6 +1489,12 @@ const TaskCard = React.memo(function TaskCard({
               <>
                 <Sep />
                 <span>{cost}</span>
+              </>
+            ) : null}
+            {run.dispatch || run.roster ? (
+              <>
+                <Sep />
+                <RunBackendBadge run={run} />
               </>
             ) : null}
             {run.limits?.mode === 'none' || run.limitHit ? (

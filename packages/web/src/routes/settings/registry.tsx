@@ -7,6 +7,7 @@ import {
   FolderGit2Icon,
   FoldersIcon,
   GaugeIcon,
+  UsersIcon,
   IdCardIcon,
   PackageCheckIcon,
   KeyboardIcon,
@@ -30,6 +31,7 @@ import { KeyboardSection } from './keyboard-section'
 import { BookmarkletsSection } from './bookmarklets-section'
 import { NotificationsSection } from './notifications-section'
 import { ProjectsSection } from './projects-section'
+import { ManagerWorkerSection } from './manager-worker-section'
 import { ResourcesSection } from './resources-section'
 import { SkillsSection } from './skills-section'
 import { TasksSection } from './tasks-section'
@@ -65,6 +67,7 @@ export type SettingsSectionId =
   | 'global-instructions'
   | 'tasks'
   | 'resources'
+  | 'manager-worker'
   | 'worktrees'
   | 'projects'
   | 'notifications'
@@ -205,6 +208,14 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     description: 'Parallel tasks and per-task memory limit, across every project.',
     icon: GaugeIcon,
     component: ResourcesSection,
+    scope: 'global',
+  },
+  {
+    id: 'manager-worker',
+    title: 'Manager–Worker',
+    description: 'Presets: one agent manages, chosen agents work.',
+    icon: UsersIcon,
+    component: ManagerWorkerSection,
     scope: 'global',
   },
   {

@@ -4,6 +4,7 @@ import { useRuns } from '@/api/queries'
 import { Link } from '@/lib/project-router'
 import { buildDigest, DEFAULT_DIGEST_HOURS, DIGEST_HOURS } from '@/lib/morning-digest'
 import { formatLimitValue } from '@/lib/run-limits'
+import { RunBackendBadge } from '@/components/run-backend-badge'
 import { RunLimitMeter } from '@/components/run-limit-meter'
 
 const STORAGE_KEY = 'onni.digest.hours'
@@ -50,6 +51,11 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
           {digest.total} task{digest.total === 1 ? '' : 's'} · {formatLimitValue('cost', digest.costUsd)} · {formatLimitValue('tokens', digest.tokens)} tokens
         </span>
       </div>
+      {digest.notDelegated.length > 0 ? (
+        <p data-slot="digest-not-delegated-note" className="mt-2 text-[12px] text-warning-foreground">
+          {digest.notDelegated.length} manager task{digest.notDelegated.length === 1 ? '' : 's'} finished without giving any work to a worker.
+        </p>
+      ) : null}
       {digest.total === 0 ? (
         <p data-slot="digest-empty" className="mt-2 text-[13px] text-soft-foreground">Nothing finished, failed or needs you in this window.</p>
       ) : (
@@ -61,6 +67,10 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
                 {group.runs.map((run) => (
                   <li key={run.id} className="flex items-center gap-2 text-[13px]">
                     <Link to={`/tasks/${run.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">{run.title}</Link>
+                    <RunBackendBadge run={run} />
+                    {run.managerDidNotDelegate ? (
+                      <span data-slot="digest-not-delegated" className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning-foreground">manager did not delegate</span>
+                    ) : null}
                     <RunLimitMeter run={run} />
                     <span className="tabular-nums text-muted-foreground">
                       {run.costUsd !== undefined ? formatLimitValue('cost', run.costUsd) : '—'} · {formatLimitValue('tokens', run.tokensUsed ?? 0)}
