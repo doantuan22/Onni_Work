@@ -32,6 +32,8 @@ describe('managerPrompt', () => {
     expect(prompt).not.toContain('--runner');
     expect(prompt).toContain('DISJOINT file scopes');
     expect(prompt).toContain('ONNI:MONITORING');
+    expect(prompt).toContain('Dispatch EVERY independent part first');
+    expect(prompt).toContain('do not end the turn with ONNI:DONE while any worker you dispatched has not reported');
     expect(prompt).toContain('server refuses any other backend or model with a 409');
   });
   it('spells out the integration procedure', () => {

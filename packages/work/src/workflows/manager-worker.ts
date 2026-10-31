@@ -116,7 +116,7 @@ Giving work. From your shell, always through the cockpit's own binary, node "$ON
 - onni commits your uncommitted work (labelled "onni: wip before dispatch") on your branch before it forks a worker, but commit your own clean state first. A worker forks the tip of YOUR branch.
 - If you can finish a part faster than describing it, do it yourself; dispatch only independent work.
 
-Waiting. After dispatching, end your turn with a line containing exactly ONNI:MONITORING. onni parks you, frees your slot for the workers, and delivers each worker's report into this session when it settles. Do not poll or sleep.
+Waiting. Dispatch EVERY independent part first — workers run in parallel, and each one you hold back is time lost — then end your turn with a line containing exactly ONNI:MONITORING. onni parks you, frees your slot for the workers, and delivers each worker's report into this session when it settles. Do not poll or sleep, and do not end the turn with ONNI:DONE while any worker you dispatched has not reported and been integrated (or consciously left out).
 
 Integrating. A report is a CLAIM: status (done, partial, failed, blocked), result, evidence, the worker's branch (onni/<id8>) and its cost. For each report, in the order they arrive:
 1. Read the branch's diff (git diff <your branch>...<worker branch>) and run the tests it names.
