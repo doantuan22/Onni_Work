@@ -59,6 +59,8 @@ const CONNECTED_OUTPUT: Record<ProviderId, string> = {
   // Copilot's probe drives its ACP server, so its "connected" evidence is the `session/new`
   // answer (`.ai/runs/2026-09-27-copilot-cli-runner/copilot-acp-notes.md`).
   copilot: '{"jsonrpc":"2.0","id":1,"result":{"sessionId":"3f1b6f2e-0000-4000-8000-1f2e3d4c5b6a"}}',
+  // Antigravity answers `agy models` with `id<TAB>label` rows; a list is a usable login.
+  antigravity: 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n',
 };
 
 const DISCONNECTED_OUTPUT: Record<ProviderId, string> = {
@@ -75,6 +77,8 @@ const DISCONNECTED_OUTPUT: Record<ProviderId, string> = {
   pi: 'No models available. Use /login to authenticate.',
   junie: 'Junie version: 26.9.22 (3419.7)',
   copilot: '{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"Authentication required"}}',
+  // `agy models` that exits cleanly with no models: there is no usable login.
+  antigravity: 'Fetching available models...',
 };
 
 const providerForExecutable = (executable: string): ProviderId => {
@@ -82,6 +86,8 @@ const providerForExecutable = (executable: string): ProviderId => {
   // `resolveCursorAgentBin` prefers `cursor-agent` (on PATH or `~/.local/bin`) when the host has
   // Cursor installed (#1503), so match it too or the suite fails only on such machines.
   if (executable === 'agent' || basename(executable) === 'cursor-agent') return 'cursor';
+  // The Antigravity probe resolves `agy` (its installer dir, PATH) or, in a dry run, the bundled mock.
+  if (['agy', 'agy.exe', 'mock-antigravity.mjs'].includes(basename(executable))) return 'antigravity';
   throw new Error(`unexpected executable: ${executable}`);
 };
 
