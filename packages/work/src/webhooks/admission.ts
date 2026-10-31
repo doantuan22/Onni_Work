@@ -13,7 +13,8 @@ import { assertNoSymlink, atomicWrite, readState, statePath, StateIntegrityError
 const time = z.iso.datetime();
 export const deliveryRecordSchema = z.strictObject({
   id: z.string().uuid(), receiverId: z.string().uuid(), deliveryRevision: z.number().int().positive(), admittedRevision: z.number().int().positive(),
-  format: webhookFormatSchema.optional(), receiverName: z.string().max(100).optional(),
+  // A queued `slack.v1`/`discord.v1` delivery reads as a plain one; its receiver is dropped on load (ADR 0004).
+  format: z.preprocess(value => value === 'slack.v1' || value === 'discord.v1' ? undefined : value, webhookFormatSchema.optional()), receiverName: z.string().max(100).optional(),
   profile: webhookProfileSchema, eventType: webhookEventTypeSchema, destination: z.string().max(300),
   createdAt: time, notBefore: time, expiresAt: time, status: webhookDeliveryStatusSchema, attempts: z.number().int().nonnegative(),
   body: z.string().max(65536).optional(), completedAt: time.optional(), reason: z.string().max(500).optional(), nextAttemptAt: time.optional(),

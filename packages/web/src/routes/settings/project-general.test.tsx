@@ -96,8 +96,6 @@ function seededClient({
   client.setQueryData(workspaceQueryKeys.config, {
     browseRoot: '~/',
     projectsDir: '~/onni/projects',
-    skillsAutoUpdate: null,
-    effectiveSkillsAutoUpdate: true,
     composerDefaults: {
       autonomous: null,
       worktree: null,

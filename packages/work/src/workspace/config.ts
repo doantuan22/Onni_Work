@@ -208,9 +208,6 @@ const workspaceConfigSchema = z
      *  `~` is expanded by the checkout flow, not here); validated writable
      *  when *changed*, never at load. */
     projectsDir: workspacePathSchema('ONNI_PROJECTS_DIR', '~/onni/projects'),
-    /** Optional auto-update override. Absence inherits the environment/default
-     *  and must stay absent on unrelated merge-writes. */
-    skillsAutoUpdate: z.boolean().optional().catch(undefined),
     /** The user's own skills repos (e.g. an organisation's), merged into every project's team
      *  skills after the project's own `skillsRepos`. Absent = none. */
     orgSkillsRepos: z
@@ -260,17 +257,6 @@ const workspaceConfigSchema = z
   .passthrough();
 
 export type WorkspaceConfig = z.infer<typeof workspaceConfigSchema>;
-
-/** Resolve the auto-update preference without mutating or materializing it. */
-export function effectiveSkillsAutoUpdate(
-  config: Pick<WorkspaceConfig, 'skillsAutoUpdate'>,
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
-  if (config.skillsAutoUpdate !== undefined) return config.skillsAutoUpdate;
-  if (env.ONNI_SKILLS_AUTO_UPDATE === '0') return false;
-  if (env.ONNI_SKILLS_AUTO_UPDATE === '1') return true;
-  return true;
-}
 
 export function effectiveComposerDefault(
   stored: boolean | undefined,

@@ -165,8 +165,6 @@ const WORKSPACE_CONFIG: WorkspaceConfigResponse = {
   agentDefaults: {},
   browseRoot: '~/',
   projectsDir: '~/onni/projects',
-  skillsAutoUpdate: null,
-  effectiveSkillsAutoUpdate: true,
   orgSkillsRepos: [],
   systemPrompt: null,
   composerDefaults: {

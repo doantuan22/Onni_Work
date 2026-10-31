@@ -9,7 +9,7 @@ execFileSync('git', ['init', '-q'], { cwd: root })
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('ONNI_')))
 Object.assign(env, {
   ONNI_DRY_RUN: '1', ONNI_HOME: join(root, '.onni-home'), ONNI_WEBHOOKS: '1',
-  ONNI_SKILLS_AUTO_UPDATE: '0', ONNI_AUTOMATIONS: '0',
+  ONNI_AUTOMATIONS: '0',
 })
 const child = spawn(process.execPath, ['--import', 'tsx', join(repository, 'packages/work/src/index.ts'),
   'serve', '--repo', root, '--port', process.env.PORT, '--no-open'], { cwd: repository, env, stdio: 'inherit' })

@@ -79,8 +79,6 @@ describe('every mutating route carries a typed body into AppType', () => {
     Assert<HasTypedBody<'/api/v1/ui-state', '$put'>>,
     Assert<HasTypedBody<'/api/v1/workspace/config', '$put'>>,
     Assert<HasTypedBody<'/api/v1/workspace/ui-state', '$put'>>,
-    Assert<HasTypedBody<'/api/v1/workspace/skills-update/check', '$post'>>,
-    Assert<HasTypedBody<'/api/v1/workspace/skills-update/apply', '$post'>>,
   ];
 
   type WorkspaceUiStatePutBody = Schema['/api/v1/workspace/ui-state']['$put']['input']['json'];
@@ -102,7 +100,6 @@ describe('every mutating route carries a typed body into AppType', () => {
     Assert<HasTypedInput<'/api/v1/github/prs/:number/merge-state', '$get', 'param'>>,
     Assert<HasTypedInput<'/api/v1/models', '$get', 'query'>>,
     Assert<HasTypedInput<'/api/v1/providers/status', '$get', 'query'>>,
-    Assert<HasTypedInput<'/api/v1/workspace/skills-update', '$get', 'query'>>,
     // The reads the cockpit's typed client needs a `query` argument for. `hc` offers one only
     // for keys a validator declares, so a route that reverted to `c.req.query('x')` would fail
     // here — and would otherwise fail nowhere, since the handler keeps working either way.

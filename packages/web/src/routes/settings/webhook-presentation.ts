@@ -10,10 +10,6 @@ export const receiverStateLabels: Record<WebhookReceiverState, string> = {
   inactive: 'Inactive', active: 'Active', paused: 'Paused', suspended: 'Failing', disabled: 'Disabled',
 }
 
-export const formatLabels: Record<WebhookReceiver['format'], string> = {
-  'onni.json.v1': 'Custom receiver', 'slack.v1': 'Slack', 'discord.v1': 'Discord',
-}
-
 export const profileLabels: Record<WebhookReceiver['profile'], string> = { minimal: 'Minimal', standard: 'Standard' }
 
 export const scopeLabels: Record<WebhookReceiver['scope'], string> = {

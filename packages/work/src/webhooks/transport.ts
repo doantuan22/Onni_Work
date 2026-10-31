@@ -10,10 +10,9 @@ export interface WebhookSend {
   diagnosticSecrets?: readonly string[];
   signal?: AbortSignal;
 }
-export type SendResult = { kind: 'http'; status: number; providerCode?: 10015 | 50027; contentType?: string; response?: string; retryAfter?: string }
+export type SendResult = { kind: 'http'; status: number; contentType?: string; response?: string; retryAfter?: string }
   | { kind: 'policy' | 'transient'; reason: string };
 type HttpResult = Extract<SendResult, { kind: 'http' }>;
-const discordHosts = new Set(['discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com']);
 // RFC 9110 §5.6.7: IMF-fixdate, RFC850 and asctime only. Date.parse
 // alone accepts comments, arbitrary suffixes and non-HTTP date formats.
 const weekday = '(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)';
@@ -62,16 +61,15 @@ export function redactWebhookDiagnostics(result: SendResult, secrets: readonly s
   // Protocol timing is not display text: redaction or clipping can turn a
   // valid delay into an earlier retry. Share the bounded grammar on every path.
   const timing = validatedRetryAfter(raw.retryAfter)?.value;
-  const provider = raw.providerCode === 10015 || raw.providerCode === 50027 ? { providerCode: raw.providerCode } : {};
   if (omitText) {
     // Only validated timing survives incomplete secret coverage.
-    return { kind: 'http', status: raw.status, ...provider, ...(timing ? { retryAfter: timing } : {}) };
+    return { kind: 'http', status: raw.status, ...(timing ? { retryAfter: timing } : {}) };
   }
   const values = [...(context?.secrets ?? []), ...collectSecretValues(), ...secrets];
   const clean = (value: string | undefined, limit: number, inputLimit: number) => value !== undefined && Buffer.byteLength(value) <= inputLimit
     ? redactSecrets(value, values).slice(0, limit) : undefined;
   const response = clean(raw.response, 4096, 4096), contentType = clean(raw.contentType, 256, 16384), retryAfter = timing;
-  return { kind: 'http', status: raw.status, ...provider, ...(response !== undefined ? { response } : {}),
+  return { kind: 'http', status: raw.status, ...(response !== undefined ? { response } : {}),
     ...(contentType ? { contentType } : {}), ...(retryAfter ? { retryAfter } : {}) };
 }
 function untilAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -91,11 +89,6 @@ export async function sendWebhook(input: WebhookSend, dependencies: { lookup?: L
   let dispatcher: Agent | undefined;
   try {
     const target = await untilAbort(validateDestination(input.url, input.policy, dependencies.lookup), controller.signal);
-    // Discord's default wait=false can acknowledge a message it did not save.
-    // Only the native adapter adds this protocol option; saved/user URLs stay unchanged.
-    if (input.format === 'discord.v1' && target.url.protocol === 'https:' && discordHosts.has(target.url.hostname)) {
-      target.url.searchParams.set('wait', 'true');
-    }
     // Load the HTTP client only for an actual send, after destination validation.
     const { Agent, request } = await untilAbort(import('undici'), controller.signal);
     dispatcher = new Agent({
@@ -133,12 +126,7 @@ export async function sendWebhook(input: WebhookSend, dependencies: { lookup?: L
     // arbitrary decoded fragments, which value redaction cannot reliably cover.
     // Keep status/retry diagnostics, but never retain that untrusted body.
     const destination = new URL(input.url);
-    const chat = !target.private && !destination.search && destination.protocol === 'https:'
-      ? input.format === 'slack.v1' && destination.hostname === 'hooks.slack.com' ? 'slack'
-        : input.format === 'discord.v1' && discordHosts.has(destination.hostname) ? 'discord' : undefined
-      : undefined;
-    if ((!chat && (target.private || destination.pathname !== '/' || destination.search))
-      || (chat === 'discord' && result.statusCode >= 200 && result.statusCode < 300)) {
+    if (target.private || destination.pathname !== '/' || destination.search) {
       // An unread undici body has no iterator error handler. destroy() emits
       // UND_ERR_ABORTED asynchronously, outside this function's try/catch.
       // Consume that disposal error without draining an unbounded response.
@@ -146,7 +134,7 @@ export async function sendWebhook(input: WebhookSend, dependencies: { lookup?: L
       result.body.destroy();
     }
     else {
-      const chunks: Buffer[] = []; let remaining = chat === 'slack' ? 65 : chat === 'discord' ? 513 : 4096;
+      const chunks: Buffer[] = []; let remaining = 4096;
       let complete = true;
       try {
         for await (const chunk of result.body) {
@@ -167,9 +155,7 @@ export async function sendWebhook(input: WebhookSend, dependencies: { lookup?: L
         response = undefined;
       }
     }
-    const diagnostics = chatDiagnostics(chat, response);
-    if (chat) response = diagnostics.response;
-    const raw: HttpResult = { kind: 'http', status: result.statusCode, ...diagnostics.protocol, ...(contentType ? { contentType } : {}), ...(retryAfter ? { retryAfter } : {}), ...(response !== undefined ? { response } : {}) };
+    const raw: HttpResult = { kind: 'http', status: result.statusCode, ...(contentType ? { contentType } : {}), ...(retryAfter ? { retryAfter } : {}), ...(response !== undefined ? { response } : {}) };
     const sanitized = redactWebhookDiagnostics(raw, secretValues);
     diagnosticContexts.set(sanitized, { raw, secrets: secretValues });
     return sanitized;
@@ -192,28 +178,4 @@ export function retryAt(attempt: number, now: number, retryAfter?: string, rando
   if (timing?.seconds !== undefined) requested = Math.min(maxDate, now + timing.seconds * 1000);
   else if (timing?.date !== undefined) requested = timing.date;
   return Math.min(maxDate, Math.max(now + backoff, Number.isFinite(requested) ? requested : 0));
-}
-
-// Provider diagnostics are a closed vocabulary, never arbitrary path/token echoes.
-function chatDiagnostics(provider: 'slack' | 'discord' | undefined, body: string | undefined): {
-  response?: string; protocol?: { providerCode: 10015 | 50027 };
-} {
-  if (!provider || body === undefined) return {};
-  if (provider === 'slack') {
-    const codes = new Set(['ok', 'invalid_token', 'no_service', 'channel_not_found', 'channel_is_archived',
-      'invalid_payload', 'action_prohibited', 'no_active_hooks', 'no_service_id', 'no_team',
-      'posting_to_general_channel_denied', 'team_disabled', 'too_many_attachments', 'user_not_found', 'rollup_error']);
-    return codes.has(body) ? { response: body } : {};
-  }
-  try {
-    const data: unknown = JSON.parse(body);
-    if (!data || typeof data !== 'object') return {};
-    const { code, message } = data as { code?: unknown; message?: unknown };
-    const knownMessage = typeof message === 'string' && ['Unknown Webhook', 'Invalid Webhook Token', 'Invalid Form Body', 'You are being rate limited.'].includes(message);
-    const integerCode = typeof code === 'number' && Number.isSafeInteger(code);
-    return {
-      ...(integerCode || knownMessage ? { response: JSON.stringify({ ...(integerCode ? { code } : {}), ...(knownMessage ? { message } : {}) }) } : {}),
-      ...(code === 10015 || code === 50027 ? { protocol: { providerCode: code } } : {}),
-    };
-  } catch { return {}; }
 }

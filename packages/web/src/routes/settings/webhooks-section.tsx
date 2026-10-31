@@ -15,7 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { WebhookForm, eventLabels, webhookDraft } from './webhook-form'
 import { WebhookTestFeedback, type PendingWebhookTest } from './webhook-test-feedback'
 import { ReceiverHistory } from './webhook-history'
-import { activityLabel, endpointHealthTone, formatLabels, graceLabels, lastTestLabels, plural, presetLabels, profileLabels, receiverStateLabels, scopeLabels, sourceLabels, webhookGuide, webhookTime } from './webhook-presentation'
+import { activityLabel, endpointHealthTone, graceLabels, lastTestLabels, plural, presetLabels, profileLabels, receiverStateLabels, scopeLabels, sourceLabels, webhookGuide, webhookTime } from './webhook-presentation'
 type Confirmation = { title: string; text: string; run: () => Promise<unknown>; standard?: boolean; local?: boolean; receiver?: WebhookReceiver; deletesReceiver?: boolean }
 export function WebhooksSection() {
   const projectId = useActiveProjectId() ?? 'default'
@@ -109,7 +109,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
     const key = view.current.token
     const result = await webhookApi.test(projectId, row.id, input)
     if (!currentView(key)) return
-    setPendingTest({ viewKey: location.key, deliveryId: result.deliveryId, receiverId: row.id, receiverName: row.name, initialState: row.state, deliveryRevision: row.deliveryRevision, format: row.format })
+    setPendingTest({ viewKey: location.key, deliveryId: result.deliveryId, receiverId: row.id, receiverName: row.name, initialState: row.state, deliveryRevision: row.deliveryRevision })
   }
   const history = useInfiniteQuery({ queryKey: [...webhookKey(projectId), 'history'], initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => webhookApi.history(projectId, pageParam), getNextPageParam: page => page.nextCursor, enabled: enabled && deleted, retry: false })
@@ -117,10 +117,7 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
     const key = view.current.token
     const result = await run()
     // Never put the one-time secret in React Query's shared mutation cache.
-    const chatResult = result && typeof result === 'object' && 'receiver' in result
-      && result.receiver && typeof result.receiver === 'object' && 'format' in result.receiver
-      && (result.receiver.format === 'slack.v1' || result.receiver.format === 'discord.v1')
-    if (!chatResult && currentView(key) && result && typeof result === 'object' && 'secret' in result && typeof result.secret === 'string' && result.secret.length > 0) { secretFocusTarget.current = form ? formFocusTarget.current : confirmationFocusTarget.current; setCopyMessage(''); setSecret(result.secret) }
+    if (currentView(key) && result && typeof result === 'object' && 'secret' in result && typeof result.secret === 'string' && result.secret.length > 0) { secretFocusTarget.current = form ? formFocusTarget.current : confirmationFocusTarget.current; setCopyMessage(''); setSecret(result.secret) }
   }, onSuccess: async (_result, _run, context) => {
     if (!context || !currentView(context.viewKey)) { await client.invalidateQueries({ queryKey: webhookKey(projectId) }); return }
     // A list action can finish after Add opens on the same URL. Only retire
@@ -150,13 +147,13 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
       : { title: 'Retry this delivery now?', text: 'Sends the same message again now. Rate limits and freshness checks still apply.', run: () => webhookApi.retry(projectId, row.deliveryId, input) })
   }
   const pauseConfirmation = (row: WebhookReceiver): Confirmation => ({ title: `Pause ${row.name}?`, text: `New events won’t be queued while it is paused.${cancelled(row.pendingCount)}`, run: () => webhookApi.pause(projectId, row.id, row.revision) })
-  const deleteConfirmation = (row: WebhookReceiver): Confirmation => ({ title: `Delete ${row.name}?`, text: `${cancelled(row.pendingCount).trim()} Its settings${isChat(row) ? '' : ' and signing keys'} are removed; delivery history stays for up to 30 days.`.trim(), deletesReceiver: true, run: () => webhookApi.remove(projectId, row.id, row.revision) })
+  const deleteConfirmation = (row: WebhookReceiver): Confirmation => ({ title: `Delete ${row.name}?`, text: `${cancelled(row.pendingCount).trim()} Its settings and signing keys are removed; delivery history stays for up to 30 days.`.trim(), deletesReceiver: true, run: () => webhookApi.remove(projectId, row.id, row.revision) })
   if (unsupportedPlatform || !enabled) return <div data-slot="webhooks-settings" className={chassis}>
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
       <div><h2 className="text-sm font-semibold">{unsupportedPlatform ? 'Webhooks aren’t available on this platform' : 'Webhooks are off'}</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">{unsupportedPlatform
           ? 'Delivery needs an OS-verified process identity to keep a single sender. Linux, macOS and Windows provide one; this platform does not.'
-          : 'Send task updates to Slack, Discord or your own endpoint when a task needs you, is ready for review or finishes.'}</p></div>
+          : 'Send task updates to your own endpoint when a task needs you, is ready for review or finishes.'}</p></div>
       {!unsupportedPlatform && <p className="text-[13px]">Start onni with <code>ONNI_WEBHOOKS=1</code>, then reload this page. If someone else runs this server, ask them to turn webhooks on.</p>}
       <a className="w-fit text-[13px] underline underline-offset-2 hover:text-foreground" href={guide.href} target="_blank" rel="noreferrer">{guide.note}</a>
     </section>
@@ -205,21 +202,20 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
     {(error || list.error) && <p role="alert" className="text-sm text-danger">{error || list.error?.message}</p>}
     {list.data?.webhookHealth.status !== 'ready' && list.data?.webhookHealth.reason && <p role="status" className="rounded-md border border-warning/50 bg-warning/10 p-3 text-[13px]">{list.data.webhookHealth.reason}</p>}
     {list.isPending && <p className="text-sm text-muted-foreground">Loading receivers…</p>}
-    {!list.isPending && !list.error && !receivers.length && <div className="rounded-lg border border-dashed border-border p-6 text-center"><p className="text-sm font-medium">No receivers yet</p><p className="mt-1 text-[13px] text-muted-foreground">Add a Slack or Discord channel, or your own endpoint. Send a test, then activate it.</p></div>}
+    {!list.isPending && !list.error && !receivers.length && <div className="rounded-lg border border-dashed border-border p-6 text-center"><p className="text-sm font-medium">No receivers yet</p><p className="mt-1 text-[13px] text-muted-foreground">Add your own endpoint. Send a test, then activate it.</p></div>}
     {receivers.map(row => {
-      const custom = !isChat(row)
       const inactive = ['inactive', 'disabled', 'paused'].includes(row.state)
       const testLabel = row.state === 'suspended' ? 'Test and recover' : row.state === 'disabled' ? 'Test after repair' : 'Send test'
       const summary = [row.destination, `${profileLabels[row.profile]} content`, `Last test: ${lastTestLabels[row.lastTest].toLowerCase()}`,
         row.pendingCount ? plural(row.pendingCount, 'pending delivery', 'pending deliveries') : '', row.inFlightCount ? `${row.inFlightCount} sending` : ''].filter(Boolean).join(' · ')
       return <article key={row.id} className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-card p-4">
         <div className="min-w-0">
-          <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold [overflow-wrap:anywhere]">{row.name}<Pill dot={endpointHealthTone[row.state]}>{receiverStateLabels[row.state]}</Pill>{!custom && <Pill>{formatLabels[row.format]}</Pill>}</h3>
+          <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold [overflow-wrap:anywhere]">{row.name}<Pill dot={endpointHealthTone[row.state]}>{receiverStateLabels[row.state]}</Pill></h3>
           <p className="mt-1 break-words text-[13px] text-muted-foreground">{summary}</p>
           {row.consecutiveFailures > 0 && <p className="mt-1 text-[13px] text-warning">{plural(row.consecutiveFailures, 'failed attempt', 'failed attempts')} in a row.{row.pendingCount > 0 ? row.nextProbeAt ? ` Next retry ${webhookTime(row.nextProbeAt)}.` : '' : ' Nothing is queued, so nothing will be retried until the next event.'}</p>}
           {row.state === 'paused' && <p className="mt-1 text-[13px] text-muted-foreground">{row.pauseReason === 'project_removal' ? 'Paused when this project was removed from the workspace.' : 'Paused.'} New events aren’t queued.</p>}
           {row.activationBlocked && <p className="mt-1 text-[13px] text-warning">Send a passing test of these settings before activating.</p>}
-          {custom && row.retiredKeyExpiresAt && <p className="mt-1 text-[13px] text-muted-foreground">The previous signing key stops working {webhookTime(row.retiredKeyExpiresAt)}.</p>}
+          {row.retiredKeyExpiresAt && <p className="mt-1 text-[13px] text-muted-foreground">The previous signing key stops working {webhookTime(row.retiredKeyExpiresAt)}.</p>}
         </div>
         {pendingTest && pendingTest.viewKey === location.key && pendingTest.receiverId === row.id && <WebhookTestFeedback key={pendingTest.deliveryId} projectId={projectId} test={pendingTest} openHistory={id => navigateReceiver(id)} />}
         <div className="flex flex-wrap items-center gap-2">
@@ -231,11 +227,9 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button size="icon-sm" variant="ghost" aria-label={`More actions for ${row.name}`} ref={node => { if (node) menuTriggers.current.set(row.id, node); else menuTriggers.current.delete(row.id) }}><EllipsisIcon /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[220px]">
-              {custom && <>
-                <DropdownMenuItem disabled={!!row.retiredKeyExpiresAt && Date.parse(row.retiredKeyExpiresAt) > Date.now()} onSelect={() => openConfirmation({ title: 'Rotate signing key?', text: 'Old and new keys both sign deliveries for 24 hours. Install the new key in your receiver within that time.', run: () => webhookApi.rotate(projectId, row.id, row.revision, 'graceful') }, menuTriggers.current.get(row.id))}><KeyRoundIcon />Rotate key</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => openConfirmation({ title: 'Revoke old signing keys now?', text: 'Old keys stop signing immediately, and deliveries fail until your receiver uses the new key. Also remove old keys from your receiver — onni can’t revoke keys it still accepts.', run: () => webhookApi.rotate(projectId, row.id, row.revision, 'revoke_now') }, menuTriggers.current.get(row.id))}><ShieldOffIcon />Revoke old keys</DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>}
+              <DropdownMenuItem disabled={!!row.retiredKeyExpiresAt && Date.parse(row.retiredKeyExpiresAt) > Date.now()} onSelect={() => openConfirmation({ title: 'Rotate signing key?', text: 'Old and new keys both sign deliveries for 24 hours. Install the new key in your receiver within that time.', run: () => webhookApi.rotate(projectId, row.id, row.revision, 'graceful') }, menuTriggers.current.get(row.id))}><KeyRoundIcon />Rotate key</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openConfirmation({ title: 'Revoke old signing keys now?', text: 'Old keys stop signing immediately, and deliveries fail until your receiver uses the new key. Also remove old keys from your receiver — onni can’t revoke keys it still accepts.', run: () => webhookApi.rotate(projectId, row.id, row.revision, 'revoke_now') }, menuTriggers.current.get(row.id))}><ShieldOffIcon />Revoke old keys</DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={() => openConfirmation(deleteConfirmation(row), menuTriggers.current.get(row.id))}><Trash2Icon />Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -270,7 +264,6 @@ function WebhookPanel({ projectId, enabled, unsupportedPlatform }: { projectId: 
 }
 
 const chassis = 'mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-6 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6'
-const isChat = (row: Pick<WebhookReceiver, 'format'>) => (row.format ?? 'onni.json.v1') !== 'onni.json.v1'
 const cancelled = (count: number) => count ? ` ${plural(count, 'pending delivery', 'pending deliveries')} will be cancelled; one already sending may still arrive.` : ''
 
 function ActivationSummary({ receiver, projectId }: { receiver: WebhookReceiver; projectId: string }) {
@@ -281,14 +274,14 @@ function ActivationSummary({ receiver, projectId }: { receiver: WebhookReceiver;
   return <div className="flex min-w-0 flex-col gap-2 text-[13px]">
     <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 rounded-md border border-border bg-card p-3 [overflow-wrap:anywhere]">
       <dt className={term}>Receiver</dt><dd>{receiver.name}</dd>
-      <dt className={term}>Destination</dt><dd>{receiver.format === 'onni.json.v1' ? 'Custom receiver (signed onni JSON)' : `${formatLabels[receiver.format]} channel`}</dd>
+      <dt className={term}>Destination</dt><dd>Custom receiver (signed onni JSON)</dd>
       <dt className={term}>URL</dt><dd>{receiver.destination}</dd>
       <dt className={term}>Project</dt><dd>{projectId}</dd>
       <dt className={term}>Message content</dt><dd>{profileLabels[receiver.profile]}</dd>
       <dt className={term}>Events</dt><dd>{presetLabels[receiver.preset]}: {events.map(type => eventLabels[type]).join(', ')}</dd>
       <dt className={term}>Tasks</dt><dd>{scopeLabels[receiver.scope]}</dd>
       <dt className={term}>Waiting and review delay</dt><dd>{graceLabels[receiver.graceSeconds]}</dd>
-      {receiver.format === 'onni.json.v1' && <><dt className={term}>Private network</dt><dd>{receiver.allowLocalNetwork ? 'Allowed' : 'Not allowed'}</dd></>}
+      <dt className={term}>Private network</dt><dd>{receiver.allowLocalNetwork ? 'Allowed' : 'Not allowed'}</dd>
       <dt className={term}>Failures that resume automatically</dt><dd>{receiver.preset === 'all' || receiver.includeScheduledFailures ? 'Included' : 'Excluded'}</dd>
     </dl>
     {receiver.destination.startsWith('http:') && <p role="alert" className="text-warning">HTTP is unencrypted — others on the network may read these messages. Use HTTPS where possible.</p>}

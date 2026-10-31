@@ -25,7 +25,6 @@ export default {
           PORT: '{port}',
           // Bundled mock agents: no CLI login, no network. ONNI_HOME keeps ~/.onni untouched.
           ONNI_DRY_RUN: '1',
-          ONNI_SKILLS_AUTO_UPDATE: '0',
           ONNI_HOME: resolve('.e2e/onni-home'),
         },
         startupTimeout: 180_000,

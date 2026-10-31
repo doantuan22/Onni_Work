@@ -14,8 +14,9 @@ Markdown under `.ai/onni/` (per project) and `~/.onni/` (per user).
 Onni Work is a hard fork of the MIT-licensed **cezar** engine by Patryk Lewczuk, maintained as
 its own project with its own desktop-first surface. Upstream services are not used:
 
-- self-update, CLI install/update and the desktop updater are removed (no updater endpoints or
-  signing keys shipped); the desktop runs the engine you build locally;
+- self-update, CLI install/update, the desktop updater and the Open Mercato skills auto-update are
+  removed (no updater endpoints, signing keys or background `npx skills` checks shipped); the
+  desktop runs the engine you build locally;
 - telemetry is removed, not disabled — no consent flow, no send path: nothing leaves the machine;
 - the GitHub star-count chip, its one-time toast and `GET /api/v1/star-count` are removed; no
   request to github.com is made.

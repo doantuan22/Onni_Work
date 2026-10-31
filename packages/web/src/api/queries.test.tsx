@@ -31,7 +31,6 @@ import {
   useRunChanges,
   useRuns,
   useSkills,
-  useSkillsUpdate,
   useReferenceStatuses,
   workspaceQueryKeys,
   __clearRememberedStatusesForTests,
@@ -557,76 +556,6 @@ describe('useSkills', () => {
       expect(result.current.data?.map((skill) => skill.name)).toEqual(['local', 'om-fix']),
     )
     expect(fetchMock.mock.calls.map(([path]) => path)).toEqual(['/api/v1/skills', '/api/v1/skills?wait=1'])
-  })
-})
-
-describe('useSkillsUpdate', () => {
-  it('retries a transient snapshot conservatively until the background server check converges', async () => {
-    fetchMock.mockResolvedValue(json({
-      status: 'idle',
-      available: false,
-      autoUpdateEnabled: false,
-      inherited: false,
-      checkedAt: null,
-      updatedAt: null,
-      scopes: [],
-      needsUpgradeNotes: false,
-    }))
-    const client = createQueryClient()
-    const key = workspaceQueryKeys.skillsUpdate('boot')
-    const { result } = renderHook(() => useSkillsUpdate('boot'), {
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <QueryClientProvider client={client}>{children}</QueryClientProvider>
-      ),
-    })
-    await waitFor(() => expect(result.current.data?.status).toBe('idle'))
-
-    const query = client.getQueryCache().find({ queryKey: key })
-    const interval = query?.observers[0]?.options.refetchInterval
-    expect(typeof interval).toBe('function')
-    expect((interval as (current: typeof query) => number | false)(query)).toBe(60_000)
-
-    client.setQueryData(key, { ...result.current.data!, status: 'current' })
-    expect((interval as (current: typeof query) => number | false)(query)).toBe(false)
-
-    client.setQueryData(key, { ...result.current.data!, status: 'available' })
-    expect((interval as (current: typeof query) => number | false)(query)).toBe(false)
-  })
-
-  it('keeps asking while no check has completed, then stands down at the cap', async () => {
-    fetchMock.mockImplementation(async () => json({
-      status: 'idle',
-      available: false,
-      autoUpdateEnabled: false,
-      inherited: false,
-      checkedAt: null,
-      updatedAt: null,
-      scopes: [],
-      needsUpgradeNotes: false,
-    }))
-    const client = createQueryClient()
-    const key = workspaceQueryKeys.skillsUpdate('boot')
-    const { result } = renderHook(() => useSkillsUpdate('boot'), {
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <QueryClientProvider client={client}>{children}</QueryClientProvider>
-      ),
-    })
-    await waitFor(() => expect(result.current.data?.status).toBe('idle'))
-
-    const query = client.getQueryCache().find({ queryKey: key })
-    const interval = query?.observers[0]?.options.refetchInterval as (current: unknown) => number | false
-    const idle = result.current.data!
-    const at = (dataUpdateCount: number, data = idle) => interval({ state: { data, dataUpdateCount } })
-
-    // One idle read is not enough: the check the first GET started can still be queued behind
-    // another project's on the server, and `idle` only means it has not finished.
-    expect(at(2)).toBe(60_000)
-    // Bounded: once idle has been answered this often, the poll stands down and the reconnect /
-    // tab-return reconcile owns the update.
-    expect(at(6)).toBe(false)
-
-    expect(at(7, { ...idle, status: 'checking' })).toBe(60_000)
-    expect(at(7, { ...idle, status: 'current' })).toBe(false)
   })
 })
 

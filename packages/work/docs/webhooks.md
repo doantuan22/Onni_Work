@@ -1,8 +1,8 @@
 # Outbound task webhooks
 
-Webhooks send task notifications from a running Onni Work server to your own receiver, Slack or Discord.
+Webhooks send task notifications from a running Onni Work server to your own receiver.
 Your receiver can process these events in an automation workflow. They do not start tasks or accept answers.
-Choose **Custom receiver** for signed Onni Work JSON, **Slack channel** for an Incoming Webhook, or **Discord channel** for a channel Webhook URL.
+Receivers get signed Onni Work JSON.
 
 ## Supported server platforms
 
@@ -36,7 +36,7 @@ enabled. An ownership or storage failure reports the existing storage/coordinato
 2. Open your project's **Settings → Webhooks**, then **Add receiver**. Use an HTTPS receiver URL.
    Paths and query strings may contain credentials: Onni Work masks them in lists and delivery history.
 3. Keep **Minimal** initially. For a custom receiver, save and copy the signing key into its secret storage.
-   The cockpit shows that key once. If you lose it, use **Rotate key** in the receiver's **⋯** menu. Slack and Discord use their secret URL instead.
+   The cockpit shows that key once. If you lose it, use **Rotate key** in the receiver's **⋯** menu.
 4. Send a test. It contains only a synthetic connection event, never a project name, task or question.
    A passing test means the receiver accepted it; it does not prove a chat or phone displayed it.
 5. Activate after reviewing the destination and data profile. Only events captured **after** activation
@@ -204,99 +204,12 @@ them; heed any warning if that write fails or another server owns the project.
 
 Configure the webhook URL of your own backend or automation workflow (for example Make or n8n)
 as the receiver. Onni Work sends signed JSON; your workflow decides how to format it and whether to
-send a Slack/Discord message or perform another action. No Onni Work relay process is required or supplied.
+send a chat message or perform another action. No Onni Work relay process is required or supplied.
 
 Follow the signature verification and duplicate-handling requirements above. A successful HTTP
 response acknowledges receipt by your workflow, not delivery to a downstream chat. If the workflow
 acknowledges before processing finishes, it must handle downstream failures and retries itself.
 Select the Minimal or Standard profile deliberately: the automation service receives those fields.
-
-## Send to Slack
-
-Create or use a Slack app, enable Incoming Webhooks, and install a webhook into the desired channel
-([Slack setup guide](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)).
-In Settings → Webhooks choose **Slack channel (Incoming Webhook)**, paste its URL, Save, Test, then
-Activate. This requires no bot process, relay or OAuth flow in Onni Work. Only `hooks.slack.com/services/…`
-URLs are supported; GovSlack is outside this scope.
-
-Messages contain an event label, project/task identifiers and status. Standard also includes the
-available task title, questions/options and failure text; Minimal uses only the fields present in
-the Minimal event. The test message includes the receiver name. Slack links and user-supplied text
-are escaped and automatic mentions/link previews are disabled. An archived channel (HTTP 410)
-disables an active receiver. Fixed Slack error codes appear in delivery diagnostics.
-
-## Send to Discord
-
-In Discord Server Settings → Integrations → Webhooks, create a channel webhook and copy its URL
-([Discord setup guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)).
-Choose **Discord channel (Webhook URL)**, paste the URL, Save, Test, then Activate. No bot is needed.
-Onni Work asks Discord to confirm that the message was saved before marking a delivery successful.
-The returned message content is discarded.
-The `discordapp.com`, `ptb.discord.com` and `canary.discord.com` hosts and `/api/v10/webhooks/…`
-paths are accepted and saved as `discord.com/api/webhooks/…`. Queries, forum/thread parameters and
-Slack/GitHub compatibility endpoints are not supported.
-
-Messages use a coloured embed, bounded to Discord's limits. Minimal/Standard follow the same
-privacy rules as Slack. Mentions are disabled, including `@everyone` and role/user mentions in
-task text. A deleted webhook (404/code 10015) or invalid token (401/code 50027) disables an active
-receiver; only a fixed vocabulary of Discord diagnostics is retained.
-
-Both services use the shared queue, Retry-After/backoff, 72-hour delivery expiry and history.
-Retained delivery storage keeps the canonical Onni Work event; history exposes metadata only.
-The provider-specific message is rendered when sending. Changing destination type resets the receiver to Inactive. To switch back to a custom
-receiver, rotate its signing key and copy it before testing/activating.
-Treat each chat webhook URL as a password: anyone who has it can post. It is masked in the cockpit
-and redacted from diagnostics. Chat deliveries carry no Onni Work signature headers and chat receivers
-have no key reveal/rotation. Standard sends potentially sensitive content into the external workspace.
-These are one-way notifications: no answers, approvals, message updates or task threads.
-
-## Operation and boundaries
-
-Private state lives below each project's `.ai/onni/webhooks/`, with owner-only permissions on POSIX
-(Windows does not apply filesystem modes) and verified git exclusion. One verified owner process sends for each project; another instance reports
-unavailability instead of competing. Unsupported owner-identity platforms fail this optional service
-closed. The owner verifies process start and boot identity through `/proc`
-(Linux), `ps`/`sysctl` (macOS) or PowerShell (Windows). A probe that fails, times out or cannot read
-an owner's own identity is unverified: Onni Work reports webhooks unavailable rather than claiming the
-owner is dead and stealing the lock. On Linux a `/proc/<pid>` ENOENT read is itself proof of
-absence only within the verified same PID namespace, and a PID above the platform's ceiling is provably absent on every platform; otherwise only
-a complete, normally exited listing may show that an owner's PID is absent.
-
-Ready deliveries drain after each completed attempt, within the project, host and global
-limits. Maintenance skips unchanged state, and runs.json for unopened projects is parsed again only
-when its file identity, size or timestamps change. Empty-recipient decisions retire once their source
-is durably compacted, rather than consuming seven days of control capacity. Pause, edits and deletion
-batch history and registry updates while preserving per-admission durable cancellation.
-
-Capture is synchronous and non-throwing so webhook persistence cannot fail a task. It is not an
-fsync transaction with the task index: a crash or disk error can lose capture. Standard source text
-is a second redacted plaintext copy on disk. Copying state to another root resets receivers, keys,
-identity and queue instead of sending another installation's notifications. Dry-run uses separate
-state and does not send receiver traffic.
-
-If an established project's failure identity index is missing or corrupt, retained sources and
-attempts can restore only the episodes they prove. Health remains **degraded** across restarts
-when completeness cannot be established; some later failure alerts may be unavailable. The
-service does not invent historical alerts from current task metadata. New captures continue.
-
-Only a server observing its project sees live transitions. A separate headless `onni run` or
-non-owner process can change a task without producing a lifecycle webhook. Lightweight discovery
-of enrolled projects does not start task managers. A server that never opened a task context treats
-persisted resume metadata as manual; a live scheduled notification requires a real manager timer.
-
-After the owner restarts, queued attention/review notifications for a project whose task context
-has not opened in the new process are permanently superseded as `owner_restarted` when checked
-for delivery. This applies even if the question is still unanswered or the task still awaits
-review. Onni Work does not start a task manager merely to validate a webhook. Opening the project
-later does not resend these suppressed notifications; they are not a recoverable backlog.
-
-`ONNI_WORKFLOW_WEBHOOKS` is independent: it enables an HTTP node **inside a workflow graph**, whose
-result can affect graph execution. `ONNI_WEBHOOKS` observes task lifecycle outside the workflow.
-They do not share receivers, signing keys, delivery IDs, retries or rate budgets. Pausing lifecycle
-receivers does not stop workflow-node HTTP, and a lifecycle delivery failure cannot fail the task.
-
-Use the receiver guide and JSON Schema from the same Onni Work release/tag you run. These are
-repository documentation assets, not runtime imports or components of the npm service.
 
 ## Manual browser regression suites
 
@@ -309,7 +222,6 @@ npx --no-install e2e run --config packages/web/e2e/chat-webhooks.config.ts
 npx --no-install e2e run --config packages/web/e2e/webhooks-review.config.ts
 ```
 
-The chat suite covers native receiver setup; the review suite covers delayed UI
+The first suite covers custom receiver setup and key rotation; the review suite covers delayed UI
 actions and delivery controls. Both use fictional credentials and a server forced
-to `ONNI_DRY_RUN=1`. They require the e2e browser runtime and do not verify live
-Slack or Discord delivery.
+to `ONNI_DRY_RUN=1`. They require the e2e browser runtime.

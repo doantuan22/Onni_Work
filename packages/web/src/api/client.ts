@@ -151,7 +151,6 @@ import type {
   WorkflowsResponse,
   WorkspaceConfigResponse,
   WorkspaceUiState,
-  SkillsUpdateState,
   TrackerAssociation,
   TrackerAssociationInput,
   TrackerAssociationResponse,
@@ -2606,34 +2605,6 @@ export async function removeAgentProfile(id: string): Promise<RemoveAgentProfile
       param: { id: encodeURIComponent(id) },
     }),
     `/workspace/agent-profiles/${encodeURIComponent(id)}`,
-  )
-}
-
-/** Cached Open Mercato update state for one registered project. The GET is immediate; the
- * server may start a stale detection-only refresh after taking its snapshot. */
-export async function getSkillsUpdate(
-  projectId: string,
-  opts?: ReadOptions,
-): Promise<SkillsUpdateState> {
-  return unwrap(
-    await onni.api.v1.workspace['skills-update'].$get({ query: { projectId } }, init(opts)),
-    `/workspace/skills-update?projectId=${encodeURIComponent(projectId)}`,
-  )
-}
-
-/** Force a bounded detection pass. The browser supplies identity only, never executable input. */
-export async function checkSkillsUpdate(projectId: string): Promise<SkillsUpdateState> {
-  return unwrap(
-    await onni.api.v1.workspace['skills-update'].check.$post({ json: { projectId } }),
-    '/workspace/skills-update/check',
-  )
-}
-
-/** Apply the server-owned, lock-authorized update set. Identity is the only browser input. */
-export async function applySkillsUpdate(projectId: string): Promise<SkillsUpdateState> {
-  return unwrap(
-    await onni.api.v1.workspace['skills-update'].apply.$post({ json: { projectId } }),
-    '/workspace/skills-update/apply',
   )
 }
 

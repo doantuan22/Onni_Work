@@ -18,7 +18,7 @@ it.each(['0', '1'])('production single-project resolver rejects hidden webhook s
   vi.stubEnv('ONNI_HOME', join(dir, 'home'));
   vi.stubEnv('ONNI_DRY_RUN', '1'); vi.stubEnv('ONNI_WEBHOOKS', '1');
   vi.stubEnv('ONNI_SINGLE_PROJECT', '1'); vi.stubEnv('ONNI_REMOTE', remote);
-  vi.stubEnv('ONNI_AUTOMATIONS', '0'); vi.stubEnv('ONNI_SKILLS_AUTO_UPDATE', '0');
+  vi.stubEnv('ONNI_AUTOMATIONS', '0');
   const boot = await registerProject(root), hidden = await registerProject(otherRoot);
   const store = RunStore.open(join(root, '.ai/onni'));
   const webhooks = new WebhookCoordinator({ mode: () => remote === '1' ? 'hosted' : 'local', ports: () => [], projects: async () => [], dryRun: true });

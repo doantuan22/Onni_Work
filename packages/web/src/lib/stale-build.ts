@@ -1,5 +1,5 @@
 /**
- * A tab kept open across a self-update or rebuild still runs the old shell, whose lazy chunks
+ * A tab kept open across a rebuild still runs the old shell, whose lazy chunks
  * the new `web/dist` no longer has — every navigation to an unvisited page then fails with
  * "Importing a module script failed." (telemetry c66965f8). Reloading picks up the served build.
  */
