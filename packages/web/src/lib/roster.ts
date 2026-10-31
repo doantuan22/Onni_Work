@@ -1,4 +1,4 @@
-import { rosterSchema, ROSTER_MAX_CONCURRENT, type ManagerPreset, type ProviderStatusResponse, type Roster, type Runner } from '@onni/api-client'
+import { rosterSchema, ROSTER_MAX_CONCURRENT, runnerCanManage, type ManagerPreset, type ProviderStatusResponse, type Roster, type Runner } from '@onni/api-client'
 
 /**
  * Manager–worker roster helpers (docs/design/manager-worker.md). The backends offered are the ones
@@ -32,12 +32,19 @@ export function emptyWorker(runner: Runner | '' = ''): WorkerDraft {
   return { runner, model: '', role: '', maxConcurrent: 1 }
 }
 
-/** A starting point: the first connected backend manages, the next one (if any) works. */
+/** Connected backends that may hold the manager role (`canManage`, ADR 0007). */
+export function managerCapable(connected: readonly Runner[]): Runner[] {
+  return connected.filter(runnerCanManage)
+}
+
+/** A starting point: the first connected backend that can manage manages, the next one (if any) works. */
 export function starterDraft(connected: readonly Runner[]): RosterDraft {
+  const manager = managerCapable(connected)[0]
+  const worker = connected.find((runner) => runner !== manager) ?? manager
   return {
-    managerRunner: connected[0] ?? '',
+    managerRunner: manager ?? '',
     managerModel: '',
-    workers: [emptyWorker(connected[1] ?? connected[0] ?? '')],
+    workers: [emptyWorker(worker ?? '')],
   }
 }
 

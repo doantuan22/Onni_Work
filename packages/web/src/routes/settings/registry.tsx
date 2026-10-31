@@ -17,6 +17,7 @@ import {
   KeyRoundIcon,
   BlocksIcon,
   TicketIcon,
+  ShieldIcon,
 } from 'lucide-react'
 import type { ComponentType, SVGProps } from 'react'
 
@@ -31,6 +32,7 @@ import { KeyboardSection } from './keyboard-section'
 import { BookmarkletsSection } from './bookmarklets-section'
 import { NotificationsSection } from './notifications-section'
 import { ProjectsSection } from './projects-section'
+import { AgentPermissionsSection } from './agent-permissions-section'
 import { ManagerWorkerSection } from './manager-worker-section'
 import { ResourcesSection } from './resources-section'
 import { SkillsSection } from './skills-section'
@@ -68,6 +70,7 @@ export type SettingsSectionId =
   | 'tasks'
   | 'resources'
   | 'manager-worker'
+  | 'agent-permissions'
   | 'worktrees'
   | 'projects'
   | 'notifications'
@@ -216,6 +219,14 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     description: 'Presets: one agent manages, chosen agents work.',
     icon: UsersIcon,
     component: ManagerWorkerSection,
+    scope: 'global',
+  },
+  {
+    id: 'agent-permissions',
+    title: 'Agent permissions',
+    description: 'What Antigravity may do without asking.',
+    icon: ShieldIcon,
+    component: AgentPermissionsSection,
     scope: 'global',
   },
   {

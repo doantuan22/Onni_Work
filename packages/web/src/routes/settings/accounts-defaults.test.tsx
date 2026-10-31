@@ -86,6 +86,7 @@ function serve({
     limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10000000, maxWallClockMinutes: 240, maxStepIterations: 30 },
     safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
     managerWorker: { presets: [], defaultPresetId: null },
+    agentPermissions: { antigravity: 'files-only' },
     composerDefaults: {
       autonomous: null,
       worktree: null,

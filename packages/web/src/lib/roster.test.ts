@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProviderStatusResponse } from '@onni/api-client'
-import { connectedBackends, describeRoster, disconnectedBackends, draftFromRoster, newPresetId, rosterFromDraft, starterDraft, totalConcurrency } from './roster'
+import { connectedBackends, describeRoster, disconnectedBackends, draftFromRoster, managerCapable, newPresetId, rosterFromDraft, starterDraft, totalConcurrency } from './roster'
 
 const status = {
   providers: [
@@ -35,6 +35,23 @@ describe('roster drafts', () => {
     expect(rosterFromDraft({ managerRunner: '', managerModel: '', workers: [{ runner: 'codex', model: '', role: '', maxConcurrent: 1 }] })).toMatchObject({ ok: false, error: expect.stringContaining('manager') })
     expect(rosterFromDraft({ managerRunner: 'claude', managerModel: 'a', workers: [{ runner: 'claude', model: 'a', role: '', maxConcurrent: 1 }] })).toMatchObject({ ok: false, error: expect.stringContaining('worker 1') })
     expect(rosterFromDraft({ managerRunner: 'claude', managerModel: '', workers: [] })).toMatchObject({ ok: false })
+  })
+})
+
+describe('antigravity is a worker, not a manager', () => {
+  it('a starter draft never makes it the manager, even when it is the first connected backend', () => {
+    const draft = starterDraft(['antigravity', 'codex'])
+    expect(draft.managerRunner).toBe('codex')
+    expect(draft.workers[0]?.runner).toBe('antigravity')
+    expect(starterDraft(['antigravity']).managerRunner).toBe('')
+  })
+  it('the contract refuses it as the manager and names the reason, and accepts it as a worker', () => {
+    const refused = rosterFromDraft({ managerRunner: 'antigravity', managerModel: '', workers: [{ runner: 'claude', model: '', role: '', maxConcurrent: 1 }] })
+    expect(refused).toMatchObject({ ok: false, error: expect.stringContaining('cannot be a manager') })
+    expect(rosterFromDraft({ managerRunner: 'claude', managerModel: '', workers: [{ runner: 'antigravity', model: 'claude-sonnet-4-6', role: 'edits', maxConcurrent: 2 }] })).toMatchObject({ ok: true })
+  })
+  it('managerCapable keeps the order and drops only what cannot manage', () => {
+    expect(managerCapable(['claude', 'antigravity', 'pi'])).toEqual(['claude', 'pi'])
   })
 })
 

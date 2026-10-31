@@ -38,6 +38,12 @@ describe('buildDigest', () => {
     expect(buildDigest(runs, NOW, 12).notDelegated).toEqual([])
   })
 
+  it('lists tasks whose backend denied something while they still answered', () => {
+    const digest = buildDigest([...runs, run('denied', { status: 'done', finishedAt: hoursAgo(2), deniedActions: ['antigravity: denied run_command `npm test`'] })], NOW, 12)
+    expect(digest.withDeniedActions.map((r) => r.id)).toEqual(['denied'])
+    expect(buildDigest(runs, NOW, 12).withDeniedActions).toEqual([])
+  })
+
   it('widens with the window, and always keeps a task that is still waiting on you', () => {
     expect(buildDigest(runs, NOW, 24).groups.find((g) => g.key === 'done')?.runs.map((r) => r.id)).toEqual(['ok', 'old'])
     expect(buildDigest(runs, NOW, 1).groups.map((g) => g.key)).toEqual(['attention'])

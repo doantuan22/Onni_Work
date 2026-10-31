@@ -4,7 +4,7 @@ import type {
   WorkspaceUiState,
 } from '@onni/api-client'
 
-const PROVIDERS: readonly ProviderId[] = ['claude', 'codex', 'junie', 'opencode', 'cursor', 'pi', 'copilot']
+const PROVIDERS: readonly ProviderId[] = ['claude', 'codex', 'junie', 'opencode', 'cursor', 'pi', 'copilot', 'antigravity']
 export const PROVIDER_LABELS: Record<ProviderId, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
@@ -13,6 +13,7 @@ export const PROVIDER_LABELS: Record<ProviderId, string> = {
   pi: 'pi',
   junie: 'Junie',
   copilot: 'GitHub Copilot CLI',
+  antigravity: 'Antigravity CLI',
 }
 
 export interface ProviderAuthIncident {
