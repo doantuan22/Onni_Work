@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 
 import { queryKeys, useWorkspaceUiState } from '@/api/queries'
 import type { ApiRun, RunStatus } from '@onni/api-client'
+import { describeDesktopNotice, desktopInvoke, sendDesktopNotification, wantsDesktopNotice } from '@/lib/desktop-notify'
 import {
   diffRunTransitions,
   normalizeNotifications,
@@ -48,9 +49,20 @@ export function RunNotifications() {
     const listHash = hashKey(queryKeys.runs.list())
 
     const observe = (runs: readonly ApiRun[] | undefined): void => {
-      const { entering, statuses } = diffRunTransitions(statusesRef.current, runs)
+      // Inside the desktop shell a system notification replaces the browser one, and covers more
+      // than the attention ladder: finished, failed, a ceiling hit, or waiting for you.
+      const desktop = desktopInvoke() !== undefined
+      const { entering, statuses } = diffRunTransitions(statusesRef.current, runs, desktop ? wantsDesktopNotice : undefined)
       statusesRef.current = statuses
       if (entering.length === 0) return
+      if (desktop) {
+        if (!enabledRef.current || document.visibilityState !== 'hidden') return
+        for (const run of entering) {
+          const notice = describeDesktopNotice(run)
+          void sendDesktopNotification(notice.title, notice.body)
+        }
+        return
+      }
       const gate = {
         enabled: enabledRef.current,
         hidden: document.visibilityState === 'hidden',

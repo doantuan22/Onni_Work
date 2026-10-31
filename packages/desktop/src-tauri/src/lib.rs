@@ -561,6 +561,9 @@ pub fn run() {
     tauri::Builder::default()
         // First: a second launch must reach the RUNNING app, never start a second sidecar.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| show_main_window(app)))
+        // Desktop notifications for finished / failed / limit-hit / needs-you tasks; the cockpit
+        // reaches it through the same `__TAURI_INTERNALS__.invoke` seam the title bar uses.
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![restart_app, show_versions_menu])
         .setup(move |app| {
             app.manage(shell_for_state.clone());

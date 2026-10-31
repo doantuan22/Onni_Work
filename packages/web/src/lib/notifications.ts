@@ -80,6 +80,9 @@ export interface RunTransitions {
 export function diffRunTransitions(
   previous: ReadonlyMap<string, RunStatus>,
   runs: readonly RunRecord[] | undefined,
+  /** Which runs are news. The browser keeps the attention ladder; the desktop shell also wants
+   *  finished runs and runs a ceiling stopped (`wantsDesktopNotice`). */
+  wants: (run: RunRecord) => boolean = wantsAttention,
 ): RunTransitions {
   const statuses = new Map<string, RunStatus>()
   const entering: RunRecord[] = []
@@ -87,7 +90,7 @@ export function diffRunTransitions(
     statuses.set(run.id, run.status)
     const before = previous.get(run.id)
     if (before === undefined || before === run.status) continue
-    if (wantsAttention(run)) entering.push(run)
+    if (wants(run)) entering.push(run)
   }
   return { entering, statuses }
 }
