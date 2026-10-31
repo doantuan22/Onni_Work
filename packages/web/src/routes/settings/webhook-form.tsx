@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from 'react'
 import { createWebhookSchema, updateWebhookSchema, type CreateWebhook, type UpdateWebhook, type WebhookReceiver, type WebhookTaskEventType } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/lib/i18n'
 import { graceLabels, presetLabels, scopeLabels } from './webhook-presentation'
 export const eventLabels: Record<WebhookTaskEventType | 'webhook.test', string> = {
   'task.attention_required': 'Needs your input', 'task.review_ready': 'Ready for review', 'task.finished': 'Task finished', 'task.failed': 'Task failed', 'task.cancelled': 'Task cancelled', 'webhook.test': 'Test message',
@@ -17,6 +18,7 @@ function Field({ id, label, children }: { id?: string; label: string; children: 
   return <div className="flex flex-col gap-1.5">{id ? <label htmlFor={id} className="text-sm font-medium">{label}</label> : <span className="text-sm font-medium">{label}</span>}{children}</div>
 }
 export function WebhookForm({ receiver, draft, setDraft, pending, blocked = false, guideHref, save }: { receiver?: WebhookReceiver; draft: WebhookDraft; setDraft: (draft: WebhookDraft) => void; pending: boolean; blocked?: boolean; guideHref: string; save: (value: CreateWebhook | UpdateWebhook) => void }) {
+  const { t } = useI18n()
   const prefix = useId()
   const { format, name, url, profile, preset, events, scope, graceSeconds, local, scheduled } = draft
   const change = <K extends keyof WebhookDraft>(key: K, value: WebhookDraft[K]) => setDraft({ ...draft, [key]: value })
@@ -29,24 +31,24 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
     if (!parsed.success) { setError([...new Set(parsed.error.issues.map(issue => issue.message.replace(/\.?$/, '.')))].join(' ')); return }
     setError(''); save(parsed.data)
   }}>
-    <Field id={`${prefix}-name`} label="Name"><Input id={`${prefix}-name`} value={name} onChange={event => change('name', event.target.value)} maxLength={100} required autoComplete="off" /></Field>
-    <Field id={`${prefix}-url`} label="Receiver URL">
-      <Input id={`${prefix}-url`} type="url" value={url} onChange={event => change('url', event.target.value)} required={!receiver} autoComplete="off" placeholder={receiver ? 'Leave blank to keep the current URL' : 'https://your-receiver.example/webhook'} />
-      {receiver && <p className={hintStyle}>Current: {receiver.destination} (path hidden)</p>}
-      {url.startsWith('http:') && <p className="text-[13px] text-warning">Plain HTTP is not encrypted. Use HTTPS outside a trusted local network.</p>}
-      <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={local} onChange={event => change('local', event.target.checked)} />Allow a receiver on this computer or private network</label>
-      {local && <p className={hintStyle}>Tests will contact this private address. Hosted onni sends to public HTTPS receivers only.</p>}
-      <a className="text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground" href={`${guideHref}#external-automation-receivers`} target="_blank" rel="noreferrer">How to build a receiver</a>
+    <Field id={`${prefix}-name`} label={t('Name')}><Input id={`${prefix}-name`} value={name} onChange={event => change('name', event.target.value)} maxLength={100} required autoComplete="off" /></Field>
+    <Field id={`${prefix}-url`} label={t('Receiver URL')}>
+      <Input id={`${prefix}-url`} type="url" value={url} onChange={event => change('url', event.target.value)} required={!receiver} autoComplete="off" placeholder={receiver ? t('Leave blank to keep the current URL') : 'https://your-receiver.example/webhook'} />
+      {receiver && <p className={hintStyle}>{t('Current: {destination} (path hidden)', { destination: receiver.destination })}</p>}
+      {url.startsWith('http:') && <p className="text-[13px] text-warning">{t('Plain HTTP is not encrypted. Use HTTPS outside a trusted local network.')}</p>}
+      <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={local} onChange={event => change('local', event.target.checked)} />{t('Allow a receiver on this computer or private network')}</label>
+      {local && <p className={hintStyle}>{t('Tests will contact this private address. Hosted onni sends to public HTTPS receivers only.')}</p>}
+      <a className="text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground" href={`${guideHref}#external-automation-receivers`} target="_blank" rel="noreferrer">{t('How to build a receiver')}</a>
     </Field>
-    <Field id={`${prefix}-events`} label="Events"><select id={`${prefix}-events`} className={selectStyle} value={preset} onChange={event => change('preset', event.target.value as CreateWebhook['preset'])}>
-      {(['attention', 'all', 'custom'] as const).map(value => <option key={value} value={value}>{presetLabels[value]}</option>)}</select></Field>
-    {preset === 'custom' && <fieldset className="flex flex-col gap-2"><legend className="mb-1 text-sm font-medium">Choose events</legend>{Object.entries(eventLabels).filter(([type]) => type !== 'webhook.test').map(([type, label]) => <label key={type} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={events.includes(type as WebhookTaskEventType)} onChange={event => change('events', event.target.checked ? [...events, type as WebhookTaskEventType] : events.filter(value => value !== type))} />{label}</label>)}</fieldset>}
-    <Field id={`${prefix}-profile`} label="Message content"><select id={`${prefix}-profile`} className={selectStyle} value={profile} onChange={event => change('profile', event.target.value as CreateWebhook['profile'])}><option value="minimal">Minimal — IDs, status and your own title</option><option value="standard">Standard — task titles, questions and errors</option></select>
-      <p className={hintStyle}>Prompts and transcripts are never sent. Redaction of other text is best effort.</p>
+    <Field id={`${prefix}-events`} label={t('Events')}><select id={`${prefix}-events`} className={selectStyle} value={preset} onChange={event => change('preset', event.target.value as CreateWebhook['preset'])}>
+      {(['attention', 'all', 'custom'] as const).map(value => <option key={value} value={value}>{t(presetLabels[value])}</option>)}</select></Field>
+    {preset === 'custom' && <fieldset className="flex flex-col gap-2"><legend className="mb-1 text-sm font-medium">{t('Choose events')}</legend>{Object.entries(eventLabels).filter(([type]) => type !== 'webhook.test').map(([type, label]) => <label key={type} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={events.includes(type as WebhookTaskEventType)} onChange={event => change('events', event.target.checked ? [...events, type as WebhookTaskEventType] : events.filter(value => value !== type))} />{t(label)}</label>)}</fieldset>}
+    <Field id={`${prefix}-profile`} label={t('Message content')}><select id={`${prefix}-profile`} className={selectStyle} value={profile} onChange={event => change('profile', event.target.value as CreateWebhook['profile'])}><option value="minimal">{t('Minimal — IDs, status and your own title')}</option><option value="standard">{t('Standard — task titles, questions and errors')}</option></select>
+      <p className={hintStyle}>{t('Prompts and transcripts are never sent. Redaction of other text is best effort.')}</p>
     </Field>
-    <details><summary className="cursor-pointer text-sm font-medium">Preview JSON · {profile === 'minimal' ? 'Minimal' : 'Standard'}</summary>
-      <p className={`mt-2 ${hintStyle}`}>Example data only — nothing is sent.</p>
-      <pre aria-label="Synthetic JSON sample" className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{JSON.stringify({
+    <details><summary className="cursor-pointer text-sm font-medium">{t('Preview JSON · {profile}', { profile: profile === 'minimal' ? t('Minimal') : t('Standard') })}</summary>
+      <p className={`mt-2 ${hintStyle}`}>{t('Example data only — nothing is sent.')}</p>
+      <pre aria-label={t('Synthetic JSON sample')} className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{JSON.stringify({
         id: 'evt_00000000-0000-4000-8000-000000000001', schemaVersion: 1, sequence: 1,
         occurredAt: '2026-01-01T12:00:00Z', type: 'task.attention_required',
         source: { instanceId: 'example-instance', projectId: 'example-project', mode: 'local' },
@@ -54,12 +56,12 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
         data: { episodeId: 'example-episode', since: '2026-01-01T12:00:00Z', reason: 'question', requestId: 'example-request', ...(profile === 'standard' ? { questions: [{ question: 'Which example option should be used?', options: [{ label: 'Example A' }, { label: 'Example B' }] }] } : {}) },
       }, null, 2)}</pre>
     </details>
-    <details><summary className="cursor-pointer text-sm font-medium">Advanced</summary><div className="mt-3 flex flex-col gap-4">
-      <Field id={`${prefix}-scope`} label="Tasks"><select id={`${prefix}-scope`} className={selectStyle} value={scope} onChange={event => change('scope', event.target.value as CreateWebhook['scope'])}>{(['main_and_questions', 'every_task'] as const).map(value => <option key={value} value={value}>{scopeLabels[value]}</option>)}</select></Field>
-      <Field id={`${prefix}-grace`} label="Waiting and review delay"><select id={`${prefix}-grace`} className={selectStyle} value={graceSeconds} onChange={event => change('graceSeconds', Number(event.target.value) as CreateWebhook['graceSeconds'])}>{([0, 60, 180, 600] as const).map(value => <option key={value} value={value}>{graceLabels[value]}</option>)}</select><p className={hintStyle}>Skipped if you reply, or the task stops waiting or leaves review, before the delay ends.</p></Field>
-      <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={scheduled} onChange={event => change('scheduled', event.target.checked)} />Include failures that will resume automatically (always included in All results)</label>
+    <details><summary className="cursor-pointer text-sm font-medium">{t('Advanced')}</summary><div className="mt-3 flex flex-col gap-4">
+      <Field id={`${prefix}-scope`} label={t('Tasks')}><select id={`${prefix}-scope`} className={selectStyle} value={scope} onChange={event => change('scope', event.target.value as CreateWebhook['scope'])}>{(['main_and_questions', 'every_task'] as const).map(value => <option key={value} value={value}>{t(scopeLabels[value])}</option>)}</select></Field>
+      <Field id={`${prefix}-grace`} label={t('Waiting and review delay')}><select id={`${prefix}-grace`} className={selectStyle} value={graceSeconds} onChange={event => change('graceSeconds', Number(event.target.value) as CreateWebhook['graceSeconds'])}>{([0, 60, 180, 600] as const).map(value => <option key={value} value={value}>{t(graceLabels[value])}</option>)}</select><p className={hintStyle}>{t('Skipped if you reply, or the task stops waiting or leaves review, before the delay ends.')}</p></Field>
+      <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={scheduled} onChange={event => change('scheduled', event.target.checked)} />{t('Include failures that will resume automatically (always included in All results)')}</label>
     </div></details>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}
-    <div><Button type="submit" disabled={pending || blocked}>{pending ? 'Saving…' : receiver ? 'Review changes' : 'Save receiver'}</Button></div>
+    <div><Button type="submit" disabled={pending || blocked}>{pending ? t('Saving…') : receiver ? t('Review changes') : t('Save receiver')}</Button></div>
   </form>
 }

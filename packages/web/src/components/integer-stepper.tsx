@@ -2,6 +2,7 @@ import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * A whole-number input with up/down arrows — the settings control for small integer limits
@@ -54,6 +55,7 @@ export function IntegerStepper({
   'data-slot': dataSlot,
   className,
 }: IntegerStepperProps) {
+  const { t } = useI18n()
   const errorId = useId()
   const [draft, setDraft] = useState(() => format(value))
   const draftRef = useRef(draft)
@@ -183,7 +185,7 @@ export function IntegerStepper({
           <button
             type="button"
             tabIndex={-1}
-            aria-label={`Increase ${ariaLabel}`}
+            aria-label={t('Increase {label}', { label: ariaLabel })}
             data-action="stepper-increment"
             disabled={disabled || (numeric !== null && numeric >= max)}
             // Keep focus in the field so the click does not blur-commit the draft first.
@@ -196,7 +198,7 @@ export function IntegerStepper({
           <button
             type="button"
             tabIndex={-1}
-            aria-label={`Decrease ${ariaLabel}`}
+            aria-label={t('Decrease {label}', { label: ariaLabel })}
             data-action="stepper-decrement"
             disabled={disabled || (numeric !== null && numeric <= min)}
             onMouseDown={(event) => event.preventDefault()}
@@ -209,8 +211,8 @@ export function IntegerStepper({
       </div>
       {invalid ? (
         <p id={errorId} data-slot="stepper-invalid" className="text-[11px] text-danger">
-          Enter a whole number from {min} to {max}
-          {allowEmpty ? ', or leave it empty' : ''}.
+          {t('Enter a whole number from {min} to {max}', { min, max })}
+          {allowEmpty ? t(', or leave it empty') : ''}.
         </p>
       ) : null}
     </div>

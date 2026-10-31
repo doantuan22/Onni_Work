@@ -1,3 +1,5 @@
+import { useI18n } from '@/lib/i18n'
+
 /**
  * The "no skills yet" copy shared by every empty state that tells a user where to drop skill
  * files — the Skills tab (`routes/skills.tsx`) and the workflow builder's skill palette
@@ -26,11 +28,12 @@ function Path({ children }: { children: string }) {
 
 /** Renders `SKILL_PROJECT_DIRS` as "a, b, or c" with each entry in `<Path>`. */
 function ProjectDirList() {
+  const { t } = useI18n()
   return (
     <>
       {SKILL_PROJECT_DIRS.map((dir, index) => (
         <span key={dir}>
-          {index > 0 ? (index === SKILL_PROJECT_DIRS.length - 1 ? ', or ' : ', ') : ''}
+          {index > 0 ? (index === SKILL_PROJECT_DIRS.length - 1 ? t(', or ') : ', ') : ''}
           <Path>{dir}</Path>
         </span>
       ))}
@@ -40,12 +43,15 @@ function ProjectDirList() {
 
 /** Full copy — the Skills tab's empty list (room for the frontmatter aside + a Refresh hint). */
 export function SkillEmptyHint() {
+  const { t } = useI18n()
   return (
     <>
-      No skills yet. Drop Markdown files into <ProjectDirList /> (agent mirrors like{' '}
-      <Path>.claude/skills/</Path> work too) — optional frontmatter: <Path>name</Path>,{' '}
-      <Path>description</Path>. Global (<Path>~/.agents/skills</Path>) and team-repo skills
-      appear here too — try Refresh.
+      {t('No skills yet. Drop Markdown files into')} <ProjectDirList />{' '}
+      {t('(agent mirrors like')} <Path>.claude/skills/</Path> {t('work too) — optional frontmatter:')}{' '}
+      <Path>name</Path>, <Path>description</Path>
+      {t(
+        '. Global (~/.agents/skills) and team-repo skills appear here too — try Refresh.',
+      )}
     </>
   )
 }
@@ -53,10 +59,11 @@ export function SkillEmptyHint() {
 /** Compact copy — the workflow builder's skill palette, where space is tighter and there is no
  *  Refresh action on the surface itself. */
 export function SkillEmptyHintCompact() {
+  const { t } = useI18n()
   return (
     <>
-      No skills yet — drop Markdown files into <ProjectDirList /> (or a global/team-repo skill
-      source).
+      {t('No skills yet — drop Markdown files into')} <ProjectDirList />{' '}
+      {t('(or a global/team-repo skill source).')}
     </>
   )
 }

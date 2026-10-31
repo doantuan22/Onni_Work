@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useHostHistory, useHostLastFrameAt, useHostTransport, useHostUsage } from '@/api/host-usage'
 import { Link } from '@/lib/project-router'
 import { effectiveHostView, formatCpuCores, formatMemPair } from '@/lib/host-effective'
+import { useI18n } from '@/lib/i18n'
 import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 
@@ -67,6 +68,7 @@ export function HostUsageWidget() {
 }
 
 function HostUsageWidgetRow() {
+  const { t } = useI18n()
   const sample = useHostUsage()
   const history = useHostHistory()
   const lastFrameAt = useHostLastFrameAt()
@@ -86,19 +88,19 @@ function HostUsageWidgetRow() {
   const view = sample === undefined ? undefined : effectiveHostView(sample)
   const cpuPct = view?.cpuPct
   const cpuText = stale
-    ? 'stale'
+    ? t('stale')
     : view !== undefined && view.cpuLimited && cpuPct === undefined
       ? '—'
       : cpuPct === undefined
         ? history.length === 0
-          ? 'sampling…'
+          ? t('sampling…')
           : '—'
         : `${Math.round(cpuPct)}%`
   const memPct =
     view === undefined || view.memUsedBytes === undefined || view.memTotalBytes <= 0
       ? undefined
       : (view.memUsedBytes / view.memTotalBytes) * 100
-  const memPctText = stale ? 'stale' : memPct === undefined ? '—' : `${Math.round(memPct)}%`
+  const memPctText = stale ? t('stale') : memPct === undefined ? '—' : `${Math.round(memPct)}%`
   const memText = view === undefined ? '—' : formatMemPair(view.memUsedBytes, view.memTotalBytes)
   const cpuCores =
     view?.cpuLimited === true
@@ -108,7 +110,7 @@ function HostUsageWidgetRow() {
   // and the effective-core count have now, and a hovering user and a screen-reader user must not
   // get different readings of the same row. Comma-separated rather than `·`-separated for the
   // same reason - a middle dot is announced as "middle dot" by readers that do not drop it.
-  const summary =`CPU ${cpuText}${cpuCores === undefined ? '' : ` of ${cpuCores}`}, RAM ${memPctText} (${memText})`
+  const summary = `CPU ${cpuText}${cpuCores === undefined ? '' : ` ${t('of {cores}', { cores: cpuCores })}`}, RAM ${memPctText} (${memText})`
 
   return (
     <Link
@@ -117,7 +119,7 @@ function HostUsageWidgetRow() {
       data-state={stale ? 'stale' : 'live'}
       // How many frames the store holds - the e2e proof that the root writer keeps feeding it.
       data-frames={history.length}
-      aria-label={`Machine usage: ${summary}. Open Settings, Resources.`}
+      aria-label={t('Machine usage: {summary}. Open Settings, Resources.', { summary })}
       title={summary}
       className={cn(
         // Six columns on ONE 14px line: label · bar · value, twice. The two `minmax(0,1fr)`

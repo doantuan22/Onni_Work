@@ -8,6 +8,7 @@ import type { AgentPermissionLevel, WorkspaceConfigResponse } from '@onni/api-cl
 import { CenteredState } from '@/components/centered-state'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { SettingsField } from './settings-field'
 
 /** The three levels, safest first. The copy states what is NOT possible as plainly as what is. */
@@ -35,15 +36,17 @@ export const PERMISSION_LEVELS: readonly { id: AgentPermissionLevel; label: stri
  * widest level needs an explicit confirmation, which the server enforces as well.
  */
 export function AgentPermissionsSection() {
+  const { t } = useI18n()
   const config = useWorkspaceConfig()
-  if (config.isPending) return <p data-slot="agent-permissions-loading" className="p-4 text-[13px] text-soft-foreground md:p-6">Loading…</p>
+  if (config.isPending) return <p data-slot="agent-permissions-loading" className="p-4 text-[13px] text-soft-foreground md:p-6">{t('Loading…')}</p>
   if (config.isError) {
-    return <CenteredState icon={<ShieldIcon />} tone="danger" title="Agent permission settings did not load" subtitle={config.error.message} heading="h2" />
+    return <CenteredState icon={<ShieldIcon />} tone="danger" title={t('Agent permission settings did not load')} subtitle={config.error.message} heading="h2" />
   }
   return <AgentPermissionsForm config={config.data} />
 }
 
 function AgentPermissionsForm({ config }: { config: WorkspaceConfigResponse }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const current = config.agentPermissions.antigravity
   const [confirming, setConfirming] = useState(false)
@@ -62,9 +65,9 @@ function AgentPermissionsForm({ config }: { config: WorkspaceConfigResponse }) {
     <div data-slot="agent-permissions-section" className="mx-auto flex w-full max-w-2xl flex-col gap-7 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
       <SettingsField
         title="Antigravity"
-        hint="agy cannot ask you before running a command when Onni drives it, so what it may do is decided here. It applies to every project."
+        hint={t('agy cannot ask you before running a command when Onni drives it, so what it may do is decided here. It applies to every project.')}
       >
-        <div role="radiogroup" aria-label="Antigravity permission level" className="flex flex-col gap-2">
+        <div role="radiogroup" aria-label={t('Antigravity permission level')} className="flex flex-col gap-2">
           {PERMISSION_LEVELS.map((level) => (
             <label
               key={level.id}
@@ -82,15 +85,15 @@ function AgentPermissionsForm({ config }: { config: WorkspaceConfigResponse }) {
                 className="mt-1"
               />
               <span className="flex flex-col gap-0.5">
-                <span className="text-[13px] font-medium text-foreground">{level.label}</span>
-                <span className={`text-[12px] ${level.id === 'bypass' ? 'text-danger' : 'text-soft-foreground'}`}>{level.hint}</span>
+                <span className="text-[13px] font-medium text-foreground">{t(level.label)}</span>
+                <span className={`text-[12px] ${level.id === 'bypass' ? 'text-danger' : 'text-soft-foreground'}`}>{t(level.hint)}</span>
               </span>
             </label>
           ))}
         </div>
         {current === 'bypass' ? (
           <p data-slot="agent-permission-bypass-active" role="alert" className="text-[12px] text-danger">
-            Antigravity is set to skip all confirmations for watched tasks. Choose another level to turn it off.
+            {t('Antigravity is set to skip all confirmations for watched tasks. Choose another level to turn it off.')}
           </p>
         ) : null}
       </SettingsField>
@@ -98,9 +101,9 @@ function AgentPermissionsForm({ config }: { config: WorkspaceConfigResponse }) {
         open={confirming}
         onOpenChange={setConfirming}
         danger
-        title="Skip all Antigravity confirmations?"
-        description="Antigravity will run shell commands, drive a browser and fetch web pages without asking, as you, in the task worktree and beyond it. Onni’s push guard is a barrier, not a sandbox. This applies to tasks you start yourself; unattended tasks keep the narrow allow-rules."
-        confirmLabel="Skip confirmations"
+        title={t('Skip all Antigravity confirmations?')}
+        description={t('Antigravity will run shell commands, drive a browser and fetch web pages without asking, as you, in the task worktree and beyond it. Onni’s push guard is a barrier, not a sandbox. This applies to tasks you start yourself; unattended tasks keep the narrow allow-rules.')}
+        confirmLabel={t('Skip confirmations')}
         onConfirm={() => {
           setConfirming(false)
           save.mutate({ antigravity: 'bypass', confirmBypass: true })

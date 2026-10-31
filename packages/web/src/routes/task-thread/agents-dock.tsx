@@ -2,6 +2,7 @@ import { BotIcon, ChevronDownIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import type { ToolStatus } from '@onni/api-client'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import { activeSubagent, subagentActivityText, subagentCounts, type SubagentSummary } from './subagent-dock'
@@ -40,6 +41,7 @@ export function AgentsDock({
   /** Phase 2: opens the drill-down sheet. Absent ⇒ rows are static display. */
   onSelect?: (id: string) => void
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(() => openByRun.get(runId) ?? DEFAULT_OPEN)
   const allSettled = agents.every((agent) => agent.status !== 'pending' && agent.status !== 'running')
   const wasSettled = useRef(allSettled)
@@ -83,7 +85,7 @@ export function AgentsDock({
         className={cn('flex w-full items-center gap-2 px-3.5 text-left text-[13px]', open ? 'pt-2 pb-1.5' : 'py-2')}
       >
         <BotIcon aria-hidden className="size-3.5 shrink-0 text-soft-foreground" />
-        <span className="shrink-0 font-semibold">Agents</span>
+        <span className="shrink-0 font-semibold">{t('Agents')}</span>
         <span data-slot="agents-count" className="shrink-0 text-muted-foreground tabular-nums">
           · {done}/{total}
         </span>
@@ -111,6 +113,7 @@ export function AgentsDock({
 /** Rows keep stream order and never re-sort on completion — a finishing agent must not make
  *  the row the user is reading jump somewhere else (spec §Edge Cases). */
 function AgentRow({ agent, onSelect }: { agent: SubagentSummary; onSelect?: (id: string) => void }) {
+  const { tn } = useI18n()
   const body = (
     <>
       <AgentIcon status={agent.status} stalled={agent.stalled === true} />
@@ -127,7 +130,7 @@ function AgentRow({ agent, onSelect }: { agent: SubagentSummary; onSelect?: (id:
         {subagentActivityText(agent)}
       </span>
       <span data-slot="agent-tools" className="shrink-0 text-muted-foreground tabular-nums">
-        {agent.toolCalls} {agent.toolCalls === 1 ? 'tool' : 'tools'}
+        {tn(agent.toolCalls, '{count} tool', '{count} tools')}
       </span>
     </>
   )

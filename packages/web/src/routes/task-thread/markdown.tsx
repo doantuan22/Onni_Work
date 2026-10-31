@@ -1,4 +1,4 @@
-import { memo, useState, type ComponentProps } from 'react'
+import { memo, useMemo, useState, type ComponentProps } from 'react'
 import {
   Streamdown,
   defaultRemarkPlugins,
@@ -9,6 +9,7 @@ import {
   type UrlTransform,
 } from 'streamdown'
 
+import { useI18n, type Translate } from '@/lib/i18n'
 import { SYN_THEME, highlight, highlightSync, supportedLanguages } from '@/lib/highlighter'
 
 import { LinkSafetyDialog } from './link-safety-dialog'
@@ -151,7 +152,7 @@ interface LinkTreeNode {
  * relative to the cockpit page. Leave schemes, network URLs and cockpit routes to
  * the existing sanitizer and link policy. Document previews keep their own resolver.
  */
-function rehypeLocalFileLinks() {
+function rehypeLocalFileLinks(t: Translate) {
   const walk = (node: LinkTreeNode): void => {
     const href = node.properties?.href
     if (
@@ -163,22 +164,28 @@ function rehypeLocalFileLinks() {
       node.tagName = 'span'
       node.properties = {
         'data-local-only-link': '',
-        title: `Local file: ${href}. Open it from the task's Files tab.`,
+        title: t("Local file: {href}. Open it from the task's Files tab.", { href }),
       }
     }
     node.children?.forEach(walk)
   }
-  return walk
+  // An attacher, not the transformer itself: unified calls the plugin with its options and takes
+  // the RETURNED function as the transformer. Handing it `walk` directly makes unified call
+  // walk(undefined) at registration and crash before any link is seen.
+  return () => walk
 }
 
-const TRANSCRIPT_REHYPE_PLUGINS = Object.entries(defaultRehypePlugins).flatMap(
-  ([name, plugin]) => name === 'harden' ? [rehypeLocalFileLinks, plugin] : [plugin],
-)
+function transcriptRehypePlugins(t: Translate) {
+  return Object.entries(defaultRehypePlugins).flatMap(
+    ([name, plugin]) => name === 'harden' ? [rehypeLocalFileLinks(t), plugin] : [plugin],
+  )
+}
 
 type TranscriptLinkProps = ComponentProps<'a'>
 
 /** A markdown link with the transcript's local-only destination policy applied. */
 function TranscriptLink({ href, children, className, ...props }: TranscriptLinkProps) {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
 
   if (!href || isLocalFilesystemDestination(href)) {
@@ -188,7 +195,7 @@ function TranscriptLink({ href, children, className, ...props }: TranscriptLinkP
         data-local-only-link={isLocalFilesystemDestination(href ?? '') ? '' : undefined}
         title={
           isLocalFilesystemDestination(href ?? '')
-            ? 'This is a local filesystem path and cannot be opened here.'
+            ? t('This is a local filesystem path and cannot be opened here.')
             : undefined
         }
         className={className}
@@ -265,6 +272,8 @@ export const Markdown = memo(function Markdown({
   variant?: 'chat' | 'document'
   urlTransform?: UrlTransform
 }) {
+  const { t } = useI18n()
+  const rehypePlugins = useMemo(() => transcriptRehypePlugins(t), [t])
   return (
     <Streamdown
       className={
@@ -277,7 +286,7 @@ export const Markdown = memo(function Markdown({
       plugins={{ code: shikiPlugin, ...(inline ? {} : { mermaid: mermaidPlugin }) }}
       shikiTheme={[SYN_THEME, SYN_THEME]}
       remarkPlugins={breaks ? HARD_BREAKS : undefined}
-      rehypePlugins={urlTransform ? undefined : TRANSCRIPT_REHYPE_PLUGINS}
+      rehypePlugins={urlTransform ? undefined : rehypePlugins}
       allowedElements={inline ? INLINE_ELEMENTS : undefined}
       unwrapDisallowed={inline || undefined}
       components={inline ? INLINE_COMPONENTS : MARKDOWN_COMPONENTS}

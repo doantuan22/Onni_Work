@@ -2,6 +2,7 @@ import { MessageSquareOffIcon, PencilIcon, PlusIcon } from 'lucide-react'
 import { createContext, useContext, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 import { isSubmitShortcut } from '@/lib/use-submit-shortcut'
 import { cn } from '@/lib/utils'
 
@@ -208,6 +209,7 @@ export function AddCommentButton({
   excerpt: string
   line: HunkLine
 }) {
+  const { t } = useI18n()
   const api = useLineComments()
   const file = useContext(FileLinesContext)
   if (!api?.canAdd || anchor === undefined) return null
@@ -222,7 +224,7 @@ export function AddCommentButton({
       // The file is named: every file has a "line 4", and a list of controls that all read
       // "Comment on line 4" is no list at all to a screen reader.
       aria-label={`Comment on ${anchor.path.split('/').at(-1)} ${anchor.side === 'old' ? 'removed ' : ''}line ${anchor.line}`}
-      title="Add a comment for the agent — drag to cover several lines, or shift-click to extend"
+      title={t('Add a comment for the agent — drag to cover several lines, or shift-click to extend')}
       onMouseDown={(event) => {
         if (event.button !== 0) return
         // No text selection while dragging across code.
@@ -332,6 +334,7 @@ function SavedComment({
   onEdit?: (comment: DiffLineComment) => void
   onRemove?: (id: string) => void
 }) {
+  const { t } = useI18n()
   return (
     <div
       data-slot="diff-line-comment"
@@ -346,7 +349,7 @@ function SavedComment({
         // The line under this card is not the one the note was about: say so, and show the code it
         // WAS about, rather than letting the note read as if it were about what is here now.
         <div data-slot="diff-line-comment-outdated" className="flex flex-col gap-1">
-          <p className="text-[11px] font-medium text-pending-strong">Outdated — the code here changed since this comment</p>
+          <p className="text-[11px] font-medium text-pending-strong">{t('Outdated — the code here changed since this comment')}</p>
           <pre className="max-h-32 overflow-auto rounded-sm border border-border/60 bg-muted/40 px-2 py-1 font-mono text-[12px] whitespace-pre text-muted-foreground">
             {comment.excerpt}
           </pre>
@@ -358,13 +361,13 @@ function SavedComment({
           {onEdit ? (
             <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(comment)}>
               <PencilIcon aria-hidden="true" className="size-3.5" />
-              Edit
+              {t('Edit')}
             </Button>
           ) : null}
           {onRemove ? (
             <Button type="button" variant="outline" size="sm" onClick={() => onRemove(comment.id)}>
               <MessageSquareOffIcon aria-hidden="true" className="size-3.5" />
-              Remove from chat
+              {t('Remove from chat')}
             </Button>
           ) : null}
         </div>
@@ -380,6 +383,7 @@ function CommentEditor({
   editing: NonNullable<LineCommentsApi['editing']>
   api: LineCommentsApi
 }) {
+  const { t } = useI18n()
   const [text, setText] = useState(() => api.pendingText.get(editing.key) ?? editing.initial ?? '')
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -445,7 +449,7 @@ function CommentEditor({
         maxLength={COMMENT_MAX}
         value={text}
         aria-label={`Comment on ${describeLines(editing.anchor, editing.start)}`}
-        placeholder="Add a comment for the AI"
+        placeholder={t('Add a comment for the AI')}
         onChange={(event) => {
           setText(event.target.value)
           api.pendingText.set(editing.key, event.target.value)
@@ -455,7 +459,7 @@ function CommentEditor({
       />
       <div className="flex items-center justify-end gap-1.5">
         <Button type="button" variant="ghost" size="sm" onClick={cancel}>
-          Cancel
+          {t('Cancel')}
         </Button>
         <Button type="button" size="sm" disabled={body === ''} onClick={submit}>
           {editing.commentId !== undefined ? 'Save' : 'Comment'} <span aria-hidden="true">↵</span>

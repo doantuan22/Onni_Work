@@ -2,6 +2,7 @@ import { useEffect, useState, type ImgHTMLAttributes } from 'react'
 import { createPortal } from 'react-dom'
 
 import { resolveApiUrl } from '@onni/api-client'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -26,6 +27,7 @@ export function ZoomableImage({
   alt?: string
   className?: string
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt' | 'className' | 'onClick'>) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const src = resolveApiUrl(rawSrc)
 
@@ -53,7 +55,7 @@ export function ZoomableImage({
             <div
               role="dialog"
               aria-modal="true"
-              aria-label="Image preview"
+              aria-label={t('Image preview')}
               data-slot="image-lightbox"
               onClick={() => setOpen(false)}
               className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/80 p-4 backdrop-blur-sm"

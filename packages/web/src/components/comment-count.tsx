@@ -1,6 +1,7 @@
 import { MessageSquareIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * "💬 2" — how many drafted line comments for the agent sit in a file (or a collapsed folder).
@@ -8,12 +9,13 @@ import { cn } from '@/lib/utils'
  * Renders nothing at zero.
  */
 export function CommentCount({ count, className }: { count: number; className?: string }) {
+  const { t, tn } = useI18n()
   if (count === 0) return null
-  const label = `${count} ${count === 1 ? 'comment' : 'comments'}`
+  const label = tn(count, '{count} comment', '{count} comments')
   return (
     <span
       data-slot="comment-count"
-      title={`${label} for the agent`}
+      title={t('{label} for the agent', { label })}
       aria-label={label}
       className={cn('flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary tabular-nums', className)}
     >

@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * The mockup's segmented control (spec 2026-09-14-automations-redesign § Primitives): one row of
@@ -44,12 +45,13 @@ export function Segmented<T extends string>({
   allowRelease?: boolean
   className?: string
 }) {
+  const { t } = useI18n()
   return (
     <div
       data-slot={slot}
       data-full={full ? 'true' : undefined}
       role="group"
-      aria-label={label}
+      aria-label={t(label)}
       className={cn('inline-flex gap-0.5 rounded-md bg-muted p-[3px]', full && 'flex w-full', className)}
     >
       {options.map((option) => {

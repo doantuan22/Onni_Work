@@ -1,4 +1,3 @@
-import { plural } from './webhook-presentation'
 import { useWebhookList } from '@/hooks/use-webhooks'
 import { useHealth, useRemoveProject } from '@/api/queries'
 import type { ProjectListEntry } from '@onni/api-client'
@@ -13,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * Removing a project, said the same way in both places that offer it: the global registry table
@@ -35,6 +35,7 @@ import { toast } from '@/components/ui/toaster'
  *  the server confirmed — the project's own settings page uses it to navigate off a URL that has
  *  just stopped resolving. */
 export function useProjectRemoval() {
+  const { t } = useI18n()
   const remove = useRemoveProject()
   return {
     isPending: remove.isPending,
@@ -44,7 +45,7 @@ export function useProjectRemoval() {
         // about a button they may have pressed nervously.
         onSuccess: (result) => {
           if (result.warning) toast(result.warning, { tone: 'danger' })
-          toast(`${project.name} removed from the workspace — its files are untouched`)
+          toast(t('{name} removed from the workspace — its files are untouched', { name: project.name }))
           onRemoved?.()
         },
         onError: (error: Error) => toast(error.message, { tone: 'danger' }),
@@ -62,6 +63,7 @@ export function RemoveProjectDialog({
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
 }) {
+  const { t, tn } = useI18n()
   const health = useHealth()
   const webhooks = useWebhookList(project?.id ?? 'default', project !== null && health.data?.capabilities?.webhooks === true)
   const affected = webhooks.data?.receivers.filter(receiver => ['active', 'suspended'].includes(receiver.state)) ?? []
@@ -71,26 +73,26 @@ export function RemoveProjectDialog({
     <AlertDialog open={project !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remove {project?.name} from the workspace?</AlertDialogTitle>
+          <AlertDialogTitle>{t('Remove {name} from the workspace?', { name: project?.name ?? '' })}</AlertDialogTitle>
           <AlertDialogDescription>
-            This only unregisters the project — <strong>nothing on disk is deleted</strong>. The
-            folder, its git history and its task history all stay exactly where they are, and
-            adding it back later finds everything intact.
-            {affected.length > 0 && <span className="mt-2 block">{plural(affected.length, 'receiver', 'receivers')} will be paused. {plural(pending, 'pending delivery', 'pending deliveries')} will be cancelled; {inFlight} in flight may still arrive.</span>}
-            {webhooks.error && <span className="mt-2 block">Webhook state is unavailable. Removal will report whether receivers could be paused.</span>}
+            {t('This only unregisters the project —')}{' '}
+            <strong>{t('nothing on disk is deleted')}</strong>
+            {t('. The folder, its git history and its task history all stay exactly where they are, and adding it back later finds everything intact.')}
+            {affected.length > 0 && <span className="mt-2 block">{t('{receivers} will be paused. {deliveries} will be cancelled; {inFlight} in flight may still arrive.', { receivers: tn(affected.length, '{count} receiver', '{count} receivers'), deliveries: tn(pending, '{count} pending delivery', '{count} pending deliveries'), inFlight })}</span>}
+            {webhooks.error && <span className="mt-2 block">{t('Webhook state is unavailable. Removal will report whether receivers could be paused.')}</span>}
             <span className="mt-1 block truncate font-mono text-[11px] text-foreground" title={project?.root}>
               {project?.root}
             </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep it</AlertDialogCancel>
+          <AlertDialogCancel>{t('Keep it')}</AlertDialogCancel>
           <AlertDialogAction
             data-action="projects-confirm-remove"
             className="bg-danger text-danger-foreground hover:brightness-[0.96]"
             onClick={onConfirm}
           >
-            Remove from list
+            {t('Remove from list')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

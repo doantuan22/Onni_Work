@@ -31,6 +31,7 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 import { deriveAttention } from '@/lib/attention'
+import { useI18n } from '@/lib/i18n'
 import { scopeTo, useActiveProjectId, useNavigate } from '@/lib/project-router'
 import { orderByRecency, readRecentTasks } from '@/lib/recent-tasks'
 import { runTitle } from '@/lib/task-groups'
@@ -107,6 +108,7 @@ const RECENT_IN_DEFAULT_VIEW = 6
 const TASK_ROW = 'task-palette-task'
 
 export function TaskPalette() {
+  const { t } = useI18n()
   const location = useLocation()
   const pageTaskId = taskIdFromPath(location.pathname)
   const navigate = useNavigate()
@@ -402,8 +404,8 @@ export function TaskPalette() {
       <CommandDialog
         open={open}
         onOpenChange={(next) => setOpen(next)}
-        title="Task palette"
-        description="Act on a task, switch tasks, or open one of its files"
+        title={t('Task palette')}
+        description={t('Act on a task, switch tasks, or open one of its files')}
         showCloseButton={false}
         filter={prefixedScore}
         commandProps={{
@@ -469,7 +471,7 @@ export function TaskPalette() {
               </CommandGroup>
             ) : (
               <>
-                <CommandEmpty>Nothing matches.</CommandEmpty>
+                <CommandEmpty>{t('Nothing matches.')}</CommandEmpty>
                 {mode === 'all' || mode === 'commands' ? (
                   <CommandGroups
                     commands={published?.runId === subjectId ? published.commands : []}
@@ -539,6 +541,7 @@ function useLiveProjectId(): string | null {
 
 /** Which task the palette is acting on — the header row under the input. */
 function SubjectBar({ runId, picked }: { runId: string; picked: boolean }) {
+  const { t } = useI18n()
   const run = useRun(runId).data
   if (!run) return null
   const attention = deriveAttention(run)
@@ -547,7 +550,7 @@ function SubjectBar({ runId, picked }: { runId: string; picked: boolean }) {
       data-slot="task-palette-subject"
       className="flex min-w-0 items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground"
     >
-      <span className="shrink-0">Task</span>
+      <span className="shrink-0">{t('Task')}</span>
       <span className="min-w-0 flex-1 truncate font-medium text-foreground">{runTitle(run)}</span>
       <Pill className="shrink-0" dot={attention.tone} pulse={attention.pulse}>
         {attention.label}
@@ -568,6 +571,7 @@ function CommandGroups({
   onPerform: (id: string) => void
   onRecord: (id: string) => void
 }) {
+  const { t } = useI18n()
   return (
     <>
       {TASK_COMMAND_GROUPS.map((group) => {
@@ -604,7 +608,7 @@ function CommandGroups({
                       type="button"
                       data-slot="task-palette-record"
                       aria-label={`Set a shortcut for ${command.label}`}
-                      title="Set a shortcut (⇧↵)"
+                      title={t('Set a shortcut (⇧↵)')}
                       className="hidden shrink-0 rounded p-0.5 text-soft-foreground group-hover/command:inline-flex hover:text-foreground"
                       onPointerDown={(event) => event.preventDefault()}
                       onClick={(event) => {
@@ -715,10 +719,11 @@ function TaskResults({
 }
 
 function FileResults({ runId, query, onPick }: { runId: string; query: string; onPick: (path: string) => void }) {
+  const { t } = useI18n()
   const tree = useRunTree(runId)
   const paths = React.useMemo(() => rankPaths(tree.data?.paths ?? [], query), [tree.data, query])
   if (tree.isPending) {
-    return <p className="px-3 py-6 text-center text-xs text-soft-foreground">Loading files…</p>
+    return <p className="px-3 py-6 text-center text-xs text-soft-foreground">{t('Loading files…')}</p>
   }
   if (tree.isError) {
     return <p className="px-3 py-6 text-center text-xs text-soft-foreground">{tree.error.message}</p>

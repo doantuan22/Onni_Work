@@ -4,6 +4,7 @@ import { Link } from '@/lib/project-router'
 import { ApiError } from '@/api/client'
 import { CenteredState } from '@/components/centered-state'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 
 import type { RunTab } from '../task-thread/run-header'
 
@@ -23,13 +24,14 @@ const LOADING_TITLE: Record<Exclude<RunTab, 'session'>, string> = {
  * fallback must not import anything from the chunk it is standing in for.
  */
 export function GitTabLoading({ tab }: { tab: Exclude<RunTab, 'session'> }) {
+  const { t } = useI18n()
   return (
     <div data-route={`task-${tab}`} className="flex min-h-full flex-col">
       <CenteredState
         icon={<LoaderCircleIcon className="motion-safe:animate-spin" />}
         tone="neutral"
         title={LOADING_TITLE[tab]}
-        subtitle="Fetching the run record."
+        subtitle={t('Fetching the run record.')}
       />
     </div>
   )
@@ -38,6 +40,7 @@ export function GitTabLoading({ tab }: { tab: Exclude<RunTab, 'session'> }) {
 /** The run fetch failed — same grammar as the thread route's error state (task-thread.tsx),
  *  because a dead `/tasks/:id/changes` link deserves the same honesty as a dead `/tasks/:id`. */
 export function GitTabLoadError({ tab, error }: { tab: Exclude<RunTab, 'session'>; error: Error }) {
+  const { t } = useI18n()
   const notFound = error instanceof ApiError && error.status === 404
   return (
     <div data-route={`task-${tab}`} className="flex min-h-full flex-col">
@@ -52,7 +55,7 @@ export function GitTabLoadError({ tab, error }: { tab: Exclude<RunTab, 'session'
         }
         actions={
           <Button asChild variant="outline">
-            <Link to="/">Back to tasks</Link>
+            <Link to="/">{t('Back to tasks')}</Link>
           </Button>
         }
       />

@@ -233,6 +233,22 @@ const sources = loadSources()
 const SELECT_FOCUS_MARKER = 'focus-visible:ring-ring/50'
 
 /**
+ * Class strings defined in one module and applied in another (`fieldClass`, shared by every
+ * native input/select since the four drifted copies were collapsed). The marker is in the
+ * definition; the `<select>` only names the identifier, so the local-declaration lookup alone
+ * would report a select that DOES carry the ring.
+ */
+const sharedClassStrings = new Set<string>()
+for (const file of sources) {
+  const source = file.lines.join('\n')
+  for (const match of source.matchAll(/export\s+const\s+([A-Za-z_$][\w$]*)\s*=/g)) {
+    const name = match[1]!
+    const decl = new RegExp(`export\\s+const\\s+${name.replace(/\$/g, '\\$')}\\b(?:[^\\n]*\\n?){1,10}`).exec(source)
+    if (decl?.[0].includes(SELECT_FOCUS_MARKER)) sharedClassStrings.add(name)
+  }
+}
+
+/**
  * The JSX opening tag starting at `from` (which points at `<`), brace- and quote-aware so an
  * arrow function in `onChange` cannot end the tag at its own `=>`.
  */
@@ -265,6 +281,7 @@ function carriesFocusRing(tag: string, source: string): boolean {
   if (tag.includes(SELECT_FOCUS_MARKER)) return true
   const ref = /className=\{\s*([A-Za-z_$][\w$]*)\s*\}/.exec(tag)
   if (!ref) return false
+  if (sharedClassStrings.has(ref[1]!)) return true
   // `$` is legal in an identifier and is an anchor in a pattern — unescaped, a `className={$x}`
   // would match nothing and report a select that does carry the ring.
   const name = ref[1]!.replace(/\$/g, '\\$')

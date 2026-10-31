@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 
 import { toast } from '@/components/ui/toaster'
 import { writeClipboard } from '@/lib/clipboard'
+import { useI18n } from '@/lib/i18n'
 
 export function BookmarkletRow({
   label,
@@ -17,6 +18,7 @@ export function BookmarkletRow({
   showIcon?: boolean
   copySlot?: string
 }) {
+  const { t } = useI18n()
   // React refuses javascript: hrefs at render time, but dragging needs the real URL on the DOM node.
   const anchor = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
@@ -25,9 +27,9 @@ export function BookmarkletRow({
   const copy = async () => {
     try {
       await writeClipboard(url)
-      toast('Bookmarklet URL copied.')
+      toast(t('Bookmarklet URL copied.'))
     } catch {
-      toast('Copy failed — drag the button instead.', { tone: 'danger' })
+      toast(t('Copy failed — drag the button instead.'), { tone: 'danger' })
     }
   }
 
@@ -38,10 +40,10 @@ export function BookmarkletRow({
         ref={anchor}
         draggable
         data-slot="bm-link"
-        title="Drag me to your bookmarks bar"
+        title={t('Drag me to your bookmarks bar')}
         onClick={(event) => {
           event.preventDefault()
-          toast('Drag me to your bookmarks bar')
+          toast(t('Drag me to your bookmarks bar'))
         }}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 font-mono text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
       >
@@ -51,11 +53,11 @@ export function BookmarkletRow({
       <button
         type="button"
         data-slot={copySlot}
-        title="Copy the bookmarklet URL"
+        title={t('Copy the bookmarklet URL')}
         onClick={() => void copy()}
         className="shrink-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        Copy
+        {t('Copy')}
       </button>
       {hint ? <span className="min-w-0 truncate text-[11px] text-soft-foreground">{hint}</span> : null}
     </div>

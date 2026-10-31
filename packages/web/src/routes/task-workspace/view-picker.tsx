@@ -10,6 +10,7 @@ import {
 import { createContext, useContext, type ComponentType, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 
 import {
   DropdownMenu,
@@ -67,6 +68,7 @@ export function ViewItems({
   purpose?: 'set' | 'add'
 }) {
   const views = useAvailable(VIEW_IDS)
+  const { t } = useI18n()
   return (
     <>
       {views.map((view) => {
@@ -82,7 +84,7 @@ export function ViewItems({
             onSelect={() => onPick(view)}
           >
             <Icon aria-hidden="true" />
-            {viewLabel(view)}
+            {t(viewLabel(view))}
           </DropdownMenuItem>
         )
       })}
@@ -115,11 +117,12 @@ export function ViewPickerMenu({
   align?: 'start' | 'end'
 }) {
   const views = useAvailable(VIEW_IDS)
+  const { t } = useI18n()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-64">
-        <DropdownMenuLabel>{heading}</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(heading)}</DropdownMenuLabel>
         <div data-slot="view-tiles" className="grid grid-cols-3 gap-1 p-1">
           {views.map((view) => {
             const Icon = VIEW_ICONS[view]
@@ -132,7 +135,7 @@ export function ViewPickerMenu({
                 className="flex h-16 flex-col items-center justify-center gap-1.5 rounded-md bg-muted/50 text-center text-xs text-muted-foreground focus:text-foreground"
               >
                 <Icon aria-hidden="true" className="size-4" />
-                <span className="truncate px-1">{viewLabel(view)}</span>
+                <span className="truncate px-1">{t(viewLabel(view))}</span>
               </DropdownMenuItem>
             )
           })}
@@ -170,6 +173,7 @@ export function ViewTiles({
   scope?: 'layout' | 'window'
 }) {
   const views = useAvailable(TILE_ORDER)
+  const { t } = useI18n()
   return (
     // A container, because the tiles also fill ONE window of a split layout: the grid answers to
     // the room it has, not to the viewport.
@@ -180,12 +184,14 @@ export function ViewTiles({
       <div className="my-auto flex w-full max-w-2xl flex-col gap-5">
         <div className="flex flex-col gap-1 text-center">
           <h2 className="text-base font-medium text-foreground">
-            {scope === 'layout' ? 'What should this layout show?' : 'What should this window show?'}
+            {scope === 'layout'
+              ? t('What should this layout show?')
+              : t('What should this window show?')}
           </h2>
           <p className="text-sm text-muted-foreground">
             {scope === 'layout'
-              ? 'Pick a view to start. You can split it into more windows afterwards.'
-              : 'Pick a view for the new window.'}
+              ? t('Pick a view to start. You can split it into more windows afterwards.')
+              : t('Pick a view for the new window.')}
           </p>
         </div>
         <div className="grid grid-cols-1 gap-2.5 @[15rem]:grid-cols-2 @lg:grid-cols-3 @lg:gap-3">
@@ -205,8 +211,8 @@ export function ViewTiles({
                   <Icon aria-hidden="true" className="size-[18px]" />
                 </span>
                 <span className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground">{viewLabel(view)}</span>
-                  <span className="text-xs font-normal text-muted-foreground">{VIEW_HINTS[view]}</span>
+                  <span className="text-sm font-medium text-foreground">{t(viewLabel(view))}</span>
+                  <span className="text-xs font-normal text-muted-foreground">{t(VIEW_HINTS[view])}</span>
                 </span>
               </Button>
             )

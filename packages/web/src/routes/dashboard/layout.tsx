@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable'
 import { GripHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 import type { TileId } from './preferences'
 
 const names: Record<TileId, string> = {
@@ -31,6 +32,7 @@ const names: Record<TileId, string> = {
 function Module({ id, children, wide }: { id: TileId; children: ReactNode; wide: boolean }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } =
     useSortable({ id })
+  const { t } = useI18n()
   return (
     <section
       ref={setNodeRef}
@@ -49,7 +51,7 @@ function Module({ id, children, wide }: { id: TileId; children: ReactNode; wide:
         className="absolute -top-[22px] left-1/2 z-10 min-h-11 min-w-11 -translate-x-1/2 cursor-grab touch-none p-0 opacity-0 transition-opacity hover:bg-transparent focus-visible:opacity-100 active:cursor-grabbing group-hover/module:opacity-100 no-hover:opacity-100"
         {...attributes}
         {...listeners}
-        aria-label={`Move ${names[id]}`}
+        aria-label={t('Move {module}', { module: t(names[id]) })}
       >
         <span className="flex h-4 w-8 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-xs">
           <GripHorizontal className="size-3.5" aria-hidden="true" />
@@ -73,6 +75,7 @@ export function DashboardLayout({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const visible = order.filter((id) => modules[id])
+  const { t } = useI18n()
   const wide = new Set<TileId>(['overview', 'portfolio', 'usage', 'trends'])
   // Pair consecutive compact modules in DOM order. A leftover card fills its row;
   // dense grid packing would make visual order disagree with keyboard/drag order.
@@ -86,27 +89,40 @@ export function DashboardLayout({
   }
   if (unpaired) wide.add(unpaired)
   const describe = (id: string | number) =>
-    `${names[id as TileId]}, position ${visible.indexOf(id as TileId) + 1} of ${visible.length}`
+    t('{module}, position {position} of {total}', {
+      module: t(names[id as TileId]),
+      position: visible.indexOf(id as TileId) + 1,
+      total: visible.length,
+    })
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
       accessibility={{
         announcements: {
-          onDragStart: ({ active }) => `Picked up ${describe(active.id)}.`,
+          onDragStart: ({ active }) => t('Picked up {module}.', { module: describe(active.id) }),
           onDragOver: ({ active, over }) =>
             over
-              ? `${names[active.id as TileId]} moved to position ${visible.indexOf(over.id as TileId) + 1} of ${visible.length}.`
+              ? t('{module} moved to position {position} of {total}.', {
+                  module: t(names[active.id as TileId]),
+                  position: visible.indexOf(over.id as TileId) + 1,
+                  total: visible.length,
+                })
               : undefined,
           onDragEnd: ({ active, over }) =>
             over
-              ? `${names[active.id as TileId]} dropped at position ${visible.indexOf(over.id as TileId) + 1} of ${visible.length}.`
-              : `Order unchanged. ${describe(active.id)}.`,
-          onDragCancel: ({ active }) => `Reordering cancelled. ${describe(active.id)}.`,
+              ? t('{module} dropped at position {position} of {total}.', {
+                  module: t(names[active.id as TileId]),
+                  position: visible.indexOf(over.id as TileId) + 1,
+                  total: visible.length,
+                })
+              : t('Order unchanged. {module}.', { module: describe(active.id) }),
+          onDragCancel: ({ active }) => t('Reordering cancelled. {module}.', { module: describe(active.id) }),
         },
         screenReaderInstructions: {
-          draggable:
+          draggable: t(
             'Press Space to pick up a module, use arrow keys to move, Space to drop, or Escape to cancel.',
+          ),
         },
       }}
       onDragEnd={({ active, over }) => {

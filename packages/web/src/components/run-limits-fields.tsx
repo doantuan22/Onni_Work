@@ -1,14 +1,13 @@
 import { useState, type ChangeEvent } from 'react'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { fieldClass } from '@/components/form-field'
+import { useI18n } from '@/lib/i18n'
 import type { LimitsDraft } from '@/lib/run-limits'
 
 /** Shown before "Unlimited" is accepted — anywhere it can be chosen. */
 export const UNLIMITED_WARNING =
   'Unlimited removes every cost, token, time and step ceiling for this run. An unattended run can keep spending until you stop it. Hang guards and dispatch limits stay on.'
-
-const inputClass =
-  'block w-full rounded-md border border-input bg-card px-2.5 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50'
 
 /**
  * The mode selector plus the four ceilings, shared by Settings (workspace default) and the
@@ -28,6 +27,7 @@ export function RunLimitsFields({
   disabled?: boolean
 }) {
   const [confirmingUnlimited, setConfirmingUnlimited] = useState(false)
+  const { t } = useI18n()
   const setMode = (event: ChangeEvent<HTMLSelectElement>) => {
     const mode = event.target.value as LimitsDraft['mode']
     if (mode === 'none' && draft.mode !== 'none') {
@@ -46,10 +46,10 @@ export function RunLimitsFields({
         aria-label={label}
         data-slot={`limit-${key}`}
         value={draft[key]}
-        placeholder="no limit"
+        placeholder={t('no limit')}
         disabled={disabled}
         onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
-        className={inputClass}
+        className={fieldClass}
       />
       <span className="text-[11px] text-soft-foreground">{hint}</span>
     </label>
@@ -57,36 +57,36 @@ export function RunLimitsFields({
   return (
     <div data-slot="run-limits-fields" className="flex flex-col gap-3">
       <select
-        aria-label="Run limits"
+        aria-label={t('Run limits')}
         data-slot="limits-mode"
         value={draft.mode}
         disabled={disabled}
         onChange={setMode}
-        className={inputClass}
+        className={fieldClass}
       >
-        {allowDefault ? <option value="default">Default (workspace setting)</option> : null}
-        <option value="capped">{allowDefault ? 'Custom ceilings' : 'Capped — apply the ceilings below'}</option>
-        <option value="none">Unlimited ∞</option>
+        {allowDefault ? <option value="default">{t('Default (workspace setting)')}</option> : null}
+        <option value="capped">{allowDefault ? t('Custom ceilings') : t('Capped — apply the ceilings below')}</option>
+        <option value="none">{t('Unlimited ∞')}</option>
       </select>
       {draft.mode === 'capped' ? (
         <div className="grid grid-cols-2 gap-3">
-          {field('cost', 'Max cost (USD)', 'Backends that report no USD ignore this.')}
-          {field('tokens', 'Max tokens', 'Cost-weighted; cache reads count at 10%.')}
-          {field('time', 'Max time (minutes)', 'Active running time, kept across restarts.')}
-          {field('iterations', 'Max steps', 'Agent steps and continuations.')}
+          {field('cost', t('Max cost (USD)'), t('Backends that report no USD ignore this.'))}
+          {field('tokens', t('Max tokens'), t('Cost-weighted; cache reads count at 10%.'))}
+          {field('time', t('Max time (minutes)'), t('Active running time, kept across restarts.'))}
+          {field('iterations', t('Max steps'), t('Agent steps and continuations.'))}
         </div>
       ) : null}
       {draft.mode === 'none' ? (
-        <p data-slot="limits-unlimited-note" className="text-[12px] text-warning-foreground">
-          ∞ No cost, token, time or step ceiling. Hang guards and dispatch limits still apply.
+        <p data-slot="limits-unlimited-note" className="text-[12px] text-warning">
+          {t('∞ No cost, token, time or step ceiling. Hang guards and dispatch limits still apply.')}
         </p>
       ) : null}
       <ConfirmDialog
         open={confirmingUnlimited}
         onOpenChange={setConfirmingUnlimited}
-        title="Remove all ceilings?"
-        description={UNLIMITED_WARNING}
-        confirmLabel="Choose Unlimited"
+        title={t('Remove all ceilings?')}
+        description={t(UNLIMITED_WARNING)}
+        confirmLabel={t('Choose Unlimited')}
         danger
         onConfirm={() => onChange({ ...draft, mode: 'none' })}
       />

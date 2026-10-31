@@ -2,6 +2,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type ComponentType } 
 
 import type { DiffStat } from '@onni/api-client'
 import { DiffStatLabel } from '@/components/diff-stat'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import { ImagePreview, shouldPreviewImage } from './image-preview'
@@ -45,6 +46,7 @@ function loadEngine(): Promise<Engine> {
 }
 
 export function Diff(props: DiffProps) {
+  const { t } = useI18n()
   const [engine, setEngine] = useState<Engine | null>(loadedEngine)
   useEffect(() => {
     if (loadedEngine) return
@@ -61,7 +63,7 @@ export function Diff(props: DiffProps) {
   if (props.files.length === 0) {
     return (
       <p data-slot="diff-empty" className={cn('px-1 text-xs text-soft-foreground', props.className)}>
-        No changes.
+        {t('No changes.')}
       </p>
     )
   }
@@ -69,7 +71,7 @@ export function Diff(props: DiffProps) {
   if (engine === null) {
     return (
       <p data-slot="diff-loading" className={cn('px-1 text-xs text-soft-foreground', props.className)}>
-        Loading diff…
+        {t('Loading diff…')}
       </p>
     )
   }
@@ -141,6 +143,7 @@ function FallbackFile({
   onOpenInApp?: (path: string) => void
   oldImageSrc?: (path: string) => string
 }) {
+  const { t } = useI18n()
   return (
     <section
       data-slot="diff-file"
@@ -158,9 +161,9 @@ function FallbackFile({
       {shouldPreviewImage(file) ? (
         <ImagePreview file={file} imageSrc={imageSrc} oldImageSrc={oldImageSrc} onOpenInApp={onOpenInApp} />
       ) : file.binary ? (
-        <p className="px-4 py-2.5 text-xs text-soft-foreground">Binary file — no text diff.</p>
+        <p className="px-4 py-2.5 text-xs text-soft-foreground">{t('Binary file — no text diff.')}</p>
       ) : file.patch === '' ? (
-        <p className="px-4 py-2.5 text-xs text-soft-foreground">No content changes (metadata only).</p>
+        <p className="px-4 py-2.5 text-xs text-soft-foreground">{t('No content changes (metadata only).')}</p>
       ) : (
         <pre
           className={cn(

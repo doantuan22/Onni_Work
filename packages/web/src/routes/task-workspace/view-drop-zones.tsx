@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import { VIEW_DRAG_TYPE } from './layout-cards'
@@ -21,25 +22,26 @@ export function ViewDropZones({
   columns: readonly WorkspaceColumn[]
   onDrop: (view: ViewId, at: number, mode: 'insert' | 'replace') => void
 }) {
+  const { t } = useI18n()
   const [hot, setHot] = useState<string | null>(null)
   const full = columns.length >= MAX_COLUMNS
   const cells =
     columns.length === 0
-      ? [{ width: 100, zones: [{ key: 'only', at: 0, mode: 'insert', label: `Open ${viewLabel(view)} here` } satisfies Zone] }]
+      ? [{ width: 100, zones: [{ key: 'only', at: 0, mode: 'insert', label: t('Open {view} here', { view: t(viewLabel(view)) }) } satisfies Zone] }]
       : columns.map((column, index) => {
           const replace: Zone = {
             key: `replace:${index}`,
             at: index,
             mode: 'replace',
-            label: column.view === view ? viewLabel(view) : `Replace ${viewLabel(column.view)}`,
-            hint: full ? `${MAX_COLUMNS} columns is the limit` : undefined,
+            label: column.view === view ? t(viewLabel(view)) : t('Replace {view}', { view: t(viewLabel(column.view)) }),
+            hint: full ? t('{count} columns is the limit', { count: MAX_COLUMNS }) : undefined,
           }
           const zones: Zone[] = full
             ? [replace]
             : [
-                { key: `insert:${index}`, at: index, mode: 'insert', label: 'Beside', hint: 'left' },
+                { key: `insert:${index}`, at: index, mode: 'insert', label: t('Beside'), hint: t('left') },
                 replace,
-                { key: `insert:${index + 1}:${index}`, at: index + 1, mode: 'insert', label: 'Beside', hint: 'right' },
+                { key: `insert:${index + 1}:${index}`, at: index + 1, mode: 'insert', label: t('Beside'), hint: t('right') },
               ]
           return { width: column.width, zones }
         })

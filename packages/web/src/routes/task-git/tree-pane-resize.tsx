@@ -9,6 +9,7 @@ import {
   readStoredTreePaneWidth,
   writeStoredTreePaneWidth,
 } from '@/lib/tree-pane-width'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -78,6 +79,7 @@ export function TreePaneResizeHandle({
   /** Visibility classes — the handle shows exactly when the pane does. */
   className?: string
 }) {
+  const { t } = useI18n()
   const origin = React.useRef<{ x: number; width: number } | null>(null)
 
   const current = () => width ?? Math.round(paneRef.current?.getBoundingClientRect().width ?? 0)
@@ -129,7 +131,7 @@ export function TreePaneResizeHandle({
         data-slot="tree-pane-resize-handle"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize the file tree"
+        aria-label={t('Resize the file tree')}
         aria-valuenow={width ?? undefined}
         aria-valuemin={MIN_TREE_PANE_WIDTH}
         aria-valuemax={MAX_TREE_PANE_WIDTH}
@@ -140,7 +142,7 @@ export function TreePaneResizeHandle({
         onPointerCancel={endDrag}
         onKeyDown={onKeyDown}
         onDoubleClick={() => onWidthChange(null)}
-        title="Drag to resize the file tree — double-click to reset"
+        title={t('Drag to resize the file tree — double-click to reset')}
         // `touch-none`: without it a touch drag pans the page instead of resizing.
         className="absolute inset-y-0 -left-[14px] z-10 w-2 cursor-col-resize touch-none rounded-full bg-transparent transition-colors hover:bg-violet/40 focus-visible:bg-violet/60 focus-visible:outline-none"
       />

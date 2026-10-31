@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/command'
 import { deriveAttention } from '@/lib/attention'
 import { shortAge } from '@/lib/format'
+import { useI18n } from '@/lib/i18n'
 import { orderProjects as orderRegistry } from '@/lib/project-order'
 import { isUnread } from '@/lib/read-state'
 import { orderSkillsByUsage } from '@/lib/skills'
@@ -223,12 +224,13 @@ const DATE_COLUMN = 'w-12 text-right'
  * (`content`), so the heading's text — what screen readers and the tests read — stays its name.
  */
 export function TaskColumnsHeading({ label }: { label: string }) {
+  const { t } = useI18n()
   return (
     <span className="flex items-center gap-2">
       <span className="min-w-0 flex-1">{label}</span>
       <span aria-hidden="true" className="flex shrink-0 gap-1 text-[11px] font-normal">
-        <span className={cn(DATE_COLUMN, "after:content-['Updated']")} />
-        <span className={cn(DATE_COLUMN, "after:content-['Created']")} />
+        <span className={cn(DATE_COLUMN, 'palette-date-label text-right')} data-label={t('Updated')} />
+        <span className={cn(DATE_COLUMN, 'palette-date-label text-right')} data-label={t('Created')} />
       </span>
     </span>
   )
@@ -376,6 +378,7 @@ export const TASK_GROUP_CLASS = '[&_[cmdk-group-items]]:flex [&_[cmdk-group-item
 
 /** The line under a capped task group: how many more match, and the way to reach them. */
 export function MoreTasks({ hidden }: { hidden: number }) {
+  const { t } = useI18n()
   if (hidden <= 0) return null
   // An item so cmdk always shows it (`forceMount`), disabled so it is never picked. cmdk re-orders
   // only selectable rows, which would leave this one stranded on top — `order-last` (the group is a
@@ -388,7 +391,7 @@ export function MoreTasks({ hidden }: { hidden: number }) {
       data-slot="palette-more-tasks"
       className="order-last py-1.5! text-xs text-soft-foreground data-[disabled=true]:opacity-100"
     >
-      {hidden} more — keep typing to narrow
+      {t('{count} more — keep typing to narrow', { count: hidden })}
     </CommandItem>
   )
 }
@@ -533,6 +536,7 @@ export function usePaletteExclusion(which: 'command' | 'task', open: boolean, cl
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false)
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   useCommandShortcut('k', () => setOpen((current) => !current))
   const newTask = React.useCallback(() => {
@@ -571,8 +575,8 @@ export function CommandPalette() {
         // Radix closes only on Escape or a click outside — choosing something closes it via `close`.
         setOpen(next)
       }}
-      title="Command palette"
-      description="Search projects, tasks, views, actions, and skills"
+      title={t('Command palette')}
+      description={t('Search projects, tasks, views, actions, and skills')}
       showCloseButton={false}
       filter={paletteScore}
       commandProps={{ onKeyDown }}
@@ -614,6 +618,7 @@ export const TaskItem = React.memo(function TaskItem({
   current?: boolean
 }) {
   const { task, label, projectName } = entry
+  const { t } = useI18n()
   const attention = deriveAttention(task)
   // A chip needs the project its reference status is asked under.
   const chip = task.projectId ? entry.refList[0] : undefined
@@ -626,7 +631,7 @@ export const TaskItem = React.memo(function TaskItem({
       data-project-id={task.projectId ?? undefined}
       onSelect={() => onSelect(task)}
     >
-      <StatusDot tone={attention.tone} pulse={attention.pulse} aria-label={attention.label} role="img" />
+      <StatusDot tone={attention.tone} pulse={attention.pulse} aria-label={t(attention.label)} role="img" />
       {/* The sidebar's own chip, leading the row as it does there (#788) — status colour, the
           conflict panel and its Resolve action included. A click opens the PR, not the task. */}
       {chip && task.projectId ? (
@@ -654,11 +659,11 @@ export const TaskItem = React.memo(function TaskItem({
       {task.automationId ? (
         <span
           data-slot="palette-task-automation"
-          title="Started by an automation"
+          title={t('Started by an automation')}
           className="flex shrink-0 items-center gap-0.5 text-xs text-soft-foreground"
         >
           <ZapIcon aria-hidden="true" className="size-3!" />
-          auto
+          {t('auto')}
         </span>
       ) : null}
       {/* Only in a multi-project workspace: with one project the label would name the only
@@ -671,12 +676,12 @@ export const TaskItem = React.memo(function TaskItem({
           {projectName}
         </span>
       ) : null}
-      {current ? <span className="shrink-0 text-xs text-primary">open</span> : null}
+      {current ? <span className="shrink-0 text-xs text-primary">{t('open')}</span> : null}
       {/* Updated and Created, as two right-aligned table columns under the group's own labels
           (`TaskColumnsHeading`) — same widths there and here, so every date lines up. */}
       <span data-slot="palette-task-age" title={entry.title} className="flex shrink-0 gap-1 text-xs tabular-nums">
         <span data-slot="palette-task-updated" className={cn(DATE_COLUMN, 'text-muted-foreground')}>
-          {isWorkingNow(task) ? 'now' : shortAge(task.lastActivityAt, now)}
+          {isWorkingNow(task) ? t('now') : shortAge(task.lastActivityAt, now)}
         </span>
         <span data-slot="palette-task-created" className={cn(DATE_COLUMN, 'text-soft-foreground')}>
           {shortAge(task.createdAt, now)}
@@ -688,6 +693,7 @@ export const TaskItem = React.memo(function TaskItem({
 
 function PaletteContent({ close }: { close: () => void }) {
   const navigate = useNavigate()
+  const { t } = useI18n()
   // The UNSCOPED twin, for the handful of targets that live outside every project (`/tasks`).
   const routerNavigate = useRouterNavigate()
   // Controlled so the body can tell the default view from a search. cmdk still owns filtering and
@@ -763,7 +769,7 @@ function PaletteContent({ close }: { close: () => void }) {
   return (
     <>
       <CommandInput
-        placeholder="Search projects, tasks, views, actions, skills…"
+        placeholder={t('Search projects, tasks, views, actions, skills…')}
         value={search}
         onValueChange={setSearch}
       />
@@ -772,7 +778,7 @@ function PaletteContent({ close }: { close: () => void }) {
           `min-h` keeps a short result set from collapsing the box to nothing, which would move
           the bottom edge as violently as the old centring moved the top. */}
       <CommandList className="max-h-[55vh] min-h-[14rem] sm:max-h-[60vh] lg:max-h-[68vh]">
-        <CommandEmpty>Nothing matches.</CommandEmpty>
+        <CommandEmpty>{t('Nothing matches.')}</CommandEmpty>
 
         {/* First, headless, and the row an empty query pre-selects: opening ⌘K and pressing
             Enter starts a task. It used to sit ninth in Views with a duplicate down in Actions;
@@ -785,7 +791,7 @@ function PaletteContent({ close }: { close: () => void }) {
             onSelect={() => go('/new')}
           >
             <PlusIcon aria-hidden="true" />
-            New task
+            {t('New task')}
             <CommandShortcut>C</CommandShortcut>
           </CommandItem>
         </CommandGroup>
@@ -795,7 +801,7 @@ function PaletteContent({ close }: { close: () => void }) {
             because that section renders first. Searching gets one ranked Tasks list. */}
         <PaletteReferenceStatuses entries={[...recentlyFinished.shown, ...otherTasks.shown]}>
         {!searching && recentlyFinished.shown.length > 0 ? (
-          <CommandGroup heading={<TaskColumnsHeading label="Recently finished" />} className={TASK_GROUP_CLASS}>
+          <CommandGroup heading={<TaskColumnsHeading label={t('Recently finished')} />} className={TASK_GROUP_CLASS}>
             {recentlyFinished.shown.map((entry) => (
               <TaskItem key={entry.key} entry={entry} showProject={showProjectOnTasks} now={now} onSelect={selectTask} />
             ))}
@@ -803,7 +809,7 @@ function PaletteContent({ close }: { close: () => void }) {
           </CommandGroup>
         ) : null}
 
-        <CommandGroup heading="Views">
+        <CommandGroup heading={t('Views')}>
           {/* The one GLOBAL view, listed first because it is the only row here that is not
               about the project you are standing in. Multi-project only, matching the sidebar:
               with one project it would be that project's own Tasks page under another name. */}
@@ -815,7 +821,7 @@ function PaletteContent({ close }: { close: () => void }) {
               onSelect={() => goGlobal('/tasks')}
             >
               <LayersIcon aria-hidden="true" />
-              All tasks
+              {t('All tasks')}
             </CommandItem>
           ) : null}
           {visibleNavItems({
@@ -836,7 +842,7 @@ function PaletteContent({ close }: { close: () => void }) {
                 onSelect={() => go(item.to)}
               >
                 <Icon aria-hidden="true" />
-                {item.label}
+                {t(item.label)}
               </CommandItem>
             )
           })}
@@ -850,12 +856,12 @@ function PaletteContent({ close }: { close: () => void }) {
             onSelect={() => goGlobal('/settings/global')}
           >
             <SettingsIcon aria-hidden="true" />
-            Global settings
+            {t('Global settings')}
           </CommandItem>
         </CommandGroup>
 
         {orderedProjects.length > 0 ? (
-          <CommandGroup heading="Projects">
+          <CommandGroup heading={t('Projects')}>
             {orderedProjects.map((project) => {
               const active = project.id === activeProjectId
               // Nothing to open: the folder is gone. The row stays listed (Settings → Projects
@@ -879,7 +885,7 @@ function PaletteContent({ close }: { close: () => void }) {
                   <FolderOpenIcon aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
                   {missing ? (
-                    <span className="shrink-0 text-xs text-soft-foreground">folder not found</span>
+                    <span className="shrink-0 text-xs text-soft-foreground">{t('folder not found')}</span>
                   ) : project.branch !== undefined ? (
                     <span className="shrink-0 font-mono text-xs text-soft-foreground">
                       {project.branch}
@@ -895,7 +901,7 @@ function PaletteContent({ close }: { close: () => void }) {
         ) : null}
 
         {otherTasks.shown.length > 0 ? (
-          <CommandGroup heading={<TaskColumnsHeading label="Tasks" />} className={TASK_GROUP_CLASS}>
+          <CommandGroup heading={<TaskColumnsHeading label={t('Tasks')} />} className={TASK_GROUP_CLASS}>
             {otherTasks.shown.map((entry) => (
               <TaskItem key={entry.key} entry={entry} showProject={showProjectOnTasks} now={now} onSelect={selectTask} />
             ))}
@@ -904,7 +910,7 @@ function PaletteContent({ close }: { close: () => void }) {
         ) : null}
         </PaletteReferenceStatuses>
 
-        <CommandGroup heading="Actions">
+        <CommandGroup heading={t('Actions')}>
           <CommandItem
             value="action toggle theme"
             data-slot="palette-action"
@@ -915,7 +921,7 @@ function PaletteContent({ close }: { close: () => void }) {
             }}
           >
             <MoonIcon aria-hidden="true" />
-            Toggle theme
+            {t('Toggle theme')}
             <CommandShortcut className="tracking-normal">
               {theme} → {nextTheme}
             </CommandShortcut>
@@ -923,7 +929,7 @@ function PaletteContent({ close }: { close: () => void }) {
         </CommandGroup>
 
         {orderedSkills.length > 0 ? (
-          <CommandGroup heading="Skills">
+          <CommandGroup heading={t('Skills')}>
             {orderedSkills.map((skill) => (
               <CommandItem
                 key={skill.path}

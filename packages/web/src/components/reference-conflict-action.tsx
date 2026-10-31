@@ -7,6 +7,7 @@ import { useReferenceStatusLookup } from '@/components/reference-status'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 import { runTitle } from '@/lib/task-groups'
+import { useI18n } from '@/lib/i18n'
 import { prioritizeTaskReferences, taskReferences, type TaskReferenceInput } from '@/lib/tasks-table'
 import { useAskAnswer } from '@/routes/task-thread/ask-answer'
 import { resolveConflictsPrompt } from '@/routes/task-thread/run-actions'
@@ -34,6 +35,7 @@ export function ResolveConflictsButton({
   projectId?: string
   prNumber?: number
 }) {
+  const { t } = useI18n()
   // Whichever seam this run's state allows — a live message, or a continue for a task parked at
   // review. Offering a prompt that only worked on a running task would offer it exactly when it
   // could not be taken: a conflicting PR is usually attached to a task that has already finished.
@@ -59,8 +61,8 @@ export function ResolveConflictsButton({
       if (failure) toast(failure, { tone: 'danger' })
       else {
         toast(
-          `${reopened ? 'Task reopened' : 'Sent to the task'} — resolving conflicts${
-            prNumber ? ` in PR #${prNumber}` : ''
+          `${reopened ? t('Task reopened') : t('Sent to the task')} — ${t('resolving conflicts')}${
+            prNumber ? ` ${t('in PR #{number}', { number: prNumber })}` : ''
           }`,
         )
         close()
@@ -83,7 +85,7 @@ export function ResolveConflictsButton({
         onClick={() => void press()}
         className="h-7 w-full text-xs"
       >
-        {pending ? 'Sending…' : 'Resolve conflicts'}
+        {pending ? t('Sending…') : t('Resolve conflicts')}
       </Button>
       {/* Only the REFUSAL is spelled out. What the button will do is the button's own words —
           quoting the prompt underneath said the same thing twice, at four times the length. */}
@@ -111,10 +113,11 @@ export function ResolveConflictsForRun({
   prNumber?: number
 }) {
   const run = useProjectRun(projectId, runId)
+  const { t } = useI18n()
   if (!run.data) {
     return (
       <Button type="button" size="sm" disabled className="h-7 w-full text-xs">
-        {run.isError ? 'Unavailable' : 'Loading…'}
+        {run.isError ? t('Unavailable') : t('Loading…')}
       </Button>
     )
   }

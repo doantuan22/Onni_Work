@@ -1,4 +1,5 @@
 import type { AgentProfile, ProviderStatusResponse, Runner } from '@onni/api-client'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { providerStatusFor } from '@/lib/provider-status'
 import { RUNNERS } from '@/routes/new-task-form'
@@ -77,10 +78,11 @@ export function DefaultAgentPicker({
   onPick: (runner: Runner, account: string | null, hasAccountChoice: boolean) => void
 }) {
   const stacked = hasAgentAccounts(rows)
+  const { t } = useI18n()
   return (
     <div
       role="radiogroup"
-      aria-label="Default runner"
+      aria-label={t('Default runner')}
       data-slot="agents-runner"
       className={cn(
         'gap-0.5 rounded-md border border-border bg-card p-0.5',
@@ -97,14 +99,14 @@ export function DefaultAgentPicker({
           provider?.enabled === true &&
           provider.status === 'connected'
         const providerReason = providerStatus.isPending
-          ? 'Checking provider authentication…'
+          ? t('Checking provider authentication…')
           : providerStatus.isError
-            ? 'Provider authentication could not be verified.'
+            ? t('Provider authentication could not be verified.')
             : provider?.enabled === false
-              ? 'This provider is disabled. Enable it above or choose another provider.'
-            : providerConnected
-              ? undefined
-              : 'Connect this provider before selecting it.'
+              ? t('This provider is disabled. Enable it above or choose another provider.')
+              : providerConnected
+                ? undefined
+                : t('Connect this provider before selecting it.')
         const hasAccountChoice = rows.filter((other) => other.runner.id === row.runner.id).length > 1
         const checked = row.runner.id === runner && row.account === accountFor(row.runner.id)
         return (

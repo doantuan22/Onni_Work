@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 import { shortAge } from '@/lib/format'
 
 // The landing's eyebrow: mono caps behind a violet `//` (`section-mark`, styles/index.css).
@@ -84,9 +85,10 @@ export function MetricContent({
   )
 }
 export function Freshness({ at }: { at: string }) {
+  const { t } = useI18n()
   return (
     <time dateTime={at} title={new Date(at).toLocaleString()}>
-      Updated {shortAge(at)} ago
+      {t('Updated {age} ago', { age: shortAge(at) })}
     </time>
   )
 }

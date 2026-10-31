@@ -2,6 +2,7 @@ import { FileIcon } from 'lucide-react'
 import { useParams } from 'react-router'
 
 import { Link } from '@/lib/project-router'
+import { useI18n } from '@/lib/i18n'
 
 import type { ReviewItem } from './diff-comments'
 
@@ -14,11 +15,12 @@ import type { ReviewItem } from './diff-comments'
  * path is plain text rather than a link to nowhere.
  */
 export function ReviewCommentsBlock({ items }: { items: readonly ReviewItem[] }) {
+  const { t, tn } = useI18n()
   const { id } = useParams<{ id: string }>()
   return (
     <div data-slot="review-comments" className="mt-1 flex flex-col gap-2 text-left">
       <p className="text-[12px] font-medium text-muted-foreground">
-        {items.length} {items.length === 1 ? 'comment' : 'comments'} on the diff
+        {tn(items.length, '{count} comment on the diff', '{count} comments on the diff')}
       </p>
       {items.map((item, index) => (
         <div
@@ -32,7 +34,7 @@ export function ReviewCommentsBlock({ items }: { items: readonly ReviewItem[] })
               <Link
                 to={reviewTarget(id, item)}
                 className="min-w-0 truncate font-mono font-medium text-foreground underline-offset-2 hover:underline"
-                title={`Open ${item.path} on the Changes tab`}
+                title={t('Open {path} on the Changes tab', { path: item.path })}
               >
                 {item.path}
               </Link>

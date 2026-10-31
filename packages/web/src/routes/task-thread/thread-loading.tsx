@@ -1,6 +1,7 @@
 import { LoaderCircleIcon } from 'lucide-react'
 
 import { CenteredState } from '@/components/centered-state'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * The thread's loading state, in its own module ON PURPOSE: it is both the route's
@@ -9,13 +10,14 @@ import { CenteredState } from '@/components/centered-state'
  * that keeps Streamdown/remark off the main bundle quietly disappears.
  */
 export function ThreadLoading() {
+  const { t } = useI18n()
   return (
     <div data-route="task-thread" className="flex min-h-full flex-col">
       <CenteredState
         icon={<LoaderCircleIcon className="motion-safe:animate-spin" />}
         tone="neutral"
-        title="Loading task…"
-        subtitle="Fetching the run and its session transcript."
+        title={t('Loading task…')}
+        subtitle={t('Fetching the run and its session transcript.')}
       />
     </div>
   )

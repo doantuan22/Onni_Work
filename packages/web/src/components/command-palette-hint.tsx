@@ -2,6 +2,7 @@ import { SearchIcon } from 'lucide-react'
 
 import { openCommandPalette } from '@/components/command-palette'
 import { commandShortcutHint } from '@/lib/use-command-shortcut'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -24,11 +25,12 @@ import { cn } from '@/lib/utils'
  * hardware, per the spec's platform-symbol rule.
  */
 export function CommandPaletteHint({ className }: { className?: string }) {
+  const { t } = useI18n()
   return (
     <button
       type="button"
       data-slot="command-palette-hint"
-      title="Search — command palette (⌘K / Ctrl+K)"
+      title={t('Search — command palette (⌘K / Ctrl+K)')}
       onClick={() => openCommandPalette()}
       className={cn(
         'flex w-full items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-left text-xs font-medium text-soft-foreground transition-colors hover:bg-muted hover:text-foreground',
@@ -36,7 +38,7 @@ export function CommandPaletteHint({ className }: { className?: string }) {
       )}
     >
       <SearchIcon className="size-3.5 shrink-0" aria-hidden="true" />
-      <span className="truncate">Search…</span>
+      <span className="truncate">{t('Search…')}</span>
       <kbd
         aria-hidden="true"
         className="ml-auto shrink-0 rounded-[5px] border border-b-2 border-border bg-card px-[5px] py-px font-mono text-[10.5px] font-medium text-muted-foreground"

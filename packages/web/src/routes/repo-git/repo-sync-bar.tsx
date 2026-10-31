@@ -6,6 +6,7 @@ import { useRepoSync, useRepoSyncAction } from '@/api/queries'
 import type { BranchTracking, RepoSync } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
+import { useI18n, type Translate } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils'
  * The server never fetches on its own, so "last fetched" is shown rather than implied.
  */
 export function RepoSyncBar() {
+  const { t } = useI18n()
   const sync = useRepoSync()
   const action = useRepoSyncAction()
   if (!sync.data) return null
@@ -32,13 +34,17 @@ export function RepoSyncBar() {
   return (
     <div data-slot="repo-sync" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
       {s.upstream ? (
-        <span data-slot="repo-upstream" className="truncate font-mono text-soft-foreground" title="Upstream">
+        <span data-slot="repo-upstream" className="truncate font-mono text-soft-foreground" title={t('Upstream')}>
           → {s.upstream}
         </span>
       ) : s.branch ? (
-        <span data-slot="repo-upstream" className="text-soft-foreground">not published</span>
+        <span data-slot="repo-upstream" className="text-soft-foreground">
+          {t('not published')}
+        </span>
       ) : (
-        <span data-slot="repo-upstream" className="text-soft-foreground">detached HEAD</span>
+        <span data-slot="repo-upstream" className="text-soft-foreground">
+          {t('detached HEAD')}
+        </span>
       )}
       {s.upstream ? (
         <SyncCounts ahead={s.ahead} behind={s.behind} />
@@ -46,23 +52,23 @@ export function RepoSyncBar() {
         <SyncCounts ahead={s.outgoing.length} behind={null} />
       ) : null}
       <span data-slot="repo-fetched" className="hidden text-soft-foreground sm:inline">
-        {s.lastFetchedAt ? `fetched ${relativeTime(s.lastFetchedAt)}` : 'never fetched'}
+        {s.lastFetchedAt ? t('fetched {when}', { when: relativeTime(s.lastFetchedAt, t) }) : t('never fetched')}
       </span>
       <div className="ml-auto flex items-center gap-1">
-        <SyncButton which="fetch" label="Fetch" busy={busy} pending={pending} onClick={run} disabled={!s.pushRemote}>
+        <SyncButton which="fetch" label={t('Fetch')} busy={busy} pending={pending} onClick={run} disabled={!s.pushRemote}>
           <RefreshCwIcon aria-hidden="true" className={cn(busy && pending === 'fetch' && 'animate-spin')} />
         </SyncButton>
         {s.upstream ? (
           <>
-            <SyncButton which="pull" label="Pull" busy={busy} pending={pending} onClick={run} disabled={!s.behind}>
+            <SyncButton which="pull" label={t('Pull')} busy={busy} pending={pending} onClick={run} disabled={!s.behind}>
               <ArrowDownIcon aria-hidden="true" />
             </SyncButton>
-            <SyncButton which="push" label="Push" busy={busy} pending={pending} onClick={run} disabled={!s.ahead}>
+            <SyncButton which="push" label={t('Push')} busy={busy} pending={pending} onClick={run} disabled={!s.ahead}>
               <ArrowUpIcon aria-hidden="true" />
             </SyncButton>
             <SyncButton
               which="sync"
-              label="Sync"
+              label={t('Sync')}
               busy={busy}
               pending={pending}
               onClick={run}
@@ -73,7 +79,14 @@ export function RepoSyncBar() {
             </SyncButton>
           </>
         ) : s.branch && s.pushRemote ? (
-          <SyncButton which="push" label="Publish branch" busy={busy} pending={pending} onClick={run} variant="outline">
+          <SyncButton
+            which="push"
+            label={t('Publish branch')}
+            busy={busy}
+            pending={pending}
+            onClick={run}
+            variant="outline"
+          >
             <CloudUploadIcon aria-hidden="true" />
           </SyncButton>
         ) : null}
@@ -118,23 +131,24 @@ function SyncButton({
 
 /** `↑2 ↓1`, omitting a side that is unknown; `in sync` when both are zero. */
 export function SyncCounts({ ahead, behind }: { ahead: number | null; behind: number | null }) {
+  const { t } = useI18n()
   if (ahead === null && behind === null) return null
   if (!ahead && !behind) {
     return (
       <span data-slot="sync-counts" className="text-soft-foreground">
-        in sync
+        {t('in sync')}
       </span>
     )
   }
   return (
     <span data-slot="sync-counts" className="flex items-center gap-1 font-mono">
       {ahead ? (
-        <span data-sync="ahead" title={`${ahead} to push`} className="text-primary">
+        <span data-sync="ahead" title={t('{count} to push', { count: ahead })} className="text-primary">
           ↑{ahead}
         </span>
       ) : null}
       {behind ? (
-        <span data-sync="behind" title={`${behind} to pull`} className="text-warning">
+        <span data-sync="behind" title={t('{count} to pull', { count: behind })} className="text-warning">
           ↓{behind}
         </span>
       ) : null}
@@ -144,14 +158,15 @@ export function SyncCounts({ ahead, behind }: { ahead: number | null; behind: nu
 
 /** A branch row's tracking state: counts, `upstream gone`, `local only`, or `remote only`. */
 export function BranchTrackingBadge({ name, sync }: { name: string; sync: RepoSync | undefined }) {
+  const { t } = useI18n()
   if (!sync) return null
   const local: BranchTracking | undefined = sync.branches.find((b) => b.name === name)
   const label = !local
-    ? 'remote only'
+    ? t('remote only')
     : local.gone
-      ? 'upstream gone'
+      ? t('upstream gone')
       : !local.upstream
-        ? 'local only'
+        ? t('local only')
         : null
   return (
     <span data-slot="branch-tracking" className="flex shrink-0 items-center gap-1 text-[11px]">
@@ -160,12 +175,12 @@ export function BranchTrackingBadge({ name, sync }: { name: string; sync: RepoSy
   )
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: Translate): string {
   const seconds = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000))
-  if (seconds < 60) return 'just now'
+  if (seconds < 60) return t('just now')
   const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 60) return t('{count} min ago', { count: minutes })
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
-  return `${Math.round(hours / 24)} d ago`
+  if (hours < 24) return t('{count} h ago', { count: hours })
+  return t('{count} d ago', { count: Math.round(hours / 24) })
 }

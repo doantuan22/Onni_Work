@@ -10,6 +10,7 @@ import { CenteredState } from '@/components/centered-state'
 import { IntegerStepper } from '@/components/integer-stepper'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { LimitsPanel } from './limits-section'
 import { MachineCard } from './machine-card'
 import { SettingsField } from './settings-field'
@@ -41,12 +42,13 @@ const WAKE_INTERVAL_MAX = 60
 const MEMORY_MIN_MB = 256
 
 export function ResourcesSection() {
+  const { t } = useI18n()
   const config = useWorkspaceConfig()
 
   if (config.isPending) {
     return (
       <p data-slot="resources-loading" className="p-4 text-[13px] text-soft-foreground md:p-6">
-        Loading resource settings…
+        {t('Loading resource settings…')}
       </p>
     )
   }
@@ -55,7 +57,7 @@ export function ResourcesSection() {
       <CenteredState
         icon={<GaugeIcon />}
         tone="danger"
-        title="Resource settings did not load"
+        title={t('Resource settings did not load')}
         subtitle={config.error.message}
         heading="h2"
       />
@@ -65,6 +67,7 @@ export function ResourcesSection() {
 }
 
 function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
 
   const save = useMutation({
@@ -87,7 +90,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
     : !wakeInvalid && configuredWake === wakeNum
   const saveWake = () => save.mutate(
     { resources: { monitoringWakeIntervalMinutes: wakeMode === 'park' ? null : wakeNum } },
-    { onSuccess: () => toast(wakeMode === 'park' ? 'Monitoring will stay parked' : `Monitoring will re-check every ${wakeNum} minutes`) },
+    { onSuccess: () => toast(wakeMode === 'park' ? t('Monitoring will stay parked') : t('Monitoring will re-check every {count} minutes', { count: wakeNum })) },
   )
   // Shipped ON: a server that predates the key answers without it, and reading that as "off"
   // would silently disable the feature on the one client that cannot tell the difference.
@@ -97,8 +100,8 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
     {
       onSuccess: () => toast(
         on
-          ? 'Tasks stopped by a usage limit will resume themselves'
-          : 'Tasks stopped by a usage limit will stay failed',
+          ? t('Tasks stopped by a usage limit will resume themselves')
+          : t('Tasks stopped by a usage limit will stay failed'),
       ),
     },
   )
@@ -114,7 +117,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
       { resources: { memoryLimitMb: memoryNum === 0 ? null : memoryNum } },
       {
         onSuccess: () =>
-          toast(memoryNum === 0 ? 'Memory limit cleared' : `Memory limit set to ${memoryNum} MiB`),
+          toast(memoryNum === 0 ? t('Memory limit cleared') : t('Memory limit set to {size} MiB', { size: memoryNum })),
       },
     )
   const composerDefaults = config.composerDefaults ?? {
@@ -141,11 +144,11 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
       <MachineCard />
 
       <SettingsField
-        title="Max parallel tasks"
-        hint="How many tasks run at once across every project. The rest wait in the queue. A non-git directory always runs one at a time."
+        title={t('Max parallel tasks')}
+        hint={t('How many tasks run at once across every project. The rest wait in the queue. A non-git directory always runs one at a time.')}
       >
         <IntegerStepper
-          aria-label="Max parallel tasks"
+          aria-label={t('Max parallel tasks')}
           data-slot="resources-max-parallel"
           value={config.resources.maxParallel}
           min={MAX_PARALLEL_MIN}
@@ -153,24 +156,24 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           onCommit={(maxParallel) => save.mutateAsync({ resources: { maxParallel: maxParallel ?? MAX_PARALLEL_MIN } })}
         />
         <p className="text-[11px] text-soft-foreground">
-          Need a different limit for one project?{' '}
+          {t('Need a different limit for one project?')}{' '}
           <Link
             to="/settings/global/projects"
             data-slot="resources-project-limits-link"
             className="font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
           >
-            Configure per-project limits
+            {t('Configure per-project limits')}
           </Link>
           .
         </p>
       </SettingsField>
 
       <SettingsField
-        title="Waiting-session idle timeout"
-        hint="How long a plain waiting session may stay open without activity before its live backend session ends. Continue resumes it; set 0 to keep it open indefinitely."
+        title={t('Waiting-session idle timeout')}
+        hint={t('How long a plain waiting session may stay open without activity before its live backend session ends. Continue resumes it; set 0 to keep it open indefinitely.')}
       >
         <IntegerStepper
-          aria-label="Waiting-session idle timeout"
+          aria-label={t('Waiting-session idle timeout')}
           data-slot="resources-idle-timeout"
           value={config.resources.idleTimeoutMinutes ?? 0}
           min={0}
@@ -178,16 +181,16 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           onCommit={(minutes) => save.mutateAsync({ resources: { idleTimeoutMinutes: minutes ?? 0 } })}
         />
         <p className="text-[11px] text-soft-foreground">
-          Minutes; 0 keeps plain waiting sessions alive. Monitoring sessions are already exempt.
+          {t('Minutes; 0 keeps plain waiting sessions alive. Monitoring sessions are already exempt.')}
         </p>
       </SettingsField>
 
       <SettingsField
-        title="Extra monitoring sessions"
-        hint="How many agent sessions may wait on CI, sub-agents, or monitored commands without using an active task slot. Extra sessions stay alive but pause the queue."
+        title={t('Extra monitoring sessions')}
+        hint={t('How many agent sessions may wait on CI, sub-agents, or monitored commands without using an active task slot. Extra sessions stay alive but pause the queue.')}
       >
         <IntegerStepper
-          aria-label="Extra monitoring sessions"
+          aria-label={t('Extra monitoring sessions')}
           data-slot="resources-max-monitoring"
           value={config.resources.maxMonitoringSessions ?? 2}
           min={0}
@@ -195,25 +198,28 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           onCommit={(sessions) => save.mutateAsync({ resources: { maxMonitoringSessions: sessions ?? 0 } })}
         />
         <p className="text-[11px] text-soft-foreground">
-          Capacity: {config.resources.maxParallel} active + {config.resources.maxMonitoringSessions ?? 2} monitoring. Set 0 to make monitoring share active slots.
+          {t('Capacity: {active} active + {monitoring} monitoring. Set 0 to make monitoring share active slots.', {
+            active: config.resources.maxParallel,
+            monitoring: config.resources.maxMonitoringSessions ?? 2,
+          })}
         </p>
       </SettingsField>
 
       <SettingsField
-        title="Monitoring wake-up"
-        hint="Park uses no model turns. Re-check sends the same agent a follow-up on this cadence until work completes or the 40-wakeup safety cap is reached."
+        title={t('Monitoring wake-up')}
+        hint={t('Park uses no model turns. Re-check sends the same agent a follow-up on this cadence until work completes or the 40-wakeup safety cap is reached.')}
       >
         <div className="flex flex-wrap items-center gap-2">
           <select
-            aria-label="Monitoring wake-up"
+            aria-label={t('Monitoring wake-up')}
             data-slot="resources-monitoring-wake-mode"
             value={wakeMode}
             disabled={save.isPending}
             onChange={(event) => setWakeMode(event.target.value as 'park' | 'interval')}
             className="rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
           >
-            <option value="park">Park until resumed</option>
-            <option value="interval">Re-check on an interval</option>
+            <option value="park">{t('Park until resumed')}</option>
+            <option value="interval">{t('Re-check on an interval')}</option>
           </select>
           {wakeMode === 'interval' ? (
             <>
@@ -221,48 +227,48 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
                 type="number"
                 min={WAKE_INTERVAL_MIN}
                 max={WAKE_INTERVAL_MAX}
-                aria-label="Wake interval in minutes"
+                aria-label={t('Wake interval in minutes')}
                 data-slot="resources-monitoring-wake-interval"
                 value={wakeInterval}
                 disabled={save.isPending}
                 onChange={(event) => setWakeInterval(event.target.value)}
                 className="block w-24 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
               />
-              <span className="text-xs text-soft-foreground">minutes</span>
+              <span className="text-xs text-soft-foreground">{t('minutes')}</span>
             </>
           ) : null}
-          <Button type="button" variant="outline" size="sm" data-action="resources-save-monitoring-wake" disabled={wakeSaved || (wakeMode === 'interval' && wakeInvalid) || save.isPending} onClick={saveWake}>Save</Button>
+          <Button type="button" variant="outline" size="sm" data-action="resources-save-monitoring-wake" disabled={wakeSaved || (wakeMode === 'interval' && wakeInvalid) || save.isPending} onClick={saveWake}>{t('Save')}</Button>
         </div>
         {wakeMode === 'interval' && wakeInvalid ? (
-          <p data-slot="resources-monitoring-wake-invalid" className="text-[11px] text-danger">Enter a whole number from 1 to 60 minutes.</p>
+          <p data-slot="resources-monitoring-wake-invalid" className="text-[11px] text-danger">{t('Enter a whole number from 1 to 60 minutes.')}</p>
         ) : (
-          <p className="text-[11px] text-soft-foreground">Applied consistently to Claude, Codex and OpenCode.</p>
+          <p className="text-[11px] text-soft-foreground">{t('Applied consistently to Claude, Codex and OpenCode.')}</p>
         )}
       </SettingsField>
 
       <SettingsField
-        title="Auto-resume after a usage limit"
-        hint="When an agent stops because its provider usage limit is reached, onni waits for the reset the provider named and continues the task 30 seconds later — up to 12 times in a row without you. Off leaves the task failed with its Continue button."
+        title={t('Auto-resume after a usage limit')}
+        hint={t('When an agent stops because its provider usage limit is reached, onni waits for the reset the provider named and continues the task 30 seconds later — up to 12 times in a row without you. Off leaves the task failed with its Continue button.')}
       >
         <select
-          aria-label="Auto-resume after a usage limit"
+          aria-label={t('Auto-resume after a usage limit')}
           data-slot="resources-auto-resume"
           value={autoResume ? 'on' : 'off'}
           disabled={save.isPending}
           onChange={(event) => saveAutoResume(event.target.value === 'on')}
           className="block w-28 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
         >
-          <option value="on">On</option>
-          <option value="off">Off</option>
+          <option value="on">{t('On')}</option>
+          <option value="off">{t('Off')}</option>
         </select>
         <p className="text-[11px] text-soft-foreground">
-          Applies to Claude, Codex and OpenCode — whenever the provider says when the limit lifts.
+          {t('Applies to Claude, Codex and OpenCode — whenever the provider says when the limit lifts.')}
         </p>
       </SettingsField>
 
       <SettingsField
-        title="Per-task memory limit"
-        hint="When a task's whole process tree crosses this, the engine pauses it with a warning and starts the next queued task. Leave empty for no limit."
+        title={t('Per-task memory limit')}
+        hint={t("When a task's whole process tree crosses this, the engine pauses it with a warning and starts the next queued task. Leave empty for no limit.")}
       >
         <div className="flex items-center gap-2">
           <input
@@ -270,11 +276,11 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
             inputMode="numeric"
             min={MEMORY_MIN_MB}
             step={256}
-            aria-label="Per-task memory limit in MiB"
+            aria-label={t('Per-task memory limit in MiB')}
             data-slot="resources-memory-limit"
             value={memory}
             disabled={save.isPending}
-            placeholder="no limit"
+            placeholder={t('no limit')}
             onChange={(event) => setMemory(event.target.value)}
             className="block w-32 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
           />
@@ -287,62 +293,62 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
             disabled={memorySaved || memoryInvalid || save.isPending}
             onClick={saveMemory}
           >
-            Save
+            {t('Save')}
           </Button>
         </div>
         {memoryInvalid ? (
           <p data-slot="resources-memory-invalid" className="text-[11px] text-danger">
-            Enter a whole number of at least {MEMORY_MIN_MB} MiB, or leave empty for no limit.
+            {t('Enter a whole number of at least {min} MiB, or leave empty for no limit.', { min: MEMORY_MIN_MB })}
           </p>
         ) : (
-          <p className="text-[11px] text-soft-foreground">Applies to newly started tasks.</p>
+          <p className="text-[11px] text-soft-foreground">{t('Applies to newly started tasks.')}</p>
         )}
       </SettingsField>
 
       <SettingsField
-        title="New task defaults"
-        hint="Set stable composer defaults across projects. Explicit choices and run-shape constraints still win."
+        title={t('New task defaults')}
+        hint={t('Set stable composer defaults across projects. Explicit choices and run-shape constraints still win.')}
       >
         <div className="grid gap-4 sm:grid-cols-2" data-slot="resources-composer-defaults">
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Autonomous by default</span>
+            <span className="font-medium">{t('Autonomous by default')}</span>
             <select
-              aria-label="Autonomous by default"
+              aria-label={t('Autonomous by default')}
               value={composerDefaults.autonomous === null ? 'inherit' : composerDefaults.autonomous ? 'on' : 'off'}
               disabled={save.isPending}
               onChange={(event) => saveComposerDefault('autonomous', event.target.value)}
               className="rounded-md border border-input bg-card px-3 py-1.5 shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
-              <option value="inherit">Inherit environment</option>
-              <option value="on">On</option>
-              <option value="off">Off</option>
+              <option value="inherit">{t('Inherit environment')}</option>
+              <option value="on">{t('On')}</option>
+              <option value="off">{t('Off')}</option>
             </select>
             <span className="text-[11px] text-soft-foreground">
-              Inherited: {composerDefaults.inheritedAutonomous === 'source-dependent'
-                ? 'Source-dependent — skills on, workflows off'
-                : composerDefaults.inheritedAutonomous ? 'On' : 'Off'}
+              {t('Inherited:')}{' '}{composerDefaults.inheritedAutonomous === 'source-dependent'
+                ? t('Source-dependent — skills on, workflows off')
+                : composerDefaults.inheritedAutonomous ? t('On') : t('Off')}
             </span>
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Use a worktree by default</span>
+            <span className="font-medium">{t('Use a worktree by default')}</span>
             <select
-              aria-label="Use a worktree by default"
+              aria-label={t('Use a worktree by default')}
               value={composerDefaults.worktree === null ? 'inherit' : composerDefaults.worktree ? 'on' : 'off'}
               disabled={save.isPending}
               onChange={(event) => saveComposerDefault('worktree', event.target.value)}
               className="rounded-md border border-input bg-card px-3 py-1.5 shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
-              <option value="inherit">Inherit environment</option>
-              <option value="on">On</option>
-              <option value="off">Off</option>
+              <option value="inherit">{t('Inherit environment')}</option>
+              <option value="on">{t('On')}</option>
+              <option value="off">{t('Off')}</option>
             </select>
             <span className="text-[11px] text-soft-foreground">
-              Inherited: {composerDefaults.inheritedWorktree ? 'On' : 'Off'}
+              {t('Inherited:')}{' '}{composerDefaults.inheritedWorktree ? t('On') : t('Off')}
             </span>
           </label>
         </div>
         <p className="text-[11px] text-soft-foreground">
-          Interactive skills may recommend both off. Multi-step and parallel runs remain isolated.
+          {t('Interactive skills may recommend both off. Multi-step and parallel runs remain isolated.')}
         </p>
       </SettingsField>
 

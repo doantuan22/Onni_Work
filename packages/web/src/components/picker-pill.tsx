@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Virtualizer } from 'virtua'
 
 import { DEFAULT_AGENT_ACCOUNT_ID, type Runner } from '@onni/api-client'
+import { useI18n } from '@/lib/i18n'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +43,11 @@ export function PickerPill({
   disabledHint,
   status,
   searchPlaceholder,
+  triggerClassName,
+  onOpenChange,
+  allowCustom = false,
+  customHint,
+  emptyLabel = 'No matches found.',
 }: {
   slot: string
   ariaLabel: string
@@ -59,18 +65,43 @@ export function PickerPill({
   status?: string
   /** Add a name filter above longer option catalogs. */
   searchPlaceholder?: string
+  /** Replace the 26px chip with another shape (the roster's form-sized field). */
+  triggerClassName?: string
+  /** Reported alongside the menu's own open state — a caller may defer a fetch until first open. */
+  onOpenChange?: (open: boolean) => void
+  /**
+   * Offer the typed text as a final row when nothing matches — only for catalogs that cannot be
+   * exhaustive (a CLI with no discovery). With a LIVE list, a typo must stay unpickable.
+   */
+  allowCustom?: boolean
+  customHint?: string
+  emptyLabel?: string
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const { t } = useI18n()
   const searchRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const visibleOptions = useMemo(() => {
     const needle = search.trim().toLowerCase()
+    // Matching the id as well as the label matters for models: a CLI labels `anthropic/claude-…`
+    // as `claude-opus-…`, and either spelling is what the user reaches for.
     return searchPlaceholder && needle
-      ? options.filter((option) => option.label.toLowerCase().includes(needle))
+      ? options.filter((option) =>
+          `${option.label} ${option.value} ${option.desc ?? ''}`.toLowerCase().includes(needle),
+        )
       : options
   }, [options, search, searchPlaceholder])
+  const customValue = search.trim()
+  const customOffered =
+    allowCustom &&
+    customValue !== '' &&
+    !visibleOptions.some(
+      (option) =>
+        option.value.toLowerCase() === customValue.toLowerCase() ||
+        option.label.toLowerCase() === customValue.toLowerCase(),
+    )
 
   useEffect(() => {
     if (!open || !searchPlaceholder) return
@@ -109,10 +140,12 @@ export function PickerPill({
       aria-label={ariaLabel}
       disabled={disabled}
       title={disabled ? disabledHint : hint}
-      className={chipClass}
+      className={triggerClassName ?? chipClass}
     >
-      {label}
-      {chevron}
+      <span className="flex min-w-0 w-full items-center justify-between gap-1.5">
+        <span className="truncate">{label}</span>
+        {chevron}
+      </span>
     </button>
   )
   // Radix never opens a disabled trigger, but `disabled:pointer-events-none` would also kill
@@ -130,6 +163,7 @@ export function PickerPill({
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
+        onOpenChange?.(next)
         if (!next) setSearch('')
       }}
     >
@@ -184,8 +218,26 @@ export function PickerPill({
             visibleOptions.map(renderOption)
           )}
         </DropdownMenuRadioGroup>
-        {searchPlaceholder && visibleOptions.length === 0 ? (
-          <p className="px-2 py-5 text-center text-xs text-muted-foreground">No branches found.</p>
+        {customOffered ? (
+          <DropdownMenuItem
+            className="items-start gap-0.5 border-t border-border"
+            onSelect={() => {
+              setSearch('')
+              onPick(customValue)
+            }}
+          >
+            <span className="flex min-w-0 flex-col">
+              <span className="text-[12.5px] font-medium">{t('Use “{value}”', { value: customValue })}</span>
+              {customHint ? (
+                <span className="max-w-[calc(100vw-3rem)] whitespace-normal break-words text-[11.5px] text-muted-foreground md:max-w-96">
+                  {customHint}
+                </span>
+              ) : null}
+            </span>
+          </DropdownMenuItem>
+        ) : null}
+        {searchPlaceholder && visibleOptions.length === 0 && !customOffered ? (
+          <p className="px-2 py-5 text-center text-xs text-muted-foreground">{t(emptyLabel)}</p>
         ) : null}
         {status ? (
           <DropdownMenuItem disabled className="border-t border-border text-[11.5px] text-muted-foreground">
@@ -260,6 +312,7 @@ export function RunnerPill({
   repoAccount?: Partial<Record<Runner, string>>
 }) {
   const available = RUNNERS.filter((r) => runners.includes(r.id))
+  const { t } = useI18n()
   const options = available.flatMap((runner) => {
     const logins = accounts.filter((entry) => entry.provider === runner.id)
     // One login is not a choice, so it does not become a row of its own — the agent is the row.
@@ -284,7 +337,7 @@ export function RunnerPill({
   return (
     <PickerPill
       slot="runner-pill"
-      ariaLabel="Runner"
+      ariaLabel={t('Runner')}
       label={options.find((option) => option.value === value_)?.label ?? value}
       value={value_}
       disabled={disabled}

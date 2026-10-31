@@ -6,6 +6,7 @@ import { queryKeys } from '@/api/queries'
 import type { ApiRun } from '@onni/api-client'
 import { StatusDot } from '@/components/status-dot'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * "This task is not over — it is waiting out a usage limit" (spec
@@ -33,6 +34,7 @@ import { toast } from '@/components/ui/toaster'
  * other reason — so this component never has to reason about any of those cases.
  */
 export function AutoResumeHint({ run }: { run: ApiRun }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const cancel = useMutation({
     mutationFn: () => cancelAutoResume(run.id),
@@ -41,7 +43,7 @@ export function AutoResumeHint({ run }: { run: ApiRun }) {
       // and an invalidate is the honest barrier for a mutation the user just clicked.
       void queryClient.invalidateQueries({ queryKey: queryKeys.runs.detail(run.id) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.runs.list() })
-      toast('This task will not resume itself')
+      toast(t('This task will not resume itself'))
     },
     onError: (error: Error) => toast(error.message, { tone: 'danger' }),
   })
@@ -59,8 +61,8 @@ export function AutoResumeHint({ run }: { run: ApiRun }) {
       <StatusDot tone="pending" pulse />
       <span>
         {run.autoResumeReason === 'transient'
-          ? 'Temporary provider failure — this task retries automatically at'
-          : 'Usage limit reached — this task resumes automatically at'}{' '}
+          ? t('Temporary provider failure — this task retries automatically at')
+          : t('Usage limit reached — this task resumes automatically at')}{' '}
         <time dateTime={run.autoResumeAt} className="font-medium text-foreground">
           {label}
         </time>
@@ -72,7 +74,7 @@ export function AutoResumeHint({ run }: { run: ApiRun }) {
         onClick={() => cancel.mutate()}
         className="font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground disabled:opacity-50"
       >
-        Don’t resume
+        {t('Don’t resume')}
       </button>
       {/* Global settings live OUTSIDE every project scope, so this is react-router's own Link:
           the scope-aware one would prefix it into `/p/<id>/settings/global/…`, which is not a
@@ -82,7 +84,7 @@ export function AutoResumeHint({ run }: { run: ApiRun }) {
         data-slot="auto-resume-settings-link"
         className="font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
       >
-        Auto-resume settings
+        {t('Auto-resume settings')}
       </GlobalLink>
     </div>
   )

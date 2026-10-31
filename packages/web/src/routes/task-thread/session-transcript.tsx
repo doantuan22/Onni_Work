@@ -1,6 +1,7 @@
 import { memo, useMemo, type ReactNode } from 'react'
 
 import type { ApiRun, UiMessageItem, UiReasoningItem, UiToolItem } from '@onni/api-client'
+import { useI18n } from '@/lib/i18n'
 import { sameData } from '@/lib/same-data'
 
 import { groupThreadItems, type ThreadBlock } from './thread-groups'
@@ -239,6 +240,7 @@ export function SessionTranscript({
   renderMode,
   rowModels: providedRowModels,
 }: SessionTranscriptProps) {
+  const { t } = useI18n()
   const rowModels = useMemo(
     () => providedRowModels ?? buildTranscriptRows(sections, runId),
     [providedRowModels, sections, runId],
@@ -274,7 +276,7 @@ export function SessionTranscript({
       {mode === 'panel' ? (
         <div
           data-slot="transcript-viewport"
-          aria-label="Agent transcript"
+          aria-label={t('Agent transcript')}
           role="region"
           tabIndex={0}
           className="relative flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable]"
@@ -448,9 +450,7 @@ function ThreadEntryRenderer({
       return renderAsk !== undefined ? (
         renderAsk(entry)
       ) : (
-        <div data-slot="ask-card" className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
-          The agent asked a question. Open the main session to answer it.
-        </div>
+        <UnansweredAskCard />
       )
     case 'provider-auth-required':
       return <ProviderAuthRequiredCard incident={entry} />
@@ -459,6 +459,15 @@ function ThreadEntryRenderer({
     default:
       return assertNever(entry)
   }
+}
+
+function UnansweredAskCard() {
+  const { t } = useI18n()
+  return (
+    <div data-slot="ask-card" className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
+      {t('The agent asked a question. Open the main session to answer it.')}
+    </div>
+  )
 }
 
 function assertNever(value: never): never {

@@ -70,13 +70,12 @@ export interface ModelPreset {
 /**
  * Static model presets per runner. `id: ''` is always "auto" — no model flag, the runner decides.
  *
- * For a runner that discovers (`MODEL_DISCOVERY_RUNNERS` — claude, codex, opencode, cursor) this list is
- * only the FALLBACK, used when the host catalog has nothing to offer; a live catalog replaces it.
- * Nothing dated may be listed for those — pinned ids (`claude-opus-4-8`, `gpt-5.1-codex`) are
- * exactly the drift discovery exists to end (#794 for OpenCode, #784 for Claude). Claude
- * therefore keeps only its tier aliases, which stay true across every rollout because the CLI
- * resolves them itself; Codex, OpenCode and Cursor list `auto` alone. pi has no host catalog yet, so its
- * entries are the real picker contents rather than a fallback.
+ * For a runner that discovers (`MODEL_DISCOVERY_RUNNERS` — claude, codex, opencode, cursor, pi,
+ * junie, antigravity) this list is only the FALLBACK, used when the host catalog has nothing to
+ * offer; a live catalog replaces it. Nothing dated may be listed for those — pinned ids
+ * (`claude-opus-4-8`, `gpt-5.1-codex`) are exactly the drift discovery exists to end (#794 for
+ * OpenCode, #784 for Claude). Claude therefore keeps only its tier aliases, which stay true
+ * across every rollout because the CLI resolves them itself; the rest list `auto` alone.
  */
 export const MODELS_BY_RUNNER: Record<Runner, readonly ModelPreset[]> = {
   claude: [
@@ -98,12 +97,10 @@ export const MODELS_BY_RUNNER: Record<Runner, readonly ModelPreset[]> = {
   cursor: [
     { id: '', label: 'auto', desc: 'Use your Cursor default model' },
   ],
-  // pi selects a model with the same `provider/model` convention as opencode.
+  // pi selects a model with the same `provider/model` convention as opencode; the real list comes
+  // from `pi --list-models` (`pi-model-catalog.ts`), so only `auto` is listed here.
   pi: [
     { id: '', label: 'auto', desc: 'Use your pi default model' },
-    { id: 'anthropic/claude-opus-4-8', label: 'claude-opus-4.8', desc: 'via Anthropic' },
-    { id: 'anthropic/claude-sonnet-5', label: 'claude-sonnet-5', desc: 'via Anthropic' },
-    { id: 'openai/gpt-5.1', label: 'gpt-5.1', desc: 'via OpenAI' },
   ],
   // Copilot has no host catalog here (it stays out of `MODEL_DISCOVERY_RUNNERS`), and its own
   // catalog is fetched from GitHub per account, so nothing dated can be listed truthfully. `auto`
@@ -134,14 +131,13 @@ const NATIVE_MODEL_ID_PREFIX: Partial<Record<Runner, RegExp>> = {
 }
 
 /** Runners that pick with the canonical `provider/model` convention and span every provider the
- *  host has configured, so an id they list is never EXCLUSIVE to them: pi offers
- *  `openai/gpt-5.1` as a preset and OpenCode serves the very same model from the very same
- *  provider. Their presets are therefore skipped when judging another runner's id.
+ *  host has configured, so an id they list is never EXCLUSIVE to them; their published lists are
+ *  therefore skipped when judging another runner's id. Both now discover that list from the host
+ *  (`opencode models`, `pi --list-models`), which is also why neither keeps dated presets.
  *
  *  This is the cockpit's half of the rule the server states structurally — a runner with no
- *  default provider cannot be contradicted, which is why `KNOWN_PRESETS_BY_RUNNER.pi` is empty
- *  in `packages/work/src/core/model-presets.ts`. Without it, adding pi's presets here would
- *  silently strip a pinned OpenCode model from the OpenCode picker.
+ *  default provider cannot be contradicted, which is why `KNOWN_PRESETS_BY_RUNNER` leaves both
+ *  empty in `packages/work/src/core/model-presets.ts`.
  *
  *  It exempts a runner's PRESET LIST, never the vendor shapes above: those name a vendor's own
  *  native id space (`claude-…`, `gpt-…`), which a `provider/model` runner cannot claim either
@@ -215,6 +211,7 @@ const DISCOVERY_RUNNER_LABEL: Record<ModelDiscoveryRunner, string> = {
   opencode: 'OpenCode',
   junie: 'Junie',
   cursor: 'Cursor',
+  pi: 'pi',
   antigravity: 'Antigravity',
 }
 

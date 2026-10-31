@@ -27,6 +27,7 @@ import {
   type ReferenceStatusTone,
 } from '@/lib/reference-status'
 import { cn, isHttpUrl } from '@/lib/utils'
+import { useI18n, type Translate } from '@/lib/i18n'
 
 /** Border + text per status tone. `violet` IS the chip's own resting look, which is why a
  *  reference with no status known keeps it: nothing has been learned, so nothing changes. */
@@ -125,6 +126,7 @@ export function ReferenceChip({
    */
   compact?: boolean
 }) {
+  const { t } = useI18n()
   const { kind, number, url } = reference
   // An explicit `status` wins — it is what a test or a one-off caller passes — and otherwise the
   // surface's provider answers. Outside a provider neither exists and this is the chip the cockpit
@@ -150,11 +152,12 @@ export function ReferenceChip({
     className,
   )
   // The overridden status rides along into the tooltip whenever the conflict took the chip.
-  const tooltip = statusTooltip(entry, presentation, conflicting ? statusPresentation : undefined)
+  const tooltip = statusTooltip(entry, presentation, conflicting ? statusPresentation : undefined, t)
   const label = number ? `${!compact && kind === 'Issue' ? 'Issue ' : ''}#${number}` : kind
-  const kindWord = kind === 'PR' ? 'pull request' : 'issue'
+  const kindWord = kind === 'PR' ? t('pull request') : t('issue')
   // The accessible name carries the status too — a screen reader gets what the color says.
-  const ariaLabel = `Open the ${kindWord} for ${taskTitle}${presentation ? ` — ${presentation.label}` : ''}`
+  const statusSuffix = presentation ? ` ${t('— {status}', { status: t(presentation.label) })}` : ''
+  const ariaLabel = `${t('Open the {kind} for {title}', { kind: kindWord, title: taskTitle })}${statusSuffix}`
 
   const body = (
     <>
@@ -181,7 +184,7 @@ export function ReferenceChip({
         // second axis turned true. What the conflict adds is its own attribute.
         data-status={status}
         {...(conflicting ? { 'data-conflicting': 'true' } : {})}
-        aria-label={presentation ? `${kindWord} ${label} — ${presentation.label}` : undefined}
+        aria-label={presentation ? t('{kind} {label} — {status}', { kind: kindWord, label, status: t(presentation.label) }) : undefined}
         className={chipClass}
       >
         {body}
@@ -211,7 +214,7 @@ export function ReferenceChip({
   const panel = (
     <>
       <span className="block font-medium">
-        {kind === 'PR' ? 'Pull request' : 'Issue'}
+        {kind === 'PR' ? t('Pull request') : t('Issue')}
         {number ? ` #${number}` : ''} · {tooltip.headline}
       </span>
       <span className="block">{tooltip.detail}</span>
@@ -421,34 +424,38 @@ function ReferenceChipCard({
 function statusTooltip(
   entry: ReferenceStatusEntry,
   presentation: ReferenceStatusPresentation | undefined,
-  overridden?: ReferenceStatusPresentation,
+  overridden: ReferenceStatusPresentation | undefined,
+  t: Translate,
 ): { headline: string; detail: string; also?: string } | null {
   if (presentation) {
     const { label, hint } = presentation
-    const also = overridden ? `also ${lowerFirst(overridden.label)} — ${overridden.hint}` : undefined
+    const also = overridden
+      ? t('also {label} — {hint}', { label: lowerFirst(t(overridden.label)), hint: t(overridden.hint) })
+      : undefined
     // A remembered status while the forge is down is still the best answer there is — but it is
     // dated, and saying so is the difference between trusted and merely confident.
     if (entry.state === 'unavailable') {
       return {
-        headline: label,
-        detail: `last known — GitHub is unreachable${entry.reason ? ` (${entry.reason})` : ''}`,
+        headline: t(label),
+        detail: t('last known — GitHub is unreachable{reason}', { reason: entry.reason ? ` (${entry.reason})` : '' }),
         ...(also ? { also } : {}),
       }
     }
-    return { headline: label, detail: hint, ...(also ? { also } : {}) }
+    return { headline: t(label), detail: t(hint), ...(also ? { also } : {}) }
   }
   switch (entry.state) {
     case 'loading':
-      return { headline: 'Checking GitHub…', detail: 'the status of this reference is on its way' }
+      return { headline: t('Checking GitHub…'), detail: t('the status of this reference is on its way') }
     case 'unavailable':
       return {
-        headline: 'Status unavailable',
-        detail: entry.reason ?? 'GitHub could not be reached — the chip says nothing rather than guessing',
+        headline: t('Status unavailable'),
+        detail:
+          entry.reason ?? t('GitHub could not be reached — the chip says nothing rather than guessing'),
       }
     case 'unknown':
       return {
-        headline: 'Not found on this repository',
-        detail: 'GitHub has no such number here — the reference may point at another repo',
+        headline: t('Not found on this repository'),
+        detail: t('GitHub has no such number here — the reference may point at another repo'),
       }
     default:
       return null

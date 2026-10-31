@@ -10,6 +10,7 @@ import { deriveAttention, isNeedsYouStatus } from '@/lib/attention'
 import { taskReferences } from '@/lib/tasks-table'
 import { shortAge } from '@/lib/format'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 import { DisclosureChevron, disclosureSummary } from './presentation'
 export const taskKey = (row: DashboardTaskRow) => `${row.projectId}:${row.id}`
 export function TaskRow({
@@ -29,6 +30,7 @@ export function TaskRow({
   queue?: boolean
 }) {
   const reconciled = useContext(DashboardReconciledContext) && !checking && !checkFailed
+  const { t } = useI18n()
   const truth = useDashboardTruth(row)
   removed = removed || truth === null || (queue && truth?.archived === true)
   if (truth) row = { ...row, status: truth.status, awaitingAnswerSince: truth.awaitingAnswerSince }
@@ -80,19 +82,19 @@ export function TaskRow({
             <span className="font-mono text-[11px] text-soft-foreground">{row.projectId}</span>
             <span>
               {checkFailed
-                ? 'Could not check current state'
+                ? t('Could not check current state')
                 : !reconciled
-                  ? 'Checking current state…'
+                  ? t('Checking current state…')
                   : removed
                     ? queue && truth !== null
-                      ? 'No longer needs you'
-                      : 'Task removed'
+                      ? t('No longer needs you')
+                      : t('Task removed')
                     : obsolete
-                      ? 'No longer needs you'
-                      : attention.label}
+                      ? t('No longer needs you')
+                      : t(attention.label)}
             </span>
             <span>{shortAge(row.createdAt)}</span>
-            {row.dispatch && <span>Subtask</span>}
+            {row.dispatch && <span>{t('Subtask')}</span>}
             {!inactive &&
               taskReferences(row).map((ref) => (
                 <ReferenceChip
@@ -119,33 +121,40 @@ export function Coverage({
   retry: () => void
 }) {
   const unavailable = coverage.projects.filter((p) => p.state !== 'complete')
+  const { t } = useI18n()
   if (!unavailable.length) return null
   return (
     <div className="rounded-lg border border-pending/40 bg-card-2 p-3 text-sm" role="status">
       <p>
         {count !== undefined
-          ? `${count} tasks need you in the available data. Complete coverage: ${coverage.projects.length - unavailable.length} of ${coverage.projects.length} projects. `
+          ? `${t('{count} tasks need you in the available data. Complete coverage: {available} of {total} projects.', {
+              count,
+              available: coverage.projects.length - unavailable.length,
+              total: coverage.projects.length,
+            })} `
           : ''}
         {unavailable.length === 1
           ? unavailable[0]!.state === 'unavailable'
-            ? 'One project is unavailable.'
-            : 'One project has incomplete coverage.'
-          : `${unavailable.length} projects have incomplete coverage.`}
+            ? t('One project is unavailable.')
+            : t('One project has incomplete coverage.')
+          : t('{count} projects have incomplete coverage.', { count: unavailable.length })}
       </p>
       <details className="mt-2">
         <summary className={`${disclosureSummary} min-h-11`}>
           <DisclosureChevron />
-          View unavailable {unavailable.length === 1 ? 'project' : 'projects'}
+          {t('View unavailable {kind}', {
+            kind: unavailable.length === 1 ? t('project') : t('projects'),
+          })}
         </summary>
         {unavailable.map((p) => (
           <p key={p.projectId}>
             {p.projectId}: {p.reason ?? p.state}
-            {p.omittedRuns > 0 ? ` · ${p.omittedRuns} omitted tasks` : ''}
+            {p.omittedRuns > 0 ? ` · ${t('{count} omitted tasks', { count: p.omittedRuns })}` : ''}
           </p>
         ))}
       </details>
       <Button variant="outline" onClick={retry} className="min-h-11">
-        Retry
+        {t('Retry')}
       </Button>
     </div>
   )

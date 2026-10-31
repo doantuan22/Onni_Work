@@ -101,4 +101,49 @@ describe('PickerPill catalog status', () => {
     expect(screen.getAllByRole('menuitemradio').map((option) => option.textContent)).toEqual(['branch-4999'])
     vi.unstubAllGlobals()
   })
+
+  it('finds an option by its id when the label spells it differently', async () => {
+    render(
+      <PickerPill
+        slot="roster-model"
+        ariaLabel="Model"
+        label="auto"
+        value=""
+        onPick={() => {}}
+        options={[
+          { value: '', label: 'auto' },
+          { value: 'anthropic/claude-opus-4-5', label: 'opus 4.5' },
+        ]}
+        searchPlaceholder="Search models…"
+      />,
+    )
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Model' }))
+    const search = await screen.findByRole('searchbox', { name: 'Search models…' })
+    fireEvent.change(search, { target: { value: 'claude-opus' } })
+    expect(screen.getAllByRole('menuitemradio').map((option) => option.textContent)).toEqual(['opus 4.5'])
+  })
+
+  it('offers typed text as an explicit custom row, never duplicating a real option', async () => {
+    const onPick = vi.fn()
+    render(
+      <PickerPill
+        slot="roster-model"
+        ariaLabel="Model"
+        label="auto"
+        value=""
+        onPick={onPick}
+        options={[{ value: '', label: 'auto' }, { value: 'opus', label: 'opus' }]}
+        searchPlaceholder="Search models…"
+        allowCustom
+        customHint="sent exactly as typed"
+      />,
+    )
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Model' }))
+    const search = await screen.findByRole('searchbox', { name: 'Search models…' })
+    fireEvent.change(search, { target: { value: 'opus' } })
+    expect(screen.queryByText(/Use “opus”/)).toBeNull()
+    fireEvent.change(search, { target: { value: 'opusx' } })
+    fireEvent.click(await screen.findByText('Use “opusx”'))
+    await waitFor(() => expect(onPick).toHaveBeenCalledWith('opusx'))
+  })
 })

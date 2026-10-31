@@ -10,6 +10,8 @@ import {
 } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 
+import { useI18n } from '@/lib/i18n'
+
 import {
   NEAR_BOTTOM_SLACK_PX,
   isNearHistoryStart,
@@ -607,6 +609,7 @@ function VirtualRows({
 
 /** The floating "Jump to latest" pill, absolutely positioned above the dock by its caller. */
 export function JumpToLatestPill({ onJump }: { onJump: () => void }) {
+  const { t } = useI18n()
   return (
     <button
       type="button"
@@ -615,7 +618,7 @@ export function JumpToLatestPill({ onJump }: { onJump: () => void }) {
       className="pointer-events-auto inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-background px-3.5 text-xs font-medium text-muted-foreground shadow-modal hover:text-foreground"
     >
       <ArrowDownIcon aria-hidden className="size-3.5" />
-      Jump to latest
+      {t('Jump to latest')}
     </button>
   )
 }

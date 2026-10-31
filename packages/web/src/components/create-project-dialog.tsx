@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { GithubTemplateInput } from '@/components/github-template-input'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /** Typing a space gives a dash, the way GitHub's own new-repository form suggests it: the name is
@@ -51,6 +52,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
   const owners = useGithubOwners()
   const create = useCreateProject()
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   const checkoutId = useMemo(() => `np-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`, [])
   const idRef = useRef(checkoutId)
@@ -83,8 +85,8 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
     trimmedName === '' || nameValid
       ? null
       : trimmedName.length > 100
-        ? 'At most 100 characters.'
-        : 'Use letters, digits, “.”, “-” and “_” only.'
+        ? t('At most 100 characters.')
+        : t('Use letters, digits, “.”, “-” and “_” only.')
   const projectsDir = projects.data?.projectsDir ?? ''
   const target = nameValid ? `${projectsDir.replace(/\/+$/, '')}/${trimmedName}` : ''
 
@@ -142,9 +144,9 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
         )}
       >
         <DialogHeader>
-          <DialogTitle>New project</DialogTitle>
+          <DialogTitle>{t('New project')}</DialogTitle>
           <DialogDescription>
-            onni creates a new git repository in your checkout root and adds it as a project.
+            {t('onni creates a new git repository in your checkout root and adds it as a project.')}
           </DialogDescription>
         </DialogHeader>
 
@@ -181,7 +183,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
             )}
           >
             <div className="grid gap-1.5">
-              <Label htmlFor="create-name">Name</Label>
+              <Label htmlFor="create-name">{t('Name')}</Label>
               <Input
                 id="create-name"
                 data-slot="create-name"
@@ -216,7 +218,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="create-github" className="flex items-center gap-1.5">
                   <LockIcon className="size-3.5" aria-hidden="true" />
-                  Create a private GitHub repository
+                  {t('Create a private GitHub repository')}
                 </Label>
                 <Switch
                   id="create-github"
@@ -228,19 +230,20 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
               </div>
 
               {owners.isPending ? (
-                <p className="text-[12px] text-muted-foreground">Checking GitHub…</p>
+                <p className="text-[12px] text-muted-foreground">{t('Checking GitHub…')}</p>
               ) : !githubAvailable ? (
                 <p data-slot="create-github-unavailable" className="text-[12px] text-muted-foreground">
                   {ownersData && !ownersData.available
                     ? ownersData.reason
-                    : 'Could not read your GitHub accounts — the project will be created locally only.'}
+                    : t('Could not read your GitHub accounts — the project will be created locally only.')}
                 </p>
               ) : null}
 
               {github ? (
                 <p className="text-[12px] text-muted-foreground">
-                  Created as <strong>private</strong> under <strong>{effectiveOwner}</strong> — you can change its
-                  visibility on GitHub.
+                  {t('Created as')} <strong>{t('private')}</strong> {t('under')}{' '}
+                  <strong>{effectiveOwner}</strong>{' '}
+                  {t('— you can change its visibility on GitHub.')}
                 </p>
               ) : null}
             </div>
@@ -250,29 +253,29 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
               className="grid gap-3 rounded-md border border-border p-3 md:flex md:min-h-0 md:flex-1 md:flex-col"
             >
               <span id="create-start-label" className="text-sm font-medium">
-                Start with
+                {t('Start with')}
               </span>
               <div role="radiogroup" aria-labelledby="create-start-label" className="grid gap-2 sm:grid-cols-2">
                 <StartOption
                   slot="create-start-empty"
                   checked={!fromTemplate}
                   disabled={busy}
-                  title="Empty repository"
-                  hint="One empty commit, no files."
+                  title={t('Empty repository')}
+                  hint={t('One empty commit, no files.')}
                   onSelect={() => setStart('empty')}
                 />
                 <StartOption
                   slot="create-start-template"
                   checked={fromTemplate}
                   disabled={busy || !github}
-                  title="From a template"
-                  hint={github ? 'Copy a GitHub template.' : 'Needs a GitHub repository.'}
+                  title={t('From a template')}
+                  hint={github ? t('Copy a GitHub template.') : t('Needs a GitHub repository.')}
                   onSelect={() => setStart('template')}
                 />
               </div>
               {fromTemplate ? (
                 <div className="grid gap-1.5 md:flex md:min-h-0 md:flex-1 md:flex-col">
-                  <Label htmlFor="create-template">Template</Label>
+                  <Label htmlFor="create-template">{t('Template')}</Label>
                   <GithubTemplateInput id="create-template" value={template} disabled={busy} onChange={setTemplate} />
                 </div>
               ) : null}
@@ -280,13 +283,13 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
 
             {busy ? (
               <p data-slot="create-progress" className="truncate font-mono text-[11.5px] text-muted-foreground">
-                {progress ?? 'Starting…'}
+                {progress ?? t('Starting…')}
               </p>
             ) : null}
 
             {create.isError ? (
               <p data-slot="create-error" className="whitespace-pre-line text-[13px] text-danger">
-                {create.error instanceof Error ? create.error.message : 'could not create the project'}
+                {create.error instanceof Error ? create.error.message : t('could not create the project')}
               </p>
             ) : null}
           </div>
@@ -294,14 +297,14 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
 
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button
             data-slot="create-confirm"
             disabled={!nameValid || busy || templateMissing || (useGithub && owners.isPending)}
             onClick={submit}
           >
-            {busy ? 'Creating…' : 'Create'}
+            {busy ? t('Creating…') : t('Create')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -325,6 +328,7 @@ function OwnerPicker({
   disabled: boolean
   onChange: (login: string) => void
 }) {
+  const { t } = useI18n()
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const move = (from: number, delta: number) => {
     if (owners.length === 0) return
@@ -340,7 +344,7 @@ function OwnerPicker({
         id="create-owner-label"
         className="text-[12px] font-semibold tracking-wider text-muted-foreground uppercase"
       >
-        Select organization
+        {t('Select organization')}
       </span>
       <div
         role="radiogroup"
@@ -386,7 +390,7 @@ function OwnerPicker({
                   {selected ? <CircleCheckIcon className="size-4 shrink-0 text-primary" aria-hidden="true" /> : null}
                 </span>
                 {o.personal ? (
-                  <span className="text-[12px] text-muted-foreground">Personal account</span>
+                  <span className="text-[12px] text-muted-foreground">{t('Personal account')}</span>
                 ) : o.description ? (
                   <span className="line-clamp-2 text-[12px] text-muted-foreground">{o.description}</span>
                 ) : null}
@@ -437,10 +441,11 @@ function StartOption({
 
 /** Placeholder cards while `gh` is asked for the accounts, so the column does not pop in. */
 function OwnerPickerLoading() {
+  const { t } = useI18n()
   return (
     <div className="grid gap-3" data-slot="create-owners-loading" aria-hidden="true">
       <span className="text-[12px] font-semibold tracking-wider text-muted-foreground uppercase">
-        Select organization
+        {t('Select organization')}
       </span>
       {[0, 1].map((i) => (
         <div key={i} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">

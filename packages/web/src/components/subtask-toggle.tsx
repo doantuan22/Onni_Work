@@ -1,6 +1,7 @@
 import { ChevronRightIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * The "N subtasks" chip, grown into the accordion's handle (#1110): a parent row's one control
@@ -25,12 +26,13 @@ export function SubtaskToggle({
   onToggle: () => void
   className?: string
 }) {
+  const { t } = useI18n()
   return (
     <button
       type="button"
       data-slot="subtask-toggle"
       aria-expanded={expanded}
-      aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
+      aria-label={expanded ? t('Collapse {label}', { label }) : t('Expand {label}', { label })}
       onClick={onToggle}
       className={cn(
         'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-muted py-px pr-1.5 pl-1 text-[10.5px] font-medium text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',

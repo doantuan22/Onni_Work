@@ -4,6 +4,7 @@ import { PickerPill } from '@/components/picker-pill'
 import { Label } from '@/components/ui/label'
 import { SourcePill } from '@/components/source-pill'
 import { Switch } from '@/components/ui/switch'
+import { useI18n } from '@/lib/i18n'
 import type { TaskSource } from '@/lib/task-source'
 
 /**
@@ -37,6 +38,7 @@ export function EditorRunAs({
   autonomous: boolean
   onAutonomous: (autonomous: boolean) => void
 }) {
+  const { t } = useI18n()
   return (
     <div data-slot="editor-run-as" className="flex flex-wrap items-center gap-2">
       <SourcePill
@@ -50,18 +52,18 @@ export function EditorRunAs({
       <EnginePills pick={pick} onChange={onPick} accounts />
       <PickerPill
         slot="editor-base-pill"
-        ariaLabel="Base branch"
+        ariaLabel={t('Base branch')}
         readOnly
-        hint="Every run branches off the project's base branch."
-        label={<span className="font-mono text-[11.5px]">base: {baseBranch ?? '…'}</span>}
+        hint={t("Every run branches off the project's base branch.")}
+        label={<span className="font-mono text-[11.5px]">{t('base: {branch}', { branch: baseBranch ?? '…' })}</span>}
         value={baseBranch ?? ''}
         options={[]}
         onPick={() => undefined}
       />
       <span className="flex-1" />
       <Label className="text-[13px] font-medium">
-        Autonomous
-        <Switch aria-label="Autonomous" checked={autonomous} onCheckedChange={onAutonomous} />
+        {t('Autonomous')}
+        <Switch aria-label={t('Autonomous')} checked={autonomous} onCheckedChange={onAutonomous} />
       </Label>
     </div>
   )

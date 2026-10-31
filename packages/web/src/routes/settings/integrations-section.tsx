@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useI18n } from '@/lib/i18n'
 import { TesterArmyE2eCard } from './tester-army-e2e-card'
 
 /**
@@ -7,14 +8,15 @@ import { TesterArmyE2eCard } from './tester-army-e2e-card'
  * (spec 2026-10-10-e2e-one-click-setup).
  */
 export function IntegrationsSection() {
+  const { t } = useI18n()
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 md:p-6" data-slot="integrations-settings">
       <p className="text-sm text-muted-foreground">
-        Tools onni can set up in this project for you — each one as a task you review and merge.
+        {t('Tools onni can set up in this project for you — each one as a task you review and merge.')}
       </p>
       <Tabs defaultValue="test-frameworks">
         <TabsList variant="line" data-slot="integrations-tabs">
-          <TabsTrigger value="test-frameworks">Test frameworks</TabsTrigger>
+          <TabsTrigger value="test-frameworks">{t('Test frameworks')}</TabsTrigger>
         </TabsList>
         <TabsContent value="test-frameworks" className="pt-4">
           <TesterArmyE2eCard />

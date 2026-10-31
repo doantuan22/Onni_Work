@@ -6,6 +6,7 @@ import { useRepoFile, useRunFile } from '@/api/queries'
 import type { WorktreeEntry } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { highlight, highlightSync, langForPath, type SynToken } from '@/lib/highlighter'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import { Markdown } from '../task-thread/markdown'
@@ -54,6 +55,7 @@ export function FilePreview({
   className?: string
 }) {
   const entry = useFileEntry(source, path ?? undefined)
+  const { t } = useI18n()
 
   if (path === null) {
     return (
@@ -62,8 +64,8 @@ export function FilePreview({
           icon={<MousePointerClickIcon />}
           tone="neutral"
           heading="h2"
-          title="Select a file"
-          subtitle="Pick a file from the tree to preview it here."
+          title={t('Select a file')}
+          subtitle={t('Pick a file from the tree to preview it here.')}
         />
       </Pane>
     )
@@ -121,6 +123,7 @@ function FileEntryView({
   entry: Extract<WorktreeEntry, { type: 'file' }>
   className?: string
 }) {
+  const { t } = useI18n()
   const kind = previewKind(entry)
   const markdown = kind === 'text' && isMarkdownPath(entry.path)
   const [mode, setMode] = useState(markdownViewMode)
@@ -178,7 +181,7 @@ function FileEntryView({
           icon={<FileWarningIcon />}
           tone="neutral"
           heading="h2"
-          title="Too large to preview"
+          title={t('Too large to preview')}
           subtitle={`${formatFileSize(entry.size)} — past the preview cap. Open it in your editor instead.`}
         />
       ) : kind === 'binary' ? (
@@ -186,7 +189,7 @@ function FileEntryView({
           icon={<FileQuestionIcon />}
           tone="neutral"
           heading="h2"
-          title="Binary file"
+          title={t('Binary file')}
           subtitle={`${formatFileSize(entry.size)} of binary data — no text preview.`}
         />
       ) : markdown && mode === 'rendered' ? (

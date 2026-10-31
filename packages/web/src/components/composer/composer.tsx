@@ -23,6 +23,7 @@ import { IconTooltip } from '@/components/ui/icon-tooltip'
 import { Command, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { insertTemplate } from '@/lib/prompt-templates'
 import { isEditableTarget } from '@/lib/use-command-shortcut'
 import { bumpSkillUsage, filterSkills, fuzzyMatch, isProjectSkill } from '@/lib/skills'
@@ -185,6 +186,7 @@ export function Composer({
   getMentionCandidates,
   ref,
 }: ComposerProps) {
+  const { t } = useI18n()
   // Optionally controlled: `value` (when given) shadows the internal state, and every write is
   // mirrored to both — updater functions resolve against whichever is authoritative right now.
   const [internalText, setInternalText] = useState('')
@@ -386,14 +388,19 @@ export function Composer({
           // A dropped folder, or a file gone before it was read, rejects `arrayBuffer()` with
           // NotFoundError (WebKit: "The object can not be found here.").
           const gone = error instanceof DOMException && error.name === 'NotFoundError'
-          toast(`“${file.name}” could not be read${gone ? ' — a folder, or a file that no longer exists' : ''}`, {
-            tone: 'danger',
-            expected: gone,
-          })
+          toast(
+            gone
+              ? t('“{name}” could not be read — a folder, or a file that no longer exists', { name: file.name })
+              : t('“{name}” could not be read', { name: file.name }),
+            {
+              tone: 'danger',
+              expected: gone,
+            },
+          )
         })
       }
     },
-    [disabled],
+    [disabled, t],
   )
 
   const onPaste = (event: ClipboardEvent) => {
@@ -449,14 +456,16 @@ export function Composer({
             if (!next) dropped.push(a)
             return next ?? list
           }, messageImages)
-          for (const a of dropped) toast(`“${a.name}” removed — the restored message fills the attachment limit`, { tone: 'danger' })
+          for (const a of dropped) {
+            toast(t('“{name}” removed — the restored message fills the attachment limit', { name: a.name }), { tone: 'danger' })
+          }
           setImages(restored)
         }
       } finally {
         setBusy(false)
       }
     },
-    [allowEmptySubmit, busy, disabled, submitDisabled, onSubmit],
+    [allowEmptySubmit, busy, disabled, submitDisabled, onSubmit, t],
   )
 
   const submitDraft = useCallback(() => {
@@ -569,12 +578,12 @@ export function Composer({
     <Button
       type="button"
       size={sendLabel ? "sm" : "icon-sm"}
-      aria-label={sendAriaLabel}
+      aria-label={t(sendAriaLabel)}
       disabled={sendDisabled}
       className={cn(sendLabel ? "h-8" : "size-8", sendMenu && "rounded-r-none")}
       onClick={submitDraft}
     >
-      <ArrowUpIcon aria-hidden="true" />{sendLabel}
+      <ArrowUpIcon aria-hidden="true" />{sendLabel ? t(sendLabel) : null}
     </Button>
   )
   // The chord goes in the tooltip, not on the button — the way GitHub and Linear show it.
@@ -583,7 +592,7 @@ export function Composer({
       side="top"
       label={
         <span data-slot="composer-send-shortcut" className="flex items-center gap-2">
-          {sendLabel ?? sendAriaLabel}
+          {sendLabel ? t(sendLabel) : t(sendAriaLabel)}
           <kbd className="font-sans opacity-70">{sendShortcut}</kbd>
         </span>
       }
@@ -614,8 +623,8 @@ export function Composer({
                 <button
                   key={`${attachment.name}-${index}`}
                   type="button"
-                  aria-label={`Remove ${attachment.name}`}
-                  title="Click to remove"
+                  aria-label={t('Remove {name}', { name: attachment.name })}
+                  title={t('Click to remove')}
                   className={cn(
                     'group relative overflow-hidden rounded-md border border-border',
                     attachment.isImage
@@ -655,8 +664,8 @@ export function Composer({
             rows={1}
             value={text}
             disabled={disabled}
-            aria-label={ariaLabel}
-            placeholder={disabled ? disabledReason : placeholder}
+            aria-label={t(ariaLabel)}
+            placeholder={t(disabled ? disabledReason : placeholder)}
             // 16px on touch widths — iOS zooms any focused input below 16px (spec mobile rule).
             className="block max-h-[220px] min-h-11 w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-base leading-normal outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:min-h-[54px] md:px-4 md:pt-3 md:text-sm"
             onChange={(event) => {
@@ -697,11 +706,11 @@ export function Composer({
                       variant="ghost"
                       size="sm"
                       aria-disabled="true"
-                      aria-label="Start dictation"
+                      aria-label={t('Start dictation')}
                       className="h-8 cursor-not-allowed gap-1.5 px-2.5 text-xs font-medium text-muted-foreground opacity-50 hover:bg-transparent"
                     >
                       <MicIcon aria-hidden="true" className="size-3.5" />
-                      Dictation
+                      {t('Dictation')}
                     </Button>
                   </IconTooltip>
                 ) : dictation.supported ? (
@@ -710,13 +719,13 @@ export function Composer({
                     variant="ghost"
                     size="sm"
                     disabled={disabled}
-                    aria-label="Start dictation"
-                    title="Dictation"
+                    aria-label={t('Start dictation')}
+                    title={t('Dictation')}
                     className="h-8 gap-1.5 px-2.5 text-xs font-medium text-muted-foreground"
                     onClick={dictation.start}
                   >
                     <MicIcon aria-hidden="true" className="size-3.5" />
-                    Dictation
+                    {t('Dictation')}
                   </Button>
                 ) : null}
                 {footerEnd ? (
@@ -787,10 +796,10 @@ export function Composer({
             {candidates.length === 0 ? (
               <p className="px-3 py-4 text-center text-xs text-muted-foreground">
                 {trigger?.trigger === '@'
-                  ? 'No files seen in this session yet — full file search arrives with the Files tab.'
+                  ? t('No files seen in this session yet — full file search arrives with the Files tab.')
                   : skills.isPending
-                    ? 'Loading skills…'
-                    : 'No matching skills.'}
+                    ? t('Loading skills…')
+                    : t('No matching skills.')}
               </p>
             ) : (
               candidates.map((candidate) => (
@@ -838,14 +847,15 @@ function AttachButton({
   onFiles: (files: readonly File[]) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const { t } = useI18n()
   return (
     <>
       <Button
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Attach files"
-        title="Attach images or files (or paste a screenshot)"
+        aria-label={t('Attach files')}
+        title={t('Attach images or files (or paste a screenshot)')}
         disabled={disabled}
         className="size-8 text-muted-foreground"
         onClick={() => inputRef.current?.click()}
@@ -888,11 +898,12 @@ function DictationBar({
   onInsertAndSend: () => void
 }) {
   const now = useNow(1000)
+  const { t } = useI18n()
   return (
     <div
       data-slot="dictation-overlay"
       role="status"
-      aria-label="Dictation in progress"
+      aria-label={t('Dictation in progress')}
       className="flex items-center gap-2.5 rounded-b-xl border-t border-border bg-muted/60 px-3 py-2"
     >
       <span
@@ -908,7 +919,7 @@ function DictationBar({
         className="min-w-0 flex-1 truncate text-sm text-foreground"
       >
         {transcript === '' ? (
-          <span className="text-muted-foreground">Listening…</span>
+          <span className="text-muted-foreground">{t('Listening…')}</span>
         ) : (
           transcript
         )}
@@ -917,7 +928,7 @@ function DictationBar({
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Cancel dictation"
+        aria-label={t('Cancel dictation')}
         className="size-8 text-muted-foreground"
         onClick={onCancel}
       >
@@ -927,7 +938,7 @@ function DictationBar({
         type="button"
         variant="outline"
         size="icon-sm"
-        aria-label="Insert transcription"
+        aria-label={t('Insert transcription')}
         className="size-8"
         onClick={onInsert}
       >
@@ -936,7 +947,7 @@ function DictationBar({
       <Button
         type="button"
         size="icon-sm"
-        aria-label="Insert transcription and send"
+        aria-label={t('Insert transcription and send')}
         className="size-8"
         onClick={onInsertAndSend}
       >

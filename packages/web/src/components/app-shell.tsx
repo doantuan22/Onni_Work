@@ -37,6 +37,7 @@ import { activeNavItem, activeNavPath, visibleNavItems, type NavItem } from '@/c
 import type { TrackerKind } from '@onni/api-client'
 import { SidebarDrawer, SidebarFrame, useDesktopShell, useSidebarWidth, type SidebarResize } from '@/components/sidebar-frame'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 /** Tailwind's `md`. The drawer is the `<md` affordance, so this must stay in step with the
  *  `md:hidden` / `md:flex` classes below — they are the same breakpoint expressed twice, once
  *  for CSS and once for the state machine. */
@@ -176,6 +177,7 @@ export const AppShell = React.memo(function AppShell({
   brandLogoUrl = null,
 }: AppShellProps) {
   const { pathname } = useLocation()
+  const { t } = useI18n()
   // The nav's area rules reason about the flat route map — strip any `/p/:projectId` prefix
   // (multi-project spec, step 3.2) so `/p/onni/git/commits` still lights Git.
   const areaPathname = stripProjectPrefix(pathname)
@@ -289,7 +291,7 @@ export const AppShell = React.memo(function AppShell({
             keeps the scroller in row 3 either way. */}
         {chromeless ? null : (
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <MobileTopBar title={current?.label ?? brandName} />
+            <MobileTopBar title={current ? t(current.label) : brandName} />
             {/* The drawer keeps its fixed 264px: it is a full-height overlay on a phone, where
                 there is no second column to trade width with and no pointer to drag a border. */}
             <MobileNavDrawer {...nav} onNavigate={closeMenu} />
@@ -347,8 +349,9 @@ const Sidebar = React.memo(function Sidebar({
 
 /** The `<md` drawer: the shared `SidebarDrawer` around the SAME content the column renders. */
 const MobileNavDrawer = React.memo(function MobileNavDrawer({ onNavigate, ...props }: NavProps & { onNavigate: () => void }) {
+  const { t } = useI18n()
   return (
-    <SidebarDrawer slot="mobile-nav-drawer" title="Navigation">
+    <SidebarDrawer slot="mobile-nav-drawer" title={t('Navigation')}>
       {(closeButton) => <SidebarContent {...props} onNavigate={onNavigate} headerAction={closeButton} />}
     </SidebarDrawer>
   )
@@ -393,6 +396,7 @@ function SidebarContent({
    *  below the traffic lights. */
   compactHeader?: boolean
 }) {
+  const { t, tn } = useI18n()
   return (
     <div
       data-slot="sidebar-content"
@@ -427,7 +431,7 @@ function SidebarContent({
               React composer has owned auto-start parity since R4 Step 1.3. */}
           <Link to="/new" onClick={onNavigate}>
             <PlusIcon className="size-[15px]" aria-hidden="true" />
-            New task
+            {t('New task')}
             {/* Decorative: the `c`-to-create accelerator is registered in the command palette.
                 (⌘N is also bound there, but only the desktop shell receives it — the browser
                 reserves ⌘N for a new window — so the chip advertises the one that always works.) */}
@@ -471,7 +475,7 @@ function SidebarContent({
         </>
       ) : (
         <>
-          <nav aria-label="Main" className="px-2.5 py-1.5">
+          <nav aria-label={t('Main')} className="px-2.5 py-1.5">
             {items.map((item) => {
               const isActive = item.to === activeTo
               const Icon = item.icon
@@ -493,7 +497,7 @@ function SidebarContent({
                   )}
                 >
                   <Icon className="size-4 shrink-0" aria-hidden="true" />
-                  {item.label}
+                  {t(item.label)}
                   {item.badge === 'inbox-count' && inboxCount ? (
                     <span
                       data-slot="nav-badge"
@@ -507,7 +511,7 @@ function SidebarContent({
                   {item.badge === 'tasks-unread' && unreadCount ? (
                     <span
                       data-slot="nav-unread-badge"
-                      title={`${unreadCount} unread finished ${unreadCount === 1 ? 'task' : 'tasks'}`}
+                      title={tn(unreadCount, '{count} unread finished task', '{count} unread finished tasks')}
                       className="ml-auto rounded-full bg-violet px-1.5 py-px text-[10.5px] font-semibold text-violet-foreground"
                     >
                       {unreadCount}
@@ -587,6 +591,7 @@ function sidebarSectionIconClass(isActive: boolean) {
  * lit across all of them where a `pathname ===` check on a full location would not.
  */
 function DashboardLink({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useI18n()
   return (
     <NavLink
       to="/dashboard"
@@ -597,7 +602,7 @@ function DashboardLink({ onNavigate }: { onNavigate?: () => void }) {
       {({ isActive }) => (
         <>
           <LayoutDashboardIcon className={sidebarSectionIconClass(isActive)} aria-hidden="true" />
-          Dashboard
+          {t('Dashboard')}
         </>
       )}
     </NavLink>
@@ -615,6 +620,7 @@ function DashboardLink({ onNavigate }: { onNavigate?: () => void }) {
  */
 function AllTasksLink({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation()
+  const { t } = useI18n()
   const isActive = pathname === '/tasks'
   return (
     <RouterLink
@@ -628,7 +634,7 @@ function AllTasksLink({ onNavigate }: { onNavigate?: () => void }) {
       className={cn(SIDEBAR_SECTION_LINK_CLASS, isActive && 'bg-muted')}
     >
       <LayersIcon className={sidebarSectionIconClass(isActive)} aria-hidden="true" />
-      All tasks
+      {t('All tasks')}
     </RouterLink>
   )
 }
@@ -648,13 +654,14 @@ function GlobalSettingsLink({
   className?: string
   onNavigate?: () => void
 }) {
+  const { t } = useI18n()
   return (
     <Button asChild variant="ghost" size="icon" className={cn('size-7', className)}>
       <RouterLink
         to="/settings/global"
         data-slot="global-settings-link"
-        aria-label="Global settings"
-        title="Global settings"
+        aria-label={t('Global settings')}
+        title={t('Global settings')}
         onClick={onNavigate}
       >
         <SettingsIcon className="size-4" aria-hidden="true" />
@@ -683,6 +690,7 @@ function GlobalSettingsLink({
  * cheaper half of the trade.
  */
 function AddProjectMenu() {
+  const { t } = useI18n()
   const [browsing, setBrowsing] = React.useState(false)
   const [cloning, setCloning] = React.useState(false)
   const [creating, setCreating] = React.useState(false)
@@ -693,15 +701,15 @@ function AddProjectMenu() {
         <Button
           variant="outline"
           size="icon"
-          aria-label="Add project"
-          title="Add project"
+          aria-label={t('Add project')}
+          title={t('Add project')}
           className="size-11 shrink-0 md:size-9"
         >
           <FolderOpenIcon className="size-4" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel className="text-xs text-soft-foreground">Add project</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-soft-foreground">{t('Add project')}</DropdownMenuLabel>
         <DropdownMenuItem
           data-slot="add-project-local"
           onSelect={() => {
@@ -709,7 +717,7 @@ function AddProjectMenu() {
           }}
         >
           <FolderIcon aria-hidden="true" />
-          Open local folder…
+          {t('Open local folder…')}
         </DropdownMenuItem>
         <DropdownMenuItem
           data-slot="add-project-clone"
@@ -718,7 +726,7 @@ function AddProjectMenu() {
           }}
         >
           <GithubIcon aria-hidden="true" />
-          Clone from GitHub…
+          {t('Clone from GitHub…')}
         </DropdownMenuItem>
         <DropdownMenuItem
           data-slot="add-project-create"
@@ -727,21 +735,21 @@ function AddProjectMenu() {
           }}
         >
           <FolderPlusIcon aria-hidden="true" />
-          New project…
+          {t('New project…')}
         </DropdownMenuItem>
       </DropdownMenuContent>
       {browsing ? (
-        <DialogErrorBoundary label="Open local folder" onError={() => setBrowsing(false)}>
+        <DialogErrorBoundary label={t('Open local folder')} onError={() => setBrowsing(false)}>
           <AddProjectDialog open onOpenChange={setBrowsing} />
         </DialogErrorBoundary>
       ) : null}
       {cloning ? (
-        <DialogErrorBoundary label="Clone from GitHub" onError={() => setCloning(false)}>
+        <DialogErrorBoundary label={t('Clone from GitHub')} onError={() => setCloning(false)}>
           <CloneProjectDialog open onOpenChange={setCloning} />
         </DialogErrorBoundary>
       ) : null}
       {creating ? (
-        <DialogErrorBoundary label="New project" onError={() => setCreating(false)}>
+        <DialogErrorBoundary label={t('New project')} onError={() => setCreating(false)}>
           <CreateProjectDialog open onOpenChange={setCreating} />
         </DialogErrorBoundary>
       ) : null}
@@ -776,6 +784,7 @@ export function VersionChip({ version }: { version: string }) {
 
 /** Mobile chrome (<md): the sidebar's replacement. Its menu button opens `MobileNavDrawer`. */
 function MobileTopBar({ title }: { title: string }) {
+  const { t } = useI18n()
   return (
     <header
       data-slot="mobile-top-bar"
@@ -790,7 +799,7 @@ function MobileTopBar({ title }: { title: string }) {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Open menu"
+            aria-label={t('Open menu')}
             // 44px: the minimum touch target, overriding the 36px desktop icon-button size.
             className="-ml-1.5 size-11"
           >

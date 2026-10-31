@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Accent, Density, Width } from '@/lib/appearance'
 import type { Theme } from '@/lib/theme'
+import { useI18n, type Language } from '@/lib/i18n'
 import { useProjectOrder } from '@/lib/use-project-order'
 import { toast } from '@/components/ui/toaster'
 
@@ -53,6 +54,13 @@ const DENSITY_OPTIONS: Array<{ value: Density; label: string }> = [
 const WIDTH_OPTIONS: Array<{ value: Width; label: string }> = [
   { value: 'narrow', label: 'Narrow' },
   { value: 'wide', label: 'Full' },
+]
+
+/** Language names stay in their own language in both modes — "Tiếng Việt" is how a Vietnamese
+ *  speaker looks for it, and "English" is how everyone else does. */
+const LANGUAGE_OPTIONS: Array<{ value: Language; label: string }> = [
+  { value: 'en', label: 'English' },
+  { value: 'vi', label: 'Tiếng Việt' },
 ]
 
 /** One segmented radio group — the shared chassis of all three controls. */
@@ -121,6 +129,26 @@ function Field({ title, hint, children }: { title: string; hint: string; childre
   )
 }
 
+/** English or Vietnamese for this browser. Text produced by the server, a run or an agent keeps
+ *  its original wording — this is a UI layer, not a translating proxy. */
+function LanguageField() {
+  const { language, setLanguage, t } = useI18n()
+  return (
+    <Field
+      title={t('Language')}
+      hint={t('Applies to this browser only. Server messages, run output and agent replies stay in English.')}
+    >
+      <Segmented
+        slot="appearance-language"
+        label={t('Language')}
+        value={language}
+        options={LANGUAGE_OPTIONS}
+        onChange={setLanguage}
+      />
+    </Field>
+  )
+}
+
 /**
  * The undo for a drawer reordered by hand (#952) — the drag itself lives in the sidebar, where
  * it belongs, but "put it back" needs a home that is not a gesture.
@@ -129,6 +157,7 @@ function Field({ title, hint, children }: { title: string; hint: string; childre
  * button for state the user has never created is a control that can only do nothing.
  */
 function ProjectOrderField() {
+  const { t } = useI18n()
   const projects = useProjects()
   const { order, canReorder, reset } = useProjectOrder()
   const multiProject = (projects.data?.projects.length ?? 0) > 1
@@ -136,8 +165,8 @@ function ProjectOrderField() {
 
   return (
     <Field
-      title="Project order"
-      hint="The sidebar is in the order you dragged it into. Reset puts it back to most-recently-opened first. Shared with every browser signed in to this onni."
+      title={t('Project order')}
+      hint={t('The sidebar is in the order you dragged it into. Reset puts it back to most-recently-opened first. Shared with every browser signed in to this onni.')}
     >
       <Button
         type="button"
@@ -148,13 +177,14 @@ function ProjectOrderField() {
         onClick={reset}
         className="w-fit"
       >
-        Reset order
+        {t('Reset order')}
       </Button>
     </Field>
   )
 }
 
 function BrandingFields() {
+  const { t } = useI18n()
   const config = useWorkspaceConfig()
   const queryClient = useQueryClient()
   const logoInput = useRef<HTMLInputElement>(null)
@@ -186,9 +216,9 @@ function BrandingFields() {
     }
   }, [branding?.name])
   return <>
-    <Field title="Instance name" hint="Shown in the sidebar and browser tab across this workspace.">
+    <Field title={t('Instance name')} hint={t('Shown in the sidebar and browser tab across this workspace.')}>
       <div className="flex flex-wrap items-center gap-2">
-        <input data-slot="branding-name" aria-label="Instance name" maxLength={80} value={name} onChange={(event) => setName(event.currentTarget.value)}
+        <input data-slot="branding-name" aria-label={t('Instance name')} maxLength={80} value={name} onChange={(event) => setName(event.currentTarget.value)}
           onBlur={() => {
             const value = name.trim()
             if (!value) { setName(branding?.name ?? 'onni'); return }
@@ -197,17 +227,17 @@ function BrandingFields() {
           }}
           className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm" />
         <Button type="button" variant="outline" size="sm" disabled={!branding || branding.name === 'onni' || save.isPending}
-          onClick={() => save.mutate({ branding: { name: null } })}>Reset name</Button>
+          onClick={() => save.mutate({ branding: { name: null } })}>{t('Reset name')}</Button>
       </div>
     </Field>
-    <Field title="Logo" hint="PNG, JPEG, WebP, GIF, AVIF, or safe SVG up to 2 MB. Stored on this machine and shared by its browsers.">
+    <Field title={t('Logo')} hint={t('PNG, JPEG, WebP, GIF, AVIF, or safe SVG up to 2 MB. Stored on this machine and shared by its browsers.')}>
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3">
-        {logoDraft ? <img src={logoDraft.url} alt="Logo preview" className="size-10 rounded-md border border-border bg-background object-contain p-1" /> : branding?.logoUrl ? <img src={branding.logoUrl} alt="Current instance logo" className="size-10 rounded-md border border-border bg-background object-contain p-1" /> : <span aria-hidden="true" className="size-10 rounded-md border border-dashed border-border bg-background" />}
+        {logoDraft ? <img src={logoDraft.url} alt={t('Logo preview')} className="size-10 rounded-md border border-border bg-background object-contain p-1" /> : branding?.logoUrl ? <img src={branding.logoUrl} alt={t('Current instance logo')} className="size-10 rounded-md border border-border bg-background object-contain p-1" /> : <span aria-hidden="true" className="size-10 rounded-md border border-dashed border-border bg-background" />}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{logoDraft?.file.name ?? (branding?.logoUrl ? 'Current logo' : 'No logo selected')}</p>
-          <p className="text-xs text-muted-foreground">Choose an image to preview it before saving.</p>
+          <p className="truncate text-sm font-medium text-foreground">{logoDraft?.file.name ?? (branding?.logoUrl ? t('Current logo') : t('No logo selected'))}</p>
+          <p className="text-xs text-muted-foreground">{t('Choose an image to preview it before saving.')}</p>
         </div>
-        <input ref={logoInput} data-slot="branding-logo" aria-label="Upload logo" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" disabled={upload.isPending} hidden
+        <input ref={logoInput} data-slot="branding-logo" aria-label={t('Upload logo')} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" disabled={upload.isPending} hidden
           onChange={(event) => {
             const file = event.currentTarget.files?.[0]
             if (file) setLogoDraft({ file, url: URL.createObjectURL(file) })
@@ -215,20 +245,23 @@ function BrandingFields() {
           }} />
         <Button type="button" variant="outline" size="sm" disabled={!branding || upload.isPending} onClick={() => logoInput.current?.click()}>
           <UploadIcon aria-hidden="true" className="size-3.5" />
-          Choose logo
+          {t('Choose logo')}
         </Button>
         {logoDraft ? <>
-          <Button type="button" size="sm" disabled={upload.isPending} onClick={() => upload.mutate(logoDraft.file)}>Save logo</Button>
-          <Button type="button" variant="outline" size="sm" disabled={upload.isPending} onClick={() => setLogoDraft(null)}>Cancel</Button>
-        </> : branding?.logoUrl ? <Button type="button" variant="outline" size="sm" disabled={upload.isPending} onClick={() => upload.mutate(null)}>Remove logo</Button> : null}
+          <Button type="button" size="sm" disabled={upload.isPending} onClick={() => upload.mutate(logoDraft.file)}>{t('Save logo')}</Button>
+          <Button type="button" variant="outline" size="sm" disabled={upload.isPending} onClick={() => setLogoDraft(null)}>{t('Cancel')}</Button>
+        </> : branding?.logoUrl ? <Button type="button" variant="outline" size="sm" disabled={upload.isPending} onClick={() => upload.mutate(null)}>{t('Remove logo')}</Button> : null}
       </div>
     </Field>
   </>
 }
 
 export function AppearanceSection() {
+  const { t } = useI18n()
   const { theme, setTheme } = useTheme()
   const { accent, density, width, setAccent, setDensity, setWidth } = useAppearance()
+  const translateOptions = <O extends { label: string }>(options: O[]): O[] =>
+    options.map((option) => ({ ...option, label: t(option.label) }))
 
   return (
     <div
@@ -236,26 +269,27 @@ export function AppearanceSection() {
       className="mx-auto flex w-full max-w-2xl flex-col gap-7 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6"
     >
       <BrandingFields />
-      <Field title="Theme" hint="System follows your OS preference. Applies to this browser.">
-        <Segmented slot="appearance-theme" label="Theme" value={theme} options={THEME_OPTIONS} onChange={setTheme} />
+      <LanguageField />
+      <Field title={t('Theme')} hint={t('System follows your OS preference. Applies to this browser.')}>
+        <Segmented slot="appearance-theme" label={t('Theme')} value={theme} options={translateOptions(THEME_OPTIONS)} onChange={setTheme} />
       </Field>
 
-      <Field title="Accent" hint="The primary action color. Saved with this repo's cockpit state.">
-        <Segmented slot="appearance-accent" label="Accent" value={accent} options={ACCENT_OPTIONS} onChange={setAccent} />
-      </Field>
-
-      <Field
-        title="Density"
-        hint="Compact tightens spacing across the cockpit — text stays the same size."
-      >
-        <Segmented slot="appearance-density" label="Density" value={density} options={DENSITY_OPTIONS} onChange={setDensity} />
+      <Field title={t('Accent')} hint={t("The primary action color. Saved with this repo's cockpit state.")}>
+        <Segmented slot="appearance-accent" label={t('Accent')} value={accent} options={translateOptions(ACCENT_OPTIONS)} onChange={setAccent} />
       </Field>
 
       <Field
-        title="Reading width"
-        hint="Full gives task sessions, commits, and skill content the whole available area. Narrow keeps a comfortable reading column. The Changes tab is always full-width."
+        title={t('Density')}
+        hint={t('Compact tightens spacing across the cockpit — text stays the same size.')}
       >
-        <Segmented slot="appearance-width" label="Reading width" value={width} options={WIDTH_OPTIONS} onChange={setWidth} />
+        <Segmented slot="appearance-density" label={t('Density')} value={density} options={translateOptions(DENSITY_OPTIONS)} onChange={setDensity} />
+      </Field>
+
+      <Field
+        title={t('Reading width')}
+        hint={t('Full gives task sessions, commits, and skill content the whole available area. Narrow keeps a comfortable reading column. The Changes tab is always full-width.')}
+      >
+        <Segmented slot="appearance-width" label={t('Reading width')} value={width} options={translateOptions(WIDTH_OPTIONS)} onChange={setWidth} />
       </Field>
 
       <ProjectOrderField />

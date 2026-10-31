@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/lib/i18n'
 
 import { StartAppEditor } from './start-app-editor'
 
@@ -114,6 +115,7 @@ export function RunAppPanel({
   setup?: WorktreeLifecycleProjection
 }) {
   // The same reading the task's status pill makes (`deriveAttention`).
+  const { t } = useI18n()
   const setupFailed = setup?.phase === 'setup' && setup.needsAttention
   const setupRunning = setup?.phase === 'setup' && !setup.needsAttention && setup.activeOperationId !== undefined
   const [commands, setCommands] = useState<DiscoveredCommandEntry[] | null>(null)
@@ -252,7 +254,7 @@ export function RunAppPanel({
   const showTerminal = onShowTerminal ? (
     <Button type="button" variant="outline" size="sm" onClick={onShowTerminal}>
       <TerminalIcon aria-hidden="true" />
-      Show terminal
+      {t('Show terminal')}
     </Button>
   ) : null
   const editor = (
@@ -266,15 +268,19 @@ export function RunAppPanel({
 
   if (phase.kind === 'installing' || phase.kind === 'starting') {
     const what = phase.plan.services.join(' · ')
+    const tabs =
+      phase.plan.services.length > 1 ? t('new terminal tabs') : t('a new terminal tab')
+    const subtitle =
+      phase.kind === 'installing'
+        ? t('This worktree has no dependencies yet. {services} starts as soon as they are installed.', { services: what })
+        : phase.plan.url
+          ? t('Running in {tabs} of this task. The page opens here as soon as the app is up at {url}.', { tabs, url: phase.plan.url })
+          : t('Running in {tabs} of this task. The page opens here as soon as the app is up.', { tabs })
     return (
       <Shell
         icon={<LoaderCircleIcon aria-hidden="true" className="size-5 motion-safe:animate-spin" />}
-        title={phase.kind === 'installing' ? `Installing dependencies (${phase.install})` : `Starting ${what}`}
-        subtitle={
-          phase.kind === 'installing'
-            ? `This worktree has no dependencies yet. ${what} starts as soon as they are installed.`
-            : `Running in ${phase.plan.services.length > 1 ? 'new terminal tabs' : 'a new terminal tab'} of this task. The page opens here as soon as the app is up${phase.plan.url ? ` at ${phase.plan.url}` : ''}.`
-        }
+        title={phase.kind === 'installing' ? t('Installing dependencies ({command})', { command: phase.install }) : t('Starting {services}', { services: what })}
+        subtitle={subtitle}
       >
         {showTerminal}
       </Shell>
@@ -283,11 +289,13 @@ export function RunAppPanel({
 
   const outcome =
     phase.kind === 'exited'
-      ? `${phase.command} exited with code ${phase.code} before the app was up.`
+      ? t('{command} exited with code {code} before the app was up.', { command: phase.command, code: phase.code })
       : phase.kind === 'no-address'
-        ? `${phase.plan.services.join(' · ')} is still running, but ${phase.plan.url ? `nothing answered at ${phase.plan.url}` : 'printed no address'} yet. Enter it above, or check the terminal.`
+        ? phase.plan.url
+          ? t('{services} is still running, but nothing answered at {url} yet. Enter it above, or check the terminal.', { services: phase.plan.services.join(' · '), url: phase.plan.url })
+          : t('{services} is still running, but printed no address yet. Enter it above, or check the terminal.', { services: phase.plan.services.join(' · ') })
         : phase.kind === 'failed'
-          ? 'Could not open a terminal for this task.'
+          ? t('Could not open a terminal for this task.')
           : null
 
   const menu = (
@@ -300,15 +308,15 @@ export function RunAppPanel({
           data-action="run-app-other"
           disabled={setupRunning}
         >
-          {recipe || suggested ? 'Other command' : 'Choose a command'}
+          {recipe || suggested ? t('Other command') : t('Choose a command')}
           <ChevronDownIcon aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className="max-h-80 w-80 overflow-y-auto">
-        <DropdownMenuLabel>Project commands</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('Project commands')}</DropdownMenuLabel>
         {others.length === 0 ? (
           <p className="px-2 py-1.5 text-xs text-soft-foreground">
-            {commands === null ? 'Looking…' : 'No other commands in package.json or a Makefile.'}
+            {commands === null ? t('Looking…') : t('No other commands in package.json or a Makefile.')}
           </p>
         ) : (
           others.map((entry) => (
@@ -326,7 +334,7 @@ export function RunAppPanel({
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="font-normal text-soft-foreground">Custom command</DropdownMenuLabel>
+        <DropdownMenuLabel className="font-normal text-soft-foreground">{t('Custom command')}</DropdownMenuLabel>
         <form
           className="px-2 pb-1"
           onSubmit={(event) => {
@@ -340,8 +348,8 @@ export function RunAppPanel({
             onChange={(event) => setCustom(event.target.value)}
             // Radix would treat typing as menu type-ahead and steal the keystrokes.
             onKeyDown={(event) => event.stopPropagation()}
-            placeholder="e.g. npm run dev"
-            aria-label="Custom command"
+            placeholder={t('e.g. npm run dev')}
+            aria-label={t('Custom command')}
             spellCheck={false}
             className="h-8 px-2 font-mono text-xs shadow-none focus-visible:ring-0 md:text-xs"
           />
@@ -350,22 +358,25 @@ export function RunAppPanel({
     </DropdownMenu>
   )
 
-  const installNote = install ? ` Installs its dependencies first (${install}).` : ''
+  const installNote = install ? ` ${t('Installs its dependencies first ({command}).', { command: install })}` : ''
   const setupNote = setupRunning
-    ? "This worktree's setup scripts are still running. Start the app when they finish."
+    ? t("This worktree's setup scripts are still running. Start the app when they finish.")
     : setupFailed
-      ? "This worktree's setup needs attention — retry it from the task's Chat, or start the app anyway."
+      ? t("This worktree's setup needs attention — retry it from the task's Chat, or start the app anyway.")
       : null
+  const recipeNote = recipe
+    ? `${t(
+        recipe.scope === 'personal'
+          ? 'Your start recipe runs each service in its own terminal tab and opens {target}.'
+          : "This project's start recipe runs each service in its own terminal tab and opens {target}.",
+        { target: recipe.url ?? t('the address it prints') },
+      )}${installNote}`
+    : `${t("Starts the task's app in a terminal of its worktree and opens the address it prints.")}${installNote} ${t('Or enter an address above.')}`
   return (
     <Shell
       icon={<PlayIcon aria-hidden="true" className="size-5" />}
-      title={recipe ? 'Start the app' : 'Run the app'}
-      subtitle={
-        outcome ??
-        (recipe
-          ? `${recipe.scope === 'personal' ? 'Your' : "This project's"} start recipe runs each service in its own terminal tab and opens ${recipe.url ?? 'the address it prints'}.${installNote}`
-          : `Starts the task's app in a terminal of its worktree and opens the address it prints.${installNote} Or enter an address above.`)
-      }
+      title={recipe ? t('Start the app') : t('Run the app')}
+      subtitle={outcome ?? recipeNote}
     >
       {setupNote ? (
         <p data-slot="run-app-setup" role="status" className="max-w-md text-xs text-foreground">
@@ -383,7 +394,7 @@ export function RunAppPanel({
         {recipe ? (
           <Button type="button" size="sm" data-action="start-app" disabled={setupRunning} onClick={() => start(recipe)}>
             <PlayIcon aria-hidden="true" />
-            Start app
+            {t('Start app')}
           </Button>
         ) : suggested ? (
           <Button
@@ -394,7 +405,7 @@ export function RunAppPanel({
             onClick={() => start({ services: [suggested] }, { remember: true })}
           >
             <PlayIcon aria-hidden="true" />
-            Run <code className="font-mono text-[12px]">{suggested}</code>
+            {t('Run')} <code className="font-mono text-[12px]">{suggested}</code>
           </Button>
         ) : null}
         {menu}
@@ -409,7 +420,7 @@ export function RunAppPanel({
         onClick={() => setEditing(true)}
       >
         <PencilIcon aria-hidden="true" />
-        {recipe ? 'Edit start recipe' : 'Save a start recipe for this project'}
+        {recipe ? t('Edit start recipe') : t('Save a start recipe for this project')}
       </Button>
       {editor}
     </Shell>

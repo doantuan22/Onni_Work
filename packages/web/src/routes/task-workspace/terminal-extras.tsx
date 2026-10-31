@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -38,6 +39,7 @@ export function DetectedUrlsStrip({
    *  so the strip can say so instead of appearing to do nothing. */
   onOpen: (url: string) => boolean
 }) {
+  const { t } = useI18n()
   const [urls, setUrls] = useState<DetectedUrlEntry[]>([])
   const [noRoom, setNoRoom] = useState(false)
 
@@ -65,7 +67,7 @@ export function DetectedUrlsStrip({
       data-slot="detected-urls"
       className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/70 px-3 py-1.5"
     >
-      <span className="text-xs text-muted-foreground">Detected addresses</span>
+      <span className="text-xs text-muted-foreground">{t('Detected addresses')}</span>
       {urls.map((entry) => (
         <span
           key={entry.url}
@@ -88,7 +90,7 @@ export function DetectedUrlsStrip({
           />
           <span className="font-mono">{entry.url}</span>
           <span className="text-soft-foreground">
-            {entry.running === true ? 'running' : entry.running === false ? 'not responding' : '…'}
+            {entry.running === true ? t('running') : entry.running === false ? t('not responding') : '…'}
           </span>
           {/* Two destinations, both named on the control: the user's own browser (a new tab; the
               desktop shell hands `_blank` to the default browser), and the task's Preview. */}
@@ -98,27 +100,27 @@ export function DetectedUrlsStrip({
             size="xs"
             className="h-auto px-1.5 py-0.5 text-[length:inherit] hover:bg-background"
           >
-            <a href={entry.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${entry.url} in Browser`}>
+            <a href={entry.url} target="_blank" rel="noopener noreferrer" aria-label={t('Open {url} in Browser', { url: entry.url })}>
               <ExternalLinkIcon aria-hidden="true" className="size-3" />
-              <span>Open in Browser</span>
+              <span>{t('Open in Browser')}</span>
             </a>
           </Button>
           <Button
             type="button"
             variant="ghost"
             size="xs"
-            aria-label={`Open ${entry.url} in Preview`}
+            aria-label={t('Open {url} in Preview', { url: entry.url })}
             onClick={() => setNoRoom(!onOpen(entry.url))}
             className="h-auto px-1.5 py-0.5 text-[length:inherit] hover:bg-background"
           >
             <PanelRightIcon aria-hidden="true" className="size-3" />
-            <span>Open Preview</span>
+            <span>{t('Open Preview')}</span>
           </Button>
         </span>
       ))}
       {noRoom ? (
         <span className="text-xs text-muted-foreground">
-          No room to open it here — this layout has three columns, or its Preview is out of tabs.
+          {t('No room to open it here — this layout has three columns, or its Preview is out of tabs.')}
         </span>
       ) : null}
     </div>
@@ -133,6 +135,7 @@ export function CommandPicker({
   /** Runs the command in a NEW terminal tab (spec §6) — never in the one you are looking at. */
   onRun: (command: string) => void
 }) {
+  const { t } = useI18n()
   const [commands, setCommands] = useState<DiscoveredCommandEntry[]>([])
   const [manual, setManual] = useState('')
 
@@ -147,15 +150,15 @@ export function CommandPicker({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-xs text-muted-foreground">
           <PlayIcon aria-hidden="true" className="size-3" />
-          Run
+          {t('Run')}
           <ChevronDownIcon aria-hidden="true" className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="max-h-80 w-80 overflow-y-auto">
-        <DropdownMenuLabel>Project commands</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('Project commands')}</DropdownMenuLabel>
         {commands.length === 0 ? (
           <p className="px-2 py-1.5 text-xs text-soft-foreground">
-            No commands found in package.json or a Makefile. Type your own below.
+            {t('No commands found in package.json or a Makefile. Type your own below.')}
           </p>
         ) : (
           commands.map((entry) => (
@@ -175,7 +178,7 @@ export function CommandPicker({
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="font-normal text-soft-foreground">Custom command</DropdownMenuLabel>
+        <DropdownMenuLabel className="font-normal text-soft-foreground">{t('Custom command')}</DropdownMenuLabel>
         <form
           className="px-2 pb-1"
           onSubmit={(event) => {
@@ -192,7 +195,7 @@ export function CommandPicker({
             // Radix would treat typing as menu type-ahead and steal the keystrokes.
             onKeyDown={(event) => event.stopPropagation()}
             placeholder="e.g. npm run dev"
-            aria-label="Custom command"
+            aria-label={t('Custom command')}
             spellCheck={false}
             className="h-8 px-2 font-mono text-xs shadow-none focus-visible:ring-0 md:text-xs"
           />

@@ -9,6 +9,7 @@ import {
 
 import { StatusDot } from '@/components/status-dot'
 import { hm, triggerLabel } from '@/lib/automation-format'
+import { useI18n } from '@/lib/i18n'
 import { useNavigate } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 
@@ -176,11 +177,12 @@ export function HourLines() {
  * ENABLED poll; nothing at all when there is none.
  */
 export function PollBand({ automations }: { automations: readonly AutomationListEntry[] }) {
+  const { t, tn } = useI18n()
   const polls = automations.filter((automation) => automation.kind === 'github' && automation.enabled)
   if (!polls.length) return null
   return (
     <div data-slot="poll-band" className="grid grid-cols-[48px_minmax(0,1fr)] border-b border-border">
-      <div className="py-2 pr-2 text-right font-mono text-[10.5px] text-soft-foreground">poll</div>
+      <div className="py-2 pr-2 text-right font-mono text-[10.5px] text-soft-foreground">{t('poll')}</div>
       <div className="flex flex-col gap-1 border-l border-border px-2 py-1.5">
         {polls.map((automation) => (
           <div
@@ -194,7 +196,7 @@ export function PollBand({ automations }: { automations: readonly AutomationList
               {triggerLabel(automation)}
             </span>
             <span className="ml-auto shrink-0 font-mono text-[10.5px] font-normal whitespace-nowrap text-soft-foreground">
-              {automation.runs7d} runs
+              {tn(automation.runs7d, '{count} run', '{count} runs')}
             </span>
           </div>
         ))}

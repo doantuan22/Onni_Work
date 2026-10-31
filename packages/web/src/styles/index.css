@@ -665,3 +665,9 @@
 .thread-markdown [data-streamdown='mermaid'] [role='img'] {
   width: 100%;
 }
+
+/* Palette column labels are drawn with `content` on purpose: cmdk derives a group's value from its
+ * heading's `textContent`, so the heading must stay exactly the group's name (see `TaskColumnsHeading`). */
+.palette-date-label::after {
+  content: attr(data-label);
+}

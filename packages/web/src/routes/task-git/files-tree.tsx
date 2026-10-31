@@ -2,6 +2,7 @@ import { ChevronRightIcon, FileIcon, FolderIcon, ImageIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import { useRunFile } from '@/api/queries'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import { formatFileSize, isImagePath } from './worktree-files'
@@ -22,8 +23,9 @@ export function FilesTree({
   selected: string | null
   onSelect: (path: string) => void
 }) {
+  const { t } = useI18n()
   return (
-    <nav data-slot="files-tree" aria-label="Worktree files" className="min-w-0 text-[13px]">
+    <nav data-slot="files-tree" aria-label={t('Worktree files')} className="min-w-0 text-[13px]">
       <ul className="flex flex-col gap-px">
         <DirChildren runId={runId} path="" depth={0} selected={selected} onSelect={onSelect} />
       </ul>
@@ -46,11 +48,12 @@ function DirChildren({
   onSelect: (path: string) => void
 }) {
   const entry = useRunFile(runId, path)
+  const { t } = useI18n()
 
   if (entry.isPending) {
     return (
       <li data-slot="files-tree-loading" className="px-1.5 py-1 text-xs text-soft-foreground" style={{ paddingLeft: `${24 + depth * 14}px` }}>
-        Loading…
+        {t('Loading…')}
       </li>
     )
   }
@@ -65,7 +68,7 @@ function DirChildren({
   if (entry.data.entries.length === 0) {
     return (
       <li data-slot="files-tree-empty" className="px-1.5 py-1 text-xs text-soft-foreground" style={{ paddingLeft: `${24 + depth * 14}px` }}>
-        Empty directory
+        {t('Empty directory')}
       </li>
     )
   }

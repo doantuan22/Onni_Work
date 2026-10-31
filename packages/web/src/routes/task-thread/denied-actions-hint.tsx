@@ -2,6 +2,7 @@ import { Link as GlobalLink } from 'react-router'
 
 import type { ApiRun } from '@onni/api-client'
 import { StatusDot } from '@/components/status-dot'
+import { useI18n } from '@/lib/i18n'
 
 /** One denied action as the engine recorded it: `antigravity: denied <what> (permission level "<level>")`. */
 export interface DeniedAction {
@@ -27,6 +28,7 @@ export function parseDeniedAction(line: string): DeniedAction {
  * know right now" hints, and says why and where to change it.
  */
 export function DeniedActionsHint({ run }: { run: Pick<ApiRun, 'deniedActions'> }) {
+  const { t, tn } = useI18n()
   const denied = run.deniedActions ?? []
   if (denied.length === 0) return null
   const items = denied.map(parseDeniedAction)
@@ -37,10 +39,13 @@ export function DeniedActionsHint({ run }: { run: Pick<ApiRun, 'deniedActions'> 
         <StatusDot tone="pending" />
         <span>
           <span className="font-medium text-foreground">
-            {denied.length} action{denied.length === 1 ? '' : 's'} denied
+            {tn(denied.length, '{count} action denied', '{count} actions denied')}
           </span>{' '}
-          by the agent’s permission level
-          {levels.length > 0 ? ` (${levels.join(', ')})` : ''} — the task went on without {denied.length === 1 ? 'it' : 'them'}
+          {t('by the agent’s permission level')}
+          {levels.length > 0 ? ` (${levels.join(', ')})` : ''}{' '}
+          {denied.length === 1
+            ? t('— the task went on without it')
+            : t('— the task went on without them')}
         </span>
       </summary>
       <ul data-slot="denied-actions-list" className="mt-1 flex flex-col gap-1 pl-5">
@@ -49,8 +54,11 @@ export function DeniedActionsHint({ run }: { run: Pick<ApiRun, 'deniedActions'> 
             <code className="break-all font-mono text-[11px] text-foreground">{item.action}</code>
             <span>
               {item.level
-                ? `Denied by the “${item.level}” level: the agent cannot ask for approval when Onni runs it, so it is refused outright.`
-                : 'Denied by the agent’s permission level.'}
+                ? t(
+                    'Denied by the “{level}” level: the agent cannot ask for approval when Onni runs it, so it is refused outright.',
+                    { level: item.level },
+                  )
+                : t('Denied by the agent’s permission level.')}
             </span>
           </li>
         ))}
@@ -62,9 +70,9 @@ export function DeniedActionsHint({ run }: { run: Pick<ApiRun, 'deniedActions'> 
           data-slot="denied-actions-settings-link"
           className="font-medium text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground"
         >
-          Agent permissions
+          {t('Agent permissions')}
         </GlobalLink>{' '}
-        sets what it may do; a widened level applies to the next run, not this one.
+        {t('sets what it may do; a widened level applies to the next run, not this one.')}
       </p>
     </details>
   )

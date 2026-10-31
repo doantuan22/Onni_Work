@@ -2,6 +2,7 @@ import { ZapIcon } from 'lucide-react'
 import { useParams, useSearchParams } from 'react-router'
 
 import { CenteredState } from '@/components/centered-state'
+import { useI18n } from '@/lib/i18n'
 import { useNavigate } from '@/lib/project-router'
 
 import { AutomationEditor } from './editor'
@@ -29,11 +30,12 @@ export function AutomationsRoute({ mode = 'list' }: { mode?: 'list' | 'new' | 'e
   const actions = useAutomationActions(data)
   const [searchParams, setSearchParams] = useSearchParams()
   const view = viewOf(searchParams.get('view'))
+  const { t } = useI18n()
 
   if (!gate.known) {
     return (
       <div data-route="automations" className="flex min-h-full flex-col p-3 md:p-5">
-        <PageState text="Loading automations…" />
+        <PageState text={t('Loading automations…')} />
       </div>
     )
   }
@@ -43,8 +45,8 @@ export function AutomationsRoute({ mode = 'list' }: { mode?: 'list' | 'new' | 'e
         <CenteredState
           icon={<ZapIcon />}
           tone="neutral"
-          title="Automations are off"
-          subtitle="This cockpit was started with ONNI_AUTOMATIONS=0. Unset it and restart the service to turn automations on."
+          title={t('Automations are off')}
+          subtitle={t('This cockpit was started with ONNI_AUTOMATIONS=0. Unset it and restart the service to turn automations on.')}
           heading="h2"
         />
       </div>
@@ -57,16 +59,16 @@ export function AutomationsRoute({ mode = 'list' }: { mode?: 'list' | 'new' | 'e
   }
   if (mode === 'edit') {
     const automation = data?.automations.find((item) => item.id === automationId)
-    if (data && !automation) return <div data-route="automations" className="p-5"><PageState text="Automation not found." /></div>
+    if (data && !automation) return <div data-route="automations" className="p-5"><PageState text={t('Automation not found.')} /></div>
     return automation
       ? <AutomationEditor data={data} automation={automation} actions={actions} onBack={back} onSaved={back} onLog={() => navigate(`/automations/${encodeURIComponent(automation.id)}/log`)} />
-      : <div data-route="automations" className="p-5"><PageState text="Loading automation…" /></div>
+      : <div data-route="automations" className="p-5"><PageState text={t('Loading automation…')} /></div>
   }
   if (mode === 'log') {
     const automation = data?.automations.find((item) => item.id === automationId)
     return automationId
       ? <AutomationLog automationId={automationId} automation={automation} timeZone={data?.timeZone} onBack={back} />
-      : <div data-route="automations" className="p-5"><PageState text="Automation not found." /></div>
+      : <div data-route="automations" className="p-5"><PageState text={t('Automation not found.')} /></div>
   }
   return (
     <AutomationsList

@@ -10,6 +10,7 @@ import { engineRunBody, useResolvedEngine, type EnginePick } from '@/components/
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { toast } from '@/components/ui/toaster'
 import { githubRunBody, githubTaskRef } from '@/lib/github-task'
+import { useI18n } from '@/lib/i18n'
 import { bumpSkillUsage, searchSkills, searchWorkflows } from '@/lib/skills'
 import { cn } from '@/lib/utils'
 
@@ -87,6 +88,7 @@ export function useRowSwipe(onTrigger: () => void) {
 
 /** What sits behind a row while it is being swiped. */
 export function SwipeReveal({ offset }: { offset: number }) {
+  const { t } = useI18n()
   if (offset === 0) return null
   const armed = offset <= -SWIPE_TRIGGER_PX
   return (
@@ -99,7 +101,7 @@ export function SwipeReveal({ offset }: { offset: number }) {
       )}
     >
       <PlayIcon className="size-3.5" />
-      Run…
+      {t('Run…')}
     </span>
   )
 }
@@ -128,6 +130,7 @@ export function SwipeLaunchSheet({
   engine: EnginePick
   onQueued: (url: string, runId: string) => void
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const uiState = useUiState()
   const resolved = useResolvedEngine(engine)
@@ -147,7 +150,12 @@ export function SwipeLaunchSheet({
     onSuccess: ({ pick, created }) => {
       const run = 'runs' in created ? created.runs[0] : created
       if (run) onQueued(pick.target.url, run.id)
-      toast(`Added to the queue — ${pick.target.kind === 'pr' ? 'PR' : 'issue'} #${pick.target.number}`)
+      toast(
+        t('Added to the queue — {kind} #{number}', {
+          kind: pick.target.kind === 'pr' ? 'PR' : 'issue',
+          number: pick.target.number,
+        }),
+      )
       onOpenChange(false)
       setQuery('')
       // Same guard as HandToAgent: the PUT replaces the whole map, so bump only off a known one.
@@ -186,10 +194,15 @@ export function SwipeLaunchSheet({
       >
         <SheetHeader className="pb-2">
           <SheetTitle className="truncate text-base">
-            Run agent on {item ? `${item.kind === 'pr' ? 'PR' : 'issue'} #${item.number}` : '…'}
+            {item
+              ? t('Run agent on {kind} #{number}', {
+                  kind: item.kind === 'pr' ? 'PR' : 'issue',
+                  number: item.number,
+                })
+              : t('Run agent on …')}
           </SheetTitle>
           <SheetDescription className="truncate text-xs">
-            {item?.title ?? ''} — tap a workflow or skill to start.
+            {item?.title ?? ''} {t('— tap a workflow or skill to start.')}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-2 px-4 pb-2">
@@ -202,8 +215,8 @@ export function SwipeLaunchSheet({
             <input
               type="search"
               data-slot="gh-swipe-filter"
-              aria-label="Filter workflows and skills"
-              placeholder="Filter workflows and skills…"
+              aria-label={t('Filter workflows and skills')}
+              placeholder={t('Filter workflows and skills…')}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="w-full rounded-md border border-input bg-card py-2 pr-2 pl-7 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -212,7 +225,7 @@ export function SwipeLaunchSheet({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {shownWorkflows.length > 0 ? (
-            <LaunchGroup label="Workflows">
+            <LaunchGroup label={t('Workflows')}>
               {shownWorkflows.map((def) => (
                 <LaunchOption
                   key={def.name}
@@ -227,7 +240,7 @@ export function SwipeLaunchSheet({
             </LaunchGroup>
           ) : null}
           {shownSkills.length > 0 ? (
-            <LaunchGroup label="Skills">
+            <LaunchGroup label={t('Skills')}>
               {shownSkills.map((skill) => (
                 <LaunchOption
                   key={skill.name}
@@ -242,7 +255,9 @@ export function SwipeLaunchSheet({
             </LaunchGroup>
           ) : null}
           {shownWorkflows.length === 0 && shownSkills.length === 0 ? (
-            <p className="px-2 py-3 text-sm text-soft-foreground">Nothing matches “{query.trim()}”.</p>
+            <p className="px-2 py-3 text-sm text-soft-foreground">
+              {t('Nothing matches “{query}”.', { query: query.trim() })}
+            </p>
           ) : null}
         </div>
       </SheetContent>

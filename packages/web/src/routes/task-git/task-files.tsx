@@ -6,6 +6,7 @@ import { ApiError } from '@/api/client'
 import { useRun, useRunFile } from '@/api/queries'
 import type { ApiRun } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
+import { useI18n } from '@/lib/i18n'
 import { useIsDesktop } from '@/lib/use-desktop'
 
 import { cn } from '@/lib/utils'
@@ -48,6 +49,7 @@ export function FilesView({
   embedded?: boolean
   stateKey?: string
 }) {
+  const { t } = useI18n()
   // The root listing doubles as the "is there a worktree at all?" probe — a 409 here is the
   // server's answer for the whole view, same stance as the Changes tab's /changes 409.
   const root = useRunFile(run.id, '')
@@ -65,7 +67,7 @@ export function FilesView({
 
       {root.isPending ? (
         <p data-slot="files-loading" className="px-4 py-6 text-center text-xs text-soft-foreground md:px-6">
-          Loading files…
+          {t('Loading files…')}
         </p>
       ) : root.isError ? (
         <CenteredState

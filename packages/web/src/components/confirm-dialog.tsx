@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useI18n } from '@/lib/i18n'
 
 /** One confirmation in the design system's own dialog (native `confirm()` is banned here). */
 export function ConfirmDialog({
@@ -29,6 +30,7 @@ export function ConfirmDialog({
   onConfirm: () => void
   danger?: boolean
 }) {
+  const { t } = useI18n()
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -37,7 +39,7 @@ export function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
           <AlertDialogAction
             data-slot="confirm-dialog-action"
             className={danger ? 'bg-danger text-danger-foreground hover:brightness-[0.96]' : undefined}

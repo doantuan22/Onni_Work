@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/toaster'
 import { formatChord } from '@/lib/keybindings'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import {
@@ -98,6 +99,7 @@ export function BrowserView({
   renderEmpty?: (open: (url: string) => void) => React.ReactNode
 }) {
   const tabs = state.tabs.length > 0 ? state.tabs : ['']
+  const { t } = useI18n()
   const active = Math.min(state.active, tabs.length - 1)
   const current = tabs[active] ?? ''
 
@@ -203,8 +205,8 @@ export function BrowserView({
   const designAllowed = designOffered && (health.data?.capabilities?.designMode ?? false)
   const designUnavailable = !designAllowed
     ? health.data?.capabilities?.localHandoff === false
-      ? "Design Mode needs a local cockpit — a hosted one cannot reach the task's local dev server"
-      : 'Design Mode is turned off on this cockpit (ONNI_DESIGN_MODE=0)'
+      ? t("Design Mode needs a local cockpit — a hosted one cannot reach the task's local dev server")
+      : t('Design Mode is turned off on this cockpit (ONNI_DESIGN_MODE=0)')
     : null
   const targetOrigin = designOrigin(target)
   const designActive = designAllowed && design && targetOrigin !== null
@@ -261,7 +263,7 @@ export function BrowserView({
       .catch((error: unknown) => {
         if (cancelled) return
         setDesign(false)
-        toast(error instanceof Error && error.message ? error.message : 'Design Mode could not start.', { tone: 'danger' })
+        toast(error instanceof Error && error.message ? error.message : t('Design Mode could not start.'), { tone: 'danger' })
       })
     return () => {
       cancelled = true
@@ -397,7 +399,7 @@ export function BrowserView({
         }
         if (!hasNote) {
           // No note popup on this host: the pick went to the host, out of sight.
-          toast('Element picked.')
+          toast(t('Element picked.'))
           return
         }
         const mark = pick.mark
@@ -582,7 +584,7 @@ export function BrowserView({
         className="shrink-0 gap-0"
       >
       <TabsList
-        aria-label="Browser tabs"
+        aria-label={t('Browser tabs')}
         className="flex w-full justify-start gap-0.5 overflow-x-auto rounded-none bg-transparent px-3 py-0"
       >
         {tabs.map((tab, index) => (
@@ -602,16 +604,16 @@ export function BrowserView({
               onClick={() => {
                 if (index !== active) onChange({ ...state, active: index })
               }}
-              title={tab || 'New tab'}
+              title={tab || t('New tab')}
               className="inline-block h-auto max-w-32 flex-none truncate rounded-none border-0 p-0 text-xs font-medium text-inherit hover:text-inherit focus-visible:underline focus-visible:ring-0 focus-visible:outline-0 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-inherit group-data-[variant=default]/tabs-list:data-[state=active]:shadow-none"
             >
-              {tabLabel(tab)}
+              {tab ? tabLabel(tab) : t('New tab')}
             </TabsTrigger>
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label={`Close tab ${tabLabel(tab)}`}
+              aria-label={t('Close tab {label}', { label: tab ? tabLabel(tab) : t('New tab') })}
               onClick={() => closeTab(index)}
               className={cn(
                 'ml-1 size-4 rounded text-inherit opacity-0 transition-opacity hover:bg-background hover:text-inherit focus-visible:opacity-100 group-hover:opacity-100',
@@ -627,8 +629,8 @@ export function BrowserView({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="New tab"
-            title="New tab"
+            aria-label={t('New tab')}
+            title={t('New tab')}
             onClick={addTab}
             className="size-6 rounded"
           >
@@ -678,8 +680,8 @@ export function BrowserView({
             ref={addressRef}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Enter an address, e.g. http://localhost:3000"
-            aria-label="Address"
+            placeholder={t('Enter an address, e.g. http://localhost:3000')}
+            aria-label={t('Address')}
             spellCheck={false}
             className="h-8 text-[13px] focus-visible:ring-ring/30 md:text-[13px]"
           />
@@ -695,9 +697,9 @@ export function BrowserView({
             aria-pressed={designActive}
             disabled={designUnavailable !== null || targetOrigin === null}
             title={
-              designUnavailable ?? (targetOrigin === null ? 'Design Mode works on local http:// addresses'
-              : designActive ? `Stop selecting elements (${formatChord(DESIGN_CHORD)} or Esc)`
-              : `Click an element of the page to send it to the agent (${formatChord(DESIGN_CHORD)})`)
+              designUnavailable ?? (targetOrigin === null ? t('Design Mode works on local http:// addresses')
+              : designActive ? t('Stop selecting elements ({chord} or Esc)', { chord: formatChord(DESIGN_CHORD) })
+              : t('Click an element of the page to send it to the agent ({chord})', { chord: formatChord(DESIGN_CHORD) }))
             }
             onClick={() => {
               setDesign((on) => !on)
@@ -705,7 +707,7 @@ export function BrowserView({
             className="ml-1 disabled:opacity-40"
           >
             <MousePointerClickIcon aria-hidden="true" className="size-3.5" />
-            Design Mode
+            {t('Design Mode')}
             <kbd
               data-slot="browser-design-key"
               aria-hidden="true"
@@ -723,8 +725,8 @@ export function BrowserView({
             icon={<TriangleAlertIcon />}
             tone="neutral"
             heading="h2"
-            title="This address points at the machine you are sitting at"
-            subtitle="This cockpit runs remotely, so a local address would open on your computer rather than on the task's host. Open the cockpit on the task's machine to preview its app."
+            title={t('This address points at the machine you are sitting at')}
+            subtitle={t("This cockpit runs remotely, so a local address would open on your computer rather than on the task's host. Open the cockpit on the task's machine to preview its app.")}
           />
         ) : target === '' && renderEmpty && canPreview ? (
           renderEmpty(commit)
@@ -733,8 +735,8 @@ export function BrowserView({
             icon={<GlobeIcon />}
             tone="neutral"
             heading="h2"
-            title="Empty tab"
-            subtitle="Enter the address of the task's app, e.g. http://localhost:3000 — then switch on Design Mode to point at an element and tell the agent what to change."
+            title={t('Empty tab')}
+            subtitle={t("Enter the address of the task's app, e.g. http://localhost:3000 — then switch on Design Mode to point at an element and tell the agent what to change.")}
           />
         ) : (
           <>
@@ -743,8 +745,8 @@ export function BrowserView({
                 data-slot="browser-failed"
                 className="absolute inset-x-0 top-0 z-10 border-b border-border bg-background px-3 py-2 text-xs text-soft-foreground"
               >
-                <span className="font-medium text-foreground">Could not open</span> — the page did not
-                respond or does not allow embedding. The address is still in the bar; you can fix it.
+                <span className="font-medium text-foreground">{t('Could not open')}</span>{' '}
+                {t('— the page did not respond or does not allow embedding. The address is still in the bar; you can fix it.')}
               </div>
             ) : null}
             {adrift.length > 0 ? (
@@ -755,14 +757,14 @@ export function BrowserView({
                     type="button"
                     variant="outline"
                     size="sm"
-                    title="A note in progress — its element could not be found on this page"
+                    title={t('A note in progress — its element could not be found on this page')}
                     onClick={() => {
                       setAnchor(mark.key)
                       setNoteOpen(true)
                     }}
                     className="max-w-48"
                   >
-                    <span className="truncate">Draft · {mark.label}</span>
+                    <span className="truncate">{t('Draft · {label}', { label: mark.label })}</span>
                   </Button>
                 ))}
               </div>
@@ -775,7 +777,9 @@ export function BrowserView({
                 data-slot="browser-design-hint"
                 className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border bg-background/95 px-3 py-1 text-xs whitespace-nowrap text-soft-foreground shadow-sm"
               >
-                {hasNote ? 'Click an element to write a note about it · Esc to stop' : 'Click an element to pick it · Esc to stop'}
+                {hasNote
+                  ? t('Click an element to write a note about it · Esc to stop')
+                  : t('Click an element to pick it · Esc to stop')}
               </p>
             ) : null}
             {awaitingProxy ? null : (
@@ -786,7 +790,7 @@ export function BrowserView({
               // Mode swaps it for the mirror's.
               key={frameKey}
               src={frameSrc}
-              title="Preview"
+              title={t('Preview')}
               onLoad={onLoaded}
               // Worktree-served content is untrusted. `allow-same-origin` keeps the page
               // in its OWN origin — which is not the cockpit's, so it still cannot touch the
@@ -804,7 +808,7 @@ export function BrowserView({
             )}
             {status === 'loading' ? (
               <p className="absolute inset-0 grid place-items-center text-xs text-soft-foreground">
-                Loading…
+                {t('Loading…')}
               </p>
             ) : null}
           </>
@@ -814,7 +818,7 @@ export function BrowserView({
             ref={noteRef}
             data-slot="browser-design-note"
             role="dialog"
-            aria-label="Note about the selected elements"
+            aria-label={t('Note about the selected elements')}
             // Positioned once measured; rendered invisible for that first frame so it never
             // flashes in a corner it is not staying in.
             style={notePosition ? { left: notePosition.left, top: notePosition.top } : { left: 0, top: 0, visibility: 'hidden' }}

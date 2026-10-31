@@ -9,14 +9,16 @@ import { CenteredState } from '@/components/centered-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 
 export function SkillsSection() {
+  const { t } = useI18n()
   const config = useWorkspaceConfig()
 
   if (config.isPending) {
     return (
       <p data-slot="skills-settings-loading" className="p-4 text-[13px] text-soft-foreground md:p-6">
-        Loading skill settings…
+        {t('Loading skill settings…')}
       </p>
     )
   }
@@ -25,7 +27,7 @@ export function SkillsSection() {
       <CenteredState
         icon={<PackageCheckIcon />}
         tone="danger"
-        title="Skill settings did not load"
+        title={t('Skill settings did not load')}
         subtitle={config.error.message}
         heading="h2"
       />
@@ -35,6 +37,7 @@ export function SkillsSection() {
 }
 
 function SkillsForm({ config }: { config: WorkspaceConfigResponse }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const save = useMutation({
     mutationFn: (patch: SetWorkspaceConfigInput) => putWorkspaceConfig(patch),
@@ -61,12 +64,12 @@ function SkillsForm({ config }: { config: WorkspaceConfigResponse }) {
       <section data-slot="org-skills-repos" className="flex flex-col gap-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">
-            <label htmlFor="org-skills-repo">Organisation skills repositories</label>
+            <label htmlFor="org-skills-repo">{t('Organisation skills repositories')}</label>
           </h2>
           <p className="text-[13px] text-muted-foreground">
-            Git repositories whose skills are available in every project, kept up to date from the
-            remote. A project's own skills with the same name win. Use <code>owner/name</code>, a git
-            URL or a local path; access uses your existing git credentials.
+            {t('Git repositories whose skills are available in every project, kept up to date from the remote. A project\'s own skills with the same name win. Use')}{' '}
+            <code>owner/name</code>
+            {t(', a git URL or a local path; access uses your existing git credentials.')}
           </p>
         </div>
         {repos.length > 0 && (
@@ -83,11 +86,11 @@ function SkillsForm({ config }: { config: WorkspaceConfigResponse }) {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label={`Remove ${r.repo}`}
+                  aria-label={t('Remove {repo}', { repo: r.repo })}
                   disabled={save.isPending}
                   onClick={() => save.mutate({ orgSkillsRepos: repos.filter((x) => x.repo !== r.repo) })}
                 >
-                  Remove
+                  {t('Remove')}
                 </Button>
               </li>
             ))}
@@ -108,14 +111,14 @@ function SkillsForm({ config }: { config: WorkspaceConfigResponse }) {
             onChange={(e) => setRepo(e.target.value)}
           />
           <Input
-            aria-label="Branch or ref"
+            aria-label={t('Branch or ref')}
             className="w-28"
             placeholder="main"
             value={ref}
             onChange={(e) => setRef(e.target.value)}
           />
           <Button type="submit" size="sm" disabled={save.isPending || !repo.trim()}>
-            Add repository
+            {t('Add repository')}
           </Button>
         </form>
       </section>

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/lib/i18n'
 import { Link } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 
@@ -112,6 +113,7 @@ export function LayoutCards({
   keyHints?: ReadonlyMap<string, string>
   showKeyHints?: boolean
 }) {
+  const { t } = useI18n()
   /*
    * The row never scrolls: the tabs that do not fit fold into a `…` menu. How many fit is MEASURED,
    * not counted: the room left depends on the window, the sidebar and the header's right side.
@@ -254,7 +256,7 @@ export function LayoutCards({
               <TabIcon hint={showKeyHints ? keyHints.get('view:notes') : undefined}>
                 <NotebookTextIcon aria-hidden="true" className="size-3.5 shrink-0" />
               </TabIcon>
-              Notes
+              {t('Notes')}
             </Link>
           )
         }
@@ -279,8 +281,11 @@ export function LayoutCards({
             draggable={onViewDragStart !== undefined}
             title={
               onViewDragStart
-                ? `${label}${position <= 9 ? ` (${position})` : ''} — drag onto the workspace to split, ⌥-click to open beside`
-                : label
+                ? t('{label}{position} — drag onto the workspace to split, ⌥-click to open beside', {
+                    label: t(label),
+                    position: position <= 9 ? ` (${position})` : '',
+                  })
+                : t(label)
             }
             onClick={(event) => {
               if (event.altKey && onOpenBeside) onOpenBeside(view)
@@ -301,7 +306,7 @@ export function LayoutCards({
             <TabIcon hint={showKeyHints ? hint : undefined}>
               <Icon aria-hidden="true" className="size-3.5 shrink-0" />
             </TabIcon>
-            {label}
+            {t(label)}
             {on && !selected ? (
               <span aria-hidden="true" className="absolute top-2 right-1 size-1.5 rounded-full bg-primary" />
             ) : null}
@@ -317,8 +322,8 @@ export function LayoutCards({
               variant="ghost"
               size="icon-sm"
               data-action="more-views"
-              aria-label={`${overflow.length} more views`}
-              title="More views"
+              aria-label={t('{count} more views', { count: overflow.length })}
+              title={t('More views')}
               className="mb-1 size-7 shrink-0 text-muted-foreground"
             >
               <MoreHorizontalIcon aria-hidden="true" />
@@ -331,7 +336,7 @@ export function LayoutCards({
                   <DropdownMenuItem key="notes" asChild>
                     <Link to={notesHref!}>
                       <NotebookTextIcon aria-hidden="true" />
-                      <span className="truncate">Notes</span>
+                      <span className="truncate">{t('Notes')}</span>
                       {keyHints.get('view:notes') ? <DropdownMenuShortcut>{keyHints.get('view:notes')}</DropdownMenuShortcut> : null}
                     </Link>
                   </DropdownMenuItem>
@@ -342,7 +347,7 @@ export function LayoutCards({
               return (
                 <DropdownMenuItem key={view} data-view={view} onSelect={() => onSelectFixed?.(view)}>
                   <Icon aria-hidden="true" />
-                  <span className="truncate">{viewLabel(view)}</span>
+                  <span className="truncate">{t(viewLabel(view))}</span>
                   {hint ? <DropdownMenuShortcut>{hint}</DropdownMenuShortcut> : null}
                 </DropdownMenuItem>
               )
@@ -353,7 +358,7 @@ export function LayoutCards({
 
       {closeTarget ? (
         <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded bg-background px-2 py-0.5 text-xs font-medium text-foreground shadow-sm">
-          Drop to close this column
+          {t('Drop to close this column')}
         </span>
       ) : null}
 
@@ -467,6 +472,7 @@ function LayoutMenu({
   onDeleteSaved?: (name: string) => void
   suggestedName: string
 }) {
+  const { t } = useI18n()
   const current = active === null ? undefined : layouts.find((layout) => layout.name === active)
   const savedNames = new Set(saved.map((layout) => layout.name))
   // This task's own layouts that are not a saved one under the same name.
@@ -487,12 +493,12 @@ function LayoutMenu({
             ref={triggerRef}
             data-action="layouts"
             data-active-layout={current ? current.name : undefined}
-            aria-label={current ? `Layout: ${layoutDisplayName(current.name)}` : 'Layouts'}
-            title="Layouts — open a saved one, or save what is on screen"
+            aria-label={current ? t('Layout: {name}', { name: layoutDisplayName(current.name) }) : t('Layouts')}
+            title={t('Layouts — open a saved one, or save what is on screen')}
             className={cn('h-7 max-w-48 shrink-0 gap-1.5 px-2 text-[12.5px]', current ? 'text-foreground' : 'text-muted-foreground')}
           >
             <LayoutGlyph count={current?.columns.length ?? 2} />
-            <span className="truncate max-md:hidden">{current ? layoutDisplayName(current.name) : 'Layout'}</span>
+            <span className="truncate max-md:hidden">{current ? layoutDisplayName(current.name) : t('Layout')}</span>
             <ChevronDownIcon aria-hidden="true" className="size-3.5 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
@@ -505,11 +511,10 @@ function LayoutMenu({
             event.preventDefault()
           }}
         >
-          <DropdownMenuLabel>Saved layouts</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('Saved layouts')}</DropdownMenuLabel>
           {saved.length === 0 ? (
             <p className="px-2 pb-1.5 text-xs text-muted-foreground">
-              None yet — arrange the view (drag a tab onto it), then save it here. Saved layouts are offered in every
-              task.
+              {t('None yet — arrange the view (drag a tab onto it), then save it here. Saved layouts are offered in every task.')}
             </p>
           ) : null}
           {saved.map((layout) => (
@@ -522,7 +527,7 @@ function LayoutMenu({
               onPick={() => onApplySaved?.(layout)}
               remove={
                 onDeleteSaved
-                  ? { label: `Delete saved layout ${layout.name}`, run: () => onDeleteSaved(layout.name) }
+                  ? { label: t('Delete saved layout {name}', { name: layout.name }), run: () => onDeleteSaved(layout.name) }
                   : undefined
               }
             />
@@ -530,7 +535,7 @@ function LayoutMenu({
           {local.length > 0 ? (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel>This task</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('This task')}</DropdownMenuLabel>
               {local.map((layout) => (
                 <LayoutRow
                   key={`task:${layout.name}`}
@@ -539,7 +544,7 @@ function LayoutMenu({
                   selected={layout.name === active}
                   kind="task"
                   onPick={() => onSelect(layout.name)}
-                  remove={{ label: `Close layout ${layoutDisplayName(layout.name)}`, run: () => onClose(layout.name) }}
+                  remove={{ label: t('Close layout {name}', { name: layoutDisplayName(layout.name) }), run: () => onClose(layout.name) }}
                 />
               ))}
             </>
@@ -556,7 +561,7 @@ function LayoutMenu({
                 }}
               >
                 <SaveIcon aria-hidden="true" />
-                Save current view as layout…
+                {t('Save current view as layout…')}
               </DropdownMenuItem>
             </>
           ) : null}
@@ -592,6 +597,7 @@ function LayoutRow({
   onPick: () => void
   remove?: { label: string; run: () => void }
 }) {
+  const { t } = useI18n()
   return (
     <DropdownMenuItem
       data-layout={name}
@@ -616,7 +622,7 @@ function LayoutRow({
         <button
           type="button"
           aria-label={remove.label}
-          title={`${remove.label} (Delete)`}
+          title={t('{label} (Delete)', { label: remove.label })}
           className="flex size-5 items-center justify-center rounded-sm text-muted-foreground opacity-0 group-hover/layout:opacity-100 group-focus/layout:opacity-100 hover:bg-background hover:text-foreground"
           onPointerUp={(event) => event.stopPropagation()}
           onClick={(event) => {
@@ -650,6 +656,7 @@ function SaveLayoutDialog({
   onCommit: (name: string) => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
   const [value, setValue] = useState('')
   useEffect(() => {
     if (open) setValue(suggested)
@@ -674,13 +681,13 @@ function SaveLayoutDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Save layout</DialogTitle>
-            <DialogDescription>Saved layouts are offered in every task, in every project.</DialogDescription>
+            <DialogTitle>{t('Save layout')}</DialogTitle>
+            <DialogDescription>{t('Saved layouts are offered in every task, in every project.')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
             <Input
               autoFocus
-              aria-label="Layout name"
+              aria-label={t('Layout name')}
               maxLength={MAX_LAYOUT_NAME_LENGTH}
               value={value}
               onChange={(event) => setValue(event.target.value)}
@@ -689,19 +696,19 @@ function SaveLayoutDialog({
             {reserved ? (
               <p className="text-xs text-danger">
                 {name === WORKING_LAYOUT_NAME
-                  ? `“${WORKING_LAYOUT_NAME}” is the task's unsaved arrangement — pick another.`
-                  : 'That name belongs to a view tab — pick another.'}
+                  ? t("“{name}” is the task's unsaved arrangement — pick another.", { name: WORKING_LAYOUT_NAME })
+                  : t('That name belongs to a view tab — pick another.')}
               </p>
             ) : taken.has(name) ? (
-              <p className="text-xs text-muted-foreground">Replaces the saved layout “{name}”.</p>
+              <p className="text-xs text-muted-foreground">{t('Replaces the saved layout “{name}”.', { name })}</p>
             ) : null}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button type="submit" disabled={name === '' || reserved}>
-              Save
+              {t('Save')}
             </Button>
           </DialogFooter>
         </form>

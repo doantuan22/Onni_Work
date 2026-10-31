@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useI18n } from '@/lib/i18n'
 import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 
@@ -77,6 +78,7 @@ export function WorkspaceColumns({
   // two or three columns at ~340px each, which is the squeezing §5.2 asks not to do: it names
   // "mobile/tablet" for one-column-at-a-time, and §11 repeats it.
   const desktop = useIsDesktop(SIDE_BY_SIDE_MIN_WIDTH)
+  const { t } = useI18n()
   const rowRef = useRef<HTMLDivElement>(null)
   // Which column a narrow viewport is showing (spec §5.2 — "show one column at a time"). Clamped
   // on read rather than synced in an effect, so closing a column can never leave a dangling index.
@@ -123,13 +125,13 @@ export function WorkspaceColumns({
   const pendingHeader = (
     <header className="flex h-8 shrink-0 items-center gap-1.5 border-b border-border/70 bg-background pl-4 pr-1.5 text-xs font-medium text-muted-foreground">
       <LayoutGridIcon aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="min-w-0 flex-1 truncate">New window</span>
+      <span className="min-w-0 flex-1 truncate">{t('New window')}</span>
       <Button
         type="button"
         variant="ghost"
         size="icon-xs"
-        aria-label="Close new window"
-        title="Close"
+        aria-label={t('Close new window')}
+        title={t('Close')}
         onClick={() => setPendingAt(null)}
         className="text-soft-foreground"
       >
@@ -174,7 +176,7 @@ export function WorkspaceColumns({
             className="shrink-0 gap-0"
           >
             <TabsList
-              aria-label="Windows of this layout"
+              aria-label={t('Windows of this layout')}
               className="grid w-full auto-cols-fr grid-flow-col gap-1 rounded-none border-b border-border bg-transparent px-3 py-1.5 group-data-[orientation=horizontal]/tabs:h-auto"
             >
               {slots.map((entry, index) => {
@@ -186,7 +188,7 @@ export function WorkspaceColumns({
                     className="h-auto min-w-0 rounded-md border-0 px-2 py-1 text-xs data-[state=active]:bg-muted data-[state=active]:font-medium group-data-[variant=default]/tabs-list:data-[state=active]:shadow-none"
                   >
                     <Icon aria-hidden="true" className="size-3.5 shrink-0" />
-                    <span className="truncate">{entry === 'pending' ? 'New window' : viewLabel(columns[entry]!.view)}</span>
+                    <span className="truncate">{entry === 'pending' ? t('New window') : t(viewLabel(columns[entry]!.view))}</span>
                   </TabsTrigger>
                 )
               })}
@@ -314,6 +316,7 @@ function ColumnHeader({
   trailing?: ReactNode
 }) {
   const [dropTarget, setDropTarget] = useState(false)
+  const { t } = useI18n()
   const ViewIcon = VIEW_ICONS[column.view]
   const startDrag = (event: React.DragEvent) => {
     event.dataTransfer.setData('text/onni-column', String(index))
@@ -356,7 +359,7 @@ function ColumnHeader({
         <span
           draggable
           onDragStart={startDrag}
-          title="Drag to reorder"
+          title={t('Drag to reorder')}
           className="-ml-2 flex h-full shrink-0 cursor-grab items-center text-soft-foreground/70 active:cursor-grabbing"
         >
           <GripVerticalIcon aria-hidden="true" className="size-3.5" />
@@ -372,16 +375,16 @@ function ColumnHeader({
             variant="ghost"
             size="sm"
             data-action="change-view"
-            aria-label={`${viewLabel(column.view)} — change view`}
+            aria-label={t('{view} — change view', { view: t(viewLabel(column.view)) })}
             className="-ml-1.5 h-6 gap-1.5 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
           >
             <ViewIcon aria-hidden="true" className="size-3.5 shrink-0" />
-            <span className="truncate">{viewLabel(column.view)}</span>
+            <span className="truncate">{t(viewLabel(column.view))}</span>
             <ChevronDownIcon aria-hidden="true" className="size-3 shrink-0 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuLabel>Change view</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('Change view')}</DropdownMenuLabel>
           <ViewItems onPick={(view) => actions.setColumnView(index, view)} disabled={column.view} />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -404,7 +407,7 @@ function ColumnHeader({
                 variant="ghost"
                 size="icon-xs"
                 data-action="split-view"
-                aria-label="Split view"
+                aria-label={t('Split view')}
                 disabled={!canSplit}
                 onClick={onSplit}
                 className="text-soft-foreground hover:text-foreground"
@@ -414,7 +417,9 @@ function ColumnHeader({
             </span>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            {canSplit ? 'Split view (\\)' : `At most ${MAX_COLUMNS} windows`}
+            {canSplit
+              ? t('Split view (\\)')
+              : t('At most {count} windows', { count: MAX_COLUMNS })}
           </TooltipContent>
         </Tooltip>
         </TooltipProvider>
@@ -426,8 +431,8 @@ function ColumnHeader({
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label={`Close ${viewLabel(column.view)}`}
-          title="Close view"
+          aria-label={t('Close {view}', { view: t(viewLabel(column.view)) })}
+          title={t('Close view')}
           onClick={() => actions.closeColumn(index)}
           className="text-soft-foreground"
         >
@@ -460,6 +465,7 @@ function ColumnMenu({
   count: number
   actions: ColumnActions
 }) {
+  const { t } = useI18n()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -467,7 +473,7 @@ function ColumnMenu({
           variant="ghost"
           size="icon-sm"
           className="size-6 shrink-0 text-soft-foreground hover:text-foreground"
-          aria-label={`Column menu ${viewLabel(column.view)}`}
+          aria-label={t('Column menu {view}', { view: t(viewLabel(column.view)) })}
         >
           <MoreVerticalIcon aria-hidden="true" className="size-3.5" />
         </Button>
@@ -477,21 +483,21 @@ function ColumnMenu({
           <>
             <DropdownMenuItem disabled={index === 0} onSelect={() => actions.moveColumn(index, index - 1)}>
               <ArrowLeftIcon aria-hidden="true" />
-              Move left
+              {t('Move left')}
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={index === count - 1}
               onSelect={() => actions.moveColumn(index, index + 1)}
             >
               <ArrowRightIcon aria-hidden="true" />
-              Move right
+              {t('Move right')}
             </DropdownMenuItem>
           </>
         ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => actions.closeColumn(index)}>
           <XIcon aria-hidden="true" />
-          Close view
+          {t('Close view')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -528,6 +534,7 @@ function ColumnDivider({
   onResize: (index: number, delta: number) => void
 }) {
   const origin = useRef<{ x: number; width: number } | null>(null)
+  const { t } = useI18n()
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
@@ -573,7 +580,7 @@ function ColumnDivider({
       data-slot="column-divider"
       role="separator"
       aria-orientation="vertical"
-      aria-label={`Resize column ${index + 1}`}
+      aria-label={t('Resize column {index}', { index: index + 1 })}
       aria-valuenow={Math.round(width)}
       /* The range this separator really has, which is a property of the PAIR it sits between and
          not of the row: `resizeColumns` clamps to `[floor, pair - floor]`, so in a 33/33/33
@@ -587,7 +594,7 @@ function ColumnDivider({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       onKeyDown={onKeyDown}
-      title="Drag to resize — arrow keys adjust precisely"
+      title={t('Drag to resize — arrow keys adjust precisely')}
       // A 9px grab strip straddling the seam, invisible until reached for — the hit target §12
       // asks to be defined, at the low end of what a pointer can comfortably catch. It is
       // absolutely positioned, so widening it costs the columns no width. `touch-none` is

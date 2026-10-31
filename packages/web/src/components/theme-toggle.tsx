@@ -2,6 +2,7 @@ import { MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
 
 import { useTheme } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 import type { Theme } from '@/lib/theme'
 
 /* A proper icon button (fixes #378 — the legacy text toggle clipped in the sidebar footer).
@@ -15,6 +16,7 @@ const ICON = { light: SunIcon, dark: MoonIcon, system: MonitorIcon } as const
 const LABEL: Record<Theme, string> = { light: 'light', dark: 'dark', system: 'system' }
 
 export function ThemeToggle({ className }: { className?: string }) {
+  const { t } = useI18n()
   const { theme, setTheme } = useTheme()
   const next = NEXT_THEME[theme]
   const Icon = ICON[theme]
@@ -27,8 +29,8 @@ export function ThemeToggle({ className }: { className?: string }) {
       className={className}
       data-slot="theme-toggle"
       data-theme-pref={theme}
-      title={`Theme: ${LABEL[theme]}`}
-      aria-label={`Theme: ${LABEL[theme]}. Switch to ${LABEL[next]}.`}
+      title={t('Theme: {theme}', { theme: t(LABEL[theme]) })}
+      aria-label={t('Theme: {theme}. Switch to {next}.', { theme: t(LABEL[theme]), next: t(LABEL[next]) })}
       onClick={() => setTheme(next)}
     >
       <Icon aria-hidden="true" />

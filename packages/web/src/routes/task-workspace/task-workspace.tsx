@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { IconTooltip } from '@/components/ui/icon-tooltip'
+import { useI18n } from '@/lib/i18n'
 import { Link, useActiveProjectId, useNavigate } from '@/lib/project-router'
 import { isUnread } from '@/lib/read-state'
 import { recordTaskVisit } from '@/lib/recent-tasks'
@@ -91,6 +92,7 @@ const GraphColumn = lazy(() =>
 export function TaskWorkspaceRoute({ view }: { view?: ViewId }) {
   const { id } = useParams<{ id: string }>()
   const run = useRun(id)
+  const { t } = useI18n()
 
   // The read receipt, moved here from the Session route (#unread-done-items, #775): visiting the
   // task marks it read even when no Chat column is showing.
@@ -125,15 +127,15 @@ export function TaskWorkspaceRoute({ view }: { view?: ViewId }) {
         <CenteredState
           icon={notFound ? <SearchXIcon /> : <MessageSquareTextIcon />}
           tone={notFound ? 'neutral' : 'danger'}
-          title={notFound ? 'Task not found' : 'Could not load this task'}
+          title={notFound ? t('Task not found') : t('Could not load this task')}
           subtitle={
             notFound
-              ? 'No run has this id. It may have been deleted, or the link is from another machine.'
+              ? t('No run has this id. It may have been deleted, or the link is from another machine.')
               : run.error.message
           }
           actions={
             <Button asChild variant="outline">
-              <Link to="/">Back to tasks</Link>
+              <Link to="/">{t('Back to tasks')}</Link>
             </Button>
           }
         />
@@ -168,6 +170,7 @@ function WorkspaceView({
   const savedLayouts = useSavedLayouts()
   const { save: saveLayout, remove: deleteSavedLayout } = savedLayouts
   const layoutState = layouts.state
+  const { t } = useI18n()
   const canSaveLayout = (layouts.layout?.columns.length ?? 0) > 0
   const saveCurrentLayout = useCallback(
     (name: string) => {
@@ -419,15 +422,15 @@ function WorkspaceView({
         variant="ghost"
         size="icon-sm"
         data-action="maximize-layout"
-        aria-label="Full view"
-        title="Full view — hide everything but this layout (F)"
+        aria-label={t('Full view')}
+        title={t('Full view — hide everything but this layout (F)')}
         className="text-muted-foreground"
         onClick={toggleMaximized}
       >
         <Maximize2Icon aria-hidden="true" />
       </Button>
     ),
-    [toggleMaximized],
+    [t, toggleMaximized],
   )
 
   /**
@@ -623,13 +626,13 @@ function WorkspaceView({
   const headerExtras = useCallback(
     (view: ViewId) =>
       view === 'terminal' && terminalAllowed ? (
-        <IconTooltip label="Move to bottom — under every view">
+        <IconTooltip label={t('Move to bottom — under every view')}>
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
             data-action="terminal-to-drawer"
-            aria-label="Move to bottom"
+            aria-label={t('Move to bottom')}
             onClick={moveTerminalToDrawer}
             className="text-soft-foreground hover:text-foreground"
           >
@@ -637,7 +640,7 @@ function WorkspaceView({
           </Button>
         </IconTooltip>
       ) : null,
-    [moveTerminalToDrawer, terminalAllowed],
+    [moveTerminalToDrawer, t, terminalAllowed],
   )
 
   const renderView = useCallback(
@@ -669,8 +672,8 @@ function WorkspaceView({
               icon={<TerminalIcon />}
               tone="neutral"
               heading="h2"
-              title="Terminal disabled"
-              subtitle="The terminal is off on this cockpit — it is off in hosted mode unless ONNI_TERMINAL=1."
+              title={t('Terminal disabled')}
+              subtitle={t('The terminal is off on this cockpit — it is off in hosted mode unless ONNI_TERMINAL=1.')}
             />
           )
         case 'browser':
@@ -717,6 +720,7 @@ function WorkspaceView({
       terminalAllowed,
       projectId,
       terminalColumnShown,
+      t,
       updateDrawer,
     ],
   )
@@ -730,7 +734,7 @@ function WorkspaceView({
           role="status"
           className="shrink-0 border-b border-border bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground sm:px-6"
         >
-          This task's saved layouts could not be loaded yet — retrying. Changes made meanwhile are not saved.
+          {t("This task's saved layouts could not be loaded yet — retrying. Changes made meanwhile are not saved.")}
         </div>
       ) : null}
       {layouts.saveFailed ? (
@@ -739,8 +743,7 @@ function WorkspaceView({
           role="status"
           className="shrink-0 border-b border-border bg-muted/40 px-4 py-1.5 text-xs text-muted-foreground sm:px-6"
         >
-          This layout could not be saved on this host — it keeps working in this tab, but will not come back after a
-          refresh.
+          {t('This layout could not be saved on this host — it keeps working in this tab, but will not come back after a refresh.')}
         </div>
       ) : null}
       <AvailableViewsContext.Provider value={availableViews}>
@@ -773,11 +776,11 @@ function WorkspaceView({
                 icon={<LayoutGridIcon />}
                 tone="neutral"
                 heading="h2"
-                title="No layouts"
-                subtitle="You closed every layout of this task. Create a new one, or come back later — the task will open with a Chat layout."
+                title={t('No layouts')}
+                subtitle={t('You closed every layout of this task. Create a new one, or come back later — the task will open with a Chat layout.')}
                 actions={
                   <Button variant="outline" onClick={createLayout}>
-                    New layout
+                    {t('New layout')}
                   </Button>
                 }
               />
@@ -794,23 +797,25 @@ function WorkspaceView({
       <AlertDialog open={pendingView !== null} onOpenChange={(open) => !open && setPendingView(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>You have an unsent comment</AlertDialogTitle>
+            <AlertDialogTitle>{t('You have an unsent comment')}</AlertDialogTitle>
             <AlertDialogDescription>
               {diffComments.comments.length === 1
-                ? 'One comment on the changes has not been sent yet.'
-                : `${diffComments.comments.length} comments on the changes have not been sent yet.`}{' '}
-              This is the last column showing them.
+                ? t('One comment on the changes has not been sent yet.')
+                : t('{count} comments on the changes have not been sent yet.', {
+                    count: diffComments.comments.length,
+                  })}{' '}
+              {t('This is the last column showing them.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogCancel>{t('Go back')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (pendingView) layouts.setColumnView(pendingView.index, pendingView.view)
                 setPendingView(null)
               }}
             >
-              Change anyway
+              {t('Change anyway')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -899,12 +904,13 @@ function KeptLayout({
 }
 
 function ColumnLoading({ title }: { title: string }) {
+  const { t } = useI18n()
   return (
     <CenteredState
       icon={<LoaderCircleIcon className="motion-safe:animate-spin" />}
       tone="neutral"
       heading="h2"
-      title={title}
+      title={t(title)}
     />
   )
 }
@@ -932,6 +938,7 @@ export function ConversationColumn({
     [history.currentEvents, run.status, run.runner],
   )
   useRunRecordReconcile(run, history.visibleEvents)
+  const { t } = useI18n()
 
   if (history.isPending) return <ThreadLoading />
 
@@ -951,7 +958,7 @@ export function ConversationColumn({
         const hit = target(event)
         if (hit && !hit.node.dataset.open) {
           hit.node.dataset.open = hit.reference.view
-          hit.node.title = hit.reference.view === 'files' ? 'Open in Files' : 'Open in Commits'
+          hit.node.title = hit.reference.view === 'files' ? t('Open in Files') : t('Open in Commits')
         }
       }}
       onClick={(event) => {

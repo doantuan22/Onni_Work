@@ -20,6 +20,7 @@ import { Link } from '@/lib/project-router'
 import { useRun } from '@/api/queries'
 import type { ApiRun, WorkflowGraphNode } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
+import { useI18n } from '@/lib/i18n'
 import {
   graphForWorkflow,
   loopEdges,
@@ -97,6 +98,7 @@ export function TaskGraphRoute() {
 }
 
 export function TaskGraphView({ run, embedded = false }: { run: ApiRun; embedded?: boolean }) {
+  const { t } = useI18n()
   const def = run.workflowDef
   const graph = useMemo(() => (def ? graphForWorkflow(def) : null), [def])
   const overlay = useMemo(() => (graph ? runOverlay(graph, run) : null), [graph, run])
@@ -164,8 +166,8 @@ export function TaskGraphView({ run, embedded = false }: { run: ApiRun; embedded
         <CenteredState
           icon={<WorkflowIcon />}
           tone="neutral"
-          title="No workflow graph"
-          subtitle="This task has no stored workflow definition to draw."
+          title={t('No workflow graph')}
+          subtitle={t('This task has no stored workflow definition to draw.')}
         />
       ) : (
         <div className="relative min-h-[420px] flex-1">
@@ -222,10 +224,11 @@ function NodeDetails({
   loopMax?: number
   childRunId?: string
 }) {
-  const rows: [string, string][] = [['status', state.status === 'reached' ? 'passed through' : state.status]]
-  if (state.iterations) rows.push(['runs', String(state.iterations)])
-  if (state.costUsd) rows.push(['cost', `$${state.costUsd.toFixed(2)}`])
-  if (state.loopCount !== undefined) rows.push(['iterations', `${state.loopCount}${loopMax ? ` / ${loopMax}` : ''}`])
+  const { t } = useI18n()
+  const rows: [string, string][] = [[t('status'), state.status === 'reached' ? t('passed through') : state.status]]
+  if (state.iterations) rows.push([t('runs'), String(state.iterations)])
+  if (state.costUsd) rows.push([t('cost'), `$${state.costUsd.toFixed(2)}`])
+  if (state.loopCount !== undefined) rows.push([t('iterations'), `${state.loopCount}${loopMax ? ` / ${loopMax}` : ''}`])
   const fields = Object.entries(outputs ?? {}).filter(([, v]) => v !== '')
   return (
     <div className="space-y-4 p-4 text-[12px]">
@@ -239,13 +242,13 @@ function NodeDetails({
       </dl>
       {childRunId ? (
         <Link to={`/tasks/${childRunId}`} className="inline-flex items-center gap-1 text-primary hover:underline">
-          Open the subtask <ExternalLinkIcon className="size-3" />
+          {t('Open the subtask')} <ExternalLinkIcon className="size-3" />
         </Link>
       ) : null}
       <div>
-        <div className="mb-1 text-[11px] text-muted-foreground uppercase">Outputs</div>
+        <div className="mb-1 text-[11px] text-muted-foreground uppercase">{t('Outputs')}</div>
         {fields.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">Nothing yet — outputs appear once the node has run.</p>
+          <p className="text-[11px] text-muted-foreground">{t('Nothing yet — outputs appear once the node has run.')}</p>
         ) : (
           fields.map(([k, v]) => (
             <div key={k} className="mb-2">

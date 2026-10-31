@@ -7,6 +7,7 @@ import { queryKeys, useConfig, useRunnerModels } from '@/api/queries'
 import { DEFAULT_AGENT_ACCOUNT_ID } from '@onni/api-client'
 import type { ApiRun, ContinueResponse, AttachmentEntry, Runner } from '@onni/api-client'
 import { PickerPill, RunnerPill } from '@/components/picker-pill'
+import { useI18n } from '@/lib/i18n'
 import {
   modelsForRunner,
   modelCatalogStatus,
@@ -49,6 +50,7 @@ export interface ContinueAction {
  * the pills' state lives here.
  */
 export function useContinueAction(run: ApiRun): ContinueAction {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const available = runActionFlags(run).continueRun
   const config = useConfig()
@@ -104,13 +106,15 @@ export function useContinueAction(run: ApiRun): ContinueAction {
   const mutation = useMutation({
     mutationFn: ({ text, images, idempotencyKey }: { text: string; images: AttachmentEntry[]; idempotencyKey?: string }) => {
       if (!canContinue) {
-        return Promise.reject(new Error(continuation.reason ?? 'Connect an agent provider to continue.'))
+        return Promise.reject(new Error(continuation.reason ?? t('Connect an agent provider to continue.')))
       }
       // A ceiling ended this run: continuing raises it by one more allowance, so the first press
       // only says so and the second one (this same Continue) goes through.
       if (run.limitHit && !raiseArmed.current) {
         raiseArmed.current = true
-        return Promise.reject(new Error(`${run.error ?? 'A run ceiling ended this task.'} Press Continue again to raise it by one more allowance.`))
+        return Promise.reject(new Error(t('{reason} Press Continue again to raise it by one more allowance.', {
+          reason: run.error ?? t('A run ceiling ended this task.'),
+        })))
       }
       return continueRun(run.id, {
         ...(run.limitHit ? { raiseLimits: true } : {}),
@@ -165,11 +169,11 @@ export function useContinueAction(run: ApiRun): ContinueAction {
         ) : null}
         <PickerPill
           slot="follow-up-model-pill"
-          ariaLabel="Model"
+          ariaLabel={t('Model')}
           label={models.find((m) => m.id === model)?.label ?? 'auto'}
           value={model}
           readOnly={modelsLocked}
-          disabledHint="Model selection is locked to native coding-agent settings."
+          disabledHint={t('Model selection is locked to native coding-agent settings.')}
           onPick={(next) => setPickedModel(next)}
           options={models.map((m) => ({ value: m.id, label: m.label, desc: m.desc }))}
           status={modelCatalogStatus(runner, catalog.data, catalog.isError)}

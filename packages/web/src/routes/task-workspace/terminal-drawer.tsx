@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import {
@@ -76,6 +77,7 @@ export function TerminalDrawer({
 }) {
   const [sessions, setSessions] = useState<TerminalSession[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
+  const { t } = useI18n()
   const [unavailable, setUnavailable] = useState<string | null>(null)
   const [starting, setStarting] = useState(true)
   /** The tab a close is waiting on, because something is running in it (spec §6). */
@@ -105,7 +107,7 @@ export function TerminalDrawer({
         const state = await getRunTerminal(runId)
         if (cancelled) return
         if (!state.available) {
-          setUnavailable(state.reason ?? 'The terminal is not available in this cockpit.')
+          setUnavailable(state.reason ?? t('The terminal is not available in this cockpit.'))
           return
         }
         // LIVE sessions only decide whether this task already has tabs. A shell that exited on
@@ -240,7 +242,7 @@ export function TerminalDrawer({
   return (
     <section
       data-slot="terminal-drawer"
-      aria-label="Terminal"
+      aria-label={t('Terminal')}
       data-fill={fill ? '' : undefined}
       className={cn(
         'relative flex flex-col bg-background',
@@ -256,7 +258,7 @@ export function TerminalDrawer({
         <TerminalIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
         <Tabs value={activeId ?? ''} onValueChange={setActiveId} className="min-w-0 flex-1 gap-0">
         <TabsList
-          aria-label="Terminal tabs"
+          aria-label={t('Terminal tabs')}
           className="flex w-full min-w-0 justify-start gap-0.5 overflow-x-auto rounded-none bg-transparent p-0 group-data-[orientation=horizontal]/tabs:h-auto"
         >
           {sessions.map((session) => (
@@ -280,20 +282,20 @@ export function TerminalDrawer({
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  aria-label="New terminal tab"
-                  title="New terminal tab — pick a shell"
+                  aria-label={t('New terminal tab')}
+                  title={t('New terminal tab — pick a shell')}
                   className="rounded"
                 >
                   <PlusIcon aria-hidden="true" className="size-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>New tab</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('New tab')}</DropdownMenuLabel>
                 {shells.map((shell, index) => (
                   <DropdownMenuItem key={shell} data-shell={shell} onSelect={() => addTab(shell)}>
                     <span className="truncate font-mono text-xs">{shell}</span>
                     {index === 0 ? (
-                      <span className="ml-auto shrink-0 text-xs text-soft-foreground">default</span>
+                      <span className="ml-auto shrink-0 text-xs text-soft-foreground">{t('default')}</span>
                     ) : null}
                   </DropdownMenuItem>
                 ))}
@@ -304,8 +306,8 @@ export function TerminalDrawer({
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="New terminal tab"
-              title="New terminal tab"
+              aria-label={t('New terminal tab')}
+              title={t('New terminal tab')}
               onClick={() => addTab()}
               className="rounded"
             >
@@ -345,21 +347,21 @@ export function TerminalDrawer({
             // a build precisely so you can read in that same pane why it was wrong. No
             // confirmation, because an interrupt is cheap and recoverable; the tab's X is the
             // one that asks, because it takes the whole process tree.
-            title="Interrupt the command (Ctrl-C)"
+            title={t('Interrupt the command (Ctrl-C)')}
             onClick={() => void writeRunTerminal(runId, active.id, '\x03').catch(() => {})}
           >
             <SquareIcon aria-hidden="true" className="size-3" />
-            Stop
+            {t('Stop')}
           </Button>
         ) : null}
         {onMoveToColumn ? (
-          <IconTooltip label="Move to column — beside the current view">
+          <IconTooltip label={t('Move to column — beside the current view')}>
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
               data-action="terminal-to-column"
-              aria-label="Move to column"
+              aria-label={t('Move to column')}
               onClick={onMoveToColumn}
               className="rounded text-soft-foreground hover:text-foreground"
             >
@@ -372,8 +374,8 @@ export function TerminalDrawer({
             type="button"
             variant="ghost"
             size="icon-xs"
-            aria-label="Hide terminal"
-            title="Hide terminal — processes keep running"
+            aria-label={t('Hide terminal')}
+            title={t('Hide terminal — processes keep running')}
             onClick={onClose}
             className="rounded"
           >
@@ -391,7 +393,7 @@ export function TerminalDrawer({
       ) : starting ? (
         <p className="flex items-center gap-2 px-3 py-4 text-xs text-soft-foreground">
           <Loader2Icon aria-hidden="true" className="size-3.5 animate-spin" />
-          Starting the shell…
+          {t('Starting the shell…')}
         </p>
       ) : (
         // Every pane stays MOUNTED and only the active one is shown. A tab is a live shell with a
@@ -415,18 +417,20 @@ export function TerminalDrawer({
                 fact. `busy === true` saw the process; `busy === null` is a host that cannot read
                 its process table, and claiming "coś działa" there would be inventing it. */}
             <AlertDialogTitle>
-              {confirming?.busy === true ? 'Something is running in this tab' : 'Close this tab?'}
+              {confirming?.busy === true ? t('Something is running in this tab') : t('Close this tab?')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirming?.busy === true
-                ? `“${confirming.label}” is still running. Closing the tab stops that process and everything it started.`
-                : 'This host cannot tell whether something is still running in this shell. Closing the tab stops the shell and everything it started.'}
+                ? t('“{label}” is still running. Closing the tab stops that process and everything it started.', {
+                    label: confirming.label,
+                  })
+                : t('This host cannot tell whether something is still running in this shell. Closing the tab stops the shell and everything it started.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => confirming && closeTab(confirming)}>
-              Close anyway
+              {t('Close anyway')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -446,6 +450,7 @@ function TerminalTab({
   onSelect: () => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   return (
     <div
       data-slot="terminal-tab"
@@ -462,7 +467,7 @@ function TerminalTab({
       <TabsTrigger
         value={session.id}
         onClick={onSelect}
-        title={session.exitCode === null ? session.label : `${session.label} — exited (${session.exitCode})`}
+        title={session.exitCode === null ? session.label : t('{label} — exited ({code})', { label: session.label, code: session.exitCode })}
         className="inline-block h-auto max-w-40 flex-none truncate rounded-none border-0 p-0 text-xs font-medium text-inherit hover:text-inherit focus-visible:underline focus-visible:ring-0 focus-visible:outline-0 data-[state=active]:bg-transparent data-[state=active]:font-medium data-[state=active]:text-inherit group-data-[variant=default]/tabs-list:data-[state=active]:shadow-none"
       >
         {session.label}
@@ -471,7 +476,7 @@ function TerminalTab({
         type="button"
         variant="ghost"
         size="icon-xs"
-        aria-label={`Close ${session.label}`}
+        aria-label={t('Close {label}', { label: session.label })}
         onClick={onClose}
         className={cn(
           'ml-1 size-4 rounded text-inherit opacity-0 transition-opacity hover:bg-background hover:text-inherit focus-visible:opacity-100 group-hover:opacity-100',
@@ -500,6 +505,7 @@ function DrawerResizeHandle({
   onHeightChange: (height: number) => void
 }) {
   const origin = useRef<{ y: number; height: number } | null>(null)
+  const { t } = useI18n()
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
@@ -549,7 +555,7 @@ function DrawerResizeHandle({
       data-slot="drawer-resize-handle"
       role="separator"
       aria-orientation="horizontal"
-      aria-label="Resize terminal"
+      aria-label={t('Resize terminal')}
       aria-valuenow={height}
       aria-valuemin={MIN_DRAWER_HEIGHT}
       aria-valuemax={MAX_DRAWER_HEIGHT}
@@ -559,7 +565,7 @@ function DrawerResizeHandle({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       onKeyDown={onKeyDown}
-      title="Drag to resize — arrow keys adjust precisely"
+      title={t('Drag to resize — arrow keys adjust precisely')}
       // A 5px grab strip straddling the top border, invisible until reached for. `touch-none` is
       // load-bearing: without it a touch drag is claimed by the browser's panning.
       className="absolute inset-x-0 -top-[3px] z-20 h-[5px] cursor-row-resize touch-none bg-transparent transition-colors hover:bg-violet/40 focus-visible:bg-violet/60 focus-visible:outline-none"

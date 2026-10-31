@@ -8,6 +8,7 @@ import { StatusDot } from '@/components/status-dot'
 import { Card } from '@/components/ui/card'
 import { dayTime, statusLabel, statusTone, triggerLabel, usd, AUTOMATION_COST_VISIBLE } from '@/lib/automation-format'
 import { shortAge } from '@/lib/format'
+import { useI18n } from '@/lib/i18n'
 import { Link, useNavigate } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 
@@ -35,20 +36,21 @@ export function AutomationsTable({
   actions: AutomationActions
   now?: number
 }) {
+  const { t } = useI18n()
   const showCost = AUTOMATION_COST_VISIBLE && (data.stats.costUsd !== undefined || data.automations.some((automation) => automation.costUsd7d !== undefined))
   return (
     <Card flush data-slot="automations-table" className="min-w-0 overflow-x-auto">
       <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
         <thead>
           <tr>
-            <th className={cn(TH, 'pl-4')}>State</th>
-            <th className={TH}>Automation</th>
-            <th className={TH}>Trigger</th>
-            <th className={cn(TH, WIDE)}>Runs as</th>
-            <th className={TH}>Next run</th>
-            <th className={TH}>Last run</th>
-            <th className={cn(TH, WIDE, 'text-right')}>Runs 7d</th>
-            {showCost ? <th className={cn(TH, WIDE, 'text-right')}>Cost 7d</th> : null}
+            <th className={cn(TH, 'pl-4')}>{t('State')}</th>
+            <th className={TH}>{t('Automation')}</th>
+            <th className={TH}>{t('Trigger')}</th>
+            <th className={cn(TH, WIDE)}>{t('Runs as')}</th>
+            <th className={TH}>{t('Next run')}</th>
+            <th className={TH}>{t('Last run')}</th>
+            <th className={cn(TH, WIDE, 'text-right')}>{t('Runs 7d')}</th>
+            {showCost ? <th className={cn(TH, WIDE, 'text-right')}>{t('Cost 7d')}</th> : null}
             <th className={cn(TH, 'pr-4')} />
           </tr>
         </thead>
@@ -87,10 +89,12 @@ function AutomationRow({
   now: number
 }) {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const github = automation.kind === 'github'
   const capabilityPaused = github && !available
   const dispatch = automation.task.dispatch
   const trigger = triggerLabel(automation)
+  const nextRun = nextRunText(automation, timeZone, now)
   const runAs = [automation.task.workflow, automation.task.runner].filter(Boolean)
   const stop = (event: SyntheticEvent) => event.stopPropagation()
 
@@ -104,10 +108,10 @@ function AutomationRow({
     >
       <td className={cn(TD, 'pl-4')}>
         {capabilityPaused ? (
-          <Pill dot="neutral">paused by capability</Pill>
+          <Pill dot="neutral">{t('paused by capability')}</Pill>
         ) : (
           <Pill dot={automation.enabled ? 'success' : 'neutral'} pulse={automation.enabled && github}>
-            {automation.enabled ? 'enabled' : 'paused'}
+            {automation.enabled ? t('enabled') : t('paused')}
           </Pill>
         )}
       </td>
@@ -118,7 +122,7 @@ function AutomationRow({
           {dispatch ? (
             <span
               data-slot="dispatch-badge"
-              title={`dispatch · up to ${dispatch.maxSubtasks ?? 1} subtasks`}
+              title={t('dispatch · up to {count} subtasks', { count: dispatch.maxSubtasks ?? 1 })}
               className="inline-flex shrink-0 items-center gap-[3px] rounded-full bg-muted px-1.5 py-px text-[10.5px] font-medium text-muted-foreground"
             >
               <GitForkIcon className="size-2.5" />×{dispatch.maxSubtasks ?? 1}
@@ -127,7 +131,7 @@ function AutomationRow({
         </span>
       </td>
       <td className={cn(TD, 'max-w-[260px] overflow-hidden font-mono text-xs text-ellipsis text-muted-foreground')} title={trigger}>
-        {trigger}
+        {t(trigger)}
       </td>
       <td className={cn(TD, WIDE, 'text-xs text-muted-foreground')}>
         {runAs.length ? (
@@ -155,13 +159,13 @@ function AutomationRow({
         data-slot="next-run"
         className={cn(TD, 'font-mono text-xs tabular-nums', automation.enabled ? 'text-foreground' : 'text-soft-foreground')}
       >
-        {nextRunText(automation, timeZone, now)}
+        {nextRun === 'continuous' ? t('continuous') : nextRun}
       </td>
       <td className={TD}>
         {automation.lastRun ? (
           <span className="inline-flex items-center gap-2">
             <StatusDot tone={statusTone(automation.lastRun.status)} />
-            <span className="text-[12.5px] text-muted-foreground">{statusLabel(automation.lastRun.status)}</span>
+            <span className="text-[12.5px] text-muted-foreground">{t(statusLabel(automation.lastRun.status))}</span>
             <span className="text-[11.5px] text-soft-foreground">{shortAge(automation.lastRun.ts, now)}</span>
             <Link
               to={`/tasks/${encodeURIComponent(automation.lastRun.runId)}`}
@@ -169,7 +173,7 @@ function AutomationRow({
               onClick={stop}
               className="inline-flex items-center gap-0.5 rounded-full border border-violet/40 px-1.5 py-px font-mono text-[10.5px] font-semibold text-violet"
             >
-              task
+              {t('task')}
               <ArrowUpRightIcon className="size-[9px]" />
             </Link>
           </span>

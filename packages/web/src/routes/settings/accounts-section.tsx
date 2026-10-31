@@ -52,6 +52,7 @@ import { OpenInMenu, cliTargetRunner } from '@/components/open-in-menu'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { DefaultAgentPicker, agentPickerRows } from '@/components/default-agent-picker'
 import { modelCatalogStatus, modelsForRunner, RUNNERS } from '@/routes/new-task-form'
+import { useI18n } from '@/lib/i18n'
 import { AddAccountDialog } from './add-account-dialog'
 
 /**
@@ -123,12 +124,13 @@ const STATUS_PRESENTATION = {
 } as const satisfies Record<string, { label: string; tone: StatusDotTone }>
 
 export function AccountsSection() {
+  const { t } = useI18n()
   const profiles = useAgentProfiles()
 
   if (profiles.isPending) {
     return (
       <p data-slot="accounts-loading" className="p-4 text-[13px] text-soft-foreground md:p-6">
-        Loading agent accounts…
+        {t('Loading agent accounts…')}
       </p>
     )
   }
@@ -137,7 +139,7 @@ export function AccountsSection() {
       <CenteredState
         icon={<IdCardIcon />}
         tone="danger"
-        title="Agent accounts did not load"
+        title={t('Agent accounts did not load')}
         subtitle={profiles.error.message}
         heading="h2"
       />
@@ -147,6 +149,7 @@ export function AccountsSection() {
 }
 
 function AccountsPane({ data }: { data: AgentProfilesResponse }) {
+  const { t } = useI18n()
   const health = useHealth()
   const [adding, setAdding] = useState<ProviderId | null>(null)
   const [confirming, setConfirming] = useState<AgentProfile | null>(null)
@@ -169,10 +172,9 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
         data-slot="accounts-section"
         className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 md:p-6"
       >
-        <h2 className="text-sm font-semibold text-foreground">Agent accounts</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t('Agent accounts')}</h2>
         <p data-slot="accounts-hosted" className="text-[13px] text-soft-foreground">
-          Agent accounts are disabled for remote access. On a trusted, authenticated self-hosted
-          deployment, set ONNI_REMOTE_AGENT_ACCOUNTS=1 and restart onni.
+          {t('Agent accounts are disabled for remote access. On a trusted, authenticated self-hosted deployment, set ONNI_REMOTE_AGENT_ACCOUNTS=1 and restart onni.')}
         </p>
       </div>
     )
@@ -184,11 +186,9 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
       className="mx-auto flex w-full max-w-2xl flex-col gap-5 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6"
     >
       <div>
-        <h2 className="text-sm font-semibold text-foreground">Agent accounts</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t('Agent accounts')}</h2>
         <p className="text-[13px] text-muted-foreground">
-          One agent per tab: whether it is installed, and which logins you have. Add a second
-          config folder to keep a work account beside a personal one; each project picks which it
-          uses in its own Agents settings.
+          {t('One agent per tab: whether it is installed, and which logins you have. Add a second config folder to keep a work account beside a personal one; each project picks which it uses in its own Agents settings.')}
         </p>
       </div>
 
@@ -237,15 +237,13 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
       <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
         <AlertDialogContent data-slot="accounts-remove-confirm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove “{confirming?.label}”?</AlertDialogTitle>
+            <AlertDialogTitle>{t('Remove “{name}”?', { name: confirming?.label ?? '' })}</AlertDialogTitle>
             <AlertDialogDescription>
-              This only forgets the account. Nothing in {confirming?.configDir} is deleted — not
-              your login, not your sessions. Projects using it fall back to the default account,
-              and tasks that ran under it can no longer be resumed from here.
+              {t('This only forgets the account. Nothing in {path} is deleted — not your login, not your sessions. Projects using it fall back to the default account, and tasks that ran under it can no longer be resumed from here.', { path: confirming?.configDir ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
             <AlertDialogAction
               data-action="accounts-remove-confirm"
               disabled={remove.isPending}
@@ -255,14 +253,14 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
                 remove.mutate(target.id, {
                   onSuccess: () => {
                     setConfirming(null)
-                    toast(`Removed ${target.label}`)
+                    toast(t('Removed {name}', { name: target.label }))
                   },
                   // The server's own words: a 409 explains something this pane cannot infer.
                   onError: (error) => toast(error.message, { tone: 'danger' }),
                 })
               }}
             >
-              Remove
+              {t('Remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -289,41 +287,42 @@ function AgentTab({
   onRemove: (account: AgentProfile) => void
 }) {
   const installed = check?.available === true
+  const { t } = useI18n()
 
   return (
     <div data-slot="accounts-provider" data-provider={provider} className="flex flex-col gap-4">
       {/* Facts about the BINARY, not about any one account: a version and an install are shared by
           every login of the same CLI, so they belong here rather than repeated on each row. */}
       <dl className="divide-y divide-border/60 overflow-hidden rounded-md border border-border bg-card text-[13px]">
-        <Row label="Installed">
+        <Row label={t('Installed')}>
           {check === undefined ? (
-            <span className="text-muted-foreground">Checking…</span>
+            <span className="text-muted-foreground">{t('Checking…')}</span>
           ) : installed ? (
-            <span data-slot="agent-installed">Yes</span>
+            <span data-slot="agent-installed">{t('Yes')}</span>
           ) : (
             <span data-slot="agent-installed" className="text-muted-foreground">
-              No — <code className="text-[12px]">{PROVIDER_INSTALL[provider]}</code>
+              {t('No —')} <code className="text-[12px]">{PROVIDER_INSTALL[provider]}</code>
             </span>
           )}
         </Row>
         {installed && check?.version ? (
-          <Row label="Version">
+          <Row label={t('Version')}>
             <span data-slot="agent-version" className="font-mono text-[12.5px]">
               {check.version}
             </span>
           </Row>
         ) : null}
-        <Row label="Accounts">
+        <Row label={t('Accounts')}>
           <span>
             {accounts.length === 1
-              ? 'the discovered one'
-              : `${accounts.length} (1 discovered, ${accounts.length - 1} added)`}
+              ? t('the discovered one')
+              : t('{count} (1 discovered, {added} added)', { count: accounts.length, added: accounts.length - 1 })}
           </span>
         </Row>
       </dl>
 
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[13px] font-semibold text-foreground">Logins</h3>
+        <h3 className="text-[13px] font-semibold text-foreground">{t('Logins')}</h3>
         {canCarryAccounts ? (
           <Button
             type="button"
@@ -333,7 +332,7 @@ function AgentTab({
             data-provider={provider}
             onClick={onAdd}
           >
-            Add account
+            {t('Add account')}
           </Button>
         ) : null}
       </div>
@@ -346,9 +345,7 @@ function AgentTab({
 
       {!canCarryAccounts ? (
         <p data-slot="accounts-single-only" className="text-[11.5px] text-soft-foreground">
-          {PROVIDER_LABEL[provider]} can only hold one account here: it keeps its credentials
-          outside its config folder, so a second folder would change settings without changing the
-          login — which would say “work account” while billing the other one.
+          {t('{provider} can only hold one account here: it keeps its credentials outside its config folder, so a second folder would change settings without changing the login — which would say “work account” while billing the other one.', { provider: PROVIDER_LABEL[provider] })}
         </p>
       ) : null}
     </div>
@@ -374,6 +371,7 @@ function AgentTab({
  * that is the point of them being here rather than in a repo's settings.
  */
 function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const config = useWorkspaceConfig()
   const providerStatus = useProviderStatus()
@@ -398,10 +396,9 @@ function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse 
   return (
     <section data-slot="accounts-defaults" className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3.5">
       <div>
-        <h3 className="text-[13px] font-semibold text-foreground">Defaults for new projects</h3>
+        <h3 className="text-[13px] font-semibold text-foreground">{t('Defaults for new projects')}</h3>
         <p className="text-[13px] text-muted-foreground">
-          What a project runs when it has not chosen for itself — set once instead of per
-          repository. A project that has chosen keeps its own.
+          {t('What a project runs when it has not chosen for itself — set once instead of per repository. A project that has chosen keeps its own.')}
         </p>
       </div>
 
@@ -427,12 +424,12 @@ function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse 
       />
 
       <div className="flex flex-col gap-2">
-        <span className="text-xs text-muted-foreground">Default model per agent</span>
+        <span className="text-xs text-muted-foreground">{t('Default model per agent')}</span>
         {RUNNERS.map((entry) => (
           <label key={entry.id} className="flex items-center gap-3">
             <span className="w-24 shrink-0 font-mono text-xs text-muted-foreground">{entry.label}</span>
             <select
-              aria-label={`Default model for ${entry.label}`}
+              aria-label={t('Default model for {runner}', { runner: entry.label })}
               data-slot="accounts-default-model"
               data-runner={entry.id}
               value={models[entry.id] ?? ''}
@@ -478,6 +475,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: () => void }) {
+  const { t } = useI18n()
   const [showDetails, setShowDetails] = useState(false)
   const routeId = agentAccountRouteId(account)
   const connect = useConnectAgentAccount()
@@ -501,7 +499,7 @@ function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: ()
             <span className="text-[13px] font-medium text-foreground">{account.label}</span>
             {account.isDefault ? (
               <Badge variant="ghost" className="shrink-0 text-[10px] text-muted-foreground">
-                discovered
+                {t('discovered')}
               </Badge>
             ) : null}
           </div>
@@ -516,12 +514,12 @@ function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: ()
             {/* "Checking…" is a real, distinct state from any probe RESULT: the answer is not in
                 yet. Showing `unknown` here would claim a verification that never ran. */}
             <StatusDot tone={presentation?.tone ?? 'neutral'} pulse={presentation === undefined} />
-            <span data-slot="account-status">{presentation?.label ?? 'Checking…'}</span>
+            <span data-slot="account-status">{presentation ? t(presentation.label) : t('Checking…')}</span>
             {!account.exists ? (
-              <span data-slot="account-missing">— folder not created yet; Connect will make it</span>
+              <span data-slot="account-missing">{t('— folder not created yet; Connect will make it')}</span>
             ) : !account.looksValid ? (
               <span data-slot="account-unrecognised">
-                — this folder does not look like {PROVIDER_LABEL[account.provider]} config yet
+                {t('— this folder does not look like {provider} config yet', { provider: PROVIDER_LABEL[account.provider] })}
               </span>
             ) : null}
           </div>
@@ -553,8 +551,8 @@ function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: ()
                   {
                     onSuccess: (result) =>
                       toast(result.opened
-                        ? 'Finish signing in in the terminal, then Check again.'
-                        : 'This account is already connected.'),
+                        ? t('Finish signing in in the terminal, then Check again.')
+                        : t('This account is already connected.')),
                     // The server answers a copyable command when it cannot open a terminal (hosted
                     // mode, no emulator, a folder it refuses to embed). Showing it is the whole
                     // point of failing closed rather than running the bare login.
@@ -568,7 +566,7 @@ function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: ()
                 )
               }
             >
-              Connect
+              {t('Connect')}
             </Button>
           ) : null}
           <Button
@@ -577,14 +575,14 @@ function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: ()
             size="sm"
             data-action="account-recheck"
             disabled={recheck.isPending}
-            title="Re-probe this account's login now, instead of waiting for the cached answer"
+            title={t("Re-probe this account's login now, instead of waiting for the cached answer")}
             onClick={() =>
               recheck.mutate(routeId, {
                 onError: (error: Error) => toast(error.message, { tone: 'danger' }),
               })
             }
           >
-            Check again
+            {t('Check again')}
           </Button>
           {/* Identity is opt-in: nothing is requested until this is pressed, so an email is absent
               from the page rather than merely unrendered. */}
@@ -596,7 +594,7 @@ function AccountRow({ account, onRemove }: { account: AgentProfile; onRemove: ()
             aria-expanded={showDetails}
             onClick={() => setShowDetails((on) => !on)}
           >
-            {showDetails ? 'Hide details' : 'Show details'}
+            {showDetails ? t('Hide details') : t('Show details')}
           </Button>
         </div>
       </div>
@@ -620,6 +618,7 @@ function AccountDetails({
 }) {
   const health = useHealth()
   const details = useAgentAccountDetails(routeId, true)
+  const { t } = useI18n()
   const open = useOpenAgentAccountFile()
   const targets = useOpenTargets()
   const [renaming, setRenaming] = useState(false)
@@ -646,14 +645,14 @@ function AccountDetails({
       {
         // The server's own words: "this account has no settings.json yet", "could not open …".
         onError: (error) => toast(error.message, { tone: 'danger' }),
-        onSuccess: () => toast(`Opened ${label}`),
+        onSuccess: () => toast(t('Opened {label}', { label })),
       },
     )
 
   return (
     <div data-slot="account-details" className="rounded-md border border-border/60 bg-muted/30 p-3">
       {details.isPending ? (
-        <p className="text-xs text-muted-foreground">Reading account details…</p>
+        <p className="text-xs text-muted-foreground">{t('Reading account details…')}</p>
       ) : details.isError ? (
         <p data-slot="account-details-error" className="text-xs text-danger">
           {details.error.message}
@@ -672,13 +671,13 @@ function AccountDetails({
       ) : (
         // Honest about WHY there is nothing, rather than an empty panel.
         <p data-slot="account-identity-unavailable" className="text-xs text-muted-foreground">
-          {details.data.reason ?? 'No account details to show.'}
+          {details.data.reason ?? t('No account details to show.')}
         </p>
       )}
 
       {localHandoff ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2.5">
-          <span className="mr-1 text-xs text-muted-foreground">Config files</span>
+          <span className="mr-1 text-xs text-muted-foreground">{t('Config files')}</span>
           {account.files.map((file) => (
             <OpenInMenu
               key={file.id}
@@ -688,7 +687,7 @@ function AccountDetails({
               disabled={open.isPending}
               // A file the agent has not written yet is offered but says so, because "Connect then
               // it appears" is the normal path and a hidden button would look like a missing feature.
-              title={file.exists ? file.path : `${file.path} — not created yet`}
+              title={file.exists ? file.path : t('{path} — not created yet', { path: file.path })}
               choices={fileChoices}
               onPick={(target) => openPath(file.id, file.label, target)}
               leading={
@@ -697,14 +696,14 @@ function AccountDetails({
                   onSelect={() => openPath(file.id, file.label)}
                 >
                   <ExternalLinkIcon aria-hidden="true" />
-                  System default
+                  {t('System default')}
                 </DropdownMenuItem>
               }
             />
           ))}
           <OpenInMenu
             slot="account-open-folder"
-            label="Folder"
+            label={t('Folder')}
             disabled={open.isPending}
             title={account.path}
             choices={folderChoices}
@@ -712,7 +711,7 @@ function AccountDetails({
             leading={
               <DropdownMenuItem data-target="system" onSelect={() => openPath('folder', 'folder')}>
                 <ExternalLinkIcon aria-hidden="true" />
-                System default
+                {t('System default')}
               </DropdownMenuItem>
             }
           />
@@ -727,13 +726,13 @@ function AccountDetails({
           data-slot="account-manage"
           className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5"
         >
-          <span className="mr-1 text-xs text-muted-foreground">Account</span>
+          <span className="mr-1 text-xs text-muted-foreground">{t('Account')}</span>
           {renaming ? (
             <>
               <input
                 type="text"
                 autoFocus
-                aria-label={`Name for ${account.label}`}
+                aria-label={t('Name for {name}', { name: account.label })}
                 data-slot="account-rename-input"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -754,7 +753,7 @@ function AccountDetails({
                   )
                 }
               >
-                Save
+                {t('Save')}
               </Button>
               <Button
                 type="button"
@@ -765,7 +764,7 @@ function AccountDetails({
                   setRenaming(false)
                 }}
               >
-                Cancel
+                {t('Cancel')}
               </Button>
             </>
           ) : (
@@ -777,7 +776,7 @@ function AccountDetails({
                 data-action="account-rename"
                 onClick={() => setRenaming(true)}
               >
-                Rename
+                {t('Rename')}
               </Button>
               <Button
                 type="button"
@@ -786,12 +785,12 @@ function AccountDetails({
                 data-action="account-remove"
                 onClick={onRemove}
               >
-                Remove
+                {t('Remove')}
               </Button>
               {/* The label is onni's own; the folder is the account. Saying so here is what keeps
                   Rename from reading as "point this at a different directory". */}
               <span className="text-xs text-muted-foreground">
-                Renaming changes what onni calls this account, not its folder.
+                {t('Renaming changes what onni calls this account, not its folder.')}
               </span>
             </>
           )}

@@ -2,6 +2,7 @@ import { ChevronDownIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import type { PlanEntry, PlanStatus } from '@onni/api-client'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -58,6 +59,7 @@ export function PlanDock({
   entries: PlanEntry[]
   settled?: boolean
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(() => openByRun.get(runId) ?? defaultOpen())
   if (entries.length === 0) return null // full-replacement can empty the plan — nothing to dock
 
@@ -85,13 +87,13 @@ export function PlanDock({
         aria-expanded={open}
         className={cn('flex w-full items-center gap-2 px-3.5 text-left text-[13px]', open ? 'pt-2 pb-1.5' : 'py-2')}
       >
-        <span className="shrink-0 font-semibold">Plan</span>
+        <span className="shrink-0 font-semibold">{t('Plan')}</span>
         <span data-slot="plan-count" className="shrink-0 text-muted-foreground tabular-nums">
           · {done}/{total}
         </span>
         {unfinished ? (
           <span data-slot="plan-unfinished" className="shrink-0 text-soft-foreground">
-            · left unfinished
+            {t('· left unfinished')}
           </span>
         ) : null}
         {!open && active !== undefined ? (
@@ -116,6 +118,7 @@ export function PlanDock({
 }
 
 function PlanRow({ entry, settled }: { entry: PlanEntry; settled: boolean }) {
+  const { t } = useI18n()
   // A settled run has no current item: its stale `in_progress` renders like any other
   // unreached entry (see PlanDock's `settled`).
   const status: PlanStatus = settled && entry.status === 'in_progress' ? 'pending' : entry.status
@@ -139,7 +142,7 @@ function PlanRow({ entry, settled }: { entry: PlanEntry; settled: boolean }) {
           data-slot="plan-tag"
           className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-semibold tracking-[0.05em] text-muted-foreground uppercase"
         >
-          in progress
+          {t('in progress')}
         </span>
       ) : null}
     </li>

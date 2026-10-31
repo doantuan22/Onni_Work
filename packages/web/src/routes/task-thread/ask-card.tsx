@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 import type { ApiRun } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { useI18n } from '@/lib/i18n'
 import { Link } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 
@@ -55,6 +56,7 @@ function formatAnswer(question: UiAskQuestion, answer: AskQuestionAnswer): strin
  * to a compact summary.
  */
 export function AskCard({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
+  const { t } = useI18n()
   // Answered — by Send or by a free-form reply in the composer — so the held picks are spent.
   useEffect(() => {
     if (ask.resolved) forgetAskSelections(run.id, ask)
@@ -70,7 +72,7 @@ export function AskCard({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
         data-resolved="true"
         className="rounded-lg border border-border bg-card px-3.5 py-2.5 text-xs text-muted-foreground"
       >
-        <span className="text-soft-foreground">Answered</span>
+        <span className="text-soft-foreground">{t('Answered')}</span>
         {ask.answer ? (
           <span className="ml-1.5 break-words whitespace-pre-line text-foreground">{ask.answer}</span>
         ) : null}
@@ -82,6 +84,7 @@ export function AskCard({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
 
 /** The unanswered card: option chips wired to whichever delivery seam the run's state allows. */
 function PendingAsk({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
+  const { t } = useI18n()
   const delivery = useAskAnswer(run)
   const blocked = delivery.blockedBy !== undefined
   const questions = ask.questions
@@ -126,7 +129,7 @@ function PendingAsk({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
     >
       <div className="mb-2.5 flex items-center gap-2">
         <span className="text-xs font-medium text-primary">
-          {ask.fromWorkflow ? 'The workflow is asking' : 'The agent is asking'}
+          {ask.fromWorkflow ? t('The workflow is asking') : t('The agent is asking')}
         </span>
       </div>
       <div className="flex flex-col gap-4">
@@ -149,13 +152,13 @@ function PendingAsk({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
       {oneTap ? (
         resuming ? (
           <p data-slot="ask-resume-hint" className="mt-3 text-[11.5px] text-soft-foreground">
-            The session has ended — your answer reopens it and goes to the agent.
+            {t('The session has ended — your answer reopens it and goes to the agent.')}
           </p>
         ) : null
       ) : (
         <div className="mt-3 flex items-center gap-2.5">
           <Button size="sm" disabled={delivery.isPending || blocked || !allAnswered} onClick={sendAll}>
-            {resuming ? 'Send answer & reopen' : 'Send answer'}
+            {resuming ? t('Send answer & reopen') : t('Send answer')}
           </Button>
           {/* The slot names the resume state, so a selector for it can never match the ordinary
               "pick one or more" hint a live run shows. */}
@@ -164,8 +167,13 @@ function PendingAsk({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
             className="text-[11.5px] text-soft-foreground"
           >
             {resuming
-              ? 'the session has ended — sending reopens it'
-              : `${questions.length > 1 ? 'answer each question' : 'pick one or more'} — or type a reply below`}
+              ? t('the session has ended — sending reopens it')
+              : t('{mode} — or type a reply below', {
+                  mode:
+                    questions.length > 1
+                      ? t('answer each question')
+                      : t('pick one or more'),
+                })}
           </span>
         </div>
       )}
@@ -173,14 +181,14 @@ function PendingAsk({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
           long card scrolls its earlier questions out of sight (#1247). */}
       {!oneTap && unanswered.length > 0 ? (
         <p data-slot="ask-unanswered" className="mt-2 text-[11.5px] text-soft-foreground">
-          unanswered: {unanswered.join(', ')}
+          {t('unanswered: {list}', { list: unanswered.join(', ') })}
         </p>
       ) : null}
       {delivery.blockedBy === 'provider' ? (
         <div data-slot="ask-provider-gate" className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span>{delivery.reason}</span>
           <Link to="/settings/agents#providers" className="font-medium text-foreground underline underline-offset-4">
-            Configure providers
+            {t('Configure providers')}
           </Link>
         </div>
       ) : null}
@@ -215,6 +223,7 @@ function AskQuestionBlock({
   onChange: (answer: AskQuestionAnswer) => void
   onSubmit: (answer: AskQuestionAnswer) => void
 }) {
+  const { t } = useI18n()
   const multiSelect = question.multiSelect === true
   const otherOpen = answer.other !== undefined
   const otherInput = useRef<HTMLTextAreaElement>(null)
@@ -260,7 +269,7 @@ function AskQuestionBlock({
           {question.header}
         </span>
         {multiSelect ? (
-          <span className="ml-auto text-[10.5px] text-soft-foreground">select all that apply</span>
+          <span className="ml-auto text-[10.5px] text-soft-foreground">{t('select all that apply')}</span>
         ) : null}
       </div>
       <p className="mb-2.5 break-words text-sm font-semibold text-foreground">{question.question}</p>
@@ -278,7 +287,7 @@ function AskQuestionBlock({
         ))}
         <div className="flex flex-wrap gap-2">
           <AskExtraChoice slot="ask-other" selected={otherOpen} disabled={disabled} onClick={toggleOther}>
-            Other…
+            {t('Other…')}
           </AskExtraChoice>
           <AskExtraChoice
             slot="ask-more-info"
@@ -286,7 +295,7 @@ function AskQuestionBlock({
             disabled={disabled}
             onClick={toggleMoreInfo}
           >
-            Need more info
+            {t('Need more info')}
           </AskExtraChoice>
         </div>
         {otherOpen ? (
@@ -294,8 +303,8 @@ function AskQuestionBlock({
             <Textarea
               ref={otherInput}
               rows={2}
-              aria-label={`Your own answer: ${question.question}`}
-              placeholder="Type your own answer"
+              aria-label={t('Your own answer: {question}', { question: question.question })}
+              placeholder={t('Type your own answer')}
               value={answer.other}
               disabled={disabled}
               onChange={(event) => onChange({ ...answer, other: event.target.value })}
@@ -309,7 +318,7 @@ function AskQuestionBlock({
             {oneTap ? (
               <div>
                 <Button size="sm" disabled={disabled || !isAnswered(answer)} onClick={() => onSubmit(answer)}>
-                  Send answer
+                  {t('Send answer')}
                 </Button>
               </div>
             ) : null}

@@ -27,6 +27,7 @@ import {
 import { memo } from 'react'
 
 import { Link } from '@/lib/project-router'
+import { useI18n, type Translate } from '@/lib/i18n'
 
 import type { WorkflowGraph, WorkflowGraphNode, WorkflowNodeCatalogResponse } from '@onni/api-client'
 import { cn } from '@/lib/utils'
@@ -151,20 +152,20 @@ export { TILE, WIDE_WIDTH }
 const WIDE = WIDE_TYPES
 
 /** One short detail line under (or inside) a node — never more than the eye needs at a glance. */
-export function nodeDetail(node: WorkflowGraphNode, loopCount?: number): string {
+export function nodeDetail(node: WorkflowGraphNode, loopCount: number | undefined, t: Translate): string {
   switch (node.type) {
     case 'agent':
-      return [node.review ? 'reviewer' : '', node.runner ?? '', node.budgetUsd ? `$${node.budgetUsd}` : '', node.skill ? `/${node.skill}` : '', node.session ? `↺ ${node.session.continue}` : '']
+      return [node.review ? t('reviewer') : '', node.runner ?? '', node.budgetUsd ? `$${node.budgetUsd}` : '', node.skill ? `/${node.skill}` : '', node.session ? `↺ ${node.session.continue}` : '']
         .filter(Boolean)
-        .join(' · ') || 'agent'
+        .join(' · ') || t('agent')
     case 'dispatch':
-      return [node.runner ?? 'subtask', node.budgetUsd ? `$${node.budgetUsd}` : ''].filter(Boolean).join(' · ')
+      return [node.runner ?? t('subtask'), node.budgetUsd ? `$${node.budgetUsd}` : ''].filter(Boolean).join(' · ')
     case 'check':
       return `$ ${node.command}`
     case 'loop':
-      return loopCount ? `${loopCount} / ${node.max}` : `max ${node.max}`
+      return loopCount ? `${loopCount} / ${node.max}` : t('max {max}', { max: node.max })
     case 'end':
-      return node.status === 'failed' ? 'fails the run' : 'succeeds'
+      return node.status === 'failed' ? t('fails the run') : t('succeeds')
     case 'gate.human':
       return node.message
     case 'ask-user':
@@ -172,42 +173,42 @@ export function nodeDetail(node: WorkflowGraphNode, loopCount?: number): string 
     case 'git.commit':
       return node.message
     case 'github.draft-pr':
-      return node.title ?? 'task title'
+      return node.title ?? t('task title')
     case 'github.wait-ci':
       return `≤ ${Math.round(node.timeoutMs / 60_000)} min`
     case 'github.pr-comment':
       return node.body
     case 'fork':
-      return `${node.branches} agents at once`
+      return t('{count} agents at once', { count: node.branches })
     case 'join':
-      return node.wait === 'any' ? 'first to succeed' : 'wait for all'
+      return node.wait === 'any' ? t('first to succeed') : t('wait for all')
     case 'workflow':
       return node.workflow
     case 'git.push':
-      return 'task branch → origin'
+      return t('task branch → origin')
     case 'git.sync-base':
-      return 'merge latest base'
+      return t('merge latest base')
     case 'github.pr-update':
-      return [node.ready ? 'ready' : '', node.addLabels?.length ? `+${node.addLabels.join(', ')}` : '', node.reviewers?.length ? `@${node.reviewers.join(', @')}` : '']
+      return [node.ready ? t('ready') : '', node.addLabels?.length ? `+${node.addLabels.join(', ')}` : '', node.reviewers?.length ? `@${node.reviewers.join(', @')}` : '']
         .filter(Boolean)
-        .join(' · ') || 'no changes'
+        .join(' · ') || t('no changes')
     case 'github.issue-comment':
-      return node.issue ? `#${node.issue}` : "task's issue"
+      return node.issue ? `#${node.issue}` : t("task's issue")
     case 'notify.webhook':
       return node.url.replace(/^https?:\/\//, '')
     case 'if': {
       const c = node.condition
       switch (c.kind) {
         case 'diff-lines':
-          return `lines ${c.op} ${c.value}`
+          return t('lines {op} {value}', { op: c.op, value: c.value })
         case 'diff-files':
-          return `files ${c.op} ${c.value}`
+          return t('files {op} {value}', { op: c.op, value: c.value })
         case 'paths-changed':
-          return `changed ${c.glob}`
+          return t('changed {glob}', { glob: c.glob })
         case 'output':
           return `${c.ref} ${c.op} ${c.value}`
         case 'branch':
-          return `base ${c.op} ${c.value}`
+          return t('base {op} {value}', { op: c.op, value: c.value })
       }
       return ''
     }
@@ -260,8 +261,9 @@ const INNER_DOT: Record<string, string> = {
 }
 
 function InnerSteps({ steps }: { steps: readonly InnerStep[] }) {
+  const { t } = useI18n()
   return (
-    <div className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground" aria-label="steps inside">
+    <div className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground" aria-label={t('steps inside')}>
       {steps.slice(0, 6).map((st, i) => (
         <span key={st.id} className="flex min-w-0 items-center gap-1" title={`${st.name}${st.status ? ` — ${st.status}` : ''}`}>
           {i > 0 && <span aria-hidden="true">→</span>}
@@ -289,11 +291,12 @@ export const GraphNodeView = memo(function GraphNodeView({
   subtaskTo,
 }: GraphNodeViewProps) {
   const Icon = ICONS[node.type]
+  const { t } = useI18n()
   const color = categoryColor(node.type)
   const ports = portsOf(node)
   const wide = WIDE.has(node.type)
-  const title = node.name ?? (wide ? TYPE_LABEL[node.type] : node.id)
-  const detail = nodeDetail(node, loopCount)
+  const title = node.name ?? (wide ? t(TYPE_LABEL[node.type]) : node.id)
+  const detail = nodeDetail(node, loopCount, t)
   const state = status ? STATUS[status] : undefined
   const extras = [iterations && iterations > 1 ? `×${iterations}` : '', costUsd ? `$${costUsd.toFixed(2)}` : '']
     .filter(Boolean)
@@ -345,8 +348,8 @@ export const GraphNodeView = memo(function GraphNodeView({
             to={subtaskTo}
             // `nodrag nopan`: following the link, not grabbing the canvas.
             className="nodrag nopan absolute right-1.5 bottom-1 rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            aria-label={`Open the subtask for ${title}`}
-            title="Open the subtask"
+            aria-label={t('Open the subtask for {title}', { title })}
+            title={t('Open the subtask')}
             onClick={(e) => e.stopPropagation()}
           >
             <ExternalLinkIcon className="size-3" />
@@ -355,7 +358,7 @@ export const GraphNodeView = memo(function GraphNodeView({
         {state && (
           <span
             className={cn('absolute -top-1 -right-1 size-2.5 rounded-full ring-2 ring-background', state.dot)}
-            aria-label={state.label}
+            aria-label={t(state.label)}
           />
         )}
         {node.type === 'loop' && loopCount ? (
@@ -395,8 +398,8 @@ export const GraphNodeView = memo(function GraphNodeView({
                         type="button"
                         // `nodrag nopan`: a click here is a button press, not the start of a node drag.
                         className="nodrag nopan flex size-5 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                        aria-label={`Add a node after ${node.name ?? node.id} → ${port}`}
-                        title={`Add a node on “${port}”`}
+                        aria-label={t('Add a node after {node} → {port}', { node: node.name ?? node.id, port })}
+                        title={t('Add a node on “{port}”', { port })}
                         onClick={(e) => {
                           e.stopPropagation()
                           onAddFromPort(port)

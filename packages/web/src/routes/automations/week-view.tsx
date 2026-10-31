@@ -1,6 +1,7 @@
 import { zonedParts, type AutomationsResponse } from '@onni/api-client'
 
 import { Card } from '@/components/ui/card'
+import { useI18n } from '@/lib/i18n'
 import { useNow } from '@/lib/use-now'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +18,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
  */
 export function WeekView({ data }: { data: AutomationsResponse }) {
   const now = useNow(60_000)
+  const { t } = useI18n()
   const timeZone = data.timeZone
   const today = zonedParts(now, timeZone)
   // Eight midnights: the seven day starts and the boundary after Sunday.
@@ -29,7 +31,7 @@ export function WeekView({ data }: { data: AutomationsResponse }) {
     return (
       <div data-slot="week-view" className="p-5">
         <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Cannot draw the week: unknown time zone “{timeZone}”.
+          {t('Cannot draw the week: unknown time zone “{zone}”.', { zone: timeZone })}
         </p>
       </div>
     )
@@ -63,7 +65,7 @@ export function WeekView({ data }: { data: AutomationsResponse }) {
                 column.isToday ? 'text-foreground' : 'text-soft-foreground',
               )}
             >
-              {column.label}
+              {t(column.label)}
               <span
                 className={cn(
                   'rounded-full px-[7px] py-px text-[13px] font-medium tracking-normal normal-case',

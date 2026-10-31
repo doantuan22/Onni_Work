@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toaster'
 import { deriveAttention } from '@/lib/attention'
 import { shortAge } from '@/lib/format'
+import { useI18n } from '@/lib/i18n'
 import { availablePromptTemplates, insertTemplate, normalizePromptTemplates } from '@/lib/prompt-templates'
 import { isHttpUrl } from '@/lib/utils'
 
@@ -69,6 +70,7 @@ export function InboxRoute() {
   // Parked only once health has actually said the inbox is off (#471). Keying it on
   // `inboxAvailable` instead would park the query for as long as health is unknown, which on a
   // perfectly enabled server means the list waits on a second request it doesn't need.
+  const { t } = useI18n()
   const health = useHealth()
   const inboxAvailable = health.data?.capabilities.followups === true
   const inboxOff = health.data !== undefined && !inboxAvailable
@@ -83,11 +85,11 @@ export function InboxRoute() {
     <div data-route="inbox" className="flex min-h-full flex-col">
       {/* Desktop header — below `md` the shell's top bar already says "Inbox". */}
       <header className="sticky top-0 z-10 hidden h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5 md:flex">
-        <h1 className="text-base font-semibold">Inbox</h1>
+        <h1 className="text-base font-semibold">{t('Inbox')}</h1>
         <p className="text-[13px] text-soft-foreground">
           {inboxOff
-            ? 'Disabled for this server; per-task Notes still run.'
-            : 'Follow-ups agents suggested when they finished a task.'}
+            ? t('Disabled for this server; per-task Notes still run.')
+            : t('Follow-ups agents suggested when they finished a task.')}
         </p>
       </header>
 
@@ -97,8 +99,10 @@ export function InboxRoute() {
           <CenteredState
             icon={<InboxIcon />}
             tone="neutral"
-            title="The follow-up inbox is off"
-            subtitle="Agents are not asked to leave follow-ups. Set ONNI_FOLLOWUPS=1 and restart the service to turn the inbox on."
+            title={t('The follow-up inbox is off')}
+            subtitle={t(
+              'Agents are not asked to leave follow-ups. Set ONNI_FOLLOWUPS=1 and restart the service to turn the inbox on.',
+            )}
             heading="h2"
           />
         ) : todos === undefined ? (
@@ -106,7 +110,7 @@ export function InboxRoute() {
             <CenteredState
               icon={<TriangleAlertIcon />}
               tone="danger"
-              title="Could not load the inbox"
+              title={t('Could not load the inbox')}
               subtitle={todosQuery.error.message}
               heading="h2"
             />
@@ -121,8 +125,8 @@ export function InboxRoute() {
             <CenteredState
               icon={<InboxIcon />}
               tone="neutral"
-              title="Inbox empty"
-              subtitle="Agents drop follow-up suggestions here when they finish a task."
+              title={t('Inbox empty')}
+              subtitle={t('Agents drop follow-up suggestions here when they finish a task.')}
               heading="h2"
             />
           )
@@ -154,6 +158,7 @@ function TodoCard({
   todo: TodoItem
   sourceTaskExists: boolean | null
 }) {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const uiState = useUiState()
@@ -239,7 +244,7 @@ function TodoCard({
         <StatusDot
           tone={CARD_ATTENTION.tone}
           pulse={CARD_ATTENTION.pulse}
-          title={CARD_ATTENTION.label}
+          title={t(CARD_ATTENTION.label)}
           className="mt-[5px]"
         />
         <div className="min-w-0 flex-1">
@@ -250,7 +255,7 @@ function TodoCard({
             data-slot="todo-meta"
             className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-soft-foreground"
           >
-            {todo.ts ? <span>{shortAge(todo.ts)} ago</span> : null}
+            {todo.ts ? <span>{t('{age} ago', { age: shortAge(todo.ts) })}</span> : null}
             {todo.action ? <span>{todo.action}</span> : null}
             {todo.taskId !== undefined ? (
               sourceTaskExists ? (
@@ -259,10 +264,10 @@ function TodoCard({
                   data-slot="todo-source"
                   className="text-muted-foreground underline decoration-border underline-offset-2 hover:text-foreground"
                 >
-                  source task
+                  {t('source task')}
                 </Link>
               ) : (
-                <span data-slot="todo-source-gone">source task deleted</span>
+                <span data-slot="todo-source-gone">{t('source task deleted')}</span>
               )
             ) : null}
             {/* href protocol guard (#431): link only for http(s) URLs. */}
@@ -292,23 +297,23 @@ function TodoCard({
                 variant="contrast"
                 size="sm"
                 data-action="todo-run"
-                title="Start a task from this follow-up"
+                title={t('Start a task from this follow-up')}
                 disabled={busy || !resolved.canRun}
                 onClick={() => start.mutate()}
               >
                 <PlayIcon aria-hidden="true" className="size-3" />
-                Run
+                {t('Run')}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 data-action="todo-dismiss"
-                title="Check off (remove)"
+                title={t('Check off (remove)')}
                 disabled={busy}
                 onClick={() => dismiss.mutate()}
               >
-                Dismiss
+                {t('Dismiss')}
               </Button>
             </>
           ) : (
@@ -317,12 +322,12 @@ function TodoCard({
               variant="contrast"
               size="sm"
               data-action="todo-acknowledge"
-              title="Acknowledge and remove this note"
+              title={t('Acknowledge and remove this note')}
               disabled={busy}
               onClick={() => dismiss.mutate()}
             >
               <CheckIcon aria-hidden="true" className="size-3" />
-              Acknowledge
+              {t('Acknowledge')}
             </Button>
           )}
         </div>
@@ -340,13 +345,13 @@ function TodoCard({
               className="inline-flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
             >
               {resolved.providerError
-                ? 'Provider authentication could not be verified.'
-                : 'Connect an agent provider to run this follow-up.'}
+                ? t('Provider authentication could not be verified.')
+                : t('Connect an agent provider to run this follow-up.')}
               <Link
                 to="/settings/agents#providers"
                 className="font-medium text-foreground underline underline-offset-4"
               >
-                Configure providers
+                {t('Configure providers')}
               </Link>
             </span>
           ) : null}
@@ -362,10 +367,10 @@ function TodoCard({
             <Textarea
               ref={notesRef}
               data-slot="todo-instructions-input"
-              aria-label="Extra instructions for this follow-up"
+              aria-label={t('Extra instructions for this follow-up')}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Add instructions for the agent… (appended to the suggestion above)"
+              placeholder={t('Add instructions for the agent… (appended to the suggestion above)')}
               // Same cap the server enforces on the `prompt` body field, so an over-long note is
               // stopped at the keystroke rather than by a 400 on Run (the Settings inputs cap the
               // same way).
@@ -380,7 +385,7 @@ function TodoCard({
                 onClick={() => setNotesOpen(false)}
                 className="text-xs font-medium text-muted-foreground underline decoration-border underline-offset-2 hover:text-foreground"
               >
-                Hide
+                {t('Hide')}
               </button>
             </div>
           </div>
@@ -393,7 +398,7 @@ function TodoCard({
           >
             {/* A collapsed composer keeps its draft, and Run still carries it — so say so
                 rather than hiding instructions the next Run would silently send. */}
-            {notes.trim() ? 'Edit instructions (added)' : '+ Add instructions'}
+            {notes.trim() ? t('Edit instructions (added)') : t('+ Add instructions')}
           </button>
         )
       ) : null}

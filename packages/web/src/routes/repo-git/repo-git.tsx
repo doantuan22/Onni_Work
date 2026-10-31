@@ -5,6 +5,7 @@ import { useRepo } from '@/api/queries'
 import type { RepoInfo, RepoResponse } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
 import { TabLink } from '@/components/tab-link'
+import { useI18n } from '@/lib/i18n'
 import { useNavigate } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 
@@ -35,6 +36,7 @@ import { RepoSyncBar } from './repo-sync-bar'
 export type RepoTab = 'changes' | 'commits' | 'branches' | 'files'
 
 export function RepoGitRoute({ tab }: { tab: RepoTab }) {
+  const { t } = useI18n()
   const repo = useRepo()
 
   if (repo.isPending) return <RepoGitLoading />
@@ -44,7 +46,7 @@ export function RepoGitRoute({ tab }: { tab: RepoTab }) {
         <CenteredState
           icon={<TriangleAlertIcon />}
           tone="danger"
-          title="Could not load the repository"
+          title={t('Could not load the repository')}
           subtitle={repo.error.message}
         />
       </div>
@@ -57,8 +59,10 @@ export function RepoGitRoute({ tab }: { tab: RepoTab }) {
         <CenteredState
           icon={<GitBranchIcon />}
           tone="neutral"
-          title="Not a git repository"
-          subtitle="The cockpit is running outside a git repository — start it inside one to browse changes, commits and branches."
+          title={t('Not a git repository')}
+          subtitle={t(
+            'The cockpit is running outside a git repository — start it inside one to browse changes, commits and branches.',
+          )}
         />
       </div>
     )
@@ -67,6 +71,7 @@ export function RepoGitRoute({ tab }: { tab: RepoTab }) {
 }
 
 function RepoView({ repo, info, tab }: { repo: RepoResponse; info: RepoInfo; tab: RepoTab }) {
+  const { t } = useI18n()
   return (
     // Changes fills `main` from md up so its tree and diff can be two scrollers of their own
     // (see `RepoChangesSection`); the other tabs scroll with the page.
@@ -76,7 +81,7 @@ function RepoView({ repo, info, tab }: { repo: RepoResponse; info: RepoInfo; tab
         className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 pt-3 backdrop-blur md:px-6"
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <h1 className="text-lg font-semibold">Git</h1>
+          <h1 className="text-lg font-semibold">{t('Git')}</h1>
           <BranchChip branch={info.branch} />
           {info.remote ? (
             <span data-slot="repo-remote" className="hidden min-w-0 truncate text-[11px] text-soft-foreground md:inline">
@@ -90,16 +95,16 @@ function RepoView({ repo, info, tab }: { repo: RepoResponse; info: RepoInfo; tab
 
         <div data-slot="repo-tabs" className="mt-2.5 flex items-end gap-1">
           <TabLink to="/git" active={tab === 'changes'}>
-            Changes
+            {t('Changes')}
           </TabLink>
           <TabLink to="/git/commits" active={tab === 'commits'}>
-            Commits
+            {t('Commits')}
           </TabLink>
           <TabLink to="/git/branches" active={tab === 'branches'}>
-            Branches
+            {t('Branches')}
           </TabLink>
           <TabLink to="/git/files" active={tab === 'files'}>
-            Files
+            {t('Files')}
           </TabLink>
         </div>
       </header>

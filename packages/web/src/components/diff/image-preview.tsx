@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { ZoomableImage } from '@/components/zoomable-image'
+import { useI18n } from '@/lib/i18n'
 
 import type { DiffFileChange } from './types'
 
@@ -43,9 +44,10 @@ export function ImagePreview({
   oldImageSrc?: (path: string) => string
   onOpenInApp?: (path: string) => void
 }) {
+  const { t } = useI18n()
   const oldPath = file.oldPath ?? file.path
   if (file.status === 'deleted') {
-    if (!oldImageSrc) return <ImageNote>Image deleted — only the new side can be previewed.</ImageNote>
+    if (!oldImageSrc) return <ImageNote>{t('Image deleted — only the new side can be previewed.')}</ImageNote>
     return (
       <div data-slot="diff-image-preview" className="flex flex-col items-center gap-2 p-4">
         <ImageSide src={oldImageSrc(oldPath)} alt={oldPath} side="old" />
@@ -53,7 +55,7 @@ export function ImagePreview({
     )
   }
   if (!imageSrc) {
-    return <ImageNote>Binary file — no text diff.</ImageNote>
+    return <ImageNote>{t('Binary file — no text diff.')}</ImageNote>
   }
   const showBefore = oldImageSrc !== undefined && file.status !== 'added'
   return (
@@ -73,7 +75,7 @@ export function ImagePreview({
           onClick={() => onOpenInApp(file.path)}
           className="text-[11px] font-medium text-soft-foreground hover:text-foreground hover:underline"
         >
-          Open in default app
+          {t('Open in default app')}
         </button>
       ) : null}
     </div>
@@ -83,12 +85,13 @@ export function ImagePreview({
 // No caption for a deleted image: the header's `deleted` badge already says it. A side the
 // server refuses (past `FILE_CONTENT_CAP`, absent at the base) gets a note, not a broken icon.
 function ImageSide({ label, src, alt, side }: { label?: string; src: string; alt: string; side: 'old' | 'new' }) {
+  const { t } = useI18n()
   const [failed, setFailed] = useState<string | null>(null)
   return (
     <figure data-slot="diff-image-side" data-side={side} className="flex min-w-0 flex-col items-center gap-1.5">
       {label ? <figcaption className="text-[11px] font-medium text-soft-foreground">{label}</figcaption> : null}
       {failed === src ? (
-        <ImageNote>Image can’t be previewed (too large or unavailable).</ImageNote>
+        <ImageNote>{t('Image can’t be previewed (too large or unavailable).')}</ImageNote>
       ) : (
         <ZoomableImage
           src={src}

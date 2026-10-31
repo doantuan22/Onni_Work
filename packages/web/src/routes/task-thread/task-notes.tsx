@@ -3,6 +3,7 @@ import { useParams } from 'react-router'
 
 import { useHealth, useRun, useRunHandoff } from '@/api/queries'
 import type { ApiRun } from '@onni/api-client'
+import { useI18n } from '@/lib/i18n'
 import { useNavigate } from '@/lib/project-router'
 
 import { GitTabLoadError, GitTabLoading } from '../task-git/git-tab-loading'
@@ -70,18 +71,19 @@ function NotesHeader({ run }: { run: ApiRun }) {
 const noop = () => {}
 
 function NotesBody({ runId }: { runId: string }) {
+  const { t } = useI18n()
   const handoff = useRunHandoff(runId)
   return (
     <div data-slot="notes-panel">
       {handoff.isPending ? (
-        <p className="text-xs text-soft-foreground">Loading notes…</p>
+        <p className="text-xs text-soft-foreground">{t('Loading notes…')}</p>
       ) : handoff.isError ? (
         <p className="text-xs text-danger">{handoff.error.message}</p>
       ) : handoff.data.trim().length > 0 ? (
         <Markdown>{handoff.data}</Markdown>
       ) : (
         <p className="text-xs text-soft-foreground">
-          No notes yet — the handoff file is seeded when the task starts.
+          {t('No notes yet — the handoff file is seeded when the task starts.')}
         </p>
       )}
     </div>

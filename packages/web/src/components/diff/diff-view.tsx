@@ -6,6 +6,7 @@ import type { DiffStat } from '@onni/api-client'
 import { CommentCount } from '@/components/comment-count'
 import { DiffStatLabel } from '@/components/diff-stat'
 import { ensureLang, highlightSync, langForPath, type SynToken } from '@/lib/highlighter'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import {
@@ -649,6 +650,7 @@ function DiffFileCard({
   onOpenInApp?: (path: string) => void
   oldImageSrc?: (path: string) => string
 }) {
+  const { t } = useI18n()
   const badge = STATUS_BADGE[file.status]
   const commentCount = useLineComments()?.comments.filter((comment) => comment.path === file.path).length ?? 0
   return (
@@ -742,7 +744,7 @@ function DiffFileCard({
             onClick={onToggle}
             className="font-medium text-foreground underline-offset-2 hover:underline"
           >
-            Load diff
+            {t('Load diff')}
           </button>
         </div>
       ) : null}
@@ -771,6 +773,7 @@ function DiffFileBody({
   onOpenInApp?: (path: string) => void
   oldImageSrc?: (path: string) => string
 }) {
+  const { t } = useI18n()
   const parsed = useMemo(() => parsePatch(file.patch), [file.patch])
   // The trailing (after-last-hunk) region has an unknown length — only offer it when a
   // loader can actually materialize it, and never for fully-new or deleted files.
@@ -852,10 +855,10 @@ function DiffFileBody({
     return <ImagePreview file={file} imageSrc={imageSrc} oldImageSrc={oldImageSrc} onOpenInApp={onOpenInApp} />
   }
   if (file.binary) {
-    return <Note>Binary file — no text diff.</Note>
+    return <Note>{t('Binary file — no text diff.')}</Note>
   }
   if (parsed.hunks.length === 0) {
-    return <Note>{parsed.truncated ? 'Patch truncated by the server.' : 'No content changes (metadata only).'}</Note>
+    return <Note>{parsed.truncated ? 'Patch truncated by the server.' : t('No content changes (metadata only).')}</Note>
   }
 
   const tokensFor = (line: HunkLine): SynToken[] | null => {
@@ -899,7 +902,7 @@ function DiffFileBody({
           : null}
       </div>
       </FileLinesContext.Provider>
-      {parsed.truncated ? <Note>Patch truncated by the server — counts above remain exact.</Note> : null}
+      {parsed.truncated ? <Note>{t('Patch truncated by the server — counts above remain exact.')}</Note> : null}
     </div>
   )
 }

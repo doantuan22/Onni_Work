@@ -4,6 +4,7 @@ import { occurrencesBetween, zonedParts, type AutomationListEntry } from '@onni/
 import { StatusDot } from '@/components/status-dot'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { dayName, hm, relativeIn } from '@/lib/automation-format'
+import { useI18n } from '@/lib/i18n'
 import { useNavigate } from '@/lib/project-router'
 
 /**
@@ -52,6 +53,7 @@ export function NextRunsRail({
   now: number
 }) {
   const navigate = useNavigate()
+  const { t, tn } = useI18n()
   const today = zonedParts(now, timeZone)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -64,9 +66,9 @@ export function NextRunsRail({
         <SheetHeader className="px-4 pt-4 pb-2">
           <SheetTitle className="inline-flex items-center gap-2 text-sm">
             <CalendarClockIcon className="size-4" />
-            Next runs
+            {t('Next runs')}
           </SheetTitle>
-          <SheetDescription className="sr-only">Upcoming scheduled runs, soonest first.</SheetDescription>
+          <SheetDescription className="sr-only">{t('Upcoming scheduled runs, soonest first.')}</SheetDescription>
         </SheetHeader>
         <div className="overflow-y-auto">
           {upcoming.map((run, index) => {
@@ -93,14 +95,14 @@ export function NextRunsRail({
             )
           })}
           {upcoming.length === 0 ? (
-            <p className="px-4 py-2 text-[12.5px] text-soft-foreground">No scheduled runs in the next two weeks.</p>
+            <p className="px-4 py-2 text-[12.5px] text-soft-foreground">{t('No scheduled runs in the next two weeks.')}</p>
           ) : null}
           <div
             data-slot="next-runs-footer"
             className="mt-1.5 flex items-center gap-2 border-t border-border px-3.5 pt-2.5 pb-1 text-xs text-muted-foreground"
           >
             <StatusDot tone="pending" pulse />
-            {pollCount} GitHub polls running continuously
+            {tn(pollCount, '{count} GitHub poll running continuously', '{count} GitHub polls running continuously')}
           </div>
         </div>
       </SheetContent>

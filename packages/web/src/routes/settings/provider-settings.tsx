@@ -13,6 +13,7 @@ import { StatusDot, type StatusDotTone } from '@/components/status-dot'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { providerStatusFor } from '@/lib/provider-status'
 import { writeClipboard } from '@/lib/clipboard'
 
@@ -68,6 +69,7 @@ function withProviderEnabled(
 }
 
 export function ProviderSettings() {
+  const { t } = useI18n()
   const status = useProviderStatus()
   const refresh = useRefreshProviderStatus()
   const retry = useRetryProviderAuth()
@@ -160,8 +162,8 @@ export function ProviderSettings() {
       setManual(null)
       toast(
         result.opened
-          ? 'Finish signing in in the terminal, then check again.'
-          : 'Provider is already connected.',
+          ? t('Finish signing in in the terminal, then check again.')
+          : t('Provider is already connected.'),
       )
       await queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.providerStatus })
     },
@@ -178,18 +180,18 @@ export function ProviderSettings() {
   const copyCommand = async (command: string) => {
     try {
       await writeClipboard(command)
-      toast('Command copied')
+      toast(t('Command copied'))
     } catch {
-      toast('Could not copy the command', { tone: 'danger' })
+      toast(t('Could not copy the command'), { tone: 'danger' })
     }
   }
 
   return (
     <section id="providers" data-slot="provider-settings" className="scroll-mt-20">
       <div className="mb-2">
-        <h2 className="text-sm font-semibold text-foreground">Providers</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t('Providers')}</h2>
         <p className="text-[13px] text-muted-foreground">
-          Connect the coding agents available on this computer.
+          {t('Connect the coding agents available on this computer.')}
         </p>
       </div>
 
@@ -200,7 +202,7 @@ export function ProviderSettings() {
         >
           <div>
             <p className="text-[13px] font-medium text-foreground">
-              Provider status could not be loaded
+              {t('Provider status could not be loaded')}
             </p>
             <p className="text-xs text-muted-foreground">{status.error.message}</p>
           </div>
@@ -211,7 +213,7 @@ export function ProviderSettings() {
             disabled={status.isFetching}
             onClick={() => void status.refetch()}
           >
-            Retry
+            {t('Retry')}
           </Button>
         </div>
       ) : null}
@@ -241,16 +243,18 @@ export function ProviderSettings() {
                     <h3 className="text-[13px] font-semibold text-foreground">{provider.label}</h3>
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <StatusDot tone={presentation.tone} pulse={status.isPending} />
-                      <span>{presentation.label}</span>
-                      {current?.enabled === false ? <span>Disabled</span> : null}
+                      <span>{t(presentation.label)}</span>
+                      {current?.enabled === false ? <span>{t('Disabled')}</span> : null}
                     </div>
                     {state === 'not-installed' ? (
                       <p className="mt-1.5 text-xs text-soft-foreground">
-                        Install {provider.label}, then run <code>{provider.login}</code>.
+                        {t('Install {name}, then run', { name: provider.label })}{' '}
+                        <code>{provider.login}</code>.
                       </p>
                     ) : state === 'unknown' || (status.isError && !state) ? (
                       <p className="mt-1.5 text-xs text-soft-foreground">
-                        {current?.hint ?? 'Verification failed. Check again when the provider is available.'}
+                        {current?.hint ??
+                          t('Verification failed. Check again when the provider is available.')}
                       </p>
                     ) : current?.hint ? (
                       <p className="mt-1.5 text-xs text-soft-foreground">{current.hint}</p>
@@ -261,7 +265,7 @@ export function ProviderSettings() {
                     {state !== 'not-installed' ? (
                       <Switch
                         checked={current?.enabled ?? true}
-                        aria-label={`Use ${provider.label}`}
+                        aria-label={t('Use {name}', { name: provider.label })}
                         onCheckedChange={(enabled) => queueToggle(provider.id, enabled)}
                       />
                     ) : null}
@@ -275,7 +279,7 @@ export function ProviderSettings() {
                           onError: (error) => toast(error.message, { tone: 'danger' }),
                         })}
                       >
-                        Check again
+                        {t('Check again')}
                       </Button>
                     ) : null}
                     {state === 'disconnected' ? (
@@ -286,7 +290,7 @@ export function ProviderSettings() {
                         disabled={connect.isPending}
                         onClick={() => connect.mutate(provider.id)}
                       >
-                        {isConnecting ? 'Opening…' : 'Connect'}
+                        {isConnecting ? t('Opening…') : t('Connect')}
                       </Button>
                     ) : null}
                     {incidentId !== undefined ? (
@@ -299,21 +303,21 @@ export function ProviderSettings() {
                           retry.mutate(
                             { provider: provider.id, authFailureId: incidentId },
                             {
-                              onSuccess: () => toast(`${provider.label} can be tried again.`),
+                              onSuccess: () =>
+                                toast(t('{name} can be tried again.', { name: provider.label })),
                               onError: (error) => toast(error.message, { tone: 'danger' }),
                             },
                           )
                         }
                       >
-                        Try again
+                        {t('Try again')}
                       </Button>
                     ) : null}
                   </div>
                 </div>
                 {incidentId !== undefined ? (
                   <p className="mt-2 text-xs text-soft-foreground">
-                    Use this after completing the provider sign-in flow. onni cannot validate the
-                    credential without a task/model request; it will verify it on the next task.
+                    {t('Use this after completing the provider sign-in flow. onni cannot validate the credential without a task/model request; it will verify it on the next task.')}
                   </p>
                 ) : null}
               </div>
@@ -321,7 +325,7 @@ export function ProviderSettings() {
               {manual?.provider === provider.id && state !== 'connected' ? (
                 <div
                   role="region"
-                  aria-label={`${manual.label} manual sign-in`}
+                  aria-label={t('{name} manual sign-in', { name: manual.label })}
                   className="rounded-md border border-pending/40 bg-pending/5 px-3.5 py-3"
                 >
                   <p className="text-[13px] text-foreground">{manual.message}</p>
@@ -335,7 +339,7 @@ export function ProviderSettings() {
                       size="sm"
                       onClick={() => void copyCommand(manual.command)}
                     >
-                      Copy command
+                      {t('Copy command')}
                     </Button>
                   </div>
                 </div>

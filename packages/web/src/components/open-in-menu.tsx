@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * The shared "Open in…" menu: hand a local path to whichever app the machine actually has.
@@ -134,12 +135,13 @@ export function OpenInMenu({
   trailing?: ReactNode
   slot?: string
 }) {
+  const { t } = useI18n()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant={triggerVariant} size="sm" title={title} disabled={disabled} data-slot={slot}>
           <ExternalLinkIcon aria-hidden="true" />
-          {label}
+          {t(label)}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

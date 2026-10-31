@@ -5,6 +5,7 @@ import { getDeferredStartOptions, previewDeferredStart } from '@/api/client'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 export type StartChoice = { start: StartCondition; preview?: Extract<DeferredPreview, { available: true }>; settingsKey?: string; invalidated?: string }
@@ -98,6 +99,7 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
   onLabelChange?: (label: { text: string; title: string } | undefined) => void
   open?: boolean; onOpenChange?: (open: boolean) => void
 }) {
+  const { t } = useI18n()
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
   const setOpen = (next: boolean) => { setOpenState(next); onOpenChange?.(next) }
@@ -111,7 +113,7 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
   const [optionsAttempt, setOptionsAttempt] = useState(0)
   const [timeError, setTimeError] = useState(false)
   const errors = value?.start.kind === 'at' ? dateErrors(value.start) : {}
-  const fieldMessage = errors.date ?? errors.time
+  const fieldMessage = errors.date ? t(errors.date) : errors.time ? t(errors.time) : undefined
   const generation = useRef(0)
   const autoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const lastAt = useRef<AtStart | null>(null)
@@ -137,7 +139,7 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
   }, [currentOptions?.timeZone, value?.start.kind])
   const resetReason = disabledReason ?? (optionsError || (currentOptions
     ? currentOptions.usageReset.available ? undefined : currentOptions.usageReset.message
-    : 'Checking scheduling options…'))
+    : t('Checking scheduling options…')))
   const needsResetOptions = value?.start.kind === 'usage-reset'
   useEffect(() => {
     if (!open && !needsResetOptions) return
@@ -146,7 +148,7 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
     getDeferredStartOptions({ task: JSON.parse(optionsKey) }).then(data => {
       if (!cancelled) setOptions({ key: optionsKey, data })
     }).catch(() => {
-      if (!cancelled) setOptionsError('Could not load scheduling options. Try again.')
+      if (!cancelled) setOptionsError(t('Could not load scheduling options. Try again.'))
     })
     return () => { cancelled = true }
   }, [open, optionsKey, optionsAttempt, needsResetOptions])
@@ -184,7 +186,7 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
       else { setMessage(preview.message); setTimeError(preview.reason === 'window-over'); setRetry(preview.reason === 'account-unverifiable') }
     } catch (error) {
       if (version === generation.current) {
-        setMessage(value.start.kind === 'at' ? 'Could not check the start time. Try again.' : error instanceof Error ? error.message : String(error))
+        setMessage(value.start.kind === 'at' ? t('Could not check the start time. Try again.') : error instanceof Error ? error.message : String(error))
         setRetry(true)
       }
     }
@@ -207,7 +209,7 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
     const expire = () => {
       const remaining = Date.parse(value.preview!.notBefore) - Date.now()
       if (remaining > 0) timer = setTimeout(expire, Math.min(remaining, 2_147_483_647))
-      else onChange({ start: value.start, invalidated: 'The previewed start time has passed. Check the start time again.' })
+      else onChange({ start: value.start, invalidated: t('The previewed start time has passed. Check the start time again.') })
     }
     expire()
     return () => clearTimeout(timer)
@@ -215,11 +217,11 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
 
   const ready = !(value?.start.kind === 'usage-reset' && resetReason) && !busy && !fieldMessage && !disabledReason && value?.settingsKey === settingsKey && value.preview && Date.parse(value.preview.notBefore) > Date.now() ? value.preview : undefined
   const blocked = !value || ready ? undefined
-    : disabledReason ?? (value.start.kind === 'usage-reset' && resetReason ? resetReason : busy ? 'Checking the start time…'
+    : disabledReason ?? (value.start.kind === 'usage-reset' && resetReason ? resetReason : busy ? t('Checking the start time…')
       : message ? message
         : fieldMessage ? fieldMessage
-          : !task.task.trim() ? 'Describe the task to schedule it.'
-            : value.start.kind === 'at' ? 'Checking the start time…' : 'Finding when your usage limit resets…')
+          : !task.task.trim() ? t('Describe the task to schedule it.')
+            : value.start.kind === 'at' ? t('Checking the start time…') : t('Finding when your usage limit resets…'))
   useEffect(() => { onBlockedChange?.(blocked) }, [blocked])
   const visibleFieldMessage = touched ? fieldMessage : undefined
   const describedBy = message || fieldMessage ? errorId : undefined
@@ -227,35 +229,35 @@ export function StartTimePicker({ task, value, onChange, disabledReason, onBlock
   const title = startTitle(value, ready, currentOptions?.timeZone)
   useEffect(() => { onLabelChange?.(value ? { text: label, title } : undefined) }, [value ? `${label}\n${title}` : undefined])
   return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger asChild><Button type="button" size="icon-sm" data-slot="start-time-trigger" className="h-8 w-7 rounded-l-none border-l border-primary-foreground/25" aria-label="Choose task start time" title={title}><ChevronDownIcon aria-hidden="true" className={cn('size-4 transition-transform', open && 'rotate-180')} /></Button></PopoverTrigger>
+    <PopoverTrigger asChild><Button type="button" size="icon-sm" data-slot="start-time-trigger" className="h-8 w-7 rounded-l-none border-l border-primary-foreground/25" aria-label={t('Choose task start time')} title={title}><ChevronDownIcon aria-hidden="true" className={cn('size-4 transition-transform', open && 'rotate-180')} /></Button></PopoverTrigger>
     <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] max-h-(--radix-popover-content-available-height) overflow-y-auto overscroll-contain space-y-3">
       <fieldset className="space-y-3">
-      <legend className="font-medium">Start task</legend>
-      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={describedBy} checked={!value} onChange={() => pick(null)} />Now</label>
+      <legend className="font-medium">{t('Start task')}</legend>
+      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={describedBy} checked={!value} onChange={() => pick(null)} />{t('Now')}</label>
       <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={describedBy} disabled={!!disabledReason} checked={value?.start.kind === 'at'} onChange={() => {
         const start = lastAt.current ?? defaultAtStart(currentOptions?.timeZone)
         autoDefault.current = !lastAt.current && !currentOptions ? start : null
         pick({ start })
-      }} />Pick date &amp; time</label>
-      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={resetReason ? eligibilityId : describedBy} disabled={!!resetReason} checked={value?.start.kind === 'usage-reset'} onChange={() => pick({ start: { kind: 'usage-reset' } })} />After usage limit resets</label>
+      }} />{t('Pick date & time')}</label>
+      <label className="flex items-center gap-2"><input type="radio" name={groupName} aria-describedby={resetReason ? eligibilityId : describedBy} disabled={!!resetReason} checked={value?.start.kind === 'usage-reset'} onChange={() => pick({ start: { kind: 'usage-reset' } })} />{t('After usage limit resets')}</label>
       </fieldset>
       {resetReason && !disabledReason && <p id={eligibilityId} className="text-sm text-muted-foreground">{resetReason}</p>}
-      {optionsError && <Button type="button" variant="outline" onClick={() => setOptionsAttempt(n => n + 1)}>Retry options</Button>}
+      {optionsError && <Button type="button" variant="outline" onClick={() => setOptionsAttempt(n => n + 1)}>{t('Retry options')}</Button>}
       {disabledReason && <p id={eligibilityId} role="status" className="text-sm text-muted-foreground">{disabledReason}</p>}
       {value?.start.kind === 'at' && <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">{currentOptions ? `Server time zone: ${currentOptions.timeZone}` : 'Loading server time zone…'}</p>
-        <label className="block text-sm">Date<Input aria-describedby={describedBy} onBlur={() => setTouched(true)} aria-invalid={(touched && errors.date) || timeError ? true : undefined} type="date" max="9999-12-31" value={value.start.date} onChange={e => onChange({ start: { ...value.start as AtStart, date: e.target.value } })} /></label>
-        <label className="block text-sm">Time (server time zone)<Input aria-describedby={describedBy} onBlur={() => setTouched(true)} aria-invalid={(touched && errors.time) || timeError ? true : undefined} type="time" value={validTime(value.start) ? `${pad(value.start.hour)}:${pad(value.start.minute)}` : ''} onChange={e => { const [hour, minute] = e.target.value ? e.target.value.split(':').map(Number) : [-1, -1]; onChange({ start: { ...value.start as AtStart, hour: hour ?? -1, minute: minute ?? -1 } }) }} /></label>
+        <p className="text-sm text-muted-foreground">{currentOptions ? t('Server time zone: {zone}', { zone: currentOptions.timeZone }) : t('Loading server time zone…')}</p>
+        <label className="block text-sm">{t('Date')}<Input aria-describedby={describedBy} onBlur={() => setTouched(true)} aria-invalid={(touched && errors.date) || timeError ? true : undefined} type="date" max="9999-12-31" value={value.start.date} onChange={e => onChange({ start: { ...value.start as AtStart, date: e.target.value } })} /></label>
+        <label className="block text-sm">{t('Time (server time zone)')}<Input aria-describedby={describedBy} onBlur={() => setTouched(true)} aria-invalid={(touched && errors.time) || timeError ? true : undefined} type="time" value={validTime(value.start) ? `${pad(value.start.hour)}:${pad(value.start.minute)}` : ''} onChange={e => { const [hour, minute] = e.target.value ? e.target.value.split(':').map(Number) : [-1, -1]; onChange({ start: { ...value.start as AtStart, hour: hour ?? -1, minute: minute ?? -1 } }) }} /></label>
       </div>}
       {value && !disabledReason && <>
         {value.start.kind === 'usage-reset' && currentOptions?.usageReset.available && <p className="text-sm text-muted-foreground">{currentOptions.usageReset.provider === 'claude'
-          ? 'The task waits until your Claude usage limit resets, then starts. Onni knows the reset time from limits your earlier Claude tasks hit.'
-          : 'The task waits until your Codex usage limit resets, then starts. Onni reads the reset time from Codex.'}</p>}
+          ? t('The task waits until your Claude usage limit resets, then starts. Onni knows the reset time from limits your earlier Claude tasks hit.')
+          : t('The task waits until your Codex usage limit resets, then starts. Onni reads the reset time from Codex.')}</p>}
         {value.start.kind === 'usage-reset' && !resetReason && !ready && !message && <p role="status" className="text-sm text-muted-foreground">{blocked}</p>}
-        {value.start.kind === 'usage-reset' && !resetReason && (ready || (message && retry)) && <Button type="button" variant="outline" size="sm" disabled={busy || !task.task.trim()} onClick={() => void check()}>{message ? 'Try again' : 'Refresh'}</Button>}
-        {value.start.kind === 'at' && retry && <Button type="button" variant="outline" disabled={busy || !!fieldMessage || !task.task.trim()} onClick={() => void check()}>Retry</Button>}
+        {value.start.kind === 'usage-reset' && !resetReason && (ready || (message && retry)) && <Button type="button" variant="outline" size="sm" disabled={busy || !task.task.trim()} onClick={() => void check()}>{message ? t('Try again') : t('Refresh')}</Button>}
+        {value.start.kind === 'at' && retry && <Button type="button" variant="outline" disabled={busy || !!fieldMessage || !task.task.trim()} onClick={() => void check()}>{t('Retry')}</Button>}
         {value.start.kind === 'at' && !ready && !message && !fieldMessage && <p role="status" className="text-sm text-muted-foreground">{blocked}</p>}
-        {ready && <div role="status" className="space-y-1 text-sm"><p>Earliest start: {new Date(ready.notBefore).toLocaleString('en-GB', { timeZone: ready.timeZone })} · {ready.timeZone}</p>{ready.observation && <p>{ready.observation}</p>}<p className="text-muted-foreground">The server must be running. Scheduling does not reserve allowance; account holds and queue limits still apply.</p></div>}
+        {ready && <div role="status" className="space-y-1 text-sm"><p>{t('Earliest start: {when} · {zone}', { when: new Date(ready.notBefore).toLocaleString('en-GB', { timeZone: ready.timeZone }), zone: ready.timeZone })}</p>{ready.observation && <p>{ready.observation}</p>}<p className="text-muted-foreground">{t('The server must be running. Scheduling does not reserve allowance; account holds and queue limits still apply.')}</p></div>}
       </>}
       {!touched && fieldMessage && !message && <p id={errorId} className="text-sm text-muted-foreground">{fieldMessage}</p>}
       {(message || visibleFieldMessage) && <p id={errorId} role="alert" className="text-sm text-destructive">{message || visibleFieldMessage}</p>}

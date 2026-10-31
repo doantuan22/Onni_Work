@@ -2,6 +2,7 @@ import * as React from 'react'
 
 import { ReferenceChip } from '@/components/reference-chip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useI18n } from '@/lib/i18n'
 
 /** How long the `+N` list survives the pointer leaving it. The trigger and the list are separate
  *  elements with a gap between them, so closing instantly would make the list unreachable. */
@@ -41,6 +42,7 @@ export function ReferenceOverflow({
    *  registry). Omitted, the chips answer from the surrounding `ReferenceStatusProvider`. */
   projectId?: string
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = React.useState(false)
   // How it was opened decides whether focus moves into the list. A CLICK should hand the keyboard
   // the links; a hover must not yank focus out of whatever the reader was doing.
@@ -75,7 +77,7 @@ export function ReferenceOverflow({
         <button
           type="button"
           data-slot="reference-overflow"
-          aria-label={`Show all ${references.length} references for ${taskTitle}`}
+          aria-label={t('Show all {count} references for {title}', { count: references.length, title: taskTitle })}
           onPointerEnter={onPointerEnter}
           onPointerLeave={onPointerLeave}
           // A real press — mouse, tap or keyboard — is not a hover, whatever happened before it.
@@ -103,7 +105,7 @@ export function ReferenceOverflow({
           if (openedByHover.current) event.preventDefault()
         }}
       >
-        <p className="px-1 pb-1.5 text-[10.5px] text-soft-foreground">References</p>
+        <p className="px-1 pb-1.5 text-[10.5px] text-soft-foreground">{t('References')}</p>
         <span className="flex flex-col items-start gap-1">
           {references.map((reference) => (
             <ReferenceChip

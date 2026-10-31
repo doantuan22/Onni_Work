@@ -2,6 +2,7 @@ import { Minimize2Icon } from 'lucide-react'
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -78,6 +79,7 @@ export function usePanelCover<T extends HTMLElement>(maximized: boolean, onExit:
  * can carry it unconditionally.
  */
 export function FullViewExit({ className }: { className?: string }) {
+  const { t } = useI18n()
   const maximize = useWorkspaceMaximize()
   if (!maximize?.maximized) return null
   return (
@@ -86,12 +88,12 @@ export function FullViewExit({ className }: { className?: string }) {
       variant="outline"
       size="xs"
       data-action="exit-full-view"
-      title="Exit full view (Esc)"
+      title={t('Exit full view (Esc)')}
       onClick={maximize.toggle}
       className={cn('shrink-0 text-foreground', className)}
     >
       <Minimize2Icon aria-hidden="true" />
-      Exit full view
+      {t('Exit full view')}
     </Button>
   )
 }

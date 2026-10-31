@@ -3,6 +3,7 @@ import { EyeIcon, GitBranchIcon, WrapTextIcon } from 'lucide-react'
 import type { DiffMode } from '@/components/diff'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -30,12 +31,13 @@ export function DiffViewToggles({
   onWrapChange: (wrap: boolean) => void
   onPreviewChange?: (preview: boolean) => void
 }) {
+  const { t } = useI18n()
   return (
     <>
       <span
         data-slot="diff-mode-toggle"
         role="group"
-        aria-label="Diff layout"
+        aria-label={t('Diff layout')}
         className="flex items-center rounded-md border border-border p-0.5"
       >
         <ModeButton current={mode} value="unified" onModeChange={onModeChange} />
@@ -52,7 +54,7 @@ export function DiffViewToggles({
                 size="icon-sm"
                 data-slot="markdown-preview-toggle"
                 aria-pressed={preview}
-                aria-label="Preview Markdown"
+                aria-label={t('Preview Markdown')}
                 className={cn(preview && 'bg-muted text-foreground')}
                 onClick={() => onPreviewChange(!preview)}
               >
@@ -60,7 +62,7 @@ export function DiffViewToggles({
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6} data-slot="markdown-preview-tooltip">
-              {preview ? 'Show Markdown as a diff' : 'Preview Markdown'}
+              {preview ? t('Show Markdown as a diff') : t('Preview Markdown')}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -70,8 +72,8 @@ export function DiffViewToggles({
         size="icon-sm"
         data-slot="wrap-toggle"
         aria-pressed={wrap}
-        aria-label="Wrap long lines"
-        title="Wrap long lines"
+        aria-label={t('Wrap long lines')}
+        title={t('Wrap long lines')}
         className={cn(wrap && 'bg-muted text-foreground')}
         onClick={() => onWrapChange(!wrap)}
       >
@@ -90,6 +92,7 @@ function ModeButton({
   value: DiffMode
   onModeChange: (mode: DiffMode) => void
 }) {
+  const { t } = useI18n()
   const active = current === value
   return (
     <button
@@ -102,7 +105,7 @@ function ModeButton({
         active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
       )}
     >
-      {value}
+      {t(value === 'unified' ? 'Unified' : 'Split')}
     </button>
   )
 }

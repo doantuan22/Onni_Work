@@ -21,6 +21,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useI18n } from '@/lib/i18n'
 import {
   isProjectSkill,
   partitionSkillsForDisplay,
@@ -70,6 +71,7 @@ export function SourcePill({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [preview, setPreview] = useState<Skill | null>(null)
+  const { t } = useI18n()
   const listRef = useRef<HTMLDivElement>(null)
   // #484: rank in JS (cmdk's own score-sort does not re-order reliably here), then split the
   // ranked matches into the #519 display tiers so each group stays match-ordered.
@@ -123,8 +125,8 @@ export function SourcePill({
         <button
           type="button"
           data-slot="source-skill-view"
-          aria-label={`View skill ${skill.name}`}
-          title="View skill"
+          aria-label={t('View skill {name}', { name: skill.name })}
+          title={t('View skill')}
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
@@ -148,11 +150,11 @@ export function SourcePill({
       type="button"
       data-slot="source-pill"
       data-source-kind={source?.source ?? 'none'}
-      aria-label="Choose a skill or workflow"
+      aria-label={t('Choose a skill or workflow')}
       title={
         source === null
-          ? 'No skill — the task runs as one plain agent step. Pick a skill or workflow to change that.'
-          : `Runs the ${source.source} "${source.ref}" — pick it again, or press ✕, to run without it`
+          ? t('No skill — the task runs as one plain agent step. Pick a skill or workflow to change that.')
+          : t('Runs the {kind} "{ref}" — pick it again, or press ✕, to run without it', { kind: source.source, ref: source.ref })
       }
       disabled={!ready}
       onKeyDown={(event) => {
@@ -175,7 +177,7 @@ export function SourcePill({
         aria-hidden="true"
         className={cn('size-3 shrink-0', source === null ? 'text-soft-foreground' : 'text-violet')}
       />
-      <span className="max-w-44 truncate">{!ready ? '…' : (source?.ref ?? 'Skill')}</span>
+      <span className="max-w-44 truncate">{!ready ? '…' : (source?.ref ?? t('Skill'))}</span>
       {chevron}
     </button>
   )
@@ -198,8 +200,8 @@ export function SourcePill({
             <button
               type="button"
               data-slot="source-pill-clear"
-              aria-label={`Clear the ${source.source} ${source.ref}`}
-              title="Run without it"
+              aria-label={t('Clear the {kind} {ref}', { kind: source.source, ref: source.ref })}
+              title={t('Run without it')}
               onClick={() => onPick(null)}
               className={cn(
                 chipClass,
@@ -217,7 +219,7 @@ export function SourcePill({
         >
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder="search skills & workflows…"
+              placeholder={t('search skills & workflows…')}
               value={search}
               onValueChange={setSearch}
               onInput={() => listRef.current?.scrollTo(0, 0)}
@@ -229,7 +231,7 @@ export function SourcePill({
               data-slot="source-menu"
               className="max-h-[min(18rem,calc(var(--radix-popover-content-available-height)-3rem))]"
             >
-              {nothingMatches ? <CommandEmpty>Nothing matches.</CommandEmpty> : null}
+              {nothingMatches ? <CommandEmpty>{t('Nothing matches.')}</CommandEmpty> : null}
               {/* Heading-less and first: "run it plain" is not a kind of skill, and the way out
                   of a selection has to be the thing you see when the list opens. */}
               {noneMatches ? (
@@ -242,9 +244,9 @@ export function SourcePill({
                     onSelect={() => pick(null)}
                   >
                     <CircleSlashIcon aria-hidden="true" className="size-3.5 shrink-0 text-soft-foreground" />
-                    <span className="shrink-0 text-xs font-medium">No skill</span>
+                    <span className="shrink-0 text-xs font-medium">{t('No skill')}</span>
                     <span className="min-w-0 flex-1 truncate text-xs text-soft-foreground">
-                      {quickTask?.description ?? 'One agent run on your task — no ceremony.'}
+                      {quickTask?.description ?? t('One agent run on your task — no ceremony.')}
                     </span>
                     {source === null ? (
                       <CheckIcon aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-primary" />
@@ -255,17 +257,17 @@ export function SourcePill({
               {/* Most used leads (#519), then Project skills before Global — the closer a
                   skill lives to the repo, the more likely it's the one being picked. */}
               {mostUsed.length > 0 ? (
-                <CommandGroup heading="Most used">
+                <CommandGroup heading={t('Most used')}>
                   {mostUsed.map((skill) => skillItem(skill, isProjectSkill(skill)))}
                 </CommandGroup>
               ) : null}
               {project.length > 0 ? (
-                <CommandGroup heading="Project skills">
+                <CommandGroup heading={t('Project skills')}>
                   {project.map((skill) => skillItem(skill, true))}
                 </CommandGroup>
               ) : null}
               {matchedWorkflows.length > 0 ? (
-                <CommandGroup heading="Workflows">
+                <CommandGroup heading={t('Workflows')}>
                   {matchedWorkflows.map((workflow) => {
                     const selected = source?.source === 'workflow' && source.ref === workflow.name
                     return (
@@ -293,7 +295,7 @@ export function SourcePill({
                 </CommandGroup>
               ) : null}
               {global.length > 0 ? (
-                <CommandGroup heading="Global">{global.map((skill) => skillItem(skill, false))}</CommandGroup>
+                <CommandGroup heading={t('Global')}>{global.map((skill) => skillItem(skill, false))}</CommandGroup>
               ) : null}
             </CommandList>
           </Command>

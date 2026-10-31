@@ -10,6 +10,7 @@ import { CenteredState } from '@/components/centered-state'
 import { canPreviewMarkdown, Diff, type DiffHandle, type DiffMode, type DiffRevealTarget } from '@/components/diff'
 import { toast } from '@/components/ui/toaster'
 import { gitActionPolicy, type GitActionId } from '@/lib/git-actions'
+import { useI18n } from '@/lib/i18n'
 import { useIsDesktop } from '@/lib/use-desktop'
 
 import { useDiffComments } from '../task-thread/diff-comments'
@@ -67,6 +68,7 @@ export function ChangesView({
   embedded?: boolean
   stateKey?: string
 }) {
+  const { t } = useI18n()
   const health = useHealth()
   // The remote that decides whether Push is offered comes from the PROJECT-scoped `/repo`, not
   // from `/api/health.repo`: health is bound to the boot folder, so a onni booted outside a git
@@ -238,14 +240,15 @@ export function ChangesView({
 
       {changes.data?.repointedHead ? (
         <p data-slot="repointed-head-note" className="border-b px-4 py-2 text-xs text-soft-foreground md:px-6">
-          HEAD is on <code>{changes.data.repointedHead.headBranch}</code>, not this task&apos;s branch{' '}
-          <code>{changes.data.repointedHead.taskBranch}</code> — showing only what this task changed there.
+          {t('HEAD is on')} <code>{changes.data.repointedHead.headBranch}</code>
+          {t(", not this task's branch")} <code>{changes.data.repointedHead.taskBranch}</code>
+          {t(' — showing only what this task changed there.')}
         </p>
       ) : null}
 
       {changes.isPending ? (
         <p data-slot="changes-loading" className="px-4 py-6 text-center text-xs text-soft-foreground md:px-6">
-          Loading changes…
+          {t('Loading changes…')}
         </p>
       ) : changes.isError ? (
         <CenteredState
@@ -260,8 +263,8 @@ export function ChangesView({
           icon={<FileDiffIcon />}
           tone="neutral"
           heading="h2"
-          title="No changes yet"
-          subtitle="The worktree matches its base branch. Changes appear here as the agent works."
+          title={t('No changes yet')}
+          subtitle={t('The worktree matches its base branch. Changes appear here as the agent works.')}
         />
       ) : (
         // The dock floats over the bottom of this body (see `dockHeight`). The body itself must

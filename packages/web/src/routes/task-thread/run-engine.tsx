@@ -1,6 +1,7 @@
 import { useAgentProfiles, useConfig, useRunnerModels } from '@/api/queries'
 import { DEFAULT_AGENT_ACCOUNT_ID, type ApiRun } from '@onni/api-client'
 import { PickerPill } from '@/components/picker-pill'
+import { useI18n } from '@/lib/i18n'
 import { modelsForRunner } from '@/routes/new-task-form'
 
 /**
@@ -8,6 +9,7 @@ import { modelsForRunner } from '@/routes/new-task-form'
  * the composer's read-only engine pills both read, so the two can never name different engines.
  */
 export function useRunEngine(run: ApiRun) {
+  const { t } = useI18n()
   // The record keeps only what the caller ASKED for: `POST /api/runs` persists the raw optional
   // `runner` (`src/runs/store.ts`), while the run actually executes as
   // `input.runner ?? config.defaultRunner` (`src/workflows/run.ts`). Mirror that resolution —
@@ -31,7 +33,7 @@ export function useRunEngine(run: ApiRun) {
       ? 'default'
       // A deleted account still names the folder this run's sessions live in, so the id is shown
       // rather than swallowed — "gone" is the useful half of that answer.
-      : profiles.data?.profiles.find((p) => p.id === accountId)?.label ?? `${accountId} (removed)`
+      : profiles.data?.profiles.find((p) => p.id === accountId)?.label ?? t('{account} (removed)', { account: accountId })
   // The canonical `provider/model` the run actually resolved to (#405), shown only when it says
   // something `model` does not (#546). Absent on pre-#405 records and skipped when it merely
   // repeats `model` — an identity nothing wrote down is not one a reader may invent.
@@ -48,18 +50,19 @@ export function useRunEngine(run: ApiRun) {
  * Continue can choose.
  */
 export function RunEnginePills({ run }: { run: ApiRun }) {
+  const { t } = useI18n()
   const engine = useRunEngine(run)
   // The catalog only turns the pinned id into its display name ("opus" → "Opus 5.5"), so the chip
   // reads exactly as the editable one will once the session closes.
   const catalog = useRunnerModels(engine.runner)
   const models = modelsForRunner(engine.runner, catalog.data, [run.model])
   const modelLabel = models.find((preset) => preset.id === engine.model)?.label ?? engine.model
-  const hint = 'The session’s engine — pick another when you continue it'
+  const hint = t('The session’s engine — pick another when you continue it')
   return (
     <div data-slot="run-engine" className="flex flex-wrap items-center gap-1.5">
       <PickerPill
         slot="run-engine-runner"
-        ariaLabel="Agent"
+        ariaLabel={t('Agent')}
         label={engine.account && engine.account !== 'default' ? `${engine.runner} · ${engine.account}` : engine.runner}
         value={engine.runner}
         options={[]}
@@ -69,13 +72,13 @@ export function RunEnginePills({ run }: { run: ApiRun }) {
       />
       <PickerPill
         slot="run-engine-model"
-        ariaLabel="Model"
+        ariaLabel={t('Model')}
         label={modelLabel}
         value={engine.model}
         options={[]}
         onPick={() => {}}
         readOnly
-        hint={engine.identity ? `${hint} (served as ${engine.identity})` : hint}
+        hint={engine.identity ? t('{hint} (served as {identity})', { hint, identity: engine.identity }) : hint}
       />
     </div>
   )

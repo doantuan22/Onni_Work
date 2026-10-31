@@ -174,7 +174,7 @@ describe('model option resolution', () => {
     // #794 gave OpenCode a catalog, #784 gave Claude one and #807 gave Cursor one. The contract's
     // list is the single source both the route and the picker compile against — this asserts they
     // still agree on who discovers, and that a runner is never added to it by accident.
-    expect(MODEL_DISCOVERY_RUNNERS).toEqual(['claude', 'codex', 'opencode', 'cursor', 'junie', 'antigravity'])
+    expect(MODEL_DISCOVERY_RUNNERS).toEqual(['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'antigravity'])
     expect(MODEL_DISCOVERY_RUNNERS.every((runner) => runnerDiscoversModels(runner))).toBe(true)
   })
 
@@ -186,7 +186,8 @@ describe('model option resolution', () => {
   it('copilot stays OUT of discovery: free text plus its own presets, and no /models request', () => {
     // Copilot's catalog is fetched from GitHub per account, so onni cannot list it truthfully and
     // `GET /models?runner=copilot` would 400. The picker therefore offers Copilot's own documented
-    // `auto` and whatever the user types (#582; spec § API Contracts, same rule as pi).
+    // `auto` and whatever the user types (#582; spec § API Contracts). pi used to share this
+    // treatment; it now has a host catalog of its own (`pi --list-models`).
     expect(runnerDiscoversModels('copilot')).toBe(false)
     expect(MODEL_DISCOVERY_RUNNERS).not.toContain('copilot')
     expect(modelsForRunner('copilot').map((m) => m.id)).toEqual([''])
@@ -226,17 +227,31 @@ describe('model option resolution', () => {
     ).toEqual(['', 'openai/gpt-5.1'])
   })
 
-  it('never reads a provider-spanning runner’s preset as another runner’s exclusive model', () => {
-    // pi lists `openai/gpt-5.1` and `anthropic/claude-sonnet-5` as presets, and OpenCode serves
-    // the very same models from the very same providers. Counting pi's list as evidence of
-    // "belongs to another runner" would silently strip those ids from OpenCode's picker — the
-    // #794 bug, reintroduced through the back door.
+  it('never reads a provider-spanning runner’s model as another runner’s exclusive model', () => {
+    // pi and OpenCode both pick with `provider/model` across every provider the host has
+    // configured, so an id either one reports is never exclusive to it. Counting a shared id as
+    // evidence of "belongs to another runner" would silently strip it from the other's picker —
+    // the #794 bug, reintroduced through the back door.
     for (const model of ['openai/gpt-5.1', 'anthropic/claude-sonnet-5']) {
       expect(modelConflictsWithRunner(model, 'opencode')).toBe(false)
       expect(modelConflictsWithRunner(model, 'pi')).toBe(false)
     }
     // The guard it must NOT lose: a bare id that is unmistakably one single-provider runner's.
     expect(modelConflictsWithRunner('opus', 'codex')).toBe(true)
+  })
+
+  it('pi: auto alone until the host catalog answers', () => {
+    expect(modelsForRunner('pi').map((m) => m.id)).toEqual([''])
+    expect(
+      modelsForRunner('pi', {
+        runner: 'pi',
+        models: [{ id: 'anthropic/claude-sonnet-5', label: 'claude-sonnet-5', description: 'via anthropic' }],
+        source: 'live',
+        stale: false,
+      }).map((m) => m.id),
+    ).toEqual(['', 'anthropic/claude-sonnet-5'])
+    expect(modelCatalogStatus('pi', { runner: 'pi', models: [], source: 'unavailable', stale: false }))
+      .toBe('Latest pi models unavailable')
   })
 
   it('names the runner whose catalog is stale or unavailable', () => {

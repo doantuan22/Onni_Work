@@ -4,6 +4,7 @@ import { StatusDot } from '@/components/status-dot'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 
 import { pickLabel } from './design-picks'
 import type { DesignNote, DesignNotes, NotePhase } from './design-notes'
@@ -36,6 +37,7 @@ export function DesignNotePopup({
   onClose: () => void
 }) {
   const isDraft = note.phase === 'draft'
+  const { t } = useI18n()
   const empty = note.text.trim() === ''
   // Only a note never added is thrown away by ✕ / Esc — an added one is removed deliberately.
   const throwaway = isDraft && !note.added
@@ -66,7 +68,7 @@ export function DesignNotePopup({
           // The twin of the badge on the element's frame in the page: comment glyph, number.
           <span
             data-slot="design-note-number"
-            aria-label={`Note ${note.number}`}
+            aria-label={t('Note {number}', { number: note.number })}
             className="flex h-[21px] shrink-0 items-center gap-1 rounded-md bg-primary pr-[7px] pl-1.5 text-xs leading-none font-bold text-primary-foreground"
           >
             <MessageSquareIcon aria-hidden="true" className="size-3" strokeWidth={2.5} />
@@ -81,8 +83,8 @@ export function DesignNotePopup({
           variant="ghost"
           size="icon-sm"
           className="size-6"
-          aria-label={throwaway ? 'Discard note' : 'Close'}
-          title={throwaway ? 'Discard this note and deselect the element (Esc)' : 'Close (Esc)'}
+          aria-label={throwaway ? t('Discard note') : t('Close')}
+          title={throwaway ? t('Discard this note and deselect the element (Esc)') : t('Close (Esc)')}
           onClick={dismiss}
         >
           <XIcon aria-hidden="true" />
@@ -92,7 +94,7 @@ export function DesignNotePopup({
       {status ? (
         <p data-slot="design-note-status" className="flex items-center gap-1.5 text-soft-foreground">
           <StatusDot tone={status.tone} pulse={status.pulse ?? false} />
-          {status.label}
+          {t(status.label)}
         </p>
       ) : null}
 
@@ -109,10 +111,10 @@ export function DesignNotePopup({
               add()
             }
           }}
-          placeholder="What should change here?"
+          placeholder={t('What should change here?')}
           // A batch on its way carries this text; an edit now would be lost to it.
           readOnly={note.sending === true}
-          aria-label="Note for the agent"
+          aria-label={t('Note for the agent')}
           // The window appears because the user just pointed at something to talk about.
           autoFocus
           rows={3}
@@ -129,13 +131,13 @@ export function DesignNotePopup({
           {note.added ? (
             <Button type="button" variant="ghost" size="sm" className="text-soft-foreground hover:text-danger" disabled={note.sending === true} onClick={remove}>
               <Trash2Icon aria-hidden="true" />
-              Delete
+              {t('Delete')}
             </Button>
           ) : (
             <span />
           )}
-          <Button type="button" size="sm" disabled={!note.added && empty} title={note.added ? 'Done (Ctrl/⌘+Enter)' : 'Add note (Ctrl/⌘+Enter)'} onClick={add}>
-            {note.added ? 'Done' : 'Add note'}
+          <Button type="button" size="sm" disabled={!note.added && empty} title={note.added ? t('Done (Ctrl/⌘+Enter)') : t('Add note (Ctrl/⌘+Enter)')} onClick={add}>
+            {note.added ? t('Done') : t('Add note')}
           </Button>
         </div>
       ) : null}
@@ -148,6 +150,7 @@ export function DesignNotePopup({
  * and go to the agent together, as one message, when the user says so.
  */
 export function DesignNotesTray({ notes }: { notes: Pick<DesignNotes, 'ready' | 'sending' | 'sendAll'> }) {
+  const { t, tn } = useI18n()
   // `sending` lives in the notes' store, so a tray remounted mid-send still knows it is busy.
   const busy = notes.sending
   if (notes.ready === 0 && !busy) return null
@@ -157,7 +160,7 @@ export function DesignNotesTray({ notes }: { notes: Pick<DesignNotes, 'ready' | 
     try {
       await notes.sendAll()
     } catch (error) {
-      toast(error instanceof Error && error.message ? error.message : 'Could not send the notes.', { tone: 'danger' })
+      toast(error instanceof Error && error.message ? error.message : t('Could not send the notes.'), { tone: 'danger' })
     }
   }
 
@@ -168,11 +171,11 @@ export function DesignNotesTray({ notes }: { notes: Pick<DesignNotes, 'ready' | 
     >
       <MessageSquareIcon aria-hidden="true" className="size-3.5 text-soft-foreground" />
       <span className="text-foreground">
-        {notes.ready} {notes.ready === 1 ? 'note' : 'notes'}
+        {tn(notes.ready, '{count} note', '{count} notes')}
       </span>
       <Button type="button" size="sm" disabled={busy} onClick={() => void send()}>
         <SendIcon aria-hidden="true" />
-        {busy ? 'Sending…' : 'Send to agent'}
+        {busy ? t('Sending…') : t('Send to agent')}
       </Button>
     </div>
   )

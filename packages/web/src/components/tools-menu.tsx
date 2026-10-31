@@ -5,6 +5,7 @@ import type { BackendCheck, ForgeInfo, HealthResponse, Runner } from '@onni/api-
 import { StatusDot } from '@/components/status-dot'
 import { formatMem } from '@/lib/tasks-table'
 import { Link } from '@/lib/project-router'
+import { translate, useI18n, type Translate } from '@/lib/i18n'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,10 @@ const RUNNER_NAMES: Record<Runner, true> = { claude: true, codex: true, junie: t
 
 const isRunner = (check: BackendCheck): boolean => Object.hasOwn(RUNNER_NAMES, check.name)
 
+/** The helpers below are exported for tests, which call them without a component: English with
+ *  interpolation is the honest default, and it keeps their output byte-identical to the UI. */
+const english: Translate = (text, vars) => translate('en', text, vars)
+
 /**
  * What (if anything) keeps the aggregate dot from green. Only two things do: having no agent
  * CLI at all, and the configured default runner being the missing one — those are what stop
@@ -43,18 +48,20 @@ const isRunner = (check: BackendCheck): boolean => Object.hasOwn(RUNNER_NAMES, c
  * creation") is a choice not taken, not a problem: the per-row red dot already says so.
  * Exported for the tests — the wording is a small contract of its own.
  */
-export function toolsBlocker(health: HealthResponse): string | null {
+export function toolsBlocker(health: HealthResponse, t: Translate = english): string | null {
   const runners = health.checks.filter(isRunner)
   if (runners.length && !runners.some((check) => check.available)) {
-    return 'no agent CLI found — install one to run tasks'
+    return t('no agent CLI found — install one to run tasks')
   }
   // Absent from `checks[]` (an older server) means unprobed, not broken: nothing to claim.
   const preferred = runners.find((check) => check.name === health.defaultRunner)
   if (preferred && !preferred.available) {
-    return `default runner (${health.defaultRunner}) not found`
+    return t('default runner ({runner}) not found', { runner: health.defaultRunner })
   }
   // Below the floor the server refuses to start agents (9cdcedc3) — that stops a task too.
-  if (health.disk?.level === 'critical') return `disk almost full — ${formatFree(health.disk.freeBytes)} free`
+  if (health.disk?.level === 'critical') {
+    return t('disk almost full — {free} free', { free: formatFree(health.disk.freeBytes) })
+  }
   return null
 }
 
@@ -68,24 +75,37 @@ function formatFree(bytes: number): string {
  * The free-space warning (9cdcedc3): null while the disk is fine or the server could not probe it.
  * Points at the cleanup that already exists (#483 retention). Exported for the tests.
  */
-export function diskNote(health: HealthResponse): string | null {
+export function diskNote(health: HealthResponse, t: Translate = english): string | null {
   const disk = health.disk
   if (!disk || disk.level === 'ok') return null
-  const used = disk.worktreesBytes ? ` Task worktrees use ${formatMem(disk.worktreesBytes)}.` : ''
-  const effect = disk.level === 'critical' ? ' New agents will not start until space is freed.' : ''
-  return `Only ${formatFree(disk.freeBytes)} free on the disk holding task worktrees.${used}${effect} Reclaim finished tasks' worktrees (branches are kept) or delete old tasks.`
+  const used = disk.worktreesBytes
+    ? t(' Task worktrees use {size}.', { size: formatMem(disk.worktreesBytes) })
+    : ''
+  const effect =
+    disk.level === 'critical' ? t(' New agents will not start until space is freed.') : ''
+  return (
+    t('Only {free} free on the disk holding task worktrees.', { free: formatFree(disk.freeBytes) }) +
+    used +
+    effect +
+    t(" Reclaim finished tasks' worktrees (branches are kept) or delete old tasks.")
+  )
 }
 
 /** The trigger's hover tooltip: the onni version, then the blocker if there is one — else
  *  the optional tools still worth knowing about. Exported for the tests. */
-export function toolsTooltip(health: HealthResponse): string {
+export function toolsTooltip(health: HealthResponse, t: Translate = english): string {
   const base = `onni v${health.version}`
-  const blocker = toolsBlocker(health)
+  const blocker = toolsBlocker(health, t)
   if (blocker) return `${base} · ${blocker}`
-  const low = health.disk?.level === 'low' ? ` · low disk space (${formatFree(health.disk.freeBytes)} free)` : ''
+  const low =
+    health.disk?.level === 'low'
+      ? t(' · low disk space ({free} free)', { free: formatFree(health.disk.freeBytes) })
+      : ''
   const missing = health.checks.filter((check) => !check.available).map((check) => check.name)
   if (low) return `${base}${low}`
-  return missing.length ? `${base} · optional: ${missing.join(', ')} not installed` : base
+  return missing.length
+    ? t('{base} · optional: {tools} not installed', { base, tools: missing.join(', ') })
+    : base
 }
 
 /**
@@ -95,24 +115,27 @@ export function toolsTooltip(health: HealthResponse): string {
  * directly: health describes the boot folder only (#1410). `undefined` = not known yet, no note.
  * Exported for the tests — the two sentences are a small contract.
  */
-export function forgeNote(forge: ForgeInfo | null | undefined): string | null {
+export function forgeNote(forge: ForgeInfo | null | undefined, t: Translate = english): string | null {
   if (forge === undefined || forge?.available) return null
   if (!forge) {
-    return 'No GitHub remote detected — the GitHub tab is hidden. Every plain-git feature still works.'
+    return t('No GitHub remote detected — the GitHub tab is hidden. Every plain-git feature still works.')
   }
   // A cold probe (no `available` yet) is not a failure — say nothing until it has answered.
   if (forge.available === undefined) return null
-  return `GitHub is unreachable — ${forge.reason ?? 'unknown reason'}. The GitHub tab can retry.`
+  return t('GitHub is unreachable — {reason}. The GitHub tab can retry.', {
+    reason: forge.reason ?? t('unknown reason'),
+  })
 }
 
 export function ToolsMenu({ health, forge }: { health: HealthResponse | undefined; forge: ForgeInfo | null | undefined }) {
+  const { t } = useI18n()
   if (!health) return null
-  const note = forgeNote(forge)
+  const note = forgeNote(forge, t)
 
   // Green when onni can actually work: at least one agent CLI is present and the default runner
   // is among them. `pending` (amber), not `danger`, otherwise — per-row dots are where red lives.
-  const blocker = toolsBlocker(health)
-  const disk = diskNote(health)
+  const blocker = toolsBlocker(health, t)
+  const disk = diskNote(health, t)
 
   return (
     <DropdownMenu>
@@ -120,11 +143,11 @@ export function ToolsMenu({ health, forge }: { health: HealthResponse | undefine
         <button
           type="button"
           data-slot="tools-menu-trigger"
-          title={toolsTooltip(health)}
+          title={toolsTooltip(health, t)}
           className="flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <StatusDot tone={blocker || disk ? 'pending' : 'success'} />
-          Tools
+          {t('Tools')}
           <ChevronDownIcon className="size-[11px]" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
@@ -137,7 +160,7 @@ export function ToolsMenu({ health, forge }: { health: HealthResponse | undefine
         className="w-[240px]"
       >
         <DropdownMenuLabel className="text-[11px] font-semibold tracking-[.04em] text-soft-foreground uppercase">
-          Installed tools
+          {t('Installed tools')}
         </DropdownMenuLabel>
         {health.checks.map((check) =>
           check.available ? <AvailableToolRow key={check.name} check={check} /> : <UnavailableToolRow key={check.name} check={check} />
@@ -158,7 +181,7 @@ export function ToolsMenu({ health, forge }: { health: HealthResponse | undefine
             </p>
             <DropdownMenuItem asChild>
               <Link to="/settings/worktrees" data-slot="disk-reclaim" className="text-[11.5px] font-semibold text-violet">
-                Manage worktrees →
+                {t('Manage worktrees →')}
               </Link>
             </DropdownMenuItem>
           </>
@@ -177,7 +200,7 @@ export function ToolsMenu({ health, forge }: { health: HealthResponse | undefine
             className="gap-2 text-[12.5px] text-muted-foreground"
           >
             <SettingsIcon className="size-3.5" aria-hidden="true" />
-            Agent accounts
+            {t('Agent accounts')}
           </RouterLink>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -188,6 +211,7 @@ export function ToolsMenu({ health, forge }: { health: HealthResponse | undefine
 /** A present tool: dot, mono name, right-aligned version. Informational, not interactive —
  *  there is nothing to do to a tool that works. */
 function AvailableToolRow({ check }: { check: BackendCheck }) {
+  const { t } = useI18n()
   return (
     <div
       data-slot="tool-row"
@@ -201,7 +225,7 @@ function AvailableToolRow({ check }: { check: BackendCheck }) {
         data-slot="tool-version"
         className="ml-auto font-mono text-[11.5px] font-medium text-muted-foreground tabular-nums"
       >
-        {check.version ?? 'not found'}
+        {check.version ?? t('not found')}
       </span>
     </div>
   )
@@ -219,6 +243,7 @@ const ACCOUNTS_PATH = '/settings/global/accounts'
  * above) decides which is which, so a runner added to the contract cannot be missed here.
  */
 function UnavailableToolRow({ check }: { check: BackendCheck }) {
+  const { t } = useI18n()
   const body = (
     <>
       <span className="flex items-center gap-2">
@@ -228,7 +253,7 @@ function UnavailableToolRow({ check }: { check: BackendCheck }) {
           data-slot="tool-version"
           className="ml-auto font-mono text-[11.5px] font-medium text-muted-foreground"
         >
-          not found
+          {t('not found')}
         </span>
       </span>
       {check.hint || isRunner(check) ? (
@@ -240,7 +265,7 @@ function UnavailableToolRow({ check }: { check: BackendCheck }) {
           ) : null}
           {isRunner(check) ? (
             <span data-slot="tool-setup" className="ml-auto shrink-0 text-[11.5px] font-semibold text-violet">
-              Set up →
+              {t('Set up →')}
             </span>
           ) : null}
         </span>

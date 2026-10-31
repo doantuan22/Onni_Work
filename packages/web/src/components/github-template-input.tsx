@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 
 import { Input } from '@/components/ui/input'
 import { filterTemplateSuggestions } from '@/lib/github-templates'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -25,6 +26,7 @@ export function GithubTemplateInput({
   disabled: boolean
   id: string
 }) {
+  const { t } = useI18n()
   const [active, setActive] = useState(-1)
   const listId = useId()
   const suggestions = filterTemplateSuggestions(value)
@@ -61,7 +63,7 @@ export function GithubTemplateInput({
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
         autoComplete="off"
-        placeholder="Search, or paste owner/repo or a URL"
+        placeholder={t('Search, or paste owner/repo or a URL')}
         value={value}
         disabled={disabled}
         onBlur={() => setActive(-1)}
@@ -86,7 +88,7 @@ export function GithubTemplateInput({
           ref={listRef}
           id={listId}
           role="listbox"
-          aria-label="Suggested templates"
+          aria-label={t('Suggested templates')}
           aria-disabled={disabled || undefined}
           data-slot="create-template-suggestions"
           className={cn(
@@ -131,7 +133,8 @@ export function GithubTemplateInput({
         </ul>
       ) : (
         <p data-slot="create-template-no-match" className="px-1 text-[12px] text-muted-foreground">
-          No suggested template matches — any <span className="font-mono">owner/repo</span> or GitHub URL works.
+          {t('No suggested template matches — any')} <span className="font-mono">owner/repo</span>{' '}
+          {t('or GitHub URL works.')}
         </p>
       )}
     </div>

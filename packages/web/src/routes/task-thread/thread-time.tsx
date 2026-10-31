@@ -18,6 +18,8 @@
 
 import { useEffect, useState } from 'react'
 
+import { useI18n } from '@/lib/i18n'
+
 /** One formatter per shape, built once: hundreds of thread rows format on every paint. */
 const CLOCK = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
 const EXACT = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
@@ -144,6 +146,7 @@ export function MessageTime({ ts }: { ts: string }) {
  * jump when it fills in.
  */
 export function TurnTime({ startedAt, completedAt }: { startedAt?: string; completedAt: string }) {
+  const { t } = useI18n()
   const label = clockLabel(completedAt)
   if (label === undefined) return null
   const duration = turnDuration(startedAt, completedAt)
@@ -155,7 +158,7 @@ export function TurnTime({ startedAt, completedAt }: { startedAt?: string; compl
       <time dateTime={completedAt} title={exactLabel(completedAt)}>
         {label}
       </time>
-      {duration !== undefined ? <span title={`Replied in ${duration}`}>· {duration}</span> : null}
+      {duration !== undefined ? <span title={t('Replied in {duration}', { duration })}>· {duration}</span> : null}
     </div>
   )
 }
@@ -169,6 +172,7 @@ export function TurnTime({ startedAt, completedAt }: { startedAt?: string; compl
  *  behind "Today"/"Yesterday" when `dayLabel` returned one of those, since a relative word alone
  *  is not an anchor and the date alone loses the very cue a returning reader wants. */
 export function DaySeparator({ ts }: { ts: string }) {
+  const { t } = useI18n()
   const label = dayLabel(ts)
   const at = parse(ts)
   if (label === undefined || at === undefined) return null
@@ -178,12 +182,12 @@ export function DaySeparator({ ts }: { ts: string }) {
     <div
       data-slot="day-separator"
       role="separator"
-      aria-label={relative ? `${label}, ${exact}` : exact}
+      aria-label={relative ? t('{day}, {date}', { day: t(label), date: exact }) : exact}
       className="flex items-center gap-3 py-1 text-[11px] font-medium text-soft-foreground"
     >
       <span aria-hidden className="h-px flex-1 bg-border" />
       <time dateTime={localDayKey(ts)} title={exact}>
-        {label}
+        {t(label)}
       </time>
       <span aria-hidden className="h-px flex-1 bg-border" />
     </div>

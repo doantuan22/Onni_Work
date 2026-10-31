@@ -1,5 +1,6 @@
 import { ArchiveIcon, ArchiveRestoreIcon } from 'lucide-react'
 import { IconTooltip } from '@/components/ui/icon-tooltip'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 /**
@@ -17,13 +18,14 @@ export function ArchiveToggle({
   onToggle: (archived: boolean) => void
   className?: string
 }) {
+  const { t } = useI18n()
   const Icon = archived ? ArchiveRestoreIcon : ArchiveIcon
   return (
-    <IconTooltip label={archived ? 'Move back to the active list' : 'Move to the archived list'}>
+    <IconTooltip label={archived ? t('Move back to the active list') : t('Move to the archived list')}>
       <button
         type="button"
         data-slot="archive-toggle"
-        aria-label={archived ? 'Unarchive task' : 'Archive task'}
+        aria-label={archived ? t('Unarchive task') : t('Archive task')}
         onClick={(event) => {
           event.stopPropagation()
           onToggle(!archived)

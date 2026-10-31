@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetTrigger } from '@/components/ui/sheet'
 import { Link as ScopedLink, NavLink as ScopedNavLink, pathnameProjectId, scopeTo } from '@/lib/project-router'
 import { settingsReturnLocation } from '@/lib/settings-return'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { ProjectGeneral } from './project-general'
 import { ProjectLocationNav } from './project-location'
@@ -186,6 +187,7 @@ function ProjectSectionLinks({
   activeId: SettingsSection['id'] | null
   indent: boolean
 }) {
+  const { t } = useI18n()
   const touch = React.useContext(TouchTargetsContext)
   return (
     <div className={cn('flex flex-col gap-0.5', indent && 'mt-0.5 ml-[14px] border-l border-border pl-2')}>
@@ -199,7 +201,7 @@ function ProjectSectionLinks({
         className={cn(navRowClass(active && activeId === null, touch), !touch && 'h-[30px]', 'text-[13px]')}
       >
         <SlidersHorizontalIcon aria-hidden="true" className="size-3.5 shrink-0" />
-        General
+        {t('General')}
       </RouterNavLink>
       {sections.map((section) => {
         const current = active && section.id === activeId
@@ -212,7 +214,7 @@ function ProjectSectionLinks({
             className={cn(navRowClass(current, touch), !touch && 'h-[30px]', 'text-[13px]')}
           >
             <section.icon aria-hidden="true" className="size-3.5 shrink-0" />
-            {section.title}
+            {t(section.title)}
           </RouterNavLink>
         )
       })}
@@ -229,7 +231,8 @@ function ProjectRowLabel({ project }: { project: TreeProject }) {
  *  409s — so an inert row with the pill and, for a screen reader (the `title` of a non-focusable
  *  element is unreachable), the same hint as visually-hidden text. Unregistering lives in Projects. */
 function MissingProjectRow({ project, indent }: { project: TreeProject; indent: boolean }) {
-  const hint = `${project.name} is gone — remove it in Projects`
+  const { t } = useI18n()
+  const hint = t('{name} is gone — remove it in Projects', { name: project.name })
   return (
     <div
       data-slot="settings-project"
@@ -242,7 +245,7 @@ function MissingProjectRow({ project, indent }: { project: TreeProject; indent: 
       <span className="truncate">{project.name}</span>
       <span className="sr-only">{hint}</span>
       <span className="ml-auto shrink-0 rounded-full bg-danger/15 px-[7px] py-px text-[10px] font-medium text-danger">
-        folder not found
+        {t('folder not found')}
       </span>
     </div>
   )
@@ -281,6 +284,7 @@ function ProjectTreeRow({
   expanded: boolean
   onToggle: () => void
 }) {
+  const { t } = useI18n()
   const active = project.id === activeProjectId
   const touch = React.useContext(TouchTargetsContext)
   // Unique per INSTANCE: below `md` the hidden desktop column and the open drawer both render
@@ -288,6 +292,7 @@ function ProjectTreeRow({
   const bodyId = `settings-project-${React.useId()}-${project.id}`
   const switchTo =
     !active && onProjectPage ? projectSettingsPath(project.id, openSectionId ?? undefined) : null
+  const openTitle = sections.find((s) => s.id === openSectionId)?.title
 
   if (project.status === 'missing') return <MissingProjectRow project={project} indent />
 
@@ -306,7 +311,7 @@ function ProjectTreeRow({
           // Only while the body is rendered: a reference to an id that is not in the DOM is an
           // a11y error, and a collapsed row has no body.
           aria-controls={expanded ? bodyId : undefined}
-          aria-label={`${expanded ? 'Collapse' : 'Expand'} ${project.name}`}
+          aria-label={t('{action} {name}', { action: expanded ? t('Collapse') : t('Expand'), name: project.name })}
           className={cn(
             'flex shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground',
             touch ? 'size-11' : 'size-7',
@@ -321,7 +326,7 @@ function ProjectTreeRow({
           <RouterLink
             to={switchTo}
             data-slot="settings-project-link"
-            title={`Open ${project.name}'s ${sections.find((s) => s.id === openSectionId)?.title ?? 'General'}`}
+            title={t("Open {name}'s {section}", { name: project.name, section: openTitle ? t(openTitle) : t('General') })}
             className={cn(
               'flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground',
               touch && 'min-h-11',
@@ -403,6 +408,7 @@ function SettingsSidebar(props: SidebarProps) {
 function SettingsMobileDrawer({ onOpenChange, ...props }: SidebarProps & {
   onOpenChange: (open: boolean) => void
 }) {
+  const { t } = useI18n()
   const { pathname } = useLocation()
   React.useEffect(() => {
     onOpenChange(false)
@@ -417,7 +423,7 @@ function SettingsMobileDrawer({ onOpenChange, ...props }: SidebarProps & {
     return () => query.removeEventListener('change', onChange)
   }, [onOpenChange])
   return (
-    <SidebarDrawer slot="settings-mobile-drawer" title="Settings navigation">
+    <SidebarDrawer slot="settings-mobile-drawer" title={t('Settings navigation')}>
       {(closeButton) => <SettingsSidebarContent {...props} headerAction={closeButton} />}
     </SidebarDrawer>
   )
@@ -436,6 +442,7 @@ function SettingsSidebarContent({
   /** The drawer's close button. Absent on desktop, which has nothing to close. */
   headerAction?: React.ReactNode
 }) {
+  const { t } = useI18n()
   const { global, project } = settingsSectionsByScope(capabilities)
   const touch = Boolean(headerAction)
   // Expansion is derived from the URL — the active project is open — plus transient toggles.
@@ -478,7 +485,7 @@ function SettingsSidebarContent({
           variant="ghost"
           size="sm"
           data-slot="settings-back"
-          title="Back (Esc)"
+          title={t('Back (Esc)')}
           onClick={leave}
           // h-[26px]: the brand tile's height. A taller control would grow this row and shift
           // the logo down the moment settings opens — the row must be pixel-identical to the
@@ -486,18 +493,18 @@ function SettingsSidebarContent({
           className={cn('-mr-2 ml-auto shrink-0', touch ? 'h-11' : 'h-[26px]')}
         >
           <ArrowLeftIcon aria-hidden="true" className="size-4" />
-          Back
+          {t('Back')}
         </Button>
         {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
       </div>
 
       <nav
-        aria-label="Settings sections"
+        aria-label={t('Settings sections')}
         data-slot="settings-nav"
         data-scope={scope}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-2.5 py-1.5"
       >
-        <GroupLabel>General settings</GroupLabel>
+        <GroupLabel>{t('General settings')}</GroupLabel>
         {/* No "General" row here: the global index has no content of its own and redirects to
             the first section (spec 2026-10-13-unified-settings). */}
         {global.map((section) => {
@@ -510,13 +517,13 @@ function SettingsSidebarContent({
               className={navRowClass(current, touch)}
             >
               <section.icon aria-hidden="true" className="size-4 shrink-0" />
-              {section.title}
+              {t(section.title)}
             </RouterNavLink>
           )
         })}
         {/* Global settings are per USER, not per repo — worth saying once, where the choice to
             write there is being made. */}
-        <p className="shrink-0 px-2.5 pt-1 pb-2 text-[11px] text-soft-foreground">Stored in ~/.onni</p>
+        <p className="shrink-0 px-2.5 pt-1 pb-2 text-[11px] text-soft-foreground">{t('Stored in ~/.onni')}</p>
 
         {tree.projects.length > 0 ? (
           <div data-slot="settings-project-tree" className="mt-1 flex shrink-0 flex-col gap-0.5 border-t border-border pt-3">
@@ -524,7 +531,7 @@ function SettingsSidebarContent({
               <>
                 {/* "This project" only when the page IS about it; on a global page the single
                     project is named, since the page is not about any project. */}
-                <GroupLabel>{only.id === active ? 'This project' : only.name}</GroupLabel>
+                <GroupLabel>{only.id === active ? t('This project') : only.name}</GroupLabel>
                 {only.status === 'missing' ? (
                   <MissingProjectRow project={only} indent={false} />
                 ) : (
@@ -539,7 +546,7 @@ function SettingsSidebarContent({
               </>
             ) : (
               <>
-                <GroupLabel>Project settings</GroupLabel>
+                <GroupLabel>{t('Project settings')}</GroupLabel>
                 {tree.projects.map((entry) => (
                   <ProjectTreeRow
                     key={entry.id}
@@ -591,6 +598,7 @@ function SectionPills({
   activeId: SettingsSection['id']
   capabilities: CapabilityProps | undefined
 }) {
+  const { t } = useI18n()
   const sections = settingsSectionsByScope(capabilities)[scope]
   const NavLink = scope === 'global' ? RouterNavLink : ScopedNavLink
   const pillClass = (active: boolean) =>
@@ -600,20 +608,20 @@ function SectionPills({
     )
   return (
     <nav
-      aria-label="Sections of this area"
+      aria-label={t('Sections of this area')}
       data-slot="settings-nav-mobile"
       className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 md:hidden"
     >
       {scope === 'project' ? (
         <>
           <RouterLink to={GLOBAL_INDEX_PATH} data-slot="settings-all-pill" className={pillClass(false)}>
-            ‹ General settings
+            {t('‹ General settings')}
           </RouterLink>
           {/* Never the active pill: the index is a different route, and reaching it from a
               section is the whole reason this entry exists (main #772). Project scope only —
               the global index is a redirect, not a page. */}
           <NavLink to="/settings" end data-slot="settings-nav-index" className={pillClass(false)}>
-            General
+            {t('General')}
           </NavLink>
         </>
       ) : null}
@@ -624,7 +632,7 @@ function SectionPills({
           data-section={section.id}
           className={pillClass(section.id === activeId)}
         >
-          {section.title}
+          {t(section.title)}
         </NavLink>
       ))}
     </nav>
@@ -637,6 +645,7 @@ function SectionPills({
  *  desktop. A `div`, not a `header`: the density e2e measures the route's first `header`,
  *  which is the page header. */
 function MobileBar({ title, projectName }: { title: string; projectName: string | null }) {
+  const { t } = useI18n()
   return (
     <div
       data-slot="settings-mobile-bar"
@@ -649,7 +658,7 @@ function MobileBar({ title, projectName }: { title: string; projectName: string 
       {/* A real SheetTrigger, as in the app shell: Radix restores focus here on close and
           wires aria-haspopup / aria-expanded / aria-controls. The drawer holds Back. */}
       <SheetTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" aria-label="Open settings menu" className="size-11">
+        <Button type="button" variant="ghost" size="icon" aria-label={t('Open settings menu')} className="size-11">
           <MenuIcon aria-hidden="true" className="size-[17px]" />
         </Button>
       </SheetTrigger>
@@ -705,6 +714,7 @@ function PageHeader({
   title: string
   beside: string | null
 }) {
+  const { t } = useI18n()
   return (
     <header
       data-slot="settings-header"
@@ -712,9 +722,9 @@ function PageHeader({
     >
       <PageTitle title={title} projectName={beside} as="h1" />
       {section ? (
-        <p className="min-w-0 truncate text-[13px] text-soft-foreground">{section.description}</p>
+        <p className="min-w-0 truncate text-[13px] text-soft-foreground">{t(section.description)}</p>
       ) : scope === 'project' ? (
-        <p className="text-[13px] text-soft-foreground">Project settings</p>
+        <p className="text-[13px] text-soft-foreground">{t('Project settings')}</p>
       ) : null}
     </header>
   )
@@ -735,11 +745,12 @@ function SettingsFrame({
   routeName: string
   children: React.ReactNode
 }) {
+  const { t } = useI18n()
   const tree = useSettingsTree(capabilities)
   const leave = useLeaveSettings(tree.activeProjectId ?? tree.bootProjectId)
   useEscapeToLeave(leave)
   const projectName = tree.activeProject?.name ?? tree.activeProjectId
-  const title = section?.title ?? (scope === 'global' ? 'Settings' : projectName ?? 'Settings')
+  const title = section ? t(section.title) : scope === 'global' ? t('Settings') : projectName ?? t('Settings')
   // On the project INDEX the title IS the project — no second mention beside it.
   const beside = scope === 'project' && section !== null ? projectName : null
   const [menuOpen, setMenuOpen] = React.useState(false)
@@ -789,6 +800,7 @@ const cardClass =
   'flex items-center gap-3.5 rounded-lg border border-border bg-card p-4 shadow-xs transition-colors hover:bg-card-2'
 
 function SectionCard({ section }: { section: SettingsSection }) {
+  const { t } = useI18n()
   return (
     <li>
       <ScopedLink to={settingsSectionPath('project', section.id)} data-section={section.id} className={cardClass}>
@@ -796,8 +808,8 @@ function SectionCard({ section }: { section: SettingsSection }) {
           <section.icon aria-hidden="true" className="size-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium text-foreground">{section.title}</span>
-          <span className="block text-xs text-soft-foreground">{section.description}</span>
+          <span className="block text-sm font-medium text-foreground">{t(section.title)}</span>
+          <span className="block text-xs text-soft-foreground">{t(section.description)}</span>
         </span>
         <ChevronRightIcon aria-hidden="true" className="size-4 shrink-0 text-soft-foreground" />
       </ScopedLink>

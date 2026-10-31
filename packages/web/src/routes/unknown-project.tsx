@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 
 import type { ProjectsResponse } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * `/p/<unknown>/…` (multi-project spec, step 3.2): a deep link to a project this server has
@@ -22,6 +23,7 @@ export function UnknownProjectRoute({
 }) {
   // The boot project is always openable even when the registry list is degraded-empty
   // (read-only home: the workspace file may not exist, but the boot repo is being served).
+  const { t } = useI18n()
   const projects = registry.projects.length
     ? registry.projects
     : [{ id: registry.bootProject, name: registry.bootProject }]
@@ -31,13 +33,15 @@ export function UnknownProjectRoute({
       <CenteredState
         icon={<FolderSearchIcon />}
         tone="neutral"
-        title={`“${projectId}” isn’t registered here`}
+        title={t('“{name}” isn’t registered here', { name: projectId })}
         // "can open", not "registered on this one": the list below is the
         // `GET /api/v1/projects` payload, which since seed-once leads with the
         // folder onni is serving WITHOUT having registered it. Offering that row
         // under a sentence calling it registered contradicts the "· not registered"
         // marker the same folder carries in Settings.
-        subtitle="This workspace doesn’t serve a project by that id. The link may come from another machine’s workspace — these are the projects this one can open:"
+        subtitle={t(
+          'This workspace doesn’t serve a project by that id. The link may come from another machine’s workspace — these are the projects this one can open:',
+        )}
       >
         <ul data-slot="registered-projects" className="mx-auto flex w-full max-w-xs flex-col gap-1.5 text-left">
           {projects.map((project) => (

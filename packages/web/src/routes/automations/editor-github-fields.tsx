@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import { GITHUB_EVENTS, POLL_MINUTES, clamp, needsChangedLabels, type DraftFilters } from './editor-draft'
@@ -30,6 +31,7 @@ export function EditorGithubFields({
   const hasList = (['authors', 'assignees', 'anyLabels', 'allLabels', 'excludeLabels', 'changedLabels', 'reviewers'] as const)
     .some((key) => filters[key].trim().length > 0)
   const [open, setOpen] = useState(hasList || filters.lookbackDays !== 7 || filters.maxRecords !== 25)
+  const { t } = useI18n()
   const setFilter = <K extends keyof DraftFilters>(key: K, value: DraftFilters[K]) =>
     onChange({ filters: { ...filters, [key]: value } })
   const toggleEvent = (event: AutomationEvent) => {
@@ -41,7 +43,7 @@ export function EditorGithubFields({
 
   return (
     <div data-slot="editor-github" className="flex flex-col gap-3.5">
-      <div role="group" aria-label="GitHub events" className="flex flex-wrap gap-1.5">
+      <div role="group" aria-label={t('GitHub events')} className="flex flex-wrap gap-1.5">
         {GITHUB_EVENTS.map((event) => (
           <Chip
             key={event}
@@ -55,18 +57,18 @@ export function EditorGithubFields({
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-        poll every
+        {t('poll every')}
         <Select value={String(Math.round(intervalSeconds / 60))} onValueChange={(value) => onChange({ intervalSeconds: Number(value) * 60 })}>
-          <SelectTrigger size="sm" aria-label="Poll interval" className="text-[13px]">
+          <SelectTrigger size="sm" aria-label={t('Poll interval')} className="text-[13px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {POLL_MINUTES.map((minutes) => (
-              <SelectItem key={minutes} value={String(minutes)}>{minutes} min</SelectItem>
+              <SelectItem key={minutes} value={String(minutes)}>{t('{count} min', { count: minutes })}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <span>· last {filters.lookbackDays} days · maximum {filters.maxRecords} records</span>
+        <span>{t('· last {days} days · maximum {records} records', { days: filters.lookbackDays, records: filters.maxRecords })}</span>
       </div>
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
@@ -75,8 +77,8 @@ export function EditorGithubFields({
             className="inline-flex h-6 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             <ChevronDownIcon aria-hidden="true" className={cn('size-3 transition-transform', open ? '' : '-rotate-90')} />
-            Filters
-            {changedMissing ? <span className="text-danger">· changed labels required</span> : null}
+            {t('Filters')}
+            {changedMissing ? <span className="text-danger">· {t('changed labels required')}</span> : null}
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -110,13 +112,14 @@ function FilterField({ id, label, value, invalid = false, onChange }: {
   invalid?: boolean
   onChange: (value: string) => void
 }) {
+  const { t } = useI18n()
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{t(label)}</Label>
       <Input
         id={id}
         value={value}
-        placeholder="comma-separated"
+        placeholder={t('comma-separated')}
         aria-invalid={invalid || undefined}
         onChange={(event) => onChange(event.target.value)}
         className="h-8 text-[13px]"
@@ -133,9 +136,10 @@ function NumberField({ id, label, value, min, max, onChange }: {
   max: number
   onChange: (value: number) => void
 }) {
+  const { t } = useI18n()
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{t(label)}</Label>
       <Input
         id={id}
         type="number"

@@ -12,6 +12,7 @@ import {
 
 import { useHealth, useProjects } from './api/queries'
 import { ProjectScopeProvider } from './api/project-scope-context'
+import { useI18n } from './lib/i18n'
 import { lazyRoute } from './lib/lazy-route'
 import { bareRootLanding, locationToRestore, readStoredLastLocation } from './lib/last-location'
 import { Navigate as ScopedNavigate, stripProjectPrefix } from './lib/project-router'
@@ -134,11 +135,17 @@ function MovedSettingsSectionRedirect({ sectionId }: { sectionId: SettingsSectio
  *  the registry from `/api/projects`). Deliberately quiet: the answer arrives in one local round
  *  trip, and any real screen here would flash the WRONG screen (spec, "URL scheme"). */
 function ScopeResolving() {
+  const { t } = useI18n()
   return (
     <div data-route="scope-resolving" className="flex min-h-full flex-col">
-      <p className="px-4 py-6 text-center text-xs text-soft-foreground">Loading…</p>
+      <p className="px-4 py-6 text-center text-xs text-soft-foreground">{t('Loading…')}</p>
     </div>
   )
+}
+
+function DashboardLoading() {
+  const { t } = useI18n()
+  return <div role="status" className="p-6 text-sm text-muted-foreground">{t('Loading dashboard…')}</div>
 }
 
 /**
@@ -650,7 +657,7 @@ export const AppRoutes = memo(function AppRoutes() {
           keep redirecting to the boot project's thread (`LegacyPathRedirect` below owns it).
           React Router ranks this static segment above that `*`, so the two never compete. */}
       <Route path="/tasks" element={<GlobalTasksRoute />} />
-      <Route path="/dashboard" element={<Suspense fallback={<div role="status" className="p-6 text-sm text-muted-foreground">Loading dashboard…</div>}><DashboardRoute /></Suspense>} />
+      <Route path="/dashboard" element={<Suspense fallback={<DashboardLoading />}><DashboardRoute /></Suspense>} />
 
       {/* Global settings (multi-project spec, step 3.5) — the one cockpit area that is NOT
           under `/p/:projectId`, because nothing here belongs to a project: appearance and

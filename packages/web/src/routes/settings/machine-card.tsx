@@ -10,6 +10,7 @@ import {
 import { StatusDot } from '@/components/status-dot'
 import { effectiveHostView, formatCpuCores } from '@/lib/host-effective'
 import { formatMem } from '@/lib/tasks-table'
+import { useI18n } from '@/lib/i18n'
 import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 
@@ -44,6 +45,7 @@ const CPU_DANGER_PCT = 85
 const clampPct = (value: number): number => Math.min(100, Math.max(0, value))
 
 export function MachineCard() {
+  const { t } = useI18n()
   useHostUsageSubscription({ enabled: !useIsDesktop() })
   const transport = useHostTransport()
   const topicUnavailable = useHostTopicUnavailable()
@@ -86,7 +88,7 @@ export function MachineCard() {
   const cpuValueText =
     view === undefined || !view.cpuLimited
       ? cpuPct === undefined
-        ? 'sampling…'
+        ? t('sampling…')
         : `${Math.round(cpuPct)}%`
       : cpuPct === undefined
         ? '—'
@@ -109,42 +111,41 @@ export function MachineCard() {
       <header className="flex min-w-0 items-center gap-2">
         <StatusDot tone={live ? 'success' : 'neutral'} pulse={live} />
         <h2 id="machine-card-title" className="text-sm font-semibold">
-          Machine
+          {t('Machine')}
         </h2>
         <span data-slot="machine-card-mode" className="text-[11px] text-soft-foreground">
-          {live ? 'live' : 'last known'}
+          {live ? t('live') : t('last known')}
         </span>
         <span
           data-slot="machine-card-freshness"
           className="ml-auto shrink-0 text-[11px] tabular-nums text-soft-foreground"
         >
-          {ageSeconds === undefined ? 'waiting…' : `updated ${ageSeconds} s ago`}
+          {ageSeconds === undefined ? t('waiting…') : t('updated {seconds} s ago', { seconds: ageSeconds })}
         </span>
       </header>
 
       {view?.hasContainer === true ? (
         <p data-slot="machine-card-limits" className="mt-2 text-[11.5px] text-soft-foreground">
-          cgroup limits detected · {view.source}
+          {view.source ? t('cgroup limits detected · {source}', { source: view.source }) : t('cgroup limits detected')}
         </p>
       ) : null}
 
       {topicUnavailable ? (
         <p data-slot="machine-card-transport" className="mt-2 text-[11.5px] text-soft-foreground">
-          The server refused this origin's host topic, so live values are polled from the
-          authenticated route instead.
+          {t("The server refused this origin's host topic, so live values are polled from the authenticated route instead.")}
         </p>
       ) : null}
 
       {isError && sample === undefined ? (
         <p data-slot="machine-card-error" className="mt-3 text-[12.5px] text-soft-foreground">
-          Host totals are unavailable right now.
+          {t('Host totals are unavailable right now.')}
         </p>
       ) : null}
 
       <div className="mt-3 grid gap-3">
         <div data-slot="machine-card-cpu" className="grid grid-cols-[86px_1fr] items-start gap-3">
           <span className="pt-0.5 text-[12.5px] text-soft-foreground">
-            CPU{view?.cpuIsEffective === true ? ' (effective)' : ''}
+            {t('CPU')}{view?.cpuIsEffective === true ? ` ${t('(effective)')}` : ''}
           </span>
           <div className="min-w-0">
             <div className="flex items-center gap-3">
@@ -171,7 +172,7 @@ export function MachineCard() {
                 viewBox={`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`}
                 preserveAspectRatio="none"
                 role="img"
-                aria-label={`CPU over the last up to ${history.length * 2} seconds`}
+                aria-label={t('CPU over the last up to {seconds} seconds', { seconds: history.length * 2 })}
               >
                 <polyline
                   points={points}
@@ -192,7 +193,7 @@ export function MachineCard() {
               className="grid grid-cols-[86px_1fr] items-center gap-3"
             >
               <span className="text-[12.5px] text-soft-foreground">
-                Memory{view.memIsEffective ? ' (effective)' : ''}
+                {t('Memory')}{view.memIsEffective ? ` ${t('(effective)')}` : ''}
               </span>
               <div className="flex min-w-0 items-center gap-3">
                 <span
@@ -213,7 +214,7 @@ export function MachineCard() {
                 data-slot="machine-card-swap"
                 className="grid grid-cols-[86px_1fr] items-center gap-3"
               >
-                <span className="text-[12.5px] text-soft-foreground">Swap</span>
+                <span className="text-[12.5px] text-soft-foreground">{t('Swap')}</span>
                 <span className="text-[13px] tabular-nums">
                   {formatMem(sample.swapUsedBytes)} / {formatMem(sample.swapTotalBytes)}
                 </span>
@@ -225,7 +226,7 @@ export function MachineCard() {
                 data-slot="machine-card-load"
                 className="grid grid-cols-[86px_1fr] items-center gap-3"
               >
-                <span className="text-[12.5px] text-soft-foreground">Load average</span>
+                <span className="text-[12.5px] text-soft-foreground">{t('Load average')}</span>
                 <span className="flex items-center gap-2 text-[13px] tabular-nums">
                   {sample.loadAvg.one.toFixed(2)} · {sample.loadAvg.five.toFixed(2)} ·{' '}
                   {sample.loadAvg.fifteen.toFixed(2)}
@@ -236,8 +237,8 @@ export function MachineCard() {
                     className="rounded-md border border-border px-1.5 py-0.5 text-[11px] text-soft-foreground"
                   >
                     {view.hasContainer && view.hostCpuCount !== undefined
-                      ? `host ${view.hostCpuCount} cores`
-                      : `${sample.cpuCount} cores`}
+                      ? t('host {count} cores', { count: view.hostCpuCount })
+                      : t('{count} cores', { count: sample.cpuCount })}
                   </span>
                 </span>
               </div>
@@ -248,7 +249,7 @@ export function MachineCard() {
                 data-slot="machine-card-host-context"
                 className="text-[11.5px] tabular-nums text-soft-foreground"
               >
-                host {formatCpuCores(view.hostCpuCount)} · {formatMem(sample?.memTotalBytes ?? 0)} RAM
+                {t('host {cores} · {memory} RAM', { cores: formatCpuCores(view.hostCpuCount), memory: formatMem(sample?.memTotalBytes ?? 0) })}
               </p>
             ) : null}
           </>
@@ -260,10 +261,10 @@ export function MachineCard() {
         className="mt-3 border-t border-border pt-2 text-[11px] text-soft-foreground"
       >
         {view?.hasContainer === true
-          ? 'Effective values come from this process\u2019s own cgroup; host totals are labelled.'
+          ? t('Effective values come from this process\u2019s own cgroup; host totals are labelled.')
           : view?.cgroupUnknown === true
-            ? 'No cgroup information available for this process - host totals only.'
-            : 'Host totals - no cgroup limit tighter than the host detected for this process.'}
+            ? t('No cgroup information available for this process - host totals only.')
+            : t('Host totals - no cgroup limit tighter than the host detected for this process.')}
       </p>
     </section>
   )

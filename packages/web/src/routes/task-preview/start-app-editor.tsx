@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 const MAX_SERVICES = 5
@@ -48,6 +49,7 @@ export function StartAppEditor({
   onSaved: () => void
 }) {
   const [state, setState] = useState<StartAppState | null>(null)
+  const { t } = useI18n()
   const [scope, setScope] = useState<StartAppScope>('project')
   const [services, setServices] = useState<string[]>([''])
   const [url, setUrl] = useState('')
@@ -103,15 +105,14 @@ export function StartAppEditor({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Start recipe</DialogTitle>
+          <DialogTitle>{t('Start recipe')}</DialogTitle>
           <DialogDescription>
-            What starts this project's app for the Preview. Each command runs in its own terminal tab of the task.
-            Installing dependencies is not part of it.
+            {t("What starts this project's app for the Preview. Each command runs in its own terminal tab of the task. Installing dependencies is not part of it.")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div role="radiogroup" aria-label="Who uses this recipe" className="grid grid-cols-2 gap-2">
+          <div role="radiogroup" aria-label={t('Who uses this recipe')} className="grid grid-cols-2 gap-2">
             {SCOPES.map((entry) => {
               const disabled = entry.scope === 'personal' && state?.personalAvailable === false
               const selected = scope === entry.scope
@@ -132,11 +133,11 @@ export function StartAppEditor({
                   )}
                 >
                   <span className="font-medium text-foreground">
-                    {entry.title}
-                    {state?.[entry.scope] ? <span className="ml-1.5 font-normal text-muted-foreground">· saved</span> : null}
+                    {t(entry.title)}
+                    {state?.[entry.scope] ? <span className="ml-1.5 font-normal text-muted-foreground">· {t('saved')}</span> : null}
                   </span>
                   <span className="text-muted-foreground">
-                    {disabled ? 'This project is not in your project list.' : entry.detail}
+                    {disabled ? t('This project is not in your project list.') : t(entry.detail)}
                   </span>
                 </button>
               )
@@ -144,7 +145,7 @@ export function StartAppEditor({
           </div>
 
           <fieldset className="flex flex-col gap-1.5">
-            <legend className="mb-1.5 text-xs font-medium text-foreground">Services</legend>
+            <legend className="mb-1.5 text-xs font-medium text-foreground">{t('Services')}</legend>
             {services.map((service, index) => (
               <div key={index} className="flex items-center gap-1.5">
                 <Input
@@ -153,7 +154,7 @@ export function StartAppEditor({
                     setServices((current) => current.map((entry, at) => (at === index ? event.target.value : entry)))
                   }
                   placeholder={index === 0 ? 'npm run dev' : 'npm run api'}
-                  aria-label={`Service ${index + 1}`}
+                  aria-label={t('Service {number}', { number: index + 1 })}
                   spellCheck={false}
                   className="h-8 font-mono text-xs md:text-xs"
                 />
@@ -161,7 +162,7 @@ export function StartAppEditor({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`Remove service ${index + 1}`}
+                  aria-label={t('Remove service {number}', { number: index + 1 })}
                   disabled={services.length === 1}
                   onClick={() => setServices((current) => current.filter((_, at) => at !== index))}
                 >
@@ -178,22 +179,22 @@ export function StartAppEditor({
               onClick={() => setServices((current) => [...current, ''])}
             >
               <PlusIcon aria-hidden="true" />
-              Add service
+              {t('Add service')}
             </Button>
           </fieldset>
 
           <label className="flex flex-col gap-1.5 text-xs">
-            <span className="font-medium text-foreground">Address to show (optional)</span>
+            <span className="font-medium text-foreground">{t('Address to show (optional)')}</span>
             <Input
               value={url}
               onChange={(event) => setUrl(event.target.value)}
-              placeholder="http://localhost:5173 — empty: the first address a service prints"
-              aria-label="Address to show"
+              placeholder={t('http://localhost:5173 — empty: the first address a service prints')}
+              aria-label={t('Address to show')}
               aria-invalid={addressInvalid}
               spellCheck={false}
               className="h-8 font-mono text-xs md:text-xs"
             />
-            {addressInvalid ? <span className="text-danger">Start it with http:// or https://</span> : null}
+            {addressInvalid ? <span className="text-danger">{t('Start it with http:// or https://')}</span> : null}
           </label>
 
           {error ? (
@@ -206,21 +207,21 @@ export function StartAppEditor({
         <DialogFooter className="gap-2 sm:justify-between">
           {state?.[scope] ? (
             <Button type="button" variant="ghost" disabled={saving} onClick={() => void save(null)}>
-              Remove {scope === 'project' ? 'team' : 'your'} recipe
+              {scope === 'project' ? t('Remove team recipe') : t('Remove your recipe')}
             </Button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button
               type="button"
               disabled={saving || cleaned.length === 0 || addressInvalid}
               onClick={() => void save({ services: cleaned, ...(address ? { url: address } : {}) })}
             >
-              Save
+              {t('Save')}
             </Button>
           </div>
         </DialogFooter>

@@ -18,6 +18,7 @@ import { RunDiff } from '@/components/run-diff'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { Link } from '@/lib/project-router'
 import { isSubmitShortcut } from '@/lib/use-submit-shortcut'
 import { isHttpUrl } from '@/lib/utils'
@@ -46,17 +47,18 @@ import { writeClipboard } from '@/lib/clipboard'
  * leave them pending for some later message.
  */
 export function ReviewPanel({ run, diffComments }: { run: ApiRun; diffComments?: DiffComments }) {
+  const { t } = useI18n()
   return (
-    <section data-slot="review-panel" aria-label="Review the changes" className="flex flex-col gap-3">
+    <section data-slot="review-panel" aria-label={t('Review the changes')} className="flex flex-col gap-3">
       <div
         data-slot="review-banner"
         className="flex items-center gap-2.5 rounded-md border border-violet/30 bg-violet/10 px-3.5 py-2.5"
       >
         <EyeIcon className="size-4 shrink-0 text-violet" aria-hidden="true" />
         <p className="min-w-0 text-[13px]">
-          <span className="font-semibold">Review the changes before anything lands.</span>{' '}
+          <span className="font-semibold">{t('Review the changes before anything lands.')}</span>{' '}
           <span className="text-muted-foreground">
-            Read the diff, send notes back, draft a PR — or accept. Nothing merges on its own.
+            {t('Read the diff, send notes back, draft a PR — or accept. Nothing merges on its own.')}
           </span>
         </p>
       </div>
@@ -70,6 +72,7 @@ export function ReviewPanel({ run, diffComments }: { run: ApiRun; diffComments?:
 // ---- notes + exits --------------------------------------------------------------------------
 
 function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: DiffComments }) {
+  const { t, tn } = useI18n()
   const queryClient = useQueryClient()
   const notesRef = useRef<HTMLTextAreaElement>(null)
   // Review notes are the second-longest thing anyone types into a task, and they are typed while
@@ -107,7 +110,7 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
         // Checked against the cap with the prefix it actually goes out with.
         const message = `Review feedback:\n${messageWithReview(text, held)}`
         if (message.length > MESSAGE_TEXT_MAX) {
-          throw new Error('Too long with the diff comments attached — shorten the notes or remove some comments.')
+          throw new Error(t('Too long with the diff comments attached — shorten the notes or remove some comments.'))
         }
         return deliverPrompt(message, [])
       }
@@ -126,7 +129,7 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
   const draftPr = useMutation({
     mutationFn: () => createRunPr(run.id),
     onSuccess: (result) => {
-      toast(`Draft PR created — ${result.url}`)
+      toast(t('Draft PR created — {url}', { url: result.url }))
       invalidate() // the run completed as done with `pullRequestUrl` — refetch shows PR ↗
     },
     onError: (error: Error) => {
@@ -144,7 +147,7 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
     // Drafted line comments are feedback on their own.
     if (text.length === 0 && commentCount === 0) {
       // Legacy `alertBar('Write what to change first.')` + focus.
-      toast('Write what to change first.')
+      toast(t('Write what to change first.'))
       notesRef.current?.focus()
       return
     }
@@ -156,8 +159,8 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
       <Textarea
         ref={notesRef}
         data-slot="review-notes"
-        aria-label="Notes for the agent"
-        placeholder="Notes for the agent — what should change?"
+        aria-label={t('Notes for the agent')}
+        placeholder={t('Notes for the agent — what should change?')}
         rows={2}
         value={notes}
         onChange={(event) => setNotes(event.target.value)}
@@ -183,7 +186,11 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
       />
       {commentCount > 0 ? (
         <p data-slot="review-diff-comments" className="text-xs text-muted-foreground">
-          + {commentCount} {commentCount === 1 ? 'comment' : 'comments'} on the diff — sent back with these notes.
+          {tn(
+            commentCount,
+            '+ {count} comment on the diff — sent back with these notes.',
+            '+ {count} comments on the diff — sent back with these notes.',
+          )}
         </p>
       ) : null}
       {!continuation.canContinue ? (
@@ -197,7 +204,7 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
               to="/settings/agents#providers"
               className="font-medium text-foreground underline underline-offset-4"
             >
-              Configure providers
+              {t('Configure providers')}
             </Link>
           ) : null}
         </p>
@@ -207,13 +214,13 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
           data-slot="review-send-back"
           variant="outline"
           size="sm"
-          title={continuation.reason ?? "Send the notes back into the agent's session"}
+          title={continuation.reason ?? t("Send the notes back into the agent's session")}
           aria-describedby={!continuation.canContinue ? 'review-provider-guidance' : undefined}
           disabled={sendBack.isPending || !continuation.canContinue}
           onClick={submitNotes}
         >
           <CornerUpLeftIcon aria-hidden="true" />
-          Send back
+          {t('Send back')}
         </Button>
         {isHttpUrl(run.pullRequestUrl) ? (
           // A PR already exists (agent-opened, spotted in the transcript) — a second Draft PR
@@ -226,7 +233,7 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
               href={run.pullRequestUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title="The PR for this task is already open"
+              title={t('The PR for this task is already open')}
             >
               <ExternalLinkIcon aria-hidden="true" />
               PR ↗
@@ -237,7 +244,7 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
             data-slot="review-draft-pr"
             variant="outline"
             size="sm"
-            title={git.byAgent ? 'Ask the agent to push the branch and open a draft PR' : 'Push the branch and open a draft PR'}
+            title={git.byAgent ? t('Ask the agent to push the branch and open a draft PR') : t('Push the branch and open a draft PR')}
             disabled={draftPrBusy}
             aria-busy={draftPrBusy || undefined}
             onClick={openDraftPr}
@@ -247,7 +254,7 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
             ) : (
               <GitPullRequestIcon aria-hidden="true" />
             )}
-            {draftPrBusy ? GIT_ACTION_PENDING_LABELS['create-draft-pr'] : 'Draft PR'}
+            {draftPrBusy ? t(GIT_ACTION_PENDING_LABELS['create-draft-pr']) : t('Draft PR')}
           </Button>
         )}
         <Button
@@ -255,12 +262,12 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
           variant="contrast"
           size="sm"
           className="ml-auto"
-          title={finishTitle('review')}
+          title={t(finishTitle('review'))}
           disabled={finish.isPending}
           onClick={() => finish.mutate()}
         >
           <CheckIcon aria-hidden="true" />
-          Accept
+          {t('Accept')}
         </Button>
       </div>
       {manual !== null ? <ManualMergeLine command={manual} /> : null}
@@ -271,20 +278,21 @@ function ReviewActions({ run, diffComments }: { run: ApiRun; diffComments?: Diff
 /** The 409 fallback: the PR could not be opened, but the branch is real — show the merge
  *  command copyable, like the header's resume hint. */
 function ManualMergeLine({ command }: { command: string }) {
+  const { t } = useI18n()
   return (
     <button
       type="button"
       data-slot="review-manual"
-      title="Copy the command"
+      title={t('Copy the command')}
       onClick={() => {
         void writeClipboard(command)
-          .then(() => toast('Command copied to clipboard.'))
-          .catch(() => toast(`Run manually: ${command}`))
+          .then(() => toast(t('Command copied to clipboard.')))
+          .catch(() => toast(t('Run manually: {command}', { command })))
       }}
       className="flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-left font-mono text-[11px] text-soft-foreground hover:bg-muted hover:text-foreground"
     >
       <CopyIcon className="size-3 shrink-0" aria-hidden="true" />
-      <span className="truncate">manual path: {command}</span>
+      <span className="truncate">{t('manual path: {command}', { command })}</span>
     </button>
   )
 }
@@ -311,6 +319,7 @@ const CELEBRATION_MS = 1500
  * pointer-transparent); the status pill is the accessible record of what happened.
  */
 export function AcceptCelebration({ status }: { status: RunStatus }) {
+  const { t } = useI18n()
   const previous = useRef(status)
   const [celebrating, setCelebrating] = useState(false)
 
@@ -334,7 +343,7 @@ export function AcceptCelebration({ status }: { status: RunStatus }) {
       <TwinkleBackdrop />
       <div className="flex justify-center pt-24">
         <span className="rounded-full border border-violet/30 bg-violet/15 px-4 py-1.5 text-[13px] font-medium text-violet shadow-modal">
-          ✓ Changes accepted
+          {t('✓ Changes accepted')}
         </span>
       </div>
     </div>

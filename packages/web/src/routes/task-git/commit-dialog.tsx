@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { runTitle } from '@/lib/task-groups'
 import { isSubmitShortcut } from '@/lib/use-submit-shortcut'
 
@@ -40,6 +41,7 @@ export function CommitDialog({
   onCommitted?: () => void
 }) {
   const queryClient = useQueryClient()
+  const { t } = useI18n()
   const [message, setMessage] = useState('')
 
   // Re-prefill on every open: the run's display title (titleSummary ?? title) is the
@@ -87,7 +89,7 @@ export function CommitDialog({
         </DialogHeader>
         <Textarea
           data-slot="commit-message"
-          aria-label="Commit message"
+          aria-label={t('Commit message')}
           rows={3}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
@@ -111,7 +113,7 @@ export function CommitDialog({
         />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button
             data-slot="commit-confirm"

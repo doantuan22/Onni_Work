@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useI18n } from '@/lib/i18n'
 
 type Metric = DashboardCosts['sort']
 export const accents = {
@@ -44,16 +45,17 @@ export function CostMetricCard({
   total: number
 }) {
   const accent = accents[metric]
+  const { t } = useI18n()
   const Icon = accent.icon
   const coverage = total ? Math.min(100, (reported / total) * 100) : 0
   return (
     <div className={`${metricSurface} ${accent.tint}`}>
       <MetricContent
-        label={label}
+        label={t(label)}
         value={value}
         icon={<Icon className={`size-4 ${accent.text}`} />}
       >
-        {reported} of {total} tasks report this metric
+        {t('{reported} of {total} tasks report this metric', { reported, total })}
       </MetricContent>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
         <div
@@ -87,15 +89,16 @@ export function CostProjectBars({
     0,
   )
   const accent = accents[metric]
+  const { t } = useI18n()
   return (
     <TooltipProvider delayDuration={150}>
       <div
         className="space-y-1 rounded-xl border p-2"
-        aria-label={`Projects ranked by ${label}`}
+        aria-label={t('Projects ranked by {metric}', { metric: t(label) })}
       >
         {projects.length === 0 && (
           <p className="px-3 py-4 text-muted-foreground">
-            No projects to compare in this cohort.
+            {t('No projects to compare in this cohort.')}
           </p>
         )}
         {projects.slice(0, 5).map((project, index) => {
@@ -141,19 +144,29 @@ export function CostProjectBars({
                     />
                   </div>
                   <p className="mt-1.5 ml-7 text-xs text-muted-foreground">
-                    {measure?.reportedTasks ?? 0} of {project.tasks} tasks report this metric
-                    {!available ? ' · No measured value' : ''}
+                    {t('{reported} of {total} tasks report this metric', {
+                      reported: measure?.reportedTasks ?? 0,
+                      total: project.tasks,
+                    })}
+                    {!available ? t(' · No measured value') : ''}
                   </p>
                 </button>
               </TooltipTrigger>
               <TooltipContent className="max-w-64">
                 <p className="font-medium">
-                  {project.projectId} · {label}: {format(value)}
+                  {t('{project} · {label}: {value}', {
+                    project: project.projectId,
+                    label: t(label),
+                    value: format(value),
+                  })}
                 </p>
                 <p>
-                  {measure?.reportedTasks ?? 0} of {project.tasks} tasks report this metric.
+                  {t('{reported} of {total} tasks report this metric.', {
+                    reported: measure?.reportedTasks ?? 0,
+                    total: project.tasks,
+                  })}
                 </p>
-                <p>Open project tasks</p>
+                <p>{t('Open project tasks')}</p>
               </TooltipContent>
             </Tooltip>
           )
@@ -161,8 +174,10 @@ export function CostProjectBars({
       </div>
       {projects.length > 0 && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {projects.length > 5 ? `Top 5 of ${projects.length} projects. ` : ''}
-          Bar lengths compare reported values; the largest is the reference.
+          {projects.length > 5
+            ? `${t('Top {shown} of {total} projects.', { shown: 5, total: projects.length })} `
+            : ''}
+          {t('Bar lengths compare reported values; the largest is the reference.')}
         </p>
       )}
     </TooltipProvider>

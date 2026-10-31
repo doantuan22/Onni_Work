@@ -6,6 +6,7 @@ import { CenteredState } from '@/components/centered-state'
 import { Segmented, type SegmentedOption } from '@/components/segmented'
 import { StatusDot } from '@/components/status-dot'
 import { Button } from '@/components/ui/button'
+import { useI18n } from '@/lib/i18n'
 import { Link } from '@/lib/project-router'
 
 import { PageState, type AutomationsView } from './automations-route'
@@ -44,6 +45,7 @@ export function AutomationsList({
   onViewChange: (view: AutomationsView) => void
 }) {
   const [railOpen, setRailOpen] = useState(false)
+  const { t } = useI18n()
   const now = Date.now()
   const upcoming = data ? nextRuns(data.automations, now, data.timeZone, 12) : []
   const pollCount = data ? data.automations.filter((automation) => automation.kind === 'github' && automation.enabled).length : 0
@@ -51,12 +53,12 @@ export function AutomationsList({
   return (
     <div data-route="automations" className="flex min-h-full flex-col">
       <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5">
-        <h1 className="text-base font-semibold">Automations</h1>
+        <h1 className="text-base font-semibold">{t('Automations')}</h1>
         <Segmented<AutomationsView>
           slot="automations-view"
-          label="View"
+          label={t('View')}
           value={view}
-          options={viewOptions(data?.automations.length)}
+          options={viewOptions(data?.automations.length).map((option) => ({ ...option, label: typeof option.label === 'string' ? t(option.label) : option.label }))}
           onChange={onViewChange}
         />
         <div className="flex-1" />
@@ -66,9 +68,9 @@ export function AutomationsList({
             className="inline-flex min-w-0 items-center gap-2 overflow-hidden text-[12.5px] text-ellipsis whitespace-nowrap text-muted-foreground max-[1280px]:hidden"
           >
             <StatusDot tone={data.scheduler.state === 'scheduled' ? 'success' : 'neutral'} />
-            {data.scheduler.state === 'scheduled' ? 'Scheduler running' : 'Scheduler idle'}
+            {data.scheduler.state === 'scheduled' ? t('Scheduler running') : t('Scheduler idle')}
             <span className="text-soft-foreground">·</span>
-            {data.available ? 'GitHub available' : `GitHub unavailable${data.reason ? ` · ${data.reason}` : ''}`}
+            {data.available ? t('GitHub available') : `${t('GitHub unavailable')}${data.reason ? ` · ${data.reason}` : ''}`}
             <span className="text-soft-foreground">·</span>
             <span className="font-mono text-xs">{data.timeZone}</span>
           </span>
@@ -76,7 +78,7 @@ export function AutomationsList({
         <Button asChild className="shrink-0">
           <Link to="/automations/new">
             <PlusIcon className="size-[15px]" />
-            New automation
+            {t('New automation')}
           </Link>
         </Button>
       </header>
@@ -87,20 +89,20 @@ export function AutomationsList({
         </div>
       ) : !data ? (
         <div className="p-5">
-          <PageState text="Loading automations…" />
+          <PageState text={t('Loading automations…')} />
         </div>
       ) : data.automations.length === 0 ? (
         <CenteredState
           icon={<ZapIcon />}
           tone="neutral"
-          title="No automations yet"
-          subtitle="Create one paused, preview it, then enable it."
+          title={t('No automations yet')}
+          subtitle={t('Create one paused, preview it, then enable it.')}
           heading="h2"
           actions={
             <Button asChild>
               <Link to="/automations/new">
                 <PlusIcon className="size-[15px]" />
-                New automation
+                {t('New automation')}
               </Link>
             </Button>
           }

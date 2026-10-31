@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { runTitle } from '@/lib/task-groups'
 
 export type RunConfirmKind = 'cancel' | 'delete'
@@ -35,31 +36,32 @@ export function RunConfirmDialog({
   onOpenChange: (open: boolean) => void
   onConfirm: (kind: RunConfirmKind) => void
 }) {
+  const { t } = useI18n()
   return (
     <AlertDialog open={confirming !== null} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{confirming === 'delete' ? 'Delete this task?' : 'Stop this task?'}</AlertDialogTitle>
+          <AlertDialogTitle>{confirming === 'delete' ? t('Delete this task?') : t('Stop this task?')}</AlertDialogTitle>
           <AlertDialogDescription>
             {confirming === 'delete' ? (
               <>
                 {lifecycleDelete
-                  ? 'Cleanup runs before the task, transcript, worktree, and branch are removed. If cleanup needs attention, the task and worktree are retained for your decision.'
-                  : 'This removes the run, its transcript, its worktree and its branch. There is no undo.'}
+                  ? t('Cleanup runs before the task, transcript, worktree, and branch are removed. If cleanup needs attention, the task and worktree are retained for your decision.')
+                  : t('This removes the run, its transcript, its worktree and its branch. There is no undo.')}
                 <span className="mt-1 block truncate font-medium text-foreground" title={runTitle(run)}>
                   {runTitle(run)}
                 </span>
               </>
             ) : run.status === 'queued' ? (
               // Nothing has started yet, so there is no agent to stop — say what actually happens.
-              'The task leaves the queue before it starts and completes as cancelled.'
+              t('The task leaves the queue before it starts and completes as cancelled.')
             ) : (
-              'The agent is stopped and the run completes as cancelled. The worktree stays.'
+              t('The agent is stopped and the run completes as cancelled. The worktree stays.')
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep it</AlertDialogCancel>
+          <AlertDialogCancel>{t('Keep it')}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-danger text-danger-foreground hover:brightness-[0.96]"
             onClick={() => {
@@ -67,7 +69,7 @@ export function RunConfirmDialog({
               onOpenChange(false)
             }}
           >
-            {confirming === 'delete' ? 'Delete' : 'Stop the run'}
+            {confirming === 'delete' ? t('Delete') : t('Stop the run')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

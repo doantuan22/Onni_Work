@@ -7,6 +7,7 @@ import { CenteredState } from '@/components/centered-state'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toaster'
+import { useI18n } from '@/lib/i18n'
 import { PromptTemplatesSection } from './prompt-templates-section'
 import { SettingsField } from './settings-field'
 import { useConfigSave } from './use-config-save'
@@ -28,12 +29,13 @@ const SYSTEM_PROMPT_MAX = 20_000
 const BRANCH_NAMING_MAX = 4_000
 
 export function InstructionsSection() {
+  const { t } = useI18n()
   const config = useConfig()
 
   if (config.isPending) {
     return (
       <p data-slot="instructions-loading" className="p-4 text-[13px] text-soft-foreground md:p-6">
-        Loading instructions…
+        {t('Loading instructions…')}
       </p>
     )
   }
@@ -42,7 +44,7 @@ export function InstructionsSection() {
       <CenteredState
         icon={<MessageSquareTextIcon />}
         tone="danger"
-        title="Instructions did not load"
+        title={t('Instructions did not load')}
         subtitle={config.error.message}
         heading="h2"
       />
@@ -52,6 +54,7 @@ export function InstructionsSection() {
 }
 
 function InstructionsForm({ config }: { config: ConfigResponse }) {
+  const { t } = useI18n()
   const save = useConfigSave()
 
   const [prompt, setPrompt] = useState(config.systemPrompt ?? '')
@@ -61,7 +64,7 @@ function InstructionsForm({ config }: { config: ConfigResponse }) {
   const savePrompt = () =>
     save.mutate(
       { systemPrompt: trimmedPrompt === '' ? null : trimmedPrompt },
-      { onSuccess: () => toast(trimmedPrompt === '' ? 'System prompt cleared' : 'System prompt saved') },
+      { onSuccess: () => toast(trimmedPrompt === '' ? t('System prompt cleared') : t('System prompt saved')) },
     )
 
   const [branchNaming, setBranchNaming] = useState(config.branchNaming ?? '')
@@ -71,7 +74,7 @@ function InstructionsForm({ config }: { config: ConfigResponse }) {
   const saveBranchNaming = () =>
     save.mutate(
       { branchNaming: trimmedBranchNaming === '' ? null : trimmedBranchNaming },
-      { onSuccess: () => toast(trimmedBranchNaming === '' ? 'Branch naming cleared' : 'Branch naming saved') },
+      { onSuccess: () => toast(trimmedBranchNaming === '' ? t('Branch naming cleared') : t('Branch naming saved')) },
     )
 
   return (
@@ -80,15 +83,15 @@ function InstructionsForm({ config }: { config: ConfigResponse }) {
       className="mx-auto flex w-full max-w-2xl flex-col gap-7 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6"
     >
       <SettingsField
-        title="System prompt"
-        hint="Read by every agent step of every new task in this project, whichever runner executes it. Added after the global instructions (General settings → Instructions) and takes precedence over them."
+        title={t('System prompt')}
+        hint={t('Read by every agent step of every new task in this project, whichever runner executes it. Added after the global instructions (General settings → Instructions) and takes precedence over them.')}
       >
         <Textarea
-          aria-label="System prompt"
+          aria-label={t('System prompt')}
           data-slot="instructions-system-prompt"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          placeholder="Extra rules for every agent run — conventions, tone, review requirements…"
+          placeholder={t('Extra rules for every agent run — conventions, tone, review requirements…')}
           className="min-h-32 max-w-xl"
         />
         <div className="flex max-w-xl items-center gap-3">
@@ -100,28 +103,28 @@ function InstructionsForm({ config }: { config: ConfigResponse }) {
             disabled={promptSaved || promptOverLimit || save.isPending}
             onClick={savePrompt}
           >
-            Save
+            {t('Save')}
           </Button>
           {promptOverLimit ? (
             <p data-slot="instructions-prompt-limit" className="text-[11px] text-danger">
-              {trimmedPrompt.length.toLocaleString()} characters — the limit is {SYSTEM_PROMPT_MAX.toLocaleString()}.
+              {t('{count} characters — the limit is {limit}.', { count: trimmedPrompt.length.toLocaleString(), limit: SYSTEM_PROMPT_MAX.toLocaleString() })}
             </p>
           ) : (
-            <p className="text-[11px] text-soft-foreground">Leave empty and save to clear. Applied to new runs only.</p>
+            <p className="text-[11px] text-soft-foreground">{t('Leave empty and save to clear. Applied to new runs only.')}</p>
           )}
         </div>
       </SettingsField>
 
       <SettingsField
-        title="Branch naming"
-        hint="How new task branches are named. Generated from the first prompt."
+        title={t('Branch naming')}
+        hint={t('How new task branches are named. Generated from the first prompt.')}
       >
         <Textarea
-          aria-label="Branch naming"
+          aria-label={t('Branch naming')}
           data-slot="instructions-branch-naming"
           value={branchNaming}
           onChange={(event) => setBranchNaming(event.target.value)}
-          placeholder="Describe your branch naming convention…"
+          placeholder={t('Describe your branch naming convention…')}
           className="min-h-24 max-w-xl"
         />
         <div className="flex max-w-xl items-center gap-3">
@@ -133,16 +136,15 @@ function InstructionsForm({ config }: { config: ConfigResponse }) {
             disabled={branchNamingSaved || branchNamingOverLimit || save.isPending}
             onClick={saveBranchNaming}
           >
-            Save
+            {t('Save')}
           </Button>
           {branchNamingOverLimit ? (
             <p data-slot="instructions-branch-naming-limit" className="text-[11px] text-danger">
-              {trimmedBranchNaming.length.toLocaleString()} characters — the limit is{' '}
-              {BRANCH_NAMING_MAX.toLocaleString()}.
+              {t('{count} characters — the limit is {limit}.', { count: trimmedBranchNaming.length.toLocaleString(), limit: BRANCH_NAMING_MAX.toLocaleString() })}
             </p>
           ) : (
             <p className="text-[11px] text-soft-foreground">
-              Leave empty for the default names. A new task waits for its name before it forks.
+              {t('Leave empty for the default names. A new task waits for its name before it forks.')}
             </p>
           )}
         </div>

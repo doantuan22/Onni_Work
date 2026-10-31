@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 
 import { useRuns } from '@/api/queries'
 import { Link } from '@/lib/project-router'
+import { useI18n } from '@/lib/i18n'
 import { buildDigest, DEFAULT_DIGEST_HOURS, DIGEST_HOURS } from '@/lib/morning-digest'
 import { formatLimitValue } from '@/lib/run-limits'
 import { RunBackendBadge } from '@/components/run-backend-badge'
@@ -20,6 +21,7 @@ function readHours(): number {
 
 /** "While you were away": tasks that finished, failed, hit a ceiling or need you in the last N hours. */
 export function MorningDigest({ now = Date.now() }: { now?: number }) {
+  const { t, tn } = useI18n()
   const runs = useRuns()
   const [hours, setHours] = useState(readHours)
   const digest = useMemo(() => buildDigest(runs.data ?? [], now, hours), [runs.data, now, hours])
@@ -34,11 +36,11 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
   return (
     <section data-slot="morning-digest" className="mb-5 rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-sm font-semibold">While you were away</h2>
+        <h2 className="text-sm font-semibold">{t('While you were away')}</h2>
         <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          last
+          {t('last')}
           <select
-            aria-label="Digest window in hours"
+            aria-label={t('Digest window in hours')}
             data-slot="digest-hours"
             value={hours}
             onChange={(event) => changeHours(Number(event.target.value))}
@@ -48,33 +50,47 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
           </select>
         </label>
         <span data-slot="digest-totals" className="ml-auto text-[12px] tabular-nums text-muted-foreground">
-          {digest.total} task{digest.total === 1 ? '' : 's'} · {formatLimitValue('cost', digest.costUsd)} · {formatLimitValue('tokens', digest.tokens)} tokens
+          {tn(digest.total, '{count} task', '{count} tasks')} · {formatLimitValue('cost', digest.costUsd)} ·{' '}
+          {formatLimitValue('tokens', digest.tokens)} {t('tokens')}
         </span>
       </div>
       {digest.notDelegated.length > 0 ? (
-        <p data-slot="digest-not-delegated-note" className="mt-2 text-[12px] text-warning-foreground">
-          {digest.notDelegated.length} manager task{digest.notDelegated.length === 1 ? '' : 's'} finished without giving any work to a worker.
+        <p data-slot="digest-not-delegated-note" className="mt-2 text-[12px] text-warning">
+          {tn(
+            digest.notDelegated.length,
+            '{count} manager task',
+            '{count} manager tasks',
+          )}{' '}
+          {t('finished without giving any work to a worker.')}
         </p>
       ) : null}
       {digest.needSignIn.length > 0 ? (
         <p data-slot="digest-sign-in-note" role="status" className="mt-2 text-[12px] text-danger">
-          {digest.needSignIn.length} failed task{digest.needSignIn.length === 1 ? ' needs' : 's need'} a sign-in: the agent is not signed in or its login expired. Sign in again, then Continue —
-          retrying without that will fail the same way.
+          {tn(
+            digest.needSignIn.length,
+            '{count} failed task needs a sign-in: the agent is not signed in or its login expired. Sign in again, then Continue — retrying without that will fail the same way.',
+            '{count} failed tasks need a sign-in: the agent is not signed in or its login expired. Sign in again, then Continue — retrying without that will fail the same way.',
+          )}
         </p>
       ) : null}
       {digest.withDeniedActions.length > 0 ? (
-        <p data-slot="digest-denied-note" className="mt-2 text-[12px] text-warning-foreground">
-          {digest.withDeniedActions.length} task{digest.withDeniedActions.length === 1 ? '' : 's'} had something denied by the agent&apos;s permission level
-          ({digest.withDeniedActions.reduce((n, run) => n + (run.deniedActions?.length ?? 0), 0)} action{digest.withDeniedActions.reduce((n, run) => n + (run.deniedActions?.length ?? 0), 0) === 1 ? '' : 's'}) — open them to see what.
+        <p data-slot="digest-denied-note" className="mt-2 text-[12px] text-warning">
+          {tn(digest.withDeniedActions.length, '{count} task', '{count} tasks')}{' '}
+          {t("had something denied by the agent's permission level")} (
+          {tn(
+            digest.withDeniedActions.reduce((n, run) => n + (run.deniedActions?.length ?? 0), 0),
+            '{count} action',
+            '{count} actions',
+          )}) — {t('open them to see what.')}
         </p>
       ) : null}
       {digest.total === 0 ? (
-        <p data-slot="digest-empty" className="mt-2 text-[13px] text-soft-foreground">Nothing finished, failed or needs you in this window.</p>
+        <p data-slot="digest-empty" className="mt-2 text-[13px] text-soft-foreground">{t('Nothing finished, failed or needs you in this window.')}</p>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
           {digest.groups.map((group) => (
             <div key={group.key} data-slot={`digest-${group.key}`}>
-              <h3 className="text-[12px] font-medium uppercase tracking-wide text-soft-foreground">{group.title} · {group.runs.length}</h3>
+              <h3 className="text-[12px] font-medium uppercase tracking-wide text-soft-foreground">{t(group.title)} · {group.runs.length}</h3>
               <ul className="mt-1 flex flex-col gap-1">
                 {group.runs.map((run) => (
                   <li key={run.id} className="flex items-center gap-2 text-[13px]">
@@ -82,20 +98,20 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
                     <RunBackendBadge run={run} />
                     {run.status === 'failed' && run.failureClass === 'auth' ? (
                       <span data-slot="digest-sign-in" className="rounded-full bg-danger/10 px-1.5 py-px text-[10px] font-medium text-danger">
-                        needs sign-in
+                        {t('needs sign-in')}
                       </span>
                     ) : null}
                     {(run.deniedActions?.length ?? 0) > 0 ? (
                       <span
                         data-slot="digest-denied"
                         title={run.deniedActions?.join('\n')}
-                        className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning-foreground"
+                        className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning"
                       >
-                        {run.deniedActions!.length} denied
+                        {t('{count} denied', { count: run.deniedActions!.length })}
                       </span>
                     ) : null}
                     {run.managerDidNotDelegate ? (
-                      <span data-slot="digest-not-delegated" className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning-foreground">manager did not delegate</span>
+                      <span data-slot="digest-not-delegated" className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning">{t('manager did not delegate')}</span>
                     ) : null}
                     <RunLimitMeter run={run} />
                     <span className="tabular-nums text-muted-foreground">

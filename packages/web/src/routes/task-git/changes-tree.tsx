@@ -2,6 +2,7 @@ import { ChevronRightIcon, FileIcon, FolderIcon } from 'lucide-react'
 import { createContext, useContext, useState } from 'react'
 
 import { CommentCount } from '@/components/comment-count'
+import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 import type { TreeDir, TreeFile } from './file-tree'
@@ -24,9 +25,10 @@ export function ChangesTree({
    *  summed on a COLLAPSED folder, whose files' own counts are hidden. */
   commentCounts?: ReadonlyMap<string, number>
 }) {
+  const { t } = useI18n()
   return (
     <CommentCountsContext.Provider value={commentCounts}>
-    <nav data-slot="changes-tree" aria-label="Changed files" className="min-w-0 text-[13px]">
+    <nav data-slot="changes-tree" aria-label={t('Changed files')} className="min-w-0 text-[13px]">
       <ul className="flex flex-col gap-px">
         {root.dirs.map((dir) => (
           <DirNode key={dir.path} dir={dir} depth={0} selected={selected} onSelect={onSelect} />

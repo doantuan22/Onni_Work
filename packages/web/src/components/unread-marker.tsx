@@ -11,10 +11,13 @@
  * One component for every surface that lists a task, so the sidebar, the Tasks table, the mobile
  * card and the global Tasks page cannot drift apart.
  */
+import { useI18n } from '@/lib/i18n'
+
 export function UnreadMarker() {
+  const { t } = useI18n()
   return (
     <span data-slot="unread-marker" className="sr-only">
-      , unread
+      {t(', unread')}
     </span>
   )
 }

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { useDashboardPage, useDisplacedRows } from './pages'
 import { TaskRow, taskKey } from './rows'
 import { useStagedRows } from './state'
+import { useI18n } from '@/lib/i18n'
 export function Queue({
   snapshot,
   questions,
@@ -22,14 +23,18 @@ export function Queue({
   more: (group: 'questions' | 'reviews', count: number) => void
 }) {
   const live = useDashboardLive()
+  const { t } = useI18n()
   return (
     <Card className="min-w-0 gap-0 overflow-hidden py-0">
       <div className={widgetHeader}>
         <h2 id="dashboard-needs-you" tabIndex={-1} className={widgetHeading}>
-          Needs you · {snapshot.counts.questions + snapshot.counts.reviews}
+          {t('Needs you · {count}', { count: snapshot.counts.questions + snapshot.counts.reviews })}
         </h2>
         <p className="font-mono text-[11px] text-soft-foreground">
-          {snapshot.counts.questions} questions · {snapshot.counts.reviews} reviews
+          {t('{questions} questions · {reviews} reviews', {
+            questions: snapshot.counts.questions,
+            reviews: snapshot.counts.reviews,
+          })}
         </p>
       </div>
       {healthy &&
@@ -38,7 +43,7 @@ export function Queue({
       snapshot.coverage.projects.every((p) => p.state === 'complete') ? (
         <p className="flex items-center gap-2.5 px-4 py-8 text-sm text-muted-foreground">
           <StatusDot tone="success" />
-          All caught up — no tasks need your input
+          {t('All caught up — no tasks need your input')}
         </p>
       ) : null}
       <QueueSection snapshot={snapshot} group="questions" count={questions} more={more} />
@@ -69,6 +74,7 @@ function QueueSection({
     staged.rows.filter((r) => r.removed).map((r) => r.row),
   )
   const heading = useRef<HTMLHeadingElement>(null)
+  const { t } = useI18n()
   if (!initial.total && !staged.rows.length) return null
   return (
     <section>
@@ -77,7 +83,7 @@ function QueueSection({
         tabIndex={-1}
         className="border-b bg-card-2 px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
       >
-        {group === 'questions' ? 'Questions' : 'Reviews'} · {initial.total}
+        {group === 'questions' ? t('Questions') : t('Reviews')} · {initial.total}
       </h3>
       {staged.updates > 0 && (
         <Button
@@ -88,7 +94,7 @@ function QueueSection({
             heading.current?.focus()
           }}
         >
-          {staged.updates} updates — Show
+          {t('{count} updates — Show', { count: staged.updates })}
         </Button>
       )}
       {staged.rows.map(({ row, removed }) => (
@@ -106,7 +112,7 @@ function QueueSection({
       ))}
       {(query.isError || displaced.isError) && (
         <p role="alert" className="p-4 text-sm">
-          Could not check current task state.{' '}
+          {t('Could not check current task state.')}{' '}
           <Button
             variant="ghost"
             className="min-h-11"
@@ -115,7 +121,7 @@ function QueueSection({
               void displaced.refetch()
             }}
           >
-            Retry
+            {t('Retry')}
           </Button>
         </p>
       )}
@@ -126,7 +132,10 @@ function QueueSection({
           disabled={query.isFetching}
           onClick={() => more(group, wanted + Math.min(20, initial.total - wanted))}
         >
-          Show {Math.min(20, initial.total - wanted)} more {group}
+          {t('Show {count} more {group}', {
+            count: Math.min(20, initial.total - wanted),
+            group: t(group),
+          })}
         </Button>
       )}
     </section>

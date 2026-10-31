@@ -1,6 +1,7 @@
 import type { RunRecord } from '@onni/api-client'
 
 import { describeRow, formatLimitValue, limitRows, tightestRow } from '@/lib/run-limits'
+import { useI18n } from '@/lib/i18n'
 
 /**
  * "Used / ceiling" for one run, compact enough for a list row or the thread header: ∞ when the run
@@ -8,14 +9,15 @@ import { describeRow, formatLimitValue, limitRows, tightestRow } from '@/lib/run
  * ceiling ended it. The title lists every ceiling, including ones this backend cannot report.
  */
 export function RunLimitMeter({ run }: { run: RunRecord }) {
+  const { t } = useI18n()
   if (run.limitHit) {
     return (
       <span
         data-slot="run-limit-hit"
-        title={run.error ?? 'A run ceiling ended this task'}
+        title={run.error ?? t('A run ceiling ended this task')}
         className="rounded-full bg-danger/10 px-1.5 py-px text-[10px] font-medium text-danger"
       >
-        limit: {run.limitHit.kind}
+        {t('limit: {kind}', { kind: run.limitHit.kind })}
       </span>
     )
   }
@@ -23,9 +25,9 @@ export function RunLimitMeter({ run }: { run: RunRecord }) {
     return (
       <span
         data-slot="run-limit-unlimited"
-        title="Unlimited — no cost, token, time or step ceiling"
-        aria-label="Unlimited"
-        className="text-[13px] font-semibold leading-none text-warning-foreground"
+        title={t('Unlimited — no cost, token, time or step ceiling')}
+        aria-label={t('Unlimited')}
+        className="text-[13px] font-semibold leading-none text-warning"
       >
         ∞
       </span>
@@ -47,7 +49,7 @@ export function RunLimitMeter({ run }: { run: RunRecord }) {
           style={{ width: `${percent}%` }}
         />
       </span>
-      <span aria-label={`${tight.label} ${percent}% of ceiling`}>
+      <span aria-label={t('{label} {percent}% of ceiling', { label: t(tight.label), percent })}>
         {formatLimitValue(tight.kind, tight.used)}/{formatLimitValue(tight.kind, tight.limit)}
       </span>
     </span>
