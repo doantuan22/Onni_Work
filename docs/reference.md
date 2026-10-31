@@ -613,6 +613,28 @@ own git config, writes outside its worktree, reads `$HOME` or uses the network a
 `limits` (`{ mode: "default" | "none" | "capped", maxCostUsd?, maxTokens?, maxWallClockMinutes?,
 maxStepIterations? }`) and `POST /runs/:id/continue` accepts `raiseLimits`.
 
+### Manager / Worker
+
+One agent can manage a task and hand work to a **roster** you choose; agents you do not list are never
+used. Pick it in the new-task composer (**Manager / Workers**, optionally from a preset saved under
+Settings → Manager–Worker), or from a shell with a cockpit running:
+
+```bash
+onni run "migrate the API to v2" --manager claude:opus --workers codex:gpt-5,opencode
+```
+
+Each worker is a backend, an optional model (the same backend may appear twice on different models), a
+free-text role the manager reads, and how many of its tasks run at once. Only backends that are connected
+and enabled can be chosen. The manager hands work over with `onni task create … --backend X --model Y`
+(`--runner` still works); the server answers a backend outside the roster with `409` and the allowed list.
+Workers fork the manager's branch (its uncommitted work is committed first as `onni: wip before dispatch`),
+cannot dispatch further, and report back; the manager merges their `onni/<id8>` branches into its own
+branch, resolves conflicts, runs the checks after each merge and reports. The roster is an
+orchestration fence, **not a security boundary**: an agent can still call a CLI or the HTTP API directly,
+and a top-level task created over raw HTTP is not bound to a roster. Cost, token, time and step ceilings,
+the subtask cap and the wait expiry apply to the whole tree (see Limits above); `POST /runs` accepts
+`roster`, and workspace presets live in `~/.onni/config.json` (`managerWorker`).
+
 ### The HTTP API
 
 - **Everything is under `/api/v1`.** The unversioned `/api/*` spelling was

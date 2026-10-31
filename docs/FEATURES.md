@@ -395,3 +395,24 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 
 **Giới hạn đã biết:** hook pre-push và deny rule là *rào*, không phải sandbox — `git push --no-verify`, agent gỡ biến môi trường, ghi ngoài worktree, `$HOME` và mạng không bị chặn (backend khác Claude không có seam deny).
 
+---
+
+## 18. Manager / Worker (2026-11-01, nhánh `feat/manager-worker`)
+
+Thiết kế: [`docs/design/manager-worker.md`](design/manager-worker.md) · quyết định: [ADR 0006](adr/0006-manager-worker.md). Rào chắn điều phối, **không phải ranh giới bảo mật**.
+
+| Chức năng | Mô tả ngắn | Nơi trong code | Cách dùng | Trạng thái | Căn cứ |
+| --- | --- | --- | --- | --- | --- |
+| Roster | manager + 1–6 worker (backend, model tuỳ chọn, role, `maxConcurrent`); nhiều mục cùng backend khác model; manager không phải worker; chụp vào `RunRecord.roster` của root | `contract/roster.ts` · `workflows/run.ts` (`startRun`) | composer "Manager / Workers" · `onni run --manager --workers` | ĐÃ XÁC MINH | `workflows/roster-contract.test.ts`, `manager-worker.test.ts` |
+| Allowlist | `dispatch()` từ chối (409) backend/model ngoài roster, nêu danh sách cho phép; `--backend` (alias `--runner`) | `workflows/manager-worker.ts` (`resolveWorker`) · `run.ts` (`dispatch`) | tự động | ĐÃ XÁC MINH | `manager-worker.test.ts` (dry-run: giao hợp lệ + bị từ chối) |
+| Backend khả dụng | chỉ `connected`+enabled; `POST /runs` từ chối roster có backend chưa kết nối | `server/server.ts` · `web/src/lib/roster.ts` | tự động | ĐÃ XÁC MINH | `server/roster-api.test.ts`, `lib/roster.test.ts` |
+| WIP trước khi fork | `dispatchFromAgent` commit "onni: wip before dispatch" (độc lập `ONNI_AUTOSAVE`); lỗi → 409, không tạo con | `workflows/run.ts` · `git-worktree.ts` | tự động | ĐÃ XÁC MINH | `manager-worker.test.ts` |
+| Sức chứa | manager đỗ vì dispatch không tính vào `maxParallel`; `maxConcurrent` theo mục thi hành trong `pump()` | `run.ts` (`busySlots`, `workerEntryFull`) | tự động | ĐÃ XÁC MINH | `manager-worker.test.ts` (`maxParallel` 1 và 2) |
+| Retention | không thu hồi/xoá tay worktree worker khi root chưa kết thúc | `runs/retention.ts` (`protectedByLiveTree`) | tự động | ĐÃ XÁC MINH | `manager-worker.test.ts` |
+| Prompt | manager: roster, `--backend`, báo cáo, quy trình tích hợp, giới hạn còn lại; worker: chỉ `onni task report` | `workflows/manager-worker.ts` | tự động | ĐÃ XÁC MINH | `manager-prompt.test.ts` |
+| Manager không giao việc | ghi chú + cờ `managerDidNotDelegate` + dòng trong bản tóm tắt buổi sáng | `run.ts` (`settleSuccess`) · `web/src/lib/morning-digest.ts` | tự động | ĐÃ XÁC MINH | `manager-worker.test.ts`, `morning-digest.test.ts` |
+| UI | composer, Settings → Manager–Worker (preset, mặc định), badge backend trong cây task | `web/src/components/manager-worker-pill.tsx` · `routes/settings/manager-worker-section.tsx` · `components/run-backend-badge.tsx` | Settings · `/new` | ĐÃ XÁC MINH | `manager-worker-section.test.tsx`, `roster-editor.test.tsx` |
+| CLI | `onni run --manager <b[:m]> --workers <a,b:m>` (cần cockpit đang chạy); `onni task create --backend` | `runs/roster-cli.ts` · `dispatch/task-cli.ts` | CLI | ĐÃ XÁC MINH | `runs/roster-cli.test.ts` |
+
+**Giới hạn:** run top-level tạo qua HTTP thô không bị ràng roster; manager có thể bỏ qua prompt; PNG sơ đồ `13-seq-manager-worker` chưa render (xem README thư mục architecture).
+

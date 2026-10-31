@@ -124,6 +124,12 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   (`RunManager.sweepLimits`) and the wait expiry bound cost, time and hangs in both limits modes.
   The fence is a barrier, not a sandbox — do not describe it as one. Dispatch depth, subtasks per
   tree and `retry_limit` stay on in "Unlimited". See `docs/adr/0005-unattended-safety.md`.
+- **A roster is a fence, not a sandbox.** A tree started with a `roster` may dispatch only to the
+  listed workers (`dispatch()` is the single check, 409 with the allowed list); workers stay at depth 1,
+  keep `ONNI_API_URL` for `onni task report` and get the report-only prompt. Do not describe the roster as
+  a security boundary: raw HTTP can still create a top-level run on any backend. The route path commits
+  the manager's WIP before a fork and refuses (409) when it cannot; a worker's worktree is not reclaimed
+  while its tree's root is live (`protectedByLiveTree`). See `docs/adr/0006-manager-worker.md`.
 - **Local-first.** No account, no database, no cloud, no upload. `gh` and the agent CLIs run as
   the user.
 - **The API is `/api/v1` only, described by zod.** Every request and response shape is a schema
@@ -250,6 +256,7 @@ The supported dev machine here is Windows 11 with Git Bash.
 | Runs, queue, review gate | `packages/contract/src/runs.ts`, `packages/work/src/runs/store.ts`, `packages/work/src/workflows/run.ts` |
 | Git, worktrees, diff base | `packages/work/src/git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` |
 | Workspace registry, `~/.onni` | `packages/work/src/paths.ts`, `workspace/config.ts`, `workspace/projects.ts` |
+| Manager / worker roster | `packages/contract/src/roster.ts`, `packages/work/src/workflows/manager-worker.ts`, `run.ts` (`dispatch`, `dispatchFromAgent`) |
 | Run limits, unattended safety | `packages/contract/src/limits.ts`, `packages/work/src/workflows/limits.ts`, `push-guard.ts`, `unattended.ts` |
 | Live signals | `.ai/specs/2026-07-23-websocket-subscriptions.md`, `server/ws.ts`, `web/src/api/ws.ts` |
 | Cockpit UI | `packages/web/src/app.tsx`, `routes.tsx`, `api/` |

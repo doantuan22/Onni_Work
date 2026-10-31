@@ -97,3 +97,27 @@ Kết luận: **chưa có cờ `--backend`** (tên hiện là `--runner`). **Kh�
 - **Q3.** Manager có được tự đứng trong danh sách worker không (ví dụ Claude vừa quản lý vừa làm)? (Đề xuất: không; manager chỉ giao, tự làm khi không giao.)
 - **Q4.** Preset lưu ở workspace (dùng mọi project; đề xuất) hay theo project?
 - **Q5.** Vị trí Settings: thêm vào Settings → Resources như phần Limits (đề xuất, không đổi registry/test) hay một mục riêng?
+
+---
+
+## Phụ lục — quyết định đã duyệt và chỗ lệch (2026-11-01)
+
+Theo tin nhắn duyệt, **tin nhắn thắng**. Chỗ lệch / làm khác so với bản đề xuất ở trên:
+
+| Mục thiết kế | Thực tế | Lý do |
+| --- | --- | --- |
+| Q1 giới hạn backend | Không hardcode: danh sách = backend `connected` + enabled từ provider status; `POST /runs` từ chối roster chứa backend chưa kết nối (409) | Quyết định 1. Enum `runnerSchema`/`RUNNER_IDS` vẫn là danh sách mã hoá; thêm runner (Antigravity) = thêm vào hai nơi đó, UI tự hiện khi runner kết nối |
+| Q2 worker env | Worker giữ `ONNI_API_URL`; `systemPrompt` của record worker là `undefined` và phiên chạy nhận `WORKER_PROMPT` (chỉ `onni task report`); chặn độ sâu vẫn ở `dispatch()` | Quyết định 2 |
+| Q3 | Manager không phải worker (cùng backend + cùng model bị schema từ chối); cùng backend khác model được | Quyết định 3 |
+| Q4/Q5 | Preset theo workspace (`managerWorker`), Settings có mục riêng "Manager–Worker" liên kết sang Resources (Limits, maxParallel) | Quyết định 4, 5 |
+| `maxConcurrent` = từ chối | Thực thi trong `pump()` (`startable`): con vượt trần mục **giữ chỗ trong hàng đợi** thay vì bị từ chối | Quyết định 9; không đụng semaphore |
+| Autosave trong `dispatch()` | `dispatch()` đồng bộ nên giữ nguyên; autosave nằm ở `dispatchFromAgent()` (route). Node graph vẫn dùng `pre-dispatch` cũ. Một dispatch bị từ chối sau khi WIP đã commit vẫn để lại commit WIP | Không đổi chữ ký `dispatch()` đang được gọi đồng bộ ở nhiều nơi |
+| `onni run --manager` | Cần cockpit đang chạy (gọi `POST /runs`): một `onni run` headless không có API cho manager dispatch | `dispatchReachable` cần `ONNI_API_URL`; role và `maxConcurrent` chỉ đặt được ở composer/preset |
+| Route `GET roster-backends` | Không thêm; dùng `GET /providers/status` có sẵn | Ít route hơn |
+| Retention (10) | Thu hồi chỉ xoá **thư mục** (nhánh luôn được giữ — `retention.ts`); thêm `protectedByLiveTree`: không thu hồi, không `remove-worktree`/`DELETE` thủ công worker khi root chưa ở trạng thái cuối | Xác nhận cơ chế hiện tại và sửa chỗ thiếu |
+| Deadlock (9) | Kiểm chứng: manager đỗ `monitoring` vì chính dispatch của nó (`unitParents`) **không tính** vào `maxParallel` (`busySlots`), nên không cần sửa. Còn lại: trong lúc turn của manager còn chạy nó giữ 1 slot, worker xếp hàng tới khi turn kết thúc — bounded bởi inactivity/ceiling | Test với `maxParallel` 1 và 2 |
+
+**Rủi ro còn lại (thêm):** (a) run top-level tạo qua HTTP thô không bị ràng roster (chấp nhận, đã ghi vào docs/UI);
+(b) manager bỏ qua prompt hoặc merge kém — engine chỉ rào *nơi giao*, không ép *phải giao* (có ghi chú "manager không
+giao việc"); (c) hai worker cùng sửa một file vẫn xung đột; (d) `maxConcurrent` cao hơn `maxParallel` vô nghĩa (UI cảnh báo);
+(e) PNG của sơ đồ chưa được render (môi trường chặn chạy `plantuml.jar`) — render bằng lệnh trong `docs/architecture/README.md`.
