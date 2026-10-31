@@ -219,6 +219,7 @@ describe('workspace provider API', () => {
         { provider: 'pi', status: 'connected', enabled: true },
         { provider: 'junie', status: 'connected', enabled: true },
         { provider: 'copilot', status: 'connected', enabled: true },
+        { provider: 'antigravity', status: 'connected', enabled: true },
       ],
     });
   });
@@ -242,6 +243,7 @@ describe('workspace provider API', () => {
         { provider: 'pi', status: 'connected', enabled: true },
         { provider: 'junie', status: 'connected', enabled: true },
         { provider: 'copilot', status: 'connected', enabled: true },
+        { provider: 'antigravity', status: 'connected', enabled: true },
       ],
     });
     expect(runCommand).not.toHaveBeenCalled();

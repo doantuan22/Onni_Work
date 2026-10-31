@@ -31,8 +31,8 @@ describe('resumeCommand — session id validation', () => {
   // Every runner id must map to a command — an id that fell through to the `claude` default
   // would hand the user a `claude --resume` for a session claude does not own (#387). Cursor is
   // excluded from the generic `${runner} ` check: its CLI binary is `agent`, not `cursor` (the
-  // specific assertion above covers it).
-  it.each(RUNNER_IDS.filter((runner) => runner !== 'cursor'))(
+  // specific assertion above covers it). Antigravity's binary is `agy` (asserted below).
+  it.each(RUNNER_IDS.filter((runner) => runner !== 'cursor' && runner !== 'antigravity'))(
     'maps %s to its own CLI, never silently to claude',
     (runner) => {
       const id = '9f8e7d6c-1234-4abc-9def-0123456789ab';
@@ -137,5 +137,22 @@ describe('resumeCommand — session id validation', () => {
         else process.env.ONNI_CURSOR_AGENT_BIN = previous;
       }
     });
+  });
+});
+
+describe('resumeCommand — antigravity', () => {
+  it('reopens the conversation with the agy binary, honouring ONNI_ANTIGRAVITY_BIN', () => {
+    const before = process.env.ONNI_ANTIGRAVITY_BIN;
+    try {
+      process.env.ONNI_ANTIGRAVITY_BIN = 'agy';
+      expect(resumeCommand('antigravity', '9f8e7d6c-1234-4abc-9def-0123456789ab')).toBe('agy --conversation 9f8e7d6c-1234-4abc-9def-0123456789ab');
+      process.env.ONNI_ANTIGRAVITY_BIN = '/opt/agy dir/agy';
+      expect(resumeCommand('antigravity', 'conv-1')).toBe('"/opt/agy dir/agy" --conversation conv-1');
+      process.env.ONNI_ANTIGRAVITY_BIN = 'agy;rm -rf ~';
+      expect(resumeCommand('antigravity', 'conv-1')).toBeNull();
+    } finally {
+      if (before === undefined) delete process.env.ONNI_ANTIGRAVITY_BIN;
+      else process.env.ONNI_ANTIGRAVITY_BIN = before;
+    }
   });
 });
