@@ -5,6 +5,7 @@ import { runnerDiscoversModels } from '@onni/api-client'
 import type {
   BackendCheck,
   CreateRunInput,
+  RunLimitsRequest,
   CreateRunResponse,
   AttachmentEntry,
   DispatchIntent,
@@ -362,6 +363,8 @@ export function buildCreateRunBody(opts: {
   dispatch?: DispatchIntent | null
   /** A read-only Ask task (spec 2026-10-20-trunk-based-projects) — single runs only. */
   readOnly?: boolean
+  /** Per-run ceilings; `default` (or absent) stays off the wire so the workspace default applies. */
+  limits?: RunLimitsRequest
   /** The project defaults to in-place, so an isolated worktree must be asked for explicitly. */
   inPlaceByDefault?: boolean
 }): CreateRunInput {
@@ -383,6 +386,7 @@ export function buildCreateRunBody(opts: {
     generateFollowups,
     todoId,
     dispatch,
+    limits,
     readOnly,
     inPlaceByDefault,
   } = opts
@@ -415,6 +419,7 @@ export function buildCreateRunBody(opts: {
     generateFollowups: generateFollowups === false ? false : undefined,
     todoId: todoId || undefined,
     dispatch: dispatch ?? undefined,
+    ...(limits && limits.mode !== 'default' ? { limits } : {}),
   }
 }
 

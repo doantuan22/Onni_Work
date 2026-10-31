@@ -7,6 +7,7 @@ import {
   FolderGit2Icon,
   FoldersIcon,
   GaugeIcon,
+  ShieldAlertIcon,
   IdCardIcon,
   PackageCheckIcon,
   KeyboardIcon,
@@ -30,6 +31,7 @@ import { KeyboardSection } from './keyboard-section'
 import { BookmarkletsSection } from './bookmarklets-section'
 import { NotificationsSection } from './notifications-section'
 import { ProjectsSection } from './projects-section'
+import { LimitsSection } from './limits-section'
 import { ResourcesSection } from './resources-section'
 import { SkillsSection } from './skills-section'
 import { TasksSection } from './tasks-section'
@@ -65,6 +67,7 @@ export type SettingsSectionId =
   | 'global-instructions'
   | 'tasks'
   | 'resources'
+  | 'limits'
   | 'worktrees'
   | 'projects'
   | 'notifications'
@@ -197,6 +200,14 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     description: 'Shortcuts for task commands.',
     icon: KeyboardIcon,
     component: KeyboardSection,
+    scope: 'global',
+  },
+  {
+    id: 'limits',
+    title: 'Limits',
+    description: 'Cost, token, time and step ceilings; hang guards; emergency stop.',
+    icon: ShieldAlertIcon,
+    component: LimitsSection,
     scope: 'global',
   },
   {

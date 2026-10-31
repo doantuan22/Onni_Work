@@ -29,6 +29,7 @@ import {
   useRuns,
 } from '@/api/queries'
 import type { ApiRun, OpenTarget } from '@onni/api-client'
+import { RunLimitMeter } from '@/components/run-limit-meter'
 import { DiffStatLabel } from '@/components/diff-stat'
 import { TitleEditInput, useTitleEditor, type TitleEditor } from '@/components/editable-title'
 import { TOGGLE_ON_CLASS, TOGGLE_ON_ICON_CLASS } from '@/components/pin-toggle'
@@ -952,6 +953,8 @@ function RunUsage({
       </span>,
     )
   }
+
+  usage.push(<RunLimitMeter key="limits" run={run} />)
 
   return (
     <span data-slot="run-usage" className={cn('flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground', className)}>

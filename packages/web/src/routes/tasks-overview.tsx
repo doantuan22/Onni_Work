@@ -29,6 +29,8 @@ import { Link, useNavigate } from '@/lib/project-router'
 
 import { archiveFinished, markAllRunsSeen, patchRun } from '@/api/client'
 import { useRunUsage } from '@/api/global-events'
+import { RunLimitMeter } from '@/components/run-limit-meter'
+import { StopAllButton } from '@/components/stop-all-button'
 import { queryKeys, useHealth, usePinRun, useReferenceProjectId, useRepo, useRuns, writePatchedRunToCaches } from '@/api/queries'
 import type { RunRecord } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
@@ -285,6 +287,7 @@ export function TasksOverview({
           </OverviewTab>
         </div>
         <div className="flex-1" />
+        <StopAllButton />
         {/* Count-gated, like the broom beside it: offered only while there is unread history to
             clear (#unread-done-items). Archived runs are never unread, so this only ever lights
             on the Active tab in practice — no need to also gate on `view`. */}
@@ -1151,7 +1154,10 @@ function TaskTableCell({
           data-column-id={column.id}
           className={cn(TD_BASE, 'text-right font-mono text-xs text-muted-foreground tabular-nums')}
         >
-          {cost || <Dash />}
+          <span className="inline-flex items-center justify-end gap-1.5">
+            {cost || <Dash />}
+            <RunLimitMeter run={run} />
+          </span>
         </td>
       )
     case 'started':
@@ -1478,6 +1484,12 @@ const TaskCard = React.memo(function TaskCard({
               <>
                 <Sep />
                 <span>{cost}</span>
+              </>
+            ) : null}
+            {run.limits?.mode === 'none' || run.limitHit ? (
+              <>
+                <Sep />
+                <RunLimitMeter run={run} />
               </>
             ) : null}
           </>

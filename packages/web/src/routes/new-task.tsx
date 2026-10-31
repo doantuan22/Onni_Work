@@ -1,3 +1,5 @@
+import { RunLimitsFields } from '@/components/run-limits-fields'
+import { requestFromDraft, type LimitsDraft } from '@/lib/run-limits'
 import { previewSettingsKey, StartTimePicker, type StartChoice } from '@/components/start-time-picker'
 import { ApiError, createDeferredStart } from '@/api/client'
 import { deferredCreateInputSchema } from '@onni/api-client'
@@ -345,6 +347,10 @@ export function NewTaskRoute() {
   // The hint line under the composer: up for 6 s after every change of the toggle or its
   // settings, and the whole time the settings surface is open.
   const [dispatchHintFlash, setDispatchHintFlash] = useState(false)
+  // Per-run ceilings (docs/design/unattended-safety.md §2): Default / Unlimited / Custom. Kept out of
+  // the persisted draft on purpose — "unlimited" must be chosen again for each task, never inherited.
+  const [limitsDraft, setLimitsDraft] = useState<LimitsDraft>({ mode: 'default', cost: '', tokens: '', time: '', iterations: '' })
+  const limitsRequest = requestFromDraft(limitsDraft)
   const [dispatchSettingsOpen, setDispatchSettingsOpen] = useState(false)
   const dispatchHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const changeDispatch = (next: DispatchIntent | null) => {
@@ -591,6 +597,7 @@ export function NewTaskRoute() {
         newBranch: draft.newBranch,
         branch: draft.branchName,
         autonomous: autonomousOn,
+        ...(limitsRequest.ok ? { limits: limitsRequest.request } : {}),
         generateFollowups: generateFollowupsOn,
         // #374: when the Inbox's "Run" sent us here, hand the entry's id back so the server
         // records this run on it and it leaves the inbox — the audit trail the old
@@ -878,6 +885,15 @@ export function NewTaskRoute() {
                 on={autonomousOn}
                 onChange={(on) => update({ autonomous: on })}
               />
+              <details data-slot="limits-pill" className="relative">
+                <summary className="cursor-pointer select-none rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground">
+                  Limits: {limitsDraft.mode === 'default' ? 'default' : limitsDraft.mode === 'none' ? '∞ unlimited' : 'custom'}
+                </summary>
+                <div className="absolute z-20 mt-1 w-80 rounded-md border border-border bg-card p-3 shadow-md">
+                  <RunLimitsFields draft={limitsDraft} onChange={setLimitsDraft} allowDefault />
+                  {!limitsRequest.ok ? <p className="mt-2 text-[12px] text-danger">{limitsRequest.error}</p> : null}
+                </div>
+              </details>
               {followupsToggleShown ? (
                 <GenerateFollowupsToggle
                   on={generateFollowupsOn}

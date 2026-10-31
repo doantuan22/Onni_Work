@@ -60,6 +60,7 @@ import type {
   CreatePrResponse,
   AdoptPrResponse,
   CreateRunInput,
+  StopAllResponse,
   CreateRunResponse,
   DeleteDraftResponse,
   DeleteRunResponse,
@@ -1440,6 +1441,11 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunRespons
   )
 }
 
+/** The emergency stop: cancel every queued and live task in every project. */
+export async function stopAllRuns(): Promise<StopAllResponse> {
+  return unwrap(await onni.api.v1.workspace['stop-all'].$post(), '/workspace/stop-all')
+}
+
 export async function cancelRun(id: string): Promise<CancelResponse> {
   return unwrap(
     await onni.api.v1.p[':projectId'].runs[':id'].cancel.$post({
@@ -1634,6 +1640,8 @@ export interface ContinueOptions {
   agentProfile?: string
   /** One per Continue, reused by its retries: a key that already landed is not continued again. */
   idempotencyKey?: string
+  /** Continue a run a ceiling stopped, raising the ceiling that was hit by one more allowance. */
+  raiseLimits?: boolean
 }
 
 /** Reopen a finished run's session. 409 (with the reason) when it cannot be resumed. An optional
@@ -1647,6 +1655,7 @@ export async function continueRun(id: string, opts: ContinueOptions = {}): Promi
     ...(opts.model !== undefined ? { model: opts.model } : {}),
     ...(opts.agentProfile !== undefined ? { agentProfile: opts.agentProfile } : {}),
     ...(opts.idempotencyKey !== undefined ? { idempotencyKey: opts.idempotencyKey } : {}),
+    ...(opts.raiseLimits ? { raiseLimits: true } : {}),
   }
   return unwrap(
     await onni.api.v1.p[':projectId'].runs[':id'].continue.$post({
@@ -1673,6 +1682,7 @@ export async function continueProjectRun(
         ...(opts.model !== undefined ? { model: opts.model } : {}),
         ...(opts.agentProfile !== undefined ? { agentProfile: opts.agentProfile } : {}),
         ...(opts.idempotencyKey !== undefined ? { idempotencyKey: opts.idempotencyKey } : {}),
+        ...(opts.raiseLimits ? { raiseLimits: true } : {}),
       },
     }),
     runPath(id, '/continue'),

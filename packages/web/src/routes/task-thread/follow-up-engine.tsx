@@ -105,7 +105,14 @@ export function useContinueAction(run: ApiRun): ContinueAction {
       if (!canContinue) {
         return Promise.reject(new Error(continuation.reason ?? 'Connect an agent provider to continue.'))
       }
+      // A ceiling ended this run: continuing means raising it by one more allowance, so ask first.
+      if (run.limitHit && !window.confirm(`${run.error ?? 'A run ceiling ended this task.'}
+
+Raise that ceiling by one more allowance and continue?`)) {
+        return Promise.reject(new Error('Continue cancelled — the ceiling was not raised.'))
+      }
       return continueRun(run.id, {
+        ...(run.limitHit ? { raiseLimits: true } : {}),
         // An empty draft posts no `text` at all, so the server's default opening prompt
         // ("Continue.") still applies — one-click Continue, unchanged.
         text: text.trim() ? text : undefined,

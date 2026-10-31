@@ -7,6 +7,7 @@ import { removeTodo, startTodo } from '@/api/client'
 import { queryKeys, useHealth, useRuns, useTodos, useUiState } from '@/api/queries'
 import type { TodoItem } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
+import { MorningDigest } from '@/components/morning-digest'
 import { EnginePills, engineBody, useResolvedEngine, useSeededEnginePick } from '@/components/engine-pills'
 import { PromptTemplateMenu } from '@/components/prompt-template-menu'
 import { StatusDot } from '@/components/status-dot'
@@ -91,6 +92,7 @@ export function InboxRoute() {
       </header>
 
       <div className="flex flex-1 flex-col p-3 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-5 md:pb-5">
+        <MorningDigest />
         {inboxOff ? (
           <CenteredState
             icon={<InboxIcon />}
