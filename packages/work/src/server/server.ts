@@ -200,7 +200,7 @@ import { checkoutGitStatus } from '../workflows/landing.ts';
 import { deleteUpload, readUpload, writeUpload } from '../uploads.ts';
 import { diskHealth } from './disk-health.ts';
 import { branchesCheckedOutElsewhere, removeWorktree, worktreeDiff, worktreeDiffStat, worktreeSizeBytes } from '../git-worktree.ts';
-import { isReclaimable, reclaimWorktrees } from '../runs/retention.ts';
+import { isReclaimable, protectedByLiveTree, reclaimWorktrees } from '../runs/retention.ts';
 import { worktreeLifecycleRoutes, lifecycleError } from './worktree-lifecycle.ts';
 import { readLifecycleConfigOrDefault, readLifecycleConfigRaw, lifecycleConfigFromRaw, withLifecycleConfigLock, applyLifecycleConfigUpdate, isLifecycleConfigTracked, LifecycleConfigError, TRACKED_CONFIG_ERROR } from '../worktree-lifecycle/config.ts';
 import { atomicLifecycleWrite, LifecycleStoreError } from '../worktree-lifecycle/store.ts';
@@ -4493,9 +4493,9 @@ export function createApp(deps: ServerDeps) {
 
     /** Create ONE child of run `:id`. Refusals (cap, budget, settled parent) are 409 with the
      *  reason — the same text the parent's transcript notes. */
-    .post('/runs/:id/dispatch', jsonZodValidator(dispatchInputSchema), (c) => {
+    .post('/runs/:id/dispatch', jsonZodValidator(dispatchInputSchema), async (c) => {
       const { manager } = c.get('project');
-      const outcome = manager.dispatch(c.req.param('id'), c.req.valid('json'));
+      const outcome = await manager.dispatchFromAgent(c.req.param('id'), c.req.valid('json'));
       if ('refused' in outcome) return c.json({ error: outcome.refused }, 409);
       return c.json(outcome, 201);
     })
@@ -5536,6 +5536,7 @@ export function createApp(deps: ServerDeps) {
       const run = store.getRun(id);
       if (!run) return c.json({ error: 'not found' }, 404);
       if (manager.isActive(id)) return c.json({ error: 'run is active — cancel it first' }, 409);
+      if (protectedByLiveTree(run, store.listRuns())) return c.json({ error: 'this worker belongs to a task tree that is still running — its manager may still be integrating the branch; try again when the tree has finished' }, 409);
       try {
         return await legacyWorktreeMutation(c.get('project'), id, async () => {
           // A shell must not outlive the directory it is standing in (spec §6).
@@ -5554,6 +5555,7 @@ export function createApp(deps: ServerDeps) {
       if (manager.isActive(id)) return c.json({ error: 'run is active — cancel it first' }, 409);
       const run = store.getRun(id);
       if (!run) return c.json({ error: 'not found' }, 404);
+      if (protectedByLiveTree(run, store.listRuns())) return c.json({ error: 'this worker belongs to a task tree that is still running — its manager may still be integrating the branch; try again when the tree has finished' }, 409);
       // Delete cleans up after itself: worktree + branch go with the run (spec 006), and so do its terminals.
       try {
         return await legacyWorktreeMutation(c.get('project'), id, async () => {

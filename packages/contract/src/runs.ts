@@ -194,6 +194,8 @@ export const runRecordSchema = z.object({
   limits: runLimitsSchema.optional(),
   /** Manager–worker roster of this task tree (on the root; snapshotted at start). */
   roster: rosterSchema.optional(),
+  /** Set when a manager finished without handing any task to a worker. */
+  managerDidNotDelegate: z.boolean().optional(),
   /** Durable usage the steps cannot rebuild (active wall-clock). */
   limitUsage: limitUsageSchema.optional(),
   /** Set when a ceiling ended the run; Continue asks to raise it. */

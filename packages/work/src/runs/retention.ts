@@ -21,6 +21,18 @@ function recencyKey(run: RunRecord): string {
   return run.finishedAt ?? run.createdAt;
 }
 
+/**
+ * A dispatched worker whose tree's ROOT has not reached a final state (docs/design/manager-worker.md):
+ * its manager may still be merging `onni/<id8>`, and the worktree is where a failed merge is
+ * inspected. Retention and manual removal both leave it alone until the root settles.
+ */
+export function protectedByLiveTree(run: RunRecord, runs: readonly RunRecord[]): boolean {
+  const rootId = run.dispatch?.rootRunId;
+  if (!rootId || rootId === run.id) return false;
+  const root = runs.find((candidate) => candidate.id === rootId);
+  return root !== undefined && !FINISHED.has(root.status);
+}
+
 /** A run is reclaimable when it is finished, still has a materialized worktree
  *  directory, and has not already been reclaimed. */
 export function isReclaimable(run: RunRecord): boolean {
@@ -38,7 +50,7 @@ export function isReclaimable(run: RunRecord): boolean {
 export function selectReclaimableWorktrees(runs: readonly RunRecord[], keep: number): string[] {
   if (!Number.isFinite(keep) || keep <= 0) return [];
   const reclaimable = runs
-    .filter(isReclaimable)
+    .filter((run) => isReclaimable(run) && !protectedByLiveTree(run, runs))
     .sort((a, b) => (recencyKey(a) < recencyKey(b) ? 1 : recencyKey(a) > recencyKey(b) ? -1 : 0));
   return reclaimable.slice(keep).map((r) => r.id);
 }
@@ -142,7 +154,7 @@ export async function reclaimWorktrees(
   for (const id of selectReclaimableWorktrees(runs, keep)) {
     // The snapshot above is seconds old by now; a run Continued since must keep its tree.
     const run = store.listRuns().find((candidate) => candidate.id === id) ?? byId.get(id);
-    if (!run?.worktreePath || !isReclaimable(run) || claimedForResume(id)) continue;
+    if (!run?.worktreePath || !isReclaimable(run) || protectedByLiveTree(run, store.listRuns()) || claimedForResume(id)) continue;
     let settle!: () => void;
     reclaimsInFlight.set(id, new Promise<void>((resolve) => { settle = resolve; }));
     try {

@@ -145,9 +145,10 @@ import { resolveProfileEnvForRoot } from '../workspace/agent-profiles.ts';
 import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
+import { resolveWorker, workersInFlight } from './manager-worker.ts';
 import { UNATTENDED_DENIED_TOOLS, pushGuardEnv, pushRefusal } from './push-guard.ts';
 import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf } from './limits.ts';
-import type { LimitHit, RunLimits, RunLimitsRequest } from '@onni/contract';
+import type { LimitHit, Roster, RunLimits, RunLimitsRequest } from '@onni/contract';
 import { WorkspaceSemaphore, type AccountHolds } from '../workspace/semaphore.ts';
 import { SecretStore } from '../workspace/secrets.ts';
 import { PROJECT_ID_RE, loadWorkspaceConfig } from '../workspace/config.ts';
@@ -918,6 +919,9 @@ export interface StartRunInput {
   limits?: RunLimitsRequest;
   /** Internal: an exact snapshot (a dispatched child's carved share). Wins over `limits`. */
   limitsSnapshot?: RunLimits;
+  /** Start as the MANAGER of a worker roster (docs/design/manager-worker.md): takes the roster's
+   *  manager backend/model, always gets a worktree, and may dispatch ONLY to the listed workers. */
+  roster?: Roster;
 }
 
 /**
@@ -1702,7 +1706,13 @@ export class RunManager {
     group?: { groupId: string; variant: string },
   ): RunRecord {
     if (input.readOnly && !group) {
-      input = { ...input, worktree: false, newBranch: undefined, dispatchIntent: undefined, forkRef: undefined };
+      input = { ...input, worktree: false, newBranch: undefined, dispatchIntent: undefined, forkRef: undefined, roster: undefined };
+    }
+    // A manager runs the roster's manager backend/model and always in its own worktree: its
+    // workers fork its commits, and an in-place run has no branch to fork.
+    if (input.roster && (group || !this.dispatchEnabled())) input = { ...input, roster: undefined };
+    if (input.roster) {
+      input = { ...input, runner: input.roster.manager.runner, model: input.roster.manager.model, worktree: undefined, newBranch: undefined, forkRef: undefined };
     }
     // Sanitize at the manager boundary so CLI runs, workflows, variants, and
     // direct callers cannot bypass the HTTP policy.
@@ -1775,6 +1785,11 @@ export class RunManager {
     // restart would be a tree with no root.
     if (input.dispatch) this.store.updateRun(run.id, { dispatch: input.dispatch });
     else if (input.dispatchIntent) this.store.updateRun(run.id, { dispatch: { rootRunId: run.id, intent: input.dispatchIntent } });
+    if (input.roster) {
+      // The roster is snapshotted here and never re-read: a worker cannot widen it, and a later
+      // preset edit does not touch a tree that is already running.
+      this.store.updateRun(run.id, { roster: input.roster, dispatch: { ...(this.store.getRun(run.id)?.dispatch ?? { rootRunId: run.id }), rootRunId: run.id } });
+    }
     // Initial pasted attachments must be visible while the run is still queued (#612),
     // and must survive a restart before a slot opens. Persist them before the job
     // enters `pendingJobs`; `hydrateQueuedInput` reconstructs their content blocks
@@ -1985,6 +2000,9 @@ export class RunManager {
         const startable = (id: string): boolean => {
           const queued = this.store.getRun(id);
           if (queued && anyHold && accountHeldFor(queued, holds, defaultRunner ?? 'claude')) return false;
+          // A roster entry's `maxConcurrent`: a worker over its entry's cap keeps its place in
+          // the queue while the others start, and wakes on the next slot release.
+          if (queued && this.workerEntryFull(queued)) return false;
           // "Start now" goes over `maxParallel` on purpose, but a non-git root still runs one at a time.
           if (this.startNowRequested.has(id)) return repo !== null || this.busySlots() < 1;
           return capacity();
@@ -2866,6 +2884,41 @@ export class RunManager {
     return true;
   }
 
+  /** Whether the roster entry a queued worker occupies already runs its `maxConcurrent` tasks. */
+  private workerEntryFull(queued: RunRecord): boolean {
+    const key = queued.dispatch?.workerKey;
+    const rootId = queued.dispatch?.rootRunId;
+    if (!key || !rootId) return false;
+    const runs = this.store.listRuns();
+    const entry = runs.find((r) => r.id === rootId)?.roster?.workers.find((w) => `${w.runner}:${w.model ?? ''}` === key);
+    if (!entry) return false;
+    const live = (id: string) => id !== queued.id && (this.active.has(id) || this.starting.has(id));
+    return workersInFlight(runs, rootId, key, live) >= entry.maxConcurrent;
+  }
+
+  /**
+   * The agent-facing entry to `dispatch()` (the route): first commit the parent's uncommitted work
+   * so the child forks from it, independent of `ONNI_AUTOSAVE`. If that commit cannot be made the
+   * dispatch is refused — a child must never fork silently from an older commit.
+   */
+  async dispatchFromAgent(
+    parentId: string,
+    input: DispatchInput,
+  ): Promise<{ id: string; branch?: string } | { refused: string }> {
+    const parent = this.store.getRun(parentId);
+    if (parent?.worktreePath && parent.branch && existsSync(parent.worktreePath) && this.dispatchEnabled()) {
+      const saved = await autosaveCommit(parent.worktreePath, 'wip before dispatch');
+      if (saved === 'refused' || saved === 'failed') {
+        const refused = saved === 'refused'
+          ? 'your worktree is mid-merge or still has conflict markers, so it could not be committed before forking — resolve the conflict (or git merge --abort), commit, then dispatch again'
+          : 'your uncommitted work could not be committed before forking (git commit failed) — run `git add -A && git commit -m wip` yourself, then dispatch again';
+        this.store.appendEvent(parentId, { type: 'note', stepId: this.active.get(parentId)?.currentStepId, message: `dispatch refused — ${refused}`, tone: 'danger' });
+        return { refused };
+      }
+    }
+    return this.dispatch(parentId, input);
+  }
+
   /**
    * `POST /runs/:id/dispatch` — create ONE child of `parentId` (spec 2026-09-10-dispatch), usually
    * called by the parent's own agent through `onni task create`.
@@ -2893,6 +2946,25 @@ export class RunManager {
       this.store.appendEvent(parentId, { type: 'note', stepId: this.active.get(parentId)?.currentStepId, message, ...(tone ? { tone } : {}) });
 
     const runs = this.store.listRuns();
+    // Manager–worker (docs/design/manager-worker.md): the roster lives on the tree's ROOT and is
+    // the only list of backends this tree may dispatch to. Checked here, the one place the route
+    // and the graph node both pass through, so a prompt that is ignored changes nothing.
+    const rootRunId0 = parent.dispatch?.rootRunId ?? parent.id;
+    const roster = runs.find((r) => r.id === rootRunId0)?.roster;
+    let worker: ReturnType<typeof resolveWorker> | undefined;
+    const namedBackend = input.backend ?? input.runner;
+    if (input.backend && input.runner && input.backend !== input.runner) {
+      const refused = `--backend ${input.backend} and --runner ${input.runner} disagree; use --backend`;
+      note(`dispatch refused — ${refused}`, 'danger');
+      return { refused };
+    }
+    if (roster) {
+      worker = resolveWorker(roster, { runner: namedBackend, model: input.model });
+      if ('refused' in worker) {
+        note(`dispatch refused — ${worker.refused}`, 'danger');
+        return { refused: worker.refused };
+      }
+    }
     // The user's limits, when the root was started with the composer's Dispatch toggle: they may
     // only tighten the engine's own caps, and the child defaults they name fill an order's gaps.
     const intent = runs.find((r) => r.id === (parent.dispatch?.rootRunId ?? parent.id))?.dispatch?.intent;
@@ -2961,11 +3033,11 @@ export class RunManager {
         },
       ],
     };
-    const childRunner = input.runner ?? intent?.runner ?? parent.runner;
+    const childRunner = worker && 'ok' in worker ? worker.runner : namedBackend ?? intent?.runner ?? parent.runner;
     // An inherited model only follows its own runner: a codex parent's `gpt-*` handed to a
     // `--runner claude` child fails at spawn (telemetry 43bdda11). Otherwise the child's runner picks.
     const sameRunner = (runner: RunnerId | undefined) => (runner ?? 'claude') === (childRunner ?? 'claude');
-    const childModel = input.model
+    const childModel = (worker && 'ok' in worker ? worker.model : undefined) ?? input.model
       ?? (intent?.model && sameRunner(intent.runner ?? parent.runner) ? intent.model : undefined)
       ?? (parent.model && sameRunner(parent.runner) ? parent.model : undefined);
     const record = this.startRun(opts.workflow ?? workflow, {
@@ -2983,6 +3055,7 @@ export class RunManager {
       dispatch: {
         rootRunId,
         parentRunId: parentId,
+        ...(worker && 'ok' in worker ? { workerKey: worker.key } : {}),
         ...(input.kind && input.kind !== 'implement' ? { kind: input.kind } : {}),
         ...(input.review_of?.length ? { reviewOf: input.review_of } : {}),
         ...(budget.budgetUsd !== undefined ? { budgetUsd: budget.budgetUsd } : {}),
@@ -7840,6 +7913,12 @@ export class RunManager {
       this.active.get(runId) === owner && !owner?.cancelled &&
       (status === 'running' || status === 'waiting');
     if (!canSettle()) return false;
+    // A manager that finishes without having handed anything to a worker did the whole job
+    // itself (or ignored its roster): say so once, where the transcript and the digest can see it.
+    if (run?.roster && !run.managerDidNotDelegate && childrenOf(this.store.listRuns(), runId).length === 0) {
+      this.store.updateRun(runId, { managerDidNotDelegate: true });
+      this.store.appendEvent(runId, { type: 'note', message: 'manager did not delegate — it finished without giving any task to a worker' });
+    }
     const landingError = await this.landBeforeSettle(runId);
     if (!canSettle()) return false;
     if (landingError === 'review') {

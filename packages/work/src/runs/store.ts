@@ -216,6 +216,7 @@ export const runRecordSchema = z.object({
   /** Cost / token / time / iteration ceilings snapshotted at start (docs/design/unattended-safety.md). */
   limits: runLimitsSchema.optional().catch(undefined),
   roster: rosterSchema.optional().catch(undefined),
+  managerDidNotDelegate: z.boolean().optional(),
   limitUsage: limitUsageSchema.optional().catch(undefined),
   limitHit: limitHitSchema.optional().catch(undefined),
   waitExpiredAt: z.string().optional(),
