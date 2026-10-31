@@ -1,0 +1,58 @@
+@startuml 13-seq-manager-worker
+skinparam defaultFontName "Segoe UI"
+skinparam dpi 130
+skinparam maxMessageSize 220
+title Manager / Worker — assignment, allowlist check, worker run, report, integration (proposed)
+
+actor User
+participant "Composer (/new)\nor onni run" as UI
+participant "RunManager\nstartRun / dispatch" as RM
+participant "Roster policy\n(manager-worker.ts)" as Policy
+participant "Provider status\n(provider-auth)" as Prov
+participant "Manager agent\n(claude, own worktree)" as Mgr
+participant "onni task CLI\n(in manager shell)" as CLI
+participant "Server\nPOST /runs/:id/dispatch" as API
+participant "Worker agent\n(codex, own worktree)" as Wkr
+participant "git" as Git
+
+== Start ==
+User -> UI : pick manager (claude / opus) + workers\n(codex: "backend tests", max 2;\nopencode: "docs", max 1)
+UI -> RM : startRun(task, roster)
+RM -> Prov : every roster backend connected and enabled?
+Prov --> RM : ok / unavailable (start refused, reasons listed)
+RM -> RM : snapshot roster on RunRecord.roster (+ limits)
+RM -> Mgr : spawn with system prompt: worker list + roles,\nCLI syntax, remaining budget / subtasks / depth,\nintegration steps
+
+== Assignment ==
+Mgr -> CLI : onni task create "..." --backend codex --model gpt-5 --budget 2
+CLI -> API : POST /runs/:id/dispatch {runner: codex, model, ...}
+API -> RM : dispatch(managerId, input)
+RM -> Policy : check(roster, input.runner, input.model)
+alt backend not in roster
+  Policy --> RM : refused
+  RM --> API : refused("codex is not an allowed worker; allowed: opencode")
+  API --> CLI : 409 {error}
+  CLI --> Mgr : error text (also a transcript note)
+else backend allowed
+  Policy --> RM : ok (per-worker concurrency free?)
+  RM -> RM : depth <= 1, subtasks, retry_limit,\nbudget carved from the manager's remainder
+  RM -> Git : autosave WIP commit on the manager branch ("pre-dispatch")
+  RM -> RM : create child run: baseBranch = manager.branch (HEAD),\nno dispatch env, limits = carved share
+  RM --> API : {id, branch onni/<id8>}
+  API --> CLI : 201
+  CLI --> Mgr : child id + branch
+end
+
+== Worker ==
+RM -> Wkr : spawn in .ai/onni/worktrees/<childId>
+Wkr -> Git : commit on onni/<id8>
+Wkr -> RM : onni task report (or the run settles)
+RM -> RM : persist report; settle hook
+
+== Report and integration ==
+RM -> Mgr : report delivered into the session\n(status, result, branch, cost)
+Mgr -> Git : git merge --no-ff onni/<id8> (manager worktree), resolve conflicts
+Mgr -> Mgr : re-run the repository's checks
+Mgr -> RM : turn ends / ONNI:DONE
+RM -> User : manager branch -> review gate or done\n(never merged into base automatically)
+@enduml
