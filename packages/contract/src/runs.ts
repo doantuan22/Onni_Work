@@ -198,6 +198,8 @@ export const runRecordSchema = z.object({
   managerDidNotDelegate: z.boolean().optional(),
   /** `--version` of the agent CLI that last ran this task (antigravity updates itself between runs). */
   agentVersion: z.string().optional(),
+  /** Why the run failed, when the engine can tell: `auth` means the agent's login is gone (sign in, then Continue). */
+  failureClass: z.enum(['transient', 'auth', 'billing', 'usage_limit', 'context_too_large', 'disk_full']).optional(),
   /** What the backend refused while the turn still answered (antigravity `denied_actions`, ADR 0007); newest last. */
   deniedActions: z.array(z.string()).max(50).optional(),
   /** Durable usage the steps cannot rebuild (active wall-clock). */

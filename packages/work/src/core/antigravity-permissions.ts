@@ -1,40 +1,47 @@
 /**
  * What an Antigravity (`agy`) run is allowed to do headlessly (ADR 0007).
  *
- * agy cannot ask for approval when stdout is a pipe: a tool that needs a permission is auto-denied.
- * Three levels decide what the runner passes (spike step 0, c): none, a narrow `--settings`
- * allowlist, or `--dangerously-skip-permissions`. Anything not allowed stays denied by default.
+ * agy cannot ask for approval when stdout is a pipe: a tool that needs a permission is auto-denied,
+ * and the denial ends the turn. Three levels decide what the runner passes: none, a `--settings`
+ * allowlist, or `--dangerously-skip-permissions`. Anything not allowed stays denied.
+ *
+ * MEASURED (docs/design/antigravity-spike.md, Appendix C): `command(<line>)` matches the WHOLE
+ * command line, not a prefix. `command(git add -A)` ran `git add -A`; `command(git add)` did not;
+ * `command(git status)` denied `git status --short`; `command(node --version)` denied
+ * `node --version > f` (redirect), `… && …`, `… $(…)` and `… \`…\``. So a grant cannot be widened by an
+ * argument, a redirect, a chain, a pipe or a substitution — and it cannot be a pattern either:
+ * `command(git add *)` matched nothing. Every grant below is therefore one exact line.
  */
 import type { AgentPermissionLevel } from '@onni/contract';
 
 /**
- * The prefixes a worker (or a solo task) may run, as `command(<prefix>)` grants. Read and commit
- * git inside the worktree, and the one onni command a worker needs. Deliberately absent: `git push`,
- * network tools (`curl`, `gh`, `npm publish`…), `rm`, `git reset`/`clean`, `git merge` and
- * `onni task create` — those are the manager's, and the manager is not offered for this backend yet.
- *
- * Verified: a grant is an allowlist entry (an unlisted command is denied) and a chained
- * `a && b` line is not matched by a rule for `a`. NOT verified: whether a prefix grant also matches
- * the same command with extra arguments — if it does not, the worker is denied and the run reports
- * it (fail-closed), it never silently gains reach.
+ * The exact lines a worker (or a solo task) may run: read-only git plus staging all. Deliberately
+ * absent: `git commit` (its message differs every time, and Onni's own autosave commits the worktree
+ * at the end of a turn), `git push`, anything that reaches the network, `rm`, `git reset`/`clean`,
+ * `git merge` and `onni task create/report` — the last two are the manager's, and the manager is not
+ * offered for this backend (`canManage`). Each line below was run or follows from lines that were:
+ * `git status`, `git add -A` and `node --version` were observed; the rest use the same mechanism.
  */
 export const ANTIGRAVITY_WORKER_COMMANDS: readonly string[] = [
   'git status',
+  'git status --short',
   'git diff',
-  'git log',
-  'git show',
-  'git add',
-  'git commit',
-  // The prompt tells the agent to call onni as `node "$ONNI_BIN" task …`; agy matches the command
-  // line as the model wrote it (spike step 0), so the grant is that literal text. Unverified end to end.
-  'node "$ONNI_BIN" task report',
+  'git diff --stat',
+  'git log --oneline',
+  'git add -A',
 ];
 
-/** Prefixes that must never be granted through the step's own `bashAllowlist`. */
+/** Lines that must never be granted through the step's own `bashAllowlist`, whatever else is in it. */
 const NEVER_GRANT = [/^git\s+push\b/i, /^curl\b/i, /^wget\b/i, /^gh\b/i, /^rm\b/i, /^sudo\b/i, /^npm\s+publish\b/i];
 
+/** Characters that mean "more than one command" or "something else happens" — never part of a grant. */
+const SHELL_META = /[;&|<>`$()\n\r*]/;
+
 export interface AntigravitySettingsInput {
-  /** The step's own test/build prefixes (`AgentRunSpec.bashAllowlist`). */
+  /**
+   * The step's own test/build commands (`AgentRunSpec.bashAllowlist`). For Claude these are prefixes;
+   * here each entry becomes ONE exact line, so `npm test` allows `npm test` and nothing longer.
+   */
   bashAllowlist?: readonly string[];
   /** Extra directories the run must read/write besides the worktree (the handoff file lives in one). */
   directories?: readonly string[];
@@ -45,13 +52,17 @@ function grantPath(dir: string): string {
   return dir.replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
-/** `command(<prefix>)` for each safe prefix; a prefix that names a network or destructive tool is dropped. */
-export function commandGrants(prefixes: readonly string[]): string[] {
+/**
+ * `command(<line>)` for each safe exact line. A line that names a network or destructive tool, or that
+ * carries shell syntax (a chain, a redirect, a substitution, a glob), is dropped: it could not be an
+ * exact grant for the one command it names anyway.
+ */
+export function commandGrants(lines: readonly string[]): string[] {
   const out: string[] = [];
-  for (const raw of prefixes) {
-    const prefix = raw.trim();
-    if (!prefix || prefix.includes('*') || prefix.includes(')') || NEVER_GRANT.some((re) => re.test(prefix))) continue;
-    const grant = `command(${prefix})`;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || SHELL_META.test(line) || NEVER_GRANT.some((re) => re.test(line))) continue;
+    const grant = `command(${line})`;
     if (!out.includes(grant)) out.push(grant);
   }
   return out;

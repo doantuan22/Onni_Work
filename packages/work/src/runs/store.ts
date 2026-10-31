@@ -219,6 +219,7 @@ export const runRecordSchema = z.object({
   managerDidNotDelegate: z.boolean().optional(),
   agentVersion: z.string().optional().catch(undefined),
   deniedActions: z.array(z.string()).max(50).optional().catch(undefined),
+  failureClass: z.enum(['transient', 'auth', 'billing', 'usage_limit', 'context_too_large', 'disk_full']).optional().catch(undefined),
   limitUsage: limitUsageSchema.optional().catch(undefined),
   limitHit: limitHitSchema.optional().catch(undefined),
   waitExpiredAt: z.string().optional(),

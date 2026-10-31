@@ -128,6 +128,17 @@ describe('antigravity through the API (dry-run)', () => {
     expect(store.getRun(childId)!.error).toContain('npm test');
   }, 90_000);
 
+  it('a worker that is not signed in fails as an auth failure, which the record and the run both say (synthetic login)', async () => {
+    const root = await startManager();
+    const childId = await dispatch(root.id, 'mock:login-eof do the work');
+    await waitFor(childId, (r) => r?.status === 'failed' && r.failureClass === 'auth');
+    const child = store.getRun(childId)!;
+    expect(child.error).toContain('not signed in');
+    expect(child.failureClass).toBe('auth');
+    const lifecycle = store.readEvents(childId).filter((e) => e.type === 'lifecycle').map((e) => String((e as { message?: unknown }).message ?? ''));
+    expect(lifecycle.some((m) => m.includes('Antigravity is not signed in or its login expired'))).toBe(true);
+  }, 90_000);
+
   it('the allowlist is enforced on the server: antigravity is refused when the roster does not list it', async () => {
     const root = await startManager({ roster: { manager: { runner: 'claude', model: 'opus' }, workers: [{ runner: 'pi', role: 'docs' }] } });
     const res = await call(`/runs/${root.id}/dispatch`, { objective: 'sneak in', backend: 'antigravity', title: 'sneak' });

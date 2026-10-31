@@ -3333,6 +3333,8 @@ export class RunManager {
     const run = this.store.getRun(runId);
     if (!run || run.status !== 'failed') return;
     const failure = classifyAgentFailure(run.error);
+    // The cause, on the record, so the cockpit (the morning digest) can say "needs a sign-in" without re-reading prose.
+    if (failure !== 'other' && run.failureClass !== failure) this.store.updateRun(runId, { failureClass: failure });
     if (failure === 'transient') {
       this.scheduleTransientRetry(run);
       return;

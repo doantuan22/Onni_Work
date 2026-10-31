@@ -29,6 +29,7 @@ import { isSignalTerminationExit, prependSystemPrompt } from './agent-runner.ts'
 import { buildChildEnv } from './agent-env.ts';
 import { antigravityLaunch, resolveAntigravityExecutable } from './antigravity-bin.ts';
 import { probeAntigravityVersion } from './antigravity-cli.ts';
+import { AGY_ERROR_EXIT_CODE, needsSignIn, parseAgyError, signInMessage } from './antigravity-errors.ts';
 import { antigravityPermissionArgs } from './antigravity-permissions.ts';
 import { createAntigravityState, foldAntigravityFrame } from './antigravity-ui-mapper.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
@@ -284,8 +285,11 @@ export class AntigravityRunner implements AgentRunner {
       spawnFailed = wrapSpawnError(err, this.bin);
     });
     const stdoutLines = bufferedLines(child.stdout);
-    // agy never reads our stdin in print mode; a write to a dead pipe must not become an unhandled error.
+    // agy never needs our stdin in print mode, and an agy that is NOT signed in may try to read a login
+    // from it: closing it now gives that read an immediate EOF instead of a wait with no end.
+    // (A write to a dead pipe must not become an unhandled error either.)
     child.stdin.on('error', () => {});
+    child.stdin.end();
 
     const toolCalls: AgentToolCallRecord[] = [];
     const textChunks: string[] = [];
@@ -297,6 +301,12 @@ export class AntigravityRunner implements AgentRunner {
     let resultSeen = false;
     let resultError: string | undefined;
     const stderrChunks: string[] = [];
+    // Lines that were not stream-json (a login prompt printed to stdout, say): kept only to explain a failure.
+    const noiseLines: string[] = [];
+    /** Everything agy said outside the stream — what "needs a sign-in" is read from. */
+    const saidOutside = (): string => `${stderrChunks.join('')}${String.fromCharCode(10)}${noiseLines.join(String.fromCharCode(10))}`;
+    /** The watchdog's reason, or a sign-in message when agy was in fact waiting for a login. */
+    const stalled = (generic: string): string => (needsSignIn(saidOutside()) ? signInMessage(saidOutside().trim().split(String.fromCharCode(10)).filter(Boolean).at(-1) ?? '') : generic);
     let mapped = createAntigravityState({ ...(spec.model ? { model: spec.model } : {}), level });
 
     const emit = (event: AgentEvent) => {
@@ -317,7 +327,7 @@ export class AntigravityRunner implements AgentRunner {
 
     // The startup watchdog: nothing at all from agy after spawn. Cleared by the first stdout byte.
     const startup = setTimeout(() => {
-      watchdogReason = `antigravity produced no output within ${Math.round(this.startupMs / 1000)}s of starting and was killed — agy is known to hang upstream when stdout is not a terminal; Continue tries again`;
+      watchdogReason = stalled(`antigravity produced no output within ${Math.round(this.startupMs / 1000)}s of starting and was killed — agy is known to hang upstream when stdout is not a terminal; Continue tries again`);
       terminatedByOnni = true;
       stop();
     }, this.startupMs);
@@ -327,7 +337,7 @@ export class AntigravityRunner implements AgentRunner {
     // that timer does not apply to a running turn, so agy keeps a bound of its own.
     const limitMs = spec.timeoutMs && spec.timeoutMs > 0 ? spec.timeoutMs : this.silenceMs;
     const deadline = armInactivityDeadline(limitMs, () => {
-      watchdogReason = inactivityTimeoutMessage('antigravity', limitMs, deadline.expiredBy);
+      watchdogReason = stalled(inactivityTimeoutMessage('antigravity', limitMs, deadline.expiredBy));
       terminatedByOnni = true;
       stop();
     });
@@ -356,7 +366,9 @@ export class AntigravityRunner implements AgentRunner {
           try {
             parsed = JSON.parse(line);
           } catch {
-            continue; // noise, or a cut-off line: skipped, never fatal
+            // noise, or a cut-off line: skipped, never fatal (a few are kept to explain a failure)
+            if (noiseLines.length < 20) noiseLines.push(line.slice(0, 300));
+            continue;
           }
           const folded = foldAntigravityFrame(parsed, mapped);
           mapped = folded.state;
@@ -408,8 +420,12 @@ export class AntigravityRunner implements AgentRunner {
 
       if (exitCode !== 0 && exitCode !== null) {
         const stderr = stderrChunks.join('').trim();
-        const detail = stderr ? ` — ${stderr.split('\n').slice(-3).join(' | ')}` : '';
-        const message = `antigravity exited with code ${exitCode}${detail}`;
+        const structured = parseAgyError(stderr);
+        const lastLine = stderr.split(String.fromCharCode(10)).filter(Boolean).at(-1) ?? '';
+        const detail = stderr ? ` — ${(structured?.text ?? stderr.split(String.fromCharCode(10)).slice(-3).join(' | ')).slice(0, 400)}` : '';
+        const message = needsSignIn(saidOutside())
+          ? signInMessage(structured?.text ?? lastLine)
+          : `antigravity exited with code ${exitCode}${exitCode === AGY_ERROR_EXIT_CODE ? ' (the turn ended on an agent or model error)' : ''}${detail}`;
         onEvent?.({ type: 'error', message });
         throw new Error(message);
       }
@@ -419,7 +435,9 @@ export class AntigravityRunner implements AgentRunner {
 
       if (!resultSeen) {
         const stderr = stderrChunks.join('').trim();
-        const message = `antigravity exited without a result${stderr ? ` — ${stderr.split('\n').slice(-2).join(' | ')}` : ''}`;
+        const message = needsSignIn(saidOutside())
+          ? signInMessage(stderr.split(String.fromCharCode(10)).filter(Boolean).at(-1) ?? '')
+          : `antigravity exited without a result${stderr ? ` — ${stderr.split(String.fromCharCode(10)).slice(-2).join(' | ')}` : ''}`;
         onEvent?.({ type: 'error', message });
         throw new Error(message);
       }

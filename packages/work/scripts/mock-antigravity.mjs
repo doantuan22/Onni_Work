@@ -8,8 +8,15 @@
 //   mock:silent          init, then no output at all                     (watchdog)
 //   mock:nostart         no output at all                                (startup watchdog)
 //   mock:badlines        noise and a cut-off line around valid frames
+//   mock:login-eof       not signed in: asks for a login on stdin; at EOF prints AGY_ERROR and exits 3
+//   mock:login-hang      not signed in: prints a sign-in prompt, then ignores stdin and hangs (watchdog)
+//   mock:grandchild      starts a long-lived grandchild (pid -> ONNI_MOCK_PID_FILE), then hangs silently
+//
+// The login scenarios are SYNTHETIC: the real "not signed in" output was never captured (spike step 0, e).
+// Only the shape is documented — `AGY_ERROR: {…}` on stderr and exit code 3 (`agy changelog`).
 
-import { appendFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { appendFileSync, writeFileSync } from 'node:fs';
 
 const argv = process.argv.slice(2);
 
@@ -45,14 +52,30 @@ const step = (index, state, type, extra = {}) =>
   emit({ event: 'step_update', step_update: { conversation_id: conversationId, step_index: index, state, step_type: type, ...extra } });
 const usage = { input_tokens: 100, output_tokens: 20, thinking_tokens: 0, cache_read_tokens: 0, total_tokens: 120 };
 
-if (prompt.includes('mock:nostart')) setInterval(() => {}, 1_000_000);
+const SIGN_IN_PROMPT = 'Sign in required: open https://accounts.example.invalid/signin in a browser and paste the code here\n';
+if (prompt.includes('mock:login-eof')) {
+  process.stderr.write(SIGN_IN_PROMPT);
+  // A real agy would block here reading the pasted code. EOF on stdin ends the wait.
+  process.stdin.resume();
+  process.stdin.on('end', () => {
+    process.stderr.write('AGY_ERROR: {"status":"UNAUTHENTICATED","code":401,"retryable":false,"error_id":"mock-0001","message":"not signed in"}\n');
+    process.stderr.write('', () => process.exit(3));
+  });
+} else if (prompt.includes('mock:login-hang')) {
+  process.stderr.write(SIGN_IN_PROMPT);
+  setInterval(() => {}, 1_000_000); // never reads stdin: only a watchdog can end this
+} else if (prompt.includes('mock:nostart')) setInterval(() => {}, 1_000_000);
 else {
   emit({
     event: 'init',
     conversation_id: conversationId,
     init: { cwd: process.cwd(), tools: ['write_file', 'run_command'], permission_mode: 'request-review' },
   });
-  if (prompt.includes('mock:silent')) setInterval(() => {}, 1_000_000);
+  if (prompt.includes('mock:grandchild')) {
+    const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1e6)'], { stdio: 'ignore' });
+    if (process.env.ONNI_MOCK_PID_FILE) writeFileSync(process.env.ONNI_MOCK_PID_FILE, String(grandchild.pid));
+    setInterval(() => {}, 1_000_000);
+  } else if (prompt.includes('mock:silent')) setInterval(() => {}, 1_000_000);
   else run();
 }
 

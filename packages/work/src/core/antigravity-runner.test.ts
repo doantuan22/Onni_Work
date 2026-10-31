@@ -2,7 +2,7 @@
  * The Antigravity runner against the bundled mock `agy` (scripts/mock-antigravity.mjs): no real
  * agent is ever started. Prompt markers pick the scenario; see the mock's header.
  */
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -16,6 +16,7 @@ import {
   buildAntigravityArgs,
   liveAntigravityChildren,
 } from './antigravity-runner.ts';
+import { classifyAgentFailure } from './agent-failure-class.ts';
 import type { UiEvent } from './ui-events.ts';
 
 const FAST = { silenceMs: 600, startupMs: 600, exitGraceMs: 500, killGraceMs: 300 };
@@ -145,6 +146,73 @@ describe('AntigravityRunner (mock agy)', () => {
   });
 });
 
+/** True while a process with this pid exists (signal 0 only probes). */
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+describe('not signed in (synthetic scenarios: the real wording was never captured)', () => {
+  it('never waits on a login: stdin is closed at spawn, so a login read ends at once', async () => {
+    const started = Date.now();
+    const { error, events } = await runTurn('mock:login-eof', {}, { startupMs: 30_000, silenceMs: 30_000 });
+    expect(Date.now() - started).toBeLessThan(15_000); // no watchdog was needed
+    expect(error).toContain('not signed in');
+    expect(error).toContain('run `agy` once');
+    expect(events.filter((e) => e.type === 'error')).toHaveLength(1);
+    expect(liveAntigravityChildren()).toBe(0);
+  }, 30_000);
+
+  it('the failure is classified as auth, so the run says "sign in, then Continue" and the digest can count it', async () => {
+    const { error } = await runTurn('mock:login-eof', {}, { startupMs: 30_000, silenceMs: 30_000 });
+    expect(classifyAgentFailure(error)).toBe('auth');
+  }, 30_000);
+
+  it('an agy that prints a login prompt and then ignores stdin is killed by the watchdog, and reported as a sign-in', async () => {
+    const { events, error } = await runTurn('mock:login-hang', {}, { startupMs: 500, silenceMs: 30_000 });
+    expect(error).toBeUndefined(); // a watchdog kill reports through an error event, like the other timeouts
+    const failure = events.find((e) => e.type === 'error') as { message: string } | undefined;
+    expect(failure?.message).toContain('not signed in');
+    expect(classifyAgentFailure(failure?.message)).toBe('auth');
+    expect(events.at(-1)).toEqual({ type: 'done' });
+    expect(liveAntigravityChildren()).toBe(0);
+  }, 30_000);
+});
+
+describe('process tree cleanup', () => {
+  it('an interrupt kills the grandchild agy started, not only agy', async () => {
+    const pidFile = join(dir, 'grandchild.pid');
+    const session = runner({ startupMs: 30_000, silenceMs: 30_000 }).startSession(
+      { userPrompt: 'mock:grandchild', cwd: dir, env: { ONNI_MOCK_PID_FILE: pidFile } },
+      () => {},
+    );
+    const deadline = Date.now() + 10_000;
+    while (!existsSync(pidFile) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50));
+    const grandchild = Number(readFileSync(pidFile, 'utf8'));
+    expect(alive(grandchild)).toBe(true);
+    session.interrupt();
+    await session.result;
+    const gone = Date.now() + 8_000;
+    while (alive(grandchild) && Date.now() < gone) await new Promise((r) => setTimeout(r, 100));
+    expect(alive(grandchild)).toBe(false);
+    expect(liveAntigravityChildren()).toBe(0);
+  }, 40_000);
+
+  it('a watchdog kill takes the grandchild down too', async () => {
+    const pidFile = join(dir, 'grandchild-wd.pid');
+    const { events } = await runTurn('mock:grandchild', { env: { ONNI_MOCK_PID_FILE: pidFile } }, { startupMs: 30_000, silenceMs: 700 });
+    expect(events.some((e) => e.type === 'error')).toBe(true);
+    const grandchild = Number(readFileSync(pidFile, 'utf8'));
+    const gone = Date.now() + 8_000;
+    while (alive(grandchild) && Date.now() < gone) await new Promise((r) => setTimeout(r, 100));
+    expect(alive(grandchild)).toBe(false);
+  }, 40_000);
+});
+
 describe('buildAntigravityArgs', () => {
   const base = { userPrompt: 'task', permissionLevel: 'files-only' as const };
 
@@ -159,7 +227,7 @@ describe('buildAntigravityArgs', () => {
   });
 
   it('allow-rules passes one --settings JSON; bypass passes only the dangerous flag', () => {
-    const rules = buildAntigravityArgs({ ...base, permissionLevel: 'allow-rules', bashAllowlist: ['npm test'] });
+    const rules = buildAntigravityArgs({ ...base, permissionLevel: 'allow-rules', bashAllowlist: ['npm test'] }); // one exact line
     const settings = JSON.parse(rules[rules.indexOf('--settings') + 1]!) as { permissions: { allow: string[] } };
     expect(settings.permissions.allow).toContain('command(npm test)');
     expect(rules).not.toContain('--dangerously-skip-permissions');
