@@ -241,6 +241,10 @@ export const BACKEND_ALLOW_PREFIXES: Record<AgentBackend, readonly string[]> = {
   // it authenticates with (`GH_TOKEN`, `GITHUB_TOKEN`, `GH_HOST`) are already forwarded to every
   // backend below, and `COPILOT_GITHUB_TOKEN` is covered by this prefix — so nothing else widens.
   copilot: ['COPILOT_'],
+  // agy authenticates with the OS user's stored login (nothing under `~/.gemini` holds it — an
+  // empty HOME still worked, spike step 0), so it needs no secret from the environment. Its own
+  // family is forwarded in case a data-dir override is set; nothing else widens.
+  antigravity: ['ANTIGRAVITY_', 'AGY_'],
 };
 
 /** `gh` handoff (draft PRs) works in every backend — the one credential the

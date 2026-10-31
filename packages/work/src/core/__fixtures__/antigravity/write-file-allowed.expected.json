@@ -1,0 +1,195 @@
+[
+  {
+    "type": "session.started",
+    "sessionId": "00000000-0000-4000-8000-000000000001",
+    "backend": "antigravity",
+    "cwd": "<CWD>",
+    "tools": [
+      "ask_custom_permission",
+      "ask_permission",
+      "ask_question",
+      "browser_click_element",
+      "browser_drag_pixel_to_pixel",
+      "browser_get_dom",
+      "browser_get_network_request",
+      "browser_input",
+      "browser_list_network_requests",
+      "browser_mouse_down",
+      "browser_mouse_up",
+      "browser_move_mouse",
+      "browser_press_key",
+      "browser_refresh_page",
+      "browser_resize_window",
+      "browser_scroll",
+      "browser_scroll_dom",
+      "browser_select_option",
+      "browser_subagent",
+      "call_mcp_tool",
+      "capture_browser_console_logs",
+      "capture_browser_screenshot",
+      "click_browser_pixel",
+      "command_status",
+      "define_subagent",
+      "delete_knowledge",
+      "execute_browser_javascript",
+      "find_by_name",
+      "finish",
+      "generate_image",
+      "grep_search",
+      "invoke_subagent",
+      "list_browser_pages",
+      "list_dir",
+      "list_permissions",
+      "list_plugin_accounts",
+      "list_resources",
+      "manage_inbox",
+      "manage_subagents",
+      "manage_task",
+      "multi_replace_file_content",
+      "notebook_edit",
+      "notebook_execution",
+      "open_browser_url",
+      "read_browser_page",
+      "read_resource",
+      "read_url_content",
+      "replace_file_content",
+      "run_command",
+      "run_workflow",
+      "schedule",
+      "search_marketplace",
+      "search_web",
+      "sed_file",
+      "send_command_input",
+      "send_message",
+      "view_file",
+      "wait",
+      "wait_5_seconds",
+      "write_to_file"
+    ]
+  },
+  {
+    "type": "turn.started",
+    "turnId": "turn_1"
+  },
+  {
+    "type": "usage.updated",
+    "usage": {
+      "input": 6914,
+      "output": 436,
+      "total": 7350,
+      "reasoning": 348
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "kind": "tool",
+      "id": "tool_2",
+      "name": "write_file",
+      "toolKind": "edit",
+      "title": "Edit <PATH>",
+      "status": "running",
+      "input": {
+        "Path": "<PATH>"
+      },
+      "locations": [
+        {
+          "path": "<PATH>"
+        }
+      ]
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "kind": "tool",
+      "id": "tool_2",
+      "name": "write_file",
+      "toolKind": "edit",
+      "title": "Edit <PATH>",
+      "status": "completed",
+      "input": {
+        "Path": "<PATH>"
+      },
+      "locations": [
+        {
+          "path": "<PATH>"
+        }
+      ]
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "kind": "message",
+      "id": "item_1",
+      "role": "assistant",
+      "text": ""
+    }
+  },
+  {
+    "type": "item.delta",
+    "itemId": "item_1",
+    "field": "text",
+    "delta": "[hello.txt"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "item_1",
+    "field": "text",
+    "delta": "](file:///<PATH>"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "item_1",
+    "field": "text",
+    "delta": "al/Temp/claude/d--Multi-"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "item_1",
+    "field": "text",
+    "delta": "Agent"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "item_1",
+    "field": "text",
+    "delta": "<CWD>/hello.txt) created.\n\nDONE"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "item_1",
+    "field": "text",
+    "delta": "\n"
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "kind": "message",
+      "id": "item_1",
+      "role": "assistant",
+      "text": "[hello.txt](file:///<PATH>al/Temp/claude/d--Multi-Agent<CWD>/hello.txt) created.\n\nDONE\n"
+    }
+  },
+  {
+    "type": "usage.updated",
+    "usage": {
+      "input": 14340,
+      "output": 746,
+      "total": 15086,
+      "reasoning": 579
+    }
+  },
+  {
+    "type": "turn.completed",
+    "turnId": "turn_1",
+    "stopReason": "end_turn",
+    "usage": {
+      "input": 14340,
+      "output": 746,
+      "total": 15086,
+      "reasoning": 579
+    }
+  }
+]

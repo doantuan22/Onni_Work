@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolveCursorAgentBin } from './cursor-agent-runner.ts';
 import { isForeignCursorAgent } from './cursor-bin.ts';
+import { resolveAntigravityBin } from './antigravity-bin.ts';
 import { cliVersionFrom } from './provider-auth.ts';
 import { resolveClaudeBin } from './claude-bin.ts';
 import { ghEnv } from './gh-env.ts';
@@ -13,7 +14,7 @@ const exec = (bin: string, args: readonly string[], opts: { timeout: number; env
   execAsync(...spawnableCommand(bin, args), opts);
 
 export interface BackendCheck {
-  name: 'claude' | 'codex' | 'opencode' | 'cursor' | 'pi' | 'junie' | 'copilot' | 'gh' | 'git';
+  name: 'claude' | 'codex' | 'opencode' | 'cursor' | 'pi' | 'junie' | 'copilot' | 'antigravity' | 'gh' | 'git';
   available: boolean;
   version?: string;
   hint?: string;
@@ -35,6 +36,7 @@ export async function detectEnvironment(): Promise<BackendCheck[]> {
     probePi(),
     probeJunie(),
     probeCopilot(),
+    probeAntigravity(),
     probeGh(),
     probeGit(),
   ]);
@@ -226,6 +228,32 @@ async function probeCopilot(): Promise<BackendCheck> {
       name: 'copilot',
       available: false,
       hint: 'optional: install GitHub Copilot CLI (`npm i -g @github/copilot`) and run `copilot login` to use the copilot runner',
+    };
+  }
+}
+
+async function probeAntigravity(): Promise<BackendCheck> {
+  // Dry-run stands the runner up on the shared mock, so report it present.
+  if (process.env.ONNI_DRY_RUN === '1') {
+    return { name: 'antigravity', available: true, version: 'mock (ONNI_DRY_RUN=1)' };
+  }
+  const bin = resolveAntigravityBin();
+  try {
+    // `--version` needs no login and no network — the sign-in state is the provider descriptor's
+    // job (`provider-auth.ts`, via `agy models`), never detection's.
+    const { stdout } = await exec(bin, ['--version'], { timeout: 10_000 });
+    return {
+      name: 'antigravity',
+      available: true,
+      version: stdout.trim().split(/\r?\n/)[0]?.trim() ?? '',
+      hint: 'if not signed in, run `agy` once and sign in',
+    };
+  } catch {
+    // A missing agy is never a boot failure — the runner just isn't offered.
+    return {
+      name: 'antigravity',
+      available: false,
+      hint: 'optional: install the Antigravity CLI (`agy`) and sign in to use the antigravity runner',
     };
   }
 }

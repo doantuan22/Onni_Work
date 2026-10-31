@@ -55,6 +55,7 @@ const UNSUPPORTED_IDENTITY_REASON: Record<Exclude<ProviderId, 'claude' | 'codex'
   pi: 'onni does not yet read Pi account details from its config folder.',
   junie: 'onni does not yet read Junie account details from its config folder.',
   copilot: 'onni does not yet read Copilot account details from its config folder.',
+  antigravity: 'Antigravity keeps its login outside its config folder, so onni cannot read it.',
 };
 
 /** Read a JSON file under the cap. `null` for absent, unreadable, oversized or malformed. */

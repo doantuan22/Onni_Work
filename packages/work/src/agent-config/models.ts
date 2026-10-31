@@ -1,4 +1,5 @@
 import { RUNNER_IDS, type RunnerId } from '../core/agent-runner.ts';
+import { antigravityModelSettingsStrategy } from './model-settings/antigravity.ts';
 import { claudeModelSettingsStrategy } from './model-settings/claude.ts';
 import { codexModelSettingsStrategy } from './model-settings/codex.ts';
 import { junieModelSettingsStrategy } from './model-settings/junie.ts';
@@ -24,6 +25,7 @@ const MODEL_SETTINGS_STRATEGIES: Record<RunnerId, AgentModelSettingsStrategy> = 
   pi: piModelSettingsStrategy,
   junie: junieModelSettingsStrategy,
   copilot: copilotModelSettingsStrategy,
+  antigravity: antigravityModelSettingsStrategy,
 };
 
 export function readAgentModelSettings(

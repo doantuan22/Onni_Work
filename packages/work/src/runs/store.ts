@@ -217,6 +217,8 @@ export const runRecordSchema = z.object({
   limits: runLimitsSchema.optional().catch(undefined),
   roster: rosterSchema.optional().catch(undefined),
   managerDidNotDelegate: z.boolean().optional(),
+  agentVersion: z.string().optional().catch(undefined),
+  deniedActions: z.array(z.string()).max(50).optional().catch(undefined),
   limitUsage: limitUsageSchema.optional().catch(undefined),
   limitHit: limitHitSchema.optional().catch(undefined),
   waitExpiredAt: z.string().optional(),

@@ -1,6 +1,7 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import type { WebhookAttentionRequest, TrackerAssociation, UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, type AgentPermissionLevel, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
 import { TrackerAgentBindingError } from '../server/tracker/agent-credentials.ts';
@@ -1599,6 +1600,35 @@ export class RunManager {
    * fresh per launch, like `agentEnvForStep`, so an edit applies to the very next session.
    * Never throws: an unreadable or broken file means a run without them, plus a note.
    */
+  /**
+   * Antigravity's permission level for this run (ADR 0007): the Settings choice, with `bypass`
+   * lowered for an unattended run — autonomous or dispatched, which includes every manager–worker
+   * child — so a choice made for a watched task can never widen a tree nobody watches. Other
+   * backends have no level and get nothing.
+   */
+  private async agentPermissionSpec(
+    runId: string,
+    backend: string,
+    onEvent: (event: AgentEvent) => void,
+  ): Promise<{ permissionLevel?: AgentPermissionLevel }> {
+    if (backend !== 'antigravity') return {};
+    const config = await loadWorkspaceConfig().catch(() => null);
+    const configured = config?.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
+    const { level, downgradedBecause } = effectiveAntigravityLevel(configured, isUnattended(this.store.getRun(runId)));
+    if (downgradedBecause) onEvent({ type: 'note', message: `antigravity: ${downgradedBecause}` });
+    return { permissionLevel: level };
+  }
+
+  /** The notes a backend marks for the run record: the CLI version, and what it refused (digest). */
+  private recordNoteMeta(runId: string, event: Extract<AgentEvent, { type: 'note' }>): void {
+    if (event.kind === 'agent-version' && event.value) {
+      this.store.updateRun(runId, { agentVersion: event.value });
+    } else if (event.kind === 'denied-action') {
+      const denied = [...(this.store.getRun(runId)?.deniedActions ?? []), event.message];
+      this.store.updateRun(runId, { deniedActions: denied.slice(-50) });
+    }
+  }
+
   private async privateMcpForLaunch(
     backend: RunnerId,
     onEvent: (event: AgentEvent) => void,
@@ -5043,6 +5073,7 @@ export class RunManager {
         return;
       }
       this.store.appendEvent(runId, { ...event, stepId });
+      if (event.type === 'note') this.recordNoteMeta(runId, event);
       if (event.type === 'error') {
         sessionError ??= event.message;
         state.session?.interrupt();
@@ -5321,6 +5352,7 @@ export class RunManager {
       ? `${context}\n\n---\n\n## New user instruction\n${openingPrompt}`
       : openingPrompt;
     state.grantedAttachmentLibrary = this.prepareAttachmentLibrary();
+    const permissionSpec = await this.agentPermissionSpec(runId, continueBackend, onEvent);
     const launch = (launchSessionId: string, resume: boolean, context: string | undefined): AgentSession => {
       const contextualOpeningPrompt = withContext(context);
       const started = runner.startSession(
@@ -5343,6 +5375,7 @@ export class RunManager {
           allowedTools: state.readOnly ? READ_ONLY_TOOLS : toolsStep?.allowedTools ?? DEFAULT_ALLOWED_TOOLS,
           bashAllowlist: state.readOnly ? undefined : toolsStep?.bashAllowlist,
           ...(isUnattended(this.store.getRun(runId)) ? { deniedTools: [...UNATTENDED_DENIED_TOOLS] } : {}),
+          ...permissionSpec,
           additionalDirectories: agentDirectories(
             join(this.dataDir, 'runs'),
             state.grantedAttachmentLibrary,
@@ -7155,6 +7188,7 @@ export class RunManager {
         return;
       }
       emit({ ...event, stepId: step.id });
+      if (event.type === 'note') this.recordNoteMeta(runId, event);
       if (event.type === 'error') {
         sessionError ??= event.message;
         state.session?.interrupt();
@@ -7437,6 +7471,7 @@ export class RunManager {
     state.currentStepId = step.id;
     this.beginUsageInvocation(runId, state, step.id);
     if (state.cancelled) return 'cancelled';
+    const permissionSpec = await this.agentPermissionSpec(runId, stepBackend, onEvent);
     const launch = (launchSessionId: string, resume: boolean, prompt: string): AgentSession =>
       runner.startSession(
         {
@@ -7460,6 +7495,7 @@ export class RunManager {
           allowedTools: state.readOnly ? READ_ONLY_TOOLS : step.allowedTools ?? DEFAULT_ALLOWED_TOOLS,
           bashAllowlist: state.readOnly ? undefined : step.bashAllowlist,
           ...(isUnattended(this.store.getRun(runId)) ? { deniedTools: [...UNATTENDED_DENIED_TOOLS] } : {}),
+          ...permissionSpec,
           // The handoff file lives outside the worktree — grant access.
           additionalDirectories: agentDirectories(
             join(this.dataDir, 'runs'),

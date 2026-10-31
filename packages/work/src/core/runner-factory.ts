@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import type { AgentBackend, AgentRunner, AgentRunSpec, RunnerId } from './agent-runner.ts';
+import { AntigravityRunner } from './antigravity-runner.ts';
 import { ClaudeCliRunner } from './claude-cli-runner.ts';
 import { CodexAppServerRunner } from './codex-app-server-runner.ts';
 import { JunieRunner } from './junie-runner.ts';
@@ -33,6 +34,8 @@ function createBareRunner(backend: AgentBackend | RunnerId | undefined): AgentRu
       return new JunieRunner();
     case 'copilot':
       return new CopilotAcpRunner();
+    case 'antigravity':
+      return new AntigravityRunner();
     case 'claude':
     case 'claude-cli':
     default:

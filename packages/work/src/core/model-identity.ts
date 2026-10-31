@@ -119,6 +119,10 @@ export const BACKEND_MODEL_MAP: Readonly<Record<AgentBackend, BackendModelMap>> 
   // the run (#405's invariant). Rejecting a bare id the way opencode and pi do would reject the
   // only form Copilot accepts.
   copilot: { defaultProvider: 'github' },
+  // agy's `--model` takes its own bare catalog ids (`gemini-3.8-flash-high`, `claude-sonnet-4-6`,
+  // `gpt-oss-120b-medium`) — other vendors' models served through Google's service. The default
+  // provider names the backend itself, like junie, so a bare id resolves instead of being rejected.
+  antigravity: { defaultProvider: 'antigravity' },
 };
 
 const SLASH = '/';
