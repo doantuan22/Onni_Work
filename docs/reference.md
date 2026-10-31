@@ -93,6 +93,32 @@ One browser window, with live task updates over Server-Sent Events:
 
 **Scheduled-start recovery:** a creation-key replay does not create another schedule, and the scheduler reconciles retained run records before retrying a partial start. This is not a global exactly-once execution guarantee: independent cockpits can recover the same queued run, and **Start missing runs** can recreate a variant whose record was deleted manually or by retention. Check existing work before retrying; **Dismiss** closes an ambiguous entry without starting work.
 
+### New task: the Task settings panel
+
+On **New task**, the prompt takes the main column and every run setting lives in the **Task settings**
+panel on the right ([ADR 0008](adr/0008-new-task-panel.md)). The panel is open by default at 1100px and
+wider, collapses from its header (remembered per browser), and becomes a right drawer below that width,
+opened from the summary line under the prompt and closed with Escape.
+
+- **Summary line** — read-only, always visible even with the panel folded: agent · model · where it
+  runs · limits · base branch. Dangerous states are highlighted in words: `autonomous`, `limits: ∞`,
+  `direct checkout`, and `manager + N workers`. Click a segment to open and focus that section.
+- **Presets** come first. Built-ins are **Quick** (defaults, ×1, isolated worktree, autonomous off,
+  workspace limits), **Overnight (safe)** (isolated worktree, new branch, autonomous on, capped limits —
+  never unlimited) and **Manager–Worker** (Settings' default roster). Save the current settings as your
+  own task preset, then rename or delete it; a changed preset shows `(modified)` with **Restore**.
+  User presets live in `~/.onni/config.json` (`taskPresets`). Legacy Manager–Worker presets appear here
+  read-only; a task preset with the same name wins.
+- **Who works** — Agent, Model, Variants, and the Manager–Worker roster.
+- **Where it runs** — a two-state choice, *Isolated worktree* or *Edit my checkout directly*, plus New
+  branch and Base branch. The default is the isolated worktree; change it under Settings → Resources →
+  New task defaults → *Use a worktree by default*. Autonomous runs must use an isolated worktree, so
+  turning Autonomous on switches to one and direct checkout stays disabled until it is off.
+- **Autonomy & limits** — Autonomous (with its consequence spelled out) and the per-run Limits
+  (Default / Custom / Unlimited ∞). Choosing Unlimited asks once; a draft never restores it.
+- **Skill** — the skill or workflow this task runs.
+- **Advanced** — read-only Ask, follow-up generation, prompt templates and dispatch, folded by default.
+
 
 The cockpit is a React app served pre-built by the service — running `onni` means
 no build step and no dev server on your machine — with a dark/light
@@ -586,7 +612,7 @@ the API below.
 
 ### Limits and unattended safety
 
-Every run carries a snapshot of its **limits** (Settings → Resources → Limits, the composer's *Limits* pill, or
+Every run carries a snapshot of its **limits** (Settings → Resources → Limits, the Task settings panel's *Limits* control, or
 the CLI): *Capped* applies exactly the ceilings you give — max cost (USD), max tokens
 (cost-weighted: cache reads count at 10%), max minutes of active running time, max agent steps —
 and a blank ceiling is no limit on that axis; *Unlimited* (`∞`) applies none. A fresh install is
@@ -617,8 +643,8 @@ maxStepIterations? }`) and `POST /runs/:id/continue` accepts `raiseLimits`.
 ### Manager / Worker
 
 One agent can manage a task and hand work to a **roster** you choose; agents you do not list are never
-used. Pick it in the new-task composer (**Manager / Workers**, optionally from a preset saved under
-Settings → Manager–Worker), or from a shell with a cockpit running:
+used. Pick it under **Task settings → Who works → Manager–Worker** on the new-task page (optionally from
+a preset saved under Settings → Manager–Worker), or from a shell with a cockpit running:
 
 ```bash
 onni run "migrate the API to v2" --manager claude:opus --workers codex:gpt-5,opencode

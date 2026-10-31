@@ -275,6 +275,7 @@ The supported dev machine here is Windows 11 with Git Bash.
 | Run limits, unattended safety | `packages/contract/src/limits.ts`, `packages/work/src/workflows/limits.ts`, `push-guard.ts`, `unattended.ts` |
 | Live signals | `.ai/specs/2026-07-23-websocket-subscriptions.md`, `server/ws.ts`, `web/src/api/ws.ts` |
 | Cockpit UI | `packages/web/src/app.tsx`, `routes.tsx`, `api/` |
+| The `/new` Task settings panel, presets | `docs/adr/0008-new-task-panel.md`, `packages/web/src/components/task-settings-panel.tsx`, `packages/web/src/lib/new-task-presets.ts`, `routes/new-task.tsx` |
 | Agent config files | `packages/work/src/agent-config/` (`catalog.ts` owns vendor knowledge) |
 
 ## Related documents
