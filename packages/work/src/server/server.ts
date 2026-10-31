@@ -3385,6 +3385,14 @@ export function createApp(deps: ServerDeps) {
   const workspaceConfigRoutes = new Hono<ProjectApiEnv>()
     .get('/workspace/config', async (c) => c.json(workspaceConfigBody(await loadWorkspaceConfig())))
 
+    // Emergency stop (docs/design/unattended-safety.md §6): every live run in every open project.
+    .post('/workspace/stop-all', (c) => {
+      const managers = new Set([deps.manager, ...contexts.ids().flatMap((id) => contexts.peek(id)?.manager ?? [])]);
+      let stopped = 0;
+      for (const manager of managers) stopped += manager.cancelAll();
+      return c.json({ stopped });
+    })
+
     // Live host totals for a REMOTE cockpit (spec `.ai/specs/2026-09-20-host-resource-telemetry.md`):
     // the local cockpit gets them pushed over the `host` topic, but a remote one opens no
     // WebSocket, so this is its snapshot + reconcile target. Same staleness-ruled sampler read as

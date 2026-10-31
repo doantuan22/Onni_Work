@@ -170,4 +170,19 @@ describe('run limits', () => {
     started.push(created.id);
     expect(store.getRun(created.id)!.limits).toEqual({ mode: 'none' });
   }, 40_000);
+
+  it('emergency stop cancels every live and queued run, keeps worktrees and leaves sessions continuable', async () => {
+    const a = await parkedRun({ mode: 'none' });
+    const b = manager.startRun(STEP, { task: 'mock:monitoring second', limits: { mode: 'none' } });
+    const queued = manager.startRun(STEP, { task: 'mock:done third', limits: { mode: 'none' } });
+    started.push(b.id, queued.id);
+    expect(manager.cancelAll()).toBeGreaterThanOrEqual(2);
+    await stopped(a.id);
+    await stopped(b.id);
+    await stopped(queued.id);
+    expect(existsSync(store.getRun(a.id)!.worktreePath!)).toBe(true);
+    await waitFor(a.id, () => !manager.isActive(a.id));
+    expect(manager.cancelAll()).toBe(0);
+    expect(manager.continueRun(a.id, {}).ok).toBe(true);
+  }, 60_000);
 });

@@ -3872,6 +3872,24 @@ export class RunManager {
     return this.cancelOne(runId);
   }
 
+  /**
+   * Emergency stop: cancel every run that is queued, live or waiting on a booked resume, then
+   * sweep their leftover processes through the same reaper a settled task uses. Worktrees and
+   * sessions stay (Continue still works); nothing here deletes work.
+   */
+  cancelAll(): number {
+    let stopped = 0;
+    const ids: string[] = [];
+    for (const run of this.store.listRuns()) {
+      if (isTerminalStatus(run.status) && !(run.status === 'failed' && run.autoResumeAt !== undefined)) continue;
+      if (this.lifecycle.isBlocked(run.id)) continue;
+      ids.push(run.id);
+      if (this.cancelOne(run.id)) stopped++;
+    }
+    this.reapLeftoverProcesses(ids, LEFTOVER_SETTLE_GRACE_MS, 'stopped by stop-all');
+    return stopped;
+  }
+
   /** One run's cancellation, with no regard for a hierarchy — what `cancel` has always done. */
   private cancelOne(runId: string): boolean {
     // Still waiting in the queue: just drop it there.

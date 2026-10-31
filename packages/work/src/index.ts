@@ -46,6 +46,9 @@ import { runTaskCommand } from './dispatch/task-cli.ts';
 import { runAutomationCommand } from './automations/automation-cli.ts';
 import { apiOrigin, pickPort } from './api-origin.ts';
 import { runRunsCommand } from './runs/runs-cli.ts';
+import type { RunLimitsRequest } from '@onni/contract';
+import { runStopCommand } from './runs/stop-cli.ts';
+import { limitsFromFlags } from './runs/limits-cli.ts';
 
 import { runTrackerConnectionsCommand } from './server/tracker/connections-cli.ts';
 import { runSecretsCommand } from './workspace/secrets-cli.ts';
@@ -100,7 +103,10 @@ Options:
 Zero config: uses your logged-in \`claude\` CLI (and \`gh\` for GitHub bits).
 Skills live in .ai/skills/, .ai/onni/skills/ and any team skills repos you
 configure (none by default — set skillsRepos in .ai/onni/config.json);
-workflows in .ai/onni/workflows/.`;
+workflows in .ai/onni/workflows/.
+
+Limits: onni run "<task>" --no-limit, or --limit cost=5,time=120,tokens=5000000,iterations=20
+        (default: the workspace setting). onni stop --all cancels every live task.`;
 
 async function main(): Promise<void> {
   if (process.argv[2] === 'tracker-connections') {
@@ -128,8 +134,15 @@ async function main(): Promise<void> {
     process.exitCode = await runRunsCommand(process.argv.slice(3));
     return;
   }
+  // `onni stop --all` (docs/design/unattended-safety.md §6): the emergency stop, via the running cockpit.
+  if (process.argv[2] === 'stop') {
+    process.exitCode = await runStopCommand(process.argv.slice(3));
+    return;
+  }
   const { values, positionals } = parseArgs({
     options: {
+      'no-limit': { type: 'boolean', default: false },
+      limit: { type: 'string' },
       port: { type: 'string', short: 'p', default: '4321' },
       repo: { type: 'string' },
       workflow: { type: 'string' },
@@ -171,7 +184,17 @@ async function main(): Promise<void> {
       await serveCommand(repoRoot, Number(values.port), !values['no-open'], values['bind-host']);
       return;
     case 'run':
-      await runCommand(repoRoot, positionals.slice(1).join(' ').trim(), values.workflow, values.model);
+      {
+        let limits;
+        try {
+          limits = limitsFromFlags({ noLimit: values['no-limit'], limit: values.limit });
+        } catch (error) {
+          console.error(`onni run: ${error instanceof Error ? error.message : String(error)}`);
+          process.exitCode = 2;
+          return;
+        }
+        await runCommand(repoRoot, positionals.slice(1).join(' ').trim(), values.workflow, values.model, limits);
+      }
       return;
     case 'init':
       initCommand(repoRoot);
@@ -426,9 +449,10 @@ async function runCommand(
   task: string,
   workflowName: string | undefined,
   model: string | undefined,
+  limits?: RunLimitsRequest,
 ): Promise<void> {
   if (!task) {
-    console.error('usage: onni run "<task>" [--workflow name] [--model model]');
+    console.error('usage: onni run "<task>" [--workflow name] [--model model] [--no-limit | --limit cost=5,time=120,tokens=5000000,iterations=20]');
     process.exitCode = 1;
     return;
   }
@@ -520,7 +544,7 @@ async function runCommand(
     }
   });
 
-  const run = manager.startRun(workflow, { task, model });
+  const run = manager.startRun(workflow, { task, model, ...(limits ? { limits } : {}) });
   // `review` is terminal here too (spec 009) — headless runs must not hang on
   // the GUI's review gate; the diff waits on the task branch/cockpit instead.
   const final = await new Promise<string>((resolveStatus) => {

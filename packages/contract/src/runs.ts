@@ -681,6 +681,9 @@ export const landResponseSchema = z.object({
 export type LandResponse = z.infer<typeof landResponseSchema>;
 
 /** `POST /runs/:id/continue` — a refusal to reopen is a 409 carrying the engine's reason. */
+/** `POST /workspace/stop-all` — the emergency stop: how many live runs were told to stop. */
+export const stopAllResponseSchema = z.object({ stopped: z.number().int().nonnegative() });
+export type StopAllResponse = z.infer<typeof stopAllResponseSchema>;
 export const continueResponseSchema = z.object({ continued: z.literal(true) });
 export type ContinueResponse = z.infer<typeof continueResponseSchema>;
 
