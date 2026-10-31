@@ -1,17 +1,22 @@
 import { ManagerWorkerPill } from '@/components/manager-worker-pill'
-import { LimitsPill } from '@/components/limits-pill'
 import { requestFromDraft, type LimitsDraft } from '@/lib/run-limits'
 import { previewSettingsKey, StartTimePicker, type StartChoice } from '@/components/start-time-picker'
-import { ApiError, createDeferredStart } from '@/api/client'
-import { deferredCreateInputSchema, type Roster } from '@onni/api-client'
+import { ApiError, createDeferredStart, putWorkspaceConfig } from '@/api/client'
+import {
+  deferredCreateInputSchema,
+  type ManagerPreset,
+  type Roster,
+  type TaskPreset as StoredTaskPreset,
+} from '@onni/api-client'
 import { markScheduledTasks } from '@/lib/scheduled-tasks-gate'
 import { automationsQueryKey } from './automations/use-automations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  AlertTriangleIcon,
   CheckIcon,
-  ChevronDownIcon,
   Clock3Icon,
   FolderOpenIcon,
+  InfoIcon,
   SparklesIcon,
   SquareIcon,
 } from 'lucide-react'
@@ -35,6 +40,7 @@ import {
   useUiState,
   useWorkspaceConfig,
   useWorkflows,
+  workspaceQueryKeys,
 } from '@/api/queries'
 import type {
   AttachmentEntry,
@@ -48,9 +54,12 @@ import { TwinkleBackdrop } from '@/components/centered-state'
 import { Composer, type ComposerHandle } from '@/components/composer/composer'
 import { DispatchToggle } from '@/components/dispatch-toggle'
 import { GhostCodeBackdrop } from '@/components/ghost-code-backdrop'
+import { LimitsPill } from '@/components/limits-pill'
 import { PickerPill, RunnerPill, chevron, chipClass } from '@/components/picker-pill'
 import { PromptTemplateMenu } from '@/components/prompt-template-menu'
 import { SourcePill } from '@/components/source-pill'
+import { TaskSettingsPanel, TaskSummary } from '@/components/task-settings-panel'
+import { IconTooltip } from '@/components/ui/icon-tooltip'
 import {
   Command,
   CommandEmpty,
@@ -71,6 +80,32 @@ import {
   orderSkillsByUsage,
 } from '@/lib/skills'
 import { useI18n } from '@/lib/i18n'
+import { NEW_TASK_PANEL_BREAKPOINT_PX, readPanelOpen, writePanelOpen } from '@/lib/new-task-panel-state'
+import {
+  AUTONOMY_NEEDS_WORKTREE,
+  builtinTaskPresets,
+  clampVariants,
+  configuredWorktreeDefault,
+  deleteTaskPreset,
+  describeRunLimits,
+  effectiveLimits,
+  limitsDraftFromRequest,
+  mergeManagerWorkerPresets,
+  persistedLimits,
+  renameTaskPreset,
+  resolvePanelWorktree,
+  saveTaskPreset,
+  setAutonomous,
+  setWorktreeMode,
+  storedTaskPresets,
+  taskSettingsEqual,
+  taskSummarySegments,
+  userTaskPresets,
+  type PanelSection,
+  type TaskPreset,
+  type TaskSettingsSnapshot,
+} from '@/lib/new-task-presets'
+import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 import { usableRunners } from '@/lib/provider-status'
 
@@ -350,12 +385,21 @@ export function NewTaskRoute() {
   // The hint line under the composer: up for 6 s after every change of the toggle or its
   // settings, and the whole time the settings surface is open.
   const [dispatchHintFlash, setDispatchHintFlash] = useState(false)
-  // Per-run ceilings (docs/design/unattended-safety.md §2): Default / Unlimited / Custom. Kept out of
-  // the persisted draft on purpose — "unlimited" must be chosen again for each task, never inherited.
-  const [limitsDraft, setLimitsDraft] = useState<LimitsDraft>({ mode: 'default', cost: '', tokens: '', time: '', iterations: '' })
+  // Per-run ceilings (docs/design/unattended-safety.md §2): Default / Unlimited / Custom. Only a
+  // custom cap is written to the draft (`persistedLimits`): "unlimited" must be chosen again for
+  // every task, never inherited from a draft restored a week later.
+  const [limitsDraft, setLimitsDraft] = useState<LimitsDraft>(() =>
+    limitsDraftFromRequest(draft.limits ?? { mode: 'default' }),
+  )
   const limitsRequest = requestFromDraft(limitsDraft)
-  // Manager–worker roster from the composer block (null = off). Not persisted with the draft.
-  const [roster, setRoster] = useState<Roster | null>(null)
+  const changeLimits = (next: LimitsDraft) => {
+    setLimitsDraft(next)
+    const request = requestFromDraft(next)
+    update({ limits: request.ok ? persistedLimits(request.request) : undefined })
+  }
+  // The Manager–Worker roster is a way of working, so it sticks with the draft (null = off).
+  const roster = draft.roster ?? null
+  const changeRoster = (next: Roster | null) => update({ roster: next ?? undefined })
   const [dispatchSettingsOpen, setDispatchSettingsOpen] = useState(false)
   const dispatchHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const changeDispatch = (next: DispatchIntent | null) => {
@@ -378,6 +422,59 @@ export function NewTaskRoute() {
   // server forces it too: subtasks fork off this task's commits).
   const worktreeForced = variants > 1 || dispatchOn
 
+  // ---- Task settings panel (ADR 0008) -------------------------------------------------------
+  // The inline column's collapsed state is remembered per browser; the drawer below the
+  // breakpoint is transient and always opens from the summary line.
+  const panelWide = useIsDesktop(NEW_TASK_PANEL_BREAKPOINT_PX)
+  const [panelOpen, setPanelOpenState] = useState(() => readPanelOpen())
+  const setPanelOpen = (open: boolean) => {
+    setPanelOpenState(open)
+    writePanelOpen(open)
+  }
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [focusSection, setFocusSection] = useState<{ section: PanelSection; nonce: number } | null>(null)
+  const focusNonce = useRef(0)
+  const openSection = (section: PanelSection) => {
+    if (panelWide) setPanelOpen(true)
+    else setDrawerOpen(true)
+    setFocusSection({ section, nonce: (focusNonce.current += 1) })
+  }
+
+  // Presets: the built-ins are code, the user's live in the workspace config (a PUT replaces the
+  // list), and legacy manager–worker presets stay readable beside them (never copied).
+  const [storedOverride, setStoredOverride] = useState<StoredTaskPreset[] | null>(null)
+  const storedPresets = storedOverride ?? workspaceConfig.data?.taskPresets ?? []
+  const managerPresets = workspaceConfig.data?.managerWorker.presets ?? []
+  const managerDefaultRoster = useMemo(() => {
+    const id = workspaceConfig.data?.managerWorker.defaultPresetId
+    return managerPresets.find((preset: ManagerPreset) => preset.id === id)?.roster ?? null
+  }, [managerPresets, workspaceConfig.data?.managerWorker.defaultPresetId])
+  const userPresets = useMemo(() => userTaskPresets(storedPresets), [storedPresets])
+  const presets = useMemo(
+    () =>
+      mergeManagerWorkerPresets(
+        [
+          ...builtinTaskPresets({
+            workspaceLimits: workspaceConfig.data?.limits,
+            managerRoster: managerDefaultRoster,
+          }),
+          ...userPresets,
+        ],
+        managerPresets,
+      ),
+    [managerDefaultRoster, managerPresets, userPresets, workspaceConfig.data?.limits],
+  )
+  const savePresets = useMutation({
+    mutationFn: (next: readonly TaskPreset[]) =>
+      putWorkspaceConfig({ taskPresets: storedTaskPresets(next) }),
+    onSuccess: (next) => {
+      setStoredOverride(next.taskPresets)
+      queryClient.setQueryData(workspaceQueryKeys.config, next)
+    },
+    onError: (error: Error) => toast(error.message, { tone: 'danger' }),
+  })
+  const commitPresets = (next: readonly TaskPreset[]) => savePresets.mutate(next)
+
   // Autonomous (#autonomous): the run never pauses for the user. An explicit toggle this session
   // wins; then an interactive skill recommends handing the ball back; otherwise the configured
   // workspace default applies ('source-dependent' → skills default ON, everything else OFF).
@@ -393,19 +490,97 @@ export function NewTaskRoute() {
       ?? 'source-dependent',
       config.data?.landing === 'auto',
     ),
-    configuredWorktree: config.data?.taskWorkspace
-      ? config.data.taskWorkspace === 'worktree'
-      : workspaceConfig.data?.composerDefaults?.worktree
-      ?? workspaceConfig.data?.composerDefaults?.inheritedWorktree
-      ?? true,
+    // Settings → Resources ("Use a worktree by default", default ON) or the project's
+    // taskWorkspace; the safe default wins when neither has an opinion.
+    configuredWorktree: configuredWorktreeDefault({
+      taskWorkspace: config.data?.taskWorkspace,
+      composerDefaults: workspaceConfig.data?.composerDefaults,
+    }),
     // Nothing picked runs the plain built-in workflow, and the 'source-dependent' autonomy
     // default keys off exactly that: skills default autonomous, everything else does not.
     source: source?.source ?? 'workflow',
     dispatch: dispatchOn,
   })
   const askOn = askWanted && !dispatchOn && variants <= 1
-  const worktreeOn = runMode.worktree && !askOn
-  const autonomousOn = runMode.autonomous
+  // Autonomous without git cannot get the isolated worktree the panel requires, so it is not
+  // offered there either — the run would edit a checkout while promising no pauses (ADR 0008).
+  const autonomousOn = runMode.autonomous && hasGit
+  // The PANEL is stricter than the engine-facing resolver: Autonomous pins the isolated worktree,
+  // and a read-only Ask never runs in either mode (ADR 0008).
+  const worktreeOn = resolvePanelWorktree(runMode.worktree, autonomousOn, hasGit) && !askOn
+
+  // ---- presets ↔ live settings --------------------------------------------------------------
+  // One snapshot the presets compare against, assembled from what the run will actually send.
+  const limitRequest = limitsRequest.ok ? limitsRequest.request : ({ mode: 'default' } as const)
+  const currentSettings: TaskSettingsSnapshot = {
+    runner: draft.runner,
+    model: draft.model,
+    variants: clampVariants(variants),
+    worktree: worktreeOn,
+    newBranch: draft.newBranch === true,
+    autonomous: autonomousOn,
+    limits: limitRequest,
+    roster,
+  }
+  // The applied preset lives on the draft, so "(modified)" survives a reload (ADR 0008).
+  const [appliedPresetId, setAppliedPresetId] = useState<string | null>(() => draft.presetId ?? null)
+  const selectedPreset = presets.find((preset) => preset.id === appliedPresetId) ?? null
+  const presetModified =
+    selectedPreset !== null && !taskSettingsEqual(currentSettings, selectedPreset.settings)
+  const [worktreeError, setWorktreeError] = useState<string>()
+  const selectPreset = (id: string | null) => {
+    setAppliedPresetId(id)
+    update({ presetId: id ?? undefined })
+  }
+
+  const applySettings = (settings: TaskSettingsSnapshot) => {
+    setLimitsDraft(limitsDraftFromRequest(settings.limits))
+    update({
+      runner: settings.runner,
+      model: settings.model,
+      variants: settings.variants,
+      worktree: hasGit && settings.worktree,
+      worktreeBasis: config.data?.taskWorkspace ?? 'default',
+      newBranch: settings.newBranch,
+      autonomous: settings.autonomous,
+      limits: persistedLimits(settings.limits),
+      roster: settings.roster ?? undefined,
+    })
+    setWorktreeError(undefined)
+  }
+  const applyPreset = (preset: TaskPreset) => {
+    if (preset.unavailableReason !== undefined) return
+    applySettings(preset.settings)
+    selectPreset(preset.id)
+  }
+  const changeAutonomous = (on: boolean) => {
+    // Turning Autonomous on forces the isolated worktree in the same action (ADR 0008).
+    const next = setAutonomous(currentSettings, on)
+    setLimitsDraft(limitsDraftFromRequest(next.limits))
+    update({
+      autonomous: on,
+      worktree: next.worktree,
+      worktreeBasis: config.data?.taskWorkspace ?? 'default',
+    })
+    setWorktreeError(undefined)
+  }
+  const changeWorktree = (next: boolean) => {
+    const result = setWorktreeMode(currentSettings, next, hasGit)
+    setWorktreeError(result.error)
+    if (result.error) return
+    update({ worktree: next, worktreeBasis: config.data?.taskWorkspace ?? 'default' })
+  }
+  const saveCurrentPreset = (name: string) => {
+    const next = saveTaskPreset(presets, name, currentSettings)
+    const created = next.find((preset) => !presets.some((existing) => existing.id === preset.id))
+    commitPresets(next)
+    if (created) selectPreset(created.id)
+  }
+  const renamePreset = (id: string, name: string) => commitPresets(renameTaskPreset(presets, id, name))
+  const removePreset = (id: string) => {
+    commitPresets(deleteTaskPreset(presets, id))
+    if (appliedPresetId === id) selectPreset(null)
+  }
 
   // Follow-up generation (#444) is offered only while the server has the global inbox on
   // (#471, `ONNI_FOLLOWUPS=1`) — there is no inbox for the follow-ups to land in otherwise, and
@@ -692,6 +867,28 @@ export function NewTaskRoute() {
     )
   }
 
+  const agentChoice =
+    runners.length > 1 || runners.some((id) => hasAccountChoice(accountChoices, id))
+  const effective = effectiveLimits(workspaceConfig.data?.limits, limitRequest)
+  const summary = taskSummarySegments({
+    agent: displayRunner,
+    model: models.find((entry) => entry.id === model)?.label ?? t('auto'),
+    hasGit,
+    worktree: worktreeOn,
+    newBranch: draft.newBranch === true,
+    autonomous: autonomousOn,
+    limitsMode: limitRequest.mode,
+    managerWorkers: roster ? roster.workers.length : null,
+    baseBranch: repo.data?.baseBranch ?? null,
+    readOnly: askOn,
+    askAuto: draft.readOnly === undefined,
+  })
+  const panelIsOpen = panelWide ? panelOpen : drawerOpen
+  const onPanelOpenChange = (open: boolean) => {
+    if (panelWide) setPanelOpen(open)
+    else setDrawerOpen(open)
+  }
+
   return (
     <div
       data-route="new"
@@ -700,75 +897,75 @@ export function NewTaskRoute() {
       <TwinkleBackdrop />
       <GhostCodeBackdrop />
 
-      <div className="w-full max-w-[720px]">
-        <header className="mb-6 text-center max-md:mb-4">
-          <h1 className="text-lg font-semibold tracking-tight max-md:text-base">
-            {t('What should the agent work on?')}
-          </h1>
-          {/* Follows the resolved run mode (#793). Printing the isolation promise
-              unconditionally made this line false for every run the user opted out of — and
-              for a non-git folder, where there is no worktree to opt into. */}
-          <p data-slot="run-mode-note" className="mt-1.5 text-[13.5px] text-muted-foreground max-md:text-xs">
-            {t(composerRunModeNote({
-              worktree: worktreeOn,
-              hasGit,
-              dispatch: dispatchOn,
-              autonomous: autonomousOn,
-              newBranch: draft.newBranch,
-              readOnly: askOn,
-              autoLand: config.data?.landing === 'auto' && config.data.landingBlocked === null,
-            }))}
-          </p>
-        </header>
-
-        {scheduleRecovery && (
-          <div role="alert" className="mb-4 rounded-lg border p-4 text-sm">
-            <p>{t('The original task may already be scheduled. Recover it before starting another task.')}</p>
-            <p className="mt-2 whitespace-pre-wrap">{scheduleRecovery.task.task}</p>
-            <p className="mt-2">{t('Recovery uses the original prompt, settings and start time. Your current edits will not be submitted. If scheduling is disabled, restore it on the server and retry recovery; the original request is kept to prevent duplicates. Once recovered, you can manage the task in Scheduled.')}</p>
-            <button type="button" className="mt-3 underline" disabled={recovering} onClick={() => void recoverSchedule()}>
-              {recovering ? t('Recovering original schedule…') : t('Recover original schedule')}
-            </button>
-          </div>
+      <div
+        data-slot="new-task-layout"
+        className={cn(
+          'flex w-full items-start gap-6',
+          panelWide && panelOpen ? 'max-w-[1180px]' : 'max-w-[760px]',
         )}
-        {recoveryError && <p role="alert" className="mb-3 text-sm">{recoveryError}</p>}
-        <Composer
-          ref={composerRef}
-          onSubmit={submit}
-          value={draft.text}
-          onValueChange={(text) => update({ text })}
-          images={images}
-          onImagesChange={setImages}
-          autoFocus
-          placeholder={t('Describe a task for the agent — / for skills…')}
-          ariaLabel={t('Describe a task for the agent')}
-          sendAriaLabel={startChoice ? t('Schedule task') : t('Start task')}
-          sendLabel={startChoice ? t('Schedule task') : undefined}
-          submitDisabled={!!scheduleRecovery || recovering || !sourcesReady || (!!startChoice && !scheduleReady)}
-          disabled={!providersReady}
-          disabledReason={
-            providers.isPending
-              ? t('Checking agent providers…')
-              : providers.isError
-                ? t('Provider authentication could not be verified.')
-                : t('Connect an agent provider before starting a task.')
-          }
-          autocompleteSkills
-          sendShortcut="↵"
-          sendMenu={
-            <StartTimePicker task={previewTask} value={startChoice} onChange={setStartChoice}
-              disabledReason={schedulingDisabledReason} onBlockedChange={setScheduleBlocked}
-              onLabelChange={setScheduleLabel} open={scheduleOpen} onOpenChange={setScheduleOpen} />
-          }
-          footerStart={
-            <>
-              {/* The project pill LEADS the row (mockup new-task-project.html): everything to
-                  its right is resolved against it, so it reads left-to-right as "in this
-                  project, run this skill, with this model". Rendered only once the workspace
-                  actually holds more than one project — with a single one the control offers
-                  nothing and the composer keeps the shape it has always had, the same rule the
-                  sidebar's project groups follow. */}
-              {projectList.length > 1 && urlProjectId !== undefined ? (
+      >
+        <div data-slot="new-task-main" className="min-w-0 flex-1">
+          <header className="mb-6 text-center max-md:mb-4">
+            <h1 className="text-lg font-semibold tracking-tight max-md:text-base">
+              {t('What should the agent work on?')}
+            </h1>
+            {/* Follows the resolved run mode (#793). Printing the isolation promise
+                unconditionally made this line false for every run the user opted out of — and
+                for a non-git folder, where there is no worktree to opt into. */}
+            <p data-slot="run-mode-note" className="mt-1.5 text-[13.5px] text-muted-foreground max-md:text-xs">
+              {t(composerRunModeNote({
+                worktree: worktreeOn,
+                hasGit,
+                dispatch: dispatchOn,
+                autonomous: autonomousOn,
+                newBranch: draft.newBranch,
+                readOnly: askOn,
+                autoLand: config.data?.landing === 'auto' && config.data.landingBlocked === null,
+              }))}
+            </p>
+          </header>
+
+          {scheduleRecovery && (
+            <div role="alert" className="mb-4 rounded-lg border p-4 text-sm">
+              <p>{t('The original task may already be scheduled. Recover it before starting another task.')}</p>
+              <p className="mt-2 whitespace-pre-wrap">{scheduleRecovery.task.task}</p>
+              <p className="mt-2">{t('Recovery uses the original prompt, settings and start time. Your current edits will not be submitted. If scheduling is disabled, restore it on the server and retry recovery; the original request is kept to prevent duplicates. Once recovered, you can manage the task in Scheduled.')}</p>
+              <button type="button" className="mt-3 underline" disabled={recovering} onClick={() => void recoverSchedule()}>
+                {recovering ? t('Recovering original schedule…') : t('Recover original schedule')}
+              </button>
+            </div>
+          )}
+          {recoveryError && <p role="alert" className="mb-3 text-sm">{recoveryError}</p>}
+          <Composer
+            ref={composerRef}
+            onSubmit={submit}
+            value={draft.text}
+            onValueChange={(text) => update({ text })}
+            images={images}
+            onImagesChange={setImages}
+            autoFocus
+            placeholder={t('Describe a task for the agent — / for skills…')}
+            ariaLabel={t('Describe a task for the agent')}
+            sendAriaLabel={startChoice ? t('Schedule task') : t('Start task')}
+            sendLabel={startChoice ? t('Schedule task') : undefined}
+            submitDisabled={!!scheduleRecovery || recovering || !sourcesReady || (!!startChoice && !scheduleReady)}
+            disabled={!providersReady}
+            disabledReason={
+              providers.isPending
+                ? t('Checking agent providers…')
+                : providers.isError
+                  ? t('Provider authentication could not be verified.')
+                  : t('Connect an agent provider before starting a task.')
+            }
+            autocompleteSkills
+            sendShortcut="↵"
+            sendMenu={
+              <StartTimePicker task={previewTask} value={startChoice} onChange={setStartChoice}
+                disabledReason={schedulingDisabledReason} onBlockedChange={setScheduleBlocked}
+                onLabelChange={setScheduleLabel} open={scheduleOpen} onOpenChange={setScheduleOpen} />
+            }
+            footerStart={
+              projectList.length > 1 && urlProjectId !== undefined ? (
                 <ProjectPill
                   projects={projectList}
                   projectId={urlProjectId}
@@ -800,202 +997,387 @@ export function NewTaskRoute() {
                     navigate(`/p/${encodeURIComponent(next)}/new`, { replace: true })
                   }}
                 />
-              ) : null}
-              <SourcePill
-                source={source}
-                ready={sourcesReady}
-                skills={skillList}
-                skillUsage={skillUsage}
-                workflows={workflowList}
-                onPick={(next) => update({ source: next })}
-              />
-              {/* Shown when there is a choice to make: more than one runner, or more than one
-                  login for one of them. A host with neither sees no pill, exactly as before. */}
-              {runners.length > 1 || runners.some((id) => hasAccountChoice(accountChoices, id)) ? (
-                <RunnerPill
-                  runners={runners}
-                  value={displayRunner}
-                  accounts={accountChoices}
-                  account={agentProfile}
-                  repoAccount={repoAccount}
-                  // Changing the AGENT clears the model pin: presets are per-runner, so a kept
-                  // model would be one the new runner does not have. Changing only the account
-                  // keeps it — the model catalog is the same either way.
-                  onPick={(next, picked) =>
-                    update({
-                      runner: next,
-                      agentProfile: picked,
-                      ...(next === displayRunner ? {} : { model: null }),
-                    })
-                  }
+              ) : null
+            }
+            footerEnd={
+              <>
+                {startChoice && scheduleLabel && !scheduleBlocked ? (
+                  <button type="button" data-slot="schedule-summary" title={scheduleLabel.title}
+                    onClick={() => setScheduleOpen(true)}
+                    className="flex max-w-[16rem] items-center gap-1 truncate rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <Clock3Icon aria-hidden="true" className="size-3.5 shrink-0" />
+                    <span className="truncate">{scheduleLabel.text}</span>
+                  </button>
+                ) : null}
+                {startChoice && scheduleBlocked ? (
+                  <span role="status" data-slot="schedule-blocked" title={scheduleBlocked}
+                    className="max-w-[16rem] truncate text-xs text-muted-foreground">
+                    {scheduleBlocked}
+                  </span>
+                ) : null}
+                {!providersReady && !providers.isPending ? (
+                  <Link
+                    to="/settings/agents#providers"
+                    className="text-xs font-medium text-foreground underline underline-offset-4"
+                  >
+                    {t('Configure providers')}
+                  </Link>
+                ) : null}
+              </>
+            }
+          />
+
+          <TaskSummary segments={summary} onOpen={openSection} />
+
+          {accountCheck.blocked !== null ? (
+            <p
+              data-slot="account-signed-out"
+              role="alert"
+              className="mt-2 rounded-md border border-destructive/30 bg-destructive/[0.07] px-3 py-1.5 text-xs text-muted-foreground"
+            >
+              {accountCheck.blocked}{' '}
+              {/* Global settings sit outside every project scope — react-router's own Link. */}
+              <GlobalLink
+                to="/settings/global/accounts"
+                className="font-medium text-foreground underline underline-offset-2"
+              >
+                {t('Agent accounts')}
+              </GlobalLink>
+            </p>
+          ) : null}
+
+          {dispatchOn && (dispatchSettingsOpen || dispatchHintFlash) ? (
+            <p
+              data-slot="dispatch-hint"
+              className="mt-2 rounded-md border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-xs text-muted-foreground"
+            >
+              <strong className="font-semibold text-foreground">{t('Dispatch is on.')}</strong>{' '}
+              {t('Splits this task into subtasks it runs as separate tasks. Worktree stays on. Its own limits are in Advanced.')}
+            </p>
+          ) : null}
+
+          <SuggestedChips onPick={(text) => update({ text })} />
+        </div>
+
+        <TaskSettingsPanel
+          open={panelIsOpen}
+          onOpenChange={onPanelOpenChange}
+          presets={presets}
+          selectedPresetId={appliedPresetId}
+          modified={presetModified}
+          onApplyPreset={applyPreset}
+          onSavePreset={saveCurrentPreset}
+          onRenamePreset={renamePreset}
+          onDeletePreset={removePreset}
+          presetsDisabled={savePresets.isPending}
+          focusSection={focusSection}
+          disabled={!providersReady}
+          who={
+            <div className="flex flex-col gap-3">
+              <Field label={t('Agent')}>
+                {agentChoice ? (
+                  <RunnerPill
+                    runners={runners}
+                    value={displayRunner}
+                    accounts={accountChoices}
+                    account={agentProfile}
+                    repoAccount={repoAccount}
+                    // Changing the AGENT clears the model pin: presets are per-runner, so a kept
+                    // model would be one the new runner does not have. Changing only the account
+                    // keeps it — the model catalog is the same either way.
+                    onPick={(next, picked) =>
+                      update({
+                        runner: next,
+                        agentProfile: picked,
+                        ...(next === displayRunner ? {} : { model: null }),
+                      })
+                    }
+                    disabled={!providersReady}
+                  />
+                ) : (
+                  <span data-slot="agent-value" className={chipClass} title={t('The only connected agent on this host')}>
+                    {displayRunner}
+                  </span>
+                )}
+              </Field>
+              <Field label={t('Model')}>
+                <PickerPill
+                  slot="model-pill"
+                  ariaLabel={t('Model')}
+                  label={models.find((m) => m.id === model)?.label ?? t('auto')}
+                  value={model}
                   disabled={!providersReady}
-                />
-              ) : null}
-              <PickerPill
-                slot="model-pill"
-                ariaLabel={t('Model')}
-                label={models.find((m) => m.id === model)?.label ?? t('auto')}
-                value={model}
-                disabled={!providersReady}
-                readOnly={modelsLocked}
-                disabledHint={
-                  modelsLocked
-                    ? t('Model selection is locked to native coding-agent settings.')
-                    : undefined
-                }
-                onPick={(next) => update({ model: next })}
-                options={models.map((m) => ({ value: m.id, label: m.label, desc: m.desc }))}
-                status={modelCatalogStatus(displayRunner, catalog.data, catalog.isError)}
-              />
-              <PickerPill
-                slot="variants-pill"
-                ariaLabel={t('Parallel variants')}
-                label={variants > 1 ? t('×{count} variants', { count: variants }) : '×1'}
-                value={String(variants)}
-                onPick={(next) => update({ variants: Number(next) })}
-                disabled={!hasGit}
-                hint={t('How many times to run this task in parallel — each variant gets its own worktree, and you pick the diff you keep. ×1 runs it once.')}
-                disabledHint={t('Parallel variants need a git repository — each variant runs in its own worktree.')}
-                options={[
-                  { value: '1', label: '×1', desc: t('One run') },
-                  { value: '2', label: t('×2 variants'), desc: t('Two competing runs — pick the diff you keep') },
-                  { value: '3', label: t('×3 variants'), desc: t('Three competing runs — pick the diff you keep') },
-                ]}
-              />
-              {/* The row reads in clusters: WHAT runs (project, source, runner, model,
-                  variants) | HOW it runs (worktree, autonomous, follow-ups) | the icon
-                  extras (templates, dispatch) | WHERE it forks from. The dividers only
-                  exist on md-and-up; a phone wraps the row and a divider mid-wrap is noise. */}
-              <PillDivider />
-              {askOffered ? (
-                <AskToggle on={askOn} auto={draft.readOnly === undefined} onChange={(on) => update({ readOnly: on })} />
-              ) : null}
-              {worktreeToggleShown && !askOn ? (
-                <WorktreeToggle
-                  on={worktreeOn}
-                  disabled={worktreeForced}
-                  disabledReason={
-                    dispatchOn
-                      ? t("Dispatch forks this task's commits — subtasks need a worktree")
-                      : t('Parallel variants always use isolated worktrees')
+                  readOnly={modelsLocked}
+                  disabledHint={
+                    modelsLocked
+                      ? t('Model selection is locked to native coding-agent settings.')
+                      : undefined
                   }
-                  onChange={(on) => update({ worktree: on, worktreeBasis: config.data?.taskWorkspace ?? 'default' })}
+                  onPick={(next) => update({ model: next })}
+                  options={models.map((m) => ({ value: m.id, label: m.label, desc: m.desc }))}
+                  status={modelCatalogStatus(displayRunner, catalog.data, catalog.isError)}
                 />
-              ) : null}
-              {worktreeToggleShown && !worktreeOn && !askOn ? (
-                <NewBranchToggle
-                  on={draft.newBranch === true}
-                  name={draft.branchName ?? ''}
-                  onChange={(on) => update({ newBranch: on })}
-                  onNameChange={(branchName) => update({ branchName })}
+              </Field>
+              <Field label={t('Variants')} hint={t('How many times to run this task in parallel — each variant gets its own worktree, and you pick the diff you keep. ×1 runs it once.')}>
+                <PickerPill
+                  slot="variants-pill"
+                  ariaLabel={t('Parallel variants')}
+                  label={variants > 1 ? t('×{count} variants', { count: variants }) : '×1'}
+                  value={String(variants)}
+                  onPick={(next) => update({ variants: Number(next) })}
+                  disabled={!hasGit}
+                  hint={t('How many times to run this task in parallel — each variant gets its own worktree, and you pick the diff you keep. ×1 runs it once.')}
+                  disabledHint={t('Parallel variants need a git repository — each variant runs in its own worktree.')}
+                  options={[
+                    { value: '1', label: '×1', desc: t('One run') },
+                    { value: '2', label: t('×2 variants'), desc: t('Two competing runs — pick the diff you keep') },
+                    { value: '3', label: t('×3 variants'), desc: t('Three competing runs — pick the diff you keep') },
+                  ]}
                 />
+              </Field>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-medium text-muted-foreground">{t('Manager–Worker')}</span>
+                {dispatchAvailable ? (
+                  <ManagerWorkerPill roster={roster} onRoster={changeRoster} />
+                ) : (
+                  <p data-slot="manager-worker-unavailable" className="text-[11px] text-soft-foreground">
+                    {t('Manager–Worker needs Dispatch, which is off on this server or in a folder without git.')}
+                  </p>
+                )}
+              </div>
+            </div>
+          }
+          where={
+            <div className="flex flex-col gap-3">
+              {!hasGit ? (
+                <p data-slot="where-no-git" className="text-[11px] leading-snug text-soft-foreground">
+                  {t('No git repository — the run stays in this folder. There is no worktree to isolate in, so it cannot run unattended.')}
+                </p>
+              ) : askOn ? (
+                <p data-slot="where-readonly" className="text-[11px] leading-snug text-soft-foreground">
+                  {t('A read-only question runs in your checkout and changes nothing — there is no worktree to choose.')}
+                </p>
+              ) : (
+                <div role="radiogroup" aria-label={t('Where it runs')} className="flex flex-col gap-1.5">
+                  <WhereOption
+                    slot="worktree-toggle"
+                    checked={worktreeOn}
+                    title={t('Isolated worktree')}
+                    description={t('A separate copy of the repo. Review the diff before anything lands.')}
+                    onSelect={() => changeWorktree(true)}
+                  />
+                  <WhereOption
+                    slot="direct-checkout"
+                    checked={!worktreeOn}
+                    disabled={worktreeForced || autonomousOn}
+                    disabledReason={
+                      worktreeForced
+                        ? dispatchOn
+                          ? t("Dispatch forks this task's commits — subtasks need a worktree")
+                          : t('Parallel variants always use isolated worktrees')
+                        : t(AUTONOMY_NEEDS_WORKTREE)
+                    }
+                    title={t('Edit my checkout directly')}
+                    description={t('Runs in the repo working tree. Changes appear in your checkout immediately.')}
+                    onSelect={() => changeWorktree(false)}
+                  />
+                </div>
+              )}
+              {worktreeError ? (
+                <p role="alert" data-slot="worktree-error" className="text-[11px] text-danger">
+                  {t(worktreeError)}
+                </p>
               ) : null}
+              {hasGit && !askOn ? (
+                <div className="flex flex-col gap-1">
+                  <Field label={t('New branch')}>
+                    <NewBranchToggle
+                      on={draft.newBranch === true}
+                      name={draft.branchName ?? ''}
+                      onChange={(on) => update({ newBranch: on })}
+                      onNameChange={(branchName) => update({ branchName })}
+                    />
+                  </Field>
+                  {worktreeOn ? (
+                    <p data-slot="new-branch-note" className="text-[11px] leading-snug text-soft-foreground">
+                      {t('A worktree already forks from the base; this applies when you edit your checkout directly.')}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {repo.data ? (
+                <Field label={t('Base branch')}>
+                  <BaseBranchPill repo={repo.data} />
+                </Field>
+              ) : null}
+            </div>
+          }
+          autonomy={
+            <div className="flex flex-col gap-2">
               <AutonomousToggle
                 on={autonomousOn}
-                onChange={(on) => update({ autonomous: on })}
+                disabled={!hasGit}
+                disabledReason={t('Autonomous runs need an isolated worktree, and this folder is not a git repository.')}
+                onChange={changeAutonomous}
               />
-              {dispatchAvailable ? <ManagerWorkerPill onRoster={setRoster} /> : null}
-              <LimitsPill draft={limitsDraft} onChange={setLimitsDraft} request={limitsRequest} />
-              {followupsToggleShown ? (
-                <GenerateFollowupsToggle
-                  on={generateFollowupsOn}
-                  onChange={(on) => update({ generateFollowups: on })}
+              <p
+                data-slot="autonomous-consequence"
+                className={cn(
+                  'flex items-start gap-1.5 text-[11px] leading-snug',
+                  autonomousOn ? 'text-warning' : 'text-soft-foreground',
+                )}
+              >
+                {autonomousOn ? <AlertTriangleIcon aria-hidden="true" className="mt-0.5 size-3 shrink-0" /> : null}
+                {!hasGit
+                  ? t('Unavailable: there is no worktree to isolate, so the run must stay attended.')
+                  : autonomousOn
+                    ? t('The run will not pause for your approval. It stays fenced: no auto-land, and the limits below bound cost, time and steps.')
+                    : t('The run pauses when the agent needs you. Turning Autonomous on forces an isolated worktree.')}
+              </p>
+              <Field label={t('Limits')}>
+                <LimitsPill draft={limitsDraft} onChange={changeLimits} request={limitsRequest} />
+              </Field>
+              <p data-slot="limits-effective" className="text-[11px] text-soft-foreground">
+                {t('This run: {limits}', { limits: describeRunLimits(effective) })}
+              </p>
+            </div>
+          }
+          skill={
+            <div className="flex flex-col gap-2">
+              <Field label={t('Skill or workflow')}>
+                <SourcePill
+                  source={source}
+                  ready={sourcesReady}
+                  skills={skillList}
+                  skillUsage={skillUsage}
+                  workflows={workflowList}
+                  onPick={(next) => update({ source: next })}
                 />
-              ) : null}
-              {templates.length > 0 || dispatchAvailable ? <PillDivider /> : null}
-              {/* Icon-only: this row already carries source/runner/model/variants/worktree/
-                  autonomous/branch, and templates is the least-used of them. */}
-              <PromptTemplateMenu
-                templates={templates}
-                iconOnly
-                onInsert={(text) => composerRef.current?.insertAtCaret(text)}
-              />
-              <DispatchToggle
-                available={dispatchAvailable}
-                value={dispatch}
-                onChange={changeDispatch}
-                onSettingsOpenChange={setDispatchSettingsOpen}
-                runners={runners}
-                parentRunner={displayRunner}
-                // The composer's own catalog, already fetched for the runner this task runs as —
-                // the list "same as parent" resolves to. A subtask runner the user changes to
-                // discovers its own inside the toggle, which is the only place that knows it.
-                parentModels={models}
-              />
-              {repo.data?.info ? <PillDivider /> : null}
-              {repo.data ? <BaseBranchPill repo={repo.data} /> : null}
+              </Field>
               {selectedSkill?.interactive && (draft.autonomous === null || draft.worktree === null) ? (
-                <p className="basis-full text-xs text-muted-foreground" data-slot="interactive-skill-hint">
+                <p className="text-[11px] leading-snug text-soft-foreground" data-slot="interactive-skill-hint">
                   {t('This skill recommends an interactive run in the current checkout. You can change either setting.')}
                 </p>
               ) : null}
-            </>
+            </div>
           }
-          footerEnd={
-            <>
-              {startChoice && scheduleLabel && !scheduleBlocked ? (
-                <button type="button" data-slot="schedule-summary" title={scheduleLabel.title}
-                  onClick={() => setScheduleOpen(true)}
-                  className="flex max-w-[16rem] items-center gap-1 truncate rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
-                  <Clock3Icon aria-hidden="true" className="size-3.5 shrink-0" />
-                  <span className="truncate">{scheduleLabel.text}</span>
-                </button>
+          advanced={
+            <div className="flex flex-col gap-3">
+              {askOffered ? (
+                <Field label={t('Read-only question')}>
+                  <AskToggle on={askOn} auto={draft.readOnly === undefined} onChange={(on) => update({ readOnly: on })} />
+                </Field>
               ) : null}
-              {startChoice && scheduleBlocked ? (
-                <span role="status" data-slot="schedule-blocked" title={scheduleBlocked}
-                  className="max-w-[16rem] truncate text-xs text-muted-foreground">
-                  {scheduleBlocked}
-                </span>
+              {followupsToggleShown ? (
+                <Field label={t('Follow-up generation')}>
+                  <GenerateFollowupsToggle
+                    on={generateFollowupsOn}
+                    onChange={(on) => update({ generateFollowups: on })}
+                  />
+                </Field>
               ) : null}
-              {!providersReady && !providers.isPending ? (
-                <Link
-                  to="/settings/agents#providers"
-                  className="text-xs font-medium text-foreground underline underline-offset-4"
-                >
-                  {t('Configure providers')}
-                </Link>
+              {templates.length > 0 ? (
+                <Field label={t('Prompt templates')}>
+                  <PromptTemplateMenu
+                    templates={templates}
+                    onInsert={(text) => composerRef.current?.insertAtCaret(text)}
+                  />
+                </Field>
               ) : null}
-            </>
+              {dispatchAvailable ? (
+                <div className="flex flex-col gap-1">
+                  <Field label={t('Dispatch (subtasks)')}>
+                    <DispatchToggle
+                      available={dispatchAvailable}
+                      value={dispatch}
+                      onChange={changeDispatch}
+                      onSettingsOpenChange={setDispatchSettingsOpen}
+                      runners={runners}
+                      parentRunner={displayRunner}
+                      // The composer's own catalog, already fetched for the runner this task runs as —
+                      // the list "same as parent" resolves to. A subtask runner the user changes to
+                      // discovers its own inside the toggle, which is the only place that knows it.
+                      parentModels={models}
+                    />
+                  </Field>
+                  <p className="text-[11px] leading-snug text-soft-foreground">
+                    {t('Tap to turn it on; its own limits open from the arrow beside it.')}
+                  </p>
+                </div>
+              ) : null}
+            </div>
           }
         />
-
-        {accountCheck.blocked !== null ? (
-          <p
-            data-slot="account-signed-out"
-            role="alert"
-            className="mt-2 rounded-md border border-destructive/30 bg-destructive/[0.07] px-3 py-1.5 text-xs text-muted-foreground"
-          >
-            {accountCheck.blocked}{' '}
-            {/* Global settings sit outside every project scope — react-router's own Link. */}
-            <GlobalLink
-              to="/settings/global/accounts"
-              className="font-medium text-foreground underline underline-offset-2"
-            >
-              {t('Agent accounts')}
-            </GlobalLink>
-          </p>
-        ) : null}
-
-        {dispatchOn && (dispatchSettingsOpen || dispatchHintFlash) ? (
-          <p
-            data-slot="dispatch-hint"
-            className="mt-2 rounded-md border border-primary/25 bg-primary/[0.07] px-3 py-1.5 text-xs text-muted-foreground"
-          >
-            <strong className="font-semibold text-foreground">{t('Dispatch is on.')}</strong>{' '}
-            {t('Splits this task into subtasks it runs as separate tasks. Worktree stays on. Long-press the icon for limits.')}
-          </p>
-        ) : null}
-
-        <SuggestedChips onPick={(text) => update({ text })} />
       </div>
-
     </div>
   )
 }
 
-/** The thin seam between the footer's pill clusters. Hidden on phones, where the row wraps. */
-function PillDivider() {
-  return <span aria-hidden="true" className="mx-0.5 h-3.5 w-px shrink-0 bg-border max-md:hidden" />
+/** A labelled field in the panel: every control says what it sets, in words. */
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+        {label}
+        {hint ? (
+          <IconTooltip label={hint}>
+            <button type="button" aria-label={hint} className="inline-flex text-soft-foreground hover:text-foreground">
+              <InfoIcon aria-hidden="true" className="size-3" />
+            </button>
+          </IconTooltip>
+        ) : null}
+      </span>
+      {children}
+    </div>
+  )
+}
+
+/** One of the two where-it-runs states — a radio card, never a bare checkbox. */
+function WhereOption({
+  slot,
+  checked,
+  disabled,
+  disabledReason,
+  title,
+  description,
+  onSelect,
+}: {
+  slot: string
+  checked: boolean
+  disabled?: boolean
+  disabledReason?: string
+  title: string
+  description: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      disabled={disabled}
+      data-slot={slot}
+      title={disabled ? disabledReason : description}
+      onClick={onSelect}
+      className={cn(
+        'flex w-full flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors',
+        checked ? 'border-primary/60 bg-primary/[0.06]' : 'border-border bg-background hover:bg-muted/50',
+        disabled && 'cursor-not-allowed opacity-60',
+      )}
+    >
+      <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+        {checked ? (
+          <CheckIcon aria-hidden="true" className="size-3 shrink-0 text-primary" />
+        ) : (
+          <SquareIcon aria-hidden="true" className="size-3 shrink-0 text-soft-foreground" />
+        )}
+        {title}
+      </span>
+      <span className="pl-[22px] text-[11px] leading-snug text-soft-foreground">
+        {disabled && disabledReason ? disabledReason : description}
+      </span>
+    </button>
+  )
 }
 
 /** The Ask chip (spec 2026-10-20-trunk-based-projects): a read-only question about the
@@ -1024,47 +1406,6 @@ function AskToggle({ on, auto, onChange }: { on: boolean; auto: boolean; onChang
         <SquareIcon aria-hidden="true" className="size-3 shrink-0 text-soft-foreground" />
       )}
       {t('Ask')}
-    </button>
-  )
-}
-
-/** Worktree opt-out toggle (#worktree-toggle): a checkbox-style chip for ordinary runs.
- *  Checked = isolated worktree (the default); unchecked = run in the repo working tree. */
-function WorktreeToggle({
-  on,
-  disabled,
-  disabledReason,
-  onChange,
-}: {
-  on: boolean
-  disabled?: boolean
-  disabledReason?: string
-  onChange: (on: boolean) => void
-}) {
-  const { t } = useI18n()
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={on}
-      disabled={disabled}
-      data-slot="worktree-toggle"
-      onClick={() => onChange(!on)}
-      title={
-        disabled
-          ? disabledReason
-          : on
-          ? t('Runs in an isolated worktree — uncheck to run in the repo working tree')
-          : t('Runs in the repo working tree — check to isolate in a worktree')
-      }
-      className={cn(chipClass, on && 'border-primary/60 text-foreground')}
-    >
-      {on ? (
-        <CheckIcon aria-hidden="true" className="size-3 shrink-0 text-primary" />
-      ) : (
-        <SquareIcon aria-hidden="true" className="size-3 shrink-0 text-soft-foreground" />
-      )}
-      {t('Worktree')}
     </button>
   )
 }
@@ -1124,10 +1465,12 @@ function NewBranchToggle({
 function AutonomousToggle({
   on,
   disabled,
+  disabledReason,
   onChange,
 }: {
   on: boolean
   disabled?: boolean
+  disabledReason?: string
   onChange: (on: boolean) => void
 }) {
   const { t } = useI18n()
@@ -1141,7 +1484,7 @@ function AutonomousToggle({
       onClick={() => onChange(!on)}
       title={
         disabled
-          ? t('Plan-first runs are interactive — autonomous is unavailable')
+          ? disabledReason ?? t('Plan-first runs are interactive — autonomous is unavailable')
           : on
             ? t('Autonomous — the agent runs to completion without pausing for you')
             : t('Runs interactively — check to let the agent finish without pausing for you')

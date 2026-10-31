@@ -1,28 +1,22 @@
 import { UsersIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import type { ManagerPreset, Roster } from '@onni/api-client'
-import { putWorkspaceConfig } from '@/api/client'
-import { useProviderStatus, useWorkspaceConfig, workspaceQueryKeys } from '@/api/queries'
-import { fieldClass } from '@/components/form-field'
+import type { Roster } from '@onni/api-client'
 import { chevron, chipClass } from '@/components/picker-pill'
 import { RosterEditor } from '@/components/roster-editor'
-import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
-import { toast } from '@/components/ui/toaster'
 import { Link } from '@/lib/project-router'
 import { useI18n } from '@/lib/i18n'
 import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
+import { useProviderStatus, useWorkspaceConfig } from '@/api/queries'
 import {
   connectedBackends,
   describeRoster,
   disconnectedBackends,
   draftFromRoster,
-  newPresetId,
   rosterFromDraft,
   starterDraft,
   totalConcurrency,
@@ -30,74 +24,74 @@ import {
 } from '@/lib/roster'
 
 /**
- * The composer's "Manager / Workers" pill (docs/design/manager-worker.md): off by default, or on
- * with the workspace's default preset. Presets are shared by every project and can be overridden
- * for this one task without touching them. `onRoster` reports the roster to start with (or null).
+ * The panel's Manager–Worker control (docs/design/manager-worker.md). It is CONTROLLED: the
+ * route owns the roster (so a task preset can set it and the draft can restore it), and this
+ * component only edits a draft of it.
  *
- * It follows the DispatchToggle grammar rather than inventing its own, because the two sit in the
- * same footer row: a chip on the row's own 26px pill scale, its settings in a Radix Popover on
- * md-and-up and a bottom Sheet below it, and the on/off as the switch in the settings header. The
- * chip's label is the manager backend — short enough to keep the row steady — and never the whole
- * roster, which the previous free-text summary grew and shrank with every edit.
+ * Presets are not saved here any more (ADR 0008): a saved roster is a TASK preset whose
+ * `settings.roster` is set. Settings → Manager–Worker still edits the shared roster list, and
+ * the task panel shows those presets read-only.
  */
-export function ManagerWorkerPill({ onRoster }: { onRoster: (roster: Roster | null) => void }) {
+export function ManagerWorkerPill({
+  roster,
+  onRoster,
+}: {
+  roster: Roster | null
+  onRoster: (roster: Roster | null) => void
+}) {
   const { t, tn } = useI18n()
   const config = useWorkspaceConfig()
   const providers = useProviderStatus()
-  const queryClient = useQueryClient()
   const desktop = useIsDesktop()
   const connected = connectedBackends(providers.data)
-  const presets = config.data?.managerWorker.presets ?? []
-  const [on, setOn] = useState(false)
+  const [draft, setDraft] = useState<RosterDraft | null>(() =>
+    roster ? draftFromRoster(roster) : null,
+  )
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<RosterDraft | null>(null)
-  const [presetId, setPresetId] = useState('')
-  const [name, setName] = useState('')
-  const seeded = useRef(false)
-
-  // The workspace default turns the block on once, when the settings first arrive.
-  useEffect(() => {
-    if (seeded.current || !config.data) return
-    seeded.current = true
-    const preset = config.data.managerWorker.presets.find((p) => p.id === config.data.managerWorker.defaultPresetId)
-    if (preset) {
-      setOn(true)
-      setPresetId(preset.id)
-      setDraft(draftFromRoster(preset.roster))
-    }
-  }, [config.data])
+  // The last roster this component reported, so an external change (preset, draft restore) is
+  // distinguishable from its own echo.
+  const reported = useRef<string>(roster ? JSON.stringify(roster) : '')
 
   // Memoised on the draft's content: `rosterFromDraft` builds a fresh object every call, and
   // reporting that to the composer each render would loop.
-  const draftKey = on && draft ? JSON.stringify(draft) : ''
+  const draftKey = draft ? JSON.stringify(draft) : ''
   const parsed = useMemo(() => (draftKey && draft ? rosterFromDraft(draft) : null), [draftKey]) // eslint-disable-line react-hooks/exhaustive-deps
-  const roster = parsed?.ok ? parsed.roster : null
-  useEffect(() => onRoster(roster), [roster, onRoster])
+  const rosterNow = parsed?.ok ? parsed.roster : null
 
-  const save = useMutation({
-    mutationFn: (next: ManagerPreset[]) =>
-      putWorkspaceConfig({ managerWorker: { presets: next, defaultPresetId: config.data?.managerWorker.defaultPresetId ?? null } }),
-    onSuccess: (result) => queryClient.setQueryData(workspaceQueryKeys.config, result),
-    onError: (error: Error) => toast(error.message, { tone: 'danger' }),
-  })
-  const savePreset = () => {
-    if (!roster || !name.trim()) return
-    const preset: ManagerPreset = { id: newPresetId(presets), name: name.trim(), roster }
-    save.mutate([...presets, preset], {
-      onSuccess: () => { setPresetId(preset.id); setName(''); toast(t('Preset "{name}" saved', { name: preset.name })) },
-    })
-  }
-  const choose = (id: string) => {
-    setPresetId(id)
-    const preset = presets.find((p) => p.id === id)
-    if (preset) setDraft(draftFromRoster(preset.roster))
-  }
-  const toggle = (next: boolean) => {
-    setOn(next)
-    if (next && !draft) setDraft(starterDraft(connected))
-  }
+  // An external roster wins over the local draft — a preset applied while this is mounted.
+  useEffect(() => {
+    const next = roster ? JSON.stringify(roster) : ''
+    if (next === reported.current) return
+    reported.current = next
+    setDraft(roster ? draftFromRoster(roster) : null)
+  }, [roster])
+
+  useEffect(() => {
+    if (!rosterNow) {
+      if (reported.current !== '') {
+        reported.current = ''
+        onRoster(null)
+      }
+      return
+    }
+    const key = JSON.stringify(rosterNow)
+    if (key === reported.current) return
+    reported.current = key
+    onRoster(rosterNow)
+  }, [rosterNow, onRoster])
+
   const maxParallel = config.data?.resources.maxParallel
-  const gone = roster ? disconnectedBackends(roster, connected) : []
+  const on = draft !== null
+  const gone = rosterNow ? disconnectedBackends(rosterNow, connected) : []
+  const toggle = (next: boolean) => {
+    if (!next) {
+      setDraft(null)
+      reported.current = ''
+      onRoster(null)
+      return
+    }
+    if (!draft) setDraft(starterDraft(connected))
+  }
 
   const settings = (
     <div className="flex flex-col gap-3">
@@ -111,7 +105,7 @@ export function ManagerWorkerPill({ onRoster }: { onRoster: (roster: Roster | nu
         <div className="min-w-0 flex-1">
           <div className="text-[13px] font-semibold leading-tight text-foreground">{t('Manager–worker')}</div>
           <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
-            {roster ? describeRoster(roster) : t('One agent plans and hands parts to the workers you list')}
+            {rosterNow ? describeRoster(rosterNow) : t('One agent plans and hands parts to the workers you list')}
           </p>
         </div>
         <Switch
@@ -124,27 +118,17 @@ export function ManagerWorkerPill({ onRoster }: { onRoster: (roster: Roster | nu
 
       {on && draft ? (
         <div className="flex flex-col gap-3 border-t border-border pt-3">
-          {presets.length > 0 ? (
-            <select aria-label={t('Preset')} value={presetId} onChange={(event) => choose(event.target.value)} className={fieldClass}>
-              <option value="">{t('Custom for this task')}</option>
-              {presets.map((p) => <option key={p.id} value={p.id}>{p.name} — {describeRoster(p.roster)}</option>)}
-            </select>
-          ) : null}
           <div className="max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain pr-0.5">
-            <RosterEditor draft={draft} onChange={(next) => { setDraft(next); setPresetId('') }} connected={connected} />
+            <RosterEditor draft={draft} onChange={setDraft} connected={connected} />
           </div>
           {parsed && !parsed.ok ? <p data-slot="roster-error" className="text-[12px] text-danger">{parsed.error}</p> : null}
           {gone.length > 0 ? <p className="text-[12px] text-danger">{t('Not connected: {backends} — the task would be refused.', { backends: gone.join(', ') })}</p> : null}
-          {roster && maxParallel !== undefined && totalConcurrency(roster) > maxParallel ? (
+          {rosterNow && maxParallel !== undefined && totalConcurrency(rosterNow) > maxParallel ? (
             <p data-slot="roster-capacity-note" className="text-[12px] text-warning">
-              {t('Workers may run {workers} at once but the workspace runs {max} tasks in parallel.', { workers: totalConcurrency(roster), max: maxParallel })}{' '}
+              {t('Workers may run {workers} at once but the workspace runs {max} tasks in parallel.', { workers: totalConcurrency(rosterNow), max: maxParallel })}{' '}
               <Link to="/settings/global/resources" className="underline">{t('Change it in Settings → Resources')}</Link>.
             </p>
           ) : null}
-          <div className="flex items-center gap-2">
-            <input aria-label={t('Preset name')} placeholder={t('Save as preset…')} value={name} onChange={(event) => setName(event.target.value)} maxLength={80} className={fieldClass} />
-            <Button type="button" size="sm" variant="outline" data-slot="save-preset" disabled={!roster || !name.trim() || save.isPending} onClick={savePreset}>{t('Save')}</Button>
-          </div>
         </div>
       ) : null}
     </div>
@@ -161,12 +145,12 @@ export function ManagerWorkerPill({ onRoster }: { onRoster: (roster: Roster | nu
       aria-label={t('Manager–worker roster')}
       data-slot="manager-worker-pill"
       data-state={on ? 'on' : 'off'}
-      title={roster ? tn(roster.workers.length, 'Manager {runner} with {count} worker', 'Manager {runner} with {count} workers', { runner: roster.manager.runner }) : t('Choose the manager and the workers it may use')}
+      title={rosterNow ? tn(rosterNow.workers.length, 'Manager {runner} with {count} worker', 'Manager {runner} with {count} workers', { runner: rosterNow.manager.runner }) : t('Choose the manager and the workers it may use')}
       onClick={onOpen}
       className={cn(chipClass, on && 'border-primary/60 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary')}
     >
       <UsersIcon aria-hidden="true" className={cn('size-3 shrink-0', on ? 'text-primary' : 'text-soft-foreground')} />
-      {on && roster ? t('Manager · {runner}', { runner: roster.manager.runner }) : t('Manager')}
+      {on && rosterNow ? t('Manager · {runner}', { runner: rosterNow.manager.runner }) : t('Manager')}
       {chevron}
     </button>
   )

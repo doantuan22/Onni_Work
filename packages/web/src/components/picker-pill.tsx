@@ -48,6 +48,7 @@ export function PickerPill({
   allowCustom = false,
   customHint,
   emptyLabel = 'No matches found.',
+  triggerData,
 }: {
   slot: string
   ariaLabel: string
@@ -76,6 +77,8 @@ export function PickerPill({
   allowCustom?: boolean
   customHint?: string
   emptyLabel?: string
+  /** Extra `data-*` attributes on the trigger — lets a caller address one field among many. */
+  triggerData?: Record<`data-${string}`, string>
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -122,7 +125,7 @@ export function PickerPill({
     )
   }
   const renderOption = (option: { value: string; label: string; desc?: string }) => (
-    <DropdownMenuRadioItem key={option.value} value={option.value} className="gap-2.5">
+    <DropdownMenuRadioItem key={option.value} value={option.value} data-value={option.value} className="gap-2.5">
       <span className="flex min-w-0 flex-col">
         <span className="text-[12.5px] font-medium">{option.label}</span>
         {option.desc ? (
@@ -141,6 +144,7 @@ export function PickerPill({
       disabled={disabled}
       title={disabled ? disabledHint : hint}
       className={triggerClassName ?? chipClass}
+      {...triggerData}
     >
       <span className="flex min-w-0 w-full items-center justify-between gap-1.5">
         <span className="truncate">{label}</span>
