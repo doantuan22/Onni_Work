@@ -2,9 +2,7 @@
 
 Nhánh `feat/manager-worker`, tạo từ `dev` (đã chứa `feat/unattended-safety`, commit 76a8933). Mọi dẫn chứng là `file:dòng` hoặc `file` + tên hàm trên code hiện tại; chưa sửa dòng code nào. Sơ đồ: [`docs/architecture/13-seq-manager-worker.puml`](../architecture/13-seq-manager-worker.puml).
 
-> **PNG chưa được xuất.** Môi trường chặn việc chạy `plantuml.jar` tải về. Lệnh render (README của thư mục architecture):
-> `java -Djava.awt.headless=true -jar .ai/tools/plantuml.jar -tpng -o docs/architecture docs/architecture/13-seq-manager-worker.puml`
-> (jar đã nằm ở `.ai/tools/plantuml.jar`, không được commit).
+> PNG: [`13-seq-manager-worker.png`](../architecture/13-seq-manager-worker.png).
 
 ## 1. Hiện trạng
 
