@@ -28,12 +28,15 @@ import { MAX_SAVED_WORKSPACE_LAYOUTS, savedWorkspaceLayoutSchema } from './works
  * was wider than the server has ever been.
  */
 import { runLimitsSchema, safetySettingsSchema } from './limits.ts';
+import { agentPermissionsPatchSchema, agentPermissionsSchema } from './agent-permissions.ts';
 import { managerPresetSchema, managerWorkerSettingsSchema, MANAGER_PRESETS_MAX } from './roster.ts';
 export const workspaceConfigResponseSchema = z.object({
   /** Default cost / token / time / iteration ceilings for new runs. */
   limits: runLimitsSchema,
   /** Saved manager–worker presets and the composer's default. */
   managerWorker: managerWorkerSettingsSchema,
+  /** Per-backend permission level for headless backends (ADR 0007); `files-only` by default. */
+  agentPermissions: agentPermissionsSchema,
   /** Hang guards and dispatch structure (Settings → Advanced); on in every limits mode. */
   safety: safetySettingsSchema,
   branding: z.object({
@@ -84,6 +87,7 @@ export const workspaceConfigResponseSchema = z.object({
       pi: z.string().optional(),
       junie: z.string().optional(),
       copilot: z.string().optional(),
+      antigravity: z.string().optional(),
     }).optional(),
   }),
 });
@@ -123,6 +127,8 @@ export const setWorkspaceConfigInputSchema = z.object({
     presets: z.array(managerPresetSchema).max(MANAGER_PRESETS_MAX),
     defaultPresetId: z.string().nullable(),
   }).optional(),
+  /** Partial: absent keys stay untouched. `bypass` needs `confirmBypass: true`. */
+  agentPermissions: agentPermissionsPatchSchema.optional(),
   /** Partial: absent keys stay untouched. */
   safety: safetySettingsSchema.partial().optional(),
   /** Machine-wide agent defaults. `null` on a key CLEARS it back to "no opinion", which a bare
@@ -139,6 +145,7 @@ export const setWorkspaceConfigInputSchema = z.object({
           cursor: z.string().trim().min(1).max(200).nullable().optional(),
           pi: z.string().trim().min(1).max(200).nullable().optional(),
           copilot: z.string().trim().min(1).max(200).nullable().optional(),
+          antigravity: z.string().trim().min(1).max(200).nullable().optional(),
         })
         .optional(),
     })
@@ -320,6 +327,7 @@ export const workspaceUiStateSchema = z.looseObject({
       pi: z.string().optional(),
       junie: z.string().optional(),
       copilot: z.string().optional(),
+      antigravity: z.string().optional(),
     })
     .optional(),
   /** Settings → Appearance, GLOBAL since step 3.5: accent + density describe the person at the
@@ -384,6 +392,7 @@ export const setWorkspaceUiStateInputSchema = z
         pi: z.string().min(1).max(128).optional(),
         junie: z.string().min(1).max(128).optional(),
         copilot: z.string().min(1).max(128).optional(),
+        antigravity: z.string().min(1).max(128).optional(),
       })
       .optional(),
     importedSkills: z.array(z.string().min(1).max(200)).max(WORKSPACE_UI_STATE_MAX_KEYS).optional(),
@@ -431,6 +440,7 @@ export const runnerModelsSchema = z.object({
   cursor: z.string().optional(),
   pi: z.string().optional(),
   copilot: z.string().optional(),
+  antigravity: z.string().optional(),
 });
 export type RunnerModels = z.infer<typeof runnerModelsSchema>;
 
@@ -501,6 +511,7 @@ export const setConfigInputSchema = z.object({
       cursor: z.string().trim().max(200).nullable().optional(),
       pi: z.string().trim().max(200).nullable().optional(),
       copilot: z.string().trim().max(200).nullable().optional(),
+      antigravity: z.string().trim().max(200).nullable().optional(),
     })
     .optional(),
   /** Per-runner "auto is the default" override (#906), additive: clearing a `defaultModels` preset
@@ -604,7 +615,7 @@ export type ProviderUpdateResponse = z.infer<typeof providerUpdateResponseSchema
  * 400s, so the client compiles against exactly what the route accepts. One definition, used by
  * the route's query validator and by the cockpit's picker.
  */
-export const modelDiscoveryRunnerSchema = z.enum(['claude', 'codex', 'opencode', 'cursor', 'junie']);
+export const modelDiscoveryRunnerSchema = z.enum(['claude', 'codex', 'opencode', 'cursor', 'junie', 'antigravity']);
 export type ModelDiscoveryRunner = z.infer<typeof modelDiscoveryRunnerSchema>;
 export const MODEL_DISCOVERY_RUNNERS: readonly ModelDiscoveryRunner[] =
   modelDiscoveryRunnerSchema.options;

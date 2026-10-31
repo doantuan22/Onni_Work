@@ -1,0 +1,7 @@
+# synthetic: hand-written to cover a case the spike could not record from the real agy (see docs/design/antigravity-spike.md). Not a live capture.
+{"event": "init", "conversation_id": "00000000-0000-4000-8000-0000000000aa", "init": {"cwd": "<CWD>", "tools": ["write_file", "run_command"], "permission_mode": "request-review"}}
+not json at all
+{"event":"step_update","step_update":{"conversation_id":"00000000-0000-4000-8000-0000000000aa","step_index":1,"state":"ACTIVE","step_type":"agent_response","text_delta":"par
+{"event": "future_event", "x": 1}
+{"event": "step_update", "step_update": {"conversation_id": "00000000-0000-4000-8000-0000000000aa", "step_index": 1, "state": "DONE", "step_type": "agent_response", "text_delta": "tial ok", "usage": {"input_tokens": 10, "output_tokens": 5, "thinking_tokens": 0, "cache_read_tokens": 0, "total_tokens": 15}, "unknown_field": {"a": 1}}}
+{"event": "result", "result": {"conversation_id": "00000000-0000-4000-8000-0000000000aa", "status": "SUCCESS", "response": "partial ok", "duration_seconds": 1.0, "num_turns": 1, "usage": {"input_tokens": 10, "output_tokens": 5, "thinking_tokens": 0, "cache_read_tokens": 0, "total_tokens": 15}}}

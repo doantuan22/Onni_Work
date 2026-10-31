@@ -1,0 +1,10 @@
+# synthetic: hand-written; NOT a live capture. The real "not signed in" output was never recorded (spike step 0, e:
+# an empty HOME still authenticated, and signing out was off-limits). Only the SHAPE is documented, in `agy changelog`:
+# a headless turn that ends on an agent or model error exits with code 3 and prints one structured line on stderr
+# with a canonical status, an HTTP/gRPC code, retryability and an error id. The key names below are a guess, and
+# nothing may depend on them: detection reads the whole text.
+exit=3
+stdout:
+stderr:
+Sign in required: open https://accounts.example.invalid/signin in a browser and paste the code here
+AGY_ERROR: {"status":"UNAUTHENTICATED","code":401,"retryable":false,"error_id":"synthetic-0001","message":"not signed in"}

@@ -51,6 +51,8 @@ const CONNECTED_OUTPUT: Record<ProviderId, string> = {
   // Copilot's probe drives its ACP server, so its "connected" evidence is the `session/new`
   // answer (`.ai/runs/2026-09-27-copilot-cli-runner/copilot-acp-notes.md`).
   copilot: '{"jsonrpc":"2.0","id":1,"result":{"sessionId":"3f1b6f2e-0000-4000-8000-1f2e3d4c5b6a"}}',
+  // Antigravity answers `agy models` with `id<TAB>label` rows; a list is a usable login.
+  antigravity: 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n',
 };
 
 const providerForExecutable = (executable: string): ProviderId => {

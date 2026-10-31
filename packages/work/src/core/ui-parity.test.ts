@@ -42,7 +42,7 @@ import { describe, expect, it } from 'vitest';
 import type { UiEvent, UiItem } from './ui-events.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const BACKENDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot'] as const;
+const BACKENDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;
 
 /** Every event across every golden fixture of one backend. */
 function fixtureEvents(backend: (typeof BACKENDS)[number]): UiEvent[] {
@@ -68,6 +68,17 @@ function hasToolStatus(events: UiEvent[], status: string): boolean {
   return items(events).some((item) => item.kind === 'tool' && item.status === status);
 }
 
+/**
+ * Why antigravity sits out five rows. Its wire (agy 1.4.12 `--output-format stream-json`) was recorded
+ * live in the spike (docs/design/antigravity-spike.md, `__fixtures__/antigravity/`) and is exactly
+ * `init` / `step_update` / `result`. Nothing in it carries: plan entries (no plan tool was ever
+ * observed), reasoning text (only a `thinking_tokens` COUNT), a diff (an edit tool's `tool_info` holds
+ * a path, so the cockpit reads the worktree's git diff), a sub-agent (`invoke_subagent` is a listed
+ * tool but never fired in the recorded turns), and a non-permission tool failure (the only error
+ * observed is a permission denial, which maps to `declined`). Per AGENT_PROTOCOL.md §9 a frame is
+ * never fabricated to fill a row; revisit when a live capture covers one.
+ */
+
 /** The parity matrix (spec §"Backend parity requirement"): capability →
  *  predicate over a backend's full v2 fixture output, plus the backends known NOT to
  *  reach that cell (documented gap, not a bug) — same precedent as the sub-agent
@@ -78,10 +89,11 @@ const CAPABILITIES: ReadonlyArray<
   [
     'plan.updated with entries (TodoWrite / todoList / todowrite)',
     (events) => events.some((e) => e.type === 'plan.updated' && e.entries.length > 0),
+    ['antigravity'],
   ],
   ['tool status: running', (events) => hasToolStatus(events, 'running')],
   ['tool status: completed', (events) => hasToolStatus(events, 'completed')],
-  ['tool status: failed', (events) => hasToolStatus(events, 'failed')],
+  ['tool status: failed', (events) => hasToolStatus(events, 'failed'), ['antigravity']],
   // Non-empty is the point: a reasoning item with no text renders as a dead
   // "Thinking —" row, so presence alone is not parity (#528).
   [
@@ -89,11 +101,12 @@ const CAPABILITIES: ReadonlyArray<
     (events) => items(events).some((item) => item.kind === 'reasoning' && item.text.trim() !== ''),
     // Cursor's docs are explicit: "`thinking` events are suppressed in print mode and will
     // not appear in any output format" (cursor.com/docs/cli/reference/output-format).
-    ['cursor'],
+    ['cursor', 'antigravity'],
   ],
   [
     'structured diffs (Edit input / fileChange.changes / patch parts)',
     (events) => items(events).some((item) => item.kind === 'tool' && (item.diffs?.length ?? 0) > 0),
+    ['antigravity'],
   ],
   [
     'sub-agent task items (Task / review-mode items / subtask parts)',
@@ -101,7 +114,7 @@ const CAPABILITIES: ReadonlyArray<
     // junie's `tool_call.kind` is unmodified core ACP — read/edit/delete/move/search/execute/
     // think/fetch/other, no `task` (agentclientprotocol.com/protocol/schema#toolkind) — and
     // `nativeSubagentSessions` has no published wire shape, so there is nothing to map.
-    ['junie'],
+    ['junie', 'antigravity'],
   ],
   [
     'usage.updated with raw token counts',

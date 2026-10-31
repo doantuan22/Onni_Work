@@ -1,8 +1,8 @@
 import { PlusIcon, Trash2Icon } from 'lucide-react'
 
-import { ROSTER_MAX_CONCURRENT, ROSTER_MAX_WORKERS, type Runner } from '@onni/api-client'
+import { ROSTER_MAX_CONCURRENT, ROSTER_MAX_WORKERS, RUNNER_CAPABILITIES, type Runner } from '@onni/api-client'
 import { Button } from '@/components/ui/button'
-import { emptyWorker, type RosterDraft, type WorkerDraft } from '@/lib/roster'
+import { emptyWorker, managerCapable, type RosterDraft, type WorkerDraft } from '@/lib/roster'
 
 const field =
   'block w-full rounded-md border border-input bg-card px-2.5 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50'
@@ -52,6 +52,7 @@ export function RosterEditor({
   connected: readonly Runner[]
   disabled?: boolean
 }) {
+  const workerOnly = connected.filter((runner) => !managerCapable(connected).includes(runner))
   const setWorker = (index: number, patch: Partial<WorkerDraft>) =>
     onChange({ ...draft, workers: draft.workers.map((w, i) => (i === index ? { ...w, ...patch } : w)) })
   return (
@@ -64,9 +65,14 @@ export function RosterEditor({
       <fieldset className="flex flex-col gap-2">
         <legend className="text-[13px] font-semibold">Manager</legend>
         <div className="grid grid-cols-2 gap-2">
-          <BackendSelect label="Manager backend" value={draft.managerRunner} connected={connected} disabled={disabled} onChange={(managerRunner) => onChange({ ...draft, managerRunner })} />
+          <BackendSelect label="Manager backend" value={draft.managerRunner} connected={managerCapable(connected)} disabled={disabled} onChange={(managerRunner) => onChange({ ...draft, managerRunner })} />
           <input aria-label="Manager model" placeholder="model (optional)" value={draft.managerModel} disabled={disabled} onChange={(e) => onChange({ ...draft, managerModel: e.target.value })} className={field} />
         </div>
+        {workerOnly.map((runner) => (
+          <p key={runner} data-slot="roster-worker-only" data-backend={runner} className="text-[11px] text-soft-foreground">
+            {runner} is offered as a worker only: {RUNNER_CAPABILITIES[runner].manageReason}.
+          </p>
+        ))}
       </fieldset>
       <fieldset className="flex flex-col gap-3">
         <legend className="text-[13px] font-semibold">Workers</legend>

@@ -4,7 +4,7 @@
  * no token-budget circuit breaker, no zod response schemas — one run is one
  * agent-CLI session streaming normalized events.
  *
- * Seven interchangeable backends implement this seam, each as a persistent
+ * Eight interchangeable backends implement this seam, each as a persistent
  * process so multi-turn follow-ups, `waiting`, interrupt and resume all work:
  *  - `claude`   — Claude Code CLI, stream-json over stdin/stdout;
  *  - `codex`    — `codex app-server`, JSON-RPC 2.0 (JSONL) over stdin/stdout;
@@ -14,10 +14,11 @@
  *                 model with `provider/model`;
  *  - `junie`    — JetBrains Junie CLI, real Agent Client Protocol (ACP:
  *                 `junie --acp=true`), JSON-RPC 2.0 (JSONL) over stdin/stdout;
- *  - `copilot`  — GitHub Copilot CLI, ACP over `copilot --acp` on stdio.
+ *  - `copilot`  — GitHub Copilot CLI, ACP over `copilot --acp` on stdio;
+ *  - `antigravity` — Google Antigravity CLI (`agy -p`), headless print mode, stream-json over a pipe.
  */
 
-import type { UsageWindowsObservation } from '@onni/contract';
+import type { AgentPermissionLevel, UsageWindowsObservation } from '@onni/contract';
 import type { UiEvent } from './ui-events.ts';
 import type { PrivateMcpServer } from './private-mcp.ts';
 
@@ -27,7 +28,7 @@ import type { PrivateMcpServer } from './private-mcp.ts';
  * server-install "at least one agent CLI" gate, the CLI-handoff registry) rather than repeating
  * the literals, so adding runner #7 is a one-line change here and typecheck finds the rest.
  */
-export const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot'] as const;
+export const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;
 
 /** The user-selectable runners (what config/GUI expose). */
 export type RunnerId = (typeof RUNNER_IDS)[number];
@@ -70,6 +71,9 @@ export interface AgentRunSpec {
    *  each backend's own channel — never written into `cwd` (spec 2026-10-07-private-project-mcp). */
   mcpServers?: PrivateMcpServer[];
   model?: string;
+  /** How much a headless backend may do without asking; only antigravity reads it (ADR 0007).
+   *  Resolved by the run manager, which lowers `bypass` for an unattended run. */
+  permissionLevel?: AgentPermissionLevel;
   /** Inactivity kill switch for the run (ms): no output for this long stops it; 0 disables. */
   timeoutMs?: number;
   /**
@@ -175,7 +179,11 @@ export type AgentEvent =
    *  resume ("Continue") and "open in CLI". Claude's equals `spec.sessionId`. */
   | { type: 'session'; sessionId: string }
   | { type: 'turn-end'; reason?: TurnEndReason }
-  | { type: 'note'; message: string }
+  /** `kind` marks a note the run manager also records on the run (antigravity, ADR 0007):
+   *  `denied-action` — a refusal of something the agent tried, listed on the run record and in the
+   *  morning digest; `agent-version` — `value` is the CLI's `--version`. Optional, so every
+   *  producer and every old recording is unchanged. */
+  | { type: 'note'; message: string; kind?: 'denied-action' | 'agent-version'; value?: string }
   | { type: 'done' }
   | { type: 'error'; message: string };
 

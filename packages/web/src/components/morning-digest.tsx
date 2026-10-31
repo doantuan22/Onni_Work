@@ -56,6 +56,18 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
           {digest.notDelegated.length} manager task{digest.notDelegated.length === 1 ? '' : 's'} finished without giving any work to a worker.
         </p>
       ) : null}
+      {digest.needSignIn.length > 0 ? (
+        <p data-slot="digest-sign-in-note" role="status" className="mt-2 text-[12px] text-danger">
+          {digest.needSignIn.length} failed task{digest.needSignIn.length === 1 ? ' needs' : 's need'} a sign-in: the agent is not signed in or its login expired. Sign in again, then Continue —
+          retrying without that will fail the same way.
+        </p>
+      ) : null}
+      {digest.withDeniedActions.length > 0 ? (
+        <p data-slot="digest-denied-note" className="mt-2 text-[12px] text-warning-foreground">
+          {digest.withDeniedActions.length} task{digest.withDeniedActions.length === 1 ? '' : 's'} had something denied by the agent&apos;s permission level
+          ({digest.withDeniedActions.reduce((n, run) => n + (run.deniedActions?.length ?? 0), 0)} action{digest.withDeniedActions.reduce((n, run) => n + (run.deniedActions?.length ?? 0), 0) === 1 ? '' : 's'}) — open them to see what.
+        </p>
+      ) : null}
       {digest.total === 0 ? (
         <p data-slot="digest-empty" className="mt-2 text-[13px] text-soft-foreground">Nothing finished, failed or needs you in this window.</p>
       ) : (
@@ -68,6 +80,20 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
                   <li key={run.id} className="flex items-center gap-2 text-[13px]">
                     <Link to={`/tasks/${run.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">{run.title}</Link>
                     <RunBackendBadge run={run} />
+                    {run.status === 'failed' && run.failureClass === 'auth' ? (
+                      <span data-slot="digest-sign-in" className="rounded-full bg-danger/10 px-1.5 py-px text-[10px] font-medium text-danger">
+                        needs sign-in
+                      </span>
+                    ) : null}
+                    {(run.deniedActions?.length ?? 0) > 0 ? (
+                      <span
+                        data-slot="digest-denied"
+                        title={run.deniedActions?.join('\n')}
+                        className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning-foreground"
+                      >
+                        {run.deniedActions!.length} denied
+                      </span>
+                    ) : null}
                     {run.managerDidNotDelegate ? (
                       <span data-slot="digest-not-delegated" className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning-foreground">manager did not delegate</span>
                     ) : null}

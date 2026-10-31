@@ -19,6 +19,15 @@ describe('limitRows', () => {
   })
 })
 
+describe('antigravity reports tokens but no USD', () => {
+  it('shows the cost ceiling as not measured and keeps the token ceiling live', () => {
+    const rows = limitRows({ steps, costUsd: 99, runner: 'antigravity', limits: { mode: 'capped', maxCostUsd: 1, maxTokens: 100 }, tokensUsed: 10 } as never)
+    expect(rows[0]).toMatchObject({ kind: 'cost', measured: false, fraction: 0 })
+    expect(describeRow(rows[0]!)).toContain('not reported')
+    expect(rows.find((row) => row.kind === 'tokens')).toMatchObject({ measured: true })
+  })
+})
+
 describe('the limits draft', () => {
   it('round-trips the shipped default and validates what a person types', () => {
     const draft = draftFromLimits({ mode: 'capped', maxCostUsd: 10, maxTokens: 10_000_000, maxWallClockMinutes: 240, maxStepIterations: 30 })

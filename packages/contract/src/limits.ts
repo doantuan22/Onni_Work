@@ -49,7 +49,7 @@ export const limitHitSchema = z.object({
 export type LimitHit = z.infer<typeof limitHitSchema>;
 
 /** Backends whose stream carries no USD figure: a cost ceiling cannot apply to them. */
-export const RUNNERS_WITHOUT_COST: readonly string[] = ['codex', 'copilot', 'cursor'];
+export const RUNNERS_WITHOUT_COST: readonly string[] = ['antigravity', 'codex', 'copilot', 'cursor'];
 /** Backends that report no token counts either (cursor): only time / iterations can bound them. */
 export const RUNNERS_WITHOUT_TOKENS: readonly string[] = ['cursor'];
 

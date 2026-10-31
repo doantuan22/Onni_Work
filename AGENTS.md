@@ -2,7 +2,7 @@
 
 Onni Work is a local cockpit for running and tracking AI coding-agent tasks in one repository.
 You type a task, pick a backend (`claude`, `codex`, `opencode`, `cursor`, `pi`, `junie`,
-`copilot`) and a workflow; each task runs in its own git worktree and streams steps, tool calls,
+`copilot`, `antigravity`) and a workflow; each task runs in its own git worktree and streams steps, tool calls,
 tokens and diffs live. A Tauri desktop shell wraps the same engine. Everything is local: no
 account, no database, no cloud. State is plain JSON, NDJSON and Markdown under `.ai/onni/` and
 `~/.onni/`. The server stack stays small: strict TypeScript (ESM, Node 20+), Hono + SSE + one
@@ -150,6 +150,20 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
 - **Degradation is a value, not a throw.** Git helpers, GitHub integration and `gh` failures
   return `{ available: false, reason }` or a one-line error.
 
+- **Antigravity fails closed.** `agy` cannot ask for approval headless, so a run starts on `files-only`
+  (no commands); `allow-rules` and `bypass` are Settings → Agent permissions choices, `bypass` needs
+  `confirmBypass: true` and is **never** applied to an unattended run (`effectiveAntigravityLevel`). A turn
+  that was blocked and answered nothing **fails** — `agy` itself reports it as success (ADR 0007). It is a
+  worker only (`RUNNER_CAPABILITIES.canManage`, enforced by `rosterSchema`); turning that on takes the four
+  things listed in ADR 0007 ("To enable `canManage`"), not a flag flip. It reports tokens, never USD. Do not
+  add `--add-dir` or `agy-acp-bridge`.
+  An agy `command(<line>)` grant matches the **whole command line** (measured, 10 real prompts): it is never a
+  prefix and never a pattern, so a step's `bashAllowlist` entry becomes one exact line for this backend, and the
+  `allow-rules` level is **experimental**. Those rules gate shell commands only — agy's own file and web tools
+  are not limited by them. stdin is closed at spawn so a login is never waited for; a "not signed in" turn is
+  an `auth` failure (`RunRecord.failureClass`). Windows runs agy's commands in PowerShell: `$env:ONNI_BIN`,
+  not `$ONNI_BIN`.
+
 ## Changing a mechanism that already works
 
 Replacing working behavior is the highest-risk change here. It fails in a characteristic way:
@@ -257,6 +271,7 @@ The supported dev machine here is Windows 11 with Git Bash.
 | Git, worktrees, diff base | `packages/work/src/git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` |
 | Workspace registry, `~/.onni` | `packages/work/src/paths.ts`, `workspace/config.ts`, `workspace/projects.ts` |
 | Manager / worker roster | `packages/contract/src/roster.ts`, `packages/work/src/workflows/manager-worker.ts`, `run.ts` (`dispatch`, `dispatchFromAgent`) |
+| Antigravity (`agy`), its permission levels | `docs/adr/0007-antigravity-backend.md`, `packages/work/src/core/antigravity-runner.ts`, `antigravity-permissions.ts`, `antigravity-ui-mapper.ts`, `__fixtures__/antigravity/` |
 | Run limits, unattended safety | `packages/contract/src/limits.ts`, `packages/work/src/workflows/limits.ts`, `push-guard.ts`, `unattended.ts` |
 | Live signals | `.ai/specs/2026-07-23-websocket-subscriptions.md`, `server/ws.ts`, `web/src/api/ws.ts` |
 | Cockpit UI | `packages/web/src/app.tsx`, `routes.tsx`, `api/` |

@@ -58,6 +58,10 @@ export const PROFILE_ENV_VAR: Record<ProviderId, string | null> = {
   pi: null,
   junie: null,
   copilot: null,
+  // Antigravity cannot carry a second account: pointing HOME/USERPROFILE at an empty folder still
+  // authenticated (spike step 0, e), so the login does not live under its config dir and no
+  // documented variable moves it. `null`, like OpenCode, rather than bill the wrong account.
+  antigravity: null,
 };
 
 /** Providers that can carry more than one account — what the UI offers "Add account" for. */
@@ -116,4 +120,6 @@ const PROFILE_DIR_MARKERS: Record<ProviderId, readonly string[]> = {
   junie: [],
   // Same for copilot (`PROFILE_ENV_VAR.copilot === null`).
   copilot: [],
+  // And antigravity (`PROFILE_ENV_VAR.antigravity === null`).
+  antigravity: [],
 };

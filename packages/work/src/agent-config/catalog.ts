@@ -40,6 +40,8 @@ export interface AgentHomePaths {
   copilot: string;
   /** `~/.junie` — no relocation var documented (see `PROFILE_ENV_VAR.junie`) */
   junie: string;
+  /** `~/.gemini` — Antigravity's state; its login is not here (see `PROFILE_ENV_VAR.antigravity`) */
+  antigravity: string;
 }
 
 export interface ConfigFileDef {

@@ -35,7 +35,7 @@ id — that is the whole point of the seam.
 ### Identity
 
 ```ts
-const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot'] as const;  // the source of truth
+const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;  // the source of truth
 type RunnerId     = (typeof RUNNER_IDS)[number];                             // user-selectable
 type AgentBackend = RunnerId | 'claude-cli';                                 // + legacy id, still parses
 ```
@@ -334,6 +334,16 @@ transport into `UiEvent`s. The authoritative table is
 `.ai/runs/2026-09-27-copilot-cli-runner/copilot-acp-notes.md`, and
 `__fixtures__/copilot/README.md` states exactly which of those frames are a live capture and
 which were read out of the CLI's own ACP bridge.
+
+`antigravity` (`agy -p … --output-format stream-json`, one process per turn) is not in the table: its wire was
+recorded live (`__fixtures__/antigravity/`, docs/design/antigravity-spike.md) and is `init` / `step_update` /
+`result`. It maps `agent_response.text_delta` → text items, `tool` ACTIVE/DONE/ERROR → tool items (a permission
+denial is `declined`), per-step `usage` → `usage.updated` (cumulative **for the process** — `result.usage` is
+cumulative over the whole conversation and is not used), `result` → `turn.completed`. It emits no plan,
+reasoning text, diff, sub-agent or non-permission `failed` tool — the wire has none — so `ui-parity.test.ts`
+lists five cited exclusions. A `result` with `status: SUCCESS` can still be a failed turn (empty response,
+`denied_actions`); `evaluateAntigravityResult` decides, not the exit code. `AgentEvent` `note` carries optional
+`kind` (`denied-action`, `agent-version`) so the run manager can record them.
 
 **Mapper robustness contract.** Inputs come off the wire and may be `null`,
 partial or malformed. A mapper **must never throw**: unparseable NDJSON lines are

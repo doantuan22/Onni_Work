@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { opendirSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { AGENT_MODELS_LOCKED_ENV } from './agent-model-policy.ts';
+import { resolveAntigravityExecutable } from './antigravity-bin.ts';
+import { parseAntigravityModels } from './antigravity-cli.ts';
 import { profileEnv } from './agent-profiles.ts';
 import { isSignalTerminationExit } from './agent-runner.ts';
 import { resolveClaudeBin } from './claude-bin.ts';
@@ -11,7 +13,7 @@ import { quoteExecutable, withEnvPrefix } from './shell-env.ts';
 import { probeJunieAuthentication } from './junie-auth-probe.ts';
 import { spawnableCommand } from './windows-shim.ts';
 
-export const PROVIDER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot'] as const;
+export const PROVIDER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 export type ProviderConnectionState =
   | 'connected'
@@ -356,6 +358,18 @@ function parseJunieStatus(_result: ProviderCommandResult): ProviderConnectionSta
   return null;
 }
 
+/**
+ * Antigravity has no auth-status command and its credential is not a file Onni may read, so the
+ * answer is `agy models`: it lists the account's models over the network without calling a model.
+ * A list means a usable login; a clean exit with none means there is not one. A failing exit stays
+ * inconclusive — the real "not signed in" wording was never captured (spike step 0, e) and no
+ * pattern is guessed from it.
+ */
+function parseAntigravityStatus(result: ProviderCommandResult): ProviderConnectionState | null {
+  if (result.exitCode !== 0) return null;
+  return parseAntigravityModels(result.stdout).length > 0 ? 'connected' : 'disconnected';
+}
+
 function parsePiStatus(result: ProviderCommandResult): ProviderConnectionState | null {
   if (result.exitCode !== 0) return null;
   // pi ≥ 0.73 reroutes stdout to stderr whenever stdin is not a TTY (`takeOverStdout` in its
@@ -508,6 +522,17 @@ const DESCRIPTORS: readonly ProviderDescriptor[] = [
     // The version of the binary the probe ran, not a cached newer package.
     versionArgs: ['--no-auto-update', '--version'],
     unrecognizedHint: copilotUnrecognizedHint,
+  },
+  {
+    id: 'antigravity',
+    overrideEnv: 'ONNI_ANTIGRAVITY_BIN',
+    executable: () => resolveAntigravityExecutable(),
+    statusArgs: ['models'],
+    // agy has no login subcommand: running it bare opens its TUI, where the sign-in lives. No
+    // `updateArgs` either — agy updates itself, and Onni never runs an updater (ADR 0002).
+    loginArgs: [],
+    installHint: 'Install the Antigravity CLI (`agy`), then run `agy` once and sign in.',
+    parse: parseAntigravityStatus,
   },
 ];
 

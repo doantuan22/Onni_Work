@@ -170,6 +170,7 @@ describe('resumeCommand — per backend, mirroring the server', () => {
     ['opencode', 'opencode --session s1'],
     ['junie', 'junie --resume --session-id=s1'],
     ['cursor', 'agent --resume s1'],
+    ['antigravity', 'agy --conversation s1'],
   ] as Array<[RunRecord['runner'], string]>)('%s → %s', (runner, expected) => {
     expect(resumeCommand(runner, 's1')).toBe(expected)
   })

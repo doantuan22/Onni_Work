@@ -99,6 +99,7 @@ const PROVIDER_LABEL: Record<ProviderId, string> = {
   cursor: 'Cursor',
   pi: 'pi',
   copilot: 'GitHub Copilot CLI',
+  antigravity: 'Antigravity CLI',
 }
 
 /** The vendor's own install/login instruction, shown when the CLI is not on this machine. */
@@ -110,6 +111,7 @@ const PROVIDER_INSTALL: Record<ProviderId, string> = {
   cursor: 'curl https://cursor.com/install -fsS | bash',
   pi: 'https://github.com/badlogic/pi-mono',
   copilot: 'npm i -g @github/copilot',
+  antigravity: 'Install the Antigravity CLI (agy), then run agy once and sign in',
 }
 
 /** Same vocabulary the Providers card uses — one wording for "is this logged in?". */

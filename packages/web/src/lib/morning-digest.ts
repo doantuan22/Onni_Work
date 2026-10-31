@@ -20,6 +20,10 @@ export interface Digest {
   total: number
   /** Managers (in the window) that finished without handing any task to a worker. */
   notDelegated: RunRecord[]
+  /** Tasks (in the window) whose backend refused something while the task still answered. */
+  withDeniedActions: RunRecord[]
+  /** Failed tasks (in the window) whose agent is not signed in: they need a login, not a retry. */
+  needSignIn: RunRecord[]
 }
 
 export const DIGEST_HOURS = [1, 6, 12, 24, 48] as const
@@ -50,6 +54,8 @@ export function buildDigest(runs: readonly RunRecord[], now: number, hours: numb
   const since = now - hours * 3_600_000
   const buckets: Record<DigestKey, RunRecord[]> = { attention: [], limit: [], failed: [], done: [] }
   const notDelegated: RunRecord[] = []
+  const withDeniedActions: RunRecord[] = []
+  const needSignIn: RunRecord[] = []
   let costUsd = 0
   let tokens = 0
   for (const run of runs) {
@@ -61,6 +67,8 @@ export function buildDigest(runs: readonly RunRecord[], now: number, hours: numb
     }
     buckets[key].push(run)
     if (run.managerDidNotDelegate) notDelegated.push(run)
+    if ((run.deniedActions?.length ?? 0) > 0) withDeniedActions.push(run)
+    if (run.status === 'failed' && run.failureClass === 'auth') needSignIn.push(run)
     costUsd += run.costUsd ?? 0
     tokens += run.tokensUsed ?? 0
   }
@@ -68,5 +76,5 @@ export function buildDigest(runs: readonly RunRecord[], now: number, hours: numb
   const groups = order
     .map((key) => ({ key, title: TITLES[key], runs: buckets[key].sort((a, b) => settledAt(b) - settledAt(a)) }))
     .filter((group) => group.runs.length > 0)
-  return { groups, costUsd, tokens, total: groups.reduce((n, g) => n + g.runs.length, 0), notDelegated }
+  return { groups, costUsd, tokens, total: groups.reduce((n, g) => n + g.runs.length, 0), notDelegated, withDeniedActions, needSignIn }
 }

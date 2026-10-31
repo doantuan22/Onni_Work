@@ -52,6 +52,9 @@ export const KNOWN_PRESETS_BY_RUNNER: Record<RunnerId, readonly string[]> = {
   // `claude-sonnet-4`). Naming them here would make this guard reject a legitimate codex or
   // claude model as "another runner's preset" — the exact failure pi's comment warns about.
   copilot: [],
+  // Antigravity's catalog comes from `agy models` and holds other vendors' ids; a list here would
+  // go stale and, worse, flag a legitimate claude/codex model as another runner's preset.
+  antigravity: [],
 };
 
 /**
@@ -69,7 +72,7 @@ const NATIVE_MODEL_ID_PREFIX: Partial<Record<RunnerId, RegExp>> = {
 /** Runners whose own bare catalog ids ARE other vendors' ids — Copilot routes `claude-sonnet-4`
  *  and `gpt-5.4`, Cursor `gpt-5` — so a vendor shape is no evidence of a mis-pairing there. Not
  *  junie (opaque `v1:…` ids) nor opencode/pi (`provider/model` only). */
-const VENDOR_ID_HOSTING_RUNNERS: readonly RunnerId[] = ['copilot', 'cursor'];
+const VENDOR_ID_HOSTING_RUNNERS: readonly RunnerId[] = ['copilot', 'cursor', 'antigravity'];
 
 const hasVendorIdShape = (model: string): boolean =>
   Object.values(NATIVE_MODEL_ID_PREFIX).some((prefix) => prefix.test(model));

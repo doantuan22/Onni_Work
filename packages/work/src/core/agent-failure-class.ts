@@ -76,7 +76,7 @@ export function transientRetryDelayMs(attempt: number, error: string | undefined
 }
 
 const BACKEND_NAMES: Record<string, string> = {
-  claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode', cursor: 'Cursor', copilot: 'Copilot',
+  claude: 'Claude Code', codex: 'Codex', opencode: 'OpenCode', cursor: 'Cursor', copilot: 'Copilot', antigravity: 'Antigravity',
 };
 
 /**

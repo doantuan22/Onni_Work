@@ -29,6 +29,7 @@ import { taskIssueUrl, taskPrUrl } from '@/lib/tasks-table'
 import { cn, isHttpUrl } from '@/lib/utils'
 
 import { AutoResumeHint } from './auto-resume-hint'
+import { DeniedActionsHint } from './denied-actions-hint'
 import { useFinishRun } from './use-finish-run'
 import { useStartRunNow } from './use-start-run-now'
 import { E2eSetupVerdict } from './e2e-setup-verdict'
@@ -500,6 +501,9 @@ export function ThreadView({
         {/* A usage-limit stop is the one `failed` state that is still going somewhere — the
             dock says so before the composer offers a Continue nobody needs to press. */}
         <AutoResumeHint run={run} />
+
+        {/* A task whose agent was refused something and still answered: say what, and why. */}
+        <DeniedActionsHint run={run} />
 
         {!lifecycleGate && budget ? (
           <div

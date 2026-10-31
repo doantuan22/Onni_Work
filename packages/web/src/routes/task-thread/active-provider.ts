@@ -10,6 +10,7 @@ const PROVIDER_LABEL: Record<Runner, string> = {
   cursor: 'Cursor',
   pi: 'pi',
   copilot: 'GitHub Copilot CLI',
+  antigravity: 'Antigravity CLI',
 }
 
 /** Mirrors the server's providerForActiveRun for POST /runs/:id/messages. */

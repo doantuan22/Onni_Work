@@ -26,6 +26,8 @@ export const PROVIDERS = [
   { id: 'cursor', label: 'Cursor', login: 'agent login' },
   { id: 'pi', label: 'pi', login: 'pi /login' },
   { id: 'copilot', label: 'GitHub Copilot CLI', login: 'copilot login' },
+  // agy has no login subcommand: running it bare opens the TUI, where sign-in lives.
+  { id: 'antigravity', label: 'Antigravity', login: 'agy' },
 ] as const
 
 const providerWriteState = <T,>(value: T): Record<ProviderId, T> => ({
@@ -36,6 +38,7 @@ const providerWriteState = <T,>(value: T): Record<ProviderId, T> => ({
   cursor: value,
   pi: value,
   copilot: value,
+  antigravity: value,
 })
 
 const STATUS_PRESENTATION = {

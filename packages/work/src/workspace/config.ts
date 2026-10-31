@@ -6,7 +6,7 @@ import { readFileWithRetry, renameSyncWithRetry, renameWithRetry } from '../fs-r
 // Contract VALUES, like `workspaceUiStateSchema` in workspace/migrations.ts: the tag bounds this
 // file must not `.catch` away are the same constants the PATCH route validates against, so they
 // are imported rather than repeated.
-import { DEFAULT_MANAGER_WORKER_SETTINGS, DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, managerPresetSchema, MANAGER_PRESETS_MAX, PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH, runLimitsSchema } from '@onni/contract';
+import { agentPermissionLevelSchema, DEFAULT_AGENT_PERMISSIONS, DEFAULT_AGENT_PERMISSION_LEVEL, DEFAULT_MANAGER_WORKER_SETTINGS, DEFAULT_RUN_LIMITS, DEFAULT_SAFETY_SETTINGS, managerPresetSchema, MANAGER_PRESETS_MAX, PROJECT_TAGS_MAX, PROJECT_TAG_MAX_LENGTH, runLimitsSchema } from '@onni/contract';
 import { PROVIDER_IDS, type ProviderId } from '../core/provider-auth.ts';
 import { assertOnniHomeWriteIsSandboxed, isAbsolutePath, workspaceConfigPath } from '../paths.ts';
 
@@ -91,6 +91,13 @@ const safetyConfigSchema = z
     dispatchMaxDepth: z.number().int().min(1).max(3).default(DEFAULT_SAFETY_SETTINGS.dispatchMaxDepth).catch(DEFAULT_SAFETY_SETTINGS.dispatchMaxDepth),
     dispatchMaxSubtasks: z.number().int().min(1).max(50).default(DEFAULT_SAFETY_SETTINGS.dispatchMaxSubtasks).catch(DEFAULT_SAFETY_SETTINGS.dispatchMaxSubtasks),
     dispatchRetryLimit: z.number().int().min(0).max(3).default(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit).catch(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit),
+  })
+  .prefault(() => ({}));
+
+const agentPermissionsConfigSchema = z
+  .object({
+    // A value this build does not know falls back to the safe default, never to something wider.
+    antigravity: agentPermissionLevelSchema.default(DEFAULT_AGENT_PERMISSION_LEVEL).catch(DEFAULT_AGENT_PERMISSION_LEVEL),
   })
   .prefault(() => ({}));
 
@@ -260,6 +267,8 @@ export const workspaceConfigSchema = z
     safety: safetyConfigSchema.catch(() => safetyConfigSchema.parse({})),
     /** Manager–worker presets (shared by every project) and the composer's default. */
     managerWorker: managerWorkerConfigSchema.catch(() => ({ ...DEFAULT_MANAGER_WORKER_SETTINGS })),
+    /** Per-backend permission level for headless backends (ADR 0007); `files-only` unless set. */
+    agentPermissions: agentPermissionsConfigSchema.catch(() => ({ ...DEFAULT_AGENT_PERMISSIONS })),
     /** Optional New Task policy. Missing keys inherit exact 0/1 environment seeds. */
     composerDefaults: composerDefaultsSchema.default(() => ({})).catch(() => ({})),
     /** Host-wide provider preferences; absent means every provider is enabled. */

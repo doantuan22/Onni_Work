@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { runnerSchema } from './health.ts';
+import { runnerSchema, type Runner } from './health.ts';
 
 /**
  * Manager / Worker (docs/design/manager-worker.md): one agent manages a task tree and may hand
@@ -11,10 +11,43 @@ import { runnerSchema } from './health.ts';
 
 const model = z.string().trim().min(1).max(200);
 
-export const rosterManagerSchema = z.strictObject({
-  runner: runnerSchema,
-  model: model.optional(),
-});
+/**
+ * What each backend may be in a roster. `canManage` is true only where the manager's commands
+ * (`onni task create/report`, git status/diff/add/commit/merge/log, the configured test/build)
+ * are verified to run unattended. Antigravity's allow-rules are not verified for that yet, so it is
+ * offered as a worker only (ADR 0007); the server refuses it as a manager, not just the UI.
+ */
+export const RUNNER_CAPABILITIES: Record<Runner, { canManage: boolean; manageReason?: string }> = {
+  claude: { canManage: true },
+  codex: { canManage: true },
+  opencode: { canManage: true },
+  cursor: { canManage: true },
+  pi: { canManage: true },
+  junie: { canManage: true },
+  copilot: { canManage: true },
+  antigravity: {
+    canManage: false,
+    manageReason: 'its headless allow-rules are not yet verified for the manager commands (onni task create, git merge)',
+  },
+};
+
+export function runnerCanManage(runner: Runner): boolean {
+  return RUNNER_CAPABILITIES[runner].canManage;
+}
+
+export const rosterManagerSchema = z
+  .strictObject({
+    runner: runnerSchema,
+    model: model.optional(),
+  })
+  .refine((manager) => runnerCanManage(manager.runner), {
+    path: ['runner'],
+    error: (issue) => {
+      const runner = (issue.input as { runner?: Runner } | undefined)?.runner;
+      const reason = runner ? RUNNER_CAPABILITIES[runner]?.manageReason : undefined;
+      return `${runner ?? 'this backend'} cannot be a manager${reason ? `: ${reason}` : ''}; use it as a worker`;
+    },
+  });
 export type RosterManager = z.infer<typeof rosterManagerSchema>;
 
 export const ROSTER_MAX_WORKERS = 6;

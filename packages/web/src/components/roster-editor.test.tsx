@@ -33,6 +33,20 @@ describe('RosterEditor', () => {
     expect(onChange.mock.calls.at(-1)![0].workers).toHaveLength(2)
     expect((screen.getByLabelText('Remove worker 1') as HTMLButtonElement).disabled).toBe(true)
   })
+  it('offers antigravity as a worker but never as the manager, and says why', () => {
+    render(<RosterEditor draft={draft} onChange={vi.fn()} connected={['claude', 'codex', 'antigravity']} />)
+    const manager = Array.from((screen.getByLabelText('Manager backend') as HTMLSelectElement).options).map((o) => o.value)
+    const worker = Array.from((screen.getByLabelText('Worker 1 backend') as HTMLSelectElement).options).map((o) => o.value)
+    expect(manager).toEqual(['', 'claude', 'codex'])
+    expect(worker).toEqual(['', 'claude', 'codex', 'antigravity'])
+    const note = document.querySelector('[data-slot="roster-worker-only"][data-backend="antigravity"]')
+    expect(note?.textContent).toContain('antigravity is offered as a worker only')
+    expect(note?.textContent).toContain('not yet verified')
+  })
+  it('shows no worker-only note when every connected backend can manage', () => {
+    render(<RosterEditor draft={draft} onChange={vi.fn()} connected={['claude', 'codex']} />)
+    expect(document.querySelector('[data-slot="roster-worker-only"]')).toBeNull()
+  })
   it('says plainly that nothing is connected, and that the fence is not a security boundary', () => {
     render(<RosterEditor draft={draft} onChange={vi.fn()} connected={[]} />)
     expect(screen.getByText(/No agent is connected/)).toBeTruthy()

@@ -112,6 +112,8 @@ import type { ContentBlock } from '../core/agent-runner.ts';
 import { AGENT_MODELS_LOCKED_ERROR, agentModelsLocked } from '../core/agent-model-policy.ts';
 import { discoverClaudeModels } from '../core/claude-model-catalog.ts';
 import { discoverCodexModels } from '../core/codex-model-catalog.ts';
+import { resolveAntigravityBin } from '../core/antigravity-bin.ts';
+import { discoverAntigravityModels } from '../core/antigravity-cli.ts';
 import { discoverCursorModels } from '../core/cursor-model-catalog.ts';
 import { discoverOpencodeModels } from '../core/opencode-model-catalog.ts';
 import { discoverJunieModels } from '../core/junie-model-catalog.ts';
@@ -1353,6 +1355,7 @@ export function createApp(deps: ServerDeps) {
       opencode: { discover: () => discoverOpencodeModels({ cwd: bootRoot }) },
       junie: { discover: () => discoverJunieModels({ cwd: bootRoot }) },
       cursor: { discover: () => discoverCursorModels() },
+      antigravity: { discover: () => discoverAntigravityModels() },
     },
   });
   const providerAuth = deps.providerAuth
@@ -3352,6 +3355,7 @@ export function createApp(deps: ServerDeps) {
     limits: config.limits,
     safety: config.safety,
     managerWorker: config.managerWorker,
+    agentPermissions: config.agentPermissions,
     composerDefaults: {
       autonomous: config.composerDefaults.autonomous ?? null,
       worktree: config.composerDefaults.worktree ?? null,
@@ -3411,7 +3415,7 @@ export function createApp(deps: ServerDeps) {
     .put('/workspace/config', jsonZodValidator(() => setWorkspaceConfigInputSchema), async (c) => {
       const parsed = { data: c.req.valid('json') };
       const { browseRoot, projectsDir, orgSkillsRepos, systemPrompt, composerDefaults, resources, agentDefaults, branding } = parsed.data;
-      const { limits: limitsPatch, safety: safetyPatch, managerWorker: managerWorkerPatch } = parsed.data;
+      const { limits: limitsPatch, safety: safetyPatch, managerWorker: managerWorkerPatch, agentPermissions: permissionsPatch } = parsed.data;
       if (managerWorkerPatch && managerWorkerPatch.defaultPresetId !== null && !managerWorkerPatch.presets.some((p) => p.id === managerWorkerPatch.defaultPresetId)) {
         return c.json({ error: 'the default preset must be one of the saved presets' }, 400);
       }
@@ -3468,6 +3472,7 @@ export function createApp(deps: ServerDeps) {
           else if (systemPrompt !== undefined) config.systemPrompt = systemPrompt;
           if (limitsPatch !== undefined) config.limits = limitsPatch;
           if (managerWorkerPatch !== undefined) config.managerWorker = managerWorkerPatch;
+          if (permissionsPatch?.antigravity !== undefined) config.agentPermissions = { ...config.agentPermissions, antigravity: permissionsPatch.antigravity };
           if (safetyPatch !== undefined) config.safety = { ...config.safety, ...safetyPatch };
           if (composerDefaults?.autonomous === null) delete config.composerDefaults.autonomous;
           else if (composerDefaults?.autonomous !== undefined) {
@@ -8109,6 +8114,11 @@ export function resumeCommand(runner: string | undefined, sessionId: string): st
     case 'cursor': {
       const bin = quoteResumeBin(resolveCursorAgentBin());
       return bin === null ? null : `${bin} --resume ${sessionId}`;
+    }
+    case 'antigravity': {
+      // `--conversation` reopens that conversation interactively (`agy --help`); the id is agy's own.
+      const bin = quoteResumeBin(resolveAntigravityBin());
+      return bin === null ? null : `${bin} --conversation ${sessionId}`;
     }
     case 'pi':
       return `pi --session ${sessionId}`;

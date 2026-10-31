@@ -22,6 +22,11 @@ vi.mock('./cursor-bin.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('./cursor-bin.ts')>(),
   resolveCursorAgentBin: () => process.env.ONNI_CURSOR_AGENT_BIN || 'agent',
 }));
+// Same reason for Antigravity: the real resolver finds `agy` wherever the host installed it.
+vi.mock('./antigravity-bin.ts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./antigravity-bin.ts')>(),
+  resolveAntigravityExecutable: () => process.env.ONNI_ANTIGRAVITY_BIN || 'agy',
+}));
 vi.mock('./junie-auth-probe.ts', () => ({
   probeJunieAuthentication: vi.fn(async () => ({ connected: true })),
 }));
@@ -77,6 +82,8 @@ const connectedResults: Record<string, ProviderCommandResult> = {
     stderr: '',
     exitCode: 0,
   },
+  // `agy models` lists the account's models (id, a tab, a label): a list is a usable login.
+  antigravity: { stdout: 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n', stderr: '', exitCode: 0 },
 };
 
 const originalEnv = {
@@ -88,6 +95,7 @@ const originalEnv = {
   ONNI_PI_BIN: process.env.ONNI_PI_BIN,
   CURSOR_API_KEY: process.env.CURSOR_API_KEY,
   ONNI_COPILOT_BIN: process.env.ONNI_COPILOT_BIN,
+  ONNI_ANTIGRAVITY_BIN: process.env.ONNI_ANTIGRAVITY_BIN,
   ONNI_CURSOR_AGENT_BIN: process.env.ONNI_CURSOR_AGENT_BIN,
 };
 
@@ -100,6 +108,7 @@ beforeEach(() => {
   delete process.env.ONNI_PI_BIN;
   delete process.env.CURSOR_API_KEY;
   delete process.env.ONNI_COPILOT_BIN;
+  delete process.env.ONNI_ANTIGRAVITY_BIN;
   delete process.env.ONNI_CURSOR_AGENT_BIN;
 });
 
@@ -122,6 +131,7 @@ function resultFor(executable: string): ProviderCommandResult {
   if (executable === 'agent' || executable.includes('cursor')) return connectedResults.cursor!;
   if (executable.includes('opencode')) return connectedResults.opencode!;
   if (executable.includes('copilot')) return connectedResults.copilot!;
+  if (executable === 'agy') return connectedResults.antigravity!;
   return connectedResults.pi!;
 }
 
@@ -951,6 +961,7 @@ describe('ProviderAuthService', () => {
         { provider: 'pi' },
         { provider: 'junie', status: 'connected' },
         { provider: 'copilot' },
+        { provider: 'antigravity' },
       ],
     });
   });
@@ -975,6 +986,7 @@ describe('ProviderAuthService', () => {
       { executable: 'agent', args: ['status', '--format', 'json'], timeoutMs: 10_000 },
       { executable: 'pi', args: ['--list-models'], timeoutMs: 10_000 },
       { executable: 'copilot', args: ['--acp', '--no-auto-update'], timeoutMs: 10_000 },
+      { executable: 'agy', args: ['models'], timeoutMs: 10_000 },
     ]);
     release();
     await expect(pending).resolves.toBeDefined();
@@ -1504,6 +1516,7 @@ describe('ProviderAuthService', () => {
         { provider: 'pi', status: 'connected' },
         { provider: 'junie', status: 'connected' },
         { provider: 'copilot', status: 'connected' },
+        { provider: 'antigravity', status: 'connected' },
       ],
     });
     expect(runCommand).not.toHaveBeenCalled();
@@ -1617,6 +1630,7 @@ describe('ProviderAuthService', () => {
         { provider: 'pi', status: 'connected' },
         { provider: 'junie', status: 'connected' },
         { provider: 'copilot', status: 'connected' },
+        { provider: 'antigravity', status: 'connected' },
       ],
     });
     expect(runCommand).not.toHaveBeenCalled();

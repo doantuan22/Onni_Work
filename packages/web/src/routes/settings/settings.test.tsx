@@ -177,6 +177,8 @@ const GLOBAL_SECTIONS = [
   'resources',
   // Manager–worker presets (docs/design/manager-worker.md): which agents may work for which.
   'manager-worker',
+  // What Antigravity may do headless (ADR 0007): a machine-wide safety choice, safe by default.
+  'agent-permissions',
   'skills',
   'global-instructions',
   // Agent accounts (spec 2026-07-29-agent-profiles) sit beside Projects: both describe the
@@ -206,7 +208,7 @@ describe('the section registry', () => {
     // Accounts survives: a single-project cockpit still runs on ONE of possibly several logins,
     // so "which account" is orthogonal to "how many projects".
     expect(visibleSettingsSections('global', { singleProject: true }).map((s) => s.id)).toEqual([
-      'appearance', 'notifications', 'keyboard', 'resources', 'manager-worker', 'skills', 'global-instructions', 'workspace-secrets', 'accounts',
+      'appearance', 'notifications', 'keyboard', 'resources', 'manager-worker', 'agent-permissions', 'skills', 'global-instructions', 'workspace-secrets', 'accounts',
     ])
     expect(visibleSettingsSections('global', { singleProject: false }).map((s) => s.id)).toEqual(GLOBAL_SECTIONS)
     expect(visibleSettingsSections('global').map((s) => s.id)).toEqual(GLOBAL_SECTIONS)
