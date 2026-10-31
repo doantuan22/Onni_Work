@@ -145,9 +145,9 @@ import { resolveProfileEnvForRoot } from '../workspace/agent-profiles.ts';
 import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
-import { resolveWorker, workersInFlight } from './manager-worker.ts';
+import { managerPrompt, resolveWorker, workerPrompt, workersInFlight, type RemainingBudget } from './manager-worker.ts';
 import { UNATTENDED_DENIED_TOOLS, pushGuardEnv, pushRefusal } from './push-guard.ts';
-import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf } from './limits.ts';
+import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf, subtreeUsage } from './limits.ts';
 import type { LimitHit, Roster, RunLimits, RunLimitsRequest } from '@onni/contract';
 import { WorkspaceSemaphore, type AccountHolds } from '../workspace/semaphore.ts';
 import { SecretStore } from '../workspace/secrets.ts';
@@ -2660,8 +2660,38 @@ export class RunManager {
   private prepareDispatchSession(runId: string, state: ActiveRun): void {
     if (!this.dispatchReachable()) return;
     const dispatch = this.store.getRun(runId)?.dispatch;
+    // Manager–worker tree: the root gets the manager brief, a worker the report-only one — the
+    // worker keeps ONNI_API_URL so `onni task report` works, but is never taught to dispatch.
+    const runs = this.store.listRuns();
+    const roster = dispatch ? runs.find((r) => r.id === dispatch.rootRunId)?.roster : undefined;
+    if (roster && dispatch) {
+      state.dispatchPrompt = dispatch.parentRunId
+        ? workerPrompt(dispatch.kind)
+        : managerPrompt(roster, this.remainingForManager(runs, dispatch.rootRunId));
+      return;
+    }
     // The intent block belongs to the ROOT the user started; a child reads its order instead.
     state.dispatchPrompt = composeDispatchPrompt(dispatch?.kind, dispatch?.parentRunId ? undefined : dispatch?.intent);
+  }
+
+  /** What is left of the root's ceilings and of the tree's structural caps, for the manager brief. */
+  private remainingForManager(runs: readonly RunRecord[], rootId: string): RemainingBudget {
+    const root = runs.find((r) => r.id === rootId);
+    const safety = this.semaphore.safety();
+    const used = subtreeUsage(runs, rootId);
+    const limits = root?.limits;
+    const capped = limits?.mode === 'capped';
+    const children = runs.filter((r) => r.dispatch?.rootRunId === rootId && r.id !== rootId).length;
+    const cap = root?.dispatch?.intent?.maxSubtasks ?? safety.dispatchMaxSubtasks;
+    return {
+      unlimited: !capped,
+      ...(capped && limits.maxCostUsd !== undefined ? { costUsd: limits.maxCostUsd - used.cost } : {}),
+      ...(capped && limits.maxTokens !== undefined ? { tokens: limits.maxTokens - used.tokens } : {}),
+      ...(capped && limits.maxWallClockMinutes !== undefined ? { minutes: limits.maxWallClockMinutes - used.wallMs / 60_000 } : {}),
+      ...(capped && limits.maxStepIterations !== undefined ? { steps: limits.maxStepIterations - used.iterations } : {}),
+      subtasks: cap - children,
+      maxDepth: safety.dispatchMaxDepth,
+    };
   }
 
   /**
@@ -3044,7 +3074,9 @@ export class RunManager {
       // The tree directory lines are composed against the id the run is ABOUT to get: `startRun`
       // mints it, so the envelope is finished below once it exists.
       task: childTaskEnvelope(input, { id: parentId, branch: parent.branch }, ['{{TREE_PATHS}}']),
-      systemPrompt: composeDispatchPrompt(input.kind),
+      // In a roster tree the worker brief comes from `prepareDispatchSession` (report-only); the
+      // general dispatch prompt would teach a worker to dispatch.
+      systemPrompt: roster ? undefined : composeDispatchPrompt(input.kind),
       ...(deferredBindingActive(parent, runs) ? { deferredBinding: parent.deferredBinding } : {}),
       runner: childRunner,
       ...(childModel ? { model: childModel } : {}),

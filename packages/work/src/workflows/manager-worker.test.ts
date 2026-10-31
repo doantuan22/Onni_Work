@@ -130,6 +130,8 @@ describe('manager–worker engine (dry-run)', () => {
     const m = await parked();
     const good = await ok(m.id, 'mock:done write docs', { backend: 'pi', title: 'docs' });
     expect(store.getRun(good.id)).toMatchObject({ runner: 'pi', dispatch: { workerKey: 'pi:', parentRunId: m.id } });
+    // The worker's record carries no dispatch-teaching prompt (it gets the report-only brief at session start).
+    expect(store.getRun(good.id)!.systemPrompt).toBeUndefined();
     const reason = await refused(m.id, 'mock:done nope', { backend: 'cursor', title: 'nope' });
     expect(reason).toContain('cursor is not an allowed worker');
     expect(reason).toContain('allowed workers:');
