@@ -72,9 +72,9 @@ describe('stopping a session signals every process group under its shell', () =>
     if (win) {
       // The binding's kill is the whole stop: once now, once again from the deferred force timer.
       expect(signals).toEqual([]);
-      expect(ptys[0].killed).toEqual([undefined]);
+      expect(ptys[0]!.killed).toEqual([undefined]);
       vi.advanceTimersByTime(2_100);
-      expect(ptys[0].killed).toEqual([undefined, undefined]);
+      expect(ptys[0]!.killed).toEqual([undefined, undefined]);
       sessions.dispose();
       return;
     }
@@ -90,7 +90,7 @@ describe('stopping a session signals every process group under its shell', () =>
     sessions.closeAll();
     if (win) {
       expect(signals).toEqual([]);
-      expect(ptys[0].killed).toEqual([undefined]);
+      expect(ptys[0]!.killed).toEqual([undefined]);
       sessions.dispose();
       return;
     }
@@ -116,7 +116,7 @@ describe('stopping a session signals every process group under its shell', () =>
     if (win) {
       // No tree is walked on Windows at all, but the session the binding owns is still stopped.
       expect(signals).toEqual([]);
-      expect(ptys[0].killed).toEqual([undefined]);
+      expect(ptys[0]!.killed).toEqual([undefined]);
       sessions.dispose();
       return;
     }
@@ -129,7 +129,7 @@ describe('stopping a session signals every process group under its shell', () =>
     sessions.kill(id);
     if (win) {
       expect(signals).toEqual([]);
-      expect(ptys[0].killed).toEqual([undefined]);
+      expect(ptys[0]!.killed).toEqual([undefined]);
       sessions.dispose();
       return;
     }
@@ -142,7 +142,7 @@ describe('stopping a session signals every process group under its shell', () =>
     expect(() => sessions.closeAll()).not.toThrow();
     if (win) {
       expect(signals).toEqual([]);
-      expect(ptys[0].killed).toEqual([undefined]);
+      expect(ptys[0]!.killed).toEqual([undefined]);
       sessions.dispose();
       return;
     }
