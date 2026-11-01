@@ -5,6 +5,10 @@ import { TerminalSessions } from './sessions.ts';
 
 /** Stop means the TREE (spec §6): every process group under the shell, not just the shell's. */
 const SHELL = 4242;
+/** Windows has no process groups: `signalTree` delegates to the binding's own kill, which is the
+ *  conpty/job handle it spawned. Each POSIX group assertion below therefore has its Windows
+ *  counterpart — "the binding was killed, no group signal was sent" — rather than a skip. */
+const win = process.platform === 'win32';
 
 class FakePty implements PtyProcess {
   readonly pid = SHELL;
@@ -65,6 +69,15 @@ describe('stopping a session signals every process group under its shell', () =>
   it('kill(): SIGHUP to every descendant group, then SIGKILL to the same groups after the grace', async () => {
     const { sessions, id } = await open(tree);
     sessions.kill(id);
+    if (win) {
+      // The binding's kill is the whole stop: once now, once again from the deferred force timer.
+      expect(signals).toEqual([]);
+      expect(ptys[0].killed).toEqual([undefined]);
+      vi.advanceTimersByTime(2_100);
+      expect(ptys[0].killed).toEqual([undefined, undefined]);
+      sessions.dispose();
+      return;
+    }
     expect(groups('SIGHUP')).toEqual([-6000, -5000, -SHELL]);
     expect(groups('SIGKILL')).toEqual([]);
     vi.advanceTimersByTime(2_100);
@@ -75,6 +88,12 @@ describe('stopping a session signals every process group under its shell', () =>
   it('closeAll(): SIGKILL reaches the backgrounded groups too', async () => {
     const { sessions } = await open(tree);
     sessions.closeAll();
+    if (win) {
+      expect(signals).toEqual([]);
+      expect(ptys[0].killed).toEqual([undefined]);
+      sessions.dispose();
+      return;
+    }
     expect(groups('SIGKILL')).toEqual([-6000, -5000, -SHELL]);
     sessions.dispose();
   });
@@ -86,6 +105,7 @@ describe('stopping a session signals every process group under its shell', () =>
     expect(touched).not.toContain(-9000);
     expect(touched).not.toContain(-process.pid);
     expect(touched).not.toContain(-1);
+    if (win) expect(signals).toEqual([]);
     sessions.dispose();
   });
 
@@ -93,6 +113,13 @@ describe('stopping a session signals every process group under its shell', () =>
     const recycled = tree().map((row) => (row.pid === SHELL ? { ...row, ppid: 1 } : row));
     const { sessions } = await open(() => recycled);
     sessions.closeAll();
+    if (win) {
+      // No tree is walked on Windows at all, but the session the binding owns is still stopped.
+      expect(signals).toEqual([]);
+      expect(ptys[0].killed).toEqual([undefined]);
+      sessions.dispose();
+      return;
+    }
     expect(signals.map(([pid]) => pid)).toEqual([-SHELL]);
     sessions.dispose();
   });
@@ -100,6 +127,12 @@ describe('stopping a session signals every process group under its shell', () =>
   it('falls back to the shell’s own group when the process table cannot be read', async () => {
     const { sessions, id } = await open(() => null);
     sessions.kill(id);
+    if (win) {
+      expect(signals).toEqual([]);
+      expect(ptys[0].killed).toEqual([undefined]);
+      sessions.dispose();
+      return;
+    }
     expect(signals).toEqual([[-SHELL, 'SIGHUP']]);
     sessions.dispose();
   });
@@ -107,6 +140,12 @@ describe('stopping a session signals every process group under its shell', () =>
   it('a reader that throws never breaks a shutdown', async () => {
     const { sessions } = await open(() => { throw new Error('ps exploded'); });
     expect(() => sessions.closeAll()).not.toThrow();
+    if (win) {
+      expect(signals).toEqual([]);
+      expect(ptys[0].killed).toEqual([undefined]);
+      sessions.dispose();
+      return;
+    }
     expect(signals).toEqual([[-SHELL, 'SIGKILL']]);
     sessions.dispose();
   });
