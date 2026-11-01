@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -385,21 +385,24 @@ it('keeps cold live records as observations without inventing recent failures', 
   } finally { reader.dispose(); }
 });
 
-it('refreshes cold root access failures after permissions recover without index changes', async () => {
+it('refreshes cold root access failures after the index becomes readable', async () => {
   const p = root();
-  disk(p, [record('review', 'review')]);
-  chmodSync(p, 0o300);
+  // An unreadable index, on every host: `chmod` cannot deny the owner on Windows, but a directory
+  // where runs.json belongs fails the same read (`EISDIR`) the POSIX permission bits produce.
+  const index = join(p, '.ai/onni/runs.json');
+  mkdirSync(index, { recursive: true });
   const reader = new DashboardReader({ projects: async () => [{ id: 'cold', root: p }] });
   try {
     expect((await reader.snapshot()).coverage.projects[0]?.state).toBe('unavailable');
-    chmodSync(p, 0o700);
+    rmSync(index, { recursive: true, force: true });
+    disk(p, [record('review', 'review')]);
     const recovered = await reader.snapshot();
     expect(recovered.coverage.projects[0]?.state).toBe('complete');
     expect(recovered.counts.reviews).toBe(1);
-    chmodSync(p, 0o300);
+    rmSync(index, { force: true });
+    mkdirSync(index, { recursive: true });
     expect((await reader.snapshot()).coverage.projects[0]?.state).toBe('unavailable');
   } finally {
-    chmodSync(p, 0o700);
     reader.dispose();
   }
 });
