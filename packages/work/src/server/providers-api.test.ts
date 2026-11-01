@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -523,7 +523,8 @@ describe('workspace provider API', () => {
     } finally {
       recover.mockRestore();
       contexts.disposeAll();
-      rmSync(lazyRoot, { recursive: true, force: true });
+      // The lazy store is `keepLive`; its writer may still be busy when the context is disposed.
+      await removeTempDir(lazyRoot);
     }
   });
 
