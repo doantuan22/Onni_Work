@@ -1071,6 +1071,9 @@ const runIndexTicketSchema = z.object({
  * not acknowledge before the index is durable.
  * All participants must use this protocol on a coherent local filesystem.
  */
+// C-04: scanner locks on ticket publication need a longer Windows retry than atomic data writes.
+const RUN_INDEX_TICKET_RENAME_RETRIES_MS = [10, 20, 40, 80, 160, 250, 450, 790] as const;
+
 function lockRunIndex(dataDir: string): () => void {
   retryIndexCleanup();
   const directory = join(dataDir, 'runs', '.index-writers');
@@ -1083,7 +1086,7 @@ function lockRunIndex(dataDir: string): () => void {
   const publish = (n: number) => {
     const ticket = { n, host: self.host, ...(self.ns ? { ns: self.ns } : {}), boot: self.boot, ...(self.start ? { start: self.start } : {}) };
     writeFileSync(tmp, JSON.stringify(ticket), { encoding: 'utf8', flag: 'wx' });
-    renameSyncWithRetry(tmp, path);
+    renameSyncWithRetry(tmp, path, { retryDelaysMs: RUN_INDEX_TICKET_RENAME_RETRIES_MS });
   };
   // Measured against our own just-published ticket: one filesystem clock, not this process's.
   const abandoned = (other: string) => statSync(path).mtimeMs - statSync(other).mtimeMs > FOREIGN_TICKET_STALE_MS;

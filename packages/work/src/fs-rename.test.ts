@@ -38,6 +38,20 @@ describe('renameSyncWithRetry', () => {
     expect(slept.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(1_100);
   });
 
+  it('accepts a longer call-specific retry budget without widening the default', () => {
+    const fake = flakyRename(Array(8).fill('EPERM'));
+    const slept: number[] = [];
+    renameSyncWithRetry('ticket.tmp', 'ticket', {
+      platform: 'win32',
+      rename: fake.rename,
+      sleep: (ms) => slept.push(ms),
+      retryDelaysMs: [10, 20, 40, 80, 160, 250, 450, 790],
+    });
+    expect(fake.calls).toHaveLength(9);
+    expect(slept).toEqual([10, 20, 40, 80, 160, 250, 450, 790]);
+    expect(slept.reduce((a, b) => a + b, 0)).toBe(1_800);
+  });
+
   it('does not retry a non-transient error', () => {
     const fake = flakyRename(['ENOENT']);
     expect(() => renameSyncWithRetry('a.tmp', 'a', { platform: 'win32', rename: fake.rename, sleep: () => {} })).toThrow(/ENOENT/);

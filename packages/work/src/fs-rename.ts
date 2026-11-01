@@ -18,6 +18,7 @@ export interface RenameRetryOptions {
   platform?: NodeJS.Platform;
   rename?: (from: string, to: string) => void;
   sleep?: (ms: number) => void;
+  retryDelaysMs?: readonly number[];
 }
 
 export interface AsyncRenameRetryOptions {
@@ -31,10 +32,10 @@ function sleepSync(ms: number): void {
 }
 
 /** The retry delay for this failure, or undefined when it must be rethrown. */
-function retryDelay(error: unknown, attempt: number): number | undefined {
+function retryDelay(error: unknown, attempt: number, delays: readonly number[] = RETRY_DELAYS_MS): number | undefined {
   const code = (error as NodeJS.ErrnoException).code;
   if (!code || !TRANSIENT_CODES.has(code)) return undefined;
-  return RETRY_DELAYS_MS[attempt];
+  return delays[attempt];
 }
 
 export function renameSyncWithRetry(from: string, to: string, options: RenameRetryOptions = {}): void {
@@ -44,12 +45,13 @@ export function renameSyncWithRetry(from: string, to: string, options: RenameRet
     return;
   }
   const sleep = options.sleep ?? sleepSync;
+  const delays = options.retryDelaysMs ?? RETRY_DELAYS_MS;
   for (let attempt = 0; ; attempt += 1) {
     try {
       rename(from, to);
       return;
     } catch (error) {
-      const ms = retryDelay(error, attempt);
+      const ms = retryDelay(error, attempt, delays);
       if (ms === undefined) throw error;
       sleep(ms);
     }
