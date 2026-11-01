@@ -15,6 +15,7 @@ import { RunManager } from '../workflows/run.ts';
 import { ProjectContexts } from './project-context.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 import { WorkspaceEventBus, createApp } from './server.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 // `resolveClaudeBin` probes the real machine for an install that is off PATH, so the claude
 // executable these cases assert on would otherwise be whatever the DEVELOPER has. Pinned to the
@@ -122,9 +123,9 @@ describe('workspace provider API', () => {
     delete process.env.ONNI_REMOTE;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     store.flush();
-    rmSync(root, { recursive: true, force: true });
+    await removeTempDir(root);
     if (savedModelsLocked === undefined) delete process.env.ONNI_AGENT_MODELS_LOCKED;
     else process.env.ONNI_AGENT_MODELS_LOCKED = savedModelsLocked;
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;

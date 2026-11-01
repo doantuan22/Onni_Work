@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -8,6 +8,7 @@ import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { RunManager } from './run.ts';
 import { QUICK_TASK_WORKFLOW } from './types.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -43,13 +44,13 @@ describe('RunManager.startNow', () => {
     manager = new RunManager(store, repoRoot, { semaphore });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     unregister();
     manager.dispose();
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const leftQueue = async (id: string): Promise<void> => {

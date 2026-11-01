@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import * as projects from '../workspace/projects.ts';
 import type { RunManager } from '../workflows/run.ts';
 import { createApp, startServer, type ServerDeps } from './server.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 /**
  * Automations are on by default and `ONNI_AUTOMATIONS=0` opts out (spec 2026-09-14, which flipped
@@ -56,9 +57,9 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
     delete process.env.ONNI_REMOTE;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
     if (savedAutomations === undefined) delete process.env.ONNI_AUTOMATIONS;
     else process.env.ONNI_AUTOMATIONS = savedAutomations;
     if (savedFollowups === undefined) delete process.env.ONNI_FOLLOWUPS;
@@ -187,8 +188,8 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
       process.env.ONNI_DRY_RUN = '1';
     });
 
-    afterEach(() => {
-      rmSync(home, { recursive: true, force: true });
+    afterEach(async () => {
+      await removeTempDir(home);
       if (savedHome === undefined) delete process.env.ONNI_HOME;
       else process.env.ONNI_HOME = savedHome;
       if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
@@ -261,8 +262,8 @@ describe('automations gate (#801, default-on since spec 2026-09-14)', () => {
       staleId = seed.create({ ...DEFINITION, name: 'Stale poll', enabled: true }).id;
     });
 
-    afterEach(() => {
-      rmSync(home, { recursive: true, force: true });
+    afterEach(async () => {
+      await removeTempDir(home);
       if (savedHome === undefined) delete process.env.ONNI_HOME;
       else process.env.ONNI_HOME = savedHome;
       if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;

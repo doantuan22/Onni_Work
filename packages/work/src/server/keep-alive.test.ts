@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +7,7 @@ import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';
 import { KEEP_ALIVE_TIMEOUT_MS } from './keep-alive.ts';
 import { startServer } from './server.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 /** Chrome's idle-socket pool lifetime; Safari's is shorter. The server must outlive both, or a
  *  browser reuses a socket we already closed and a non-retried POST fails (telemetry 7adbfbd7). */
@@ -28,10 +29,10 @@ describe('keep-alive (telemetry 7adbfbd7)', () => {
     process.env.ONNI_DRY_RUN = '1';
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
-    rmSync(home, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
+    await removeTempDir(home);
     if (savedHome === undefined) delete process.env.ONNI_HOME;
     else process.env.ONNI_HOME = savedHome;
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;

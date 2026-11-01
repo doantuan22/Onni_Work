@@ -29,6 +29,7 @@ vi.mock('../git-worktree.js', async (importOriginal) => {
 });
 
 import { RunManager } from './run.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
 const roots: string[] = [];
@@ -63,8 +64,8 @@ async function waitFor(predicate: () => boolean, what: string): Promise<void> {
   throw new Error(`timed out waiting for ${what}`);
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+afterEach(async () => {
+  for (const root of roots.splice(0)) await removeTempDir(root);
 });
 
 describe('RunManager repository-root isolation', { timeout: 20_000 }, () => {

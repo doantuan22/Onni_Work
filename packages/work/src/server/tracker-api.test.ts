@@ -11,6 +11,7 @@ import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';
 import { createApp, WorkspaceEventBus } from './server.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 // Tracker credential isolation must not depend on installed agent CLI startup times.
 // Keep the real health/tracker routes and no-network assertions; backend probing has its own suite.
@@ -27,7 +28,7 @@ describe('tracker API boundaries and isolation', () => {
     mkdirSync(join(root, '.ai/onni'), { recursive: true });
     store = RunStore.open(join(root, '.ai/onni'));
   });
-  afterEach(() => { store.flush(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); rmSync(root, { recursive: true, force: true }); });
+  afterEach(async () => { store.flush(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); await removeTempDir(root); });
   const app = (workspaceEvents?: WorkspaceEventBus) => createApp({
     repoRoot: root, store, manager: {} as RunManager, version: 'test', workspaceEvents,
   });

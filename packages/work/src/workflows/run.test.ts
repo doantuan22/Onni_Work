@@ -117,10 +117,10 @@ describe('RunManager directional usage accounting', () => {
     internal = manager as unknown as UsageAccountingHarness;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   function fixture() {
@@ -302,10 +302,10 @@ describe('RunManager.recordTurnEnd', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   /** A run with a real worktree forked off main, holding an edit + a new file. */
@@ -467,10 +467,10 @@ describe('RunManager.continueRun override', () => {
     (manager as unknown as { runContinuation: () => Promise<void> }).runContinuation = async () => {};
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   /** A finished run with a resumable session on the `claude`/`sonnet` backend. */
@@ -735,9 +735,9 @@ describe('RunManager.settleSuccess — optional review gate', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
     if (savedGate === undefined) delete process.env.ONNI_REVIEW_GATE;
     else process.env.ONNI_REVIEW_GATE = savedGate;
   });
@@ -839,14 +839,14 @@ describe('a chain of 2 selected skills runs BOTH steps, in order (#410)', () => 
     manager = new RunManager(store, repoRoot);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   it('runs both skill steps to completion, and the second step\'s prompt carries the chain guard', async () => {
@@ -929,14 +929,14 @@ describe('a single agent step plus a check step gets NO chain note (#410)', () =
     manager = new RunManager(store, repoRoot);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   it("leaves the lone agent step's prompt untouched", async () => {
@@ -1070,12 +1070,12 @@ describe('check-step mutations stay out of autosave commits (#1079)', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     manager.dispose();
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   it('keeps the tracked check artifact out of the autosave commit', async () => {
@@ -1151,7 +1151,7 @@ describe('ONNI:MONITORING parks as running/monitoring, not waiting (#490)', () =
     currentId = undefined;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (currentId) manager.cancel(currentId); // release the session + repo lock
     manager.dispose(); // see DISPOSE at the top of this file — after the cancel it enables
     for (const [key, value] of Object.entries(savedEnv)) {
@@ -1159,7 +1159,7 @@ describe('ONNI:MONITORING parks as running/monitoring, not waiting (#490)', () =
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const waitFor = async (id: string, pred: (r: RunRecord | undefined) => boolean, ms = 15_000) => {
@@ -1369,7 +1369,7 @@ describe('a turn that parks on its sub-agents while declaring its PR is not "nee
     currentId = undefined;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (currentId) manager.cancel(currentId);
     manager.dispose();
     for (const [key, value] of Object.entries(savedEnv)) {
@@ -1377,7 +1377,7 @@ describe('a turn that parks on its sub-agents while declaring its PR is not "nee
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const waitFor = async (id: string, pred: (r: RunRecord | undefined) => boolean, ms = 15_000) => {
@@ -1493,7 +1493,7 @@ describe('ONNI:ASK parks as waiting and emits ask.requested (#473)', () => {
     currentId = undefined;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (currentId) manager.cancel(currentId);
     manager.dispose(); // see DISPOSE at the top of this file — after the cancel it enables
     for (const [key, value] of Object.entries(savedEnv)) {
@@ -1501,7 +1501,7 @@ describe('ONNI:ASK parks as waiting and emits ask.requested (#473)', () => {
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const waitFor = async (id: string, pred: (r: RunRecord | undefined) => boolean, ms = 15_000) => {
@@ -2449,9 +2449,9 @@ describe('recover() over a mid-workflow ask park (#917)', () => {
     store = RunStore.open(join(repoRoot, '.ai/onni'));
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   /** A two-step run persisted exactly as a park leaves it on disk. */
@@ -2571,9 +2571,9 @@ describe('RunManager.persistAttachment without a session (#472)', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   it('persists two attachments with no ActiveRun and gives them distinct names', () => {
@@ -2657,9 +2657,9 @@ describe('RunManager queued-stack mutators (#472)', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   it('appends messages in order while queued', () => {
@@ -2971,9 +2971,9 @@ describe('RunManager.hydrateQueuedInput (#472)', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   it('folds the task and every stacked message, in order, blank-line joined', () => {
@@ -3127,14 +3127,14 @@ describe('queued stacking reaches the backend (#472)', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     manager.dispose(); // see DISPOSE at the top of this file
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   it('delivers the task plus every stacked message, with the edit applied', async () => {
@@ -3196,8 +3196,8 @@ describe('recover() carries the queued stack exactly once (#472)', () => {
     store = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
   });
 
-  afterEach(() => {
-    rmSync(repoRoot, { recursive: true, force: true });
+  afterEach(async () => {
+    await removeTempDir(repoRoot);
   });
 
   it('folds once across repeated recoveries', async () => {
@@ -3252,13 +3252,13 @@ describe('native Codex requestUserInput parks and resumes the run (#565)', () =>
     manager = new RunManager(store, repoRoot);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (runId) manager.cancel(runId);
     manager.dispose(); // see DISPOSE at the top of this file — after the cancel it enables
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN; else process.env.ONNI_DRY_RUN = savedDryRun;
     if (savedCodexBin === undefined) delete process.env.ONNI_CODEX_BIN; else process.env.ONNI_CODEX_BIN = savedCodexBin;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const waitFor = async (predicate: () => boolean, ms = 15_000) => {
@@ -3340,7 +3340,7 @@ describe('a context-compaction boundary keeps the run working (#955)', () => {
       if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN; else process.env.ONNI_DRY_RUN = savedDryRun;
       if (savedCodexBin === undefined) delete process.env.ONNI_CODEX_BIN; else process.env.ONNI_CODEX_BIN = savedCodexBin;
       store.flush();
-      rmSync(repoRoot, { recursive: true, force: true });
+      await removeTempDir(repoRoot);
     }
   });
 
@@ -3531,13 +3531,13 @@ describe('registry /skill expansion survives a continuation (#811)', () => {
     runId = undefined;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (runId) manager.cancel(runId);
     manager.dispose(); // see DISPOSE at the top of this file — after the cancel it enables
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const eventsOf = (id: string) =>
@@ -3692,12 +3692,12 @@ describe("registry /skill expansion on a fresh run's opening prompt (#278)", () 
     runId = undefined;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (runId) manager.cancel(runId);
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   // Tolerant of the pre-first-event window: the run's ndjson does not exist until

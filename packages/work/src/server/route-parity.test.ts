@@ -9,6 +9,7 @@ import { clearProjectProbeCache, listProjects, registerProject } from '../worksp
 import { ProjectContexts } from './project-context.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 import { createApp, projectRouteManifest, type ProjectRouteInfo } from './server.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 /**
  * Alias parity for the mirrored project-route table (spec
@@ -92,10 +93,10 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     contexts.disposeAll();
     store.flush();
-    for (const dir of [home, repoRoot, otherRoot]) rmSync(dir, { recursive: true, force: true });
+    for (const dir of [home, repoRoot, otherRoot]) await removeTempDir(dir);
     if (savedHome === undefined) delete process.env.ONNI_HOME;
     else process.env.ONNI_HOME = savedHome;
     if (savedRemote === undefined) delete process.env.ONNI_REMOTE;

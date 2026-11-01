@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -12,6 +12,7 @@ import { prunePrHeadRefs, resolvePrHead, runCommand, type CommandRunner } from '
 import { AutomationStore } from './store.ts';
 import { AutomationLaunchOutcome, launchAutomationRun } from './task-template.ts';
 import { automationDefinitionSchema, type GithubAutomationDefinition } from './types.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -70,7 +71,7 @@ describe('resolvePrHead (spec 2026-10-06-agentic-e2e-checks Phase 3)', () => {
   beforeEach(async () => {
     repo = await gitRepo('onni-pr-head-');
   });
-  afterEach(() => rmSync(repo.root, { recursive: true, force: true }));
+  afterEach(async () => await removeTempDir(repo.root));
 
   const resolve = (runner: CommandRunner, allowForkHeads = false) =>
     resolvePrHead({ root: repo.root, repo: REPO, number: 42, allowForkHeads, run: runner, env: {} });
@@ -185,10 +186,10 @@ describe('a pr-head automation launch', () => {
     secrets = new SecretStore();
     manager = new RunManager(store, repo.root, { projectId: PROJECT, secrets });
   });
-  afterEach(() => {
+  afterEach(async () => {
     manager.dispose();
     store.flush();
-    rmSync(repo.root, { recursive: true, force: true });
+    await removeTempDir(repo.root);
   });
 
   /** A checks-only verification workflow: no agent step, as a PR verifier would be. */
@@ -290,7 +291,7 @@ describe('launch outcomes in the execution log', () => {
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'onni-pr-outcome-'));
   });
-  afterEach(() => rmSync(root, { recursive: true, force: true }));
+  afterEach(async () => await removeTempDir(root));
 
   it.each([
     ['skipped', 'fork-head', 'skipped'],

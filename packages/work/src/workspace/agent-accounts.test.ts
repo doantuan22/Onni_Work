@@ -1,14 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  statSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +11,7 @@ import {
   mergeWriteAgentAccounts,
   selectionFor,
 } from './agent-accounts.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 /**
  * `~/.onni/agent-accounts.json` (spec 2026-07-29-agent-profiles).
@@ -38,10 +29,10 @@ describe('agent accounts store', () => {
     process.env.ONNI_HOME = home;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (originalHome === undefined) delete process.env.ONNI_HOME;
     else process.env.ONNI_HOME = originalHome;
-    rmSync(home, { recursive: true, force: true });
+    await removeTempDir(home);
     vi.restoreAllMocks();
   });
 

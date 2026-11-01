@@ -26,6 +26,7 @@ import {
   sanitizeAttachmentName,
   storedAttachmentExtension,
 } from '@onni/contract';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -141,8 +142,8 @@ describe('copyToAttachmentLibrary (#929)', () => {
     dataDir = mkdtempSync(join(tmpdir(), 'onni-library-'));
   });
 
-  afterEach(() => {
-    rmSync(dataDir, { recursive: true, force: true });
+  afterEach(async () => {
+    await removeTempDir(dataDir);
   });
 
   it('files a file under its own name and creates the library on first use', () => {
@@ -554,13 +555,13 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
     manager = new RunManager(store, repoRoot);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   function readStdinLines(): Array<{ userText: string; imageCount: number }> {

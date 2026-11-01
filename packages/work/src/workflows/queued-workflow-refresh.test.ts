@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -9,6 +9,7 @@ import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { loadWorkflows, newerCatalogWorkflow } from './load.ts';
 import { RunManager } from './run.ts';
 import { QUICK_TASK_WORKFLOW, type WorkflowDef } from './types.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -49,12 +50,12 @@ describe('a queued run re-resolves its workflow at dequeue (#1078)', () => {
     manager = new RunManager(store, repoRoot, { semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1 } }) });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.dispose();
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const demo = async (): Promise<WorkflowDef> => {
@@ -214,7 +215,7 @@ steps:
     writeFileSync(overrideFile(), OVERRIDE);
   });
 
-  afterEach(() => rmSync(repoRoot, { recursive: true, force: true }));
+  afterEach(async () => await removeTempDir(repoRoot));
 
   const queuedSnapshot = async (): Promise<WorkflowDef> => {
     const found = (await loadWorkflows(repoRoot)).workflows.find((w) => w.name === 'quick-task');

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -8,6 +8,7 @@ import { RunStore, type RunRecord } from '../runs/store.ts';
 import { RunManager } from './run.ts';
 import type { WorkflowDef } from './types.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -40,13 +41,13 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
     currentId = undefined;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (currentId) manager.cancel(currentId);
     manager.dispose();
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const waitFor = async (id: string, predicate: (record: RunRecord | undefined) => boolean) => {

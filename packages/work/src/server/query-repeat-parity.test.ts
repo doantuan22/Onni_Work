@@ -7,6 +7,7 @@ import type { RunManager } from '../workflows/run.ts'
 import { createApp } from './server.ts'
 import { apiRequest } from './loopback-request.testkit.ts'
 import { connectedProviderAuth } from './provider-auth.testkit.ts'
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 /**
  * Moving the query string onto `queryZodValidator` changed one thing on the wire that nothing
@@ -36,7 +37,7 @@ describe('a repeated query key stays 200 (c.req.query took the first value)', ()
       providerAuth: connectedProviderAuth(),
     })
   })
-  afterEach(() => rmSync(repoRoot, { recursive: true, force: true }))
+  afterEach(async () => await removeTempDir(repoRoot))
 
   it.each([
     ['/api/v1/models?runner=codex&runner=codex'],

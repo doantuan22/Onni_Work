@@ -2,7 +2,7 @@ import * as codexProbes from '../core/codex-usage-probe.ts';
 import { deferredOptionsSchema, deferredAlreadyStartedSchema } from '@onni/contract';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,7 @@ import { apiRequest } from './loopback-request.testkit.ts';
 import { RunStore } from '../runs/store.ts';
 import { RunManager } from '../workflows/run.ts';
 import { AutomationStore } from '../automations/store.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 describe('deferred start API', () => {
   let root: string, store: RunStore;
@@ -20,7 +21,7 @@ describe('deferred start API', () => {
     vi.stubEnv('ONNI_HOME', join(root, 'home')); vi.stubEnv('CLAUDE_CONFIG_DIR', join(root, 'profile')); vi.stubEnv('ONNI_AUTOMATIONS', '1');
     store = RunStore.open(join(root, '.ai/onni'));
   });
-  afterEach(() => { vi.restoreAllMocks(); store.flush(); rmSync(root, { recursive: true, force: true }); vi.unstubAllEnvs(); });
+  afterEach(async () => { vi.restoreAllMocks(); store.flush(); await removeTempDir(root); vi.unstubAllEnvs(); });
   const json = (body: unknown, method = 'POST') => ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const body = { task: { task: 'Keep {{user.id}} unchanged', workflow: 'quick-task', runner: 'claude' }, start: { kind: 'at', date: '2099-01-01', hour: 9, minute: 0 } };
   const app = () => createApp({ repoRoot: root, store, manager: { startRun: () => { throw new Error('must not create a run'); } } as unknown as RunManager, version: 'test' });

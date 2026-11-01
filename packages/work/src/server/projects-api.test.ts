@@ -38,6 +38,7 @@ import {
   type ServerDeps,
   type UpdateProjectResponse,
 } from './server.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 /**
  * Multi-project workspace API (spec 2026-07-20-multi-project-workspace, step
@@ -91,9 +92,9 @@ describe('workspace projects API', () => {
     clearProjectProbeCache();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     store.flush();
-    for (const dir of [home, repoRoot, otherRoot]) rmSync(dir, { recursive: true, force: true });
+    for (const dir of [home, repoRoot, otherRoot]) await removeTempDir(dir);
     if (savedHome === undefined) delete process.env.ONNI_HOME;
     else process.env.ONNI_HOME = savedHome;
     if (savedRemote === undefined) delete process.env.ONNI_REMOTE;

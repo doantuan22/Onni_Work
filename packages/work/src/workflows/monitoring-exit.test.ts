@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -15,6 +15,7 @@ import {
   RunManager,
 } from './run.ts';
 import type { WorkflowDef } from './types.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const IDLE_TIMEOUT_MS = DEFAULT_IDLE_TIMEOUT_MINUTES * 60_000;
@@ -84,14 +85,14 @@ describe('a parked monitor always has an exit', () => {
     currentId = undefined;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.useRealTimers();
     if (currentId) manager.cancel(currentId);
     manager.dispose();
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const waitFor = async (id: string, pred: (r: RunRecord | undefined) => boolean, ms = 15_000) => {

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -13,6 +13,7 @@ import { readLifecycleConfig, writeLifecycleConfig } from '../worktree-lifecycle
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
 import { RunManager } from './run.ts';
 import type { WorkflowDef } from './types.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const exec = promisify(execFile);
 const workflow: WorkflowDef = { name: 'quick-task', source: 'built-in', steps: [{ id: 'task', name: 'Task', prompt: '{{task}}' }] };
@@ -55,7 +56,7 @@ afterEach(async () => {
   }
   // Disposal stops shell children asynchronously; never delete their cwd before quiescence.
   await new Promise(resolve => setTimeout(resolve, 100));
-  for (const { root } of projects) rmSync(root, { recursive: true, force: true });
+  for (const { root } of projects) await removeTempDir(root);
   projects.length = 0; vi.restoreAllMocks(); vi.unstubAllEnvs();
 });
 

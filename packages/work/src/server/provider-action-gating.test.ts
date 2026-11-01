@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
@@ -11,6 +11,7 @@ import { RunManager, type StartRunInput } from '../workflows/run.ts';
 import type { WorkflowDef } from '../workflows/types.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 import { createApp } from './server.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 // `resolveClaudeBin` probes the real machine for an install that is off PATH, so the claude
 // executable these cases assert on would otherwise be whatever the DEVELOPER has. Pinned to the
@@ -114,9 +115,9 @@ describe('provider action gating', () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
     if (savedModelsLocked === undefined) delete process.env.ONNI_AGENT_MODELS_LOCKED;
     else process.env.ONNI_AGENT_MODELS_LOCKED = savedModelsLocked;
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
@@ -305,7 +306,7 @@ describe('the gate verifies before it refuses', () => {
 
   afterEach(async () => {
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
     await mergeWriteAgentAccounts(() => defaultAgentAccountStore());
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
@@ -524,10 +525,10 @@ describe('provider availability preserves existing execution', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (runId) manager.cancel(runId);
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     if (savedCodexBin === undefined) delete process.env.ONNI_CODEX_BIN;

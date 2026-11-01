@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +7,7 @@ import type { RunManager } from '../workflows/run.ts';
 import { createApp, type ServerDeps } from './server.ts';
 import type { SocketHub, TopicPublisher } from './ws.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 /**
  * The LIVE-SERVER health path (spec `2026-07-23-websocket-subscriptions.md`).
@@ -63,10 +64,10 @@ describe('health topic + cache (live-server path)', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.useRealTimers();
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     if (savedRemote === undefined) delete process.env.ONNI_REMOTE;

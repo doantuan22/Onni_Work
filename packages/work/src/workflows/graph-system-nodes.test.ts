@@ -1,5 +1,5 @@
 import { execFile, type SpawnOptions } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -10,6 +10,7 @@ import { graphIssues, graphRailSteps, graphToSteps, type WorkflowGraph } from '.
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { RunManager } from './run.ts';
 import { QUICK_TASK_WORKFLOW, type WorkflowDef } from './types.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 // These graph fixtures compare exact check output, including numeric branch inputs.
 // Keep the real Bash commands/stdio, but isolate them from the developer's login
@@ -54,13 +55,13 @@ describe('graph system nodes', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllEnvs();
     manager.dispose();
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const def = (graph: WorkflowGraph): WorkflowDef => {
