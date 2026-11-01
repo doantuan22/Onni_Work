@@ -175,11 +175,18 @@ describe('workspace migrations', () => {
 
   it('an unwritable home degrades with ONE warning and never throws', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    chmodSync(home, 0o500); // read-only home dir → the atomic write fails
+    if (process.platform === 'win32') {
+      // `chmod` cannot deny the owner on Windows, so make the path itself unwritable: a regular
+      // file where the home directory belongs fails the same directory creation a 0o500 home does.
+      rmSync(home, { recursive: true, force: true });
+      writeFileSync(home, 'not a directory');
+    } else {
+      chmodSync(home, 0o500); // read-only home dir → the atomic write fails
+    }
     await expect(runMigrations({ bootRepoRoot: null })).resolves.toBeUndefined();
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0]?.[0])).toContain('001-workspace-config');
-    chmodSync(home, 0o700);
+    if (process.platform !== 'win32') chmodSync(home, 0o700);
     expect(existsSync(workspaceConfigPath())).toBe(false);
   });
 
