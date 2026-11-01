@@ -6,6 +6,8 @@ import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDraftPr } from './github.ts';
 import type { RunRecord } from '../../runs/store.ts';
+import { fakeProgram } from '../../test-fixtures/fake-program.testkit.ts';
+import { removeTempDir } from '../../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -38,10 +40,10 @@ describe('createDraftPr pre-PR autosave (#471 follow-up)', () => {
     vi.stubEnv('ONNI_DRY_RUN', '1'); // stop before push/gh; the guard runs earlier
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     warn.mockRestore();
     vi.unstubAllEnvs();
-    rmSync(repo, { recursive: true, force: true });
+    await removeTempDir(repo);
   });
 
   it('disables terminal credential prompts for raw git pushes', async () => {
@@ -124,20 +126,18 @@ describe('createDraftPr draft flag', () => {
     await git(['remote', 'add', 'origin', remote]);
     await git(['checkout', '-q', '-b', 'onni/abc123']);
     // A stand-in `gh` that records its argv and answers like `gh pr create` does.
-    writeFileSync(
-      join(bin, 'gh'),
-      `#!/bin/sh\nprintf '%s\\n' "$@" > "${bin}/argv"\necho https://github.com/acme/demo/pull/9\n`,
-      { mode: 0o755 },
-    );
+    fakeProgram('gh', {
+      dir: bin,
+      body: `require('node:fs').writeFileSync(${JSON.stringify(join(bin, 'argv'))}, args.join('\\n'));\nprocess.stdout.write('https://github.com/acme/demo/pull/9\\n');`,
+    }).use();
     vi.stubEnv('ONNI_DRY_RUN', '0');
-    vi.stubEnv('PATH', `${bin}:${process.env.PATH ?? ''}`);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
-    for (const dir of [repo, remote, bin]) rmSync(dir, { recursive: true, force: true });
+    await removeTempDir(repo, remote, bin);
   });
 
   const input = (draft?: boolean) => ({
@@ -171,16 +171,20 @@ describe('createDraftPr recovery', () => {
 
   /** A stand-in `gh`: `pr create` runs `create`, `pr list` prints `list`; each call is logged. */
   const fakeGh = (create: string, list: string) =>
-    writeFileSync(
-      join(bin, 'gh'),
-      [
-        '#!/bin/sh',
-        `echo "$1 $2" >> "${bin}/calls"`,
-        `if [ "$2" = create ]; then n=$(cat "${bin}/n" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "${bin}/n"; ${create}; fi`,
-        `if [ "$2" = list ]; then echo '${list}'; fi`,
-      ].join('\n'),
-      { mode: 0o755 },
-    );
+    fakeProgram('gh', {
+      dir: bin,
+      body: `
+const fs = require('node:fs');
+fs.appendFileSync(${JSON.stringify(join(bin, 'calls'))}, args[0] + ' ' + args[1] + '\\n');
+if (args[1] === 'create') {
+  const nFile = ${JSON.stringify(join(bin, 'n'))};
+  const n = Number(fs.existsSync(nFile) ? fs.readFileSync(nFile, 'utf8') : '0') + 1;
+  fs.writeFileSync(nFile, String(n));
+  ${create}
+}
+if (args[1] === 'list') process.stdout.write(${JSON.stringify(list)} + '\\n');
+`,
+    }).use();
   const calls = () => readFileSync(join(bin, 'calls'), 'utf8').trim().split('\n');
 
   beforeEach(async () => {
@@ -195,14 +199,13 @@ describe('createDraftPr recovery', () => {
     await git(['remote', 'add', 'origin', remote]);
     await git(['checkout', '-q', '-b', 'onni/abc123']);
     vi.stubEnv('ONNI_DRY_RUN', '0');
-    vi.stubEnv('PATH', `${bin}:${process.env.PATH ?? ''}`);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
-    for (const dir of [repo, remote, bin]) rmSync(dir, { recursive: true, force: true });
+    await removeTempDir(repo, remote, bin);
   });
 
   const input = () => ({
@@ -213,7 +216,7 @@ describe('createDraftPr recovery', () => {
 
   it('adopts the open PR that already exists for the branch', async () => {
     fakeGh(
-      `echo 'a pull request for branch "onni/abc123" into branch "main" already exists:' >&2; echo https://github.com/acme/demo/pull/5 >&2; exit 1`,
+      `process.stderr.write('a pull request for branch "onni/abc123" into branch "main" already exists:\\nhttps://github.com/acme/demo/pull/5\\n'); process.exit(1);`,
       '[{"url":"https://github.com/acme/demo/pull/5","headRepositoryOwner":{"login":"acme"}}]',
     );
     const outcome = await createDraftPr(input());
@@ -222,7 +225,7 @@ describe('createDraftPr recovery', () => {
 
   it('retries once when GitHub cannot see the just-pushed head yet', async () => {
     fakeGh(
-      `if [ $n = 1 ]; then echo "pull request create failed: GraphQL: Head sha can't be blank, Head ref must be a branch (createPullRequest)" >&2; exit 1; fi; echo https://github.com/acme/demo/pull/6`,
+      `if (n === 1) { process.stderr.write("pull request create failed: GraphQL: Head sha can't be blank, Head ref must be a branch (createPullRequest)\\n"); process.exit(1); } process.stdout.write('https://github.com/acme/demo/pull/6\\n');`,
       '[]',
     );
     const outcome = await createDraftPr(input());
@@ -232,7 +235,7 @@ describe('createDraftPr recovery', () => {
 
   it('does not retry a permanent failure, and names an empty branch plainly', async () => {
     fakeGh(
-      `echo "pull request create failed: GraphQL: No commits between main and onni/abc123 (createPullRequest)" >&2; exit 1`,
+      `process.stderr.write('pull request create failed: GraphQL: No commits between main and onni/abc123 (createPullRequest)\\n'); process.exit(1);`,
       '[]',
     );
     const outcome = await createDraftPr(input());
@@ -243,7 +246,7 @@ describe('createDraftPr recovery', () => {
 
   // Telemetry 16aef26d: a task with no commits used to be pushed, then refused by gh.
   it('refuses a branch with nothing over its base before pushing or calling gh', async () => {
-    fakeGh('echo https://github.com/acme/demo/pull/8', '[]');
+    fakeGh(`process.stdout.write('https://github.com/acme/demo/pull/8\\n');`, '[]');
     await git(['push', '-q', 'origin', 'main']);
     const outcome = await createDraftPr({ ...input(), run: { ...input().run, baseBranch: 'main' } });
     expect(outcome).toEqual({ ok: false, error: expect.stringContaining('nothing to propose') });
@@ -253,7 +256,7 @@ describe('createDraftPr recovery', () => {
   });
 
   it('still publishes a branch whose commits are ahead of its base', async () => {
-    fakeGh('echo https://github.com/acme/demo/pull/8', '[]');
+    fakeGh(`process.stdout.write('https://github.com/acme/demo/pull/8\\n');`, '[]');
     await git(['push', '-q', 'origin', 'main']);
     writeFileSync(join(repo, 'a.txt'), 'work\n');
     const outcome = await createDraftPr({ ...input(), run: { ...input().run, baseBranch: 'main' } });
