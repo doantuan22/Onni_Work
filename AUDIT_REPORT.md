@@ -1,13 +1,13 @@
 # AUDIT_REPORT.md — Onni Work trước khi build desktop
 
 Ngày audit: 2026-11-01 (Asia/Bangkok)  
-Trạng thái: Pha 1 hoàn tất. Pha 2: F-07, F-01, F-03, F-05, F-06 và F-04 đã sửa/xác minh; F-02 còn ghi chú.
+Trạng thái: Pha 2 đã xử lý F-01, F-03–F-07; F-02 không cần sửa theo phạm vi dùng cá nhân. Kiểm thử đầy đủ và cài/gỡ NSIS còn cần xác minh trên môi trường hỗ trợ.
 
 ## Kết luận điều hành
 
 ### CHƯA SẴN SÀNG để sign-off một bản desktop cài được ngay
 
-Build/typecheck TypeScript pass; Tauri compile/test pass; installer NSIS cũng build được khi chọn target tường minh. F-07 đã qua đầy đủ UI smoke: health sau 1,633 ms, tạo/cancel `mock:slow`, thoát app rồi mở lại thấy task vẫn Cancelled. Hai smoke ẩn cũ timeout; chúng dùng `Start-Process -WindowStyle Hidden`, và lần chạy lại không ghi `supervisor-start`, vì thế không đại diện cho desktop UI được hỗ trợ. Chưa xác minh cài/gỡ installer trên Windows; ba nhóm test Node không hoàn tất do lỗi môi trường; build mặc định chỉ tạo executable. Trên máy mới, shell còn cần Node 20+ và engine đã build/link trước khi chạy.
+Build/typecheck TypeScript pass; Tauri compile/test pass; installer NSIS cũng build được khi chọn target tường minh. F-07 đã qua đầy đủ UI smoke: health sau 1,633 ms, tạo/cancel `mock:slow`, thoát app rồi mở lại thấy task vẫn Cancelled. Hai smoke ẩn cũ timeout; chúng dùng `Start-Process -WindowStyle Hidden`, và lần chạy lại không ghi `supervisor-start`, vì thế không đại diện cho desktop UI được hỗ trợ. Chưa xác minh cài/gỡ installer trên Windows; Vitest thất bại và unit/package dừng do lỗi môi trường; build mặc định chỉ tạo executable. Trên máy mới, shell còn cần Node 20+ và engine đã build/link trước khi chạy.
 
 F-07 được phân loại là lỗi của audit harness, không phải lỗi của desktop path được hỗ trợ: hai lần timeout trước dùng executable ẩn; lần smoke ẩn mới nhất không vào `supervisor-start`, còn lần chạy có UI thật spawn Node và trả health sau 1,633 ms. Task `mock:slow` được tạo/cancel, app thoát, rồi sau khi mở lại task vẫn hiện trạng thái Cancelled (ảnh chụp người dùng cung cấp). Logger cục bộ và script smoke nhìn thấy cửa sổ được thêm để không mất bằng chứng nếu lỗi tái diễn. F-01 đã sửa: build dọn `packages/work/dist` trước `tsc`; pack gate kiểm tra mọi output có source tương ứng và chặn module legacy. Build sạch hiện có 897 file trong dist, tất cả khớp source; 72 output legacy từ inventory ban đầu không còn. F-03 đã thêm `npm run build:windows` để tạo NSIS; lệnh build mặc định và target nền tảng khác không đổi. F-06 đã chuyển quy trình tạo NSIS vào target ignored riêng và lưu installer dưới thư mục theo version/commit; file Cezar cũ trong target bị xóa. F-04 đã đánh dấu spec distribution cũ SUPERSEDED và thêm runbook build/cài cá nhân theo Node + engine local. Installer NSIS đã build được để thử nội bộ, nhưng chưa có bằng chứng đủ để cam kết flow cài/gỡ.
 
@@ -72,7 +72,7 @@ Kế hoạch chạm tới UI, API/IPC, CLI, lifecycle task, workflow/automation,
 | Lệnh | Kết quả |
 |---|---|
 | npm.cmd run typecheck | ✅ Pass: contract, API client, server, web. Lệnh cũng build server trước typecheck. |
-| npm.cmd test | ❌ Không hoàn tất. Chạy hơn 9 phút rồi dừng sau nhiều lỗi Windows-shaped và timeout; không có summary đầy đủ. Thấy EPERM, path/permission khác POSIX, Git ignore permission denied, Filename too long, và Node uv_os_get_passwd returned ENOMEM. |
+| npm.cmd test | ❌ Hoàn tất nhưng thất bại trên Windows: 130 file fail, 661 pass, 4 skipped; 712 test fail, 11.843 pass, 48 skipped (532 giây). Có EPERM khi xóa thư mục tạm, POSIX path/mode khác Windows, Filename too long, timeout và `uv_os_get_passwd` ENOMEM; chưa kết luận từng lỗi đều do môi trường. |
 | npm.cmd run test:unit | ❌ 7/7 file dừng trước test vì Node/tsx uv_os_get_passwd returned ENOMEM. |
 | npm.cmd run test:package | ❌ Dừng trước test vì cùng lỗi uv_os_get_passwd returned ENOMEM. |
 | npm.cmd run test:e2e | ❌ Script gọi sh .ai/scripts/e2e.sh; Windows báo sh is not recognized. WSL không cài. |
@@ -92,7 +92,7 @@ Không coi lỗi Node/Windows của các suite là lỗi sản phẩm đã xác 
 | ID | Mức độ | Khu vực | Mô tả | Bằng chứng / cách tái hiện | Nguyên nhân gốc | Đề xuất sửa + công |
 |---|---|---|---|---|---|---|
 | F-01 | P2 — đã sửa | Build / npm package | Baseline tarball chứa 24 nhóm output JavaScript mồ côi (72 entry tính cả .js, .d.ts và .js.map), gồm feature telemetry, self-update cũ, star-count, Slack/Discord, skills-update, install-as-command và module release/run. Nội dung artifact cũ nhắc Cezar, @open-mercato/cezar và telemetry path đã xóa. | Trước sửa: pack dry-run liệt kê 72 output entry legacy không có source. Sau sửa: `npm run build` pass; `check:pack` duyệt 897 file dist và không có source gap; 72 output legacy từ inventory ban đầu không còn. Quét Cezar, `@open-mercato/cezar`, `cezar telemetry`, `telemetry-service.json`, `stamp-telemetry-service` và `Settings → Privacy` trong dist không tìm thấy kết quả. Regression tests xác nhận output thiếu source, suffix không hỗ trợ và denylist làm gate fail. Các từ telemetry ở module hiện hành khác vẫn được giữ vì mô tả token/resource telemetry cục bộ. | `tsc` ghi output mới nhưng không xóa file từ source đã bị xóa; pack manifest chọn toàn bộ thư mục `dist`. | Đã thêm clean trước build và source mapping + denylist trong pack gate. Commit `fix(F-01): clean build outputs and reject stale package files`. M. |
-| F-02 | P1* | Desktop / triển khai máy mới | Desktop là shell mỏng, không kèm engine Onni hoặc Node. Lần chạy đầu trên máy chưa có Node 20+ và engine đã build/link chỉ hiện trang hướng dẫn; không tự cài runtime/engine. Vì vậy NSIS không phải installer độc lập cho máy Windows sạch. | packages/desktop/src-tauri/src/lib.rs:701-711, 907-935, 1628-1657: tìm Node, lấy entry từ ONNI_DESKTOP_ENTRY hoặc ~/.onni/versions/current; thiếu thì hiện hướng dẫn npm install, npm run build, onni link --use. Tái hiện logic bằng máy không có Node hoặc version link. Đây là hành vi được thiết kế, không phải crash. | Engine và Node được tách khỏi shell để dùng Node/CLI của người dùng; installer không bootstrap phần phụ thuộc. | Nếu chỉ dùng trên máy dev hiện tại: thêm bước build + onni link --use vào quy trình. Nếu muốn cài cho máy sạch: đóng gói engine/runtime hoặc tạo onboarding/bootstrapper riêng; S cho tài liệu, L cho bootstrapper. P1* chỉ áp dụng cho mục tiêu “cài installer trên máy sạch là dùng được”. |
+| F-02 | P1* — KHÔNG SỬA | Desktop / triển khai máy mới | Desktop cần Node 20+ và engine đã build/link; NSIS không tự cài hai thành phần này. | `require_node` báo Node thiếu hoặc phiên bản cũ và yêu cầu cài Node 20+; `engine_missing` hướng dẫn `npm install`, `npm run build`, `node packages/work/dist/index.js link --use`. CLI xác nhận `link [<dir>]` mặc định dùng thư mục hiện tại. Runbook `docs/desktop-personal-use.md` ghi lại đầy đủ các bước. | Đây là mô hình shell mỏng theo phạm vi dùng cá nhân. | Không cần sửa thông báo; không làm bootstrapper. Commit ghi chú `docs(F-02): document desktop prerequisites`. P1* chỉ áp dụng nếu sau này yêu cầu cài trên máy sạch. |
 | F-03 | P2 — đã sửa | Desktop build target | Build mặc định trong `packages/desktop` chỉ tạo executable `onni-desktop.exe`, không tạo MSI/NSIS; target cấu hình Tauri là `app`. | Trước sửa: `npm run build` không sinh installer; lệnh Tauri tường minh `--bundles nsis` đã được chạy trực tiếp. Sau sửa: `npm run build:windows` pass và tạo `Onni Work_0.1.11_x64-setup.exe` (2,730,954 bytes) tại `.tmp/audit/desktop-target/release/bundle/nsis/`. Root typecheck pass; `cargo test --locked --lib` pass 20, 3 ignored. Build dùng target riêng vì executable release đang chạy và bị khóa; không dừng process người dùng. | Script build desktop không chọn bundle target Windows; `tauri.conf.json` vẫn cấu hình `app`. | Thêm `build:windows` gọi `tauri build --bundles nsis`; cập nhật lệnh trong AGENTS.md. Commit `fix(F-03): add explicit Windows NSIS build command`. S. |
 | F-04 | P2 — đã sửa | Tài liệu desktop | Spec desktop distribution cũ mô tả engine download từ registry và cơ chế updater, không khớp code hiện hành. | Đã thêm thông báo `SUPERSEDED` ngay đầu `.ai/specs/2026-09-25-desktop-distribution.md` trỏ tới `docs/desktop-personal-use.md`. Runbook ghi Node 20+, root `npm run build`, link bằng `node packages/work/dist/index.js link . --use`, cài dependencies desktop, `npm run build:windows` và cài thử NSIS. Relative link và lệnh `link --use` được xác nhận với CLI help; root typecheck/build pass, pack gate pass. | Spec upstream giữ giả định cũ sau khi chủ đích distribution đổi sang engine build/link tại máy. | Đánh dấu spec cũ là lịch sử và viết runbook cho mục tiêu dùng cá nhân trên máy Windows đã có Node + engine local. Commit `docs(F-04): supersede desktop distribution spec`. S. |
 | F-05 | P2 — ĐÃ SỬA | Windows process cleanup | Trước sửa, bộ quét hậu task không hỗ trợ Windows và shell chỉ dừng Node trực tiếp, nên descendant có thể còn sống. | Tiến trình agent/lệnh kiểm tra và sidecar được tạo ở trạng thái suspended, gán vào Windows Job Object kill-on-close trước khi chạy; lỗi gán chặn khởi chạy. Vitest Windows: 2/2 pass, kiểm tra cancel và kết thúc tiến trình gốc cùng việc giải phóng port. Cargo test: test đóng Job Object pass; test kết thúc hẳn tiến trình chủ Job Object xác nhận cả Node lẫn descendant chết và port đóng. Root typecheck/build và NSIS build pass. Chưa kiểm tra tray Quit với descendant thật qua UI. | Windows thiếu quyền sở hữu vòng đời cho cây tiến trình. | Commit `fix(F-05): own Windows task process trees with job objects`; Job Object của shell dọn sidecar khi shell thoát, Job Object của từng launcher dọn cây task. Linux/macOS giữ đường spawn cũ; bộ quét hậu task của hai hệ này vẫn hoạt động. M. |
@@ -107,7 +107,7 @@ P1* là điều kiện phát hành: không chặn build dùng cá nhân trên m�
 |---|---|---|
 | Kiến trúc, entry point desktop/CLI/API/UI, workspace/package | 🔍 đọc code | Bản đồ ở §1; TypeScript typecheck pass. |
 | Desktop khởi động, dò Node/engine, health handshake | ✅ UI smoke | UI thật: Node check pass, linked entry canonical path có `\\?\`, health pass sau 1,633 ms; tạo/cancel mock task, thoát app, mở lại và task vẫn ở trạng thái Cancelled. Smoke ẩn không được tính vì không ghi `supervisor-start`. Xem F-07. |
-| Cài đặt/chạy/gỡ NSIS, license trong installer | ❌ chưa xác minh | Đã tạo .tmp/audit/desktop-install-smoke.ps1 với thư mục cài/repo/home tạm; gọi NSIS im lặng nhưng thư mục đích không xuất hiện. HKCU Uninstall key không tồn tại và không tìm thấy thư mục shortcut Start Menu khớp; không kết luận registry toàn máy. Nguyên nhân invocation chưa rõ; không kết luận installer lỗi. CUA/native UI host không khả dụng để xử lý prompt hoặc kiểm tra màn hình. |
+| Cài đặt/chạy/gỡ NSIS, license trong installer | ❌ chưa xác minh | Installer mới build được. Hai lần gọi im lặng không tạo thư mục đích; lần dùng process handle trả exit 0 nhưng vẫn không có thư mục. Không tìm thấy HKCU uninstall entry hoặc Start Menu shortcut khớp sau đó. Native UI pipe không khả dụng, nên chưa cài/gỡ qua UI và không kết luận nguyên nhân. Script NSIS sinh ra đặt `LICENSE` rỗng và không liệt kê LICENSE/NOTICE trong resources; chưa giải nén artifact để kiểm tra nội dung nhúng. |
 | CLI/headless onni, onni run, init/link/unlink | 🔍 đọc code | Test package không chạy được vì Node uv_os_get_passwd ENOMEM. |
 | Engine HTTP task/cancel/restart persistence | ✅ chạy thật | Direct Node engine trên repo mẫu: health, mock:done, mock:slow cancellation và readback hai run sau restart đều pass. Không thay thế smoke Tauri shell. |
 | Tạo task bình thường, run state/event/UI stream | 🔍 đọc code | Đã lần UI → typed client → Hono route → RunManager/store. Direct Node REST smoke tạo/đọc task; chưa chạy UI/SSE/WS end-to-end. |
@@ -120,22 +120,22 @@ P1* là điều kiện phát hành: không chặn build dùng cá nhân trên m�
 | Terminal/PTY, preview, Design Mode, app launch | 🔍 đọc code | Không xác nhận runtime Windows/PTY/browser. |
 | Settings, secrets, project registry, uploads/attachments, JSON/NDJSON state | 🔍/✅ một phần | Đã rà atomic write; desktop UI tạo task mock, lưu Cancelled và đọc lại task đó sau khi mở lại app. Các trạng thái/flows khác chưa kiểm tra end-to-end. |
 | Request origin/Host, CORS, loopback và WebSocket boundary | 🔍 đọc code | server.ts có body limit, Host allowlist và same-origin write guard; chưa fuzz/test HTTP trong lượt này. |
-| npm build/typecheck/pack gate | ✅ chạy thật | Root typecheck pass; clean root build và pack dry-run pass với npm cache trong workspace. `check:pack` xác nhận 897 dist files có source tương ứng, không có legacy output; 1,080 file trong tarball mô phỏng. |
-| Vitest, node:test, package tests | ❌ không hoàn tất | npm test bị ngắt sau nhiều lỗi môi trường/timeout; unit/package test dừng trước test ở uv_os_get_passwd returned ENOMEM. |
-| Tauri Rust check/unit tests | ✅ chạy thật | cargo check --locked --all-targets; 20 test thường và 3 test ignored chạy tường minh đều pass. |
+| npm build/typecheck/pack gate | ✅ chạy thật | Root typecheck pass; clean root build và pack dry-run pass với npm cache trong workspace. `check:pack` xác nhận 900 dist files có source tương ứng, không có output legacy trong inventory F-01; 1.084 file trong tarball mô phỏng. |
+| Vitest, node:test, package tests | ❌ chưa pass | Vitest hoàn tất: 11.843 pass, 712 fail; có EPERM, timeout, khác biệt POSIX/Windows và ENOMEM. `test:unit` 7/7 file và `test:package` 2/2 file dừng trước test do `uv_os_get_passwd` ENOMEM. Cần chạy CI/WSL và điều tra lỗi còn lại. |
+| Tauri Rust check/unit tests | ✅ chạy thật | Windows `cargo check --locked --all-targets` pass; 21 test thường và 3 test cần Node chạy riêng pass. Test bổ sung kết thúc tiến trình chủ Job Object cũng pass và xác nhận sidecar, descendant và port được dọn. |
 | Windows artifact build | ✅ chạy thật | `npm run build:windows` tạo NSIS trong target build riêng và copy sang `.tmp/desktop-artifacts/0.1.11-5d6cdb771b96-dirty-2026-11-01T09-49-39-656Z/Onni Work_0.1.11_x64-setup.exe` (2,731,531 bytes). Installer Cezar cũ không còn trong `packages/desktop/src-tauri/target/release/bundle/nsis/`. |
 | Desktop personal-use runbook/spec | ✅ kiểm tra tài liệu | Link SUPERSEDED resolve được; lệnh `link . --use` khớp CLI help; các build/link steps đối chiếu `packages/work` và `packages/desktop` hiện tại. |
 | E2E browser suite | ❌ không chạy | sh không có trên PATH, WSL không cài. |
-| MIT/NOTICE và Cezar/service remnants trong package | 🔍 một phần | Root LICENSE, NOTICE, packages/work/LICENSE hiện diện; pack dry-run xác nhận legacy files còn trong dist. Nội dung NSIS chưa kiểm tra được. |
+| MIT/NOTICE và Cezar/service remnants trong package | 🔍 một phần | LICENSE và NOTICE của repo được giữ nguyên. NSIS script sinh ra có `LICENSE` rỗng và không có LICENSE/NOTICE trong danh sách resources; chưa giải nén để xác nhận dữ liệu nhúng. Pack gate sau clean build pass, không còn 72 output legacy từ inventory F-01. |
 
 ## 5. Những gì chưa kiểm tra được
 
-- Không chạy đầy đủ npm test, test:unit, test:package do lỗi Windows/runtime nêu trên; kết quả không thay thế bằng CI.
+- Vitest đã chạy hết nhưng thất bại; unit/package tests dừng ở ENOMEM. Cần kết quả CI/WSL, không coi các lượt này là pass.
 - E2E không chạy do thiếu sh và WSL. Computer-use native pipe/browser host cũng không khả dụng, nên không kiểm tra splash, giao diện sau cài, menu/tray, prompt hoặc thao tác gỡ qua UI.
 - NSIS installer được build nhưng không xác minh được install/uninstall trong môi trường cô lập: silent invocation không tạo thư mục cài đích. Chưa biết đây là tham số invocation, môi trường Windows hay lỗi installer. HKCU Uninstall key không tồn tại; không thấy thư mục Start Menu khớp. Chỉ kiểm tra profile user hiện tại, không kết luận về HKLM. Hai thư mục AppData có timestamp 10/30 đã tồn tại trước audit và không bị thay đổi.
 - Không chạy agent CLI thật, GitHub/Jira/Linear, webhook, MCP, network integrations, Design Mode, terminal PTY hoặc automation scheduler; các mục này chỉ được đọc tĩnh để tránh credential/network side effect.
-- F-07 đã xác minh qua UI thật. Hai smoke ẩn không vào `supervisor-start`, nên không đại diện cho desktop launch có UI. Chưa xác minh process descendant do agent tạo, installer install/uninstall, hoặc giữ dữ liệu qua uninstall.
-- Nội dung license/NOTICE trong installer và việc installer được SmartScreen đối xử ra sao chưa xác minh. File setup build hiện tại là unsigned (Get-AuthenticodeSignature: NotSigned).
+- F-07 đã xác minh UI thật. F-05 kiểm tra process/port tự động trên Windows, gồm kết thúc tiến trình chủ Job Object; chưa kiểm tra tray Quit với descendant thật qua UI hoặc giữ dữ liệu sau uninstall.
+- NSIS script không khai báo LICENSE/NOTICE như resource và `LICENSE` rỗng; chưa xác nhận nội dung nhúng bằng giải nén. Cần kiểm tra SmartScreen trước khi chia sẻ binary; setup đã kiểm tra trước đó là unsigned.
 - Working tree ban đầu có tám ADR bị xóa (docs/adr/0001–0008); đây là thay đổi có sẵn, audit không sửa/khôi phục. Build output và .tmp/audit/ là ignored artifacts.
 
 ## 6. Thứ tự sửa đề xuất
@@ -144,10 +144,10 @@ P1* là điều kiện phát hành: không chặn build dùng cá nhân trên m�
 2. **Build sạch và package gate:** F-01 đã hoàn tất trong commit `fix(F-01): clean build outputs and reject stale package files`. Clean build xóa 72 output cũ; pack gate xác nhận output còn lại đều có source và gói vẫn chứa cockpit.
 3. **Quy trình desktop Windows:** F-03 đã hoàn tất trong commit `fix(F-03): add explicit Windows NSIS build command`; hướng dẫn ghi rõ `npm run build:windows`, target `app` mặc định không đổi. F-02 chỉ ghi chú khi thiếu Node/engine; F-03 không thay đổi phạm vi bootstrap.
 4. **Tính nhất quán tài liệu:** F-04 đã hoàn tất trong commit `docs(F-04): supersede desktop distribution spec`; spec cũ có liên kết tới runbook cá nhân với lệnh build/link/install phù hợp code hiện tại.
-5. **Dọn process trên Windows:** F-05. Thiết kế/kiểm thử cơ chế task process ownership trước khi khẳng định cancel/quit dọn mọi descendant.
+5. **Dọn process trên Windows:** F-05 đã sửa trong commit `d6ce52e`; Job Object được kiểm tra bằng cancel, process exit và kết thúc tiến trình chủ trên Windows.
 6. **Artifact hygiene:** F-06 đã hoàn tất trong commit `fix(F-06): version Windows desktop artifacts`; build Windows tạo target và artifact riêng dưới `.tmp/` có version/commit, installer Cezar cũ trong target ignored đã được xóa.
 
-Các bước sửa thuộc Giai đoạn 2; audit này không sửa code sản phẩm.
+Các commit Giai đoạn 2 được liệt kê trong bảng tổng kết bên dưới.
 
 ## 7. Checklist trước khi build desktop
 
@@ -169,3 +169,30 @@ Các bước sửa thuộc Giai đoạn 2; audit này không sửa code sản ph
 
 
 
+
+## 8. Tổng kết Giai đoạn 2
+
+| ID | Trạng thái | Commit / ghi chú |
+|---|---|---|
+| F-01 | ĐÃ SỬA | `df3a546` — clean dist và pack gate. |
+| F-02 | KHÔNG SỬA | `docs(F-02): document desktop prerequisites` — thông báo thiếu Node/engine đã đủ. |
+| F-03 | ĐÃ SỬA | `5d6cdb7` — lệnh build NSIS. |
+| F-04 | ĐÃ SỬA | `b4623dd` — đánh dấu spec cũ và thêm runbook. |
+| F-05 | ĐÃ SỬA | `d6ce52e` — Windows Job Objects; còn smoke tray Quit thật. |
+| F-06 | ĐÃ SỬA | `87d97f2` — phân biệt artifact theo version/commit. |
+| F-07 | KHÔNG SỬA hành vi | `4cfaa33` — diagnostics; UI thật đã xác nhận health/cancel/restart. |
+
+**Kết luận: CHƯA SẴN SÀNG sign-off cài và dùng cá nhân.** Có thể build NSIS và chạy desktop trên máy đã có Node/engine; vẫn cần kết quả suite trên CI/WSL và vòng cài/chạy/gỡ NSIS trên profile thử nghiệm. Artifact mới nhất: `.tmp/desktop-artifacts/0.1.11-b4623dd4db87-dirty-2026-11-01T10-20-30-086Z/Onni Work_0.1.11_x64-setup.exe` (2.728.036 bytes); tên `dirty` phản ánh trạng thái checkout khi build.
+
+Trên Linux/WSL hoặc CI có dependencies và browser provider theo AGENTS.md, chạy từ repo root:
+
+```sh
+npm run typecheck
+npm test
+npm run test:unit
+npm run build
+npm run test:package
+npm run test:e2e
+```
+
+Kiểm tra thêm cài/gỡ NSIS bằng Windows UI/profile thử, xem tray Quit khi task có descendant, và xác nhận cách đưa LICENSE/NOTICE vào bản cài trước khi chia sẻ. Không coi exit code 0 của lần cài im lặng là pass khi thư mục cài không xuất hiện.
