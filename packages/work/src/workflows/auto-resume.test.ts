@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentBackend, AgentRunSpec } from '../core/agent-runner.ts';
 import * as runnerFactory from '../core/runner-factory.ts';
 import { removeWorktree } from '../git-worktree.ts';
+import { lf } from '../test-fixtures/lf.testkit.ts';
 import { graphToSteps, type WorkflowGraph } from './graph.ts';
 import { READ_ONLY_PROMPT, READ_ONLY_TOOLS } from './landing.ts';
 import { RunStore } from '../runs/store.ts';
@@ -331,7 +332,7 @@ describe('a run stopped by a usage limit resumes itself', () => {
       expect(sessions).toHaveLength(3);
       expect(sessions[1]?.spec).toMatchObject({ cwd: worktreePath, sessionId, resume: true });
       expect(sessions[2]?.spec.cwd).toBe(worktreePath);
-      expect(readFileSync(join(worktreePath, 'agent-plan.txt'), 'utf8')).toBe('preserve the interrupted task\n');
+      expect(lf(readFileSync(join(worktreePath, 'agent-plan.txt'), 'utf8'))).toBe('preserve the interrupted task\n');
       expect((await run('git', ['branch', '--show-current'], { cwd: worktreePath })).stdout.trim())
         .toBe(change === 'reclaimed' ? originalBranch : 'agent-plan');
       expect(store.getRun(record.id)?.worktreePath).toBe(worktreePath);
