@@ -355,7 +355,9 @@ export async function createWorktreeWithOutcome(
         `managed worktree path is registered to ${atPath.branch ?? 'a detached HEAD'}, expected ${branchRef}`,
       );
     }
-    return {...worktreeInfo(atPath.path, branch, base), materialized: false};
+    // Return OUR spelling, not git's: `worktree list` prints forward slashes on Windows, and an
+    // idempotent call must answer the same path it answered when it created the worktree.
+    return {...worktreeInfo(absolutePath, branch, base), materialized: false};
   }
 
   // If the directory survived but its administrative entry did not, let Git
@@ -371,7 +373,9 @@ export async function createWorktreeWithOutcome(
           `managed worktree path is registered to ${atPath.branch ?? 'a detached HEAD'}, expected ${branchRef}`,
         );
       }
-      return {...worktreeInfo(atPath.path, branch, base), materialized: false};
+      // Return OUR spelling, not git's: `worktree list` prints forward slashes on Windows, and an
+    // idempotent call must answer the same path it answered when it created the worktree.
+    return {...worktreeInfo(absolutePath, branch, base), materialized: false};
     }
     const entries = await readdir(absolutePath).catch(() => ['unreadable']);
     if (entries.length > 0) {
