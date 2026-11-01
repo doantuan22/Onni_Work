@@ -93,7 +93,8 @@ Desktop (its own install, its own lockfile):
 cd packages/desktop
 npm install
 npm run dev                # tauri dev
-npm run build              # tauri build (bundles the .app/.msi)
+npm run build              # tauri build with the configured platform target
+npm run build:windows      # Windows NSIS installer (.exe)
 ```
 
 `ONNI_DRY_RUN=1 npm run dev` exercises the whole cockpit with mocked agent CLIs — no login, no
