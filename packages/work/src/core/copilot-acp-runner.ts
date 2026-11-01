@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { statSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +29,7 @@ import {
 } from './copilot-ui-mapper.ts';
 import type { UiEvent } from './ui-events.ts';
 import { spawnableCommand } from './windows-shim.ts';
+import { spawnTaskProcess } from './task-process-spawn.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage, type InactivityDeadline } from './inactivity-deadline.ts';
 
 const DEFAULT_TIMEOUT_MS = 30 * 60_000;
@@ -189,7 +190,7 @@ class CopilotAcpSession implements AgentSession {
     private readonly opts: SessionOptions,
   ) {
     const [file, argv] = spawnableCommand(bin, buildCopilotArgs(spec));
-    this.child = nodeSpawn(file, argv, { cwd: spec.cwd, env: buildCopilotEnv(backend, spec.env) });
+    this.child = spawnTaskProcess(file, argv, { cwd: spec.cwd, env: buildCopilotEnv(backend, spec.env) });
     this.pid = this.child.pid;
     this.hasExited = trackChildExit(this.child);
     // EPIPE from a write racing the child's exit arrives as an async 'error' (acfb01e4).

@@ -4,8 +4,9 @@
  * double-forked ones included — so the marker finds what a process-tree walk misses, and never a
  * user's own shell in the worktree. It also finds orphans of onni versions that predate this.
  *
- * Linux reads `/proc/<pid>/environ`; macOS parses `ps -E`; anything else finds nothing. Every
- * failure degrades to "found nothing" — this must never affect a run.
+ * Linux reads `/proc/<pid>/environ`; macOS parses `ps -E`; Windows owns each launched tree with a
+ * kill-on-close Job Object instead of scanning. Anything else finds nothing. Every failure
+ * degrades to "found nothing" — this must never affect a run.
  */
 
 import { execFile } from 'node:child_process';

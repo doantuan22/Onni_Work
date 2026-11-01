@@ -14,7 +14,7 @@
  *
  * Emits v1 `AgentEvent`s and, when `opts.onUiEvent` is set, protocol v2 `UiEvent`s alongside.
  */
-import { execFile, spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { execFile, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import type {
   AgentEvent,
   AgentRunResult,
@@ -27,6 +27,7 @@ import type {
 } from './agent-runner.ts';
 import { isSignalTerminationExit, prependSystemPrompt } from './agent-runner.ts';
 import { buildChildEnv } from './agent-env.ts';
+import { spawnTaskProcess } from './task-process-spawn.ts';
 import { antigravityLaunch, resolveAntigravityExecutable } from './antigravity-bin.ts';
 import { probeAntigravityVersion } from './antigravity-cli.ts';
 import { AGY_ERROR_EXIT_CODE, needsSignIn, parseAgyError, signInMessage } from './antigravity-errors.ts';
@@ -266,10 +267,10 @@ export class AntigravityRunner implements AgentRunner {
     let child: ChildProcessWithoutNullStreams;
     try {
       const [file, argv] = antigravityLaunch(this.bin, args);
-      child = nodeSpawn(file, argv, {
+      child = spawnTaskProcess(file, argv, {
         cwd: spec.cwd,
         env: buildChildEnv({ backend: this.backend, extraEnv: spec.env }),
-        // A POSIX process group lets the whole tree be signalled; Windows uses taskkill /T.
+        // A POSIX process group or Windows Job Object owns every descendant of this task.
         detached: process.platform !== 'win32',
         windowsHide: true,
       });

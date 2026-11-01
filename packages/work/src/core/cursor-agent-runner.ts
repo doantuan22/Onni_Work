@@ -9,7 +9,7 @@
  * `UiEvent`s alongside (same pattern as claude/codex/opencode).
  */
 
-import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +27,7 @@ import type {
 import { isSignalTerminationExit, prependSystemPrompt } from './agent-runner.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { disclaimActive, disclaimedCommand, readHead, resolveProgram, type DisclaimOptions } from './disclaim-spawn.ts';
+import { spawnTaskProcess } from './task-process-spawn.ts';
 import { readNdjson } from './ndjson.ts';
 import { resolveCursorAgentBin } from './cursor-bin.ts';
 import {
@@ -183,7 +184,7 @@ export class CursorAgentRunner implements AgentRunner {
         : cursorLaunch(this.bin, args, buildChildEnv({ backend: this.backend, extraEnv: spec.env }));
       const env = launch.env;
       const [file, argv] = disclaimedCommand(launch.program, launch.args, env, { name: 'cursor-agent' });
-      child = nodeSpawn(file, argv, { cwd: spec.cwd, env });
+      child = spawnTaskProcess(file, argv, { cwd: spec.cwd, env });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`failed to spawn Cursor agent (${this.bin}): ${message}`);

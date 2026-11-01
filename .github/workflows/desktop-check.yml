@@ -14,6 +14,20 @@ on:
       - develop
     paths:
       - 'packages/desktop/**'
+      - 'packages/work/src/core/antigravity-runner.ts'
+      - 'packages/work/src/core/claude-cli-runner.ts'
+      - 'packages/work/src/core/cline-acp-runner.ts'
+      - 'packages/work/src/core/codex-app-server-transport.ts'
+      - 'packages/work/src/core/copilot-acp-runner.ts'
+      - 'packages/work/src/core/cursor-agent-runner.ts'
+      - 'packages/work/src/core/junie-acp-transport.ts'
+      - 'packages/work/src/core/opencode-server-runner.ts'
+      - 'packages/work/src/core/pi-runner.ts'
+      - 'packages/work/src/core/task-process-spawn.ts'
+      - 'packages/work/src/core/windows-job-process.test.ts'
+      - 'packages/work/scripts/windows-job-spawn.ps1'
+      - 'packages/work/src/workflows/run.ts'
+      - '.env.example'
       - 'packages/work/src/self-update/**'
       - '.github/workflows/desktop-check.yml'
   push:
@@ -22,6 +36,20 @@ on:
       - develop
     paths:
       - 'packages/desktop/**'
+      - 'packages/work/src/core/antigravity-runner.ts'
+      - 'packages/work/src/core/claude-cli-runner.ts'
+      - 'packages/work/src/core/cline-acp-runner.ts'
+      - 'packages/work/src/core/codex-app-server-transport.ts'
+      - 'packages/work/src/core/copilot-acp-runner.ts'
+      - 'packages/work/src/core/cursor-agent-runner.ts'
+      - 'packages/work/src/core/junie-acp-transport.ts'
+      - 'packages/work/src/core/opencode-server-runner.ts'
+      - 'packages/work/src/core/pi-runner.ts'
+      - 'packages/work/src/core/task-process-spawn.ts'
+      - 'packages/work/src/core/windows-job-process.test.ts'
+      - 'packages/work/scripts/windows-job-spawn.ps1'
+      - 'packages/work/src/workflows/run.ts'
+      - '.env.example'
       - 'packages/work/src/self-update/**'
       - '.github/workflows/desktop-check.yml'
   workflow_dispatch:
@@ -96,3 +124,7 @@ jobs:
 
       - name: Self-update layout tests
         run: npm test -- packages/work/src/self-update/self-update.test.ts
+
+      - name: Windows task process tree tests
+        if: runner.os == 'Windows'
+        run: npm test -- packages/work/src/core/windows-job-process.test.ts

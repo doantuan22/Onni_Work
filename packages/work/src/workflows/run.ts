@@ -6,7 +6,6 @@ import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
 import { TrackerAgentBindingError } from '../server/tracker/agent-credentials.ts';
 import { createHash, randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { mkdir, realpath, access } from 'node:fs/promises';
 import { assertOnniHomeWriteIsSandboxed, onniHomeDir } from '../paths.ts';
@@ -29,6 +28,7 @@ import {
 } from '../core/private-mcp.ts';
 import { onUsage, registerRunProcess, unregisterRunProcess, type ProcessUsage } from '../core/process-usage.ts';
 import { describeReaped, reapTaskProcesses, taskProcessReapEnabled } from '../core/task-processes.ts';
+import { spawnTaskProcess } from '../core/task-process-spawn.ts';
 import { parseUsageLimit } from '../core/usage-limit.ts';
 import { diskFullAgentErrorText } from '../disk-space.ts';
 import { accountStateHint, classifyAgentFailure, MAX_TRANSIENT_RETRIES, transientRetryDelayMs } from '../core/agent-failure-class.ts';
@@ -9045,7 +9045,7 @@ export class RunManager {
     if (state.cancelled) return { ok: false, output: 'cancelled', exitCode: -1 };
     return new Promise((resolve) => {
       // Check steps run in the same cwd as the agent steps — the worktree.
-      const child = spawn('bash', ['-lc', command], { cwd: state.cwd, env });
+      const child = spawnTaskProcess('bash', ['-lc', command], { cwd: state.cwd, env });
       state.interrupt = () => child.kill('SIGTERM');
 
       let output = '';

@@ -1,10 +1,11 @@
-import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { trackChildExit } from './agent-runner.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { EOF_KILL_GRACE_MS, EOF_TERM_GRACE_MS, KILL_GRACE_MS } from './claude-cli-runner.ts';
 import { spawnableCommand } from './windows-shim.ts';
+import { spawnTaskProcess } from './task-process-spawn.ts';
 
 export interface JunieAcpMessage {
   id?: number | string;
@@ -57,7 +58,7 @@ export function spawnJunieAcp(
   try {
     // npm installs junie as `junie.cmd` on Windows (a330744e).
     const [file, argv] = spawnableCommand(bin, ['--acp=true', '-p', cwd]);
-    return nodeSpawn(file, argv, {
+    return spawnTaskProcess(file, argv, {
       cwd,
       env: buildJunieAcpEnv(extraEnv),
     });

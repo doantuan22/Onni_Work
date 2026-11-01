@@ -24,8 +24,13 @@ use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+#[cfg(windows)]
+use std::os::windows::io::AsRawHandle;
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -50,10 +55,14 @@ static DIAGNOSTIC_LOG_LOCK: Mutex<()> = Mutex::new(());
 /// The cockpit's conventional port, tried first so `http://localhost:4321` works in a browser
 /// beside the app whenever it can; a busy one falls through to the next few, then to any.
 const PREFERRED_PORTS: std::ops::Range<u16> = 4321..4331;
+#[cfg(windows)]
+const WINDOWS_CREATE_SUSPENDED: u32 = 0x0000_0004;
+#[cfg(windows)]
+const WINDOWS_CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// Everything the supervisor thread and the menu handler share.
 struct Shell {
-    child: Mutex<Option<Child>>,
+    child: Mutex<Option<ManagedSidecar>>,
     port: AtomicU16,
     /// Set by the Versions menu before it kills the sidecar: the supervisor loop treats the
     /// resulting exit as "relaunch" instead of "crashed".
@@ -484,7 +493,7 @@ const SIDECAR_STOP_GRACE: Duration = Duration::from_secs(2);
 /// runs (`store.flush()`), then SIGKILL if it is still there after `SIDECAR_STOP_GRACE`. A bare
 /// `kill()` is SIGKILL — it skipped all of that. Only macOS links `libc` (Cargo.toml); elsewhere
 /// this keeps the hard kill.
-fn stop_sidecar(child: &mut Child) {
+fn stop_sidecar(child: &mut ManagedSidecar) {
     #[cfg(target_os = "macos")]
     {
         // SAFETY: `kill(2)` on our own child's pid; a pid that already exited is a harmless ESRCH.
@@ -499,6 +508,7 @@ fn stop_sidecar(child: &mut Child) {
         }
     }
     let _ = child.kill();
+    child.close_job();
 }
 
 /// Point `current` at an installed id (atomic rename over the old link) and relaunch.
@@ -789,6 +799,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
             desktop_diagnostic(&format!("event=health-failed elapsed_ms={} timed_out={} exit_code={:?} pid={pid}", health_started.elapsed().as_millis(), early_status.is_none(), early_status.as_ref().and_then(std::process::ExitStatus::code)));
             fail(&window, "Onni Work did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail);
             let kill_result = child.kill();
+            child.close_job();
             desktop_diagnostic(&format!("event=sidecar-kill-after-health-failure result={kill_result:?} exit_code=unobserved pid={pid}"));
             return;
         }
@@ -970,7 +981,195 @@ fn engine_missing(window: &WebviewWindow) {
 
 // ---- process -------------------------------------------------------------------------------
 
-fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex<VecDeque<String>>>) -> Result<Child, String> {
+struct ManagedSidecar {
+    child: Child,
+    #[cfg(windows)]
+    job: Option<KillOnCloseJob>,
+}
+
+impl ManagedSidecar {
+    fn close_job(&mut self) {
+        #[cfg(windows)]
+        self.job.take();
+    }
+}
+
+impl Deref for ManagedSidecar {
+    type Target = Child;
+
+    fn deref(&self) -> &Self::Target {
+        &self.child
+    }
+}
+
+impl DerefMut for ManagedSidecar {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.child
+    }
+}
+
+#[cfg(windows)]
+struct KillOnCloseJob {
+    handle: *mut std::ffi::c_void,
+}
+
+#[cfg(windows)]
+unsafe impl Send for KillOnCloseJob {}
+
+#[cfg(windows)]
+#[repr(C)]
+struct JobBasicLimitInformation {
+    per_process_user_time_limit: i64,
+    per_job_user_time_limit: i64,
+    limit_flags: u32,
+    minimum_working_set_size: usize,
+    maximum_working_set_size: usize,
+    active_process_limit: u32,
+    affinity: usize,
+    priority_class: u32,
+    scheduling_class: u32,
+}
+
+#[cfg(windows)]
+#[repr(C)]
+struct JobIoCounters {
+    read_operation_count: u64,
+    write_operation_count: u64,
+    other_operation_count: u64,
+    read_transfer_count: u64,
+    write_transfer_count: u64,
+    other_transfer_count: u64,
+}
+
+#[cfg(windows)]
+#[repr(C)]
+struct JobExtendedLimitInformation {
+    basic_limit_information: JobBasicLimitInformation,
+    io_info: JobIoCounters,
+    process_memory_limit: usize,
+    job_memory_limit: usize,
+    peak_process_memory_used: usize,
+    peak_job_memory_used: usize,
+}
+
+#[cfg(windows)]
+#[link(name = "kernel32")]
+extern "system" {
+    fn CreateJobObjectW(attributes: *const std::ffi::c_void, name: *const u16) -> *mut std::ffi::c_void;
+    fn SetInformationJobObject(job: *mut std::ffi::c_void, class: i32, info: *const std::ffi::c_void, length: u32) -> i32;
+    fn AssignProcessToJobObject(job: *mut std::ffi::c_void, process: *mut std::ffi::c_void) -> i32;
+    fn CloseHandle(handle: *mut std::ffi::c_void) -> i32;
+    fn CreateToolhelp32Snapshot(flags: u32, process_id: u32) -> *mut std::ffi::c_void;
+    fn Thread32First(snapshot: *mut std::ffi::c_void, entry: *mut ThreadEntry32) -> i32;
+    fn Thread32Next(snapshot: *mut std::ffi::c_void, entry: *mut ThreadEntry32) -> i32;
+    fn OpenThread(access: u32, inherit: i32, thread_id: u32) -> *mut std::ffi::c_void;
+    fn ResumeThread(thread: *mut std::ffi::c_void) -> u32;
+}
+
+#[cfg(windows)]
+#[repr(C)]
+struct ThreadEntry32 {
+    size: u32,
+    usage: u32,
+    thread_id: u32,
+    owner_process_id: u32,
+    base_priority: i32,
+    delta_priority: i32,
+    flags: u32,
+}
+
+#[cfg(windows)]
+impl KillOnCloseJob {
+    fn new() -> std::io::Result<Self> {
+        const JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS: i32 = 9;
+        const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: u32 = 0x0000_2000;
+
+        let handle = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
+        if handle.is_null() {
+            return Err(std::io::Error::last_os_error());
+        }
+        let mut limits: JobExtendedLimitInformation = unsafe { std::mem::zeroed() };
+        limits.basic_limit_information.limit_flags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        let configured = unsafe {
+            SetInformationJobObject(
+                handle,
+                JOB_OBJECT_EXTENDED_LIMIT_INFORMATION_CLASS,
+                &limits as *const _ as *const std::ffi::c_void,
+                std::mem::size_of::<JobExtendedLimitInformation>() as u32,
+            )
+        };
+        if configured == 0 {
+            let error = std::io::Error::last_os_error();
+            unsafe { CloseHandle(handle) };
+            return Err(error);
+        }
+        Ok(Self { handle })
+    }
+
+    fn assign_and_resume(&self, child: &Child) -> std::io::Result<()> {
+        const THREAD_SUSPEND_RESUME: u32 = 0x0000_0002;
+        const TH32CS_SNAPTHREAD: u32 = 0x0000_0004;
+        const INVALID_HANDLE_VALUE: isize = -1;
+
+        let assigned = unsafe { AssignProcessToJobObject(self.handle, child.as_raw_handle() as *mut std::ffi::c_void) };
+        if assigned == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+
+        // Spawn suspended so Node cannot create a child before the shell owns its Job Object.
+        let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0) };
+        if snapshot as isize == INVALID_HANDLE_VALUE {
+            return Err(std::io::Error::last_os_error());
+        }
+        let mut entry = ThreadEntry32 {
+            size: std::mem::size_of::<ThreadEntry32>() as u32,
+            usage: 0,
+            thread_id: 0,
+            owner_process_id: 0,
+            base_priority: 0,
+            delta_priority: 0,
+            flags: 0,
+        };
+        let mut thread_handle = std::ptr::null_mut();
+        let mut thread_lookup_error = None;
+        let mut found = unsafe { Thread32First(snapshot, &mut entry) } != 0;
+        let process_id = child.id();
+        while found {
+            if entry.owner_process_id == process_id {
+                thread_handle = unsafe { OpenThread(THREAD_SUSPEND_RESUME, 0, entry.thread_id) };
+                if thread_handle.is_null() {
+                    thread_lookup_error = Some(std::io::Error::last_os_error());
+                }
+                break;
+            }
+            found = unsafe { Thread32Next(snapshot, &mut entry) } != 0;
+        }
+        if !found && thread_handle.is_null() && thread_lookup_error.is_none() {
+            thread_lookup_error = Some(std::io::Error::last_os_error());
+        }
+        unsafe { CloseHandle(snapshot) };
+        if thread_handle.is_null() {
+            return Err(thread_lookup_error.unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "suspended sidecar thread was not found")));
+        }
+        let resumed = unsafe { ResumeThread(thread_handle) };
+        unsafe { CloseHandle(thread_handle) };
+        if resumed == u32::MAX {
+            return Err(std::io::Error::last_os_error());
+        }
+        Ok(())
+    }
+}
+
+#[cfg(windows)]
+impl Drop for KillOnCloseJob {
+    fn drop(&mut self) {
+        if !self.handle.is_null() {
+            unsafe { CloseHandle(self.handle) };
+        }
+    }
+}
+
+fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex<VecDeque<String>>>) -> Result<ManagedSidecar, String> {
     let args = sidecar_args(entry, port, project);
     let mut command = tool_command(&node_program(), &args.iter().map(String::as_str).collect::<Vec<_>>());
     command
@@ -992,6 +1191,10 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
             command.env("ONNI_DISCLAIM_EXEC", exe);
         }
     }
+    #[cfg(windows)]
+    let job = KillOnCloseJob::new().map_err(|error| format!("could not create a Windows Job Object for the sidecar: {error}"))?;
+    #[cfg(windows)]
+    command.creation_flags(WINDOWS_CREATE_SUSPENDED | WINDOWS_CREATE_NO_WINDOW);
     let cwd = home_dir();
     let canonical_entry = std::fs::canonicalize(entry).unwrap_or_else(|_| entry.to_path_buf());
     desktop_diagnostic(&format!("event=sidecar-spawn node_program={:?} entry_arg={entry:?} canonical_entry={canonical_entry:?} cwd={cwd:?} args={args:?} port={port} health_url={:?}", node_program(), format!("http://127.0.0.1:{port}/api/v1/health")));
@@ -1004,6 +1207,12 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
             return Err(format!("could not start node: {error}"));
         }
     };
+    #[cfg(windows)]
+    if let Err(error) = job.assign_and_resume(&child) {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(format!("could not assign the sidecar to a Windows Job Object; its process tree cannot be guaranteed: {error}"));
+    }
     desktop_diagnostic(&format!("event=sidecar-spawned pid={}", child.id()));
     for (stream, reader) in [
         ("stdout", child.stdout.take().map(|out| Box::new(out) as Box<dyn Read + Send>)),
@@ -1024,7 +1233,11 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
             }
         });
     }
-    Ok(child)
+    Ok(ManagedSidecar {
+        child,
+        #[cfg(windows)]
+        job: Some(job),
+    })
 }
 
 /// Windows startup diagnostics stay on the user's machine. A failed write never changes launch behavior.
@@ -1137,9 +1350,7 @@ fn tool_command(program: &str, args: &[&str]) -> Command {
 fn hide_console(command: &mut Command) {
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        command.creation_flags(CREATE_NO_WINDOW);
+        command.creation_flags(WINDOWS_CREATE_NO_WINDOW);
     }
     #[cfg(not(windows))]
     let _ = command;
@@ -2334,6 +2545,133 @@ require('node:http').createServer((req, res) => {
         let _ = child.kill();
         let _ = child.wait();
         assert_eq!(version.as_deref(), Some("9.9.9-test"), "sidecar output: {:?}", log.lock().unwrap());
+    }
+
+    /// Closing the shell-owned job simulates tray Quit or a forced shell exit. The Node sidecar
+    /// and its already-running descendant must both go away; spec F-05.
+    #[cfg(windows)]
+    #[test]
+    fn sidecar_job_close_kills_descendants_and_releases_the_port() {
+        use std::net::TcpStream;
+        use std::process::Stdio;
+
+        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let scratch = std::env::temp_dir().join(format!("onni-sidecar-job-{}-{stamp}", std::process::id()));
+        std::fs::create_dir_all(&scratch).unwrap();
+        let ready = scratch.join("ready");
+        let ready_js = serde_json::to_string(&ready.to_string_lossy()).unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+
+        let server_code = format!(
+            "const http=require('node:http');http.createServer((_q,r)=>r.end('alive')).listen(Number(process.argv[1]),'127.0.0.1',()=>require('node:fs').writeFileSync(process.argv[2],'ready'));setInterval(()=>{{}},1000);"
+        );
+        let parent_code = format!(
+            "const {{spawn}}=require('node:child_process');const c=spawn(process.execPath,['-e',{},String({port}),{}],{{stdio:'ignore'}});setInterval(()=>{{}},1000);",
+            serde_json::to_string(&server_code).unwrap(), ready_js
+        );
+
+        let job = KillOnCloseJob::new().expect("create shell job object");
+        let mut command = Command::new("node");
+        command
+            .creation_flags(WINDOWS_CREATE_SUSPENDED | WINDOWS_CREATE_NO_WINDOW)
+            .arg("-e")
+            .arg(parent_code)
+            .current_dir(&scratch)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        let mut sidecar = command.spawn().expect("start sidecar-like Node process");
+        job.assign_and_resume(&sidecar).expect("assign and resume sidecar in shell job");
+
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !ready.exists() && Instant::now() < deadline {
+            assert!(sidecar.try_wait().unwrap().is_none(), "sidecar exited before descendant was ready");
+            std::thread::sleep(Duration::from_millis(25));
+        }
+        assert!(ready.exists(), "descendant server did not start");
+        assert!(TcpStream::connect(("127.0.0.1", port)).is_ok(), "descendant port was not listening");
+
+        drop(job);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            if sidecar.try_wait().unwrap().is_some() {
+                break;
+            }
+            assert!(Instant::now() < deadline, "sidecar survived closing its kill-on-close job");
+            std::thread::sleep(Duration::from_millis(25));
+        }
+        while TcpStream::connect(("127.0.0.1", port)).is_ok() {
+            assert!(Instant::now() < deadline, "descendant server survived closing its job");
+            std::thread::sleep(Duration::from_millis(25));
+        }
+        std::fs::remove_dir_all(scratch).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn killed_shell_owner_releases_the_sidecar_tree() {
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut std::ffi::c_void;
+            fn WaitForSingleObject(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
+        }
+
+        if let Some(root) = std::env::var_os("TEST_F05_OWNER_ROOT") {
+            let root = PathBuf::from(root);
+            let port = std::env::var("TEST_F05_OWNER_PORT").unwrap().parse::<u16>().unwrap();
+            let ready = serde_json::to_string(&root.join("ready").to_string_lossy()).unwrap();
+            let pids = serde_json::to_string(&root.join("pids.json").to_string_lossy()).unwrap();
+            let server = "require('node:http').createServer((_q,r)=>r.end('ok')).listen(Number(process.argv[1]),'127.0.0.1',()=>require('node:fs').writeFileSync(process.argv[2],'ready'));setInterval(()=>{},1000);";
+            let program = format!(
+                "const c=require('node:child_process').spawn(process.execPath,['-e',{},String({port}),{ready}],{{stdio:'ignore'}});require('node:fs').writeFileSync({pids},JSON.stringify([process.pid,c.pid]));setInterval(()=>{{}},1000);",
+                serde_json::to_string(server).unwrap()
+            );
+            let job = KillOnCloseJob::new().unwrap();
+            let mut command = Command::new("node");
+            command.creation_flags(WINDOWS_CREATE_SUSPENDED | WINDOWS_CREATE_NO_WINDOW)
+                .args(["-e", &program]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+            let sidecar = command.spawn().unwrap();
+            job.assign_and_resume(&sidecar).unwrap();
+            let _owned = (job, sidecar);
+            loop { std::thread::sleep(Duration::from_secs(1)); }
+        }
+
+        struct Owner(Child);
+        impl Drop for Owner {
+            fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); }
+        }
+        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let scratch = std::env::temp_dir().join(format!("onni-owner-job-{}-{stamp}", std::process::id()));
+        std::fs::create_dir_all(&scratch).unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let mut owner = Owner(Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "tests::killed_shell_owner_releases_the_sidecar_tree", "--nocapture"])
+            .env("TEST_F05_OWNER_ROOT", &scratch).env("TEST_F05_OWNER_PORT", port.to_string())
+            .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+            .creation_flags(WINDOWS_CREATE_NO_WINDOW).spawn().unwrap());
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !scratch.join("ready").exists() && Instant::now() < deadline {
+            assert!(owner.0.try_wait().unwrap().is_none(), "shell owner exited before the server was ready");
+            std::thread::sleep(Duration::from_millis(25));
+        }
+        assert!(scratch.join("ready").exists(), "descendant server did not start");
+        let pids: Vec<u32> = serde_json::from_slice(&std::fs::read(scratch.join("pids.json")).unwrap()).unwrap();
+        assert_eq!(pids.len(), 2);
+        let handles: Vec<_> = pids.iter().map(|pid| unsafe { OpenProcess(0x0010_0000, 0, *pid) }).collect();
+        assert!(handles.iter().all(|handle| !handle.is_null()), "could not observe both processes");
+        owner.0.kill().unwrap();
+        owner.0.wait().unwrap();
+        for handle in handles {
+            let result = unsafe { WaitForSingleObject(handle, 5000) };
+            unsafe { CloseHandle(handle) };
+            assert_eq!(result, 0, "a sidecar descendant survived shell termination");
+        }
+        assert!(TcpStream::connect(("127.0.0.1", port)).is_err(), "descendant port remained open");
+        std::fs::remove_dir_all(scratch).unwrap();
     }
 
 }

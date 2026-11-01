@@ -1,5 +1,5 @@
 import { emitUsageWindows, normalizeClaudeTerminalUsageLimit, normalizeClaudeUsageWindows } from './usage-windows.ts';
-import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +21,7 @@ import { isSignalTerminationExit, trackChildExit } from './agent-runner.ts';
 import { unwrapJsonErrorEnvelope } from './agent-errors.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { disclaimedCommand } from './disclaim-spawn.ts';
+import { spawnTaskProcess } from './task-process-spawn.ts';
 import { resolveClaudeBin } from './claude-bin.ts';
 import { costWeightedTokens, type RawUsage } from './usage.ts';
 import { readNdjson } from './ndjson.ts';
@@ -130,7 +131,7 @@ export class ClaudeCliRunner implements AgentRunner {
     try {
       const env = buildChildEnv({ backend: this.backend, extraEnv: spec.env });
       const [file, argv] = disclaimedCommand(this.bin, args, env);
-      child = nodeSpawn(file, argv, { cwd: spec.cwd, env });
+      child = spawnTaskProcess(file, argv, { cwd: spec.cwd, env });
     } catch (err) {
       mcpConfig?.cleanup();
       throw wrapSpawnError(err, this.bin);

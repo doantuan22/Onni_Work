@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { basename, dirname, join, resolve, sep } from 'node:path';
@@ -14,6 +14,7 @@ import type { AgentSession, SessionOptions } from './agent-runner.ts';
 import { prependSystemPrompt, trackChildExit } from './agent-runner.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { disclaimedCommand } from './disclaim-spawn.ts';
+import { spawnTaskProcess } from './task-process-spawn.ts';
 import { AUTO_END_DELAY_MS, DEFAULT_RUN_TIMEOUT_MS } from './claude-cli-runner.ts';
 import { parseModelIdentity } from './model-identity.ts';
 import { V1TextCoalescer } from './v1-text-coalescer.ts';
@@ -359,7 +360,7 @@ class OpencodeSession implements AgentSession {
         env.OPENCODE_CONFIG_CONTENT = opencodeConfigContent(this.spec.mcpServers, env.OPENCODE_CONFIG_CONTENT);
       }
       const [file, argv] = disclaimedCommand(this.bin, ['serve', '--hostname', '127.0.0.1', '--port', String(port)], env);
-      child = nodeSpawn(file, argv, { cwd: this.spec.cwd, env });
+      child = spawnTaskProcess(file, argv, { cwd: this.spec.cwd, env });
     } catch (err) {
       throw wrapSpawnError(err, this.bin);
     }

@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { disclaimedCommand } from './disclaim-spawn.ts';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as resolvePath } from 'node:path';
@@ -14,6 +14,7 @@ import type {
 } from './agent-runner.js';
 import { trackChildExit } from './agent-runner.js';
 import { buildChildEnv } from './agent-env.js';
+import { spawnTaskProcess } from './task-process-spawn.ts';
 import { readNdjson } from './ndjson.js';
 import { createPiUiState, mapPiRpcMessage, piTurnStarted } from './pi-ui-mapper.js';
 import { V1TextCoalescer } from './v1-text-coalescer.js';
@@ -62,7 +63,7 @@ export class PiRunner implements AgentRunner {
   ): AgentSession {
     const env = buildChildEnv({ backend: this.backend, extraEnv: spec.env });
     const [file, argv] = disclaimedCommand(this.bin, buildPiArgs(spec), env);
-    const child = nodeSpawn(file, argv, { cwd: spec.cwd, env });
+    const child = spawnTaskProcess(file, argv, { cwd: spec.cwd, env });
     // EPIPE from a write racing the child's exit arrives as an async 'error' (acfb01e4).
     child.stdin.on('error', () => {});
     let open = true;
