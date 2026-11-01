@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContentBlock } from '../core/agent-runner.ts';
@@ -1007,13 +1007,14 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
     const pathMatch = followUp?.userText.match(/- (.*pasted-\d+\.jpg)/);
     expect(pathMatch).toBeTruthy();
     const filePath = pathMatch?.[1] as string;
-    expect(filePath).toMatch(new RegExp(`^${join(liveDataDir, 'runs', `${record.id}-images`).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/pasted-\\d+\\.jpg$`));
+    expect(dirname(filePath)).toBe(join(liveDataDir, 'runs', `${record.id}-images`));
+    expect(basename(filePath)).toMatch(/^pasted-\d+\.jpg$/);
     expect(existsSync(filePath)).toBe(true);
     expect(readFileSync(filePath).equals(Buffer.from(TINY_PNG_B64, 'base64'))).toBe(true);
 
     liveManager.finish(record.id);
     liveStore.flush();
-    rmSync(liveRepoRoot, { recursive: true, force: true });
+    await removeTempDir(liveRepoRoot);
   }, 30_000);
 
   it('does not advertise a library that appeared after the live session failed to grant it', async () => {
@@ -1061,7 +1062,7 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
 
     liveManager.finish(record.id);
     liveStore.flush();
-    rmSync(liveRepoRoot, { recursive: true, force: true });
+    await removeTempDir(liveRepoRoot);
   }, 30_000);
 
   /** Continue takes a prompt of its own, and the composer that writes it is a full composer —
@@ -1109,7 +1110,7 @@ describe('pasted screenshots materialize to disk and reach the agent as file pat
       .split('\n')
       .map((line) => JSON.parse(line) as { type: string; text?: string; images?: string[] })
       .find((event) => event.type === 'user-message' && event.text === 'fix what this shows');
-    expect(userMessage?.images?.[0]).toBe(`/api/v1/runs/${record.id}/images/${filePath.split('/').pop()}`);
+    expect(userMessage?.images?.[0]).toBe(`/api/v1/runs/${record.id}/images/${basename(filePath)}`);
     expect(ndjson).not.toContain(TINY_PNG_B64);
 
     manager.finish(record.id);
