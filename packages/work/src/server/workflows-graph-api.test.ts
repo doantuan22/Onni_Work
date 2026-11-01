@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';
+import { posixPath } from '../test-fixtures/posix-path.testkit.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
 import { createApp } from './server.ts';
 
@@ -85,7 +86,7 @@ describe('the workflow graph API', () => {
     const created = await post('/api/v1/workflows/graph', { name: 'Review Flow', graph: GRAPH });
     expect(created.status).toBe(201);
     const { path } = (await created.json()) as { path: string };
-    expect(path.endsWith('.ai/onni/workflows/review-flow.yaml')).toBe(true);
+    expect(posixPath(path).endsWith('.ai/onni/workflows/review-flow.yaml')).toBe(true);
     expect(parseYaml(readFileSync(path, 'utf8'))).toMatchObject({ version: 2, name: 'Review Flow', layout: GRAPH.layout });
 
     const again = await post('/api/v1/workflows/graph', { name: 'Review Flow', graph: GRAPH });
