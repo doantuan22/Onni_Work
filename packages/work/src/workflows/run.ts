@@ -29,6 +29,7 @@ import {
 import { onUsage, registerRunProcess, unregisterRunProcess, type ProcessUsage } from '../core/process-usage.ts';
 import { describeReaped, reapTaskProcesses, taskProcessReapEnabled } from '../core/task-processes.ts';
 import { spawnTaskProcess } from '../core/task-process-spawn.ts';
+import { processJobs } from '../core/process-jobs.ts';
 import { BASH_MISSING_MESSAGE, resolveBash, withBashPath } from '../core/bash-path.ts';
 import { parseUsageLimit } from '../core/usage-limit.ts';
 import { diskFullAgentErrorText } from '../disk-space.ts';
@@ -4961,6 +4962,8 @@ export class RunManager {
     this.checkArtifactSnapshots.set(runId, state.autosaveExcludedPaths);
     this.active.set(runId, state);
     this.starting.delete(runId);
+    // The same warm-up as `execute` (C-05): a continuation spawns its own CLI.
+    await processJobs.ready();
     if (record?.worktreePath && state.cwd !== this.repoRoot) state.releaseWorktree = await this.lifecycle.acquireAgentLease(runId);
     state.readOnly = record?.readOnly === true && state.cwd === this.repoRoot;
     if (state.cwd === this.repoRoot) {
@@ -5525,6 +5528,11 @@ export class RunManager {
       if (this.active.get(runId) !== state || state.cancelled) return;
       this.store.appendEvent(runId, event);
     };
+
+    // Warm the engine's job keeper before this run's first spawn (C-05). Windows-only, once per
+    // engine; on POSIX it resolves at once. Without it the first assignment can arrive after the
+    // agent CLI exists, and that process tree escapes ownership by the engine's death.
+    await processJobs.ready();
 
     // Resolve the agent backend for this run: the task choice (GUI) wins over
     // the config default. Per-step `runner` can still override it below.

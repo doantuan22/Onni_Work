@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { processJobs, type ProcessJob, type ProcessJobs } from '../../core/process-jobs.ts';
 import { SCAN_OVERLAP, type DetectedUrls } from './detected-urls.ts';
 import { foregroundCommand, hasForeground, type ProcessRow } from './foreground.ts';
 import { descendantGroups, readProcessTreeSync, type TreeRow } from './process-tree.ts';
@@ -22,8 +23,13 @@ import { resolveShell } from './shells.ts';
  * control and puts every job in its OWN group, so a signal to `-shellPid` alone reached the shell
  * and nothing it started (`npm run dev &` survived a restart; a HUP-ignoring job survived a tab
  * close). `process-tree.ts` reads the table and names every group; a host with no `ps` falls back
- * to the shell's own group. Windows has no process groups, so there the binding's own `kill()` is
- * the whole story — it terminates the job object node-pty created.
+ * to the shell's own group.
+ *
+ * Windows has no process groups, and the binding's own `kill()` is NOT the whole story — measured:
+ * a `detached: true` grandchild survived both `kill()` and `closeAll()`, because it had been
+ * re-parented out of any tree a walk can see. There, each session is assigned to a kill-on-close
+ * Job Object owned by the engine's keeper (`core/process-jobs.ts`), and a stop is
+ * `TerminateJobObject`, which reaches detached descendants and, on engine death, the whole tree.
  */
 
 /** Scrollback held per session, in characters. Enough to scroll back through a failed build; small
@@ -102,6 +108,11 @@ interface Entry {
   /** The tail of the previous chunk, re-scanned with the next one so an address split across two
    *  PTY writes is still found whole. */
   scanTail: string;
+  /** The Windows Job Object holding this session's tree (a no-op elsewhere). */
+  job: ProcessJob;
+  /** Resolves once the shell is in that job — or once the pid never showed. A stop waits on it so
+   *  a tab closed immediately after opening still terminates the job it was about to join. */
+  assigned: Promise<void>;
   /** Counted against `MAX_SERVICE_SESSIONS` rather than `MAX_SESSIONS`. */
   service: boolean;
   /** `label` was given at creation and is not the process table's to change. */
@@ -154,11 +165,13 @@ export class TerminalSessions {
   /** `binding` is injectable so tests drive a fake PTY and never fork a real shell. `urls`, when
    *  given, is fed every chunk of output so a task's printed addresses are collected as they
    *  appear (spec §7) — optional because the registry is useful without it. `readTree` is the
-   *  process-table read a stop walks; injectable so a test never signals a real tree. */
+   *  process-table read a stop walks; injectable so a test never signals a real tree. `jobs` is the
+   *  engine's Windows job owner, injectable for the same reason. */
   constructor(
     private readonly binding: typeof loadPty = loadPty,
     private readonly urls?: DetectedUrls,
     private readonly readTree: () => TreeRow[] | null = readProcessTreeSync,
+    private readonly jobs: ProcessJobs = processJobs,
   ) {
     registries.add(this);
   }
@@ -186,6 +199,10 @@ export class TerminalSessions {
     }
     let child: PtyProcess;
     try {
+      // The session's job must exist before the shell does (Windows): a keeper that is still
+      // compiling would otherwise be assigning a pid whose children already escaped. On POSIX this
+      // resolves at once.
+      await this.jobs.ready();
       child = pty.module.spawn(shell, input.command === undefined ? [] : commandArgs(shell, input.command), {
         name: 'xterm-256color',
         cols,
@@ -199,10 +216,12 @@ export class TerminalSessions {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) };
     }
 
+    const id = randomUUID();
+    const job = this.jobs.job(`term-${id}`);
     const ordinal = this.nextOrdinal(input.runId);
     const entry: Entry = {
       info: {
-        id: randomUUID(),
+        id,
         runId: input.runId,
         cwd: input.cwd,
         shell,
@@ -217,6 +236,8 @@ export class TerminalSessions {
       service,
       fixedLabel: input.label !== undefined,
       pty: child,
+      job,
+      assigned: assignWhenKnown(job, child),
       buffer: '',
       dropped: 0,
       listeners: new Set(),
@@ -341,8 +362,8 @@ export class TerminalSessions {
    * children treat as "your terminal went away"; SIGKILL after a grace period for anything that
    * ignored it. Both go to every process GROUP under the shell, read ONCE up front: after the
    * HUP the shell is gone and its survivors are reparented to init, where no walk finds them.
-   * The binding's own `kill()` is the fallback: it is all Windows has, and it is the backstop if
-   * the group signal fails because the leader is already gone.
+   * On Windows the job terminate above is the stop and the binding's own `kill()` the fallback
+   * (no keeper): it is all that host has, and the backstop if the job was never assigned.
    *
    * The entry goes NOW rather than after `EXITED_RETENTION_MS`, because every caller of this is
    * an EXPLICIT stop — the tab's X, an archive, a delete. The retention exists for the other
@@ -356,6 +377,9 @@ export class TerminalSessions {
   kill(id: string): boolean {
     const entry = this.entries.get(id);
     if (!entry) return false;
+    // Windows first: a job terminate reaches detached descendants the group walk cannot see, and
+    // the binding's own kill below stays as the fallback for a host with no keeper.
+    void entry.assigned.then(() => entry.job.terminate());
     const groups = this.groupsOf(entry.pty, this.tree());
     signalTree(entry.pty, groups, 'SIGHUP');
     // Unconditional, where this used to re-check `entries.has`: the entry is dropped below, and a
@@ -377,6 +401,7 @@ export class TerminalSessions {
     const rows = this.tree();
     const stops = [...this.entries.values()].map((entry) => ({ entry, groups: this.groupsOf(entry.pty, rows) }));
     for (const { entry, groups } of stops) {
+      void entry.assigned.then(() => entry.job.terminate());
       signalTree(entry.pty, groups, 'SIGKILL');
       this.remove(entry.info.id);
     }
@@ -443,6 +468,27 @@ export class TerminalSessions {
       }
     }
     entry.listeners.clear();
+  }
+}
+
+/**
+ * Put the shell into its session's job as soon as the binding reports a pid.
+ *
+ * node-pty's Windows binding returns `pid === 0` and fills it in a beat later (measured ~110 ms
+ * for a ConPTY handshake), and a job assigned pid 0 owns nothing. Nothing can outrun the shell —
+ * it has to exist before it starts anything — so polling closes the window instead of racing it.
+ * Bounded: a binding that never reports a pid keeps the old `kill()`-only stop.
+ */
+async function assignWhenKnown(job: ProcessJob, pty: PtyProcess): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    if (pty.pid > 0) {
+      await job.assign(pty.pid);
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 10);
+      timer.unref?.();
+    });
   }
 }
 

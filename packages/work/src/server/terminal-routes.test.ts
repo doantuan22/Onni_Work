@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RunStore } from '../runs/store.ts';
+import { recordingProcessJobs } from '../test-fixtures/process-jobs.testkit.ts';
 import type { RunManager } from '../workflows/run.ts';
 import { createApp, type ServerDeps } from './server.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
@@ -64,7 +65,7 @@ describe('the workspace terminal routes', () => {
         },
       },
     });
-    sessions = new TerminalSessions(binding);
+    sessions = new TerminalSessions(binding, undefined, undefined, recordingProcessJobs());
   });
 
   afterEach(() => {

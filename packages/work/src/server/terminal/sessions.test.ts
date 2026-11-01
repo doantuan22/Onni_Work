@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { recordingProcessJobs } from '../../test-fixtures/process-jobs.testkit.ts';
 import type { PtyBinding, PtyProcess, PtySpawnOptions } from './pty-module.ts';
 import { MAX_SERVICE_SESSIONS, MAX_SESSIONS, SCROLLBACK_LIMIT, TerminalSessions } from './sessions.ts';
 
@@ -39,7 +40,7 @@ function harness(options: { spawn?: () => PtyProcess } = {}) {
     return pty;
   });
   const binding = async (): Promise<PtyBinding> => ({ available: true, module: { spawn } });
-  return { sessions: new TerminalSessions(binding), spawned, spawn };
+  return { sessions: new TerminalSessions(binding, undefined, undefined, recordingProcessJobs()), spawned, spawn };
 }
 
 const open = async (sessions: TerminalSessions, runId = 'run-1', cwd = '/tmp/wt') => {
@@ -63,7 +64,7 @@ describe('creating a session', () => {
   });
 
   it('degrades to an honest reason when the binding is unavailable', async () => {
-    const sessions = new TerminalSessions(async () => ({ available: false, reason: 'not installed here' }));
+    const sessions = new TerminalSessions(async () => ({ available: false, reason: 'not installed here' }), undefined, undefined, recordingProcessJobs());
     const created = await sessions.create({ runId: 'run-1', cwd: '/tmp/wt' });
     expect(created).toEqual({ ok: false, reason: 'not installed here' });
   });

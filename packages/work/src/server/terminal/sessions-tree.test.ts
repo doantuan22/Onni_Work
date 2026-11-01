@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { recordingProcessJobs } from '../../test-fixtures/process-jobs.testkit.ts';
 import type { PtyBinding, PtyProcess } from './pty-module.ts';
 import { TerminalSessions } from './sessions.ts';
 
 /** Stop means the TREE (spec §6): every process group under the shell, not just the shell's. */
 const SHELL = 4242;
-/** Windows has no process groups: `signalTree` delegates to the binding's own kill, which is the
- *  conpty/job handle it spawned. Each POSIX group assertion below therefore has its Windows
- *  counterpart — "the binding was killed, no group signal was sent" — rather than a skip. */
+/** Windows has no process groups: the session's Job Object terminate is the stop, and `signalTree`
+ *  still delegates to the binding's own kill as the fallback. Each POSIX group assertion below
+ *  therefore has its Windows counterpart — "the binding was killed, no group signal was sent" —
+ *  rather than a skip. */
 const win = process.platform === 'win32';
 
 class FakePty implements PtyProcess {
@@ -43,10 +45,11 @@ describe('stopping a session signals every process group under its shell', () =>
       module: { spawn: () => { const pty = new FakePty(); ptys.push(pty); return pty; } },
     });
     // The third argument is the process-table reader — injected so no test reads the real one.
-    const sessions = new TerminalSessions(binding, undefined, readTree);
+    const jobs = recordingProcessJobs();
+    const sessions = new TerminalSessions(binding, undefined, readTree, jobs);
     const created = await sessions.create({ runId: 'run-1', cwd: '/tmp/wt' });
     if (!created.ok) throw new Error(created.reason);
-    return { sessions, id: created.session.id };
+    return { sessions, id: created.session.id, jobs };
   };
 
   beforeEach(() => {
@@ -70,7 +73,8 @@ describe('stopping a session signals every process group under its shell', () =>
     const { sessions, id } = await open(tree);
     sessions.kill(id);
     if (win) {
-      // The binding's kill is the whole stop: once now, once again from the deferred force timer.
+      // The job terminate is the stop; the binding's kill is the fallback, once now and once from
+      // the deferred force timer.
       expect(signals).toEqual([]);
       expect(ptys[0]!.killed).toEqual([undefined]);
       vi.advanceTimersByTime(2_100);
@@ -151,11 +155,65 @@ describe('stopping a session signals every process group under its shell', () =>
   });
 });
 
+/**
+ * C-06: on Windows the binding's own kill reaches the shell only — measured, a `detached: true`
+ * grandchild survived both `kill()` and `closeAll()`. The session's Job Object is what reaches it,
+ * so creation must assign the shell to one and every explicit stop must terminate that job.
+ */
+describe('every explicit stop terminates the session job (C-06)', () => {
+  const open = async () => {
+    const jobs = recordingProcessJobs();
+    const binding = async (): Promise<PtyBinding> => ({ available: true, module: { spawn: () => new FakePty() } });
+    const sessions = new TerminalSessions(binding, undefined, () => null, jobs);
+    const first = await sessions.create({ runId: 'run-1', cwd: '/tmp/wt' });
+    const second = await sessions.create({ runId: 'run-1', cwd: '/tmp/wt' });
+    if (!first.ok || !second.ok) throw new Error('session refused');
+    return { sessions, jobs, ids: [first.session.id, second.session.id] };
+  };
+
+  beforeEach(() => {
+    // The POSIX path signals the shell's group; never a real pid from a fake binding. Real timers:
+    // the assignment settles through microtasks the fake timers would hold back.
+    vi.spyOn(process, 'kill').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Let the assignment promise and its `terminate` continuation run. */
+  const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('creation assigns the shell pid to a job of its own', async () => {
+    const { sessions, jobs, ids } = await open();
+    // A pushed-once assignment per session: a job that never received its shell owns nothing.
+    expect(jobs.assignments).toEqual(ids.map((id) => ({ key: `term-${id}`, pid: SHELL })));
+    sessions.dispose();
+  });
+
+  it('kill() terminates that session job', async () => {
+    const { sessions, jobs, ids } = await open();
+    sessions.kill(ids[0]!);
+    await settle();
+    expect(jobs.terminated).toEqual([`term-${ids[0]}`]);
+    sessions.dispose();
+    await settle();
+    expect(jobs.terminated).toEqual([`term-${ids[0]}`, `term-${ids[1]}`]);
+  });
+
+  it('closeAll() terminates every session job', async () => {
+    const { sessions, jobs, ids } = await open();
+    sessions.closeAll();
+    await settle();
+    expect([...jobs.terminated].sort()).toEqual(ids.map((id) => `term-${id}`).sort());
+  });
+});
+
 describe('a forgotten session tells its listeners (spec §6 — the WS topic disposes itself)', () => {
   it('fires once more after the entry is gone, on an explicit kill', async () => {
     vi.spyOn(process, 'kill').mockImplementation(() => true);
     const binding = async (): Promise<PtyBinding> => ({ available: true, module: { spawn: () => new FakePty() } });
-    const sessions = new TerminalSessions(binding, undefined, () => null);
+    const sessions = new TerminalSessions(binding, undefined, () => null, recordingProcessJobs());
     const created = await sessions.create({ runId: 'run-1', cwd: '/tmp/wt' });
     if (!created.ok) throw new Error(created.reason);
     const seen: Array<boolean> = [];

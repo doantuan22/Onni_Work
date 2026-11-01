@@ -12,6 +12,7 @@ import { ProjectContexts } from '../project-context.ts';
 import { createApp, type ServerDeps } from '../server.ts';
 import { createSocketHub } from '../ws.ts';
 import type { PtyBinding, PtyProcess } from './pty-module.ts';
+import { recordingProcessJobs } from '../../test-fixtures/process-jobs.testkit.ts';
 import { TerminalSessions } from './sessions.ts';
 
 /**
@@ -57,7 +58,7 @@ describe('terminals stop on every archive / worktree-removal path', () => {
       available: true,
       module: { spawn: () => { const pty = new FakePty(); ptys.push(pty); return pty; } },
     });
-    sessions = new TerminalSessions(binding, undefined, () => null);
+    sessions = new TerminalSessions(binding, undefined, () => null, recordingProcessJobs());
   });
 
   afterEach(async () => {
