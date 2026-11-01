@@ -57,22 +57,21 @@ describe('AppShell', () => {
     expect(within(screen.getByRole('main')).getByText('route content')).toBeTruthy()
   })
 
-  // Brand guideline ("Znak z nazwą"): the mark WITHOUT its tile, in the text colour, beside the
-  // lowercase name in Chakra Petch SemiBold — 26px over 19px with a gap of 0.6 × the type size.
-  it('renders the brand lockup: the tile-less mark beside the lowercase name', () => {
+  // The lockup: the OnniCode cat beside the lowercase name in Chakra Petch SemiBold — 26px over
+  // 19px with a gap of 0.6 × the type size.
+  it('renders the brand lockup: the cat mark beside the lowercase name', () => {
     renderShell('/')
     const lockup = sidebar().querySelector('[data-slot="brand-lockup"]') as HTMLElement | null
     expect(lockup).toBeTruthy()
     expect(lockup!.style.gap).toBe('11.4px')
 
-    const mark = lockup!.querySelector('[data-slot="brand-mark"]') as SVGElement | null
+    const mark = lockup!.querySelector('[data-slot="brand-mark"]') as HTMLImageElement | null
     expect(mark).toBeTruthy()
+    expect(mark!.getAttribute('src')).toBe('/icon.svg')
     expect(mark!.getAttribute('height')).toBe('26')
-    expect(mark!.getAttribute('fill')).toBe('currentColor')
-    // No tile: polygons only, no rect behind them and no <img> of the tiled icon.
-    expect(mark!.querySelectorAll('polygon')).toHaveLength(4)
-    expect(mark!.querySelector('rect')).toBeNull()
-    expect(sidebar().querySelector('img[src="/icon.svg"]')).toBeNull()
+    expect(mark!.getAttribute('width')).toBe('26')
+    expect(mark!.getAttribute('aria-hidden')).toBe('true')
+    expect(mark!.className).toContain('[image-rendering:pixelated]')
 
     const name = lockup!.querySelector('[data-slot="brand-name"]') as HTMLElement | null
     expect(name?.textContent).toBe('onni')
