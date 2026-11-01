@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildChildEnv } from '../core/agent-env.ts';
 import { RunStore } from '../runs/store.ts';
 import { SecretStore } from '../workspace/secrets.ts';
+import { removeTempDir, stopRuns } from '../test-fixtures/remove-temp-dir.testkit.ts';
 import { CHECK_CONTEXT_VARS, RunManager } from './run.ts';
 import { workflowStepSchema, type WorkflowDef } from './types.ts';
 
@@ -69,15 +70,15 @@ describe('project and workspace secrets in check steps', () => {
   });
 
   afterEach(async () => {
-    manager.dispose();
     // The workspace file is shared by every case in this worker: leave it as found.
     for (const name of Object.keys((await secrets.read(workspace)).values)) await secrets.unset(workspace, name);
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    await stopRuns(manager, store);
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const settle = async (id: string): Promise<void> => {
@@ -280,14 +281,14 @@ describe('run context for check steps', () => {
     manager = new RunManager(store, repoRoot, { projectId: PROJECT });
   });
 
-  afterEach(() => {
-    manager.dispose();
+  afterEach(async () => {
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    await stopRuns(manager, store);
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const contextOf = (runId: string, stepId: string, cwd: string) =>
