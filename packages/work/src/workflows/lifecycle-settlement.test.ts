@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { RunStore } from '../runs/store.ts';
+import { fakeProgram } from '../test-fixtures/fake-program.testkit.ts';
 import { WebhookService } from '../webhooks/service.ts';
 import { WebhookScheduler } from '../webhooks/scheduler.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
@@ -16,6 +17,41 @@ const workflow: WorkflowDef = {
 const waitFor = async (predicate: () => boolean) => {
   await vi.waitFor(() => expect(predicate()).toBe(true), { timeout: 15_000, interval: 25 });
 };
+
+/** Resolve the real git before the fake becomes the first `git` on PATH. */
+function realGitPath(): string {
+  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
+    for (const extension of process.platform === 'win32' ? ['.exe', ''] : ['']) {
+      const candidate = join(dir, `git${extension}`);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  throw new Error('git is not on PATH');
+}
+
+/** Gate one product git call so a cancellation can race it, then delegate to the real git. */
+function gatedGit(bin: string, gate: 'completion' | 'review'): { signal: string; release: string } {
+  const signal = join(bin, 'probing');
+  const release = join(bin, 'release');
+  const condition = gate === 'completion'
+    ? `args[0] === 'diff' && args[1] === '--name-only' && args.length === 4 && args[3] === '--'`
+    : `args[0] === 'diff' && args.length === 2`;
+  fakeProgram('git', {
+    dir: bin,
+    body: `
+const fs = require('node:fs');
+const { spawnSync } = require('node:child_process');
+if (${condition}) {
+  fs.writeFileSync(${JSON.stringify(signal)}, '');
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  while (!fs.existsSync(${JSON.stringify(release)})) Atomics.wait(cell, 0, 0, 20);
+}
+const run = spawnSync(${JSON.stringify(realGitPath())}, args, { stdio: 'inherit' });
+process.exit(run.status ?? 1);
+`,
+  }).use();
+  return { signal, release };
+}
 let root: string;
 let store: RunStore;
 let manager: RunManager;
@@ -75,13 +111,7 @@ it.each([
   }
   // Gate only completionReason's exact diff invocation; every other Git command is real.
   const bin = join(root, '.ai/bin');
-  mkdirSync(bin);
-  const signal = join(bin, 'probing');
-  const release = join(bin, 'release');
-  const git = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
-  writeFileSync(join(bin, 'git'), `#!/bin/sh\nif [ "$1" = diff ] && [ "$2" = --name-only ] && [ "$#" = 4 ] && [ "$4" = -- ]; then\n touch '${signal}'\n while [ ! -f '${release}' ]; do sleep 0.02; done\nfi\nexec '${git}' "$@"\n`);
-  chmodSync(join(bin, 'git'), 0o755);
-  vi.stubEnv('PATH', `${bin}:${process.env.PATH}`);
+  const { signal, release } = gatedGit(bin, 'completion');
   const finishedDeliveries = () => service.deliveries(receiverId).filter(delivery => delivery.body?.includes('task.finished')).length;
   const previousDeliveries = finishedDeliveries();
   if (continuation) expect(manager.continueRun(id, { text: 'mock:done continued' }).ok).toBe(true);
@@ -127,14 +157,8 @@ it.each([false, true])('idle continuation respects cancellation during review Gi
   const stepId = store.getRun(id)!.currentStepId!;
   expect(stepId).toBeDefined();
   const bin = join(root, '.ai/bin');
-  mkdirSync(bin);
-  const signal = join(bin, 'probing');
-  const release = join(bin, 'release');
-  const git = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
   // Gate the real review-gate diff, leaving all other Git operations untouched.
-  writeFileSync(join(bin, 'git'), `#!/bin/sh\nif [ "$1" = diff ] && [ "$#" = 2 ]; then\n touch '${signal}'\n while [ ! -f '${release}' ]; do sleep 0.02; done\nfi\nexec '${git}' "$@"\n`);
-  chmodSync(join(bin, 'git'), 0o755);
-  vi.stubEnv('PATH', `${bin}:${process.env.PATH}`);
+  const { signal, release } = gatedGit(bin, 'review');
   const live = (manager as unknown as {
     active: Map<string, { idleClosed?: boolean; session: { end: () => void } }>;
   }).active.get(id)!;
