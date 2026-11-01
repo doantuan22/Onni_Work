@@ -236,21 +236,16 @@ describe('agent accounts store', () => {
       expect((await loadAgentAccounts()).accounts).toContainEqual(account('work'));
     });
 
-    it('converges two concurrent writers instead of dropping one', async () => {
-      await mergeWriteAgentAccounts((store) => {
-        store.accounts.push(account('work'));
-      });
-      await Promise.all([
-        mergeWriteAgentAccounts((store) => {
-          store.selections['/a'] = { claude: 'work' };
-        }),
-        mergeWriteAgentAccounts((store) => {
-          store.accounts.push(account('client'));
-        }),
-      ]);
+    it('serializes concurrent writers in one process instead of dropping one', async () => {
+      // Without serialization every call reads the same snapshot before the first rename lands,
+      // so only the last store survives. The assertion is exact: all twelve rows must persist.
+      await Promise.all(Array.from({ length: 12 }, (_, index) => mergeWriteAgentAccounts((store) => {
+        store.accounts.push(account(`acct-${index}`));
+      })));
       const store = await loadAgentAccounts();
-      // Last-writer-wins only inside the read→rename window; neither write is lost outright.
-      expect(store.accounts.length + Object.keys(store.selections).length).toBeGreaterThanOrEqual(2);
+      expect(store.accounts.map((row) => row.id).sort()).toEqual(
+        Array.from({ length: 12 }, (_, index) => `acct-${index}`).sort(),
+      );
     });
   });
 

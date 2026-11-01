@@ -6,7 +6,7 @@ import { DEFAULT_AGENT_ACCOUNT_ID } from '@onni/contract';
 import { PROVIDER_IDS, type ProviderId } from '../core/provider-auth.ts';
 import { supportsProfiles } from '../core/agent-profiles.ts';
 import { agentAccountsPath, isAbsolutePath, workspaceConfigPath } from '../paths.ts';
-import { atomicWriteJsonSync } from './config.ts';
+import { atomicWriteJsonSync, serializedByPath } from './config.ts';
 
 /**
  * `~/.onni/agent-accounts.json` — the agent-accounts store (spec `2026-07-29-agent-profiles.md`).
@@ -197,15 +197,14 @@ export function defaultAgentAccountStore(): AgentAccountStore {
  * one-line warning and is left on disk untouched, so the user can repair it by hand — the next
  * successful merge-write is what replaces it.
  */
-export async function loadAgentAccounts(): Promise<AgentAccountStore> {
-  const path = agentAccountsPath();
+export async function loadAgentAccounts(path: string = agentAccountsPath()): Promise<AgentAccountStore> {
   let raw: string;
   try {
     raw = await readFile(path, 'utf8');
   } catch {
     // Absent — but accounts may predate this file (they lived in config.json on the branch that
     // introduced them), so give those one chance to come across.
-    return importLegacyAccounts();
+    return importLegacyAccounts(path);
   }
   try {
     const parsed = storeSchema.safeParse(JSON.parse(raw));
@@ -220,18 +219,26 @@ export async function loadAgentAccounts(): Promise<AgentAccountStore> {
 /**
  * Read-modify-write merge: re-read, apply `mutator`, atomic-rename write.
  *
- * Because every writer re-reads immediately before writing, two onni processes editing different
- * accounts converge instead of dropping each other's — last-writer-wins only inside the tiny
- * read→rename window, which is the same bargain `config.json` makes. Throws on write failure (a
- * read-only home); degrading is the caller's policy.
+ * Serialized per path inside this process, so two requests that overlap the
+ * read→rename window (a Settings click and a run start, say) both land instead
+ * of the later one writing back a snapshot it took before the first. Across
+ * processes the same bargain `config.json` makes still applies: last writer wins
+ * inside that window. Throws on write failure (a read-only home); degrading is
+ * the caller's policy.
+ *
+ * The path is resolved ONCE, before the first `await`: resolving it again inside the read would
+ * let an `ONNI_HOME` change mid-flight read one home and write another.
  */
 export async function mergeWriteAgentAccounts(
   mutator: (store: AgentAccountStore) => AgentAccountStore | void,
 ): Promise<AgentAccountStore> {
-  const current = await loadAgentAccounts();
-  const next = mutator(current) ?? current;
-  atomicWriteJsonSync(agentAccountsPath(), next);
-  return next;
+  const path = agentAccountsPath();
+  return serializedByPath(path, async () => {
+    const current = await loadAgentAccounts(path);
+    const next = mutator(current) ?? current;
+    atomicWriteJsonSync(path, next);
+    return next;
+  });
 }
 
 /**
@@ -243,7 +250,7 @@ export async function mergeWriteAgentAccounts(
  * `config.json`: an older onni sharing this home keeps reading what it has always read, and this
  * import is idempotent because it only runs while `agent-accounts.json` is absent.
  */
-async function importLegacyAccounts(): Promise<AgentAccountStore> {
+async function importLegacyAccounts(path: string): Promise<AgentAccountStore> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(workspaceConfigPath(), 'utf8'));
@@ -269,7 +276,7 @@ async function importLegacyAccounts(): Promise<AgentAccountStore> {
   // exists for no reason.
   if (imported.data.accounts.length === 0) return imported.data;
   try {
-    atomicWriteJsonSync(agentAccountsPath(), imported.data);
+    atomicWriteJsonSync(path, imported.data);
   } catch {
     // read-only home: the import stays in memory for this process, which is still correct
   }
