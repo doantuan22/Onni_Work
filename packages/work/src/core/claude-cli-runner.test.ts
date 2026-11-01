@@ -151,14 +151,23 @@ describe('a teardown onni initiated', () => {
     expect(
       uiEvents.some((event) => event.type === 'turn.completed' && event.stopReason === 'error'),
     ).toBe(false);
+    // Windows runs no handler on `kill` (TerminateProcess), so the CLI dies before
+    // its normalised `result` frame: the runner closes the turn itself, as cancelled.
+    const killedByOs = process.platform === 'win32';
     expect(uiEvents).toContainEqual({
       type: 'turn.completed',
       turnId: 'turn_1',
-      stopReason: 'end_turn',
+      stopReason: killedByOs ? 'cancelled' : 'end_turn',
     });
     expect(events.at(-1)).toEqual({ type: 'done' });
     expect(
-      events.some((e) => e.type === 'note' && e.message.includes('terminated by onni (code 143)')),
+      events.some(
+        (e) =>
+          e.type === 'note' &&
+          e.message.includes(
+            killedByOs ? 'terminated by onni (signal SIGTERM)' : 'terminated by onni (code 143)',
+          ),
+      ),
     ).toBe(true);
   }, 15_000);
 });

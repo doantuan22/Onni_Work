@@ -17,7 +17,7 @@ import type {
 
 // Re-exported for backends and the run manager that still import them from here.
 export type { AgentSession, SessionOptions } from './agent-runner.ts';
-import { isSignalTerminationExit, trackChildExit } from './agent-runner.ts';
+import { isSignalTerminationExit, terminationLabel, trackChildExit } from './agent-runner.ts';
 import { unwrapJsonErrorEnvelope } from './agent-errors.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { disclaimedCommand } from './disclaim-spawn.ts';
@@ -28,6 +28,7 @@ import { readNdjson } from './ndjson.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
 import { claudeMcpAllowRules, toClaudeMcpConfig, type PrivateMcpServer } from './private-mcp.ts';
 import {
+  abortClaudeTurn,
   claudeTurnStarted,
   createClaudeUiState,
   mapClaudeMessage,
@@ -348,10 +349,13 @@ export class ClaudeCliRunner implements AgentRunner {
       // A session onni itself tore down (EOF watchdog after `end()`, or a
       // cancel) exits 143/137 — that is our own signal coming back, not an
       // agent failure, so it settles on the normal path with a note (#703).
-      if (terminatedByOnni && isSignalTerminationExit(exitCode)) {
+      // Windows kills without a handler (`signalCode`, no code), so the CLI's
+      // final frame never arrives: close the v2 turn here instead of in mapResult.
+      if (terminatedByOnni && isSignalTerminationExit(exitCode, child.signalCode)) {
+        if (exitCode === null) emitUi((state) => abortClaudeTurn(state, 'cancelled'));
         onEvent?.({
           type: 'note',
-          message: `claude CLI did not exit on its own after close; terminated by onni (code ${exitCode})`,
+          message: `claude CLI did not exit on its own after close; terminated by onni (${terminationLabel(exitCode, child.signalCode)})`,
         });
         onEvent?.({ type: 'done' });
         return { text, toolCalls, tokensUsed, sessionId: spec.sessionId };

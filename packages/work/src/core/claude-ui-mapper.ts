@@ -122,6 +122,48 @@ export function claudeTurnStarted(state: ClaudeUiMapperState): ClaudeUiMapping {
   return { events: [{ type: 'turn.started', turnId }], state: next };
 }
 
+/**
+ * Close a turn the CLI never finished. A teardown still lets claude print its
+ * `result` frame on POSIX (it handles SIGTERM), so `mapResult` owns the close;
+ * an OS-level kill takes the process before it can — `ChildProcess.kill()` is
+ * TerminateProcess on Windows — and without this the cockpit renders a turn
+ * that never completes. Emits nothing when no turn is open.
+ */
+export function abortClaudeTurn(state: ClaudeUiMapperState, stopReason: StopReason): ClaudeUiMapping {
+  if (state.currentTurnId === null) return { events: [], state };
+  const events: UiEvent[] = [];
+  // A streamed block whose whole-block frame never came still closes, holding
+  // what its deltas delivered — the same rule `mapResult` applies to a cut turn.
+  for (const block of state.streaming) {
+    const item: UiMessageItem | UiReasoningItem =
+      block.kind === 'message'
+        ? { kind: 'message', id: block.id, role: 'assistant', text: block.text }
+        : { kind: 'reasoning', id: block.id, text: block.text };
+    if (block.parentItemId !== undefined) item.parentItemId = block.parentItemId;
+    events.push({ type: 'item.completed', item });
+  }
+  // Tools left running would spin forever — settle them, as the ACP mapper does
+  // for every non-`end_turn` close.
+  if (stopReason !== 'end_turn') {
+    for (const tool of state.openTools.values()) {
+      events.push({
+        type: 'item.completed',
+        item: { ...tool, status: 'failed', error: `turn ended (${stopReason}) before the tool finished` },
+      });
+    }
+  }
+  events.push({ type: 'turn.completed', turnId: state.currentTurnId, stopReason });
+  return {
+    events,
+    state: {
+      ...state,
+      currentTurnId: null,
+      openTools: stopReason === 'end_turn' ? state.openTools : new Map(),
+      streaming: [],
+    },
+  };
+}
+
 /** Fold one parsed stream-json message into v2 events. Never throws. */
 export function mapClaudeMessage(msg: unknown, state: ClaudeUiMapperState): ClaudeUiMapping {
   if (!isRecord(msg)) return { events: [], state };

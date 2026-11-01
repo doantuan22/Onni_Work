@@ -9,7 +9,7 @@ import type {
   ContentBlock,
   SessionOptions,
 } from './agent-runner.ts';
-import { isSignalTerminationExit, prependSystemPrompt, trackChildExit } from './agent-runner.ts';
+import { isSignalTerminationExit, prependSystemPrompt, terminationLabel, trackChildExit } from './agent-runner.ts';
 import { AUTO_END_DELAY_MS, DEFAULT_RUN_TIMEOUT_MS, KILL_GRACE_MS } from './claude-cli-runner.ts';
 import { readNdjson } from './ndjson.ts';
 import type { UiEvent } from './ui-events.ts';
@@ -237,10 +237,10 @@ class JunieSession implements AgentSession {
         return base;
       }
 
-      if (this.terminatedByOnni && isSignalTerminationExit(exitCode)) {
+      if (this.terminatedByOnni && isSignalTerminationExit(exitCode, this.child.signalCode)) {
         this.emit({
           type: 'note',
-          message: `junie did not exit on its own after close; terminated by onni (code ${exitCode})`,
+          message: `junie did not exit on its own after close; terminated by onni (${terminationLabel(exitCode, this.child.signalCode)})`,
         });
         this.emit({ type: 'done' });
         return base;

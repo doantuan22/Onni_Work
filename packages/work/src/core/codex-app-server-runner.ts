@@ -10,7 +10,7 @@ import type {
   ContentBlock,
   SessionOptions,
 } from './agent-runner.ts';
-import { isSignalTerminationExit, prependSystemPrompt, trackChildExit } from './agent-runner.ts';
+import { isSignalTerminationExit, prependSystemPrompt, terminationLabel, trackChildExit } from './agent-runner.ts';
 import {
   AUTO_END_DELAY_MS,
   DEFAULT_RUN_TIMEOUT_MS,
@@ -274,11 +274,12 @@ class CodexSession implements AgentSession {
       }
 
       // Our own EOF watchdog / cancel signal coming back as 143/137 — the
-      // teardown onni asked for, not a codex failure (#703).
-      if (this.terminatedByOnni && isSignalTerminationExit(exitCode)) {
+      // teardown onni asked for, not a codex failure (#703). Windows reports
+      // the kill as `signalCode` with no code, so that shape counts too.
+      if (this.terminatedByOnni && isSignalTerminationExit(exitCode, this.child.signalCode)) {
         this.emit({
           type: 'note',
-          message: `codex app-server did not exit on its own after close; terminated by onni (code ${exitCode})`,
+          message: `codex app-server did not exit on its own after close; terminated by onni (${terminationLabel(exitCode, this.child.signalCode)})`,
         });
         this.emit({ type: 'done' });
         return base;

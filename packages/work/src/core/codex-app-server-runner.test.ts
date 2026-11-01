@@ -60,8 +60,18 @@ describe('a teardown onni initiated (codex app-server)', () => {
     expect(result.text).toBe('Checking the working tree.');
     expect(events.some((e) => e.type === 'error')).toBe(false);
     expect(events.at(-1)).toEqual({ type: 'done' });
+    // Windows kills without running the mock's SIGTERM handler, so the teardown is
+    // named by its signal rather than by the 128+signal code POSIX reports.
     expect(
-      events.some((e) => e.type === 'note' && e.message.includes('terminated by onni (code 143)')),
+      events.some(
+        (e) =>
+          e.type === 'note' &&
+          e.message.includes(
+            process.platform === 'win32'
+              ? 'terminated by onni (signal SIGTERM)'
+              : 'terminated by onni (code 143)',
+          ),
+      ),
     ).toBe(true);
   }, 15_000);
 

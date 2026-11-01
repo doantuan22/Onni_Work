@@ -100,17 +100,37 @@ export function prependSystemPrompt(systemPrompt: string | undefined, userPrompt
 }
 
 /**
- * True for the `128 + signal` exit codes an agent CLI reports when it handles
- * a stop signal itself instead of dying from it (SIGINT/SIGKILL/SIGTERM).
+ * True for the exit shapes a stop signal leaves behind: the `128 + signal`
+ * codes an agent CLI reports when it handles the signal itself
+ * (SIGINT/SIGKILL/SIGTERM), and the `signalCode`-only exit the OS leaves when
+ * the process was killed before any handler could run.
  *
  * Every runner arms a SIGTERM→SIGKILL watchdog on `end()` and signals on
  * `interrupt()` (#703): the CLIs install their own handlers, so a session the
  * runner tore down on purpose comes back as a NON-ZERO exit. Paired with a
  * "we sent the signal" flag, this predicate keeps that teardown out of the
  * error path — an exit onni caused is never an agent failure.
+ *
+ * The second shape is what Windows always produces: `ChildProcess.kill()` is
+ * TerminateProcess there, so the handler never runs, `exitCode` stays null and
+ * only `signalCode` names the stop. Callers must pass `child.signalCode`; the
+ * one-argument form keeps its old meaning (a bare `null` is not a teardown).
  */
-export function isSignalTerminationExit(exitCode: number | null): boolean {
+export function isSignalTerminationExit(
+  exitCode: number | null,
+  signalCode: NodeJS.Signals | null = null,
+): boolean {
+  if (exitCode === null) return signalCode !== null;
   return exitCode === 130 || exitCode === 137 || exitCode === 143;
+}
+
+/**
+ * How that exit reads in a teardown note: `code 143` where the CLI handled the
+ * signal itself, `signal SIGTERM` where the OS killed it (Windows, where there
+ * is no handler to exit with a code).
+ */
+export function terminationLabel(exitCode: number | null, signalCode: NodeJS.Signals | null): string {
+  return exitCode !== null ? `code ${exitCode}` : `signal ${signalCode ?? 'unknown'}`;
 }
 
 /** The slice of `ChildProcess` a termination tracker needs — keeps the helper
