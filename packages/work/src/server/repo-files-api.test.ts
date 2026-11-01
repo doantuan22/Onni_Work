@@ -105,9 +105,12 @@ describe('listRepoPaths — the repository path index', () => {
   });
 
   it('fails rather than returning a partial list when the byte cap is exceeded', async () => {
-    const long = 'x'.repeat(180);
-    mkdirSync(join(dir, long));
-    for (let i = 0; i < 20; i += 1) writeFileSync(join(dir, long, `file-${long}-${i}.txt`), '1\n');
+    // The cap bounds the total index, not one name. Windows cannot index a path past MAX_PATH
+    // (260) without core.longpaths, so several nested names exceed the 256-byte cap instead of
+    // the single 180-character path this used to build.
+    const leaf = 'x'.repeat(40);
+    mkdirSync(join(dir, 'long'));
+    for (let i = 0; i < 8; i += 1) writeFileSync(join(dir, 'long', `${leaf}-${i}.txt`), '1\n');
     g(dir, 'add', '-A');
     g(dir, 'commit', '-m', 'long paths');
 
