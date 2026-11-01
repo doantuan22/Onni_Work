@@ -6,8 +6,9 @@ import { listServerInstances as webhookServerInstances } from './server-install/
 import { parseArgs } from 'node:util';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveBash } from './core/bash-path.ts';
 import { detectEnvironment } from './core/backend-detect.ts';
 import {
   ProviderAuthService,
@@ -599,14 +600,16 @@ async function runCommand(
  * Best-effort: a shell that errors or hangs leaves PATH untouched.
  */
 function augmentPathFromLoginShell(): void {
+  const bash = resolveBash();
+  if (!bash) return;
   try {
-    const out = execFileSync('bash', ['-lc', 'printf %s "$PATH"'], { timeout: 5000, encoding: 'utf8' });
+    const out = execFileSync(bash.path, ['-lc', 'printf %s "$PATH"'], { timeout: 5000, encoding: 'utf8' });
     const loginPath = out.split('\n').map((s) => s.trim()).filter(Boolean).pop() ?? '';
     if (!loginPath) return;
     const seen = new Set<string>();
-    process.env.PATH = [...loginPath.split(':'), ...(process.env.PATH ?? '').split(':')]
+    process.env.PATH = [...loginPath.split(delimiter), ...(process.env.PATH ?? '').split(delimiter)]
       .filter((d) => d && !seen.has(d) && seen.add(d))
-      .join(':');
+      .join(delimiter);
   } catch {
     // best effort — keep the existing PATH
   }

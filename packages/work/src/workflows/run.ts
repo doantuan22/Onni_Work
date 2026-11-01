@@ -29,6 +29,7 @@ import {
 import { onUsage, registerRunProcess, unregisterRunProcess, type ProcessUsage } from '../core/process-usage.ts';
 import { describeReaped, reapTaskProcesses, taskProcessReapEnabled } from '../core/task-processes.ts';
 import { spawnTaskProcess } from '../core/task-process-spawn.ts';
+import { BASH_MISSING_MESSAGE, resolveBash, withBashPath } from '../core/bash-path.ts';
 import { parseUsageLimit } from '../core/usage-limit.ts';
 import { diskFullAgentErrorText } from '../disk-space.ts';
 import { accountStateHint, classifyAgentFailure, MAX_TRANSIENT_RETRIES, transientRetryDelayMs } from '../core/agent-failure-class.ts';
@@ -9043,9 +9044,14 @@ export class RunManager {
     const env = await this.checkStepEnv(runId, state, step, emit);
     // A cancel that landed during the read had no child to interrupt; do not spawn one now.
     if (state.cancelled) return { ok: false, output: 'cancelled', exitCode: -1 };
+    const bash = resolveBash();
+    if (!bash) {
+      emit({ type: 'check-output', stepId: step.id, command, text: BASH_MISSING_MESSAGE, exitCode: -1 });
+      return { ok: false, output: BASH_MISSING_MESSAGE, exitCode: -1 };
+    }
     return new Promise((resolve) => {
       // Check steps run in the same cwd as the agent steps — the worktree.
-      const child = spawnTaskProcess('bash', ['-lc', command], { cwd: state.cwd, env });
+      const child = spawnTaskProcess(bash.path, ['-lc', command], { cwd: state.cwd, env: withBashPath(env, bash) });
       state.interrupt = () => child.kill('SIGTERM');
 
       let output = '';

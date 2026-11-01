@@ -4,6 +4,7 @@ import type { LifecycleOutputFrame, LifecycleProcessIdentity } from '@onni/contr
 export type { LifecycleProcessIdentity } from '@onni/contract';
 import { hostname } from 'node:os';
 import { promisify } from 'node:util';
+import { BASH_MISSING_MESSAGE, resolveBash, withBashPath } from '../core/bash-path.ts';
 import { collectSecretValues, redactSecrets } from '../core/secret-redaction.ts';
 import { StreamRedaction } from '../runs/stream-redaction.ts';
 
@@ -134,14 +135,16 @@ export async function executeLifecycleCommand(options: LifecycleExecutorOptions)
       }
     }
   };
-  const bash = options.bashPath ?? 'bash';
+  const resolved = options.bashPath ? undefined : resolveBash();
+  const bash = options.bashPath ?? resolved?.path;
+  if (!bash) return { state: 'failed', exitCode: null, reason: BASH_MISSING_MESSAGE, quiescent: true, truncated: false };
   // Keep the Windows supervisor alive until taskkill has captured its tree. The
   // command itself still receives EOF on stdin; the private marker is not output.
   const wrapper = windows
     ? `IFS= read -r _onni_launch || exit 125; "$0" -c "$1" </dev/null; _onni_status=$?; printf '\\n%s:%s\\n' "$2" "$_onni_status" >&2; IFS= read -r _onni_shutdown`
     : 'IFS= read -r _onni_launch || exit 125; exec "$0" -c "$1"';
   const child = spawn(bash, ['-c', wrapper, bash, options.command, completionMarker], {
-    cwd: options.cwd, env: process.env, detached: true, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+    cwd: options.cwd, env: resolved ? withBashPath(process.env, resolved) : process.env, detached: true, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
   });
   const closed = new Promise<void>(resolve => child.once('close', () => { childClosed = true; resolve(); }));
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');

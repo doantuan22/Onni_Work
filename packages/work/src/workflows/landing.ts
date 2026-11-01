@@ -1,4 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
+import { BASH_MISSING_MESSAGE, resolveBash, withBashPath } from '../core/bash-path.ts';
 import { ONNI_DATA_EXCLUDE } from '../data-gitignore.ts';
 import { gitHasIdentity, unresolvedConflicts } from '../git-worktree.ts';
 
@@ -55,8 +56,10 @@ const reason = (res: GitResult, fallback: string) =>
   (res.stderr.trim() || res.stdout.trim()).split('\n').slice(0, 3).join('\n') || fallback;
 
 export function runShellCheck(command: string, cwd: string, env?: NodeJS.ProcessEnv): Promise<{ ok: boolean; output: string }> {
+  const bash = resolveBash();
+  if (!bash) return Promise.resolve({ ok: false, output: BASH_MISSING_MESSAGE });
   return new Promise((resolve) => {
-    const child = spawn('bash', ['-lc', command], { cwd, env: env ?? process.env });
+    const child = spawn(bash.path, ['-lc', command], { cwd, env: withBashPath(env ?? process.env, bash) });
     let output = '';
     const collect = (chunk: Buffer) => {
       output = (output + chunk.toString('utf8')).slice(-CHECK_OUTPUT_TAIL);
