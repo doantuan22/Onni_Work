@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';
+import { posixPath } from '../test-fixtures/posix-path.testkit.ts';
 import { mergeWriteWorkspaceConfig } from '../workspace/config.ts';
 import { clearProjectProbeCache } from '../workspace/projects.ts';
 import { createProject, listGithubOwners, type CommandRunner } from './create-project.ts';
@@ -315,7 +316,9 @@ describe('POST /api/v1/projects/create', () => {
       const dir = join(checkoutRoot, name);
       const config = (args: string[]) => execFileSync('git', ['-C', dir, 'config', '--local', ...args], { encoding: 'utf8' }).trim();
       // `--local` reads THIS repo's config: the fake clone is a real `git init`, not a bare `.git` folder.
-      expect(execFileSync('git', ['-C', dir, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()).toBe(dir);
+      // git prints forward slashes even on Windows; compare the two spellings.
+      expect(posixPath(execFileSync('git', ['-C', dir, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()))
+        .toBe(posixPath(dir));
       if (name === 'gh-empty') expect(config(['--get', 'remote.origin.url'])).toBe('https://github.com/acme/gh-empty.git');
       const helpers = execFileSync('git', ['-C', dir, 'config', '--local', '--get-all', 'credential.https://github.com.helper'], { encoding: 'utf8' });
       expect(helpers.split('\n').slice(0, -1)).toEqual(['', '!gh auth git-credential']);
