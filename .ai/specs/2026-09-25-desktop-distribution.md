@@ -1,5 +1,7 @@
 # Desktop distribution — where Onni Work desktop is published and how it updates
 
+> **SUPERSEDED (2026-11-01):** This proposal describes registry downloads, managed engine installs, and desktop auto-update that are not present in the current code. For the supported personal Windows build using a locally built and linked engine, see [the desktop personal-use runbook](../../docs/desktop-personal-use.md). This file remains as historical design context.
+
 **Status:** design + workflow in place, no release cut yet. 2026-09-25. Companion to
 `2026-09-25-self-update-and-desktop.md` (the shell itself and the managed install).
 
