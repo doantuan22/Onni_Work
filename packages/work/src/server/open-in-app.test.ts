@@ -73,7 +73,9 @@ describe('detectOpenTargets', () => {
     function withStubsOnPath() {
       stubDir = mkdtempSync(join(tmpdir(), 'onni-open-in-test-'));
       for (const name of STUBS) {
-        const p = join(stubDir, name);
+        // Windows resolves only suffixed launchers, so the stub carries the same name
+        // `resolveOnPath` probes there.
+        const p = join(stubDir, process.platform === 'win32' ? `${name}.exe` : name);
         // Marker files, not scripts: `resolveOnPath` probes them with `accessSync(X_OK)` and
         // nothing in this file executes them, because `spawn` is mocked file-wide.
         writeFileSync(p, '', 'utf8');
@@ -121,9 +123,10 @@ describe('detectOpenTargets', () => {
         const [bin, args] = call as [string, string[]];
         return { bin, args };
       });
+      const resolved = (name: string) => (process.platform === 'win32' ? `${name}.exe` : name);
       expect(launched).toEqual([
-        { bin: 'clion', args: ['/tmp/some-worktree'] },
-        { bin: 'rider', args: ['/tmp/some-worktree'] },
+        { bin: resolved('clion'), args: ['/tmp/some-worktree'] },
+        { bin: resolved('rider'), args: ['/tmp/some-worktree'] },
       ]);
       // Detached and stdio-free, which a launch must stay: an editor may outlive the cockpit and
       // must never inherit its stdio. Reading the stub's own log could not observe this at all.

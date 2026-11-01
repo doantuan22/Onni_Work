@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
 import type { RunnerId } from '../core/agent-runner.ts';
 import { claudeShellCommand, isExecutable } from '../core/claude-bin.ts';
@@ -89,18 +89,20 @@ export function resolveOnPath(
   // the literal name when it HAS an extension. VS Code's bin dir holds a bare `code` (a bash shim
   // for Git Bash) beside `code.cmd`, so offering it made every open fail (telemetry 4fda9ce5).
   const names = platform === 'win32' ? [`${bin}.com`, `${bin}.exe`] : wsl ? [bin, `${bin}.com`, `${bin}.exe`] : [bin];
-  return findOnPath(names, platform, searchPath);
+  return findOnPath(names, searchPath);
 }
 
 /** Is `bin` on PATH for a SHELL — what an agent-CLI handoff runs in, since it opens a terminal
  *  that types the command. A bare npm shim counts there, unlike in `resolveOnPath`. */
 function onShellPath(bin: string): boolean {
   const suffixed = process.platform === 'win32' || isWsl();
-  return findOnPath(suffixed ? [bin, `${bin}.com`, `${bin}.exe`] : [bin], process.platform, process.env.PATH ?? '') !== null;
+  return findOnPath(suffixed ? [bin, `${bin}.com`, `${bin}.exe`] : [bin], process.env.PATH ?? '') !== null;
 }
 
-function findOnPath(names: string[], platform: NodeJS.Platform, searchPath: string): string | null {
-  const dirs = searchPath.split(platform === 'win32' ? ';' : ':');
+function findOnPath(names: string[], searchPath: string): string | null {
+  // The PATH string is always host-native (a Windows entry carries a drive colon), so split on
+  // the host's delimiter even when `platform` is an injected value in a test.
+  const dirs = searchPath.split(delimiter);
   for (const dir of dirs) {
     if (!dir) continue;
     for (const name of names) {
