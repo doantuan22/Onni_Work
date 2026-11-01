@@ -94,7 +94,7 @@ cd packages/desktop
 npm install
 npm run dev                # tauri dev
 npm run build              # tauri build with the configured platform target
-npm run build:windows      # Windows NSIS installer (.exe)
+npm run build:windows      # Windows NSIS installer; version/commit copy under .tmp/desktop-artifacts/
 ```
 
 `ONNI_DRY_RUN=1 npm run dev` exercises the whole cockpit with mocked agent CLIs — no login, no
