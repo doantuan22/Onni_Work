@@ -10,6 +10,7 @@ import { HANDOFF_INSTRUCTIONS, HANDOFF_ONLY_INSTRUCTIONS } from '../handoff.ts';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { CLAUDE_HEADLESS_GUIDANCE } from '../core/claude-cli-runner.ts';
+import { removeTempDir, stopRuns } from '../test-fixtures/remove-temp-dir.testkit.ts';
 import type { WorkflowDef } from './types.ts';
 import {
   RunManager,
@@ -206,14 +207,15 @@ describe('systemPrompt end-to-end (dry run)', () => {
     });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    await stopRuns(manager, store);
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
-  });
+    await removeTempDir(repoRoot);
+  }, 30_000);
 
   // Agent step + trailing check so the agent step is non-interactive — the
   // session auto-ends after the mock's turn and the run reaches a terminal
@@ -614,14 +616,15 @@ describe('the global follow-up gate (dry run)', () => {
     });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    await stopRuns(manager, store);
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
-  });
+    await removeTempDir(repoRoot);
+  }, 30_000);
 
   const workflow: WorkflowDef = {
     name: 'gate-probe',
