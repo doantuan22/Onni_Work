@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -248,7 +248,7 @@ describe('graph workflows run through RunManager', () => {
 
   it('loads a version: 2 file from .ai/onni/workflows beside v1 files', async () => {
     const dir = join(repoRoot, '.ai/onni/workflows');
-    await run('mkdir', ['-p', dir]);
+    mkdirSync(dir, { recursive: true });
     writeFileSync(
       join(dir, 'graph.yaml'),
       [
