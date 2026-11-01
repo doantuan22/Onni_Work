@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
@@ -42,6 +43,17 @@ describe('ensureDataGitignore', () => {
       'tracker.json',
       'tracker.json.tmp',
     ]));
+  });
+
+  it('ignores the generated unattended pre-push hook', () => {
+    execFileSync('git', ['init', '-q'], { cwd: repoRoot });
+    ensureDataGitignore(repoRoot);
+
+    expect(() =>
+      execFileSync('git', ['check-ignore', '--quiet', '--no-index', '--', '.ai/onni/hooks/pre-push'], {
+        cwd: repoRoot,
+      }),
+    ).not.toThrow();
   });
 
   it('appends what is missing and keeps what the user added', () => {
