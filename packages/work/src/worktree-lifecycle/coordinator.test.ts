@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -396,7 +396,9 @@ describe('worktree lifecycle coordinator with real Git and command fixtures', ()
     const p = await project();
     const elsewhere = await realpath(await mkdtemp(join(tmpdir(), 'onni-lifecycle-ai-'))); roots.push(elsewhere);
     await rm(join(p.root, '.ai'), {recursive: true, force: true});
-    execFileSync('ln', ['-s', elsewhere, join(p.root, '.ai')]);
+    // MSYS `ln -s` copies a directory unless winsymlinks is enabled; a junction needs no
+    // privilege on Windows and behaves as the directory link the test is about.
+    await symlink(elsewhere, join(p.root, '.ai'), process.platform === 'win32' ? 'junction' : 'dir');
     Object.assign(p.records.get(p.id)!, {status: 'done', worktreePath: join(p.root, '.ai/onni/worktrees', p.id)});
     await p.coordinator.reconcile();
     expect(p.records.get(p.id)).toMatchObject({status: 'done'}); expect(p.records.get(p.id)?.worktreeLifecycle).toBeUndefined();
