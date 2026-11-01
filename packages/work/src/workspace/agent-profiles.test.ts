@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PROVIDER_IDS } from '../core/provider-auth.ts';
+import { posixPath } from '../test-fixtures/posix-path.testkit.ts';
 import { agentAccountsPath } from '../paths.ts';
 import {
   defaultAgentProfile,
@@ -36,6 +37,9 @@ describe('agent profile resolution', () => {
   });
 
   const env = { HOME: '/home/u' } as NodeJS.ProcessEnv;
+  /** The fake HOME is POSIX-shaped; the product joins it with the HOST separator, so the
+   *  expectation is built the same way rather than hard-coding macOS's `/`. */
+  const homePath = (...parts: string[]) => join('/home/u', ...parts);
   const write = (value: unknown) => writeFileSync(agentAccountsPath(), JSON.stringify(value), 'utf8');
   const klaudiuszProfile = {
     id: 'klaudiusz',
@@ -47,11 +51,11 @@ describe('agent profile resolution', () => {
 
   describe('defaultAgentProfile', () => {
     it('is whatever agentHomePaths discovers, per provider', () => {
-      expect(defaultAgentProfile('claude', env).path).toBe('/home/u/.claude');
-      expect(defaultAgentProfile('codex', env).path).toBe('/home/u/.codex');
-      expect(defaultAgentProfile('opencode', env).path).toBe('/home/u/.config/opencode');
-      expect(defaultAgentProfile('cursor', env).path).toBe('/home/u/.cursor');
-      expect(defaultAgentProfile('copilot', env).path).toBe('/home/u/.copilot');
+      expect(defaultAgentProfile('claude', env).path).toBe(homePath('.claude'));
+      expect(defaultAgentProfile('codex', env).path).toBe(homePath('.codex'));
+      expect(defaultAgentProfile('opencode', env).path).toBe(homePath('.config', 'opencode'));
+      expect(defaultAgentProfile('cursor', env).path).toBe(homePath('.cursor'));
+      expect(defaultAgentProfile('copilot', env).path).toBe(homePath('.copilot'));
     });
 
     it('never hands one provider another vendor\'s home — the ternary chain\'s failure (#582)', () => {
@@ -60,7 +64,7 @@ describe('agent profile resolution', () => {
       // `pi` keeps that fallback, and only because it has no home of its own to point at.
       for (const provider of PROVIDER_IDS) {
         if (provider === 'claude' || provider === 'pi') continue;
-        expect(defaultAgentProfile(provider, env).path).not.toBe('/home/u/.claude');
+        expect(defaultAgentProfile(provider, env).path).not.toBe(homePath('.claude'));
       }
     });
 
@@ -103,7 +107,7 @@ describe('agent profile resolution', () => {
       write({ accounts: [klaudiuszProfile] });
       const [, stored] = profilesForProvider(await loadAgentAccounts(), 'claude', env);
       expect(stored?.configDir).toBe('~/.claude-klaudiusz');
-      expect(stored?.path.endsWith('/.claude-klaudiusz')).toBe(true);
+      expect(posixPath(stored?.path ?? '').endsWith('/.claude-klaudiusz')).toBe(true);
       expect(stored?.path.startsWith('~')).toBe(false);
     });
   });
