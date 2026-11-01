@@ -19,6 +19,8 @@
 //! alone (`caller_is_splash`) — and the window itself never stays on another local server
 //! (`is_own_origin`, enforced at page load: the navigation hook also sees the Preview's iframes). A dev server on `localhost:3000` is somebody else's page.
 
+#[cfg(windows)]
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -27,6 +29,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+#[cfg(any(windows, test))]
+use std::time::{SystemTime, UNIX_EPOCH};
 
 mod disclaim;
 pub use disclaim::disclaim_exec_if_asked;
@@ -39,6 +43,10 @@ use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWind
 
 const HEALTH_TIMEOUT: Duration = Duration::from_secs(60);
 const LOG_TAIL: usize = 60;
+#[cfg(any(windows, test))]
+const DIAGNOSTIC_LOG_MAX_BYTES: u64 = 4 * 1024 * 1024;
+#[cfg(any(windows, test))]
+static DIAGNOSTIC_LOG_LOCK: Mutex<()> = Mutex::new(());
 /// The cockpit's conventional port, tried first so `http://localhost:4321` works in a browser
 /// beside the app whenever it can; a busy one falls through to the next few, then to any.
 const PREFERRED_PORTS: std::ops::Range<u16> = 4321..4331;
@@ -670,8 +678,11 @@ pub fn run() {
                     save_geometry(&window);
                 }
                 if let Some(mut child) = shell_for_run.child.lock().unwrap().take() {
+                    let pid = child.id();
+                    desktop_diagnostic(&format!("event=app-exit-stop-sidecar pid={pid}"));
                     stop_sidecar(&mut child);
-                    let _ = child.wait();
+                    let status = child.wait().ok();
+                    desktop_diagnostic(&format!("event=app-exit-sidecar-stopped pid={pid} exit_code={:?} success={:?}", status.as_ref().and_then(std::process::ExitStatus::code), status.as_ref().map(std::process::ExitStatus::success)));
                 }
             }
             _ => {}
@@ -698,16 +709,28 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         std::thread::sleep(Duration::from_millis(50));
     };
 
+    desktop_diagnostic("event=supervisor-start");
+    for name in ["ONNI_DESKTOP_ENTRY", "ONNI_DESKTOP_CWD", "ONNI_HOME", "ONNI_DESKTOP_NODE"] {
+        log_parent_env(name);
+    }
+
     // The sidecar needs Node 20+: the engine is a Node program, and nothing is downloaded on its
     // behalf. Without it the honest answer is a page that says so and offers a retry.
     if !require_node(&window) {
+        desktop_diagnostic(&format!("event=node-check-failed node_program={:?}", node_program()));
         return;
     }
+    desktop_diagnostic(&format!("event=node-check-ok node_program={:?}", node_program()));
 
     loop {
         let entry = match resolve_entry() {
-            Some(entry) => entry,
+            Some(entry) => {
+                let canonical = std::fs::canonicalize(&entry).unwrap_or_else(|_| entry.clone());
+                desktop_diagnostic(&format!("event=entry-selected entry={entry:?} canonical_entry={canonical:?}"));
+                entry
+            }
             None => {
+                desktop_diagnostic(&format!("event=engine-missing onni_home={:?}", onni_home()));
                 engine_missing(&window);
                 return;
             }
@@ -722,6 +745,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         let mut child = match spawn_sidecar(&entry, port, project.as_deref(), log.clone()) {
             Ok(child) => child,
             Err(error) => {
+                desktop_diagnostic(&format!("event=spawn-failed error={error:?}"));
                 fail(&window, "Onni Work could not start", &error, "");
                 return;
             }
@@ -729,7 +753,10 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         let pid = child.id();
 
         let url = format!("http://127.0.0.1:{port}");
+        let health_started = Instant::now();
+        desktop_diagnostic(&format!("event=health-wait-start url={url:?} host={:?} timeout_ms={} pid={pid}", "127.0.0.1", HEALTH_TIMEOUT.as_millis()));
         if let Some(version) = wait_for_health(port, &mut child, HEALTH_TIMEOUT) {
+            desktop_diagnostic(&format!("event=health-ok elapsed_ms={} version={version:?} pid={pid}", health_started.elapsed().as_millis()));
             *shell.running_version.lock().unwrap() = Some(version);
             if let Ok(parsed) = url::Url::parse(&url) {
                 let _ = window.navigate(parsed);
@@ -758,8 +785,11 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
             });
         } else {
             let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
+            let early_status = child.try_wait().ok().flatten();
+            desktop_diagnostic(&format!("event=health-failed elapsed_ms={} timed_out={} exit_code={:?} pid={pid}", health_started.elapsed().as_millis(), early_status.is_none(), early_status.as_ref().and_then(std::process::ExitStatus::code)));
             fail(&window, "Onni Work did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail);
-            let _ = child.kill();
+            let kill_result = child.kill();
+            desktop_diagnostic(&format!("event=sidecar-kill-after-health-failure result={kill_result:?} exit_code=unobserved pid={pid}"));
             return;
         }
 
@@ -786,11 +816,15 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
                 continue;
             }
             Some(code) => {
+                desktop_diagnostic(&format!("event=sidecar-exit exit_code={code} pid={pid}"));
                 let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
                 fail(&window, "Onni Work stopped", &stopped_detail(code), &tail);
                 return;
             }
-            None => return,
+            None => {
+                desktop_diagnostic(&format!("event=sidecar-exit-without-code pid={pid}"));
+                return;
+            }
         }
     }
 }
@@ -958,17 +992,30 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
             command.env("ONNI_DISCLAIM_EXEC", exe);
         }
     }
-    let mut child = command.spawn().map_err(|error| format!("could not start node: {error}"))?;
-    for reader in [
-        child.stdout.take().map(|out| Box::new(out) as Box<dyn Read + Send>),
-        child.stderr.take().map(|err| Box::new(err) as Box<dyn Read + Send>),
+    let cwd = home_dir();
+    let canonical_entry = std::fs::canonicalize(entry).unwrap_or_else(|_| entry.to_path_buf());
+    desktop_diagnostic(&format!("event=sidecar-spawn node_program={:?} entry_arg={entry:?} canonical_entry={canonical_entry:?} cwd={cwd:?} args={args:?} port={port} health_url={:?}", node_program(), format!("http://127.0.0.1:{port}/api/v1/health")));
+    #[cfg(windows)]
+    log_command_environment(&command);
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            desktop_diagnostic(&format!("event=sidecar-spawn-error error={error:?}"));
+            return Err(format!("could not start node: {error}"));
+        }
+    };
+    desktop_diagnostic(&format!("event=sidecar-spawned pid={}", child.id()));
+    for (stream, reader) in [
+        ("stdout", child.stdout.take().map(|out| Box::new(out) as Box<dyn Read + Send>)),
+        ("stderr", child.stderr.take().map(|err| Box::new(err) as Box<dyn Read + Send>)),
     ]
     .into_iter()
-    .flatten()
+    .filter_map(|(stream, reader)| reader.map(|reader| (stream, reader)))
     {
         let log = log.clone();
         std::thread::spawn(move || {
             for line in BufReader::new(reader).lines().map_while(Result::ok) {
+                desktop_diagnostic(&format!("sidecar_{stream}={line}"));
                 let mut log = log.lock().unwrap();
                 if log.len() >= LOG_TAIL {
                     log.pop_front();
@@ -978,6 +1025,80 @@ fn spawn_sidecar(entry: &Path, port: u16, project: Option<&Path>, log: Arc<Mutex
         });
     }
     Ok(child)
+}
+
+/// Windows startup diagnostics stay on the user's machine. A failed write never changes launch behavior.
+fn desktop_diagnostic(line: &str) {
+    #[cfg(all(windows, not(test)))]
+    if let Some(path) = diagnostic_log_path() {
+        let _ = append_diagnostic_line(&path, line);
+    }
+    #[cfg(any(not(windows), test))]
+    let _ = line;
+}
+
+#[cfg(all(windows, not(test)))]
+fn diagnostic_log_path() -> Option<PathBuf> {
+    std::env::var_os("LOCALAPPDATA")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| Some(onni_home()))
+        .map(|base| base.join("Onni Work").join("logs").join("desktop-sidecar.log"))
+}
+
+#[cfg(any(windows, test))]
+fn append_diagnostic_line(path: &Path, line: &str) -> std::io::Result<()> {
+    let _guard = DIAGNOSTIC_LOG_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    if std::fs::metadata(path).is_ok_and(|metadata| metadata.len() > DIAGNOSTIC_LOG_MAX_BYTES) {
+        if let Some(name) = path.file_name() {
+            let rotated = path.with_file_name(format!("{}.1", name.to_string_lossy()));
+            let _ = std::fs::remove_file(&rotated);
+            let _ = std::fs::rename(path, rotated);
+        }
+    }
+    let mut file = std::fs::OpenOptions::new().create(true).append(true).open(path)?;
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
+    writeln!(file, "[{timestamp}] {line}")
+}
+
+#[cfg(any(windows, test))]
+fn diagnostic_env_value(name: &std::ffi::OsStr, value: &std::ffi::OsStr) -> String {
+    let normalized = name.to_string_lossy().to_ascii_uppercase();
+    let sensitive = ["TOKEN", "SECRET", "PASS", "KEY", "CREDENTIAL", "AUTH", "COOKIE", "SESSION", "NONCE", "PRIVATE", "DATABASE", "_URI", "_URL", "DSN"];
+    if sensitive.iter().any(|marker| normalized.contains(marker)) {
+        "<redacted>".into()
+    } else {
+        value.to_string_lossy().into_owned()
+    }
+}
+
+fn log_parent_env(name: &str) {
+    let value = std::env::var_os(name).map(|value| format!("{:?}", value.to_string_lossy())).unwrap_or_else(|| "<unset>".into());
+    desktop_diagnostic(&format!("parent_env {name}={value}"));
+}
+
+#[cfg(windows)]
+fn log_command_environment(command: &Command) {
+    let mut effective: HashMap<String, (std::ffi::OsString, std::ffi::OsString)> = std::env::vars_os()
+        .map(|(key, value)| (key.to_string_lossy().to_ascii_lowercase(), (key, value)))
+        .collect();
+    for (key, value) in command.get_envs() {
+        let normalized = key.to_string_lossy().to_ascii_lowercase();
+        if let Some(value) = value {
+            effective.insert(normalized, (key.to_os_string(), value.to_os_string()));
+        } else {
+            effective.remove(&normalized);
+        }
+    }
+    let mut values = effective.into_values().collect::<Vec<_>>();
+    values.sort_by_key(|(key, _)| key.to_string_lossy().to_ascii_lowercase());
+    for (key, value) in values {
+        let value = diagnostic_env_value(&key, &value);
+        desktop_diagnostic(&format!("child_env {}={value:?}", key.to_string_lossy()));
+    }
 }
 
 /// `program` with `args`, the way this platform finds the user's tools.
@@ -1941,6 +2062,38 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn desktop_diagnostic_log_appends_lines_and_redacts_secret_environment_values() {
+        let scratch = Scratch::new("diagnostic-log");
+        let path = scratch.0.join("logs").join("desktop-sidecar.log");
+        append_diagnostic_line(&path, "event=sidecar-spawned pid=7").unwrap();
+        append_diagnostic_line(&path, "sidecar_stderr=failed").unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(contents.contains("event=sidecar-spawned pid=7"));
+        assert!(contents.contains("sidecar_stderr=failed"));
+        assert_eq!(
+            diagnostic_env_value(
+                std::ffi::OsStr::new("GITHUB_TOKEN"),
+                std::ffi::OsStr::new("do-not-log")
+            ),
+            "<redacted>"
+        );
+        assert_eq!(
+            diagnostic_env_value(
+                std::ffi::OsStr::new("COPILOT_DEBUG_NONCE"),
+                std::ffi::OsStr::new("do-not-log")
+            ),
+            "<redacted>"
+        );
+        assert_eq!(
+            diagnostic_env_value(
+                std::ffi::OsStr::new("ONNI_HOME"),
+                std::ffi::OsStr::new("C:\\Users\\test\\.onni")
+            ),
+            "C:\\Users\\test\\.onni"
+        );
     }
 
     #[test]
