@@ -13,6 +13,20 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 // npm supplies its JS entry point to scripts; invoking it through Node also works on Windows.
 const npmCli = process.env.npm_execpath;
 
+/**
+ * `npm run` re-exports the developer's npm config as `npm_config_*` env vars, so a `~/.npmrc`
+ * with `allow-scripts=true` arrives at the nested npm as the cli/env layer — which npm 11
+ * refuses for project-scoped installs (EALLOWSCRIPTS) even next to `--ignore-scripts`. The
+ * harness verifies the tarball, not the developer's install policy, so nested npm calls drop it.
+ */
+function npmChildEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env = { ...process.env, ...extra };
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase() === 'npm_config_allow_scripts') delete env[key];
+  }
+  return env;
+}
+
 test('the release tarball installs and runs the dry-run CLI workflow', { timeout: 120_000 }, async () => {
   assert.ok(npmCli, 'run this suite through npm run test:package');
   const root = await mkdtemp(join(tmpdir(), 'onni-package-e2e-'));
@@ -23,7 +37,7 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
     const packed = await execFile(
       process.execPath,
       [npmCli, 'pack', '--json', '--ignore-scripts', '--pack-destination', packDir],
-      { cwd: repoRoot, maxBuffer: 10 * 1024 * 1024 },
+      { cwd: repoRoot, env: npmChildEnv(), maxBuffer: 10 * 1024 * 1024 },
     );
     const record = firstPackReport(JSON.parse(packed.stdout));
     assert.ok(record?.filename && record.files, 'npm pack should describe the generated tarball');
@@ -42,7 +56,7 @@ test('the release tarball installs and runs the dry-run CLI workflow', { timeout
     await execFile(
       process.execPath,
       [npmCli, 'install', '--ignore-scripts', '--no-audit', '--no-fund', '--no-package-lock', tarball],
-      { cwd: consumerDir, maxBuffer: 10 * 1024 * 1024 },
+      { cwd: consumerDir, env: npmChildEnv(), maxBuffer: 10 * 1024 * 1024 },
     );
 
     const packageRoot = join(consumerDir, 'node_modules', '@onni', 'work');
