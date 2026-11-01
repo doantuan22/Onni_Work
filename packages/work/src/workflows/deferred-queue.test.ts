@@ -1,11 +1,12 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 import { RunManager } from './run.ts';
-it('publishes queue reasons when a different project acquires, resumes and clears an account hold', () => {
+it('publishes queue reasons when a different project acquires, resumes and clears an account hold', async () => {
   const root = mkdtempSync(join(tmpdir(), 'deferred-queue-'));
   const semaphore = new WorkspaceSemaphore();
   const a = RunStore.open(join(root, 'a'));
@@ -21,10 +22,10 @@ it('publishes queue reasons when a different project acquires, resumes and clear
     expect(a.getRun(queued.id)?.queueWaitReason).toEqual({ kind: 'account-resume' });
     b.updateRun(holder.id, { status: 'done', autoResumeAttempts: undefined });
     expect(a.getRun(queued.id)?.queueWaitReason).toBeUndefined();
-  } finally { for (const manager of managers) manager.dispose(); a.flush(); b.flush(); rmSync(root, { recursive: true, force: true }); }
+  } finally { for (const manager of managers) manager.dispose(); a.flush(); b.flush(); await removeTempDir(root); }
 });
 
-it('re-derives queue reasons only when a hold input changes, not on every token update (#1340)', () => {
+it('re-derives queue reasons only when a hold input changes, not on every token update (#1340)', async () => {
   const root = mkdtempSync(join(tmpdir(), 'deferred-queue-'));
   const semaphore = new WorkspaceSemaphore();
   const store = RunStore.open(join(root, 'a'));
@@ -39,7 +40,7 @@ it('re-derives queue reasons only when a hold input changes, not on every token 
     expect(notify).toHaveBeenCalledOnce();
     store.updateRun(run.id, { agentProfile: 'work' });
     expect(notify).toHaveBeenCalledTimes(2);
-  } finally { manager.dispose(); store.flush(); rmSync(root, { recursive: true, force: true }); }
+  } finally { manager.dispose(); store.flush(); await removeTempDir(root); }
 });
 
 
@@ -66,7 +67,7 @@ it('uses the configured Codex default for omitted-runner queue reasons and refre
     await semaphore.refresh();
     await vi.waitFor(() => expect(a.getRun(queued.id)?.queueWaitReason).toEqual({ kind: 'account-resume' }));
     expect(a.getRun(queued.id)?.runner).toBeUndefined();
-  } finally { for (const manager of managers) manager.dispose(); a.flush(); b.flush(); rmSync(root, { recursive: true, force: true }); }
+  } finally { for (const manager of managers) manager.dispose(); a.flush(); b.flush(); await removeTempDir(root); }
 });
 
 it('clears a disposed holder reason while another participant still exhausts capacity', async () => {
@@ -89,5 +90,5 @@ it('clears a disposed holder reason while another participant still exhausts cap
     await semaphore.release();
     expect(semaphore.busy()).toBe(semaphore.maxParallel());
     expect(a.getRun(queued.id)?.status).toBe('queued');
-  } finally { ma.dispose(); mb.dispose(); offCapacity(); a.flush(); b.flush(); rmSync(root, { recursive: true, force: true }); }
+  } finally { ma.dispose(); mb.dispose(); offCapacity(); a.flush(); b.flush(); await removeTempDir(root); }
 });

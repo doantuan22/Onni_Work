@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { rm } from 'node:fs/promises';
 
 /**
@@ -30,6 +31,24 @@ export async function removeTempDir(...dirs: Array<string | undefined>): Promise
   for (const dir of dirs) {
     if (!dir) continue;
     await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
+}
+
+/**
+ * Kill a session's process tree the way the OS does when its owner dies.
+ *
+ * A case that simulates a restart disposes the old manager with a live session on purpose
+ * (`dispose()` ends no session), then lets a new manager adopt the persisted record. In a real
+ * restart the old backend is gone; in-process it is an orphan whose cwd is the fixture root, so
+ * the teardown cannot delete it. Capture `session.pid` before disposing and pass it here.
+ */
+export function killProcessTree(pid: number | undefined): void {
+  if (!pid) return;
+  try {
+    if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+    else process.kill(pid, 'SIGKILL');
+  } catch {
+    // Already gone: the fixture root is free either way.
   }
 }
 

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it, vi } from 'vitest';
@@ -6,6 +6,7 @@ import { RunStore } from '../runs/store.ts';
 import { RunManager } from './run.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { remainingBudgetUsd } from '../dispatch/engine.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 it('retains the child reservation after preliminary zero and failure before final cost', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'onni-zero-incomplete-'));
@@ -48,6 +49,6 @@ server.listen(0,'127.0.0.1',()=>console.log('http://127.0.0.1:'+server.address()
     manager.dispose();
     store.flush();
     vi.unstubAllEnvs();
-    rmSync(dir, { recursive: true, force: true });
+    await removeTempDir(dir);
   }
 }, 15000);

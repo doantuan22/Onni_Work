@@ -3223,6 +3223,8 @@ describe('recover() carries the queued stack exactly once (#472)', () => {
       expect(jobsOf(manager).get(r.id)?.input.task).toBe(expected);
       // The record is never rewritten — that is what stops the compounding.
       expect(store.getRun(r.id)?.task).toBe('the original task');
+      // A live manager keeps writing this store; dispose before the fixture root goes.
+      manager.dispose();
     }
   });
 });

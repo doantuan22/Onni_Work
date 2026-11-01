@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizeClaudeUsageWindows, normalizeCodexUsageWindows } from '../core/usage-windows.ts';
 import { selectResetWindows } from './deferred-reset.ts';
 import type { UsageWindow, UsageWindowsSnapshot } from '@onni/contract';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 const NOW = Date.parse('2026-10-13T09:00:00Z');
 const window = (extra: Partial<UsageWindow> = {}): UsageWindow => ({ id: 'five_hour', kind: 'five-hour', applicability: 'all', models: [], resetsAt: NOW + 300_000, durationMinutes: 300, usedPercent: 20, status: 'allowed', observedAt: NOW - 3_600_000, ...extra });
 const snapshot = (windows: UsageWindow[], provider: 'claude' | 'codex' = 'claude'): UsageWindowsSnapshot => ({ provider, source: provider === 'claude' ? 'claude-stream' : 'codex-read', observedAt: NOW, windows, binding: { provider, accountId: 'default', profilePath: '/profile' } });
@@ -58,7 +59,7 @@ describe('usage reset selection', () => {
 });
 
 it('applies newer holds to the confirmed step models, including overrides, but not unrelated models', async () => {
-  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { mkdtempSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const { vi } = await import('vitest');
@@ -82,11 +83,11 @@ it('applies newer holds to the confirmed step models, including overrides, but n
     expect(await deferredHoldUntil(definition)).toBe(blocked.resetsAt! + 30_000);
     await saveUsageWindows({ provider: 'claude', accountId: 'default', profilePath: '/synthetic-profile' }, { provider: 'claude', source: 'claude-stream', observedAt: now, windows: [{ ...blocked, applicability: 'all', models: [], resetsAt: null }] });
     expect(await deferredHoldUntil(definition)).toBeNull();
-  } finally { vi.unstubAllEnvs(); rmSync(root, { recursive: true, force: true }); }
+  } finally { vi.unstubAllEnvs(); await removeTempDir(root); }
 });
 
 it.each([true, false])('retains a terminal Claude reset through the real manager independently of auto-resume=%s', async autoResume => {
-  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } = await import('node:fs');
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const { execFileSync } = await import('node:child_process');
@@ -159,6 +160,6 @@ it.each([true, false])('retains a terminal Claude reset through the real manager
       await expect.poll(() => store!.listRuns().some(run => manager!.isActive(run.id)), { timeout: 10_000 }).toBe(false);
       manager.dispose(); store.flush();
     }
-    vi.unstubAllEnvs(); rmSync(root, { recursive: true, force: true });
+    vi.unstubAllEnvs(); await removeTempDir(root);
   }
 }, 30_000);

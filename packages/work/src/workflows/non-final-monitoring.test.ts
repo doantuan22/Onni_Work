@@ -8,7 +8,7 @@ import { RunStore, type RunRecord } from '../runs/store.ts';
 import { RunManager } from './run.ts';
 import type { WorkflowDef } from './types.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
-import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
+import { killProcessTree, removeTempDir, stopRuns } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -17,7 +17,6 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
-  let currentId: string | undefined;
   const savedDryRun = process.env.ONNI_DRY_RUN;
 
   const workflow: WorkflowDef = {
@@ -38,12 +37,10 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
     await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: repoRoot });
     store = RunStore.open(join(repoRoot, '.ai/onni'));
     manager = new RunManager(store, repoRoot);
-    currentId = undefined;
   });
 
   afterEach(async () => {
-    if (currentId) manager.cancel(currentId);
-    manager.dispose();
+    await stopRuns(manager, store);
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
@@ -63,7 +60,6 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
       task: 'mock:monitoring compare in the background',
       worktree: false,
     });
-    currentId = record.id;
     await waitFor(record.id, (current) => current?.activity === 'monitoring');
 
     expect(store.getRun(record.id)?.steps.map(({ id, status }) => ({ id, status }))).toEqual([
@@ -78,7 +74,6 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
       worktree: false,
       autonomous: true,
     });
-    currentId = record.id;
     await waitFor(record.id, (current) => current?.activity === 'monitoring');
 
     const events = store.readEvents(record.id);
@@ -98,7 +93,6 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
       task: 'mock:monitoring compare in the background',
       worktree: false,
     });
-    currentId = record.id;
     await waitFor(record.id, (current) => current?.activity === 'monitoring');
     await waitFor(record.id, (current) => Boolean(current?.monitoringWakeAt));
     expect(manager.cancel(record.id)).toBe(true);
@@ -115,10 +109,14 @@ describe('ONNI:MONITORING on a non-final workflow step (#1076)', () => {
       task: 'mock:monitoring compare in the background',
       worktree: false,
     });
-    currentId = record.id;
     await waitFor(record.id, (current) => current?.activity === 'monitoring');
 
+    // The monitor's child would outlive `dispose()` exactly as it does when the app dies;
+    // kill that tree so the fixture root is free, and leave the record park untouched.
+    const live = (manager as unknown as { active: Map<string, { session?: { pid?: number } }> }).active.get(record.id);
+    const pid = live?.session?.pid;
     manager.dispose();
+    killProcessTree(pid);
     store.flush();
     const reopened = RunStore.open(join(repoRoot, '.ai/onni'), { keepLive: true });
     store = reopened;

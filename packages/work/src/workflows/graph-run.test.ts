@@ -10,7 +10,7 @@ import { loadWorkflows } from './load.ts';
 import { MISSING_SESSION_NOTE } from './resume-fallback.ts';
 import { RunManager } from './run.ts';
 import type { WorkflowDef } from './types.ts';
-import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
+import { removeTempDir, stopRuns } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 const run = promisify(execFile);
 const GIT_ID = ['-c', 'user.name=test', '-c', 'user.email=test@local'];
@@ -38,7 +38,7 @@ describe('graph workflows run through RunManager', () => {
   });
 
   afterEach(async () => {
-    manager.dispose();
+    await stopRuns(manager, store);
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
     store.flush();
