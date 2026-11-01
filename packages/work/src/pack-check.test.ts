@@ -1,5 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import { findPackGaps, firstPackReport } from './pack-check.ts';
+import { findDistGaps, findPackGaps, firstPackReport } from './pack-check.ts';
+
+describe('findDistGaps', () => {
+  it('accepts compiler outputs mapped to work and inlined contract sources', () => {
+    const distFiles = [
+      'dist/index.js',
+      'dist/index.d.ts',
+      'dist/index.js.map',
+      'dist/contract/index.js',
+      'dist/contract/index.d.ts',
+      'dist/contract/health.d.ts',
+    ];
+    const sources = ['src/index.ts', '../contract/src/index.ts', '../contract/src/health.ts'];
+
+    expect(findDistGaps(distFiles, sources)).toEqual([]);
+  });
+
+  it('rejects compiler outputs without a matching source file', () => {
+    expect(findDistGaps(['dist/removed.js', 'dist/removed.d.ts', 'dist/removed.js.map'], [])).toEqual([
+      'dist/removed.js has no matching source (src/removed.ts)',
+      'dist/removed.d.ts has no matching source (src/removed.ts)',
+      'dist/removed.js.map has no matching source (src/removed.ts)',
+    ]);
+  });
+
+  it('rejects known removed modules even when a source-shaped path is supplied', () => {
+    expect(findDistGaps(['dist/telemetry.js', 'dist/self-update/registry.d.ts'], [
+      'src/telemetry.ts',
+      'src/self-update/registry.ts',
+    ])).toEqual([
+      'dist/telemetry.js is denied legacy output',
+      'dist/self-update/registry.d.ts is denied legacy output',
+    ]);
+  });
+
+  it('rejects dist artifacts that do not use a supported compiler output suffix', () => {
+    expect(findDistGaps(['dist/telemetry-service.json'], [])).toEqual([
+      'dist/telemetry-service.json has no source mapping',
+    ]);
+  });
+});
 
 // The decision behind `npm run check:pack` (scripts/check-pack.mjs): would the
 // npm tarball ship a working cockpit? Pins the R1 "npm pack shipped no UI" bug.

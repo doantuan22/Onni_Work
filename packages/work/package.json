@@ -26,8 +26,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "prebuild": "node scripts/sync-readme.mjs",
+    "prebuild": "npm run clean && node scripts/sync-readme.mjs",
     "build": "tsc",
+    "clean": "node scripts/clean-dist.mjs",
     "check:pack": "node scripts/check-pack.mjs",
     "dev": "tsx src/index.ts",
     "server-install": "tsx src/index.ts server-install",

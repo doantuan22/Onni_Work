@@ -14,6 +14,70 @@ export interface PackReport {
   files?: { path: string }[];
 }
 
+const LEGACY_DIST_BASES = [
+  'dist/feature-telemetry',
+  'dist/telemetry',
+  'dist/telemetry-cli',
+  'dist/install-as-command',
+  'dist/skills-update',
+  'dist/runs/agent-error-telemetry',
+  'dist/server/provider-telemetry',
+  'dist/server/star-count',
+  'dist/server/tracker/config',
+  'dist/webhooks/discord',
+  'dist/webhooks/slack',
+  'dist/self-update/enabled',
+  'dist/self-update/installer',
+  'dist/self-update/launcher',
+  'dist/self-update/pulls',
+  'dist/self-update/registry',
+  'dist/self-update/restart',
+  'dist/self-update/service',
+] as const;
+
+const DIST_OUTPUT_SUFFIXES = ['.js.map', '.d.ts', '.js'] as const;
+
+function legacyDistOutput(file: string): boolean {
+  return LEGACY_DIST_BASES.some((base) => DIST_OUTPUT_SUFFIXES.some((suffix) => file === `${base}${suffix}`));
+}
+
+function sourceForDistOutput(file: string): string | undefined {
+  if (!file.startsWith('dist/')) return undefined;
+
+  const output = file.slice('dist/'.length);
+  const isContract = output.startsWith('contract/');
+  const relativeOutput = isContract ? output.slice('contract/'.length) : output;
+  const suffix = DIST_OUTPUT_SUFFIXES.find((candidate) => relativeOutput.endsWith(candidate));
+  if (!suffix) return undefined;
+
+  const stem = relativeOutput.slice(0, -suffix.length);
+  const sourceRoot = isContract ? '../contract/src' : 'src';
+  return `${sourceRoot}/${stem}.ts`;
+}
+
+/** Find stale or denied compiler outputs in `dist/`, given the source files a clean build may emit. */
+export function findDistGaps(distFiles: readonly string[], sourceFiles: readonly string[]): string[] {
+  const sources = new Set(sourceFiles.map((file) => file.replaceAll('\\', '/')));
+  const gaps: string[] = [];
+
+  for (const file of distFiles) {
+    if (!file.startsWith('dist/')) continue;
+    if (legacyDistOutput(file)) {
+      gaps.push(`${file} is denied legacy output`);
+      continue;
+    }
+
+    const source = sourceForDistOutput(file);
+    if (!source) {
+      gaps.push(`${file} has no source mapping`);
+    } else if (!sources.has(source)) {
+      gaps.push(`${file} has no matching source (${source})`);
+    }
+  }
+
+  return gaps;
+}
+
 /** The first package report from `npm pack --json`, whatever npm's shape: an
  *  array up to npm 11, an object keyed by package name from npm 12. */
 export function firstPackReport(packJson: unknown): PackReport | undefined {

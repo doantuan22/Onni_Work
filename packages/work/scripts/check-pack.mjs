@@ -12,11 +12,27 @@
 // fresh checkout by the time the check looks for it.
 
 import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findPackGaps, firstPackReport } from '../dist/pack-check.js';
+import { findDistGaps, findPackGaps, firstPackReport } from '../dist/pack-check.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+function walkFiles(root, prefix = '') {
+  const files = [];
+  for (const entry of readdirSync(path.join(root, prefix), { withFileTypes: true })) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) files.push(...walkFiles(root, relative));
+    else if (entry.isFile()) files.push(relative);
+  }
+  return files;
+}
+
+function sourceFilesUnder(root, prefix) {
+  return walkFiles(root, prefix)
+    .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.testkit.ts'));
+}
 
 // Under `npm run`, npm_execpath is npm's own cli.js — running it through
 // process.execPath works on every platform (no .cmd shim needed on Windows).
@@ -33,12 +49,18 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-const gaps = findPackGaps(files);
+const distFiles = walkFiles(repoRoot, 'dist');
+const sourceFiles = [
+  ...sourceFilesUnder(repoRoot, 'src'),
+  ...sourceFilesUnder(path.resolve(repoRoot, '..', 'contract'), 'src').map((file) => `../contract/${file}`),
+];
+const distGaps = findDistGaps(distFiles, sourceFiles);
+const gaps = [...distGaps, ...findPackGaps(files)];
 if (gaps.length > 0) {
-  console.error('check:pack: the npm tarball would ship a broken cockpit:');
+  console.error('check:pack: found stale/unmapped dist output or an incomplete npm tarball:');
   for (const gap of gaps) console.error(`  - ${gap}`);
   process.exit(1);
 }
 
 const uiFiles = files.filter((f) => f.startsWith('web/dist/')).length;
-console.log(`check:pack ok — ${files.length} files, ${uiFiles} under web/dist (shell + assets present)`);
+console.log(`check:pack ok — ${files.length} packed files, ${distFiles.length} dist files mapped to source, ${uiFiles} under web/dist`);
