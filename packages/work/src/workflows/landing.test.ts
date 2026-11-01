@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { lf } from '../test-fixtures/lf.testkit.ts';
 import { fallbackCommitMessage, hasUnlanded, landInPlace } from './landing.ts';
 
 const git = (cwd: string, ...args: string[]) =>
@@ -93,7 +94,7 @@ describe('landInPlace', () => {
     const result = await landInPlace(checkout, { describe: async () => 'mine', checks: [] });
     expect(result).toMatchObject({ result: 'failed', stage: 'sync' });
     expect(result.result === 'failed' && result.error).toContain('daily.md');
-    expect(readFileSync(join(checkout, 'daily.md'), 'utf8')).toBe('mine\n');
+    expect(lf(readFileSync(join(checkout, 'daily.md'), 'utf8'))).toBe('mine\n');
     expect(git(checkout, 'status', '--porcelain')).toBe('');
     expect(git(remote, 'log', '-1', '--format=%s', 'main')).toBe('theirs');
   });
@@ -165,7 +166,7 @@ describe('landInPlace', () => {
     writeFileSync(join(checkout, '.ai/onni/workflows/w.yaml'), 'a: 2\n');
     writeFileSync(join(checkout, 'person.md'), 'Bjorn\n');
     expect(await landInPlace(checkout, { describe: async () => 'mine', checks: [] })).toMatchObject({ result: 'landed', pushed: true, files: ['person.md'] });
-    expect(readFileSync(join(checkout, '.ai/onni/workflows/w.yaml'), 'utf8')).toBe('a: 2\n');
+    expect(lf(readFileSync(join(checkout, '.ai/onni/workflows/w.yaml'), 'utf8'))).toBe('a: 2\n');
   });
 });
 
