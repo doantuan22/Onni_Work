@@ -3,6 +3,7 @@ import { ghEnv } from '../core/gh-env.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { GITHUB_REPO_NAME_PATTERN, type GithubOwner, type GithubOwnersResponse } from '@onni/contract';
+import { isAbsolutePath } from '../paths.ts';
 import { GH_CREDENTIAL_HELPER_CONFIG, cleanupCheckout, isValidCheckoutName, parseRepoRef, type CheckoutProgressEvent } from './checkout.ts';
 
 /**
@@ -213,7 +214,7 @@ export async function createProject(opts: CreateProjectOptions): Promise<CreateP
       template = ref.slug;
     }
   }
-  if (!opts.projectsDir.startsWith('/')) {
+  if (!isAbsolutePath(opts.projectsDir)) {
     return { ok: false, status: 500, stage: 'checkout_root', error: `checkout root is not an absolute path: ${opts.projectsDir}` };
   }
   const root = resolve(opts.projectsDir);
