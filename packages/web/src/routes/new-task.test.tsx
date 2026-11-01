@@ -18,7 +18,6 @@ import type {
 import { resetToasts, Toaster } from '@/components/ui/toaster'
 
 import { readDraft, resetDraft, writeDraft } from './new-task-draft'
-import { NEW_TASK_PANEL_OPEN_KEY } from '@/lib/new-task-panel-state'
 import { NewTaskRoute } from './new-task'
 
 /**
@@ -35,8 +34,6 @@ beforeAll(() => {
 
 beforeEach(() => {
   resetDraft()
-  // The panel's open/collapsed state is per-browser; a test that collapses it must not leak.
-  localStorage.removeItem(NEW_TASK_PANEL_OPEN_KEY)
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -365,9 +362,20 @@ const location = () => screen.getByTestId('location').textContent
 const draftSource = (source: { source: 'skill' | 'workflow'; ref: string }) =>
   writeDraft({ ...readDraft(), source })
 
+/** The Task settings panel starts folded: open it from the summary line's settings control. */
+async function openPanel() {
+  const open = await waitFor(() => {
+    const button = document.querySelector('[data-slot="task-settings-open"]')
+    expect(button).not.toBeNull()
+    return button as HTMLButtonElement
+  })
+  if (!document.querySelector('[data-slot="task-settings-panel"]')) fireEvent.click(open)
+}
+
 /** The pickers resolve once workflows+skills+ui-state answered — wait for the real label.
  *  The default is the EMPTY source pill: `/new` opens with no skill and no workflow picked. */
 async function pillReady(label = 'Skill') {
+  await openPanel()
   await waitFor(() => {
     expect(sourcePill().textContent).toContain(label)
     expect(textarea().disabled).toBe(false)
@@ -382,10 +390,7 @@ const startTask = async () => {
 /** Advanced is collapsed by default (ADR 0008). On the drawer branch the panel itself opens
  *  first, from the summary line's settings control. */
 async function openAdvanced() {
-  if (!document.querySelector('[data-slot="task-settings-panel"]')
-    && !document.querySelector('[data-slot="task-settings-drawer"]')) {
-    fireEvent.click(document.querySelector('[data-slot="task-settings-open"]') as HTMLButtonElement)
-  }
+  await openPanel()
   const toggle = await screen.findByRole('button', { name: 'Advanced' })
   if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
 }
@@ -901,6 +906,7 @@ describe('provider authentication gate', () => {
     })
     renderNewTask()
 
+    await openPanel()
     await waitFor(() => expect(sourcePill().textContent).toContain('Skill'))
     expect(textarea().disabled).toBe(true)
     expect(textarea().placeholder).toBe('Checking agent providers…')
@@ -2725,7 +2731,6 @@ describe('Task settings panel on /new', () => {
   }
 
   const panel = () => document.querySelector('[data-slot="task-settings-panel"]') as HTMLElement | null
-  const drawer = () => document.querySelector('[data-slot="task-settings-drawer"]') as HTMLElement | null
   const summary = (key: string) =>
     document.querySelector(`[data-slot="summary-${key}"]`) as HTMLElement | null
   const worktreeOption = () =>
@@ -2753,8 +2758,8 @@ describe('Task settings panel on /new', () => {
     await waitFor(() => expect(panel()).not.toBeNull())
   }
 
-  /** The composer alone — the Skill control lives INSIDE the panel, so a collapsed panel or a
-   *  closed drawer legitimately holds no source pill. */
+  /** The composer alone — the Skill control lives INSIDE the panel, so a folded panel
+   *  legitimately holds no source pill. */
   async function composerReady() {
     await waitFor(() => expect(textarea().disabled).toBe(false))
   }
@@ -2778,7 +2783,7 @@ describe('Task settings panel on /new', () => {
       .filter((request) => request.method === 'PUT' && request.url === '/api/v1/workspace/config')
       .map((request) => request.body as { taskPresets?: { name: string }[] })
 
-  it('opens on the right with presets first and each section in order', async () => {
+  it('opens under the composer with presets first and each section in order', async () => {
     await ready()
     expect(panel()?.getAttribute('aria-label')).toBe('Task settings')
     const sections = Array.from(panel()!.querySelectorAll('[data-section]')).map((section) =>
@@ -2847,6 +2852,40 @@ describe('Task settings panel on /new', () => {
     await waitFor(() => expect(summary('manager')?.textContent).toBe('manager + 1 worker'))
     expect(summary('manager')?.getAttribute('data-tone')).toBe('warning')
     await waitFor(() => expect(readDraft().roster).toEqual(ROSTER))
+  })
+
+  it('sets the manager and the workers in place, and the manager replaces the single agent', async () => {
+    await ready({ health: DISPATCH_HEALTH, providerStatus: PROVIDERS_MULTI })
+    const slot = (name: string) => document.querySelector(`[data-slot="${name}"]`) as HTMLElement | null
+
+    // Off: the single agent's fields are the live ones; the manager side is just the switch.
+    expect(slot('single-agent')?.getAttribute('data-active')).toBe('true')
+    expect(slot('manager-worker')?.getAttribute('data-active')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Model' })).not.toBeNull()
+    expect(document.querySelector('[data-slot="roster-editor"]')).toBeNull()
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Run as manager–worker' }))
+
+    // On: the manager and worker settings are on screen — no popover to open — and the fields
+    // the server would override (agent, model, variants) are gone rather than left to mislead.
+    await waitFor(() => expect(document.querySelector('[data-slot="roster-editor"]')).not.toBeNull())
+    expect(screen.getByLabelText('Manager backend')).not.toBeNull()
+    expect(screen.getByLabelText('Worker 1 backend')).not.toBeNull()
+    expect(slot('manager-worker')?.getAttribute('data-active')).toBe('true')
+    expect(slot('single-agent')?.getAttribute('data-active')).toBe('false')
+    expect(slot('single-agent-replaced')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Model' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Parallel variants' })).toBeNull()
+
+    // A manager's workers fork its commits, so the checkout cannot be edited directly.
+    expect(directOption().disabled).toBe(true)
+    expect(worktreeOption().getAttribute('aria-checked')).toBe('true')
+    // A roster forces the worktree; it must not also switch the run to unattended on its own.
+    expect(autonomousToggle().getAttribute('aria-checked')).toBe('false')
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Run as manager–worker' }))
+    await waitFor(() => expect(slot('single-agent-replaced')).toBeNull())
+    expect(screen.getByRole('button', { name: 'Model' })).not.toBeNull()
   })
 
   it('shows "(modified)" after an edit and Restore puts the preset back', async () => {
@@ -2964,48 +3003,32 @@ describe('Task settings panel on /new', () => {
     expect(document.querySelector('[data-slot="worktree-error"]')).toBeNull()
   })
 
-  it('remembers a collapsed panel per browser', async () => {
-    await ready()
+  it('starts folded, opens from the summary and folds away again', async () => {
+    serve()
+    renderNewTask()
+    await composerReady()
+    expect(panel()).toBeNull()
+
+    fireEvent.click(document.querySelector('[data-slot="summary-agent"]') as HTMLButtonElement)
+    await waitFor(() => expect(panel()).not.toBeNull())
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute('data-section')).toBe('who'),
+    )
+    // A panel under the composer, not a modal: the prompt stays reachable while it is open.
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(textarea().disabled).toBe(false)
+
     fireEvent.click(screen.getByRole('button', { name: 'Collapse task settings' }))
     await waitFor(() => expect(panel()).toBeNull())
-    expect(localStorage.getItem(NEW_TASK_PANEL_OPEN_KEY)).toBe('0')
+  })
 
+  it('does not remember an open panel across a remount', async () => {
+    await ready()
     cleanup()
     serve()
     renderNewTask()
     await composerReady()
-    // Collapsed survives the remount…
     expect(panel()).toBeNull()
-    fireEvent.click(document.querySelector('[data-slot="task-settings-open"]') as HTMLButtonElement)
-    await waitFor(() => expect(panel()).not.toBeNull())
-    expect(localStorage.getItem(NEW_TASK_PANEL_OPEN_KEY)).toBe('1')
-  })
-
-  it('is a right drawer below the breakpoint, opened from the summary and closed with Escape', async () => {
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query !== '(min-width: 1100px)',
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => true,
-    }))
-    serve()
-    renderNewTask()
-    await composerReady()
-    expect(panel()).toBeNull()
-    expect(drawer()).toBeNull()
-
-    fireEvent.click(document.querySelector('[data-slot="summary-agent"]') as HTMLButtonElement)
-    await waitFor(() => expect(drawer()).not.toBeNull())
-    await waitFor(() =>
-      expect(document.activeElement?.getAttribute('data-section')).toBe('who'),
-    )
-
-    fireEvent.keyDown(document, { key: 'Escape' })
-    await waitFor(() => expect(drawer()).toBeNull())
   })
 
   it('restores every panel field from the draft, and never restores unlimited', async () => {

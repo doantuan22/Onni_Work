@@ -1,22 +1,25 @@
 import {
+  BookmarkIcon,
+  BotIcon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
+  GaugeIcon,
+  GitBranchIcon,
   PencilIcon,
   PlusIcon,
   SaveIcon,
   SlidersHorizontalIcon,
+  SparklesIcon,
   Trash2Icon,
+  WrenchIcon,
   XIcon,
+  type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
-import { useIsDesktop } from '@/lib/use-desktop'
 import { useI18n } from '@/lib/i18n'
-import { NEW_TASK_PANEL_BREAKPOINT_PX } from '@/lib/new-task-panel-state'
 import {
   presetDisplayName,
   type SummarySegment,
@@ -29,7 +32,7 @@ import { cn } from '@/lib/utils'
  * The `/new` Task settings panel (ADR 0008).
  *
  * Every run setting lives here — the composer keeps the prompt and the send button. The panel is
- * an inline right column at ≥1100px and a right drawer below it, opened from the summary line.
+ * one wide panel that opens under the composer, from the summary line's settings control.
  * It is a shell with slots: `new-task.tsx` builds the controls from the same components the
  * footer used, so this file owns layout, presets and focus, never the run-mode rules.
  */
@@ -57,35 +60,15 @@ export interface TaskSettingsPanelProps {
 
 export function TaskSettingsPanel(props: TaskSettingsPanelProps) {
   const { t } = useI18n()
-  const desktop = useIsDesktop(NEW_TASK_PANEL_BREAKPOINT_PX)
-  const { open, onOpenChange } = props
+  if (!props.open) return null
 
-  if (!desktop) {
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="right"
-          data-slot="task-settings-drawer"
-          showCloseButton={false}
-          className="w-[min(92vw,380px)] gap-0 p-0 sm:max-w-[380px]"
-        >
-          <SheetTitle className="sr-only">{t('Task settings')}</SheetTitle>
-          <SheetDescription className="sr-only">
-            {t('Presets, agent, where it runs, autonomy, limits and advanced options for this task.')}
-          </SheetDescription>
-          <PanelBody {...props} inDrawer />
-        </SheetContent>
-      </Sheet>
-    )
-  }
-
-  if (!open) return null
-
+  // One wide panel that opens under the composer. It is not a modal: the prompt stays visible
+  // and editable while the settings are being changed, and nothing else on the page is inerted.
   return (
     <aside
       data-slot="task-settings-panel"
       aria-label={t('Task settings')}
-      className="sticky top-4 flex max-h-[calc(100dvh-2rem)] w-[360px] shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card/95 shadow-sm backdrop-blur-sm"
+      className="mx-auto flex max-h-[90vh] w-full max-w-[720px] flex-col overflow-hidden rounded-xl border border-border bg-card/95 shadow-sm backdrop-blur-sm"
     >
       <PanelBody {...props} />
     </aside>
@@ -159,6 +142,15 @@ function sectionLabel(section: PanelSection): string {
   }
 }
 
+const SECTION_ICONS: Record<PanelSection, LucideIcon> = {
+  presets: BookmarkIcon,
+  who: BotIcon,
+  where: GitBranchIcon,
+  autonomy: GaugeIcon,
+  skill: SparklesIcon,
+  advanced: WrenchIcon,
+}
+
 function PanelBody({
   presets,
   selectedPresetId,
@@ -175,14 +167,13 @@ function PanelBody({
   skill,
   advanced,
   onOpenChange,
-  inDrawer,
-}: TaskSettingsPanelProps & { inDrawer?: boolean }) {
+}: TaskSettingsPanelProps) {
   const { t } = useI18n()
+  // Everything is visible at once except Advanced, which is the long tail.
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
 
-  // A summary click both opens the panel (the route does that) and scrolls here. Radix mounts
-  // the drawer in a portal, so the query runs from the panel's own root, not the document.
+  // A summary click both opens the panel (the route does that) and scrolls here.
   useEffect(() => {
     if (!focusSection) return
     if (focusSection.section === 'advanced') setAdvancedOpen(true)
@@ -191,8 +182,10 @@ function PanelBody({
         `[data-section="${focusSection.section}"]`,
       )
       if (!target) return
-      target.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
-      target.focus?.({ preventScroll: true })
+      target.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+      // Presets is the plain "open the panel" target: moving focus there would pull it out of the
+      // prompt (or the Start button) the user is on.
+      if (focusSection.section !== 'presets') target.focus?.({ preventScroll: true })
     }, 0)
     return () => window.clearTimeout(id)
   }, [focusSection])
@@ -201,7 +194,7 @@ function PanelBody({
     <>
       <header
         data-slot="task-settings-header"
-        className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3"
+        className="flex shrink-0 items-center gap-2 border-b border-border px-6 py-3"
       >
         <SlidersHorizontalIcon aria-hidden="true" className="size-4 shrink-0 text-primary" />
         <h2 className="min-w-0 flex-1 text-sm font-semibold text-foreground">{t('Task settings')}</h2>
@@ -211,19 +204,18 @@ function PanelBody({
           aria-label={t('Collapse task settings')}
           title={t('Collapse task settings')}
           onClick={() => onOpenChange(false)}
-          className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          {inDrawer ? (
-            <XIcon aria-hidden="true" className="size-4" />
-          ) : (
-            <ChevronRightIcon aria-hidden="true" className="size-4" />
-          )}
+          <XIcon aria-hidden="true" className="size-4" />
         </button>
       </header>
+      {/* Layout system, one place: 4px grid, 24px between groups and around the body, 32px controls
+          (the composer's 26px pills grow here only), 8px control radius, 12px card radius. The
+          container query is the body's own width, so the same markup is one column on a phone. */}
       <div
         ref={bodyRef}
         data-slot="task-settings-body"
-        className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 py-4"
+        className="@container flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 [&_button.rounded-full]:h-8 [&_button.rounded-full]:rounded-lg"
       >
         <Section id="presets" title="Presets" description="Start from a saved way of working.">
           <PresetList
@@ -237,18 +229,24 @@ function PanelBody({
             onDelete={onDeletePreset}
           />
         </Section>
-        <Section id="who" title="Who works" description="The agent, its model, and any workers it may hand parts to.">
+        <Section id="who" title="Who works" description="One agent, or a manager that hands parts to the workers you list.">
           {who}
         </Section>
-        <Section id="where" title="Where it runs" description="An isolated worktree, or your checkout directly.">
-          {where}
-        </Section>
-        <Section id="autonomy" title="Autonomy & limits" description="Whether it pauses, and what it may spend.">
-          {autonomy}
-        </Section>
-        <Section id="skill" title="Skill" description="The skill or workflow this task runs.">
-          {skill}
-        </Section>
+        {/* One card for how the run is shaped; each group is a settings row inside it. */}
+        <div
+          data-slot="run-settings"
+          className="divide-y divide-border rounded-xl border border-border bg-background/40 px-4"
+        >
+          <Section id="where" variant="row" title="Where it runs" description="An isolated worktree, or your checkout directly.">
+            {where}
+          </Section>
+          <Section id="autonomy" variant="row" title="Autonomy & limits" description="Whether it pauses, and what it may spend.">
+            {autonomy}
+          </Section>
+          <Section id="skill" variant="row" title="Skill" description="The skill or workflow this task runs.">
+            {skill}
+          </Section>
+        </div>
         <Section
           id="advanced"
           title="Advanced"
@@ -263,6 +261,11 @@ function PanelBody({
   )
 }
 
+/**
+ * One group of settings. `card` is a bordered block (one layer, never nested); `row` is a line
+ * inside the run-settings card: title and note on the left, the controls on the right, stacked on
+ * a narrow body. Only Advanced folds, and its whole header row is the fold control.
+ */
 function Section({
   id,
   title,
@@ -270,6 +273,7 @@ function Section({
   children,
   open,
   onOpenChange,
+  variant = 'card',
 }: {
   id: PanelSection
   title: string
@@ -277,46 +281,71 @@ function Section({
   children: ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  variant?: 'card' | 'row'
 }) {
   const { t } = useI18n()
+  const Icon = SECTION_ICONS[id]
   const collapsible = open !== undefined
+  const heading = (
+    <>
+      <Icon aria-hidden="true" className="size-4 shrink-0 text-soft-foreground" />
+      <span id={`task-settings-${id}-title`} className="text-sm font-semibold text-foreground">
+        {t(title)}
+      </span>
+    </>
+  )
+  const note = <p className="text-xs leading-snug text-soft-foreground">{t(description)}</p>
+
+  if (variant === 'row') {
+    return (
+      <section
+        id={`task-settings-${id}`}
+        data-section={id}
+        tabIndex={-1}
+        aria-labelledby={`task-settings-${id}-title`}
+        className="scroll-mt-2 py-4 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        <div className="grid gap-x-6 gap-y-3 @xl:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">{heading}</div>
+            {note}
+          </div>
+          <div id={`task-settings-${id}-body`} className="flex min-w-0 flex-col gap-3">
+            {children}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section
       id={`task-settings-${id}`}
       data-section={id}
       tabIndex={-1}
       aria-labelledby={`task-settings-${id}-title`}
-      className="scroll-mt-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="scroll-mt-2 rounded-xl border border-border bg-background/40 p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
     >
-      <div className="mb-2 flex items-start gap-2">
-        {collapsible ? (
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={`task-settings-${id}-body`}
-            onClick={() => onOpenChange?.(!open)}
-            className="flex min-w-0 flex-1 items-center gap-1 text-left"
-          >
-            <ChevronDownIcon
-              aria-hidden="true"
-              className={cn(
-                'size-3.5 shrink-0 text-soft-foreground transition-transform',
-                !open && '-rotate-90',
-              )}
-            />
-            <span id={`task-settings-${id}-title`} className="text-xs font-semibold text-foreground">
-              {t(title)}
-            </span>
-          </button>
-        ) : (
-          <span id={`task-settings-${id}-title`} className="text-xs font-semibold text-foreground">
-            {t(title)}
-          </span>
-        )}
-      </div>
+      {collapsible ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={`task-settings-${id}-body`}
+          onClick={() => onOpenChange?.(!open)}
+          className="-m-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-lg p-2 text-left transition-colors hover:bg-muted/50"
+        >
+          {heading}
+          <ChevronDownIcon
+            aria-hidden="true"
+            className={cn('ml-auto size-4 shrink-0 text-soft-foreground transition-transform', !open && '-rotate-90')}
+          />
+        </button>
+      ) : (
+        <div className="flex items-center gap-2">{heading}</div>
+      )}
       {collapsible && !open ? null : (
-        <div id={`task-settings-${id}-body`} className="flex flex-col gap-3">
-          <p className="text-[11px] leading-snug text-soft-foreground">{t(description)}</p>
+        <div id={`task-settings-${id}-body`} className="mt-3 flex flex-col gap-3">
+          {note}
           {children}
         </div>
       )}
@@ -359,7 +388,7 @@ function PresetList({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="grid gap-2 @xl:grid-cols-3">
       {presets.map((preset) => {
         const selected = preset.id === selectedPresetId
         const readOnly = preset.origin !== 'user'
@@ -370,7 +399,7 @@ function PresetList({
             data-preset-id={preset.id}
             data-selected={selected ? 'true' : 'false'}
             className={cn(
-              'rounded-lg border px-2.5 py-2 transition-colors',
+              'flex flex-col justify-center rounded-lg border px-3 py-2 transition-colors',
               selected ? 'border-primary/60 bg-primary/[0.06]' : 'border-border bg-background',
             )}
           >
@@ -403,7 +432,7 @@ function PresetList({
                   data-slot="restore-task-preset"
                   title={t('Discard these changes and use the preset again')}
                   onClick={() => onApply(preset)}
-                  className="shrink-0 rounded px-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                  className="shrink-0 rounded px-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
                 >
                   {t('Restore')}
                 </button>
@@ -435,6 +464,11 @@ function PresetList({
                 </span>
               ) : null}
             </div>
+            {preset.unavailableReason !== undefined ? (
+              <p data-slot="preset-unavailable" title={preset.unavailableReason} className="mt-1 truncate pl-[18px] text-xs text-soft-foreground">
+                {preset.unavailableReason}
+              </p>
+            ) : null}
             {editingId === preset.id ? (
               <div className="mt-2 flex items-center gap-1.5">
                 <Input
@@ -466,7 +500,7 @@ function PresetList({
               </div>
             ) : null}
             {deletingId === preset.id ? (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                 <span>{t('Delete “{name}”?', { name: preset.name })}</span>
                 <Button
                   type="button"
@@ -490,7 +524,7 @@ function PresetList({
       })}
 
       {saving ? (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2 col-span-full">
           <label htmlFor={inputId} className="sr-only">
             {t('Preset name')}
           </label>
@@ -528,7 +562,7 @@ function PresetList({
           data-slot="new-task-preset"
           disabled={disabled}
           onClick={() => setSaving(true)}
-          className="self-start"
+          className="col-span-full justify-self-end"
         >
           <PlusIcon aria-hidden="true" className="size-3.5" />
           {t('Save current as preset')}

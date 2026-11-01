@@ -61,7 +61,7 @@ export function RosterEditor({
   return (
     <div data-slot="roster-editor" className="@container flex flex-col gap-4">
       {connected.length === 0 ? (
-        <p data-slot="roster-no-backends" className="text-[12px] text-danger">
+        <p data-slot="roster-no-backends" className="text-xs text-danger">
           {t('No agent is connected on this machine — connect one in Settings → Agents first.')}
         </p>
       ) : null}
@@ -72,7 +72,7 @@ export function RosterEditor({
           <ModelPickerField runner={draft.managerRunner} value={draft.managerModel} onChange={(managerModel) => onChange({ ...draft, managerModel })} ariaLabel={t('Manager model')} disabled={disabled} />
         </div>
         {workerOnly.map((runner) => (
-          <p key={runner} data-slot="roster-worker-only" data-backend={runner} className="text-[11px] text-soft-foreground">
+          <p key={runner} data-slot="roster-worker-only" data-backend={runner} className="text-xs text-soft-foreground">
             {t('{runner} is offered as a worker only: {reason}.', { runner, reason: RUNNER_CAPABILITIES[runner].manageReason ?? '' })}
           </p>
         ))}
@@ -80,7 +80,7 @@ export function RosterEditor({
       <fieldset className="flex flex-col gap-3">
         <legend className="text-[13px] font-semibold">{t('Workers')}</legend>
         {draft.workers.map((worker, index) => (
-          <div key={index} data-slot="roster-worker" className="flex flex-col gap-2 rounded-md border border-border p-2.5">
+          <div key={index} data-slot="roster-worker" className="flex flex-col gap-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
             {/* One row in Settings (the pane is ~479px here), two in the composer's 352px popover:
                 the query is on the CONTAINER, because a 400px-wide phone viewport can still host a
                 wide settings pane. @md is 448px — the four columns need ~110px each to stay legible. */}
@@ -112,7 +112,7 @@ export function RosterEditor({
           </Button>
         </div>
       </fieldset>
-      <p data-slot="roster-fence-note" className="text-[11px] text-soft-foreground">
+      <p data-slot="roster-fence-note" className="text-xs text-soft-foreground">
         {t('The manager can hand work only to the workers listed here; the server refuses any other backend. This steers orchestration — it is not a security boundary (an agent can still run a CLI or call the API directly).')}
       </p>
     </div>

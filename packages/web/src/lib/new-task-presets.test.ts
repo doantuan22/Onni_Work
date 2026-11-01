@@ -231,8 +231,29 @@ describe('limits in the panel', () => {
       maxTokens: 2_000_000,
       maxWallClockMinutes: 240,
       maxStepIterations: 30,
-    })).toBe('$10 · 2000000 tokens · 240 min · 30 steps')
+    })).toBe('$10 · 2M tokens · 240 min · 30 steps')
+    expect(describeRunLimits({ mode: 'capped', maxTokens: 250_000 })).toBe('250k tokens')
+    expect(describeRunLimits({ mode: 'capped', maxTokens: 1_500_000 })).toBe('1.5M tokens')
     expect(describeRunLimits({ mode: 'capped' })).toBe('no ceilings')
+  })
+})
+
+describe('the summary line names the manager when a roster is on', () => {
+  it('replaces the single agent and model with the manager of the roster', () => {
+    const segments = taskSummarySegments({
+      agent: 'antigravity',
+      model: 'fast',
+      hasGit: true,
+      worktree: true,
+      newBranch: false,
+      autonomous: false,
+      limitsMode: 'default',
+      managerWorkers: 2,
+      manager: { runner: 'claude', model: 'opus' },
+    })
+    expect(segments.find((s) => s.key === 'agent')?.label).toBe('claude')
+    expect(segments.find((s) => s.key === 'model')?.label).toBe('opus')
+    expect(segments.find((s) => s.key === 'manager')?.label).toBe('manager + 2 workers')
   })
 })
 

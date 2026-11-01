@@ -35,9 +35,15 @@ import {
 export function ManagerWorkerPill({
   roster,
   onRoster,
+  inline,
+  onEnabledChange,
 }: {
   roster: Roster | null
   onRoster: (roster: Roster | null) => void
+  /** Render the manager and worker settings in place (the wide panel) instead of behind a chip. */
+  inline?: boolean
+  /** The switch, as the user sees it: a draft can be on before it forms a valid roster. */
+  onEnabledChange?: (on: boolean) => void
 }) {
   const { t, tn } = useI18n()
   const config = useWorkspaceConfig()
@@ -64,7 +70,8 @@ export function ManagerWorkerPill({
     if (next === reported.current) return
     reported.current = next
     setDraft(roster ? draftFromRoster(roster) : null)
-  }, [roster])
+    onEnabledChange?.(roster !== null)
+  }, [roster]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!rosterNow) {
@@ -84,6 +91,7 @@ export function ManagerWorkerPill({
   const on = draft !== null
   const gone = rosterNow ? disconnectedBackends(rosterNow, connected) : []
   const toggle = (next: boolean) => {
+    onEnabledChange?.(next)
     if (!next) {
       setDraft(null)
       reported.current = ''
@@ -118,7 +126,7 @@ export function ManagerWorkerPill({
 
       {on && draft ? (
         <div className="flex flex-col gap-3 border-t border-border pt-3">
-          <div className="max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain pr-0.5">
+          <div className={cn(!inline && 'max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain pr-0.5')}>
             <RosterEditor draft={draft} onChange={setDraft} connected={connected} />
           </div>
           {parsed && !parsed.ok ? <p data-slot="roster-error" className="text-[12px] text-danger">{parsed.error}</p> : null}
@@ -133,6 +141,8 @@ export function ManagerWorkerPill({
       ) : null}
     </div>
   )
+
+  if (inline) return <div data-slot="manager-worker-settings">{settings}</div>
 
   // On the Popover branch Radix owns the click (a child `onClick` would replace the trigger's
   // own toggle, and the chip would stop closing); on the Sheet branch the bare chip opens it and

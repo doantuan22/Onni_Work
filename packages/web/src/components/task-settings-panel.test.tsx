@@ -187,37 +187,16 @@ describe('Task settings panel', () => {
   })
 })
 
-describe('Task settings drawer below the panel breakpoint', () => {
-  it('opens as a right drawer and closes on Escape', async () => {
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => true,
-    }))
-    const onOpenChange = vi.fn()
-    render(panel({ onOpenChange }))
-    expect(await screen.findByRole('dialog')).toBeTruthy()
-    expect(screen.getByRole('dialog').getAttribute('data-slot')).toBe('task-settings-drawer')
-    fireEvent.keyDown(document, { key: 'Escape' })
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+describe('Task settings panel as one wide surface', () => {
+  it('opens inline rather than as a modal dialog', () => {
+    render(panel())
+    expect(screen.getByRole('complementary', { name: 'Task settings' })).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('stays closed until the summary opens it', () => {
-    vi.stubGlobal('matchMedia', () => ({
-      matches: false,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => true,
-    }))
+  it('renders nothing while closed', () => {
     render(panel({ open: false }))
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('complementary', { name: 'Task settings' })).toBeNull()
   })
 })
 

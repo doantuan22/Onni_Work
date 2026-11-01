@@ -244,6 +244,12 @@ const pathname = () => screen.getByTestId('location').textContent
 
 /** The composer is only settled once the pickers resolved against the mounted scope. */
 async function composerReady(sourceLabel = 'Skill') {
+  const open = await waitFor(() => {
+    const button = document.querySelector('[data-slot="task-settings-open"]')
+    expect(button).not.toBeNull()
+    return button as HTMLButtonElement
+  })
+  if (!document.querySelector('[data-slot="task-settings-panel"]')) fireEvent.click(open)
   await waitFor(() => {
     expect(sourcePill().textContent).toContain(sourceLabel)
     expect(textarea().disabled).toBe(false)

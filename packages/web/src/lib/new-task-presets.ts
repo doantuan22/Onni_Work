@@ -296,12 +296,21 @@ export function persistedLimits(request: RunLimitsRequest): RunLimitsRequest | u
   return request.mode === 'capped' ? request : undefined
 }
 
+/** 10000000 → "10M", 250000 → "250k": a ceiling is read at a glance, never counted digit by digit. */
+function formatTokenCount(count: number): string {
+  const compact = (value: number, unit: string): string =>
+    `${Number.isInteger(value) ? value : value.toFixed(1).replace(/\.0$/, '')}${unit}`
+  if (count >= 1_000_000) return compact(count / 1_000_000, 'M')
+  if (count >= 1_000) return compact(count / 1_000, 'k')
+  return String(count)
+}
+
 /** The ceilings in words, for the panel's "Effective" line. */
 export function describeRunLimits(limits: RunLimits): string {
   if (limits.mode === 'none') return 'no ceilings'
   const parts: string[] = []
   if (limits.maxCostUsd !== undefined) parts.push(`$${limits.maxCostUsd}`)
-  if (limits.maxTokens !== undefined) parts.push(`${limits.maxTokens} tokens`)
+  if (limits.maxTokens !== undefined) parts.push(`${formatTokenCount(limits.maxTokens)} tokens`)
   if (limits.maxWallClockMinutes !== undefined) parts.push(`${limits.maxWallClockMinutes} min`)
   if (limits.maxStepIterations !== undefined) parts.push(`${limits.maxStepIterations} steps`)
   return parts.length > 0 ? parts.join(' · ') : 'no ceilings'
@@ -330,6 +339,8 @@ export function taskSummarySegments(input: {
   autonomous: boolean
   limitsMode: 'default' | 'none' | 'capped'
   managerWorkers: number | null
+  /** The roster's manager. It runs the task in place of the single agent, so the line names it. */
+  manager?: { runner: string; model?: string | undefined } | null
   baseBranch?: string | null
   readOnly?: boolean
   askAuto?: boolean
@@ -341,9 +352,10 @@ export function taskSummarySegments(input: {
       ...(input.baseBranch ? [{ key: 'base' as const, label: `base ${input.baseBranch}`, tone: 'normal' as const, section: 'where' as const }] : []),
     ]
   }
+  const managed = input.managerWorkers !== null && input.manager != null
   const segments: SummarySegment[] = [
-    { key: 'agent', label: input.agent, tone: 'normal', section: 'who' },
-    { key: 'model', label: input.model || 'auto', tone: 'normal', section: 'who' },
+    { key: 'agent', label: managed ? input.manager!.runner : input.agent, tone: 'normal', section: 'who' },
+    { key: 'model', label: (managed ? input.manager!.model : input.model) || 'auto', tone: 'normal', section: 'who' },
   ]
   if (!input.hasGit) {
     segments.push({ key: 'worktree', label: 'in place (no git)', tone: 'warning', section: 'where' })

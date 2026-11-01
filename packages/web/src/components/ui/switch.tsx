@@ -27,7 +27,7 @@ function Switch({
         className={cn(
           // `bg-background` covers both themes: in dark it equals --primary-foreground, so the thumb
           // reads correctly on the lime checked track without a `dark:` variant.
-          "pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0"
+          "pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0 data-[state=unchecked]:bg-muted-foreground"
         )}
       />
     </SwitchPrimitive.Root>

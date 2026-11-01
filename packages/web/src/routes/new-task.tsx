@@ -80,7 +80,6 @@ import {
   orderSkillsByUsage,
 } from '@/lib/skills'
 import { useI18n } from '@/lib/i18n'
-import { NEW_TASK_PANEL_BREAKPOINT_PX, readPanelOpen, writePanelOpen } from '@/lib/new-task-panel-state'
 import {
   AUTONOMY_NEEDS_WORKTREE,
   builtinTaskPresets,
@@ -105,7 +104,6 @@ import {
   type TaskPreset,
   type TaskSettingsSnapshot,
 } from '@/lib/new-task-presets'
-import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 import { usableRunners } from '@/lib/provider-status'
 
@@ -368,7 +366,11 @@ export function NewTaskRoute() {
   // registered project (#791) — the same per-project sweep as #700 (forge) and #699 (runner
   // defaults). Loading still assumes git so the controls do not flicker.
   const hasGit = repo.data === undefined || repo.data.info !== null
-  const variants = hasGit ? draft.variants : 1
+  // The manager–worker switch as the user sees it. A switched-on draft can be incomplete (no
+  // roster yet), so this is not just `draft.roster !== null`. A roster tree is one run with
+  // children: the server drops the roster for parallel variants and forces its worktree.
+  const [rosterMode, setRosterMode] = useState(() => (draft.roster ?? null) !== null)
+  const variants = hasGit && !rosterMode ? draft.variants : 1
 
   // Worktree opt-out (#worktree-toggle): any ordinary run in a git repo may use the current
   // checkout. Parallel variants are the one hard constraint because each competing run needs
@@ -420,23 +422,16 @@ export function NewTaskRoute() {
 
   // Worktree is forced by parallel variants (one tree per competing run) and by dispatch (the
   // server forces it too: subtasks fork off this task's commits).
-  const worktreeForced = variants > 1 || dispatchOn
+  const worktreeForced = variants > 1 || dispatchOn || rosterMode
 
   // ---- Task settings panel (ADR 0008) -------------------------------------------------------
-  // The inline column's collapsed state is remembered per browser; the drawer below the
-  // breakpoint is transient and always opens from the summary line.
-  const panelWide = useIsDesktop(NEW_TASK_PANEL_BREAKPOINT_PX)
-  const [panelOpen, setPanelOpenState] = useState(() => readPanelOpen())
-  const setPanelOpen = (open: boolean) => {
-    setPanelOpenState(open)
-    writePanelOpen(open)
-  }
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  // One wide panel under the composer. It starts folded and is never remembered: the summary
+  // line already states the run mode, and a panel that re-opened itself would push the prompt.
+  const [panelOpen, setPanelOpen] = useState(false)
   const [focusSection, setFocusSection] = useState<{ section: PanelSection; nonce: number } | null>(null)
   const focusNonce = useRef(0)
   const openSection = (section: PanelSection) => {
-    if (panelWide) setPanelOpen(true)
-    else setDrawerOpen(true)
+    setPanelOpen(true)
     setFocusSection({ section, nonce: (focusNonce.current += 1) })
   }
 
@@ -501,13 +496,13 @@ export function NewTaskRoute() {
     source: source?.source ?? 'workflow',
     dispatch: dispatchOn,
   })
-  const askOn = askWanted && !dispatchOn && variants <= 1
+  const askOn = askWanted && !dispatchOn && !rosterMode && variants <= 1
   // Autonomous without git cannot get the isolated worktree the panel requires, so it is not
   // offered there either — the run would edit a checkout while promising no pauses (ADR 0008).
   const autonomousOn = runMode.autonomous && hasGit
   // The PANEL is stricter than the engine-facing resolver: Autonomous pins the isolated worktree,
   // and a read-only Ask never runs in either mode (ADR 0008).
-  const worktreeOn = resolvePanelWorktree(runMode.worktree, autonomousOn, hasGit) && !askOn
+  const worktreeOn = resolvePanelWorktree(runMode.worktree || rosterMode, autonomousOn, hasGit) && !askOn
 
   // ---- presets ↔ live settings --------------------------------------------------------------
   // One snapshot the presets compare against, assembled from what the run will actually send.
@@ -879,15 +874,11 @@ export function NewTaskRoute() {
     autonomous: autonomousOn,
     limitsMode: limitRequest.mode,
     managerWorkers: roster ? roster.workers.length : null,
+    manager: roster?.manager ?? null,
     baseBranch: repo.data?.baseBranch ?? null,
     readOnly: askOn,
     askAuto: draft.readOnly === undefined,
   })
-  const panelIsOpen = panelWide ? panelOpen : drawerOpen
-  const onPanelOpenChange = (open: boolean) => {
-    if (panelWide) setPanelOpen(open)
-    else setDrawerOpen(open)
-  }
 
   return (
     <div
@@ -899,12 +890,9 @@ export function NewTaskRoute() {
 
       <div
         data-slot="new-task-layout"
-        className={cn(
-          'flex w-full items-start gap-6',
-          panelWide && panelOpen ? 'max-w-[1180px]' : 'max-w-[760px]',
-        )}
+        className="flex w-full max-w-[1040px] flex-col items-center gap-5"
       >
-        <div data-slot="new-task-main" className="min-w-0 flex-1">
+        <div data-slot="new-task-main" className="w-full min-w-0 max-w-[760px]">
           <header className="mb-6 text-center max-md:mb-4">
             <h1 className="text-lg font-semibold tracking-tight max-md:text-base">
               {t('What should the agent work on?')}
@@ -1060,8 +1048,8 @@ export function NewTaskRoute() {
         </div>
 
         <TaskSettingsPanel
-          open={panelIsOpen}
-          onOpenChange={onPanelOpenChange}
+          open={panelOpen}
+          onOpenChange={setPanelOpen}
           presets={presets}
           selectedPresetId={appliedPresetId}
           modified={presetModified}
@@ -1073,74 +1061,106 @@ export function NewTaskRoute() {
           focusSection={focusSection}
           disabled={!providersReady}
           who={
-            <div className="flex flex-col gap-3">
-              <Field label={t('Agent')}>
-                {agentChoice ? (
-                  <RunnerPill
-                    runners={runners}
-                    value={displayRunner}
-                    accounts={accountChoices}
-                    account={agentProfile}
-                    repoAccount={repoAccount}
-                    // Changing the AGENT clears the model pin: presets are per-runner, so a kept
-                    // model would be one the new runner does not have. Changing only the account
-                    // keeps it — the model catalog is the same either way.
-                    onPick={(next, picked) =>
-                      update({
-                        runner: next,
-                        agentProfile: picked,
-                        ...(next === displayRunner ? {} : { model: null }),
-                      })
-                    }
-                    disabled={!providersReady}
-                  />
-                ) : (
-                  <span data-slot="agent-value" className={chipClass} title={t('The only connected agent on this host')}>
-                    {displayRunner}
-                  </span>
+            // Two ways to staff a task, side by side: ONE agent that does the work, or a manager that
+            // plans and hands parts to listed workers. The server runs the roster's manager in place
+            // of the Agent/Model below, so with a roster on those fields are not shown at all.
+            <div className="flex flex-col divide-y divide-border">
+              <div
+                data-slot="single-agent"
+                data-active={!rosterMode ? 'true' : 'false'}
+                className={cn(
+                  'flex flex-col gap-3 border-l-2 py-4 pl-4 first:pt-0',
+                  rosterMode ? 'border-transparent' : 'border-primary',
                 )}
-              </Field>
-              <Field label={t('Model')}>
-                <PickerPill
-                  slot="model-pill"
-                  ariaLabel={t('Model')}
-                  label={models.find((m) => m.id === model)?.label ?? t('auto')}
-                  value={model}
-                  disabled={!providersReady}
-                  readOnly={modelsLocked}
-                  disabledHint={
-                    modelsLocked
-                      ? t('Model selection is locked to native coding-agent settings.')
-                      : undefined
-                  }
-                  onPick={(next) => update({ model: next })}
-                  options={models.map((m) => ({ value: m.id, label: m.label, desc: m.desc }))}
-                  status={modelCatalogStatus(displayRunner, catalog.data, catalog.isError)}
-                />
-              </Field>
-              <Field label={t('Variants')} hint={t('How many times to run this task in parallel — each variant gets its own worktree, and you pick the diff you keep. ×1 runs it once.')}>
-                <PickerPill
-                  slot="variants-pill"
-                  ariaLabel={t('Parallel variants')}
-                  label={variants > 1 ? t('×{count} variants', { count: variants }) : '×1'}
-                  value={String(variants)}
-                  onPick={(next) => update({ variants: Number(next) })}
-                  disabled={!hasGit}
-                  hint={t('How many times to run this task in parallel — each variant gets its own worktree, and you pick the diff you keep. ×1 runs it once.')}
-                  disabledHint={t('Parallel variants need a git repository — each variant runs in its own worktree.')}
-                  options={[
-                    { value: '1', label: '×1', desc: t('One run') },
-                    { value: '2', label: t('×2 variants'), desc: t('Two competing runs — pick the diff you keep') },
-                    { value: '3', label: t('×3 variants'), desc: t('Three competing runs — pick the diff you keep') },
-                  ]}
-                />
-              </Field>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium text-muted-foreground">{t('Manager–Worker')}</span>
-                {dispatchAvailable ? (
-                  <ManagerWorkerPill roster={roster} onRoster={changeRoster} />
+              >
+                <div className="text-xs font-semibold text-foreground">
+                  {t('Single agent')}
+                </div>
+                {rosterMode ? (
+                  <p data-slot="single-agent-replaced" className="text-xs leading-snug text-soft-foreground">
+                    {t('Replaced by the manager: it runs this task with the backend and model you pick on the right.')}
+                  </p>
                 ) : (
-                  <p data-slot="manager-worker-unavailable" className="text-[11px] text-soft-foreground">
+                  <div className="grid gap-3 @xl:grid-cols-3">
+                    <Field label={t('Agent')}>
+                      {agentChoice ? (
+                        <RunnerPill
+                          runners={runners}
+                          value={displayRunner}
+                          accounts={accountChoices}
+                          account={agentProfile}
+                          repoAccount={repoAccount}
+                          // Changing the AGENT clears the model pin: presets are per-runner, so a kept
+                          // model would be one the new runner does not have. Changing only the account
+                          // keeps it — the model catalog is the same either way.
+                          onPick={(next, picked) =>
+                            update({
+                              runner: next,
+                              agentProfile: picked,
+                              ...(next === displayRunner ? {} : { model: null }),
+                            })
+                          }
+                          disabled={!providersReady}
+                        />
+                      ) : (
+                        <span data-slot="agent-value" className={chipClass} title={t('The only connected agent on this host')}>
+                          {displayRunner}
+                        </span>
+                      )}
+                    </Field>
+                    <Field label={t('Model')}>
+                      <PickerPill
+                        slot="model-pill"
+                        ariaLabel={t('Model')}
+                        label={models.find((m) => m.id === model)?.label ?? t('auto')}
+                        value={model}
+                        disabled={!providersReady}
+                        readOnly={modelsLocked}
+                        disabledHint={
+                          modelsLocked
+                            ? t('Model selection is locked to native coding-agent settings.')
+                            : undefined
+                        }
+                        onPick={(next) => update({ model: next })}
+                        options={models.map((m) => ({ value: m.id, label: m.label, desc: m.desc }))}
+                        status={modelCatalogStatus(displayRunner, catalog.data, catalog.isError)}
+                      />
+                    </Field>
+                    <Field label={t('Variants')} hint={t('How many times to run this task in parallel — each variant gets its own worktree, and you pick the diff you keep. ×1 runs it once.')}>
+                      <PickerPill
+                        slot="variants-pill"
+                        ariaLabel={t('Parallel variants')}
+                        label={variants > 1 ? t('×{count} variants', { count: variants }) : '×1'}
+                        value={String(variants)}
+                        onPick={(next) => update({ variants: Number(next) })}
+                        disabled={!hasGit}
+                        hint={t('How many times to run this task in parallel — each variant gets its own worktree, and you pick the diff you keep. ×1 runs it once.')}
+                        disabledHint={t('Parallel variants need a git repository — each variant runs in its own worktree.')}
+                        options={[
+                          { value: '1', label: '×1', desc: t('One run') },
+                          { value: '2', label: t('×2 variants'), desc: t('Two competing runs — pick the diff you keep') },
+                          { value: '3', label: t('×3 variants'), desc: t('Three competing runs — pick the diff you keep') },
+                        ]}
+                      />
+                    </Field>
+                  </div>
+                )}
+              </div>
+              <div
+                data-slot="manager-worker"
+                data-active={rosterMode ? 'true' : 'false'}
+                className={cn(
+                  'flex flex-col gap-3 border-l-2 py-4 pl-4 last:pb-0',
+                  rosterMode ? 'border-primary' : 'border-transparent',
+                )}
+              >
+                <div className="text-xs font-semibold text-foreground">
+                  {t('Manager and workers')}
+                </div>
+                {dispatchAvailable ? (
+                  <ManagerWorkerPill roster={roster} onRoster={changeRoster} inline onEnabledChange={setRosterMode} />
+                ) : (
+                  <p data-slot="manager-worker-unavailable" className="text-xs text-soft-foreground">
                     {t('Manager–Worker needs Dispatch, which is off on this server or in a folder without git.')}
                   </p>
                 )}
@@ -1150,15 +1170,15 @@ export function NewTaskRoute() {
           where={
             <div className="flex flex-col gap-3">
               {!hasGit ? (
-                <p data-slot="where-no-git" className="text-[11px] leading-snug text-soft-foreground">
+                <p data-slot="where-no-git" className="text-xs leading-snug text-soft-foreground">
                   {t('No git repository — the run stays in this folder. There is no worktree to isolate in, so it cannot run unattended.')}
                 </p>
               ) : askOn ? (
-                <p data-slot="where-readonly" className="text-[11px] leading-snug text-soft-foreground">
+                <p data-slot="where-readonly" className="text-xs leading-snug text-soft-foreground">
                   {t('A read-only question runs in your checkout and changes nothing — there is no worktree to choose.')}
                 </p>
               ) : (
-                <div role="radiogroup" aria-label={t('Where it runs')} className="flex flex-col gap-1.5">
+                <div role="radiogroup" aria-label={t('Where it runs')} className="grid gap-2 @xl:grid-cols-2">
                   <WhereOption
                     slot="worktree-toggle"
                     checked={worktreeOn}
@@ -1174,7 +1194,9 @@ export function NewTaskRoute() {
                       worktreeForced
                         ? dispatchOn
                           ? t("Dispatch forks this task's commits — subtasks need a worktree")
-                          : t('Parallel variants always use isolated worktrees')
+                          : rosterMode
+                            ? t("The manager's workers fork its commits — a manager–worker task needs a worktree")
+                            : t('Parallel variants always use isolated worktrees')
                         : t(AUTONOMY_NEEDS_WORKTREE)
                     }
                     title={t('Edit my checkout directly')}
@@ -1184,11 +1206,11 @@ export function NewTaskRoute() {
                 </div>
               )}
               {worktreeError ? (
-                <p role="alert" data-slot="worktree-error" className="text-[11px] text-danger">
+                <p role="alert" data-slot="worktree-error" className="text-xs text-danger">
                   {t(worktreeError)}
                 </p>
               ) : null}
-              {hasGit && !askOn ? (
+              {hasGit && !askOn && (!worktreeOn || draft.newBranch === true) ? (
                 <div className="flex flex-col gap-1">
                   <Field label={t('New branch')}>
                     <NewBranchToggle
@@ -1199,7 +1221,7 @@ export function NewTaskRoute() {
                     />
                   </Field>
                   {worktreeOn ? (
-                    <p data-slot="new-branch-note" className="text-[11px] leading-snug text-soft-foreground">
+                    <p data-slot="new-branch-note" className="text-xs leading-snug text-soft-foreground">
                       {t('A worktree already forks from the base; this applies when you edit your checkout directly.')}
                     </p>
                   ) : null}
@@ -1223,7 +1245,7 @@ export function NewTaskRoute() {
               <p
                 data-slot="autonomous-consequence"
                 className={cn(
-                  'flex items-start gap-1.5 text-[11px] leading-snug',
+                  'flex items-start gap-1.5 text-xs leading-snug',
                   autonomousOn ? 'text-warning' : 'text-soft-foreground',
                 )}
               >
@@ -1237,14 +1259,14 @@ export function NewTaskRoute() {
               <Field label={t('Limits')}>
                 <LimitsPill draft={limitsDraft} onChange={changeLimits} request={limitsRequest} />
               </Field>
-              <p data-slot="limits-effective" className="text-[11px] text-soft-foreground">
+              <p data-slot="limits-effective" className="text-xs text-soft-foreground">
                 {t('This run: {limits}', { limits: describeRunLimits(effective) })}
               </p>
             </div>
           }
           skill={
             <div className="flex flex-col gap-2">
-              <Field label={t('Skill or workflow')}>
+              <div data-slot="skill-field">
                 <SourcePill
                   source={source}
                   ready={sourcesReady}
@@ -1253,16 +1275,16 @@ export function NewTaskRoute() {
                   workflows={workflowList}
                   onPick={(next) => update({ source: next })}
                 />
-              </Field>
+              </div>
               {selectedSkill?.interactive && (draft.autonomous === null || draft.worktree === null) ? (
-                <p className="text-[11px] leading-snug text-soft-foreground" data-slot="interactive-skill-hint">
+                <p className="text-xs leading-snug text-soft-foreground" data-slot="interactive-skill-hint">
                   {t('This skill recommends an interactive run in the current checkout. You can change either setting.')}
                 </p>
               ) : null}
             </div>
           }
           advanced={
-            <div className="flex flex-col gap-3">
+            <div className="grid gap-3 @xl:grid-cols-2">
               {askOffered ? (
                 <Field label={t('Read-only question')}>
                   <AskToggle on={askOn} auto={draft.readOnly === undefined} onChange={(on) => update({ readOnly: on })} />
@@ -1285,7 +1307,7 @@ export function NewTaskRoute() {
                 </Field>
               ) : null}
               {dispatchAvailable ? (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 @xl:col-span-2">
                   <Field label={t('Dispatch (subtasks)')}>
                     <DispatchToggle
                       available={dispatchAvailable}
@@ -1300,7 +1322,7 @@ export function NewTaskRoute() {
                       parentModels={models}
                     />
                   </Field>
-                  <p className="text-[11px] leading-snug text-soft-foreground">
+                  <p className="text-xs leading-snug text-soft-foreground">
                     {t('Tap to turn it on; its own limits open from the arrow beside it.')}
                   </p>
                 </div>
@@ -1317,7 +1339,7 @@ export function NewTaskRoute() {
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+      <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
         {label}
         {hint ? (
           <IconTooltip label={hint}>
@@ -1373,7 +1395,7 @@ function WhereOption({
         )}
         {title}
       </span>
-      <span className="pl-[22px] text-[11px] leading-snug text-soft-foreground">
+      <span className="pl-[22px] text-xs leading-snug text-soft-foreground">
         {disabled && disabledReason ? disabledReason : description}
       </span>
     </button>
