@@ -31,7 +31,9 @@ describe('the dispatch routes', () => {
     reportOk = true;
     process.env.ONNI_DISPATCH = '1';
     const manager = {
-      dispatch: (runId: string, body: unknown) => {
+      // The route is thin over `dispatchFromAgent` (it awaits the engine's fork), so the stub is
+      // that method — the older `dispatch` name answered 500 here and nothing noticed.
+      dispatchFromAgent: async (runId: string, body: unknown) => {
         calls.push({ kind: 'dispatch', runId, body });
         return outcome;
       },
