@@ -10,11 +10,11 @@ import { cn } from '@/lib/utils'
  * `currentColor`; it is drawn for a dark surface and carries its own outline for a light one.
  *
  * THE LOCKUP keeps the arithmetic stated once in `BRAND_LOCKUP`: the name is lowercase, Chakra
- * Petch SemiBold (600); the mark is 1.5 × the type size tall; the gap is 0.6 × the type size.
+ * Petch SemiBold (600); the mark is ~1.9 × the type size tall; the gap is 0.5 × the type size.
  */
 
-/** The navigation lockup, in px: the guideline's "znak 26 px i nazwa 19 px", gap 0.6 × 19. */
-export const BRAND_LOCKUP = { mark: 26, name: 19, gap: 11.4 } as const
+/** The navigation lockup, in px. The cat sits in a padded square, so it needs ~40px to read as large as a 26px glyph would; gap 0.5 × the name. */
+export const BRAND_LOCKUP = { mark: 40, name: 21, gap: 10.5 } as const
 
 export function BrandMark({ height = BRAND_LOCKUP.mark, className }: { height?: number; className?: string }) {
   return (
@@ -39,7 +39,7 @@ export function BrandLockup({ className, name = 'onni', logoUrl = null }: { clas
       className={cn('flex min-w-0 items-center text-foreground', className)}
       style={{ gap: BRAND_LOCKUP.gap }}
     >
-      {logoUrl ? <img data-slot="brand-logo" src={logoUrl} alt="" className="size-[26px] shrink-0 object-contain" /> : <BrandMark />}
+      {logoUrl ? <img data-slot="brand-logo" src={logoUrl} alt="" style={{ width: BRAND_LOCKUP.mark, height: BRAND_LOCKUP.mark }} className="shrink-0 object-contain" /> : <BrandMark />}
       <span
         data-slot="brand-name"
         className={cn('max-w-full truncate leading-none font-semibold tracking-normal', name === 'onni' && 'lowercase')}

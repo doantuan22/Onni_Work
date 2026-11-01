@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { tr } from '@/lib/i18n'
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 
 import { getRunDrafts, putRunDraft } from '@/api/client'
@@ -443,7 +444,7 @@ export function useDiffComments(runId: string): DiffComments {
   const write = useCallback(
     (next: DiffComment[], dropped: readonly string[] = []): boolean => {
       if (serialize(next).length > DRAFT_TEXT_MAX) {
-        toast('Too many comments to keep as a draft — send the ones you have first.', { tone: 'danger' })
+        toast(tr('Too many comments to keep as a draft — send the ones you have first.'), { tone: 'danger' })
         return false
       }
       if (dropped.length > 0) {

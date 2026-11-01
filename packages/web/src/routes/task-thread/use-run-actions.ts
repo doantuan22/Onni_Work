@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { tr } from '@/lib/i18n'
 import { useState } from 'react'
 
 import { ApiError, archiveRun, cancelRun, deleteRun, getConfig, openRunIn, openRunInCli, startLifecycleRemoval } from '@/api/client'
@@ -125,7 +126,7 @@ export function useRunActions(
           phase: operation.phase, state: operation.state, needsAttention: operation.state === 'needs_attention' || operation.state === 'interrupted',
         }} : previous)
         void queryClient.invalidateQueries({queryKey: lifecycleQueryKeys.all()})
-        toast('Cleanup requested. The task is kept until cleanup completes.')
+        toast(tr('Cleanup requested. The task is kept until cleanup completes.'))
         if (onScreen) void navigate(`/tasks/${run.id}`)
         return
       }
@@ -170,7 +171,7 @@ export async function copyToClipboard(text: string, doneMessage: string): Promis
     toast(doneMessage)
   } catch {
     // No clipboard access (permissions, http) — show the command itself; it is the payload.
-    toast(`Run manually: ${text}`)
+    toast(tr('Run manually: {text}', { text }))
   }
 }
 

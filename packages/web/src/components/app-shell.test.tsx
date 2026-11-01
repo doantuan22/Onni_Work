@@ -57,25 +57,25 @@ describe('AppShell', () => {
     expect(within(screen.getByRole('main')).getByText('route content')).toBeTruthy()
   })
 
-  // The lockup: the OnniCode cat beside the lowercase name in Chakra Petch SemiBold — 26px over
-  // 19px with a gap of 0.6 × the type size.
+  // The lockup: the OnniCode cat beside the lowercase name in Chakra Petch SemiBold — 40px over
+  // 21px with a gap of 0.5 × the type size.
   it('renders the brand lockup: the cat mark beside the lowercase name', () => {
     renderShell('/')
     const lockup = sidebar().querySelector('[data-slot="brand-lockup"]') as HTMLElement | null
     expect(lockup).toBeTruthy()
-    expect(lockup!.style.gap).toBe('11.4px')
+    expect(lockup!.style.gap).toBe('10.5px')
 
     const mark = lockup!.querySelector('[data-slot="brand-mark"]') as HTMLImageElement | null
     expect(mark).toBeTruthy()
     expect(mark!.getAttribute('src')).toBe('/icon.svg')
-    expect(mark!.getAttribute('height')).toBe('26')
-    expect(mark!.getAttribute('width')).toBe('26')
+    expect(mark!.getAttribute('height')).toBe('40')
+    expect(mark!.getAttribute('width')).toBe('40')
     expect(mark!.getAttribute('aria-hidden')).toBe('true')
     expect(mark!.className).toContain('[image-rendering:pixelated]')
 
     const name = lockup!.querySelector('[data-slot="brand-name"]') as HTMLElement | null
     expect(name?.textContent).toBe('onni')
-    expect(name!.style.fontSize).toBe('19px')
+    expect(name!.style.fontSize).toBe('21px')
     expect(name!.style.fontFamily).toBe('var(--brand)')
     expect(name!.className).toContain('font-semibold')
     expect(name!.className).toContain('tracking-normal')

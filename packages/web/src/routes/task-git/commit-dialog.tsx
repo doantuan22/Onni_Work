@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { tr } from '@/lib/i18n'
 import { useEffect, useRef, useState } from 'react'
 
 import { commitRun } from '@/api/client'
@@ -58,7 +59,7 @@ export function CommitDialog({
   const commit = useMutation({
     mutationFn: (text: string) => commitRun(run.id, text),
     onSuccess: (result) => {
-      toast(`Committed ${result.sha.slice(0, 7)}${andPush ? ' — pushing…' : ''}`)
+      toast(tr(andPush ? 'Committed {sha} — pushing…' : 'Committed {sha}', { sha: result.sha.slice(0, 7) }))
       onCommitted?.()
       onOpenChange(false)
       // The diff is anchored at the merge-base, so the files stay visible — but the record's

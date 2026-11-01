@@ -88,7 +88,7 @@ export function DefaultAgentPicker({
         'gap-0.5 rounded-md border border-border bg-card p-0.5',
         // Stacked once accounts are in play: `claude · Klaudiusz` beside its folder does not fit a
         // segmented strip, and the folder is the part that says WHICH login this is.
-        stacked ? 'flex max-w-md flex-col' : 'inline-flex w-fit',
+        stacked ? 'flex max-w-md flex-col' : 'flex w-fit max-w-full flex-wrap',
       )}
     >
       {rows.map((row) => {
@@ -117,13 +117,13 @@ export function DefaultAgentPicker({
             aria-checked={checked}
             data-value={row.runner.id}
             data-account={row.account ?? ''}
-            title={providerReason ?? row.desc}
+            title={providerReason ?? t(row.desc)}
             disabled={
               disabled || !providerConnected || (hasAccountChoice && accountDisabled)
             }
             onClick={() => onPick(row.runner.id, row.account, hasAccountChoice)}
             className={cn(
-              'rounded-sm px-3 py-1.5 text-left font-mono text-[13px] font-medium transition-colors disabled:opacity-50',
+              'min-w-0 rounded-sm px-3 py-1.5 text-left font-mono text-[13px] font-medium transition-colors disabled:opacity-50',
               checked ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -134,7 +134,7 @@ export function DefaultAgentPicker({
                 data-runner={row.runner.id}
                 className="ml-2 font-sans text-[11.5px] text-soft-foreground"
               >
-                {row.desc}
+                {t(row.desc)}
               </span>
             ) : null}
           </button>

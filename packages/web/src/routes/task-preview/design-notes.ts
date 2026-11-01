@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { tr } from '@/lib/i18n'
 
 import { continueRun, putRunDraft } from '@/api/client'
 import { useRunDrafts } from '@/api/queries'
@@ -284,7 +285,7 @@ export function useDesignNotes(run: ApiRun): DesignNotes {
   const addDraft = useCallback(
     (pick: NewDesignPick): boolean => {
       if (store.drafts === undefined) {
-        toast('Still loading this task — click the element again in a moment.')
+        toast(tr('Still loading this task — click the element again in a moment.'))
         return false
       }
       if (pick.mark === undefined) return false

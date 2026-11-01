@@ -1,4 +1,5 @@
 import { FileIcon, KeyboardIcon, PencilIcon } from 'lucide-react'
+import { tr } from '@/lib/i18n'
 import * as React from 'react'
 import { matchPath, useLocation } from 'react-router'
 
@@ -335,7 +336,7 @@ export function TaskPalette() {
       const bare = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
       if (bare && (event.key === 'Backspace' || event.key === 'Delete')) {
         keybindings.assign(recording.id, null)
-        toast(`Removed the shortcut for ${recording.label}`)
+        toast(tr('Removed the shortcut for {label}', { label: recording.label }))
         return setRecording(null)
       }
       const chord = chordFromEvent(event.nativeEvent)

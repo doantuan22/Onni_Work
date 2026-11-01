@@ -429,7 +429,7 @@ function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse 
         <span className="text-xs text-muted-foreground">{t('Default model per agent')}</span>
         {RUNNERS.map((entry) => (
           <label key={entry.id} className="flex items-center gap-3">
-            <span className="w-24 shrink-0 font-mono text-xs text-muted-foreground">{entry.label}</span>
+            <span className="w-28 shrink-0 truncate font-mono text-xs text-muted-foreground">{entry.label}</span>
             <select
               aria-label={t('Default model for {runner}', { runner: entry.label })}
               data-slot="accounts-default-model"

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { tr } from '@/lib/i18n'
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 
 import { ApiError, adoptRunPr, createRunPr, landRun, pushRun } from '@/api/client'
@@ -193,7 +194,7 @@ export function useRunGitStep(run: ApiRun): RunGitStep {
     // the agent's own work.
     if (flights.has(run.id) || agent.blockedBy) return
     if (agent.isPending) {
-      toast('Another message to the task is still being delivered — try again in a moment')
+      toast(tr('Another message to the task is still being delivered — try again in a moment'))
       return
     }
     const sending: Flight = {

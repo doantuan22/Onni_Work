@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { tr } from '@/lib/i18n'
 import { useEffect } from 'react'
 
 import type { AutomationListEntry, AutomationsResponse, CreateAutomationInput } from '@onni/api-client'
@@ -73,10 +74,10 @@ export function useAutomationActions(data: AutomationsResponse | undefined): Aut
     mutationFn: async (automation: AutomationListEntry) => {
       if (automation.kind === 'schedule') {
         await runAutomationNow(automation.id)
-        toast(`Started "${automation.name}" — the task is queued.`)
+        toast(tr('Started "{name}" — the task is queued.', { name: automation.name }))
       } else {
         await checkAutomation(automation.id, 'execute')
-        toast(`Checking events for "${automation.name}" now.`)
+        toast(tr('Checking events for "{name}" now.', { name: automation.name }))
       }
     },
     onSuccess: () => void refresh(),
@@ -85,7 +86,7 @@ export function useAutomationActions(data: AutomationsResponse | undefined): Aut
   const preview = useMutation({
     mutationFn: async (automation: AutomationListEntry) => {
       await checkAutomation(automation.id, 'preview')
-      toast(`Preview queued for "${automation.name}" — no tasks will launch. See the execution log for results.`)
+      toast(tr('Preview queued for "{name}" — no tasks will launch. See the execution log for results.', { name: automation.name }))
     },
     onSuccess: () => void refresh(),
     onError: fail,
@@ -111,7 +112,7 @@ export function useAutomationActions(data: AutomationsResponse | undefined): Aut
       return createAutomation(body)
     },
     onSuccess: (created) => {
-      toast(`Duplicated as "${created.automation.name}", paused.`)
+      toast(tr('Duplicated as "{name}", paused.', { name: created.automation.name }))
       void refresh()
     },
     onError: fail,
@@ -151,8 +152,8 @@ export function useAutomationActions(data: AutomationsResponse | undefined): Aut
 export async function copyText(text: string): Promise<void> {
   try {
     await writeClipboard(text)
-    toast('Copied to the clipboard.')
+    toast(tr('Copied to the clipboard.'))
   } catch {
-    toast('Copy failed — select the text to copy it.', { tone: 'danger' })
+    toast(tr('Copy failed — select the text to copy it.'), { tone: 'danger' })
   }
 }

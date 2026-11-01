@@ -5,6 +5,7 @@ import { viGit } from './vi-git'
 import { viGithub } from './vi-github'
 import { viNewTask } from './vi-new-task'
 import { viSettings } from './vi-settings'
+import { viPolish } from './vi-polish'
 import { viShell } from './vi-shell'
 import { viTasks } from './vi-tasks'
 
@@ -36,6 +37,7 @@ export const viMessages: Readonly<Record<string, string>> = {
   ...viGithub,
   ...viGit,
   ...viContent,
+  ...viPolish,
 }
 
 /** Replace `{name}` placeholders. Unknown placeholders are left as written, never blanked. */

@@ -130,8 +130,8 @@ function AgentsForm({
               configuredModel ??
               t('auto (default)')
             return (
-              <label key={runner.id} className="flex items-center gap-3">
-                <span className="w-24 shrink-0 font-mono text-xs text-muted-foreground">{runner.label}</span>
+              <label key={runner.id} className="flex min-w-0 items-center gap-3">
+                <span className="w-28 shrink-0 truncate font-mono text-xs text-muted-foreground">{runner.label}</span>
                 {config.modelsLocked ? (
                   <output
                     aria-label={t('Default model for {runner}', { runner: runner.label })}
@@ -148,7 +148,7 @@ function AgentsForm({
                     data-slot="agents-model"
                     data-runner={runner.id}
                     value={configuredModel}
-                    title={providerReason ?? runner.desc}
+                    title={providerReason ?? t(runner.desc)}
                     disabled={save.isPending || !providerConnected}
                     onChange={(event) =>
                       // Picking auto is a CHOICE, not the absence of one (#906): clearing the
