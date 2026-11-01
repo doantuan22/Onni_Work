@@ -3,6 +3,7 @@ import { statSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  hasTerminated,
   isSignalTerminationExit,
   prependSystemPrompt,
   trackChildExit,
@@ -571,7 +572,7 @@ class CopilotAcpSession implements AgentSession {
 }
 
 function waitForExit(child: ChildProcessWithoutNullStreams): Promise<number | null> {
-  if (child.exitCode !== null) return Promise.resolve(child.exitCode);
+  if (hasTerminated(child)) return Promise.resolve(child.exitCode);
   return new Promise((resolve) => {
     child.once('close', (code) => resolve(code));
     child.once('error', () => resolve(child.exitCode ?? null));

@@ -142,6 +142,18 @@ export interface TrackableChild {
 }
 
 /**
+ * Whether the child has already terminated — by an exit code, or by a signal
+ * alone. Windows `ChildProcess.kill()` is TerminateProcess, so the handler never
+ * runs: `exitCode` stays null and only `signalCode` names the death.
+ *
+ * A `waitForExit` fast path seeded from `exitCode` alone misses that second
+ * shape and then waits for a 'close'/'exit' event that already fired (#844).
+ */
+export function hasTerminated(child: Pick<TrackableChild, 'exitCode' | 'signalCode'>): boolean {
+  return child.exitCode != null || child.signalCode != null;
+}
+
+/**
  * Returns a predicate that answers "has this child actually terminated?".
  *
  * `ChildProcess.killed` answers a different question — it flips as soon as a
@@ -155,7 +167,7 @@ export interface TrackableChild {
  * was armed is recognized without waiting for an event that already fired.
  */
 export function trackChildExit(child: TrackableChild): () => boolean {
-  let exited = child.exitCode != null || child.signalCode != null;
+  let exited = hasTerminated(child);
   child.once('exit', () => {
     exited = true;
   });

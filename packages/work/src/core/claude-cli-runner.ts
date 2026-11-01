@@ -17,7 +17,7 @@ import type {
 
 // Re-exported for backends and the run manager that still import them from here.
 export type { AgentSession, SessionOptions } from './agent-runner.ts';
-import { isSignalTerminationExit, terminationLabel, trackChildExit } from './agent-runner.ts';
+import { hasTerminated, isSignalTerminationExit, terminationLabel, trackChildExit } from './agent-runner.ts';
 import { unwrapJsonErrorEnvelope } from './agent-errors.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { disclaimedCommand } from './disclaim-spawn.ts';
@@ -629,8 +629,8 @@ export function claudeExitMessage(exitCode: number, stderr: string): string {
   return `claude CLI exited with code ${exitCode}${hint}${detail}`;
 }
 
-function waitForExit(child: ChildProcessWithoutNullStreams): Promise<number | null> {
-  if (child.exitCode != null) return Promise.resolve(child.exitCode);
+export function waitForExit(child: ChildProcessWithoutNullStreams): Promise<number | null> {
+  if (hasTerminated(child)) return Promise.resolve(child.exitCode);
   return new Promise((resolve) => {
     let done = false;
     const fin = (code: number | null) => {

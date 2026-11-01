@@ -12,7 +12,7 @@ import type {
   ContentBlock,
   SessionOptions,
 } from './agent-runner.js';
-import { trackChildExit } from './agent-runner.js';
+import { hasTerminated, trackChildExit } from './agent-runner.js';
 import { buildChildEnv } from './agent-env.js';
 import { spawnTaskProcess } from './task-process-spawn.ts';
 import { readNdjson } from './ndjson.js';
@@ -369,7 +369,7 @@ function rpcError(value: Record<string, unknown>): string {
 }
 
 function waitForExit(child: ChildProcessWithoutNullStreams): Promise<number | null> {
-  if (child.exitCode !== null) return Promise.resolve(child.exitCode);
+  if (hasTerminated(child)) return Promise.resolve(child.exitCode);
   return new Promise((resolve) => child.once('close', resolve));
 }
 

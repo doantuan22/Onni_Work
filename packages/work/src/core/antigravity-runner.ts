@@ -25,7 +25,7 @@ import type {
   ContentBlock,
   SessionOptions,
 } from './agent-runner.ts';
-import { isSignalTerminationExit, prependSystemPrompt } from './agent-runner.ts';
+import { hasTerminated, isSignalTerminationExit, prependSystemPrompt } from './agent-runner.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { spawnTaskProcess } from './task-process-spawn.ts';
 import { antigravityLaunch, resolveAntigravityExecutable } from './antigravity-bin.ts';
@@ -146,7 +146,7 @@ export function bufferedLines(stream: NodeJS.ReadableStream): AsyncGenerator<str
 }
 
 function waitForExit(child: ChildProcessWithoutNullStreams): Promise<number | null> {
-  if (child.exitCode != null) return Promise.resolve(child.exitCode);
+  if (hasTerminated(child)) return Promise.resolve(child.exitCode);
   return new Promise((resolve) => {
     const fin = (code: number | null) => resolve(code);
     child.once('close', fin);

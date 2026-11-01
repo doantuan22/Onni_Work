@@ -17,6 +17,7 @@ import {
   EOF_KILL_GRACE_MS,
   EOF_TERM_GRACE_MS,
   KILL_GRACE_MS,
+  waitForExit,
 } from './claude-cli-runner.ts';
 import type { UiEvent } from './ui-events.ts';
 
@@ -443,5 +444,21 @@ describe('claude result error with a JSON envelope', () => {
         .catch(() => undefined);
       expect(errors).toContain('API Error: 400 [400]: invalid_request_error: model gpt-5 is not available');
     } finally { rmSync(root, { recursive: true, force: true }); }
+  });
+});
+
+// #844 family: Windows `kill()` is TerminateProcess, so a teardown leaves `exitCode` null and
+// only `signalCode` set. Seeding the fast path from `exitCode` alone waited for a 'close' event
+// that had already fired — every stopped turn then sat out the 27 s safety timer.
+describe('waitForExit on a signal-only exit', () => {
+  it('returns at once instead of waiting out the safety timer', async () => {
+    const child = Object.assign(new EventEmitter(), { exitCode: null, signalCode: 'SIGTERM', pid: 1 }) as unknown as ChildProcessWithoutNullStreams;
+    const started = Date.now();
+    const outcome = await Promise.race([
+      waitForExit(child),
+      new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 1_000)),
+    ]);
+    expect(outcome).toBeNull();
+    expect(Date.now() - started).toBeLessThan(1_000);
   });
 });

@@ -1,7 +1,7 @@
 import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve as resolvePath } from 'node:path';
-import { trackChildExit } from './agent-runner.ts';
+import { hasTerminated, trackChildExit } from './agent-runner.ts';
 import { buildChildEnv } from './agent-env.ts';
 import { EOF_KILL_GRACE_MS, EOF_TERM_GRACE_MS, KILL_GRACE_MS } from './claude-cli-runner.ts';
 import { spawnableCommand } from './windows-shim.ts';
@@ -170,7 +170,7 @@ export function endJunieAcp(
 }
 
 export function waitForJunieAcpExit(child: ChildProcessWithoutNullStreams): Promise<number | null> {
-  if (child.exitCode != null) return Promise.resolve(child.exitCode);
+  if (hasTerminated(child)) return Promise.resolve(child.exitCode);
   return new Promise((resolve) => {
     let done = false;
     const finish = (code: number | null) => {
