@@ -11,6 +11,9 @@ function answer(text: string | null) {
 }
 describe('timestamped process telemetry', () => {
   it('records sampling time, not time a cached sample is requested', async () => {
+    // `ps` is the Unix sampler: a Windows host reports CPU as unmeasured by design, so the POSIX
+    // contract is asserted on an explicit platform rather than on whatever host runs the suite.
+    vi.stubGlobal('process', Object.create(process, { platform: { value: 'linux' } }));
     const usage = await import('./process-usage.ts');
     expect(usage).toHaveProperty('currentTimedUsage');
     answer('100 1 2048 125\n'); usage.registerRunProcess('a', 100); await tick();
@@ -55,6 +58,7 @@ describe('timestamped process telemetry', () => {
   });
 
   it('clears last and sampledAt when a registered root is missing', async () => {
+    vi.stubGlobal('process', Object.create(process, { platform: { value: 'linux' } }));
     const usage = await import('./process-usage.ts');
     answer('100 1 100 1\n');
     usage.registerRunProcess('a', 100);
