@@ -39,10 +39,11 @@ export async function prepareStorage(root: string, dataDir: string, dryRun: bool
 export async function syncDirectory(directory: string): Promise<void> {
   // Windows cannot open a directory as a file descriptor (EPERM/EACCES/EISDIR) and some
   // filesystems refuse a directory fsync; the durability barrier degrades there. On POSIX those
-  // codes are real failures, so only the codes a POSIX fsync is known to reject are tolerated.
+  // codes are real failures, so only the codes a POSIX fsync is known to reject are tolerated —
+  // plus ENOENT, which means the directory is already gone: there is nothing left to make durable.
   const tolerated = process.platform === 'win32'
-    ? ['EINVAL', 'ENOTSUP', 'EBADF', 'EISDIR', 'EPERM', 'EACCES']
-    : ['EINVAL', 'ENOTSUP', 'EBADF'];
+    ? ['EINVAL', 'ENOTSUP', 'EBADF', 'EISDIR', 'EPERM', 'EACCES', 'ENOENT']
+    : ['EINVAL', 'ENOTSUP', 'EBADF', 'ENOENT'];
   let handle;
   try { handle = await open(directory, constants.O_RDONLY | constants.O_NOFOLLOW); }
   catch (error) { if (tolerated.includes((error as NodeJS.ErrnoException).code ?? '')) return; throw error; }

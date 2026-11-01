@@ -27,11 +27,20 @@ describe('directory sync durability tolerance', () => {
   });
 
   it('tolerates a refused fsync on every platform but never a real error', async () => {
-    for (const code of ['EINVAL', 'ENOTSUP', 'EBADF']) {
+    for (const code of ['EINVAL', 'ENOTSUP', 'EBADF', 'ENOENT']) {
       mockedOpen.mockResolvedValueOnce(handle(() => Promise.reject(failed(code))));
       await expect(withPlatform('darwin', () => syncDirectory('/x'))).resolves.toBeUndefined();
     }
     mockedOpen.mockResolvedValueOnce(handle(() => Promise.reject(failed('EIO'))));
     await expect(withPlatform('win32', () => syncDirectory('/x'))).rejects.toThrow('EIO');
+  });
+
+  it('tolerates a directory that is already gone when the barrier runs', async () => {
+    // A crash-durability barrier for state the user just deleted has nothing to protect; on
+    // Windows this is also the shape of a fixture/teardown race (`open` loses to `rm`).
+    mockedOpen.mockRejectedValueOnce(failed('ENOENT'));
+    await expect(withPlatform('win32', () => syncDirectory('/x'))).resolves.toBeUndefined();
+    mockedOpen.mockRejectedValueOnce(failed('ENOENT'));
+    await expect(withPlatform('darwin', () => syncDirectory('/x'))).resolves.toBeUndefined();
   });
 });
