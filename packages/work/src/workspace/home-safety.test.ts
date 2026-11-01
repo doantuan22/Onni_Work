@@ -119,14 +119,17 @@ describe('onni home write safety', () => {
     // not touch the user's registry. The per-layer cases above are what fail if
     // any single defence is removed.
     const packageRoot = fileURLToPath(new URL('../..', import.meta.url));
-    const vitestBin = join(packageRoot, '..', '..', 'node_modules', '.bin', 'vitest');
+    // `node_modules/.bin/vitest` is a POSIX shim; Windows has no executable by that name (only
+    // `vitest.cmd`, which Node refuses to spawn without a shell). Run the same entry as a script
+    // under this node instead — one command, no shell, on every host.
+    const vitestEntry = join(packageRoot, '..', '..', 'node_modules', 'vitest', 'vitest.mjs');
     const env: NodeJS.ProcessEnv = { ...process.env, HOME: fakeUserHome };
     delete env.ONNI_HOME;
     delete env.VITEST;
 
     const run = spawnSync(
-      vitestBin,
-      ['run', 'src/workspace/projects-cli.test.ts', '--testTimeout=15', '-t', 'remove'],
+      process.execPath,
+      [vitestEntry, 'run', 'src/workspace/projects-cli.test.ts', '--testTimeout=15', '-t', 'remove'],
       { cwd: packageRoot, env, encoding: 'utf8' },
     );
 
