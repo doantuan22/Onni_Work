@@ -1,10 +1,11 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RunStore } from '../runs/store.ts';
+import { removeTempDir, stopRuns } from '../test-fixtures/remove-temp-dir.testkit.ts';
 import { RunManager } from './run.ts';
 import type { WorkflowDef } from './types.ts';
 
@@ -43,14 +44,16 @@ describe('onFail.retryOn gates the check retry loop by exit code', () => {
     manager = new RunManager(store, repoRoot);
   });
 
-  afterEach(() => {
-    manager.dispose();
+  afterEach(async () => {
+    // A run's turn-end `git diff` can still hold the fixture as its cwd; stop the runs and let
+    // the directory go as they exit rather than failing on a live handle.
+    await stopRuns(manager, store);
     for (const [key, value] of Object.entries(savedEnv)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
     store.flush();
-    rmSync(repoRoot, { recursive: true, force: true });
+    await removeTempDir(repoRoot);
   });
 
   const workflowFor = (retryOn: number[]): WorkflowDef => ({
