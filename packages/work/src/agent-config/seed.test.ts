@@ -39,6 +39,7 @@ describe('seedAgentConfigLocalLayer', () => {
     try {
       const seeded = await seedAgentConfigLocalLayer(repo, wt, env);
       expect(seeded).toContain('.claude/settings.local.json');
+      expect(seeded.every((path) => !path.includes('\\'))).toBe(true);
       expect(readFileSync(join(wt, '.claude', 'settings.local.json'), 'utf8')).toBe('{"env":{"X":"1"}}');
       // info/exclude is on the common dir (shared) — the seeded file is ignored in the worktree
       expect(

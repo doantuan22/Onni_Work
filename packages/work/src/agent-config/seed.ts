@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { agentHomePaths, isAbsolutePath } from '../paths.ts';
 import { CONFIG_FILES } from './catalog.ts';
 
@@ -73,7 +73,8 @@ export async function seedAgentConfigLocalLayer(
   for (const def of CONFIG_FILES) {
     if (!def.seeded) continue;
     const src = def.resolve(repoRoot, home);
-    const rel = relative(repoRoot, src);
+    // Git ignore patterns use forward slashes on every host; `relative()` returns `\\` on Windows.
+    const rel = relative(repoRoot, src).split(sep).join('/');
     // Never seed something outside the repo, or that isn't there.
     if (rel.startsWith('..') || !(await fileExists(src))) continue;
     // Only seed a genuinely-ignored file — never force-exclude a tracked one.
