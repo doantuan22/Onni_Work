@@ -58,6 +58,7 @@ export const RUNNERS: readonly RunnerOption[] = [
   { id: 'cursor', label: 'cursor', desc: 'Cursor Agent CLI' },
   { id: 'pi', label: 'pi', desc: 'pi CLI (provider/model)' },
   { id: 'copilot', label: 'copilot', desc: 'GitHub Copilot CLI (ACP)' },
+  { id: 'cline', label: 'cline', desc: 'Cline CLI (ACP, provider/model)' },
   { id: 'antigravity', label: 'antigravity', desc: 'Google Antigravity CLI (agy)' },
 ]
 
@@ -109,6 +110,13 @@ export const MODELS_BY_RUNNER: Record<Runner, readonly ModelPreset[]> = {
   copilot: [
     { id: '', label: 'auto', desc: 'Let Copilot pick the model' },
   ],
+  // Cline's catalog is hundreds of provider-qualified ids (`anthropic/claude-sonnet-5.5`) that only
+  // its own session lists, and nothing here discovers them, so `auto` (no `session/set_model`: the
+  // session keeps Cline's own current model) is the one honest preset and the field stays free
+  // text for a `provider/model` id.
+  cline: [
+    { id: '', label: 'auto', desc: 'Use your Cline default model' },
+  ],
   // The live list comes from `agy models` (discovery); `auto` is no `--model` flag at all.
   antigravity: [
     { id: '', label: 'auto', desc: 'Use your Antigravity default model' },
@@ -143,7 +151,7 @@ const NATIVE_MODEL_ID_PREFIX: Partial<Record<Runner, RegExp>> = {
  *  native id space (`claude-…`, `gpt-…`), which a `provider/model` runner cannot claim either
  *  way, so a bare vendor id stays a cross-runner mismatch on pi and OpenCode as much as it is
  *  on the other backends. */
-const PROVIDER_SPANNING_RUNNERS: readonly Runner[] = ['opencode', 'pi']
+const PROVIDER_SPANNING_RUNNERS: readonly Runner[] = ['opencode', 'pi', 'cline']
 
 /** Runners whose own catalog ids ARE other vendors' bare ids (Copilot's `claude-sonnet-4`,
  *  Cursor's `gpt-5`) — mirrors `VENDOR_ID_HOSTING_RUNNERS` in `core/model-presets.ts`. */

@@ -13,7 +13,7 @@ import { quoteExecutable, withEnvPrefix } from './shell-env.ts';
 import { probeJunieAuthentication } from './junie-auth-probe.ts';
 import { spawnableCommand } from './windows-shim.ts';
 
-export const PROVIDER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;
+export const PROVIDER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'cline', 'antigravity'] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 export type ProviderConnectionState =
   | 'connected'
@@ -437,6 +437,20 @@ function copilotUnrecognizedHint(result: ProviderCommandResult): string | undefi
     + 'program named `copilot` comes first on PATH.';
 }
 
+/**
+ * Cline CLI answers the same question the same way (verified on 3.0.74 with an empty `--config` /
+ * `--data-dir`): `session/new` returns the JSON-RPC error `-32000 "Authentication required: Call
+ * authenticate before starting a session"` without a login and a `sessionId` with one, and
+ * `cline auth` is interactive — so the Copilot probe's frames and parser are reused unchanged.
+ * Nothing is prompted, so no model credits are spent.
+ */
+function clineUnrecognizedHint(result: ProviderCommandResult): string | undefined {
+  if (/"jsonrpc"\s*:/.test(`${result.stdout}\n${result.stderr}`)) return undefined;
+  return 'The `cline` command did not start Cline CLI\'s ACP server. Update it with '
+    + '`npm i -g cline`, or point ONNI_CLINE_BIN at the Cline CLI if another program named '
+    + '`cline` comes first on PATH.';
+}
+
 const DESCRIPTORS: readonly ProviderDescriptor[] = [
   {
     id: 'claude',
@@ -522,6 +536,18 @@ const DESCRIPTORS: readonly ProviderDescriptor[] = [
     // The version of the binary the probe ran, not a cached newer package.
     versionArgs: ['--no-auto-update', '--version'],
     unrecognizedHint: copilotUnrecognizedHint,
+  },
+  {
+    id: 'cline',
+    overrideEnv: 'ONNI_CLINE_BIN',
+    executable: () => process.env.ONNI_CLINE_BIN ?? 'cline',
+    statusArgs: ['--acp'],
+    loginArgs: ['auth'],
+    updateArgs: ['update'],
+    installHint: 'Install Cline CLI (`npm i -g cline`), then run `cline auth`.',
+    parse: parseCopilotStatus,
+    stdin: copilotAcpProbeStdin,
+    unrecognizedHint: clineUnrecognizedHint,
   },
   {
     id: 'antigravity',

@@ -15,6 +15,7 @@
  *  - `junie`    — JetBrains Junie CLI, real Agent Client Protocol (ACP:
  *                 `junie --acp=true`), JSON-RPC 2.0 (JSONL) over stdin/stdout;
  *  - `copilot`  — GitHub Copilot CLI, ACP over `copilot --acp` on stdio;
+ *  - `cline`    — Cline CLI, ACP over `cline --acp` on stdio, models as `provider/model`;
  *  - `antigravity` — Google Antigravity CLI (`agy -p`), headless print mode, stream-json over a pipe.
  */
 
@@ -28,7 +29,7 @@ import type { PrivateMcpServer } from './private-mcp.ts';
  * server-install "at least one agent CLI" gate, the CLI-handoff registry) rather than repeating
  * the literals, so adding runner #7 is a one-line change here and typecheck finds the rest.
  */
-export const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;
+export const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'cline', 'antigravity'] as const;
 
 /** The user-selectable runners (what config/GUI expose). */
 export type RunnerId = (typeof RUNNER_IDS)[number];

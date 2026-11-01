@@ -100,6 +100,7 @@ const PROVIDER_LABEL: Record<ProviderId, string> = {
   cursor: 'Cursor',
   pi: 'pi',
   copilot: 'GitHub Copilot CLI',
+  cline: 'Cline CLI',
   antigravity: 'Antigravity CLI',
 }
 
@@ -112,6 +113,7 @@ const PROVIDER_INSTALL: Record<ProviderId, string> = {
   cursor: 'curl https://cursor.com/install -fsS | bash',
   pi: 'https://github.com/badlogic/pi-mono',
   copilot: 'npm i -g @github/copilot',
+  cline: 'npm i -g cline',
   antigravity: 'Install the Antigravity CLI (agy), then run agy once and sign in',
 }
 

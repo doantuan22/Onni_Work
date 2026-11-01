@@ -58,6 +58,10 @@ export const PROFILE_ENV_VAR: Record<ProviderId, string | null> = {
   pi: null,
   junie: null,
   copilot: null,
+  // Cline's `--config <dir>` / `--data-dir <dir>` move its state, but whether they also move the
+  // stored login (`providers.json`) was not tested, so no single variable is claimed — being wrong
+  // bills the wrong account. `null` until a test proves one.
+  cline: null,
   // Antigravity cannot carry a second account: pointing HOME/USERPROFILE at an empty folder still
   // authenticated (spike step 0, e), so the login does not live under its config dir and no
   // documented variable moves it. `null`, like OpenCode, rather than bill the wrong account.
@@ -120,6 +124,8 @@ const PROFILE_DIR_MARKERS: Record<ProviderId, readonly string[]> = {
   junie: [],
   // Same for copilot (`PROFILE_ENV_VAR.copilot === null`).
   copilot: [],
+  // And cline (`PROFILE_ENV_VAR.cline === null`).
+  cline: [],
   // And antigravity (`PROFILE_ENV_VAR.antigravity === null`).
   antigravity: [],
 };

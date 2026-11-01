@@ -25,6 +25,10 @@ export const RUNNER_CAPABILITIES: Record<Runner, { canManage: boolean; manageRea
   pi: { canManage: true },
   junie: { canManage: true },
   copilot: { canManage: true },
+  cline: {
+    canManage: false,
+    manageReason: 'its ACP permission prompts and the manager commands (onni task create, git merge) were not verified to run unattended',
+  },
   antigravity: {
     canManage: false,
     manageReason: 'its headless allow-rules are not yet verified for the manager commands (onni task create, git merge)',

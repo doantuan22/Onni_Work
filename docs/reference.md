@@ -523,6 +523,7 @@ Useful environment variables:
 | `ONNI_CURSOR_AGENT_BIN=/path/to/cursor-agent` | Override which Cursor Agent CLI binary is used. Unset: `cursor-agent` on PATH, then `~/.local/bin/cursor-agent`, then `agent` on PATH. |
 | `ONNI_PI_BIN=/path/to/pi` | Override which `pi` binary is used. |
 | `ONNI_COPILOT_BIN=/path/to/copilot` | Override which GitHub Copilot CLI binary is used. |
+| `ONNI_CLINE_BIN=/path/to/cline` | Override which Cline CLI binary is used. |
 | `ONNI_ANTIGRAVITY_BIN=/path/to/agy` | Override which Antigravity CLI (`agy`) binary is used. Unset: `agy` on PATH, then the installer's directory (`%LOCALAPPDATA%\agy\bin` on Windows, `~/.local/bin` elsewhere). |
 | `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | The agents' **own** variables, honoured where the vendor documents one. Setting one moves that agent's **default account** — the config folder Onni Work discovers. A *second* login of the same CLI is deliberately not an environment setting, since one process-wide value cannot differ per project: add it under **Settings → Agent accounts** and pick it per project. |
 | `ONNI_BROWSE_ROOT=~/` | Default root for **Add project → Open local folder…**. The picker cannot navigate above it; a saved workspace value overrides the environment default and must name an existing folder. |
@@ -618,8 +619,8 @@ the CLI): *Capped* applies exactly the ceilings you give — max cost (USD), max
 and a blank ceiling is no limit on that axis; *Unlimited* (`∞`) applies none. A fresh install is
 capped at 10 USD, 10 000 000 tokens, 240 minutes and 30 steps. Changing the setting affects new runs
 only. A dispatched task inherits its parent's mode and may never be looser; a tree shares its root's
-ceilings. Backends that report no USD (antigravity, codex, copilot, cursor) ignore the cost ceiling, and cursor
-reports no tokens either. A run that hits a ceiling is cancelled with the reason on the record; its
+ceilings. Backends that report no USD (antigravity, cline, codex, copilot, cursor) ignore the cost ceiling, and cursor
+and cline report no tokens either. A run that hits a ceiling is cancelled with the reason on the record; its
 worktree and session stay, and Continue asks before raising the ceiling by one more allowance.
 
 ```bash
@@ -719,6 +720,7 @@ Onni Work is not married to one vendor. Every agent step runs through a single
 | **Cursor** | [`agent`](https://cursor.com/docs/cli/overview) (Cursor Agent CLI) | Headless print mode: `agent -p --force --trust --output-format stream-json`. Continue is fresh-session in v1 (print mode exits per turn). Its documented output carries no token/cost figures, so a Cursor run's header always reads zero tokens and no cost — that is the backend not reporting usage, not the run using nothing. | Ignores `allowedTools`; `--force` / `--trust` auto-approves tool use for unattended runs. |
 | **pi** _(experimental)_ | [`pi`](https://github.com/badlogic/pi-mono) | Persistent `--mode rpc` over JSONL; models are picked with the `provider/model` convention. | Maps `allowedTools` onto pi's `--tools` allowlist; a configured `bashAllowlist` disables Bash because pi cannot express command-prefix rules. |
 | **Antigravity** | [`agy`](https://antigravity.google) (Google Antigravity CLI) | Headless print mode: `agy -p <prompt> --output-format stream-json` over a pipe, one process per turn; Continue resumes with `--conversation <id>`. Reports tokens only — no USD. Needs `agy` signed in (checked with `agy models`, no model call). | **Fails closed.** agy cannot ask for approval headless, so by default (`Files only`) it edits files and a shell command is denied. A turn that was blocked and answered nothing **fails**, naming what was denied; one that answered anyway keeps going with a warning per denied action. See *Antigravity permissions* below. |
+| **Cline** _(worker only)_ | [`cline`](https://www.npmjs.com/package/cline) (`npm i -g cline`) | `cline --acp` — ACP over stdio, one long-lived child per task; the model is chosen with `session/set_model` (`provider/model`, e.g. `anthropic/claude-sonnet-5.5`; empty keeps Cline's own current model). Reports no tokens and no USD, so only time and step ceilings bound it. Needs a login (`cline auth`, checked with an ACP `session/new`, no model call). | Ignores `allowedTools` / `bashAllowlist`; Cline asks permission for every tool call even with its own auto-approve on, and onni answers each with `allow_once` (never `allow_always`, which would write a standing rule into the user's Cline settings). A turn that ends with no output fails instead of settling `done`. Not offered as a manager until its manager commands are verified to run unattended. |
 | **GitHub Copilot** | [`copilot`](https://github.com/github/copilot-cli) | `copilot --acp --allow-all-tools --no-auto-update` — ACP over stdio, one long-lived child per task. | Ignores `allowedTools` / `bashAllowlist`; `--allow-all-tools` is the auto permission mode, and a permission request that still arrives is auto-approved. |
 
 > ⚠️ **Junie, pi and OpenCode support are experimental.** All three runners work
@@ -852,7 +854,7 @@ never blocks startup; configured lifecycle transitions pause on malformed config
   // `skills/` (any depth) is picked up from them: `…/skills/<name>/SKILL.md` is a directory skill
   // (its other files are its references), any other `…/skills/**/*.md` a flat one.
   "worktreeRetention": 10,   // keep the last N finished worktrees on disk; 0 = unlimited (branch always kept)
-  "defaultRunner": "claude", // agent backend: "claude" (default) · "codex" · "opencode" · "cursor" · "pi" · "junie" · "copilot" · "antigravity"
+  "defaultRunner": "claude", // agent backend: "claude" (default) · "codex" · "opencode" · "cursor" · "pi" · "junie" · "copilot" · "cline" · "antigravity"
   "modelsLocked": true,      // optional: native per-runner model is fixed/read-only; runner stays selectable
   "plannerModel": "sonnet",  // model the "Plan first" button uses to draft chains
   "baseBranch": "develop",   // branch worktrees fork from + PRs target (also settable in the Git tab)

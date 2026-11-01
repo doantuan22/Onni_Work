@@ -1,0 +1,286 @@
+[
+  {
+    "type": "session.started",
+    "sessionId": "1793506085942_jM0Ns_cli",
+    "backend": "cline",
+    "model": "anthropic/claude-sonnet-5.5",
+    "cwd": "/work/repo"
+  },
+  {
+    "type": "turn.started",
+    "turnId": "turn_1"
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "kind": "message",
+      "id": "turn_1_msg_1",
+      "role": "assistant",
+      "text": ""
+    }
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": "Plan: create hello."
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": "txt with \"hi\" and"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": " run `echo done`"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": "."
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": " The"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": " two ste"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": "ps are independent, so I'"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_1",
+    "field": "text",
+    "delta": "ll do them together."
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "kind": "message",
+      "id": "turn_1_msg_1",
+      "role": "assistant",
+      "text": "Plan: create hello.txt with \"hi\" and run `echo done`. The two steps are independent, so I'll do them together."
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01XkoRoqde5CdfZQY5gyTgW6",
+      "name": "editor",
+      "toolKind": "edit",
+      "title": "editor: /work/repo/hello.txt",
+      "status": "pending",
+      "input": {
+        "path": "/work/repo/hello.txt",
+        "new_text": "hi"
+      },
+      "diffs": [
+        {
+          "path": "/work/repo/hello.txt",
+          "oldText": null,
+          "newText": "hi"
+        }
+      ]
+    }
+  },
+  {
+    "type": "item.updated",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01XkoRoqde5CdfZQY5gyTgW6",
+      "name": "editor",
+      "toolKind": "edit",
+      "title": "editor: /work/repo/hello.txt",
+      "status": "pending",
+      "input": {
+        "path": "/work/repo/hello.txt",
+        "new_text": "hi"
+      },
+      "diffs": [
+        {
+          "path": "/work/repo/hello.txt",
+          "oldText": null,
+          "newText": "hi"
+        }
+      ]
+    }
+  },
+  {
+    "type": "item.updated",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01XkoRoqde5CdfZQY5gyTgW6",
+      "name": "editor",
+      "toolKind": "edit",
+      "title": "editor: /work/repo/hello.txt",
+      "status": "running",
+      "input": {
+        "path": "/work/repo/hello.txt",
+        "new_text": "hi"
+      },
+      "diffs": [
+        {
+          "path": "/work/repo/hello.txt",
+          "oldText": null,
+          "newText": "hi"
+        }
+      ]
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01L78t6tX6sCc2MR5co89Zzk",
+      "name": "run_commands",
+      "toolKind": "execute",
+      "title": "run_commands: echo done",
+      "status": "pending",
+      "input": {
+        "commands": [
+          "echo done"
+        ]
+      }
+    }
+  },
+  {
+    "type": "item.updated",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01L78t6tX6sCc2MR5co89Zzk",
+      "name": "run_commands",
+      "toolKind": "execute",
+      "title": "run_commands: echo done",
+      "status": "pending",
+      "input": {
+        "commands": [
+          "echo done"
+        ]
+      }
+    }
+  },
+  {
+    "type": "item.updated",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01L78t6tX6sCc2MR5co89Zzk",
+      "name": "run_commands",
+      "toolKind": "execute",
+      "title": "run_commands: echo done",
+      "status": "running",
+      "input": {
+        "commands": [
+          "echo done"
+        ]
+      }
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01XkoRoqde5CdfZQY5gyTgW6",
+      "name": "editor",
+      "toolKind": "edit",
+      "title": "editor: /work/repo/hello.txt",
+      "status": "completed",
+      "input": {
+        "path": "/work/repo/hello.txt",
+        "new_text": "hi"
+      },
+      "diffs": [
+        {
+          "path": "/work/repo/hello.txt",
+          "oldText": null,
+          "newText": "hi"
+        }
+      ],
+      "output": "File created successfully at: /work/repo\\hello.txt"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "kind": "tool",
+      "id": "toolu_01L78t6tX6sCc2MR5co89Zzk",
+      "name": "run_commands",
+      "toolKind": "execute",
+      "title": "run_commands: echo done",
+      "status": "completed",
+      "input": {
+        "commands": [
+          "echo done"
+        ]
+      },
+      "output": "done"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "kind": "message",
+      "id": "turn_1_msg_2",
+      "role": "assistant",
+      "text": ""
+    }
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_2",
+    "field": "text",
+    "delta": "I created `hello.txt"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_2",
+    "field": "text",
+    "delta": "` containing \""
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_2",
+    "field": "text",
+    "delta": "hi\" and ran `ech"
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_2",
+    "field": "text",
+    "delta": "o done`, which printed \""
+  },
+  {
+    "type": "item.delta",
+    "itemId": "turn_1_msg_2",
+    "field": "text",
+    "delta": "done\"."
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "kind": "message",
+      "id": "turn_1_msg_2",
+      "role": "assistant",
+      "text": "I created `hello.txt` containing \"hi\" and ran `echo done`, which printed \"done\"."
+    }
+  },
+  {
+    "type": "turn.completed",
+    "turnId": "turn_1",
+    "stopReason": "end_turn"
+  }
+]

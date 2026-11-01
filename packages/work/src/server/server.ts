@@ -8159,6 +8159,9 @@ export function resumeCommand(runner: string | undefined, sessionId: string): st
     case 'copilot':
       // `--resume <id>` takes a session id, a task id or an id prefix (`copilot --help`, 1.0.88).
       return `copilot --resume ${sessionId}`;
+    case 'cline':
+      // `--id <session-id>` resumes a session; `--tui` makes it interactive (`cline --help`, 3.0.74).
+      return `cline --tui --id ${sessionId}`;
     default:
       return `claude --resume ${sessionId}`;
   }

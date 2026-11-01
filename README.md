@@ -29,7 +29,7 @@ and `CHANGELOG.md` for this fork's history.
 
 - **Node 20+** (`engines` in `package.json`) and **git**.
 - **At least one agent CLI** installed and logged in — `claude`, `codex`, `opencode`,
-  `cursor-agent`, `pi`, `junie` or `copilot`. Missing backends simply are not offered.
+  `cursor-agent`, `pi`, `junie`, `copilot` or `cline`. Missing backends simply are not offered.
 - `gh` is optional; GitHub views and draft PRs degrade gracefully without it.
 - `ONNI_DRY_RUN=1` replaces the real CLIs with bundled mocks, so no login is needed for a demo.
 

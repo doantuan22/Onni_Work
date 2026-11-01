@@ -82,6 +82,13 @@ const connectedResults: Record<string, ProviderCommandResult> = {
     stderr: '',
     exitCode: 0,
   },
+  // Cline's probe drives its ACP server exactly like Copilot's: a `sessionId` back means a login
+  // (`__fixtures__/cline/auth-required.ndjson` is the unauthenticated answer).
+  cline: {
+    stdout: '{"jsonrpc":"2.0","id":1,"result":{"sessionId":"1700000000000_probe_cli"}}',
+    stderr: '',
+    exitCode: 0,
+  },
   // `agy models` lists the account's models (id, a tab, a label): a list is a usable login.
   antigravity: { stdout: 'gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n', stderr: '', exitCode: 0 },
 };
@@ -131,6 +138,7 @@ function resultFor(executable: string): ProviderCommandResult {
   if (executable === 'agent' || executable.includes('cursor')) return connectedResults.cursor!;
   if (executable.includes('opencode')) return connectedResults.opencode!;
   if (executable.includes('copilot')) return connectedResults.copilot!;
+  if (executable.includes('cline')) return connectedResults.cline!;
   if (executable === 'agy') return connectedResults.antigravity!;
   return connectedResults.pi!;
 }
@@ -961,6 +969,7 @@ describe('ProviderAuthService', () => {
         { provider: 'pi' },
         { provider: 'junie', status: 'connected' },
         { provider: 'copilot' },
+        { provider: 'cline' },
         { provider: 'antigravity' },
       ],
     });
@@ -986,6 +995,7 @@ describe('ProviderAuthService', () => {
       { executable: 'agent', args: ['status', '--format', 'json'], timeoutMs: 10_000 },
       { executable: 'pi', args: ['--list-models'], timeoutMs: 10_000 },
       { executable: 'copilot', args: ['--acp', '--no-auto-update'], timeoutMs: 10_000 },
+      { executable: 'cline', args: ['--acp'], timeoutMs: 10_000 },
       { executable: 'agy', args: ['models'], timeoutMs: 10_000 },
     ]);
     release();
@@ -1516,6 +1526,7 @@ describe('ProviderAuthService', () => {
         { provider: 'pi', status: 'connected' },
         { provider: 'junie', status: 'connected' },
         { provider: 'copilot', status: 'connected' },
+        { provider: 'cline', status: 'connected' },
         { provider: 'antigravity', status: 'connected' },
       ],
     });
@@ -1630,6 +1641,7 @@ describe('ProviderAuthService', () => {
         { provider: 'pi', status: 'connected' },
         { provider: 'junie', status: 'connected' },
         { provider: 'copilot', status: 'connected' },
+        { provider: 'cline', status: 'connected' },
         { provider: 'antigravity', status: 'connected' },
       ],
     });

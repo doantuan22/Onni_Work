@@ -10,6 +10,7 @@ const PROVIDER_LABEL: Record<Runner, string> = {
   cursor: 'Cursor',
   pi: 'pi',
   copilot: 'GitHub Copilot CLI',
+  cline: 'Cline CLI',
   antigravity: 'Antigravity CLI',
 }
 

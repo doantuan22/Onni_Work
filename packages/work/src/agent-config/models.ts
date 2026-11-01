@@ -3,6 +3,7 @@ import { antigravityModelSettingsStrategy } from './model-settings/antigravity.t
 import { claudeModelSettingsStrategy } from './model-settings/claude.ts';
 import { codexModelSettingsStrategy } from './model-settings/codex.ts';
 import { junieModelSettingsStrategy } from './model-settings/junie.ts';
+import { clineModelSettingsStrategy } from './model-settings/cline.ts';
 import { copilotModelSettingsStrategy } from './model-settings/copilot.ts';
 import { cursorModelSettingsStrategy } from './model-settings/cursor.ts';
 import { opencodeModelSettingsStrategy } from './model-settings/opencode.ts';
@@ -25,6 +26,7 @@ const MODEL_SETTINGS_STRATEGIES: Record<RunnerId, AgentModelSettingsStrategy> = 
   pi: piModelSettingsStrategy,
   junie: junieModelSettingsStrategy,
   copilot: copilotModelSettingsStrategy,
+  cline: clineModelSettingsStrategy,
   antigravity: antigravityModelSettingsStrategy,
 };
 

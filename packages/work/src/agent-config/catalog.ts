@@ -38,6 +38,8 @@ export interface AgentHomePaths {
   cursor: string;
   /** `$COPILOT_HOME` or `~/.copilot` */
   copilot: string;
+  /** `~/.cline` — Cline's config and data (`cline --help`: `--config` defaults to it) */
+  cline: string;
   /** `~/.junie` — no relocation var documented (see `PROFILE_ENV_VAR.junie`) */
   junie: string;
   /** `~/.gemini` — Antigravity's state; its login is not here (see `PROFILE_ENV_VAR.antigravity`) */

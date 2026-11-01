@@ -35,7 +35,7 @@ id — that is the whole point of the seam.
 ### Identity
 
 ```ts
-const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;  // the source of truth
+const RUNNER_IDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'cline', 'antigravity'] as const;  // the source of truth
 type RunnerId     = (typeof RUNNER_IDS)[number];                             // user-selectable
 type AgentBackend = RunnerId | 'claude-cli';                                 // + legacy id, still parses
 ```
@@ -334,6 +334,13 @@ transport into `UiEvent`s. The authoritative table is
 `.ai/runs/2026-09-27-copilot-cli-runner/copilot-acp-notes.md`, and
 `__fixtures__/copilot/README.md` states exactly which of those frames are a live capture and
 which were read out of the CLI's own ACP bridge.
+
+`cline` is the second ACP backend on the same layer (`core/cline-acp-runner.ts`,
+`core/cline-ui-mapper.ts`; ADR 0009). Its fixtures, `__fixtures__/cline/`, are all live captures. It
+differs from core ACP in four ways the dialect absorbs through optional `AcpDialect` hooks: a tool's
+result is `rawOutput` (not `content`), a failing command is `completed` + `success: false`, an edit's
+diff is `rawInput.old_text/new_text`, and its `title` is truncated JSON. It reports no usage on any
+frame, so its `usage.updated` / `turn.completed` usage cells are cited exclusions in `ui-parity.test.ts`.
 
 `antigravity` (`agy -p … --output-format stream-json`, one process per turn) is not in the table: its wire was
 recorded live (`__fixtures__/antigravity/`, docs/design/antigravity-spike.md) and is `init` / `step_update` /

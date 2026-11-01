@@ -54,6 +54,20 @@ export interface AcpDialect {
    * names the call itself.
    */
   parentItemOf?(update: Record<string, unknown>): string | undefined;
+  /**
+   * A tool's output text, for an agent that answers off-schema. ACP puts a result in `content`;
+   * Cline sends it in `rawOutput` and nothing in `content`, so without this the tool card has no
+   * output. Consulted only when `content` carried no text, and never for a starting call.
+   */
+  toolOutputOf?(update: Record<string, unknown>): string | undefined;
+  /**
+   * A readable title for a call whose wire `title` is not one. Cline renders its own as
+   * `<tool>: <JSON args>` cut at 50 characters, which is a path half-way through a JSON object.
+   * Preferred over the wire title; `undefined` keeps it.
+   */
+  toolTitleOf?(update: Record<string, unknown>, name: string): string | undefined;
+  /** File diffs an agent carries off-schema (Cline: `rawInput.old_text` / `new_text`, no ACP diff block). */
+  toolDiffsOf?(update: Record<string, unknown>): FileDiff[] | undefined;
   /** Per-turn token counts from the `session/prompt` result, when the agent reports them off-schema. */
   usageFromPromptResult?(result: Record<string, unknown>): TokenUsage | undefined;
   /** Plan entries carried by a tool call (for agents whose plan is a tool, not a `plan` update). */
@@ -300,7 +314,14 @@ function upsertTool(
   const name = previous?.name ?? dialect.toolNameOf(update);
   const rawInput = update.rawInput;
   const display = toolDisplay(name, rawInput ?? previous?.input);
-  const content = toolContent(update.content);
+  const fromContent = toolContent(update.content);
+  // A dialect fills in what its agent sends off-schema, but only where ACP's own `content` is empty.
+  const offSchemaText = fromContent.text === undefined && !isCall ? dialect.toolOutputOf?.(update) : undefined;
+  const text = fromContent.text ?? offSchemaText;
+  const content: { text?: string; diffs: FileDiff[] } = {
+    diffs: fromContent.diffs.length > 0 ? fromContent.diffs : dialect.toolDiffsOf?.(update) ?? [],
+    ...(text !== undefined ? { text } : {}),
+  };
   const failed = status === 'failed';
   const item: UiToolItem = {
     ...(previous ?? {}),
@@ -309,7 +330,7 @@ function upsertTool(
     name,
     toolKind: previous?.toolKind ?? dialect.toolKindOf?.(name, update) ?? acpToolKind(update.kind) ?? display.toolKind,
     // A `failed` update carries no title on Gemini (`write-todos-quota.ndjson`): keep the one we had.
-    title: string(update.title) || previous?.title || display.title,
+    title: dialect.toolTitleOf?.(update, name) || string(update.title) || previous?.title || display.title,
     status,
   };
   if (rawInput !== undefined) item.input = rawInput;

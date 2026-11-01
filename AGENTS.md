@@ -2,7 +2,7 @@
 
 Onni Work is a local cockpit for running and tracking AI coding-agent tasks in one repository.
 You type a task, pick a backend (`claude`, `codex`, `opencode`, `cursor`, `pi`, `junie`,
-`copilot`, `antigravity`) and a workflow; each task runs in its own git worktree and streams steps, tool calls,
+`copilot`, `cline`, `antigravity`) and a workflow; each task runs in its own git worktree and streams steps, tool calls,
 tokens and diffs live. A Tauri desktop shell wraps the same engine. Everything is local: no
 account, no database, no cloud. State is plain JSON, NDJSON and Markdown under `.ai/onni/` and
 `~/.onni/`. The server stack stays small: strict TypeScript (ESM, Node 20+), Hono + SSE + one

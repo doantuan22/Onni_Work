@@ -7,6 +7,7 @@ const HOME: AgentHomePaths = {
   opencodeConfig: '/home/u/.config/opencode',
   cursor: '/home/u/.cursor',
   copilot: '/home/u/.copilot',
+  cline: '/home/u/.cline',
   junie: '/home/u/.junie',
   antigravity: '/home/u/.gemini',
 };

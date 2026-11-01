@@ -42,7 +42,7 @@ import { describe, expect, it } from 'vitest';
 import type { UiEvent, UiItem } from './ui-events.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const BACKENDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'antigravity'] as const;
+const BACKENDS = ['claude', 'codex', 'opencode', 'cursor', 'pi', 'junie', 'copilot', 'cline', 'antigravity'] as const;
 
 /** Every event across every golden fixture of one backend. */
 function fixtureEvents(backend: (typeof BACKENDS)[number]): UiEvent[] {
@@ -69,6 +69,13 @@ function hasToolStatus(events: UiEvent[], status: string): boolean {
 }
 
 /**
+ * Why cline sits out four rows. Its wire (cline 3.0.74 `--acp`) was recorded live (`__fixtures__/cline/`, README
+ * "What the wire does not carry"): no `plan` update, no sub-agent, and no usage or cost on any frame or on
+ * the `session/prompt` result. Reasoning, running/completed/failed tools, diffs (from `rawInput`) and a
+ * stopReason are all produced. A frame is never fabricated to fill a row.
+ */
+
+/**
  * Why antigravity sits out five rows. Its wire (agy 1.4.12 `--output-format stream-json`) was recorded
  * live in the spike (docs/design/antigravity-spike.md, `__fixtures__/antigravity/`) and is exactly
  * `init` / `step_update` / `result`. Nothing in it carries: plan entries (no plan tool was ever
@@ -89,7 +96,7 @@ const CAPABILITIES: ReadonlyArray<
   [
     'plan.updated with entries (TodoWrite / todoList / todowrite)',
     (events) => events.some((e) => e.type === 'plan.updated' && e.entries.length > 0),
-    ['antigravity'],
+    ['cline', 'antigravity'],
   ],
   ['tool status: running', (events) => hasToolStatus(events, 'running')],
   ['tool status: completed', (events) => hasToolStatus(events, 'completed')],
@@ -114,14 +121,14 @@ const CAPABILITIES: ReadonlyArray<
     // junie's `tool_call.kind` is unmodified core ACP — read/edit/delete/move/search/execute/
     // think/fetch/other, no `task` (agentclientprotocol.com/protocol/schema#toolkind) — and
     // `nativeSubagentSessions` has no published wire shape, so there is nothing to map.
-    ['junie', 'antigravity'],
+    ['junie', 'cline', 'antigravity'],
   ],
   [
     'usage.updated with raw token counts',
     (events) => events.some((e) => e.type === 'usage.updated' && e.usage.total > 0),
     // Cursor's documented terminal `result` frame has no `usage` field — only
     // {type, subtype, is_error, duration_ms, duration_api_ms, result, session_id, request_id}.
-    ['cursor'],
+    ['cursor', 'cline'],
   ],
   [
     'turn.completed with per-turn directional usage',
@@ -130,7 +137,7 @@ const CAPABILITIES: ReadonlyArray<
         (e) => e.type === 'turn.completed' && (e.usage?.input ?? 0) > 0 && (e.usage?.output ?? 0) > 0,
       ),
     // Same absent `result.usage` as the row above.
-    ['cursor'],
+    ['cursor', 'cline'],
   ],
   ['turn.completed with a stopReason', (events) => events.some((e) => e.type === 'turn.completed' && e.stopReason !== undefined)],
 ] as const;

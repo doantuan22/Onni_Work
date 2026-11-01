@@ -361,6 +361,7 @@ const PROVIDER_LABEL: Record<ThreadProviderAuthRequired['provider'], string> = {
   cursor: 'Cursor',
   pi: 'pi',
   copilot: 'GitHub Copilot CLI',
+  cline: 'Cline CLI',
   antigravity: 'Antigravity CLI',
 }
 

@@ -1,0 +1,18 @@
+[
+  {
+    "type": "session.started",
+    "sessionId": "1793506018661_tu1fY_cli",
+    "backend": "cline",
+    "model": "anthropic/claude-sonnet-5.5",
+    "cwd": "/work/repo"
+  },
+  {
+    "type": "turn.started",
+    "turnId": "turn_1"
+  },
+  {
+    "type": "turn.completed",
+    "turnId": "turn_1",
+    "stopReason": "end_turn"
+  }
+]

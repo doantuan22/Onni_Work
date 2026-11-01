@@ -246,6 +246,7 @@ const isRunner = (value: string): value is Runner =>
   value === 'cursor' ||
   value === 'pi' ||
   value === 'copilot' ||
+  value === 'cline' ||
   value === 'antigravity'
 
 /** "Use this": the template fills name, kind, trigger (filters too), prompt and task source; the rest stays. */

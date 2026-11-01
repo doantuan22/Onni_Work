@@ -174,6 +174,7 @@ const RUNNER_LABEL: Record<RunnerId, string> = {
   pi: 'pi',
   junie: 'Junie',
   copilot: 'GitHub Copilot',
+  cline: 'Cline',
   antigravity: 'Antigravity',
 };
 

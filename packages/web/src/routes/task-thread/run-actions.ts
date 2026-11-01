@@ -42,6 +42,9 @@ const RESUME_COMMAND_PREFIX: Record<Runner, string> = {
   junie: 'junie --resume',
   pi: 'pi --session',
   copilot: 'copilot --resume',
+  // `--id <session-id>` resumes a session and `--tui` opens it interactively (`cline --help`, 3.0.74);
+  // the id is the ACP one, which `cline history` lists.
+  cline: 'cline --tui --id',
   antigravity: 'agy --conversation',
 }
 

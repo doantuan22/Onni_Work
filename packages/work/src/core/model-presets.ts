@@ -52,6 +52,10 @@ export const KNOWN_PRESETS_BY_RUNNER: Record<RunnerId, readonly string[]> = {
   // `claude-sonnet-4`). Naming them here would make this guard reject a legitimate codex or
   // claude model as "another runner's preset" — the exact failure pi's comment warns about.
   copilot: [],
+  // Cline lists nothing for the reason OpenCode and pi do: its catalog (hundreds of provider-qualified
+  // ids) is discovered from `session/new` at run time, and the structural `provider/model` check
+  // already guards it without naming vendor releases that would go stale.
+  cline: [],
   // Antigravity's catalog comes from `agy models` and holds other vendors' ids; a list here would
   // go stale and, worse, flag a legitimate claude/codex model as another runner's preset.
   antigravity: [],

@@ -14,7 +14,7 @@ const exec = (bin: string, args: readonly string[], opts: { timeout: number; env
   execAsync(...spawnableCommand(bin, args), opts);
 
 export interface BackendCheck {
-  name: 'claude' | 'codex' | 'opencode' | 'cursor' | 'pi' | 'junie' | 'copilot' | 'antigravity' | 'gh' | 'git';
+  name: 'claude' | 'codex' | 'opencode' | 'cursor' | 'pi' | 'junie' | 'copilot' | 'cline' | 'antigravity' | 'gh' | 'git';
   available: boolean;
   version?: string;
   hint?: string;
@@ -36,6 +36,7 @@ export async function detectEnvironment(): Promise<BackendCheck[]> {
     probePi(),
     probeJunie(),
     probeCopilot(),
+    probeCline(),
     probeAntigravity(),
     probeGh(),
     probeGit(),
@@ -228,6 +229,32 @@ async function probeCopilot(): Promise<BackendCheck> {
       name: 'copilot',
       available: false,
       hint: 'optional: install GitHub Copilot CLI (`npm i -g @github/copilot`) and run `copilot login` to use the copilot runner',
+    };
+  }
+}
+
+async function probeCline(): Promise<BackendCheck> {
+  // Dry-run stands the runner up on the shared mock, so report it present.
+  if (process.env.ONNI_DRY_RUN === '1') {
+    return { name: 'cline', available: true, version: 'mock (ONNI_DRY_RUN=1)' };
+  }
+  const bin = process.env.ONNI_CLINE_BIN ?? 'cline';
+  try {
+    // `--version` needs no login and no network — the auth state is the provider descriptor's
+    // job (`provider-auth.ts`), never detection's (AGENT_PROTOCOL.md §9 step 3).
+    const { stdout } = await exec(bin, ['--version'], { timeout: 10_000 });
+    return {
+      name: 'cline',
+      available: true,
+      version: stdout.trim().split(/\r?\n/)[0] ?? '',
+      hint: 'if not authenticated, run `cline auth` and pick a provider and model',
+    };
+  } catch {
+    // A missing Cline CLI is never a boot failure — the runner just isn't offered.
+    return {
+      name: 'cline',
+      available: false,
+      hint: 'optional: install Cline CLI (`npm i -g cline`) and run `cline auth` to use the cline runner',
     };
   }
 }

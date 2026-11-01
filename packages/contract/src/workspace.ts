@@ -90,6 +90,7 @@ export const workspaceConfigResponseSchema = z.object({
       pi: z.string().optional(),
       junie: z.string().optional(),
       copilot: z.string().optional(),
+      cline: z.string().optional(),
       antigravity: z.string().optional(),
     }).optional(),
   }),
@@ -150,6 +151,7 @@ export const setWorkspaceConfigInputSchema = z.object({
           cursor: z.string().trim().min(1).max(200).nullable().optional(),
           pi: z.string().trim().min(1).max(200).nullable().optional(),
           copilot: z.string().trim().min(1).max(200).nullable().optional(),
+          cline: z.string().trim().min(1).max(200).nullable().optional(),
           antigravity: z.string().trim().min(1).max(200).nullable().optional(),
         })
         .optional(),
@@ -332,6 +334,7 @@ export const workspaceUiStateSchema = z.looseObject({
       pi: z.string().optional(),
       junie: z.string().optional(),
       copilot: z.string().optional(),
+      cline: z.string().optional(),
       antigravity: z.string().optional(),
     })
     .optional(),
@@ -397,6 +400,7 @@ export const setWorkspaceUiStateInputSchema = z
         pi: z.string().min(1).max(128).optional(),
         junie: z.string().min(1).max(128).optional(),
         copilot: z.string().min(1).max(128).optional(),
+        cline: z.string().min(1).max(128).optional(),
         antigravity: z.string().min(1).max(128).optional(),
       })
       .optional(),
@@ -445,6 +449,7 @@ export const runnerModelsSchema = z.object({
   cursor: z.string().optional(),
   pi: z.string().optional(),
   copilot: z.string().optional(),
+  cline: z.string().optional(),
   antigravity: z.string().optional(),
 });
 export type RunnerModels = z.infer<typeof runnerModelsSchema>;
@@ -516,6 +521,7 @@ export const setConfigInputSchema = z.object({
       cursor: z.string().trim().max(200).nullable().optional(),
       pi: z.string().trim().max(200).nullable().optional(),
       copilot: z.string().trim().max(200).nullable().optional(),
+      cline: z.string().trim().max(200).nullable().optional(),
       antigravity: z.string().trim().max(200).nullable().optional(),
     })
     .optional(),

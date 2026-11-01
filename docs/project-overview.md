@@ -10,7 +10,7 @@
 
 Onni Work là cockpit **local** để chạy và theo dõi nhiều task của AI coding agent trên một repo.
 Người dùng nhập task, chọn backend (`claude`, `codex`, `opencode`, `cursor`, `pi`, `junie`,
-`copilot`) và workflow; mỗi task chạy trong **một git worktree riêng**, stream realtime các bước,
+`copilot`, `cline`) và workflow; mỗi task chạy trong **một git worktree riêng**, stream realtime các bước,
 tool call, token và diff, rồi dừng ở một trạng thái kết thúc do người dùng quyết định.
 
 Ba nguyên tắc:
@@ -91,7 +91,7 @@ tới cockpit. Cùng engine đó chạy được không cần desktop: `node pac
 
 ### 3.2 Backend agent
 
-`RUNNER_IDS = ['claude','codex','opencode','cursor','pi','junie','copilot']` trong
+`RUNNER_IDS = ['claude','codex','opencode','cursor','pi','junie','copilot','cline']` trong
 `core/agent-runner.ts` là nguồn duy nhất; `runnerSchema` trong contract phải khớp.
 `claude-cli` là id cũ, chỉ giữ để đọc run record cũ. Mỗi backend implement cùng một seam và phát
 đồng thời stream v1 + v2. `ONNI_DRY_RUN=1` dùng mock agent: không login, không mạng.
