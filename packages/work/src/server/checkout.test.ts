@@ -27,6 +27,8 @@ import {
   type CloneRunner,
 } from './checkout.ts';
 import { apiRequest } from './loopback-request.testkit.ts';
+import { fakeProgram } from '../test-fixtures/fake-program.testkit.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 import {
   WorkspaceEventBus,
   createApp,
@@ -118,9 +120,16 @@ describe('checkout — persisted GitHub credentials', () => {
     const repo = join(root, 'repo');
     mkdirSync(bin);
     // Substitute only gh: the runner and post-clone git configuration are real.
-    writeFileSync(join(bin, 'gh'), '#!/bin/sh\ngit init -q "$4" && git -C "$4" remote add origin "$3"\n', { mode: 0o755 });
-    vi.stubEnv('PATH', `${bin}:${process.env.PATH}`);
-    vi.stubEnv('GIT_CONFIG_GLOBAL', '/dev/null');
+    fakeProgram('gh', {
+      dir: bin,
+      body: `const { execFileSync } = require('node:child_process');
+execFileSync('git', ['init', '-q', args[3]]);
+execFileSync('git', ['-C', args[3], 'remote', 'add', 'origin', args[2]]);`,
+    }).use();
+    // An empty file, not /dev/null: the same "no global config" on Windows (NUL) and POSIX.
+    const emptyGitConfig = join(root, 'gitconfig-empty');
+    writeFileSync(emptyGitConfig, '');
+    vi.stubEnv('GIT_CONFIG_GLOBAL', emptyGitConfig);
     vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1');
     try {
       expect(await ghCloneRunner(parseRepoRef('owner/repo')!, repo, () => {}, undefined)).toEqual({ ok: true });
@@ -133,7 +142,7 @@ describe('checkout — persisted GitHub credentials', () => {
       expect(execFileSync('git', ['-C', worktree, 'config', '--get-all', 'credential.https://github.com.helper'], { encoding: 'utf8' })).toBe('\n!gh auth git-credential\n');
     } finally {
       vi.unstubAllEnvs();
-      rmSync(root, { recursive: true, force: true });
+      await removeTempDir(root);
     }
   });
 });
@@ -144,8 +153,8 @@ describe('checkout — the cleanup guard', () => {
   beforeEach(() => {
     root = mkdtempSync(join(realpathSync(tmpdir()), 'onni-checkout-root-'));
   });
-  afterEach(() => {
-    rmSync(root, { recursive: true, force: true });
+  afterEach(async () => {
+    await removeTempDir(root);
   });
 
   it('deletes a direct child of the checkout root, recursively', async () => {
@@ -221,8 +230,8 @@ describe('checkoutRepo — clone, failure cleanup, existing target', () => {
     // this the default runner shells out to a real `gh repo clone`.
     process.env.ONNI_DRY_RUN = '1';
   });
-  afterEach(() => {
-    rmSync(root, { recursive: true, force: true });
+  afterEach(async () => {
+    await removeTempDir(root);
     if (savedDryRun === undefined) delete process.env.ONNI_DRY_RUN;
     else process.env.ONNI_DRY_RUN = savedDryRun;
   });
