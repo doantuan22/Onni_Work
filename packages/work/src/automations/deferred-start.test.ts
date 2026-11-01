@@ -202,7 +202,14 @@ it.each(['before', 'partial', 'complete'])('reconciles a real RunManager SIGKILL
   const { dir, store, definition, handle, launch } = setup();
   store.update(definition.id, definition.revision, { ...definition, task: { ...definition.task, variants: 2 } });
   const worker = fileURLToPath(new URL('./__fixtures__/deferred-crash.mjs', import.meta.url));
-  await expect(promisify(execFile)(process.execPath, ['--import', 'tsx', worker, dir, boundary], { timeout: 15_000 })).rejects.toMatchObject({ signal: 'SIGKILL' });
+  // Windows has no SIGKILL: `process.kill(pid, 'SIGKILL')` is TerminateProcess there, which libuv
+  // reports as exit code 1 with no signal. Both are the same uncontinuable stop, so the hard-crash
+  // property is asserted either way — and the fixture's own two continuations are ruled out.
+  const crash = await promisify(execFile)(process.execPath, ['--import', 'tsx', worker, dir, boundary], { timeout: 15_000 })
+    .then(() => { throw new Error('the fixture ran past its fault boundary'); }, (error: { code?: number | null; signal?: string | null; stderr?: string }) => error);
+  expect(crash.signal).toBe(process.platform === 'win32' ? null : 'SIGKILL');
+  expect(crash.code).not.toBe(2);
+  expect(crash.stderr ?? '').not.toContain('Fault boundary was not reached');
   // SIGKILL leaves the proper-lockfile guard; age only this dead fixture's guard
   // to exercise normal stale recovery without sleeping fifteen seconds per case.
   const old = new Date(Date.now() - 20_000);
