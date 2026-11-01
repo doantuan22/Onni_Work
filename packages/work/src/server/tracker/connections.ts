@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs, constants } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { renameWithRetry } from '../../fs-rename.ts';
+import { readWindowsPrivateFile } from '../../private-file-read.ts';
 import type { TrackerCredentials } from '@onni/contract';
 import { onniHomeDir, assertOnniHomeWriteIsSandboxed } from '../../paths.ts';
 import { connectionRecordSchema, decodeConnectionEnv, encodeConnectionEnv, type StoredTrackerConnection } from './connection-env.ts';
@@ -29,10 +30,11 @@ export class TrackerConnections {
     await this.save(join(this.directory, '.gitignore'), '# Managed private tracker credentials; never commit this directory.\n*\n');
   }
   private async readFile(path: string): Promise<string> {
+    if (process.platform === 'win32') return readWindowsPrivateFile(path, 32_768);
     const file = await fs.open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
       const stat = await file.stat();
-      if (!stat.isFile() || stat.size > 32_768 || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) throw new Error('Invalid credential file');
+      if (!stat.isFile() || stat.size > 32_768 || (stat.mode & 0o077) !== 0) throw new Error('Invalid credential file');
       // Bound the actual read, too: the file can grow after fstat.
       const buffer = Buffer.alloc(32_769);
       let offset = 0;

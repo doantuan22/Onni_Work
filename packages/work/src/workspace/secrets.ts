@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from 'node:
 import { promises as fs, constants } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renameWithRetry } from '../fs-rename.ts';
+import { readWindowsPrivateFile } from '../private-file-read.ts';
 import { z } from 'zod';
 import {
   SECRET_AUDIENCES,
@@ -348,10 +349,20 @@ export class SecretStore {
   }
 
   private async readFile(path: string): Promise<string> {
+    if (process.platform === 'win32') {
+      try {
+        return await readWindowsPrivateFile(path, FILE_MAX_BYTES);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EFBIG') {
+          throw new SecretsError('the store file is unusable — it is larger than this store ever writes');
+        }
+        throw error;
+      }
+    }
     const file = await fs.open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
       const stat = await file.stat();
-      if (!stat.isFile() || stat.size > FILE_MAX_BYTES || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) {
+      if (!stat.isFile() || stat.size > FILE_MAX_BYTES || (stat.mode & 0o077) !== 0) {
         throw new SecretsError('the store file is unusable — it must be a regular 0600 file');
       }
       // Bound the actual read, too: the file can grow after fstat.
