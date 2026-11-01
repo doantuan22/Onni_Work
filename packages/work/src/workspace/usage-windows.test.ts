@@ -21,7 +21,7 @@ it('writes account-bound 0600 snapshots and merges concurrent accounts', async (
   expect(loadUsageWindows({ ...binding, accountId: 'personal' })?.windows).toHaveLength(1);
   expect(loadUsageWindows({ ...binding, profilePath: '/other' })).toBeNull();
   const file = join(process.env.ONNI_HOME!, 'usage-windows.json');
-  expect(statSync(file).mode & 0o777).toBe(0o600);
+  if (process.platform !== 'win32') expect(statSync(file).mode & 0o777).toBe(0o600);
   expect(readFileSync(file, 'utf8')).not.toContain('credentials');
 });
 it('merges partial updates, clears explicit null, ignores older windows and invalidates identity', async () => {

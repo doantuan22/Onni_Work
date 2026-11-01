@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -55,8 +55,7 @@ describe('server state', () => {
     s.steps.deps = { status: 'done', created: null };
     s.instanceId = 'install-a';
     saveServerState(s);
-    const mode = statSync(serverStatePath()).mode & 0o777;
-    expect(mode).toBe(0o600);
+    if (process.platform !== 'win32') expect(statSync(serverStatePath()).mode & 0o777).toBe(0o600);
     expect(loadServerState().steps.deps?.status).toBe('done');
     expect(loadServerState().instanceId).toBe('install-a');
   });
@@ -76,21 +75,35 @@ describe('server state', () => {
 
   it('lock is exclusive against a live foreign pid and reclaims stale', () => {
     const release = acquireLock();
-    // simulate a live foreign holder
-    writeFileSync(join(home, 'server.install.lock'), `${process.pid === 1 ? 2 : 1}\n`);
-    // pid 1 is alive on posix; expect the lock to be held
-    expect(() => acquireLock()).toThrow(LockHeldError);
-    // a dead pid is reclaimed
-    writeFileSync(join(home, 'server.install.lock'), '999999999\n');
-    const release2 = acquireLock();
-    release2();
-    release();
+    const livePid = 2_147_483_646;
+    const deadPid = 2_147_483_647;
+    const kill = vi.spyOn(process, 'kill').mockImplementation((pid) => {
+      if (pid === deadPid) throw Object.assign(new Error('no such process'), { code: 'ESRCH' });
+      return true;
+    });
+    try {
+      // Simulate a live foreign holder and a dead PID without relying on host PID 1.
+      writeFileSync(join(home, 'server.install.lock'), `${livePid}\n`);
+      expect(() => acquireLock()).toThrow(LockHeldError);
+      writeFileSync(join(home, 'server.install.lock'), `${deadPid}\n`);
+      const release2 = acquireLock();
+      release2();
+    } finally {
+      kill.mockRestore();
+      release();
+    }
   });
 
   it('lock acquisition is atomic (wx) — a pre-existing live lock file always wins', () => {
     // Simulate the race loser: the file appears (live pid) before our write.
-    writeFileSync(join(home, 'server.install.lock'), `${process.pid === 1 ? 2 : 1}\n`, { flag: 'wx' });
-    expect(() => acquireLock()).toThrow(LockHeldError);
+    const livePid = 2_147_483_646;
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => true);
+    try {
+      writeFileSync(join(home, 'server.install.lock'), `${livePid}\n`, { flag: 'wx' });
+      expect(() => acquireLock()).toThrow(LockHeldError);
+    } finally {
+      kill.mockRestore();
+    }
   });
 
   it('named instances persist to their own file and never clobber the default', () => {
@@ -203,12 +216,17 @@ describe('server state', () => {
     const releaseOther = acquireLock('blog-example-com');
     releaseOther();
     // but the SAME instance is exclusive against a live foreign pid
-    writeFileSync(
-      join(home, 'server-instances', 'shop-example-com.install.lock'),
-      `${process.pid === 1 ? 2 : 1}\n`,
-    );
-    expect(() => acquireLock('shop-example-com')).toThrow(LockHeldError);
-    release();
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => true);
+    try {
+      writeFileSync(
+        join(home, 'server-instances', 'shop-example-com.install.lock'),
+        '2147483646\n',
+      );
+      expect(() => acquireLock('shop-example-com')).toThrow(LockHeldError);
+    } finally {
+      kill.mockRestore();
+      release();
+    }
   });
 
   it('a newer-version server.json degrades per-field, never to a fresh record', () => {

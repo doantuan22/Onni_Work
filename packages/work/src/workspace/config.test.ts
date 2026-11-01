@@ -210,7 +210,7 @@ describe('workspace config', () => {
       config.resources.maxParallel = 4;
       config.projects.push(project('onni'));
     });
-    expect(statSync(workspaceConfigPath()).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(statSync(workspaceConfigPath()).mode & 0o777).toBe(0o600);
     const config = await loadWorkspaceConfig();
     expect(config.schemaVersion).toBe(1);
     expect(config.resources.maxParallel).toBe(4);
@@ -451,7 +451,7 @@ describe('workspace config', () => {
       await registerOne();
       const snapshot = JSON.parse(readFileSync(workspaceConfigBackupPath(), 'utf8')) as WorkspaceConfig;
       expect(snapshot.projects.map((p) => p.id)).toEqual(['shop']);
-      expect(statSync(workspaceConfigBackupPath()).mode & 0o777).toBe(0o600);
+      if (process.platform !== 'win32') expect(statSync(workspaceConfigBackupPath()).mode & 0o777).toBe(0o600);
     });
 
     it('refreshes the snapshot when the last project is unregistered, so it cannot resurrect (#731)', async () => {

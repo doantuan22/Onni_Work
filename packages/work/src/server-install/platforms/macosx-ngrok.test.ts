@@ -11,6 +11,27 @@ import { StepAborted } from '../steps.ts';
 import type { InstallContext, Runner, Ui } from '../types.ts';
 
 const okRunner: Runner = { capture: async () => ({ code: 0, stdout: '', stderr: '' }), interactive: async () => 0 };
+let home: string;
+const originalOnniHome = process.env.ONNI_HOME;
+const originalHome = process.env.HOME;
+const originalUserProfile = process.env.USERPROFILE;
+
+beforeEach(() => {
+  home = mkdtempSync(join(tmpdir(), 'onni-mac-'));
+  process.env.ONNI_HOME = home;
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+});
+
+afterEach(() => {
+  if (originalOnniHome === undefined) delete process.env.ONNI_HOME;
+  else process.env.ONNI_HOME = originalOnniHome;
+  if (originalHome === undefined) delete process.env.HOME;
+  else process.env.HOME = originalHome;
+  if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = originalUserProfile;
+  rmSync(home, { recursive: true, force: true });
+});
 
 function redeployCtx(over: { runner?: Runner; ui?: Ui; dryRun?: boolean } = {}): InstallContext {
   return {
@@ -29,18 +50,6 @@ function redeployCtx(over: { runner?: Runner; ui?: Ui; dryRun?: boolean } = {}):
 }
 
 describe('macosx-ngrok', () => {
-  let home: string;
-  const original = process.env.ONNI_HOME;
-  beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'onni-mac-'));
-    process.env.ONNI_HOME = home;
-  });
-  afterEach(() => {
-    if (original === undefined) delete process.env.ONNI_HOME;
-    else process.env.ONNI_HOME = original;
-    rmSync(home, { recursive: true, force: true });
-  });
-
   it('is registered alongside ubuntu-vps', () => {
     expect(getStrategy('macosx-ngrok')?.id).toBe('macosx-ngrok');
     expect(availablePlatformIds()).toEqual(['ubuntu-vps', 'macosx-ngrok']);
@@ -131,19 +140,23 @@ describe('macosx-ngrok', () => {
     const undone = await runUninstall(macosxNgrok, run);
     expect(undone.status).toBe('complete');
     expect(loadServerState().steps).toEqual({});
-  });
+  }, 15_000);
 });
 
 describe('macosx-ngrok review fixes (PR #423)', () => {
   let home: string;
   const original = process.env.ONNI_HOME;
+  const originalUserProfile = process.env.USERPROFILE;
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), 'onni-mac-fix-'));
     process.env.ONNI_HOME = home;
+    process.env.USERPROFILE = home;
   });
   afterEach(() => {
     if (original === undefined) delete process.env.ONNI_HOME;
     else process.env.ONNI_HOME = original;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
     rmSync(home, { recursive: true, force: true });
   });
 
@@ -209,8 +222,7 @@ describe('macosx-ngrok review fixes (PR #423)', () => {
     try {
       await ngrokStepOf().run(ctxFor(runner));
       const p = join(home, 'Library', 'LaunchAgents', 'ai.onni.ngrok.plist');
-      const mode = statSync(p).mode & 0o777;
-      expect(mode).toBe(0o600);
+      if (process.platform !== 'win32') expect(statSync(p).mode & 0o777).toBe(0o600);
       expect(readFileSync(p, 'utf8')).toContain('ops:longenough'); // creds live here → hence 0600
     } finally {
       if (oldHome === undefined) delete process.env.HOME;

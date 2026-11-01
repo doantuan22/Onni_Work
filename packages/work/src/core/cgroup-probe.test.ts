@@ -20,7 +20,7 @@ import {
  * container, which is exactly why these tests are file-driven rather than environment-driven.
  */
 function fileReader(files: Record<string, string>): CgroupFileReader {
-  return (path) => files[path];
+  return (path) => files[path.replaceAll('\\', '/')];
 }
 
 const V2_MOUNTINFO = [

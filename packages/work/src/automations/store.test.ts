@@ -43,9 +43,9 @@ describe('AutomationStore', () => {
     const persisted = JSON.parse(readFileSync(path, 'utf8'));
     expect(persisted.future).toEqual({ kept: true });
     expect(persisted.automations[0].futureDefinition).toBe(true);
-    expect((await import('node:fs/promises')).stat(path).then((stat) => stat.mode & 0o777)).resolves.toBe(
-      0o600,
-    );
+    if (process.platform !== 'win32') {
+      await expect((await import('node:fs/promises')).stat(path).then((stat) => stat.mode & 0o777)).resolves.toBe(0o600);
+    }
   });
 
   it('salvages valid entries and malformed NDJSON rows with one warning per file', async () => {

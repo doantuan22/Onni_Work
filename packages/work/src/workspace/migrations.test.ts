@@ -48,7 +48,7 @@ describe('workspace migrations', () => {
     await runMigrations({ bootRepoRoot: null });
     const config = await loadWorkspaceConfig();
     expect(config).toEqual({ ...defaultWorkspaceConfig(), schemaVersion: 2 });
-    expect(statSync(workspaceConfigPath()).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(statSync(workspaceConfigPath()).mode & 0o777).toBe(0o600);
     // nothing to import → the global ui-state file is not created
     expect(existsSync(workspaceUiStatePath())).toBe(false);
     expect(warn).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe('workspace migrations', () => {
       appearance: { accent: 'violet', density: 'compact' },
       notifications: { enabled: false },
     });
-    expect(statSync(workspaceUiStatePath()).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(statSync(workspaceUiStatePath()).mode & 0o777).toBe(0o600);
     // additive: per-repo files are byte-identical
     expect(readFileSync(join(repoRoot, '.ai/onni/config.json'), 'utf8')).toBe(repoConfigBefore);
     expect(readFileSync(join(repoRoot, '.ai/onni/ui-state.json'), 'utf8')).toBe(repoUiBefore);

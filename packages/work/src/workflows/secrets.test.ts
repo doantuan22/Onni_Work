@@ -421,7 +421,7 @@ describe('run context for check steps', () => {
     const first = (await contextOf(record.id, 'verify', repoRoot)).ONNI_SHARED_CACHE_DIR!;
     const second = (await contextOf(record.id, 'verify', repoRoot)).ONNI_SHARED_CACHE_DIR!;
     expect(second).toBe(first);
-    expect(statSync(first).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') expect(statSync(first).mode & 0o777).toBe(0o700);
     const other = new RunManager(store, repoRoot, { projectId: 'another-project' });
     try {
       const theirs = await (other as unknown as {

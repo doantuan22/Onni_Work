@@ -1,15 +1,18 @@
+import { join, relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CONFIG_FILES, findConfigFile, listConfigFiles, type AgentHomePaths } from './catalog.ts';
 
+const REPO = resolve('repo');
+const HOME_ROOT = resolve('home', 'u');
 const HOME: AgentHomePaths = {
-  claude: '/home/u/.claude',
-  codex: '/home/u/.codex',
-  opencodeConfig: '/home/u/.config/opencode',
-  cursor: '/home/u/.cursor',
-  copilot: '/home/u/.copilot',
-  cline: '/home/u/.cline',
-  junie: '/home/u/.junie',
-  antigravity: '/home/u/.gemini',
+  claude: join(HOME_ROOT, '.claude'),
+  codex: join(HOME_ROOT, '.codex'),
+  opencodeConfig: join(HOME_ROOT, '.config', 'opencode'),
+  cursor: join(HOME_ROOT, '.cursor'),
+  copilot: join(HOME_ROOT, '.copilot'),
+  cline: join(HOME_ROOT, '.cline'),
+  junie: join(HOME_ROOT, '.junie'),
+  antigravity: join(HOME_ROOT, '.gemini'),
 };
 
 describe('agent-config catalog', () => {
@@ -34,21 +37,21 @@ describe('agent-config catalog', () => {
 
   it('resolves repo-relative paths under the repo root', () => {
     const proj = findConfigFile('claude.project.settings')!;
-    expect(proj.resolve('/repo', HOME)).toBe('/repo/.claude/settings.json');
+    expect(proj.resolve(REPO, HOME)).toBe(join(REPO, '.claude', 'settings.json'));
   });
 
   it('honours the injected home dirs (so $CODEX_HOME / $XDG_CONFIG_HOME / $CURSOR_CONFIG_DIR flow through)', () => {
-    expect(findConfigFile('codex.user.config')!.resolve('/repo', HOME)).toBe('/home/u/.codex/config.toml');
-    expect(findConfigFile('opencode.user.config')!.resolve('/repo', HOME)).toBe(
-      '/home/u/.config/opencode/opencode.json',
+    expect(findConfigFile('codex.user.config')!.resolve(REPO, HOME)).toBe(join(HOME.codex, 'config.toml'));
+    expect(findConfigFile('opencode.user.config')!.resolve(REPO, HOME)).toBe(
+      join(HOME.opencodeConfig, 'opencode.json'),
     );
-    expect(findConfigFile('claude.user.settings')!.resolve('/repo', HOME)).toBe('/home/u/.claude/settings.json');
-    expect(findConfigFile('cursor.user.settings')!.resolve('/repo', HOME)).toBe(
-      '/home/u/.cursor/cli-config.json',
+    expect(findConfigFile('claude.user.settings')!.resolve(REPO, HOME)).toBe(join(HOME.claude, 'settings.json'));
+    expect(findConfigFile('cursor.user.settings')!.resolve(REPO, HOME)).toBe(
+      join(HOME.cursor, 'cli-config.json'),
     );
-    expect(findConfigFile('cursor.project.settings')!.resolve('/repo', HOME)).toBe('/repo/.cursor/cli.json');
-    expect(findConfigFile('cursor.user.mcp')!.resolve('/repo', HOME)).toBe('/home/u/.cursor/mcp.json');
-    expect(findConfigFile('cursor.project.mcp')!.resolve('/repo', HOME)).toBe('/repo/.cursor/mcp.json');
+    expect(findConfigFile('cursor.project.settings')!.resolve(REPO, HOME)).toBe(join(REPO, '.cursor', 'cli.json'));
+    expect(findConfigFile('cursor.user.mcp')!.resolve(REPO, HOME)).toBe(join(HOME.cursor, 'mcp.json'));
+    expect(findConfigFile('cursor.project.mcp')!.resolve(REPO, HOME)).toBe(join(REPO, '.cursor', 'mcp.json'));
   });
 
   it('marks only Claude’s gitignored personal layer as seeded', () => {
@@ -61,7 +64,11 @@ describe('agent-config catalog', () => {
 
   it('every seeded/gitignored file is a repo-relative path (never in $HOME)', () => {
     for (const f of CONFIG_FILES) {
-      if (f.tracked === 'gitignored') expect(f.resolve('/repo', HOME).startsWith('/repo/')).toBe(true);
+      if (f.tracked === 'gitignored') {
+        const rel = relative(REPO, f.resolve(REPO, HOME));
+        expect(rel === '..' || rel.startsWith(`..${sep}`)).toBe(false);
+        expect(resolve(REPO, rel)).not.toBe(REPO);
+      }
     }
   });
 

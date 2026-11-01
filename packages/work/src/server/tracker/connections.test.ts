@@ -22,14 +22,21 @@ it('stores each project outside its checkout with private permissions and fresh 
   expect(await readdir(a)).toEqual([]);
   const dir = join(home, 'tracker-connections');
   const file = join(dir, (await readdir(dir)).find(name => name.endsWith('.env'))!);
-  expect((await stat(file)).mode & 0o777).toBe(0o600);
-  expect((await stat(dir)).mode & 0o777).toBe(0o700);
+  // Windows uses inherited ACLs rather than POSIX mode bits.
+  if (process.platform !== 'win32') {
+    expect((await stat(file)).mode & 0o777).toBe(0o600);
+    expect((await stat(dir)).mode & 0o777).toBe(0o700);
+  }
   expect(await readFile(file, 'utf8')).toContain('private-test-A');
   const next = await store.write(a, { kind: 'linear', key: 'private-test-B' });
   expect(next?.id).not.toBe(first?.id);
   expect(await readFile(file, 'utf8')).not.toContain('private-test-A');
-  await chmod(file, 0o644);
-  expect(await store.read(a)).toBeNull();
+  if (process.platform !== 'win32') {
+    await chmod(file, 0o644);
+    expect(await store.read(a)).toBeNull();
+  } else {
+    expect((await store.read(a))?.id).toBe(next?.id);
+  }
   expect(await store.remove(a)).toBe(true);
   expect(await store.remove(a)).toBe(true);
   expect(await store.read(a)).toBeNull();
@@ -43,6 +50,7 @@ it('fails closed on corrupt storage and keeps the previous record after invalid 
 
 const secretPath = (home: string, project: string, suffix: string) =>
   join(home, 'tracker-connections', createHash('sha256').update(project).digest('hex') + suffix);
+
 async function legacy(home: string, project: string) {
   const record = { id: randomUUID(), credentials: { kind: 'linear', key: 'legacy-dummy' } };
   await mkdir(join(home, 'tracker-connections'), { recursive: true, mode: 0o700 });

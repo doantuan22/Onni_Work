@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import {
   DEFAULT_SERVER_INSTANCE,
   agentHomePaths,
@@ -15,6 +15,10 @@ import {
   workspaceUiStatePath,
 } from './paths.ts';
 
+const testHome = resolve('test-home');
+const testOverrides = resolve('test-overrides');
+const onniOverride = resolve('test-onni-home');
+
 describe('paths', () => {
   const original = process.env.ONNI_HOME;
   afterEach(() => {
@@ -28,16 +32,16 @@ describe('paths', () => {
   });
 
   it('honors the ONNI_HOME override', () => {
-    process.env.ONNI_HOME = '/tmp/onni-home-test';
-    expect(onniHomeDir()).toBe('/tmp/onni-home-test');
-    expect(serverStatePath()).toBe('/tmp/onni-home-test/server.json');
-    expect(serverLockPath()).toBe('/tmp/onni-home-test/server.install.lock');
+    process.env.ONNI_HOME = onniOverride;
+    expect(onniHomeDir()).toBe(onniOverride);
+    expect(serverStatePath()).toBe(join(onniOverride, 'server.json'));
+    expect(serverLockPath()).toBe(join(onniOverride, 'server.install.lock'));
   });
 
   it('the default instance keeps the legacy un-suffixed paths', () => {
-    process.env.ONNI_HOME = '/tmp/onni-home-test';
-    expect(serverStatePath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/onni-home-test/server.json');
-    expect(serverLockPath(DEFAULT_SERVER_INSTANCE)).toBe('/tmp/onni-home-test/server.install.lock');
+    process.env.ONNI_HOME = onniOverride;
+    expect(serverStatePath(DEFAULT_SERVER_INSTANCE)).toBe(join(onniOverride, 'server.json'));
+    expect(serverLockPath(DEFAULT_SERVER_INSTANCE)).toBe(join(onniOverride, 'server.install.lock'));
   });
 
   it('workspace config/ui-state live directly under the onni home', () => {
@@ -47,17 +51,17 @@ describe('paths', () => {
   });
 
   it('workspace paths honor the ONNI_HOME override', () => {
-    process.env.ONNI_HOME = '/tmp/onni-home-test';
-    expect(workspaceConfigPath()).toBe('/tmp/onni-home-test/config.json');
-    expect(workspaceUiStatePath()).toBe('/tmp/onni-home-test/ui-state.json');
+    process.env.ONNI_HOME = onniOverride;
+    expect(workspaceConfigPath()).toBe(join(onniOverride, 'config.json'));
+    expect(workspaceUiStatePath()).toBe(join(onniOverride, 'ui-state.json'));
   });
 
   it('a named instance lives under server-instances/, keyed by slug', () => {
-    process.env.ONNI_HOME = '/tmp/onni-home-test';
-    expect(serverInstancesDir()).toBe('/tmp/onni-home-test/server-instances');
-    expect(serverStatePath('shop-example-com')).toBe('/tmp/onni-home-test/server-instances/shop-example-com.json');
+    process.env.ONNI_HOME = onniOverride;
+    expect(serverInstancesDir()).toBe(join(onniOverride, 'server-instances'));
+    expect(serverStatePath('shop-example-com')).toBe(join(onniOverride, 'server-instances', 'shop-example-com.json'));
     expect(serverLockPath('shop-example-com')).toBe(
-      '/tmp/onni-home-test/server-instances/shop-example-com.install.lock',
+      join(onniOverride, 'server-instances', 'shop-example-com.install.lock'),
     );
   });
 });
@@ -102,8 +106,8 @@ it('an EMPTY ONNI_HOME falls back to the default instead of a relative cwd path'
   const original = process.env.ONNI_HOME;
   process.env.ONNI_HOME = '';
   try {
-    expect(onniHomeDir().startsWith('/')).toBe(true);
-    expect(onniHomeDir().endsWith('/.onni')).toBe(true);
+    expect(isAbsolute(onniHomeDir())).toBe(true);
+    expect(onniHomeDir()).toBe(join(homedir(), '.onni'));
   } finally {
     if (original === undefined) delete process.env.ONNI_HOME;
     else process.env.ONNI_HOME = original;
@@ -112,54 +116,54 @@ it('an EMPTY ONNI_HOME falls back to the default instead of a relative cwd path'
 
 describe('agentHomePaths', () => {
   it('defaults to the agents\' documented home directories', () => {
-    const paths = agentHomePaths({ HOME: '/home/u' } as NodeJS.ProcessEnv);
-    expect(paths.claude).toBe('/home/u/.claude');
-    expect(paths.codex).toBe('/home/u/.codex');
-    expect(paths.opencodeConfig).toBe('/home/u/.config/opencode');
-    expect(paths.cursor).toBe('/home/u/.cursor');
+    const paths = agentHomePaths({ HOME: testHome } as NodeJS.ProcessEnv);
+    expect(paths.claude).toBe(join(testHome, '.claude'));
+    expect(paths.codex).toBe(join(testHome, '.codex'));
+    expect(paths.opencodeConfig).toBe(join(testHome, '.config', 'opencode'));
+    expect(paths.cursor).toBe(join(testHome, '.cursor'));
   });
 
   it('honors agent-specific home overrides', () => {
     const paths = agentHomePaths({
-      HOME: '/home/u',
-      CLAUDE_CONFIG_DIR: '/opt/claude-klaudiusz',
-      CODEX_HOME: '/opt/codex',
-      CURSOR_CONFIG_DIR: '/opt/cursor',
-      XDG_CONFIG_HOME: '/xdg',
+      HOME: testHome,
+      CLAUDE_CONFIG_DIR: join(testOverrides, 'claude-klaudiusz'),
+      CODEX_HOME: join(testOverrides, 'codex'),
+      CURSOR_CONFIG_DIR: join(testOverrides, 'cursor'),
+      XDG_CONFIG_HOME: join(testOverrides, 'xdg'),
     } as NodeJS.ProcessEnv);
-    expect(paths.claude).toBe('/opt/claude-klaudiusz');
-    expect(paths.codex).toBe('/opt/codex');
-    expect(paths.opencodeConfig).toBe('/xdg/opencode');
-    expect(paths.cursor).toBe('/opt/cursor');
+    expect(paths.claude).toBe(join(testOverrides, 'claude-klaudiusz'));
+    expect(paths.codex).toBe(join(testOverrides, 'codex'));
+    expect(paths.opencodeConfig).toBe(join(testOverrides, 'xdg', 'opencode'));
+    expect(paths.cursor).toBe(join(testOverrides, 'cursor'));
   });
 
   it('ignores a blank CLAUDE_CONFIG_DIR rather than yielding a relative path', () => {
-    const paths = agentHomePaths({ HOME: '/home/u', CLAUDE_CONFIG_DIR: '   ' } as NodeJS.ProcessEnv);
-    expect(paths.claude).toBe('/home/u/.claude');
+    const paths = agentHomePaths({ HOME: testHome, CLAUDE_CONFIG_DIR: '   ' } as NodeJS.ProcessEnv);
+    expect(paths.claude).toBe(join(testHome, '.claude'));
   });
 
   it('falls back to USERPROFILE when HOME is unset', () => {
-    const paths = agentHomePaths({ USERPROFILE: 'C:\\Users\\u' } as unknown as NodeJS.ProcessEnv);
-    expect(paths.claude).toContain('.claude');
+    const paths = agentHomePaths({ USERPROFILE: testHome } as NodeJS.ProcessEnv);
+    expect(paths.claude).toBe(join(testHome, '.claude'));
   });
 });
 
 describe('claudeStateFilePath', () => {
   it('is a SIBLING of the default ~/.claude', () => {
-    const env = { HOME: '/home/u' } as NodeJS.ProcessEnv;
-    expect(claudeStateFilePath(agentHomePaths(env).claude, env)).toBe('/home/u/.claude.json');
+    const env = { HOME: testHome } as NodeJS.ProcessEnv;
+    expect(claudeStateFilePath(agentHomePaths(env).claude, env)).toBe(join(testHome, '.claude.json'));
   });
 
   it('moves INSIDE an overridden config dir', () => {
-    const env = { HOME: '/home/u', CLAUDE_CONFIG_DIR: '/home/u/.claude-klaudiusz' } as NodeJS.ProcessEnv;
-    expect(claudeStateFilePath(agentHomePaths(env).claude, env)).toBe('/home/u/.claude-klaudiusz/.claude.json');
+    const env = { HOME: testHome, CLAUDE_CONFIG_DIR: join(testHome, '.claude-klaudiusz') } as NodeJS.ProcessEnv;
+    expect(claudeStateFilePath(agentHomePaths(env).claude, env)).toBe(join(testHome, '.claude-klaudiusz', '.claude.json'));
   });
 
   it('moves inside for a profile dir passed explicitly, with no env override', () => {
     // The agent-profile path: the env still says "default", but the caller resolved
     // a second account's dir. Reading `dirname()` here would hit the WRONG account's file.
-    const env = { HOME: '/home/u' } as NodeJS.ProcessEnv;
-    expect(claudeStateFilePath('/home/u/.claude-klaudiusz', env)).toBe('/home/u/.claude-klaudiusz/.claude.json');
+    const env = { HOME: testHome } as NodeJS.ProcessEnv;
+    expect(claudeStateFilePath(join(testHome, '.claude-klaudiusz'), env)).toBe(join(testHome, '.claude-klaudiusz', '.claude.json'));
   });
 
   it('reads an account\'s OWN state file when the onni process carries an override', () => {
@@ -167,15 +171,15 @@ describe('claudeStateFilePath', () => {
     // account (legal — the discovered account is /opt/work, so it is not a duplicate). The answer is
     // the file INSIDE it, because that is the one the CLI will read when onni runs that account as
     // `CLAUDE_CONFIG_DIR=~/.claude claude`. The sibling would describe a login it never uses.
-    const env = { HOME: '/home/u', CLAUDE_CONFIG_DIR: '/opt/work' } as NodeJS.ProcessEnv;
-    expect(claudeStateFilePath('/home/u/.claude', env)).toBe('/home/u/.claude/.claude.json');
-    expect(claudeStateFilePath('/opt/work', env)).toBe('/opt/work/.claude.json');
+    const env = { HOME: testHome, CLAUDE_CONFIG_DIR: join(testOverrides, 'work') } as NodeJS.ProcessEnv;
+    expect(claudeStateFilePath(join(testHome, '.claude'), env)).toBe(join(testHome, '.claude', '.claude.json'));
+    expect(claudeStateFilePath(join(testOverrides, 'work'), env)).toBe(join(testOverrides, 'work', '.claude.json'));
   });
 
   it('keeps the SIBLING spelling for the discovered account on a plain machine', () => {
     // The zero-config path, and the one case where the file is not inside: no override anywhere, so
     // the CLI never sees the variable.
-    const env = { HOME: '/home/u' } as NodeJS.ProcessEnv;
-    expect(claudeStateFilePath('/home/u/.claude', env)).toBe('/home/u/.claude.json');
+    const env = { HOME: testHome } as NodeJS.ProcessEnv;
+    expect(claudeStateFilePath(join(testHome, '.claude'), env)).toBe(join(testHome, '.claude.json'));
   });
 });
