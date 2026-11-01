@@ -23,6 +23,8 @@ import type { FsBrowseResponse } from './fs-browse.ts';
  */
 describe('GET /api/v1/fs/browse (step 4.1)', () => {
   const savedHome = process.env.HOME;
+  /** Windows `os.homedir()` reads `USERPROFILE`, not `HOME` — both must point at the fixture. */
+  const savedUserProfile = process.env.USERPROFILE;
   const savedOnniHome = process.env.ONNI_HOME;
   const savedRemote = process.env.ONNI_REMOTE;
   const savedBrowseRoot = process.env.ONNI_BROWSE_ROOT;
@@ -37,6 +39,7 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     home = realpathSync(mkdtempSync(join(tmpdir(), 'onni-fs-browse-home-')));
     outside = realpathSync(mkdtempSync(join(tmpdir(), 'onni-fs-browse-outside-')));
     process.env.HOME = home;
+    process.env.USERPROFILE = home;
     process.env.ONNI_HOME = join(home, '.onni');
     delete process.env.ONNI_REMOTE; // local mode is the default under test
     delete process.env.ONNI_BROWSE_ROOT;
@@ -65,6 +68,7 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     store.flush();
     for (const [key, value] of [
       ['HOME', savedHome],
+      ['USERPROFILE', savedUserProfile],
       ['ONNI_HOME', savedOnniHome],
       ['ONNI_REMOTE', savedRemote],
       ['ONNI_BROWSE_ROOT', savedBrowseRoot],
