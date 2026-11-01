@@ -259,7 +259,8 @@ The supported dev machine here is Windows 11 with Git Bash.
   cleaning temp/worktree dirs, `chmod` modes (`0600` vs `0666`), `/bin/sh`, POSIX paths. Treat CI
   as the authority; do not chase these locally.
 - `npm run test:e2e` shells out to `.ai/scripts/e2e.sh`; it needs `sh` on PATH and a provisioned
-  browser provider.
+  browser provider. `.ai/scripts/test-env-up.sh` and `test-env-down.sh` are plain `sh` too — run
+  them from Git Bash, since `cmd` and PowerShell report `'.ai' is not recognized`.
 
 ## Where to look first
 
