@@ -127,8 +127,14 @@ export async function executeLifecycleCommand(options: LifecycleExecutorOptions)
         }
       }
       if (piece.endsWith('\n')) {
-        if (windows && stream === 'stderr' && buffers[stream].startsWith(`${completionMarker}:`)) {
-          const code = Number(buffers[stream].slice(completionMarker.length + 1).trim());
+        // The Windows wrapper terminates a partial line with a newline so its
+        // private completion marker always starts one. That separator is not
+        // command output: hold it until the next line proves what it belonged
+        // to, or every command would open its output page with a blank line.
+        if (windows && stream === 'stderr' && buffers[stream] === '\n') continue;
+        const markerAt = windows && stream === 'stderr' && buffers[stream].startsWith('\n') ? 1 : 0;
+        if (windows && stream === 'stderr' && buffers[stream].startsWith(`${completionMarker}:`, markerAt)) {
+          const code = Number(buffers[stream].slice(markerAt + completionMarker.length + 1).trim());
           if (Number.isInteger(code) && code >= 0 && code <= 255) { windowsCommandCode = code; void terminateWindows(); }
         } else if (!discarding[stream]) safeLine(stream, buffers[stream]);
         buffers[stream] = ''; discarding[stream] = false;
