@@ -10,17 +10,17 @@ import { rm } from 'node:fs/promises';
  * and their working directory is inside the temp repository. POSIX unlinks a directory that is
  * some process's cwd; Windows refuses (`EBUSY`/`EPERM`) until that process has exited.
  *
- * Why not `rmSync(..., { maxRetries })` either: since Node moved `rmSync` to its native
- * implementation, the retry never happens for this error on Windows. The refusal surfaces as
- * `EPERM, Permission denied` after 0 ms however many retries were asked for (measured on Node
- * 24.18: `rmSync` with `maxRetries: 20, retryDelay: 100` against a directory a child holds as
- * its cwd for 400 ms fails at once; `fs.promises.rm` with the same options succeeds after
- * ~330 ms). The promise API still runs the JavaScript retry loop, which does treat `EBUSY`,
- * `EPERM` and `ENOTEMPTY` as "try again", so that is the one to use.
+ * Why the promise API rather than `rmSync(..., { maxRetries })`: `rmSync` does retry EPERM, but
+ * its loop blocks the event loop and its budget is short. Measured on Node 24.21 against a child
+ * holding the directory as its cwd: no retries fails in ~100 ms; `maxRetries: 5, retryDelay: 100`
+ * succeeds for a 400 ms holder but still fails against a 2000 ms one (after ~2.1 s); the promise
+ * call with `maxRetries: 10, retryDelay: 100` succeeds against the same 2000 ms holder. Blocking
+ * also means a handle held by THIS process — an unsettled stream, a closing server — can never
+ * close while the retries run, so the synchronous loop can exhaust its budget waiting on itself.
  *
- * The wait is bounded and linear (`retryDelay * attempt`): about 5 s in total at the values
- * below, and a directory that is free — every POSIX run, and most Windows ones — is removed on
- * the first attempt with no delay at all. A holder that outlives the bound is a real leak and
+ * The promise wait is bounded and linear (`retryDelay * attempt`): about 5.5 s in total at the
+ * values below, and a directory that is free — every POSIX run, and most Windows ones — is removed
+ * on the first attempt with no delay at all. A holder that outlives the bound is a real leak and
  * still fails the test, which is the point: this absorbs a process that is on its way out, it
  * does not hide one that never leaves. (Two such leaks were found this way and fixed at the
  * source instead: a namer launched by a disposed manager, and tests that started the developer's
