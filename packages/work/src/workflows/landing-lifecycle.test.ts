@@ -1,11 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RunStore } from '../runs/store.ts';
 import { RunManager } from './run.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
+import { removeTempDir } from '../test-fixtures/remove-temp-dir.testkit.ts';
 
 let root: string, store: RunStore, manager: RunManager;
 const workflow = { name: 'quick-task', source: 'built-in' as const, steps: [{ id: 'task', name: 'Task', prompt: '{{task}}' }] };
@@ -23,13 +24,13 @@ beforeEach(() => {
   store = RunStore.open(join(root, '.ai/onni'));
   manager = new RunManager(store, root, { semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 0 } }) });
 });
-afterEach(() => {
+afterEach(async () => {
   for (const run of store.listRuns()) manager.cancel(run.id);
   manager.dispose();
   store.flush();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
-  rmSync(root, { recursive: true, force: true });
+  await removeTempDir(root);
 });
 function record() {
   const run = store.createRun({ title: 'Review me', task: 'Task', workflow: 'quick-task', steps: [{ id: 'task', name: 'Task', kind: 'agent' }] });
@@ -83,7 +84,9 @@ for (const action of ['commit', 'finish'] as const) {
       const release = join(root, '.ai/onni/release');
       const script = join(root, '.ai/onni/gate.cjs');
       writeFileSync(script, `const fs=require('fs');fs.writeFileSync(${JSON.stringify(entered)},'');let n=0;const t=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)})){clearInterval(t);process.exit(${exitCode})}if(++n>500){clearInterval(t);process.exit(1)}},20);`);
-      config([`node ${script}`]);
+      // The command runs through `bash -lc`: an unquoted Windows path loses its backslashes to
+      // the shell, so node never sees the file (proven on this host).
+      config([`node "${script}"`]);
       const run = record();
       writeFileSync(join(root, 'a.txt'), 'changed\n');
       const statuses: string[] = [];
