@@ -1,7 +1,8 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { posixPath } from '../test-fixtures/posix-path.testkit.ts';
 import { DISCLAIM_EXEC_FLAG, disclaimedCommand } from './disclaim-spawn.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'onni-disclaim-'));
@@ -17,12 +18,17 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const cloneDir = join(dir, 'clones');
 const darwin = { platform: 'darwin' as const, hostEnv: { ONNI_DISCLAIM_EXEC: trampoline }, cloneDir };
+/** The disclaim path is macOS-only: it treats a `program` containing `/` as a path and splits
+ *  `PATH` with the host delimiter. A fixture that asks for `darwin` on a Windows host must
+ *  therefore hand it POSIX-shaped absolute paths and a host-joined list, as macOS itself would. */
+const macPath = posixPath;
+const pathList = (...parts: string[]) => parts.map(macPath).join(delimiter);
 
 describe('disclaimedCommand', () => {
   it('routes an agent through the desktop trampoline, resolved on the child PATH', () => {
-    expect(disclaimedCommand('claude', ['-p', 'x'], { PATH: `/nowhere:${dir}` }, darwin))
+    expect(disclaimedCommand('claude', ['-p', 'x'], { PATH: pathList('/nowhere', dir) }, darwin))
       .toEqual([trampoline, [DISCLAIM_EXEC_FLAG, claude, '-p', 'x']]);
-    expect(disclaimedCommand(claude, [], {}, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, claude]]);
+    expect(disclaimedCommand(macPath(claude), [], {}, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, macPath(claude)]]);
   });
 
   it('leaves the command alone outside the desktop app and off macOS', () => {
@@ -70,7 +76,7 @@ describe('disclaimedCommand', () => {
     expect(argv.slice(2)).toEqual([pi, '--mode', 'rpc']);
     if (process.platform === 'darwin') expect(argv[1]).toMatch(/\/clones\/pi-[0-9a-f]{16}\/pi$/);
     else expect(argv[1]).toBe(node);
-    expect(disclaimedCommand(flagged, [], { PATH: join(dir, 'npm') }, darwin)[1].slice(2)).toEqual(['--no-warnings', flagged]);
+    expect(disclaimedCommand(macPath(flagged), [], { PATH: join(dir, 'npm') }, darwin)[1].slice(2)).toEqual(['--no-warnings', macPath(flagged)]);
   });
 
   it('never renames a node that is really a Volta or mise shim', () => {
@@ -78,14 +84,14 @@ describe('disclaimedCommand', () => {
     const shim = exe('volta/volta-shim', Buffer.from([0xcf, 0xfa, 0xed, 0xfe]));
     symlinkSync(shim, join(dir, 'volta', 'node'));
     const tool = exe('volta/tool', '#!/usr/bin/env node\n');
-    expect(disclaimedCommand(tool, ['-p'], { PATH: join(dir, 'volta') }, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, tool, '-p']]);
+    expect(disclaimedCommand(macPath(tool), ['-p'], { PATH: join(dir, 'volta') }, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, macPath(tool), '-p']]);
   });
 
   it('leaves a script whose node cannot be found, and a bash launcher, as they are', () => {
     mkdirSync(join(dir, 'lone'));
     const lone = exe('lone/tool', '#!/usr/bin/env node\n');
-    expect(disclaimedCommand(lone, [], { PATH: join(dir, 'lone') }, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, lone]]);
+    expect(disclaimedCommand(macPath(lone), [], { PATH: join(dir, 'lone') }, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, macPath(lone)]]);
     const bash = exe('lone/launcher', '#!/usr/bin/env bash\nexec node x\n');
-    expect(disclaimedCommand(bash, [], { PATH: join(dir, 'npm') }, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, bash]]);
+    expect(disclaimedCommand(macPath(bash), [], { PATH: join(dir, 'npm') }, darwin)).toEqual([trampoline, [DISCLAIM_EXEC_FLAG, macPath(bash)]]);
   });
 });
