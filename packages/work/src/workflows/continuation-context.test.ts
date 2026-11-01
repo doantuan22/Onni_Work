@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import type { RunEvent, RunRecord } from '../runs/store.ts';
@@ -16,6 +18,8 @@ const event = (seq: number, type: string, extra: Record<string, unknown>): RunEv
 });
 
 const DIR = '/repo/.ai/onni/runs/r1-images';
+/** The product resolves an attachment URL to a path with the host's `join`. */
+const file = (name: string): string => join(DIR, name);
 
 describe('freshContinuationContext', () => {
   it('hands the new provider the paths of screenshots pasted into the old session', () => {
@@ -23,14 +27,14 @@ describe('freshContinuationContext', () => {
       event(1, 'user-message', { text: 'is this true?', images: ['/api/v1/runs/r1/images/pasted-2.png'] }),
       event(2, 'user-message', { text: '', images: ['/api/v1/runs/r1/images/pasted-3.png'] }),
     ], DIR);
-    expect(context).toContain('Fix the checkout bug\nAttached files:\n- /repo/.ai/onni/runs/r1-images/pasted-1.png');
-    expect(context).toContain('User:\nis this true?\nAttached files:\n- /repo/.ai/onni/runs/r1-images/pasted-2.png');
-    expect(context).toContain('User:\nAttached files:\n- /repo/.ai/onni/runs/r1-images/pasted-3.png');
+    expect(context).toContain(`Fix the checkout bug\nAttached files:\n- ${file('pasted-1.png')}`);
+    expect(context).toContain(`User:\nis this true?\nAttached files:\n- ${file('pasted-2.png')}`);
+    expect(context).toContain(`User:\nAttached files:\n- ${file('pasted-3.png')}`);
   });
 
   it('lists the files of a task given as attachments only', () => {
     const context = freshContinuationContext(run({ task: '  ', taskImages: ['/api/v1/runs/r1/images/spec.pdf'] }), [], DIR);
-    expect(context).toContain('## Original task\n(given as attachments only)\nAttached files:\n- /repo/.ai/onni/runs/r1-images/spec.pdf');
+    expect(context).toContain(`## Original task\n(given as attachments only)\nAttached files:\n- ${file('spec.pdf')}`);
   });
 
   it('carries task state and the persisted conversation without a handoff file', () => {
