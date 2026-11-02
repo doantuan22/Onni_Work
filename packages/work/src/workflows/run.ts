@@ -3157,7 +3157,11 @@ export class RunManager {
 
     // Never run the same order twice at once: a manager that re-sends a title whose worker is still
     // queued or working would pay for the same part twice and give two branches one scope.
-    const duplicate = childrenOf(runs, parentId).find((r) => r.title === orderTitle && IN_FLIGHT_STATUSES.includes(r.status));
+    // Only an order the agent NAMED (--title) and only from an agent: graph nodes legitimately fan out
+    // identical, untitled children.
+    const duplicate = input.title !== undefined && !opts.workflow
+      ? childrenOf(runs, parentId).find((r) => r.title === orderTitle && IN_FLIGHT_STATUSES.includes(r.status))
+      : undefined;
     if (duplicate) {
       const refused = `"${orderTitle}" is already ${duplicate.status === 'queued' ? 'queued' : 'running'} as ${duplicate.id.slice(0, 8)}. Wait for its report instead of dispatching it again.`;
       note(`dispatch refused — ${refused}`, 'danger');
