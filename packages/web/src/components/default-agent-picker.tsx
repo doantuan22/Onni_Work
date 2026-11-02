@@ -62,6 +62,7 @@ export function DefaultAgentPicker({
   disabled = false,
   accountDisabled = false,
   stackedOverride,
+  asToggle,
   onPick,
 }: {
   rows: readonly AgentPickerRow[]
@@ -78,6 +79,8 @@ export function DefaultAgentPicker({
   accountDisabled?: boolean
   /** A caller showing one agent's rows only (so the list-wide count says nothing) can force the stacked form. */
   stackedOverride?: boolean
+  /** One agent, one login: render a clear on/off button ("Default agent" / "Set as default") instead of a one-item strip. */
+  asToggle?: boolean
   onPick: (runner: Runner, account: string | null, hasAccountChoice: boolean) => void
 }) {
   const stacked = stackedOverride ?? hasAgentAccounts(rows)
@@ -91,7 +94,7 @@ export function DefaultAgentPicker({
         'gap-0.5 rounded-md border border-border bg-card p-0.5',
         // Stacked once accounts are in play: `claude · Klaudiusz` beside its folder does not fit a
         // segmented strip, and the folder is the part that says WHICH login this is.
-        stacked ? 'flex max-w-md flex-col' : 'grid max-w-2xl grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]',
+        asToggle && rows.length === 1 ? 'flex w-fit' : stacked ? 'flex max-w-md flex-col' : 'grid max-w-2xl grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]',
       )}
     >
       {rows.map((row) => {
@@ -130,7 +133,7 @@ export function DefaultAgentPicker({
               checked ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
             )}
           >
-            {row.label}
+            {asToggle && rows.length === 1 ? (checked ? `✓ ${t('Default agent for new projects')}` : t('Set as default')) : row.label}
             {stacked ? (
               <span
                 data-slot={row.missing ? 'agents-account-missing' : 'agents-account-dir'}

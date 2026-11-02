@@ -432,6 +432,7 @@ function AgentDefaults({ provider, profiles }: { provider: ProviderId; profiles:
           disabled={save.isPending}
           accountDisabled={select.isPending}
           stackedOverride={rows.length > 1}
+          asToggle
           onPick={(picked, account, hasAccountChoice) => {
             if (picked !== runner) save.mutate({ agentDefaults: { runner: picked } })
             // `projectId: null` targets the machine-wide default rather than one repo. Only for an

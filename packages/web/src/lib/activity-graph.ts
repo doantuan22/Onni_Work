@@ -78,7 +78,8 @@ function lineOf(run: ApiRun, state: ActivityState): string {
     case 'asking':
       return 'Waiting for an answer'
     case 'running':
-      return step?.name ?? run.title
+      // A dispatched worker's only step is named after its order, so repeating it says nothing.
+      return step?.name && step.name !== run.title ? step.name : 'Working on the task'
     case 'blocked':
       return (run.error ?? 'Blocked by a permission').slice(0, 110)
     case 'failed':

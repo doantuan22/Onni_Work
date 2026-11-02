@@ -220,7 +220,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
             disabled={save.isPending}
             placeholder={t('no limit')}
             onChange={(event) => setMemory(event.target.value)}
-            className="block w-32 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+            className="block w-40 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
           />
           <span className="text-xs text-soft-foreground">MiB</span>
           <Button
