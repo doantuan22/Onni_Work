@@ -27,7 +27,7 @@ describe('dispatch structure', () => {
     manager?.dispose();
     manager = new RunManager(store, repoRoot, {
       semaphore: new WorkspaceSemaphore({
-        initial: { maxParallel: 6, maxMonitoringSessions: 0, safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1, ...safety } },
+        initial: { maxParallel: 6, maxMonitoringSessions: 0, safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchUnlimitedSubtasks: false, dispatchRetryLimit: 1, ...safety } },
       }),
     });
   };
@@ -117,6 +117,23 @@ describe('dispatch structure', () => {
     ok(r.id, 'mock:done one', { title: 'one' });
     ok(r.id, 'mock:done two', { title: 'two' });
     expect(refused(r.id, 'mock:done three', { title: 'three' })).toContain('the cap is 2');
+  }, 40_000);
+
+  it('the unlimited switch lifts the default counter', async () => {
+    boot({ dispatchMaxSubtasks: 1, dispatchUnlimitedSubtasks: true });
+    const r = await root();
+    ok(r.id, 'mock:done one', { title: 'one' });
+    ok(r.id, 'mock:done two', { title: 'two' });
+    ok(r.id, 'mock:done three', { title: 'three' });
+  }, 40_000);
+
+  it("the unlimited switch does not lift a cap the user set on the task", async () => {
+    boot({ dispatchUnlimitedSubtasks: true });
+    const r = manager.startRun(STEP, { task: 'mock:monitoring root', limits: { mode: 'none' }, dispatchIntent: { maxSubtasks: 1 } });
+    started.push(r.id);
+    await waitFor(r.id, (x) => x?.activity === 'monitoring');
+    ok(r.id, 'mock:done one', { title: 'one' });
+    expect(refused(r.id, 'mock:done two', { title: 'two' })).toContain('the user capped it at 1');
   }, 40_000);
 
   it("the user's maxSubtasks still wins over the default when it is set", async () => {

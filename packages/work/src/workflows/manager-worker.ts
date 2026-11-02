@@ -74,8 +74,20 @@ export interface RemainingBudget {
   tokens?: number;
   minutes?: number;
   steps?: number;
+  /** Calls left; `Infinity` when the subtask counter is switched off. */
   subtasks: number;
+  /** The cap `subtasks` counts down from (for the "running low" nudge). */
+  subtaskCap?: number;
   maxDepth: number;
+}
+
+/** Worker calls left; under 20% it tells the manager to batch the rest for workers instead of doing it itself. */
+function subtaskLine(left: RemainingBudget): string {
+  if (!Number.isFinite(left.subtasks)) return 'Subtasks: no limit on how many workers you may call in this tree.';
+  const n = Math.max(0, left.subtasks);
+  const low = left.subtaskCap !== undefined && n <= Math.ceil(left.subtaskCap * 0.2);
+  const nudge = low ? ' That is running low: group the remaining work into fewer, larger worker orders instead of doing it yourself.' : '';
+  return `Subtasks left in this tree: ${n}.${nudge}`;
 }
 
 function remainingLines(left: RemainingBudget): string {
@@ -89,7 +101,7 @@ function remainingLines(left: RemainingBudget): string {
   }
   const shared = left.unlimited ? '' : ' — shared by you and every worker; the whole tree stops when a ceiling is reached';
   return `- Remaining at the start of this session: ${parts.join(', ')}${shared}.\n`
-    + `- Subtasks left in this tree: ${Math.max(0, left.subtasks)}. Workers run at depth ${left.maxDepth}: a worker cannot dispatch further tasks.\n`
+    + `- ${subtaskLine(left)} Workers run at depth ${left.maxDepth}: a worker cannot dispatch further tasks.\n`
     + `- At most ${DISPATCH_MAX_IN_FLIGHT} workers in flight at once; a worker over its entry's concurrency waits in the queue.`;
 }
 

@@ -24,7 +24,7 @@ describe('unattended wait expiry', () => {
   const boot = (waitExpiryMinutes: number): RunManager =>
     new RunManager(store, repoRoot, {
       // 0.03 min ≈ 1.8 s: the schema's floor is one minute, the semaphore takes any number.
-      semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1, maxMonitoringSessions: 0, idleTimeoutMinutes: 0, safety: { waitExpiryMinutes, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 } } }),
+      semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 1, maxMonitoringSessions: 0, idleTimeoutMinutes: 0, safety: { waitExpiryMinutes, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchUnlimitedSubtasks: false, dispatchRetryLimit: 1 } } }),
     });
 
   beforeEach(async () => {

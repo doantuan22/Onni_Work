@@ -781,7 +781,10 @@ export const viSettings: Record<string, string> = {
     'Được lưu mã hoá như secret của dự án, chỉ cho các bước kiểm tra — không bao giờ trao cho phiên agent.',
   'Stored project secrets': 'Secret của dự án đã lưu',
   'Stored workspace secrets': 'Secret của workspace đã lưu',
-  'Subtasks per tree': 'Subtask mỗi cây',
+  'Subtasks per tree': 'Lượt gọi worker mỗi cây',
+  'Unlimited worker calls': 'Không giới hạn lượt gọi worker',
+  'Total worker calls in one tree (not the number running at once). Applies when the task was not started with its own subtask limit.':
+    'Tổng số lượt gọi worker trong một cây nhiệm vụ (không phải số worker chạy song song). Áp dụng khi nhiệm vụ không có giới hạn riêng.',
   Swap: 'Bộ nhớ hoán đổi',
   'Synthetic JSON sample': 'Mẫu JSON tổng hợp',
   'System prompt': 'System prompt',

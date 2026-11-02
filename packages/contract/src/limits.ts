@@ -60,7 +60,9 @@ export const safetySettingsSchema = z.object({
   /** Deepest dispatch generation allowed: 1 = a worker may not dispatch further. */
   dispatchMaxDepth: z.number().int().min(1).max(3),
   /** Tree-wide subtask cap used when the root has no `intent.maxSubtasks`. */
-  dispatchMaxSubtasks: z.number().int().min(1).max(50),
+  dispatchMaxSubtasks: z.number().int().min(1).max(100),
+  /** Turns the subtask counter off (a task's own `intent.maxSubtasks` still applies). Cost/token ceilings are separate. */
+  dispatchUnlimitedSubtasks: z.boolean(),
   /** Ceiling on how many times a failed order may be dispatched again (an order may only lower it). */
   dispatchRetryLimit: z.number().int().min(0).max(3),
 });
@@ -69,5 +71,6 @@ export const DEFAULT_SAFETY_SETTINGS: SafetySettings = {
   waitExpiryMinutes: 30,
   dispatchMaxDepth: 1,
   dispatchMaxSubtasks: 12,
+  dispatchUnlimitedSubtasks: false,
   dispatchRetryLimit: 1,
 };

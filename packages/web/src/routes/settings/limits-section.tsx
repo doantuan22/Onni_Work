@@ -8,6 +8,7 @@ import { IntegerStepper } from '@/components/integer-stepper'
 import { RunLimitsFields } from '@/components/run-limits-fields'
 import { StopAllButton } from '@/components/stop-all-button'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toaster'
 import { draftFromLimits, requestFromDraft, type LimitsDraft } from '@/lib/run-limits'
 import { useI18n } from '@/lib/i18n'
@@ -76,9 +77,18 @@ export function LimitsPanel({ config }: { config: WorkspaceConfigResponse }) {
             <IntegerStepper aria-label={t('Dispatch depth')} data-slot="safety-depth" value={safety.dispatchMaxDepth} min={1} max={3}
               onCommit={(depth) => save.mutateAsync({ safety: { dispatchMaxDepth: depth ?? 1 } })} />
           </SettingsField>
-          <SettingsField title={t('Subtasks per tree')} hint={t('Applies when the task was not started with its own subtask limit.')}>
-            <IntegerStepper aria-label={t('Subtasks per tree')} data-slot="safety-subtasks" value={safety.dispatchMaxSubtasks} min={1} max={50}
-              onCommit={(n) => save.mutateAsync({ safety: { dispatchMaxSubtasks: n ?? 12 } })} />
+          <SettingsField title={t('Subtasks per tree')} hint={t('Total worker calls in one tree (not the number running at once). Applies when the task was not started with its own subtask limit.')}>
+            <div className="flex flex-wrap items-center gap-4">
+              <IntegerStepper aria-label={t('Subtasks per tree')} data-slot="safety-subtasks" value={safety.dispatchMaxSubtasks} min={1} max={100}
+                disabled={safety.dispatchUnlimitedSubtasks}
+                onCommit={(n) => save.mutateAsync({ safety: { dispatchMaxSubtasks: n ?? 12 } })} />
+              <label className="flex items-center gap-2">
+                <Switch aria-label={t('Unlimited worker calls')} data-slot="safety-subtasks-unlimited"
+                  checked={safety.dispatchUnlimitedSubtasks}
+                  onCheckedChange={(checked) => save.mutateAsync({ safety: { dispatchUnlimitedSubtasks: checked } })} />
+                <span className="text-[13px] text-muted-foreground">{t('Unlimited worker calls')}</span>
+              </label>
+            </div>
           </SettingsField>
           <SettingsField title={t('Retries per dispatched order')} hint={t('How many times the same order may be dispatched again after it failed. An order can only lower this.')}>
             <IntegerStepper aria-label={t('Retries per dispatched order')} data-slot="safety-retry" value={safety.dispatchRetryLimit} min={0} max={3}

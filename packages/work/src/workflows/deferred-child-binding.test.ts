@@ -26,7 +26,7 @@ type Runtime = {
 const runtime = () => manager as unknown as Runtime;
 function boot() {
   // This file exercises nested admissions, so it lifts the default dispatch depth cap of 1.
-  manager = new RunManager(store, root, { semaphore: new WorkspaceSemaphore({ initial: { safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 3, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 } } }) });
+  manager = new RunManager(store, root, { semaphore: new WorkspaceSemaphore({ initial: { safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 3, dispatchMaxSubtasks: 12, dispatchUnlimitedSubtasks: false, dispatchRetryLimit: 1 } } }) });
   // Exercise real admission and persistence; keep every child queued, without a provider.
   vi.spyOn(runtime(), 'pump').mockResolvedValue();
 }

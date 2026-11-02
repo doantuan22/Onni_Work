@@ -168,7 +168,7 @@ const WORKSPACE_CONFIG: WorkspaceConfigResponse = {
   orgSkillsRepos: [],
   systemPrompt: null,
   limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10000000, maxWallClockMinutes: 240, maxStepIterations: 30 },
-  safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
+  safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchUnlimitedSubtasks: false, dispatchRetryLimit: 1 },
   managerWorker: { presets: [], defaultPresetId: null },
   taskPresets: [],
     agentPermissions: { antigravity: 'files-only' },

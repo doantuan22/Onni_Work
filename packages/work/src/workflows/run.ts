@@ -2714,14 +2714,17 @@ export class RunManager {
     const limits = root?.limits;
     const capped = limits?.mode === 'capped';
     const children = runs.filter((r) => r.dispatch?.rootRunId === rootId && r.id !== rootId).length;
-    const cap = root?.dispatch?.intent?.maxSubtasks ?? safety.dispatchMaxSubtasks;
+    const ownCap = root?.dispatch?.intent?.maxSubtasks;
+    const uncapped = ownCap === undefined && safety.dispatchUnlimitedSubtasks;
+    const cap = ownCap ?? safety.dispatchMaxSubtasks;
     return {
       unlimited: !capped,
       ...(capped && limits.maxCostUsd !== undefined ? { costUsd: limits.maxCostUsd - used.cost } : {}),
       ...(capped && limits.maxTokens !== undefined ? { tokens: limits.maxTokens - used.tokens } : {}),
       ...(capped && limits.maxWallClockMinutes !== undefined ? { minutes: limits.maxWallClockMinutes - used.wallMs / 60_000 } : {}),
       ...(capped && limits.maxStepIterations !== undefined ? { steps: limits.maxStepIterations - used.iterations } : {}),
-      subtasks: cap - children,
+      subtasks: uncapped ? Number.POSITIVE_INFINITY : cap - children,
+      subtaskCap: cap,
       maxDepth: safety.dispatchMaxDepth,
     };
   }
@@ -3048,7 +3051,8 @@ export class RunManager {
     // The user's cap when the root was started with one, else the workspace default: a tree
     // without an `intent` is still bounded.
     const subtaskCap = intent?.maxSubtasks ?? safety.dispatchMaxSubtasks;
-    {
+    // The workspace switch lifts only the default counter; a cap the user set on this task stays.
+    if (intent?.maxSubtasks !== undefined || !safety.dispatchUnlimitedSubtasks) {
       const rootId = parent.dispatch?.rootRunId ?? parent.id;
       const total = runs.filter((r) => r.dispatch?.rootRunId === rootId && r.id !== rootId).length;
       if (total + 1 > subtaskCap) {
