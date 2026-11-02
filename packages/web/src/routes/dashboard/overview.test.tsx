@@ -7,6 +7,7 @@ import { DashboardEntryContext } from './state'
 import { dashboardTransition, dashboardProjectTransition } from '@/api/dashboard-truth'
 import { Overview } from './overview'
 import type { DashboardOverview } from '@onni/api-client'
+import { pickOption, selectValue } from '@/test-utils/app-select'
 const at = '2026-09-19T12:00:00.000Z'
 const metrics = {
   running: 1,
@@ -104,7 +105,7 @@ it('closes the outcome Sheet when the view goes inactive, so it never reopens on
 it('writes the reporting period into the URL', async () => {
   setup()
   await screen.findByRole('button', { name: 'Completed: 5' })
-  fireEvent.change(screen.getByLabelText('Outcomes period'), { target: { value: '30d' } })
+  await pickOption(screen.getByLabelText('Outcomes period'), '30d')
   expect(screen.getByTestId('overview-location').textContent).toBe('?period=30d')
 })
 

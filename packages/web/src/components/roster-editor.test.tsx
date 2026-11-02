@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createQueryClient } from '@/api/query-client'
 import { RosterEditor } from './roster-editor'
 import type { RosterDraft } from '@/lib/roster'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 afterEach(() => {
   cleanup()
@@ -22,14 +23,14 @@ const renderEditor = (ui: ReactElement) =>
   render(<QueryClientProvider client={createQueryClient()}>{ui}</QueryClientProvider>)
 
 describe('RosterEditor', () => {
-  it('offers only the connected backends', () => {
+  it('offers only the connected backends', async () => {
     renderEditor(<RosterEditor draft={draft} onChange={vi.fn()} connected={['claude', 'codex']} />)
-    const options = Array.from((screen.getByLabelText('Worker 1 backend') as HTMLSelectElement).options).map((o) => o.value)
+    const options = await optionValues(screen.getByLabelText('Worker 1 backend'))
     expect(options).toEqual(['', 'claude', 'codex'])
   })
   it('flags a chosen backend that has gone away rather than hiding it', () => {
     renderEditor(<RosterEditor draft={{ ...draft, workers: [{ ...draft.workers[0]!, runner: 'opencode' }] }} onChange={vi.fn()} connected={['claude']} />)
-    expect(screen.getAllByRole('option', { name: 'opencode (not connected)' }).length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Worker 1 backend').textContent).toContain('opencode (not connected)')
   })
   it('edits a worker role, adds workers, and keeps at least one', () => {
     const onChange = vi.fn()
@@ -69,10 +70,10 @@ describe('RosterEditor', () => {
     fireEvent.click(await screen.findByRole('menuitemradio', { name: /gpt-5\.4-mini/ }))
     expect(onChange).toHaveBeenLastCalledWith({ ...draft, workers: [{ ...draft.workers[0], model: 'gpt-5.4-mini' }] })
   })
-  it('offers antigravity as a worker but never as the manager, and says why', () => {
+  it('offers antigravity as a worker but never as the manager, and says why', async () => {
     renderEditor(<RosterEditor draft={draft} onChange={vi.fn()} connected={['claude', 'codex', 'antigravity']} />)
-    const manager = Array.from((screen.getByLabelText('Manager backend') as HTMLSelectElement).options).map((o) => o.value)
-    const worker = Array.from((screen.getByLabelText('Worker 1 backend') as HTMLSelectElement).options).map((o) => o.value)
+    const manager = await optionValues(screen.getByLabelText('Manager backend'))
+    const worker = await optionValues(screen.getByLabelText('Worker 1 backend'))
     expect(manager).toEqual(['', 'claude', 'codex'])
     expect(worker).toEqual(['', 'claude', 'codex', 'antigravity'])
     const note = document.querySelector('[data-slot="roster-worker-only"][data-backend="antigravity"]')

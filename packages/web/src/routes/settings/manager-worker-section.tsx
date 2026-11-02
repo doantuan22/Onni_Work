@@ -25,7 +25,7 @@ import {
   type RosterDraft,
 } from '@/lib/roster'
 import { SettingsField } from './settings-field'
-import { NativeSelect } from '@/components/ui/native-select'
+import { AppSelect } from '@/components/ui/app-select'
 
 /**
  * Settings → Manager–Worker (docs/design/manager-worker.md): the presets a task can start from
@@ -109,7 +109,7 @@ function ManagerWorkerForm({ config }: { config: WorkspaceConfigResponse }) {
       </SettingsField>
 
       <SettingsField title={t('Default')} hint={t('Opens the new-task composer with this preset switched on. None keeps manager–worker off until you turn it on for a task.')}>
-        <NativeSelect
+        <AppSelect
           aria-label={t('Default preset')}
           data-slot="mw-default"
           value={defaultPresetId ?? ''}
@@ -119,7 +119,7 @@ function ManagerWorkerForm({ config }: { config: WorkspaceConfigResponse }) {
         >
           <option value="">{t('None')}</option>
           {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </NativeSelect>
+        </AppSelect>
       </SettingsField>
 
       <SettingsField title={t('Limits that apply to the whole tree')} hint={t('A manager and its workers share one set of ceilings, and workers run within the parallel-task cap.')}>

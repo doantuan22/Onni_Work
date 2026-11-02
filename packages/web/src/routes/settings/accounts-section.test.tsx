@@ -10,6 +10,7 @@ import type { AgentProfile, AgentProfilesResponse } from '@onni/api-client'
 import { Toaster, onDangerToast, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
  * Global settings → Agent accounts (spec `.ai/specs/2026-07-29-agent-profiles.md`).
@@ -1012,7 +1013,7 @@ describe('the add-account dialog', () => {
     renderAccounts()
     await openDialog('codex')
 
-    expect(screen.getByLabelText<HTMLSelectElement>('Agent').value).toBe('codex')
+    expect(selectValue(screen.getByLabelText<HTMLButtonElement>('Agent'))).toBe('codex')
     // The placeholder follows too, so the example folder is not the wrong agent's. It stays a
     // GENERIC name — this string ships to every onni user, so it must not carry one person's.
     expect(dirField().placeholder).toBe('~/.codex-second')

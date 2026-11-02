@@ -314,30 +314,17 @@ describe('design guardian', () => {
     })
   }
 
-  // Not a RULES entry: the others are line-level forbidden-token regexes, and this one asks
-  // whether a multi-line JSX opening tag CONTAINS something.
-  it(`native-select-focus-ring: a native <select> wears ${SELECT_FOCUS_MARKER}, not the browser's blue outline`, () => {
+  // Not a RULES entry: the others are line-level forbidden-token regexes.
+  it("no-raw-select: every dropdown is the app-drawn AppSelect, never the operating system's <select>", () => {
     const violations: string[] = []
-    let scanned = 0
     for (const file of sources) {
       if (!styleSources(file) || file.ext !== '.tsx') continue
       const source = file.lines.join('\n')
-      for (const match of source.matchAll(/<select\b/g)) {
-        scanned += 1
-        // A raw <select> belongs only inside the shared NativeSelect; everything else uses it.
-        if (!file.rel.endsWith('components/ui/native-select.tsx')) {
-          violations.push(`packages/web/${file.rel}: use <NativeSelect> from components/ui/native-select`)
-          continue
-        }
-        if (carriesFocusRing(openingTag(source, match.index), source)) continue
+      for (const match of source.matchAll(/<select/g)) {
         const line = source.slice(0, match.index).split('\n').length
-        violations.push(`packages/web/${file.rel}:${line}`)
+        violations.push(`packages/web/${file.rel}:${line} — use <AppSelect> from components/ui/app-select`)
       }
     }
-    expect(scanned, 'the <select> scan found nothing — the walker or the matcher broke').toBeGreaterThan(0)
-    expect(
-      violations,
-      `native-select-focus-ring — add "outline-none focus-visible:border-ring focus-visible:ring-[3px] ${SELECT_FOCUS_MARKER}"`,
-    ).toEqual([])
+    expect(violations).toEqual([])
   })
 })

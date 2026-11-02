@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { RunLimitsFields, UNLIMITED_WARNING } from './run-limits-fields'
 import type { LimitsDraft } from '@/lib/run-limits'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 afterEach(cleanup)
 
@@ -22,20 +23,20 @@ describe('RunLimitsFields', () => {
   it('asks once before choosing Unlimited, and does not switch until confirmed', async () => {
     const onChange = vi.fn()
     render(<RunLimitsFields draft={capped} onChange={onChange} allowDefault />)
-    fireEvent.change(screen.getByLabelText('Run limits'), { target: { value: 'none' } })
+    await pickOption(screen.getByLabelText('Run limits'), 'none')
     expect(await screen.findByText(UNLIMITED_WARNING)).toBeTruthy()
     expect(onChange).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Cancel'))
     expect(onChange).not.toHaveBeenCalled()
-    fireEvent.change(screen.getByLabelText('Run limits'), { target: { value: 'none' } })
+    await pickOption(screen.getByLabelText('Run limits'), 'none')
     fireEvent.click(await screen.findByText('Choose Unlimited'))
     expect(onChange).toHaveBeenCalledWith({ ...capped, mode: 'none' })
   })
 
-  it('offers Default only where a default exists', () => {
+  it('offers Default only where a default exists', async () => {
     const { rerender } = render(<RunLimitsFields draft={capped} onChange={vi.fn()} allowDefault />)
-    expect(screen.getByRole('option', { name: /Default/ })).toBeTruthy()
+    expect(await optionValues(screen.getByLabelText('Run limits'))).toContain('default')
     rerender(<RunLimitsFields draft={capped} onChange={vi.fn()} allowDefault={false} />)
-    expect(screen.queryByRole('option', { name: /Default/ })).toBeNull()
+    expect(await optionValues(screen.getByLabelText('Run limits'))).not.toContain('default')
   })
 })

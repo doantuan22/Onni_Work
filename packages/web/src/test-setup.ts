@@ -10,3 +10,12 @@ for (const key of ['localStorage', 'sessionStorage'] as const) {
     value: storageWindow[key],
   })
 }
+
+// Radix Select/Popover probe pointer-capture and scrolling APIs jsdom does not implement.
+if (typeof Element !== 'undefined') {
+  const proto = Element.prototype as unknown as Record<string, unknown>
+  proto.hasPointerCapture ??= () => false
+  proto.setPointerCapture ??= () => {}
+  proto.releasePointerCapture ??= () => {}
+  proto.scrollIntoView ??= () => {}
+}

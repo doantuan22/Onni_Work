@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createQueryClient } from '@/api/query-client'
 import { Trends } from './trends'
 import type { DashboardCosts, DashboardCostSeriesPoint } from '@onni/api-client'
+import { pickOption, selectValue } from '@/test-utils/app-select'
 const at = '2026-09-19T00:00:00.000Z'
 function point(
   date: string,
@@ -107,7 +108,7 @@ it('requests only 7d/30d and refetches on period change', async () => {
   const { calls } = setup()
   await screen.findByText('Completed tasks')
   expect(calls.every((u) => u.searchParams.get('period') !== 'all')).toBe(true)
-  fireEvent.change(screen.getByLabelText('Period'), { target: { value: '30d' } })
+  await pickOption(screen.getByLabelText('Period'), '30d')
   await waitFor(() =>
     expect(calls.some((u) => u.searchParams.get('period') === '30d')).toBe(true),
   )
@@ -163,7 +164,7 @@ it('replaces empty daily charts with a compact state without exporting hidden da
   expect(screen.queryByRole('table')).toBeNull()
   const rows = JSON.parse(container.querySelector<HTMLElement>('[data-dashboard-export]')!.dataset.dashboardExport!)
   expect(rows).toEqual([])
-  expect(screen.getByRole('combobox', { name: 'Period' })).toHaveProperty('value', '7d')
+  expect(selectValue(screen.getByRole('combobox', { name: 'Period' }))).toBe('7d')
 })
 it('shows throughput for completed tasks created before the selected period', async () => {
   const older = fixture()

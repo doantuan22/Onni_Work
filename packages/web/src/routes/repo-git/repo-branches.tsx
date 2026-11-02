@@ -12,7 +12,7 @@ import { toast } from '@/components/ui/toaster'
 import { useActiveForge } from '@/lib/active-forge'
 import { useI18n } from '@/lib/i18n'
 import { cn, isHttpUrl } from '@/lib/utils'
-import { NativeSelect } from '@/components/ui/native-select'
+import { AppSelect } from '@/components/ui/app-select'
 
 /**
  * The repo view's Branches segment (R5 Step 1.7): the branch list `GET /api/repo` already
@@ -174,7 +174,7 @@ export function RepoBranchesSection({ repo, info }: { repo: RepoResponse; info: 
         </label>
         {/* A native <select>: a handful of branch names needs no popover machinery, and the
             OS picker is the better control on phones. */}
-        <NativeSelect
+        <AppSelect
           id="base-branch-picker"
           data-slot="base-branch-picker"
           value={repo.baseBranch ?? ''}
@@ -188,7 +188,7 @@ export function RepoBranchesSection({ repo, info }: { repo: RepoResponse; info: 
               {name}
             </option>
           ))}
-        </NativeSelect>
+        </AppSelect>
         <p className="mt-1 text-[11px] text-soft-foreground">{t('New task worktrees branch from this.')}</p>
       </div>
 

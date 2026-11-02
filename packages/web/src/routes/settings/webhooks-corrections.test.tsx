@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { webhookEventSchema, type WebhookReceiver } from '@onni/api-client'
 import { WebhooksSection } from './webhooks-section'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 const mocks = vi.hoisted(() => ({ enabled: true, project: 'alpha', list: vi.fn(), create: vi.fn(), update: vi.fn(), activate: vi.fn(), rotate: vi.fn(), history: vi.fn(), activity: vi.fn(), deliveries: vi.fn(), test: vi.fn(), toast: vi.fn() }))
 vi.mock('@/components/ui/toaster', () => ({ toast: mocks.toast }))
@@ -90,13 +91,13 @@ describe('independent webhook UI corrections', () => {
   })
   it('preserves every edit field through review and cancel, without any mutation', async () => {
     await edit()
-    fireEvent.change(input('Message content'), { target: { value: 'minimal' } }); fireEvent.change(input('Events'), { target: { value: 'custom' } })
-    fireEvent.click(input('Task failed')); fireEvent.change(input('Tasks'), { target: { value: 'main_and_questions' } })
-    fireEvent.change(input('Waiting and review delay'), { target: { value: '60' } }); fireEvent.click(input('Include failures that will resume automatically (always included in All results)')); fireEvent.click(input('Allow a receiver on this computer or private network'))
+    await pickOption(input('Message content'), 'minimal'); await pickOption(input('Events'), 'custom')
+    fireEvent.click(input('Task failed')); await pickOption(input('Tasks'), 'main_and_questions')
+    await pickOption(input('Waiting and review delay'), '60'); fireEvent.click(input('Include failures that will resume automatically (always included in All results)')); fireEvent.click(input('Allow a receiver on this computer or private network'))
     click('Review changes'); click('Cancel')
     expect(input('Name').value).toBe('My draft'); expect(input('Receiver URL').value).toBe('https://replacement.invalid/private-fixture')
-    expect(input('Message content').value).toBe('minimal'); expect(input('Events').value).toBe('custom'); expect(input('Task failed').checked).toBe(true)
-    expect(input('Tasks').value).toBe('main_and_questions'); expect(input('Waiting and review delay').value).toBe('60')
+    expect(selectValue(input('Message content'))).toBe('minimal'); expect(selectValue(input('Events'))).toBe('custom'); expect(input('Task failed').checked).toBe(true)
+    expect(selectValue(input('Tasks'))).toBe('main_and_questions'); expect(selectValue(input('Waiting and review delay'))).toBe('60')
     expect(input('Allow a receiver on this computer or private network').checked).toBe(false)
     expect(input('Include failures that will resume automatically (always included in All results)').checked).toBe(false)
     expect(mocks.update).not.toHaveBeenCalled()
@@ -176,7 +177,7 @@ describe('independent webhook UI corrections', () => {
     const sample = () => JSON.parse(screen.getByLabelText('Synthetic JSON sample').textContent!)
     const minimal = sample(); expect(webhookEventSchema.safeParse(minimal).success).toBe(true)
     expect(minimal.task.title).toBeUndefined(); expect(minimal.data.questions).toBeUndefined()
-    fireEvent.change(input('Message content'), { target: { value: 'standard' } })
+    await pickOption(input('Message content'), 'standard')
     const standard = sample(); expect(webhookEventSchema.safeParse(standard).success).toBe(true)
     expect(standard.task.title).toBe('Example generated task title'); expect(standard.data.questions).toHaveLength(1)
     expect(screen.getByText(/Skipped if you reply/)).toBeTruthy(); expect(mocks.create).not.toHaveBeenCalled()

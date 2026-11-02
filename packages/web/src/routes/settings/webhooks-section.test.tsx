@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createQueryClient } from '@/api/query-client'
 import { WebhooksSection } from './webhooks-section'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 const mocks = vi.hoisted(() => ({ healthState: 'ready', enabled: false, unsupported: false, project: 'alpha', list: vi.fn(), create: vi.fn(), activity: vi.fn(), deliveries: vi.fn() }))
 vi.mock('@/api/queries', () => ({ useHealth: () => ({ isError: mocks.healthState === 'error', data: mocks.healthState === 'ready' ? { capabilities: { webhooks: mocks.enabled, webhooksUnavailableReason: mocks.unsupported ? 'unsupported_platform' : undefined } } : undefined }) }))
 vi.mock('@/lib/project-router', () => ({ useActiveProjectId: () => mocks.project }))
@@ -44,8 +45,8 @@ describe('project webhook settings', () => {
   it('offers full Custom selection', async () => {
     mocks.enabled = true; mocks.list.mockResolvedValue({ receivers: [], history: [], historyCount: 0, changeSequence: 0, webhookHealth: { status: 'ready' } })
     mount(); await screen.findByText(/No receivers yet/); expect(screen.getByText(/Send a test, then activate it/)).toBeTruthy(); fireEvent.click(screen.getByRole('button', { name: 'Add receiver' }))
-    expect(screen.getByText('Attention, review and results')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Events'), { target: { value: 'custom' } })
+    expect(screen.getByLabelText('Events').textContent).toContain('Attention, review and results')
+    await pickOption(screen.getByLabelText('Events'), 'custom')
     expect(screen.getByLabelText('Task finished')).toBeTruthy(); expect(screen.getByLabelText('Task cancelled')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'How to build a receiver' }).getAttribute('href')).toBe('https://github.com/doantuan22/Onni_Work/blob/main/packages/work/docs/webhooks.md#external-automation-receivers')
     expect(screen.getByLabelText('Allow a receiver on this computer or private network').closest('details')).toBeNull()

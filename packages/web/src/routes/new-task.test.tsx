@@ -19,6 +19,7 @@ import { resetToasts, Toaster } from '@/components/ui/toaster'
 
 import { readDraft, resetDraft, writeDraft } from './new-task-draft'
 import { NewTaskRoute } from './new-task'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
  * The /new screen against a mocked API: picker data flows (runner hidden on single-backend
@@ -2277,8 +2278,8 @@ describe('the Dispatch toggle', () => {
     // The chevron is the secondary action — it did not flip the switch.
     expect(toggle.getAttribute('aria-checked')).toBe('false')
 
-    fireEvent.change(screen.getByLabelText('Max subtasks'), { target: { value: '10' } })
-    fireEvent.change(screen.getByLabelText('In flight at once'), { target: { value: '2' } })
+    await pickOption(screen.getByLabelText('Max subtasks'), '10')
+    await pickOption(screen.getByLabelText('In flight at once'), '2')
     // A limit is a statement about a dispatch that will happen: setting one turns it on.
     expect(toggle.getAttribute('aria-checked')).toBe('true')
     expect(hint()).not.toBeNull()
@@ -2294,29 +2295,29 @@ describe('the Dispatch toggle', () => {
     fireEvent.click(settingsTrigger()!)
     await waitFor(() => expect(settings()).not.toBeNull())
 
-    const runner = screen.getByLabelText('Subtask runner') as HTMLSelectElement
-    expect(Array.from(runner.options).map((o) => o.value)).toEqual(['', 'claude', 'codex'])
+    const runner = screen.getByLabelText('Subtask runner')
+    expect((await optionValues(runner))).toEqual(['', 'claude', 'codex'])
     // "same as parent" resolves against the parent's (claude) catalog — the live one.
-    const model = () => screen.getByLabelText('Subtask model') as HTMLSelectElement
-    await waitFor(() => expect(Array.from(model().options).map((o) => o.value)).toEqual(['', 'opus', 'sonnet']))
+    const model = () => screen.getByLabelText('Subtask model')
+    await waitFor(async () => expect((await optionValues(model()))).toEqual(['', 'opus', 'sonnet']))
 
     // Picking a model, then another runner: the model pin is dropped with it (presets are
     // per-runner), and the list becomes CODEX's — its own discovered catalog, not the parent's
     // and not the `auto`-only static presets discovery replaced (#784/#794).
-    fireEvent.change(model(), { target: { value: 'sonnet' } })
+    await pickOption(model(), 'sonnet')
     expect(readDraft().dispatch).toEqual({ model: 'sonnet' })
-    fireEvent.change(runner, { target: { value: 'codex' } })
+    await pickOption(runner, 'codex')
     expect(readDraft().dispatch).toEqual({ runner: 'codex' })
-    await waitFor(() => expect(Array.from(model().options).map((o) => o.value)).toEqual(['', 'gpt-future']))
-    fireEvent.change(model(), { target: { value: 'gpt-future' } })
+    await waitFor(async () => expect((await optionValues(model()))).toEqual(['', 'gpt-future']))
+    await pickOption(model(), 'gpt-future')
     expect(readDraft().dispatch).toEqual({ runner: 'codex', model: 'gpt-future' })
     fireEvent.change(screen.getByLabelText('Budget per subtask'), { target: { value: '2.5' } })
     expect(readDraft().dispatch).toEqual({ runner: 'codex', model: 'gpt-future', budgetUsd: 2.5 })
 
     // Back to the parent's runner: the pin is dropped again and the parent's catalog returns.
-    fireEvent.change(runner, { target: { value: '' } })
+    await pickOption(runner, '')
     expect(readDraft().dispatch).toEqual({ budgetUsd: 2.5 })
-    await waitFor(() => expect(Array.from(model().options).map((o) => o.value)).toEqual(['', 'opus', 'sonnet']))
+    await waitFor(async () => expect((await optionValues(model()))).toEqual(['', 'opus', 'sonnet']))
 
     // The header switch is the same on/off as the pill.
     fireEvent.click(document.querySelector('[data-slot="dispatch-settings-switch"]')!)
@@ -2330,10 +2331,10 @@ describe('the Dispatch toggle', () => {
     await waitFor(() => expect(settings()).not.toBeNull())
 
     // The composer itself stays on claude — only the SUBTASKS run as codex.
-    fireEvent.change(screen.getByLabelText('Subtask runner'), { target: { value: 'codex' } })
-    const model = () => screen.getByLabelText('Subtask model') as HTMLSelectElement
-    await waitFor(() => expect(Array.from(model().options).map((o) => o.value)).toEqual(['', 'gpt-future']))
-    fireEvent.change(model(), { target: { value: 'gpt-future' } })
+    await pickOption(screen.getByLabelText('Subtask runner'), 'codex')
+    const model = () => screen.getByLabelText('Subtask model')
+    await waitFor(async () => expect((await optionValues(model()))).toEqual(['', 'gpt-future']))
+    await pickOption(model(), 'gpt-future')
 
     fireEvent.change(textarea(), { target: { value: 'Fan this out to codex' } })
     await startTask()
@@ -2772,9 +2773,7 @@ describe('Task settings panel on /new', () => {
   async function chooseUnlimited() {
     fireEvent.click(limitsPill())
     await waitFor(() => expect(document.querySelector('[data-slot="limits-mode"]')).not.toBeNull())
-    fireEvent.change(document.querySelector('[data-slot="limits-mode"]') as HTMLSelectElement, {
-      target: { value: 'none' },
-    })
+    await pickOption(document.querySelector('[data-slot="limits-mode"]'), 'none')
     fireEvent.click(await screen.findByText('Choose Unlimited'))
   }
 

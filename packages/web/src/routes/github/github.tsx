@@ -74,7 +74,7 @@ import { GithubLoading } from './github-loading'
 import { HandToAgent } from './hand-to-agent'
 import { SwipeLaunchSheet, SwipeReveal, useRowSwipe } from './swipe-launch'
 import { readFollowupSelection, writeFollowupSelection } from './hand-to-agent-draft'
-import { NativeSelect } from '@/components/ui/native-select'
+import { AppSelect } from '@/components/ui/app-select'
 
 /**
  * `/github` — the forge tab rebuilt in React (R6 Step 1.1, spec §"GitHub tab (forge tab)"):
@@ -1293,14 +1293,14 @@ function GithubMergeBox({ number }: { number: number }) {
           ) : null}
           {state.state === 'open' && state.methods.length > 0 ? (
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <NativeSelect
+              <AppSelect
                 aria-label={t('Merge method')}
                 value={selectedMethod ?? ''}
                 onChange={(event) => setMethod(event.target.value as GithubMergeMethod)}
                 className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 {state.methods.map((candidate) => <option key={candidate} value={candidate}>{t(mergeLabels[candidate])}</option>)}
-              </NativeSelect>
+              </AppSelect>
               <Button disabled={!mergeEnabled} onClick={() => setConfirming(true)}>
                 {selectedMethod ? t(mergeLabels[selectedMethod]) : t('Merge')}
               </Button>
@@ -1380,9 +1380,9 @@ function GithubPrChanges({ item }: { item: GithubItem }) {
       <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="min-w-0">
           <input aria-label={t('Filter changed files')} value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('Filter files…')} className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm" />
-          <NativeSelect aria-label={t('Select changed file')} value={selected ?? ''} onChange={(e) => setSelected(e.target.value)} className="mt-2 min-h-11 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 lg:hidden">
+          <AppSelect aria-label={t('Select changed file')} value={selected ?? ''} onChange={(e) => setSelected(e.target.value)} className="mt-2 min-h-11 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 lg:hidden">
             {files.map((file) => <option key={file.path}>{file.path}</option>)}
-          </NativeSelect>
+          </AppSelect>
           <ul className="mt-2 hidden max-h-[60vh] overflow-auto lg:block">
             {files.map((file) => <li key={file.path}><button type="button" onClick={() => setSelected(file.path)} className={cn('min-h-11 w-full truncate rounded px-2 text-left text-xs', selected === file.path && 'bg-muted font-medium')} title={file.path}>{file.status} · {file.path} <span className="text-success">+{file.additions}</span> <span className="text-danger">−{file.deletions}</span></button></li>)}
           </ul>

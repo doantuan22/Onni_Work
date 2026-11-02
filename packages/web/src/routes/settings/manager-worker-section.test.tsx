@@ -9,6 +9,7 @@ import type { ManagerPreset, WorkspaceConfigResponse } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /** Settings → Manager–Worker: presets live in the workspace config, backends come from provider status. */
 
@@ -98,7 +99,7 @@ describe('Settings → Manager–Worker', () => {
     serve()
     renderSection()
     await waitFor(() => expect(document.querySelector('[data-slot="mw-default"]')).not.toBeNull())
-    fireEvent.change(document.querySelector('[data-slot="mw-default"]')!, { target: { value: 'preset-1' } })
+    await pickOption(document.querySelector('[data-slot="mw-default"]'), 'preset-1')
     await waitFor(() => expect(puts()).toHaveLength(1))
     expect(puts()[0]!.body).toEqual({ managerWorker: { presets: [PRESET], defaultPresetId: 'preset-1' } })
   })
@@ -110,8 +111,8 @@ describe('Settings → Manager–Worker', () => {
     await waitFor(() => expect(screen.getByText('No presets yet.')).toBeTruthy())
     fireEvent.click(document.querySelector('[data-slot="mw-new"]')!)
     await waitFor(() => expect(document.querySelector('[data-slot="mw-editor"]')).not.toBeNull())
-    await waitFor(() => {
-      const options = Array.from((screen.getByLabelText('Worker 1 backend') as HTMLSelectElement).options).map((o) => o.value)
+    await waitFor(async () => {
+      const options = (await optionValues(screen.getByLabelText('Worker 1 backend')))
       expect(options).toEqual(['', 'claude', 'codex'])
     })
     fireEvent.change(screen.getByLabelText('Preset name'), { target: { value: 'Duo' } })

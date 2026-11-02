@@ -9,6 +9,7 @@ import type { ConfigResponse } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
  * Project settings → Tasks, trunk-based fields (spec 2026-10-20-trunk-based-projects): the
@@ -96,8 +97,8 @@ describe('Project settings → Tasks: trunk-based projects', () => {
     serve()
     renderAt('/settings/tasks')
     await waitFor(() => expect(slot('tasks-profile')).not.toBeNull())
-    expect(slot<HTMLSelectElement>('tasks-profile')!.value).toBe('branches')
-    expect(slot<HTMLSelectElement>('tasks-workspace')!.value).toBe('')
+    expect(selectValue(slot<HTMLButtonElement>('tasks-profile'))).toBe('branches')
+    expect(selectValue(slot<HTMLButtonElement>('tasks-workspace'))).toBe('')
     expect(slot<HTMLButtonElement>('tasks-landing')!.getAttribute('aria-checked')).toBe('false')
   })
 
@@ -105,11 +106,11 @@ describe('Project settings → Tasks: trunk-based projects', () => {
     serve()
     renderAt('/settings/tasks')
     await waitFor(() => expect(slot('tasks-profile')).not.toBeNull())
-    fireEvent.change(slot('tasks-profile')!, { target: { value: 'trunk' } })
+    await pickOption(slot('tasks-profile'), 'trunk')
     await waitFor(() => expect(puts()).toHaveLength(1))
     expect(puts()[0]).toEqual({ profile: 'trunk', taskWorkspace: 'in-place', landing: 'auto', reviewGate: false })
     await waitFor(() => expect(slot<HTMLButtonElement>('tasks-landing')!.getAttribute('aria-checked')).toBe('true'))
-    fireEvent.change(slot('tasks-profile')!, { target: { value: 'branches' } })
+    await pickOption(slot('tasks-profile'), 'branches')
     await waitFor(() => expect(puts()).toHaveLength(2))
     expect(puts()[1]).toMatchObject({ profile: null, taskWorkspace: null, landing: null })
   })

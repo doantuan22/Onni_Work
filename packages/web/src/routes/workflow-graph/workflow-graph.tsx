@@ -98,7 +98,7 @@ import {
 import { WorkflowsLoading } from '../workflows/workflows-loading'
 import { backLanes, CATEGORY_ORDER, edgeStyle, edgeTypes, GraphNodeView, ICONS, type InnerStep, TILE, TONE, WIDE_WIDTH } from './graph-node'
 import { writeClipboard } from '@/lib/clipboard'
-import { NativeSelect } from '@/components/ui/native-select'
+import { AppSelect } from '@/components/ui/app-select'
 
 /**
  * The workflow node editor (spec 2026-09-30-workflow-node-editor), at
@@ -669,7 +669,7 @@ function WorkflowGraphEditor() {
   return (
     <div data-route="workflows" className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
-        <NativeSelect
+        <AppSelect
           aria-label={t('Open workflow')}
           className="h-8 max-w-44 rounded-md border border-transparent bg-transparent px-1.5 text-[13px] font-medium outline-none hover:border-border focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={routeName ?? ''}
@@ -699,7 +699,7 @@ function WorkflowGraphEditor() {
                 </option>
               ))}
           </optgroup>
-        </NativeSelect>
+        </AppSelect>
         <span className="text-muted-foreground/60">/</span>
         <Input
           aria-label={t('Workflow name')}
@@ -1119,7 +1119,7 @@ function SkillField({ value, onChange }: { value: string | undefined; onChange: 
   const known = value === undefined || names.includes(value)
   return (
     <Field label={t('skill')}>
-      <NativeSelect
+      <AppSelect
         className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || undefined)}
@@ -1131,7 +1131,7 @@ function SkillField({ value, onChange }: { value: string | undefined; onChange: 
             {n}
           </option>
         ))}
-      </NativeSelect>
+      </AppSelect>
     </Field>
   )
 }
@@ -1168,7 +1168,7 @@ function WorkflowSelect({
   const workflows = useWorkflows()
   const names = (workflows.data?.workflows ?? []).map((w) => w.name)
   return (
-    <NativeSelect
+    <AppSelect
       aria-label={label}
       className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
       value={value ?? ''}
@@ -1181,7 +1181,7 @@ function WorkflowSelect({
           {n}
         </option>
       ))}
-    </NativeSelect>
+    </AppSelect>
   )
 }
 
@@ -1208,23 +1208,23 @@ function ConditionEditor({ condition, onChange }: { condition: ConditionValue; o
   return (
     <>
       <Field label={t('look at')}>
-        <NativeSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={condition.kind} onChange={(e) => switchKind(e.target.value as ConditionValue['kind'])}>
+        <AppSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={condition.kind} onChange={(e) => switchKind(e.target.value as ConditionValue['kind'])}>
           <option value="diff-lines">{t("the task's diff — changed lines")}</option>
           <option value="diff-files">{t("the task's diff — changed files")}</option>
           <option value="paths-changed">{t('which paths changed (glob)')}</option>
           <option value="output">{t("another node's output")}</option>
           <option value="branch">{t('the base branch')}</option>
-        </NativeSelect>
+        </AppSelect>
       </Field>
       {(condition.kind === 'diff-lines' || condition.kind === 'diff-files') && (
         <div className="grid grid-cols-[5rem_1fr] gap-2">
-          <NativeSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label={t('operator')} value={condition.op} onChange={(e) => onChange({ ...condition, op: e.target.value as (typeof numericOps)[number] })}>
+          <AppSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label={t('operator')} value={condition.op} onChange={(e) => onChange({ ...condition, op: e.target.value as (typeof numericOps)[number] })}>
             {numericOps.map((o) => (
               <option key={o} value={o}>
                 {o}
               </option>
             ))}
-          </NativeSelect>
+          </AppSelect>
           <Input type="number" min={0} aria-label={t('threshold')} value={condition.value} onChange={(e) => onChange({ ...condition, value: Math.max(0, Number(e.target.value) || 0) })} className="h-8" />
         </div>
       )}
@@ -1239,23 +1239,23 @@ function ConditionEditor({ condition, onChange }: { condition: ConditionValue; o
             <Input value={condition.ref} onChange={(e) => onChange({ ...condition, ref: e.target.value.trim() })} className="h-8 font-mono text-[11px]" />
           </Field>
           <div className="grid grid-cols-[7rem_1fr] gap-2">
-            <NativeSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label={t('operator')} value={condition.op} onChange={(e) => onChange({ ...condition, op: e.target.value as (typeof outputOps)[number] })}>
+            <AppSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label={t('operator')} value={condition.op} onChange={(e) => onChange({ ...condition, op: e.target.value as (typeof outputOps)[number] })}>
               {outputOps.map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
               ))}
-            </NativeSelect>
+            </AppSelect>
             <Input aria-label={t('value')} value={String(condition.value)} onChange={(e) => onChange({ ...condition, value: e.target.value })} className="h-8" />
           </div>
         </>
       )}
       {condition.kind === 'branch' && (
         <div className="grid grid-cols-[7rem_1fr] gap-2">
-          <NativeSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label={t('operator')} value={condition.op} onChange={(e) => onChange({ ...condition, op: e.target.value as 'equals' | 'matches' })}>
+          <AppSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label={t('operator')} value={condition.op} onChange={(e) => onChange({ ...condition, op: e.target.value as 'equals' | 'matches' })}>
             <option value="equals">{t('equals')}</option>
             <option value="matches">{t('matches glob')}</option>
-          </NativeSelect>
+          </AppSelect>
           <Input aria-label={t('branch')} value={condition.value} onChange={(e) => onChange({ ...condition, value: e.target.value })} className="h-8 font-mono text-[11px]" />
         </div>
       )}
@@ -1396,14 +1396,14 @@ function Inspector({
           <SkillField value={node.skill} onChange={(skill) => set({ skill })} />
           <div className="grid grid-cols-2 gap-2">
             <Field label="runner">
-              <NativeSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={node.runner ?? ''} onChange={(e) => set({ runner: e.target.value || undefined })}>
+              <AppSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={node.runner ?? ''} onChange={(e) => set({ runner: e.target.value || undefined })}>
                 <option value="">{t('task default')}</option>
                 {RUNNERS.map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
                 ))}
-              </NativeSelect>
+              </AppSelect>
             </Field>
             <Field label="model">
               <Input value={node.model ?? ''} onChange={(e) => set({ model: e.target.value })} className="h-8" />
@@ -1450,7 +1450,7 @@ function Inspector({
                 />
               </Field>
               <Field label={t('session')}>
-                <NativeSelect
+                <AppSelect
                   className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   value={node.session?.continue ?? ''}
                   onChange={(e) => set({ session: e.target.value ? { continue: e.target.value } : undefined })}
@@ -1463,7 +1463,7 @@ function Inspector({
                         {t('continue {node}', { node: n.name ?? n.id })}
                       </option>
                     ))}
-                </NativeSelect>
+                </AppSelect>
               </Field>
             </>
           )}
@@ -1537,7 +1537,7 @@ function Inspector({
           </Field>
           <div className="grid grid-cols-2 gap-2">
             <Field label="runner">
-              <NativeSelect
+              <AppSelect
                 className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 value={node.runner ?? ''}
                 onChange={(e) => set({ runner: e.target.value || undefined })}
@@ -1548,7 +1548,7 @@ function Inspector({
                     {r}
                   </option>
                 ))}
-              </NativeSelect>
+              </AppSelect>
             </Field>
             <Field label={t('budget USD')}>
               <Input
@@ -1600,7 +1600,7 @@ function Inspector({
       {node.type === 'fork' && (
         <>
           <Field label={t('branches — one agent each, all at once')}>
-            <NativeSelect
+            <AppSelect
               className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               value={node.branches}
               onChange={(e) => onGraphEdit((g) => setForkBranches(g, node.id, Number(e.target.value)))}
@@ -1610,7 +1610,7 @@ function Inspector({
                   {t('{count} agents', { count: n })}
                 </option>
               ))}
-            </NativeSelect>
+            </AppSelect>
           </Field>
           <p className="text-[11px] text-muted-foreground">
             {t(
@@ -1622,14 +1622,14 @@ function Inspector({
 
       {node.type === 'join' && (
         <Field label={t('wait for')}>
-          <NativeSelect
+          <AppSelect
             className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             value={node.wait}
             onChange={(e) => set({ wait: e.target.value })}
           >
             <option value="all">{t('every branch (done only if all succeed)')}</option>
             <option value="any">{t('the first to succeed (the rest are cancelled)')}</option>
-          </NativeSelect>
+          </AppSelect>
         </Field>
       )}
 
@@ -1703,10 +1703,10 @@ function Inspector({
 
       {node.type === 'end' && (
         <Field label={t('run status')}>
-          <NativeSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={node.status} onChange={(e) => set({ status: e.target.value })}>
+          <AppSelect className="w-full rounded-md border border-input bg-card px-2 py-1 text-[12px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={node.status} onChange={(e) => set({ status: e.target.value })}>
             <option value="success">success</option>
             <option value="failed">failed</option>
-          </NativeSelect>
+          </AppSelect>
         </Field>
       )}
 

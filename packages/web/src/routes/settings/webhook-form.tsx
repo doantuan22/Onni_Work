@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/lib/i18n'
 import { graceLabels, presetLabels, scopeLabels } from './webhook-presentation'
-import { NativeSelect } from '@/components/ui/native-select'
+import { AppSelect } from '@/components/ui/app-select'
 export const eventLabels: Record<WebhookTaskEventType | 'webhook.test', string> = {
   'task.attention_required': 'Needs your input', 'task.review_ready': 'Ready for review', 'task.finished': 'Task finished', 'task.failed': 'Task failed', 'task.cancelled': 'Task cancelled', 'webhook.test': 'Test message',
 }
@@ -41,10 +41,10 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
       {local && <p className={hintStyle}>{t('Tests will contact this private address. Hosted onni sends to public HTTPS receivers only.')}</p>}
       <a className="text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground" href={`${guideHref}#external-automation-receivers`} target="_blank" rel="noreferrer">{t('How to build a receiver')}</a>
     </Field>
-    <Field id={`${prefix}-events`} label={t('Events')}><NativeSelect id={`${prefix}-events`} className={selectStyle} value={preset} onChange={event => change('preset', event.target.value as CreateWebhook['preset'])}>
-      {(['attention', 'all', 'custom'] as const).map(value => <option key={value} value={value}>{t(presetLabels[value])}</option>)}</NativeSelect></Field>
+    <Field id={`${prefix}-events`} label={t('Events')}><AppSelect id={`${prefix}-events`} className={selectStyle} value={preset} onChange={event => change('preset', event.target.value as CreateWebhook['preset'])}>
+      {(['attention', 'all', 'custom'] as const).map(value => <option key={value} value={value}>{t(presetLabels[value])}</option>)}</AppSelect></Field>
     {preset === 'custom' && <fieldset className="flex flex-col gap-2"><legend className="mb-1 text-sm font-medium">{t('Choose events')}</legend>{Object.entries(eventLabels).filter(([type]) => type !== 'webhook.test').map(([type, label]) => <label key={type} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={events.includes(type as WebhookTaskEventType)} onChange={event => change('events', event.target.checked ? [...events, type as WebhookTaskEventType] : events.filter(value => value !== type))} />{t(label)}</label>)}</fieldset>}
-    <Field id={`${prefix}-profile`} label={t('Message content')}><NativeSelect id={`${prefix}-profile`} className={selectStyle} value={profile} onChange={event => change('profile', event.target.value as CreateWebhook['profile'])}><option value="minimal">{t('Minimal — IDs, status and your own title')}</option><option value="standard">{t('Standard — task titles, questions and errors')}</option></NativeSelect>
+    <Field id={`${prefix}-profile`} label={t('Message content')}><AppSelect id={`${prefix}-profile`} className={selectStyle} value={profile} onChange={event => change('profile', event.target.value as CreateWebhook['profile'])}><option value="minimal">{t('Minimal — IDs, status and your own title')}</option><option value="standard">{t('Standard — task titles, questions and errors')}</option></AppSelect>
       <p className={hintStyle}>{t('Prompts and transcripts are never sent. Redaction of other text is best effort.')}</p>
     </Field>
     <details><summary className="cursor-pointer text-sm font-medium">{t('Preview JSON · {profile}', { profile: profile === 'minimal' ? t('Minimal') : t('Standard') })}</summary>
@@ -58,8 +58,8 @@ export function WebhookForm({ receiver, draft, setDraft, pending, blocked = fals
       }, null, 2)}</pre>
     </details>
     <details><summary className="cursor-pointer text-sm font-medium">{t('Advanced')}</summary><div className="mt-3 flex flex-col gap-4">
-      <Field id={`${prefix}-scope`} label={t('Tasks')}><NativeSelect id={`${prefix}-scope`} className={selectStyle} value={scope} onChange={event => change('scope', event.target.value as CreateWebhook['scope'])}>{(['main_and_questions', 'every_task'] as const).map(value => <option key={value} value={value}>{t(scopeLabels[value])}</option>)}</NativeSelect></Field>
-      <Field id={`${prefix}-grace`} label={t('Waiting and review delay')}><NativeSelect id={`${prefix}-grace`} className={selectStyle} value={graceSeconds} onChange={event => change('graceSeconds', Number(event.target.value) as CreateWebhook['graceSeconds'])}>{([0, 60, 180, 600] as const).map(value => <option key={value} value={value}>{t(graceLabels[value])}</option>)}</NativeSelect><p className={hintStyle}>{t('Skipped if you reply, or the task stops waiting or leaves review, before the delay ends.')}</p></Field>
+      <Field id={`${prefix}-scope`} label={t('Tasks')}><AppSelect id={`${prefix}-scope`} className={selectStyle} value={scope} onChange={event => change('scope', event.target.value as CreateWebhook['scope'])}>{(['main_and_questions', 'every_task'] as const).map(value => <option key={value} value={value}>{t(scopeLabels[value])}</option>)}</AppSelect></Field>
+      <Field id={`${prefix}-grace`} label={t('Waiting and review delay')}><AppSelect id={`${prefix}-grace`} className={selectStyle} value={graceSeconds} onChange={event => change('graceSeconds', Number(event.target.value) as CreateWebhook['graceSeconds'])}>{([0, 60, 180, 600] as const).map(value => <option key={value} value={value}>{t(graceLabels[value])}</option>)}</AppSelect><p className={hintStyle}>{t('Skipped if you reply, or the task stops waiting or leaves review, before the delay ends.')}</p></Field>
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={scheduled} onChange={event => change('scheduled', event.target.checked)} />{t('Include failures that will resume automatically (always included in All results)')}</label>
     </div></details>
     {error && <p role="alert" className="text-sm text-danger">{error}</p>}

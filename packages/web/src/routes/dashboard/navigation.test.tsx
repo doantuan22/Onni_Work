@@ -6,6 +6,7 @@ import { createQueryClient } from '@/api/query-client'
 import { DashboardRoute } from './index'
 import { readEntry, saveEntry } from './state'
 import type { DashboardCosts } from '@onni/api-client'
+import { pickOption, selectValue } from '@/test-utils/app-select'
 const at = '2026-09-19T00:00:00.000Z'
 function fixture(id = 's1'): DashboardCosts {
   return {
@@ -96,7 +97,7 @@ afterEach(() => {
 it('restores direct Costs Back scroll and filter replacements without requesting hidden operational data', async () => {
   const { calls, client, entry } = setup()
   await screen.findByRole('button', { name: 'View tasks' })
-  fireEvent.change(screen.getByRole('combobox', { name: 'Tasks created' }), { target: { value: '7d' } })
+  await pickOption(screen.getByRole('combobox', { name: 'Tasks created' }), '7d')
   dashboard().scrollTop = 321
   fireEvent.scroll(dashboard())
   fireEvent.click(await screen.findByRole('button', { name: 'View tasks' }))

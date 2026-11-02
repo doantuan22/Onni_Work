@@ -7,7 +7,7 @@ import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
 import { SettingsField } from './settings-field'
 import { useConfigSave } from './use-config-save'
-import { NativeSelect } from '@/components/ui/native-select'
+import { AppSelect } from '@/components/ui/app-select'
 
 const selectClass =
   'block w-full max-w-md rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50'
@@ -47,7 +47,7 @@ export function TrunkBasedFields({ config }: { config: ConfigResponse }) {
         title={t('Development model')}
         hint={t('Trunk-based: tasks work directly in the checkout one at a time, and changes that pass the required checks land on the base branch without a PR. Read-only questions run beside them. Every setting below stays adjustable.')}
       >
-        <NativeSelect
+        <AppSelect
           aria-label={t('Development model')}
           data-slot="tasks-profile"
           value={trunk ? 'trunk' : 'branches'}
@@ -62,14 +62,14 @@ export function TrunkBasedFields({ config }: { config: ConfigResponse }) {
         >
           <option value="branches">{t('Branch per task (default) — a worktree and branch per task, reviewed before merging')}</option>
           <option value="trunk">{t('Trunk-based — work in the checkout, land checked changes on the base branch')}</option>
-        </NativeSelect>
+        </AppSelect>
       </SettingsField>
 
       <SettingsField
         title={t('Where tasks work')}
         hint={t('In the checkout: no worktree or branch per task. Write tasks take turns on the working tree, so two tasks started together never conflict. The composer can still ask for a worktree per task.')}
       >
-        <NativeSelect
+        <AppSelect
           aria-label={t('Where tasks work')}
           data-slot="tasks-workspace"
           value={config.taskWorkspace ?? ''}
@@ -82,7 +82,7 @@ export function TrunkBasedFields({ config }: { config: ConfigResponse }) {
           <option value="">{t('Composer default (isolated worktree)')}</option>
           <option value="worktree">{t('Isolated worktree per task')}</option>
           <option value="in-place">{t('The repo checkout, one write task at a time')}</option>
-        </NativeSelect>
+        </AppSelect>
       </SettingsField>
 
       <SettingsField
@@ -186,7 +186,7 @@ function SkillSelect({
   return (
     <label className="flex flex-1 flex-col gap-1 text-[12px] text-muted-foreground">
       {label}
-      <NativeSelect
+      <AppSelect
         aria-label={label}
         data-slot={slot}
         value={value ?? ''}
@@ -200,7 +200,7 @@ function SkillSelect({
             {name}
           </option>
         ))}
-      </NativeSelect>
+      </AppSelect>
     </label>
   )
 }

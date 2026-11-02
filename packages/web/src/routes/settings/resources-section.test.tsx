@@ -9,6 +9,7 @@ import type { WorkspaceConfigResponse } from '@onni/api-client'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
  * Global settings → Resources (step 3.5): `maxParallel` and `memoryLimitMb` moved out of the
@@ -108,7 +109,7 @@ const saveMemory = () =>
 const puts = () => requests.filter((r) => r.method === 'PUT' && r.url === '/api/v1/workspace/config')
 const monitoringSelect = () => document.querySelector<HTMLInputElement>('[data-slot="resources-max-monitoring"]')
 const idleTimeout = () => document.querySelector<HTMLInputElement>('[data-slot="resources-idle-timeout"]')
-const wakeMode = () => document.querySelector<HTMLSelectElement>('[data-slot="resources-monitoring-wake-mode"]')
+const wakeMode = () => document.querySelector<HTMLButtonElement>('[data-slot="resources-monitoring-wake-mode"]')
 const wakeInterval = () => document.querySelector<HTMLInputElement>('[data-slot="resources-monitoring-wake-interval"]')
 const saveWake = () => document.querySelector<HTMLButtonElement>('[data-action="resources-save-monitoring-wake"]')
 
@@ -203,9 +204,9 @@ describe('Global settings → Resources', () => {
     serve({ monitoringWakeIntervalMinutes: null })
     renderResources()
     await waitFor(() => expect(wakeMode()).not.toBeNull())
-    expect(wakeMode()!.value).toBe('park')
+    expect(selectValue(wakeMode())).toBe('park')
     expect(wakeInterval()).toBeNull()
-    fireEvent.change(wakeMode()!, { target: { value: 'interval' } })
+    await pickOption(wakeMode(), 'interval')
     expect(wakeInterval()!.value).toBe('5')
     fireEvent.click(saveWake()!)
     await waitFor(() => expect(puts()).toHaveLength(1))
@@ -215,12 +216,12 @@ describe('Global settings → Resources', () => {
   it('shows auto-resume on by default and saves the opt-out', async () => {
     serve()
     renderResources()
-    const select = (await screen.findByLabelText('Auto-resume after a usage limit')) as HTMLSelectElement
+    const select = await screen.findByLabelText('Auto-resume after a usage limit')
     // The shipped default (spec 2026-08-03-auto-resume-after-usage-limit) — a user who never
     // opens this pane still gets their limited tasks finished.
-    expect(select.value).toBe('on')
+    expect(selectValue(select)).toBe('on')
 
-    fireEvent.change(select, { target: { value: 'off' } })
+    await pickOption(select, 'off')
     await waitFor(() => expect(puts()).toHaveLength(1))
     expect(puts()[0]?.body).toEqual({ resources: { autoResumeOnUsageLimit: false } })
   })
@@ -267,14 +268,14 @@ describe('Global settings → Resources', () => {
     renderResources()
     const autonomous = await screen.findByLabelText('Autonomous by default')
     const worktree = screen.getByLabelText('Use a worktree by default')
-    expect((autonomous as HTMLSelectElement).value).toBe('inherit')
+    expect(selectValue(autonomous)).toBe('inherit')
     expect(screen.getByText(/Source-dependent — skills on, workflows off/)).toBeTruthy()
 
-    fireEvent.change(autonomous, { target: { value: 'off' } })
+    await pickOption(autonomous, 'off')
     await waitFor(() => expect(puts().at(-1)?.body).toEqual({
       composerDefaults: { autonomous: false },
     }))
-    fireEvent.change(worktree, { target: { value: 'on' } })
+    await pickOption(worktree, 'on')
     await waitFor(() => expect(puts().at(-1)?.body).toEqual({
       composerDefaults: { worktree: true },
     }))

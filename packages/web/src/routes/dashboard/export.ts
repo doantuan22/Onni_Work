@@ -77,6 +77,15 @@ function summaryTiles(report: DashboardExport) {
   return tiles
 }
 
+const SELECT_SELECTOR = 'select,[data-slot="app-select"]'
+
+/** The chosen option's text: a native select's selected option, or an AppSelect trigger's shown value. */
+function selectedText(el: Element | undefined): string {
+  if (!el) return ''
+  if (el instanceof HTMLSelectElement) return el.selectedOptions[0]?.textContent ?? ''
+  return el.textContent?.trim() ?? ''
+}
+
 function sanitizeModule(source: HTMLElement) {
   const node = source.cloneNode(true) as HTMLElement
   node
@@ -84,11 +93,9 @@ function sanitizeModule(source: HTMLElement) {
       'script,style,link,img,iframe,object,embed,input,[hidden],[data-dashboard-export],[data-export-exclude]',
     )
     .forEach((el) => el.remove())
-  node.querySelectorAll('select').forEach((el, i) => {
-    const selected = source.querySelectorAll('select')[i]
-    el.replaceWith(
-      document.createTextNode(': ' + (selected?.selectedOptions[0]?.textContent ?? '')),
-    )
+  node.querySelectorAll(SELECT_SELECTOR).forEach((el, i) => {
+    const selected = source.querySelectorAll(SELECT_SELECTOR)[i]
+    el.replaceWith(document.createTextNode(': ' + selectedText(selected)))
   })
   node
     .querySelectorAll('[data-export-row],[data-dashboard-row]')
@@ -143,10 +150,10 @@ export function collectDashboardExport(
       .filter(Boolean),
     modules: [...root.querySelectorAll<HTMLElement>('[data-dashboard-module]')].map(
       (module) => {
-        const filters = [...module.querySelectorAll('select')]
+        const filters = [...module.querySelectorAll(SELECT_SELECTOR)]
           .map(
             (select) =>
-              `${select.closest('label')?.childNodes[0]?.textContent?.trim() ?? 'Filter'}: ${select.selectedOptions[0]?.textContent}`,
+              `${select.closest('label')?.childNodes[0]?.textContent?.trim() ?? 'Filter'}: ${selectedText(select)}`,
           )
           .concat(
             [...module.querySelectorAll<HTMLElement>('[data-export-context]')].map(

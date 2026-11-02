@@ -12,6 +12,7 @@ import type {
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
  * Global settings → Agent accounts, "Defaults for new projects" (spec 2026-07-29-agent-profiles):
@@ -334,11 +335,11 @@ describe('Agent accounts → Defaults for new projects', () => {
     renderAccounts()
 
     const select = () =>
-      document.querySelector<HTMLSelectElement>('[data-slot="accounts-default-model"][data-runner="claude"]')
+      document.querySelector<HTMLButtonElement>('[data-slot="accounts-default-model"][data-runner="claude"]')
     await waitFor(() => expect(select()).not.toBeNull())
-    expect(select()!.value).toBe('opus')
+    expect(selectValue(select())).toBe('opus')
 
-    fireEvent.change(select()!, { target: { value: '' } })
+    await pickOption(select(), '')
     await waitFor(() => expect(configPuts()).toHaveLength(1))
     // `null`, not an absent key: a partial patch cannot say "forget this" by omission, and a stale
     // value would keep seeding every unconfigured repo.

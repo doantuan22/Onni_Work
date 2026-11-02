@@ -15,6 +15,7 @@ import type {
 import { Toaster, resetToasts } from '@/components/ui/toaster'
 import { AppRoutes } from '@/routes'
 import { ThemeProvider } from '@/components/theme-provider'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
  * Settings → Agents (R6 Step 1.5): the form round-trip against a stateful `/api/v1/config` stub
@@ -287,12 +288,12 @@ describe('the agents form', () => {
     const codex = await screen.findByRole('radio', { name: 'codex' })
     expect(codex.getAttribute('aria-checked')).toBe('true')
     expect((codex as HTMLButtonElement).disabled).toBe(true)
-    const model = screen.getByLabelText<HTMLSelectElement>('Default model for codex')
-    expect(model.value).toBe('gpt-5-codex')
+    const model = screen.getByLabelText<HTMLButtonElement>('Default model for codex')
+    expect(selectValue(model)).toBe('gpt-5-codex')
     expect(model.disabled).toBe(true)
 
     expect((screen.getByRole('radio', { name: 'claude' }) as HTMLButtonElement).disabled).toBe(false)
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for claude').disabled).toBe(false)
+    expect(screen.getByLabelText<HTMLButtonElement>('Default model for claude').disabled).toBe(false)
   })
 
   it('keeps a saved disabled runner selected and explains how to recover', async () => {
@@ -312,7 +313,7 @@ describe('the agents form', () => {
     const codex = await screen.findByRole('radio', { name: 'codex' })
     expect(codex.getAttribute('aria-checked')).toBe('true')
     expect((codex as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for codex').disabled).toBe(true)
+    expect(screen.getByLabelText<HTMLButtonElement>('Default model for codex').disabled).toBe(true)
     expect(
       screen.getByText('This provider is disabled. Enable it above or choose another provider.'),
     ).toBeTruthy()
@@ -327,7 +328,7 @@ describe('the agents form', () => {
 
     const claude = await screen.findByRole('radio', { name: 'claude' })
     expect((claude as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for claude').disabled).toBe(true)
+    expect(screen.getByLabelText<HTMLButtonElement>('Default model for claude').disabled).toBe(true)
   })
 
   it('keeps unrelated settings usable when provider status errors', async () => {
@@ -336,7 +337,7 @@ describe('the agents form', () => {
 
     expect(await screen.findByText('Provider status could not be loaded')).toBeTruthy()
     expect((screen.getByRole('radio', { name: 'claude' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for claude').disabled).toBe(true)
+    expect(screen.getByLabelText<HTMLButtonElement>('Default model for claude').disabled).toBe(true)
   })
 
   it('keeps unrelated settings usable and provider controls disabled for malformed status data', async () => {
@@ -348,7 +349,7 @@ describe('the agents form', () => {
 
     expect(await screen.findByText('Provider status could not be loaded')).toBeTruthy()
     expect((screen.getByRole('radio', { name: 'claude' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for claude').disabled).toBe(true)
+    expect(screen.getByLabelText<HTMLButtonElement>('Default model for claude').disabled).toBe(true)
     expect(screen.queryByText(secret)).toBeNull()
   })
 
@@ -378,8 +379,8 @@ describe('the agents form', () => {
     await waitFor(() => expect(form()).not.toBeNull())
     expect(screen.getByRole('radio', { name: 'codex' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByRole('radio', { name: 'claude' }).getAttribute('aria-checked')).toBe('false')
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for claude').value).toBe('opus')
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for codex').value).toBe('')
+    expect(selectValue(screen.getByLabelText<HTMLButtonElement>('Default model for claude'))).toBe('opus')
+    expect(selectValue(screen.getByLabelText<HTMLButtonElement>('Default model for codex'))).toBe('')
     // What the user writes for a model, and how a task behaves, live in their own sections.
     expect(screen.queryByLabelText('System prompt')).toBeNull()
     expect(screen.queryByLabelText('Base branch')).toBeNull()
@@ -403,8 +404,8 @@ describe('the agents form', () => {
     renderAt('/settings/agents')
     await waitFor(() => expect(form()).not.toBeNull())
 
-    const claude = screen.getByLabelText<HTMLSelectElement>('Default model for claude')
-    fireEvent.change(claude, { target: { value: 'opus' } })
+    const claude = screen.getByLabelText<HTMLButtonElement>('Default model for claude')
+    await pickOption(claude, 'opus')
     await waitFor(() => expect(puts()).toHaveLength(1))
     // Naming a model releases the auto override — the two are alternatives, never both.
     expect(puts()[0]?.body).toEqual({
@@ -412,10 +413,10 @@ describe('the agents form', () => {
       defaultModelsAuto: { claude: false },
     })
     // The readback is the server's merged truth: codex's preset survived claude's write.
-    await waitFor(() => expect(claude.value).toBe('opus'))
-    expect(screen.getByLabelText<HTMLSelectElement>('Default model for codex').value).toBe('gpt-5-codex')
+    await waitFor(() => expect(selectValue(claude)).toBe('opus'))
+    expect(selectValue(screen.getByLabelText<HTMLButtonElement>('Default model for codex'))).toBe('gpt-5-codex')
 
-    fireEvent.change(claude, { target: { value: '' } })
+    await pickOption(claude, '')
     await waitFor(() => expect(puts()).toHaveLength(2))
     // Clearing the preset alone let the native settings file show back through, which is why
     // picking auto used to snap straight back to the model it names (#906).
@@ -423,7 +424,7 @@ describe('the agents form', () => {
       defaultModels: { claude: null },
       defaultModelsAuto: { claude: true },
     })
-    await waitFor(() => expect(claude.value).toBe(''))
+    await waitFor(() => expect(selectValue(claude)).toBe(''))
   })
 
   it('offers each runner the models its own host CLI reports (#794)', async () => {
@@ -439,9 +440,9 @@ describe('the agents form', () => {
     renderAt('/settings/agents')
     await waitFor(() => expect(form()).not.toBeNull())
 
-    const opencode = screen.getByLabelText<HTMLSelectElement>('Default model for opencode')
-    await waitFor(() =>
-      expect([...opencode.options].map((o) => o.value)).toEqual([
+    const opencode = screen.getByLabelText<HTMLButtonElement>('Default model for opencode')
+    await waitFor(async () =>
+      expect((await optionValues(opencode))).toEqual([
         '',
         'openai/gpt-5.5',
         'anthropic/claude-sonnet-5',
@@ -449,10 +450,10 @@ describe('the agents form', () => {
     )
     // The stale hard-coded presets this issue reported are gone, and Codex's catalog — fetched
     // under its own key — never leaks into OpenCode's row.
-    expect([...opencode.options].map((o) => o.value)).not.toContain('openai/gpt-5.1')
-    expect([...opencode.options].map((o) => o.value)).not.toContain('gpt-5.6-codex')
+    expect((await optionValues(opencode))).not.toContain('openai/gpt-5.1')
+    expect((await optionValues(opencode))).not.toContain('gpt-5.6-codex')
     expect(
-      [...screen.getByLabelText<HTMLSelectElement>('Default model for codex').options].map((o) => o.value),
+      (await optionValues(screen.getByLabelText<HTMLButtonElement>('Default model for codex'))),
     ).toEqual(['', 'gpt-5.6-codex'])
   })
 
@@ -758,10 +759,10 @@ describe('the tasks section', () => {
     serve({ config: { baseBranch: 'develop' } })
     renderAt('/settings/tasks')
     await waitFor(() => expect(tasks()).not.toBeNull())
-    const picker = await waitFor(() => screen.getByLabelText<HTMLSelectElement>('Base branch'))
-    expect(picker.value).toBe('develop')
+    const picker = await waitFor(() => screen.getByLabelText<HTMLButtonElement>('Base branch'))
+    expect(selectValue(picker)).toBe('develop')
 
-    fireEvent.change(picker, { target: { value: '' } })
+    await pickOption(picker, '')
     await waitFor(() => expect(puts()).toHaveLength(1))
     expect(puts()[0]?.body).toEqual({ baseBranch: null })
   })

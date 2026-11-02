@@ -19,6 +19,7 @@ import type {
 import { Toaster, onDangerToast, resetToasts } from '@/components/ui/toaster'
 
 import { RepoGitRoute } from './repo-git'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 afterEach(() => {
   act(() => resetToasts())
@@ -423,12 +424,12 @@ describe('the repo view Branches segment', () => {
     stubFetch()
     renderAt('/git/branches')
     const filter = await screen.findByLabelText('Filter branches')
-    const picker = (await screen.findByLabelText('Agents’ base branch')) as HTMLSelectElement
+    const picker = (await screen.findByLabelText('Agents’ base branch')) as HTMLButtonElement
 
     fireEvent.change(filter, { target: { value: 'FEAT' } })
     expect(document.querySelector('[data-slot="branch-row"][data-branch="feature"]')).not.toBeNull()
     expect(document.querySelector('[data-slot="branch-row"][data-branch="main"]')).toBeNull()
-    expect([...picker.options].map((option) => option.value)).toEqual(['', 'feature', 'main'])
+    expect((await optionValues(picker))).toEqual(['', 'feature', 'main'])
 
     fireEvent.change(filter, { target: { value: 'missing' } })
     expect(document.querySelector('[data-slot="branch-empty"]')?.textContent).toContain(
@@ -475,10 +476,10 @@ describe('the repo view Branches segment', () => {
       'PUT /api/v1/config': () => jsonResponse({ baseBranch: 'feature', defaultRunner: 'claude' }),
     })
     renderAt('/git/branches')
-    const picker = (await screen.findByLabelText('Agents’ base branch')) as HTMLSelectElement
-    expect(picker.value).toBe('') // baseBranch: null = follow checked-out branch
+    const picker = (await screen.findByLabelText('Agents’ base branch')) as HTMLButtonElement
+    expect(selectValue(picker)).toBe('') // baseBranch: null = follow checked-out branch
 
-    fireEvent.change(picker, { target: { value: 'feature' } })
+    await pickOption(picker, 'feature')
     await waitFor(() => {
       const put = sent.find((r) => r.method === 'PUT' && r.path === '/api/v1/config')
       expect(put?.body).toEqual({ baseBranch: 'feature' })

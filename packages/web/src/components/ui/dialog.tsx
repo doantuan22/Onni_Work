@@ -147,7 +147,13 @@ function DialogDescription({
   )
 }
 
+/** The dim layer behind a non-modal dialog (Radix draws none in that mode). */
+function DialogDim({ onClick }: { onClick?: () => void }) {
+  return <div data-slot="dialog-dim" aria-hidden="true" onClick={onClick} className="fixed inset-0 z-40 bg-black/50" />
+}
+
 export {
+  DialogDim,
   Dialog,
   DialogClose,
   DialogContent,

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setApiScope, type E2eStatus } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
 import { TesterArmyE2eCard } from './tester-army-e2e-card'
+import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 afterEach(() => { cleanup(); setApiScope(null); vi.unstubAllGlobals() })
 
@@ -51,7 +52,7 @@ describe('TesterArmy e2e card', () => {
   it('starts the setup with the key and opens the setup task', async () => {
     const calls = setup()
     await screen.findByText('Not configured in this checkout')
-    fireEvent.change(screen.getByLabelText('Model provider'), { target: { value: 'OPENAI_API_KEY' } })
+    await pickOption(screen.getByLabelText('Model provider'), 'OPENAI_API_KEY')
     fireEvent.change(screen.getByLabelText('API key'), { target: { value: 'sk-test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Set up e2e' }))
     await screen.findByText('task page')
@@ -79,7 +80,7 @@ describe('TesterArmy e2e card', () => {
     setup({ status: { configFile: 'e2e.config.ts', workflow: true, credentials: ['AI_GATEWAY_API_KEY'], setup: { runId: 'run-1', status: 'done' } } })
     await screen.findByText('e2e.config.ts')
     expect(screen.getByText('AI_GATEWAY_API_KEY')).toBeTruthy()
-    expect((screen.getByLabelText('Model provider') as HTMLSelectElement).value).toBe('AI_GATEWAY_API_KEY')
+    expect(selectValue(screen.getByLabelText('Model provider'))).toBe('AI_GATEWAY_API_KEY')
     expect(screen.getByRole('button', { name: 'Set up again' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Open the setup task' }).getAttribute('href')).toBe('/p/default/tasks/run-1')
   })
@@ -101,7 +102,7 @@ describe('TesterArmy e2e card', () => {
   it('preselects the provider whose key is already stored', async () => {
     setup({ status: { ...EMPTY, credentials: ['OPENAI_API_KEY'] } })
     await screen.findByText('OPENAI_API_KEY')
-    expect((screen.getByLabelText('Model provider') as HTMLSelectElement).value).toBe('OPENAI_API_KEY')
+    expect(selectValue(screen.getByLabelText('Model provider'))).toBe('OPENAI_API_KEY')
   })
 
   it('links the draft PR a finished setup opened', async () => {

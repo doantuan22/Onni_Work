@@ -18,7 +18,7 @@ import {
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogPortal, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogDim, DialogPortal, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/lib/i18n'
 import {
@@ -72,12 +72,7 @@ export function TaskSettingsPanel(props: TaskSettingsPanelProps) {
     // render in portals, which Radix counts as "outside" and would close the panel under them.
     <Dialog open modal={false} onOpenChange={props.onOpenChange}>
       <DialogPortal>
-        <div
-          data-slot="task-settings-overlay"
-          aria-hidden="true"
-          onClick={() => props.onOpenChange(false)}
-          className="fixed inset-0 z-40 bg-black/50"
-        />
+        <DialogDim onClick={() => props.onOpenChange(false)} />
       </DialogPortal>
       <DialogContent
         data-slot="task-settings-panel"

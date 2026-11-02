@@ -7,7 +7,7 @@ import { buildDigest, DEFAULT_DIGEST_HOURS, DIGEST_HOURS } from '@/lib/morning-d
 import { formatLimitValue } from '@/lib/run-limits'
 import { RunBackendBadge } from '@/components/run-backend-badge'
 import { RunLimitMeter } from '@/components/run-limit-meter'
-import { NativeSelect } from '@/components/ui/native-select'
+import { AppSelect } from '@/components/ui/app-select'
 
 const STORAGE_KEY = 'onni.digest.hours'
 
@@ -40,7 +40,7 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
         <h2 className="text-sm font-semibold">{t('While you were away')}</h2>
         <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
           {t('last')}
-          <NativeSelect
+          <AppSelect
             aria-label={t('Digest window in hours')}
             data-slot="digest-hours"
             value={hours}
@@ -48,7 +48,7 @@ export function MorningDigest({ now = Date.now() }: { now?: number }) {
             className="rounded-md border border-input bg-card px-2 py-1 text-[12px] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             {DIGEST_HOURS.map((h) => <option key={h} value={h}>{h} h</option>)}
-          </NativeSelect>
+          </AppSelect>
         </label>
         <span data-slot="digest-totals" className="ml-auto text-[12px] tabular-nums text-muted-foreground">
           {tn(digest.total, '{count} task', '{count} tasks')} · {formatLimitValue('cost', digest.costUsd)} ·{' '}
