@@ -147,7 +147,7 @@ export function TrunkBasedFields({ config }: { config: ConfigResponse }) {
         hint={
           config.teamSkills
             ? t('Skills from the shared team repositories. Turn off for a project whose skills live in the repo itself. Project-wide instructions for every task are under Instructions.')
-            : t('No team skill repository is configured. Onni Work ships none by default — add "skillsRepos" to .ai/onni/config.json to load skills from a repository of your own.')
+            : t('No team skill repository is configured. OnniCode ships none by default — add "skillsRepos" to .ai/onni/config.json to load skills from a repository of your own.')
         }
       >
         <label className="flex w-fit items-center gap-3">

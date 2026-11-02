@@ -573,14 +573,14 @@ describe('document title wiring', () => {
     })
     renderShell('/p/shop/git')
 
-    await waitFor(() => expect(document.title).toBe('Storefront — Git · onni'))
+    await waitFor(() => expect(document.title).toBe('Storefront — Git · OnniCode'))
   })
 
   it('falls back to the boot repository name when the registry is unavailable', async () => {
     serve({ '/api/v1/health': HEALTH_WITH_BOOT, '/api/v1/todos': [], '/api/v1/runs': [] })
     renderShell('/p/onni/')
 
-    await waitFor(() => expect(document.title).toBe('onni — Tasks · onni'))
+    await waitFor(() => expect(document.title).toBe('onni — Tasks · OnniCode'))
   })
 
   it('keeps global settings and a no-repo task route free of invented project context', async () => {
@@ -592,11 +592,11 @@ describe('document title wiring', () => {
     })
     const global = renderShell('/settings/global/projects')
 
-    await waitFor(() => expect(document.title).toBe('Settings · onni'))
+    await waitFor(() => expect(document.title).toBe('Settings · OnniCode'))
     global.unmount()
 
     renderShell('/tasks/missing')
-    await waitFor(() => expect(document.title).toBe('onni'))
+    await waitFor(() => expect(document.title).toBe('OnniCode'))
   })
 
   it('updates after in-app navigation without remounting the shell', async () => {
@@ -608,9 +608,9 @@ describe('document title wiring', () => {
     })
     renderShell('/p/onni/')
 
-    await waitFor(() => expect(document.title).toBe('onni — Tasks · onni'))
+    await waitFor(() => expect(document.title).toBe('onni — Tasks · OnniCode'))
     fireEvent.click(screen.getByRole('link', { name: 'Git' }))
-    await waitFor(() => expect(document.title).toBe('onni — Git · onni'))
+    await waitFor(() => expect(document.title).toBe('onni — Git · OnniCode'))
   })
 
   it('reacts to live project and task title cache updates', async () => {
@@ -628,7 +628,7 @@ describe('document title wiring', () => {
     const { client } = renderShell('/p/shop/tasks/run-1')
 
     await waitFor(() =>
-      expect(document.title).toBe('Storefront — Implement page titles · onni'),
+      expect(document.title).toBe('Storefront — Implement page titles · OnniCode'),
     )
 
     act(() => {
@@ -642,7 +642,7 @@ describe('document title wiring', () => {
     })
 
     await waitFor(() =>
-      expect(document.title).toBe('Renamed storefront — Rename browser titles · onni'),
+      expect(document.title).toBe('Renamed storefront — Rename browser titles · OnniCode'),
     )
   })
 })

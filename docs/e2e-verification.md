@@ -1,6 +1,6 @@
-# Browser and mobile e2e as an Onni Work verification step
+# Browser and mobile e2e as an OnniCode verification step
 
-An Onni Work check step is a shell command: exit 0 passes, non-zero can loop the
+An OnniCode check step is a shell command: exit 0 passes, non-zero can loop the
 agent back with the failing output. That is all an agentic end-to-end runner
 needs to become the thing that *judges* an agent's work — not a test suite the
 agent runs for itself, but a second opinion the task cannot finish without.
@@ -14,13 +14,13 @@ examples use.
 
 ---
 
-## One click: let Onni Work set it up
+## One click: let OnniCode set it up
 
 **Settings → (project) → External integrations → Test frameworks → TesterArmy e2e → Set up e2e.** That is the whole setup.
 Optionally pick a model provider and paste its key first; without one the smoke
 test still runs, and only `agent.*` steps need a model.
 
-Onni Work then starts a task, in its own worktree like any other, that:
+OnniCode then starts a task, in its own worktree like any other, that:
 
 1. runs `npx e2e init --yes` and installs what it added with the repository's package manager;
 2. points `e2e.config.ts` at **this** project's dev server on a per-task port
@@ -38,14 +38,14 @@ task's branch): the `implement-and-e2e` workflow is then in your catalog and the
 card in Settings reads *Installed*. The key is stored encrypted as a
 project secret (audience `checks`), so it reaches the e2e check steps and never an
 agent session — the reason not to `export` it (see below). `e2e`'s own telemetry is
-turned off (`E2E_TELEMETRY_DISABLED=1`) in every command Onni Work writes.
+turned off (`E2E_TELEMETRY_DISABLED=1`) in every command OnniCode writes.
 
 Everything below is what that task does for you, for when you want to do it by hand
 or change it.
 
 ## Before the first run (by hand)
 
-In the repo you want tested (not in Onni Work):
+In the repo you want tested (not in OnniCode):
 
 ```bash
 npx e2e init          # e2e.config.ts, tests/, the skill, .mcp.json, a test:e2e script
@@ -56,11 +56,11 @@ Commit it. A onni task runs in a **fresh git worktree**, so anything a check
 step needs has to be in the tree it forks from — an uncommitted `e2e.config.ts`
 is not there.
 
-Three things `init` leaves behind matter to Onni Work:
+Three things `init` leaves behind matter to OnniCode:
 
-| What | Why Onni Work cares |
+| What | Why OnniCode cares |
 | --- | --- |
-| `.agents/skills/e2e/` (+ `.claude/skills/e2e/`) | Onni Work discovers both — the `e2e` skill shows up in the Workflows palette and can be named by `skill: e2e` on any agent step |
+| `.agents/skills/e2e/` (+ `.claude/skills/e2e/`) | OnniCode discovers both — the `e2e` skill shows up in the Workflows palette and can be named by `skill: e2e` on any agent step |
 | a `test:e2e` script | the **Plan first** button detects it and offers it as a verification check |
 | `e2e.config.ts` | detected too, as `npx e2e run`, when there is no script |
 
@@ -129,7 +129,7 @@ loops back, exactly as before this field existed.
 ## Level 2 — the failure goes back to the agent
 
 That is already what the `onFail` loop does, and it is the reason to prefer
-`--reporter list,markdown` over bare output: when a check loops back, Onni Work
+`--reporter list,markdown` over bare output: when a check loops back, OnniCode
 appends its output (capped at 20 000 characters) to the retried agent's prompt
 under *"A verification command failed after the previous attempt. Fix the
 cause."* `summary.md` is written for exactly that — counts, errors, and the
@@ -153,7 +153,7 @@ output, not the artifacts, and it has Read and Bash in the worktree:
       `e2e` skill for anything you change under tests/.
 ```
 
-**Give every parallel task its own port.** Onni Work runs tasks concurrently, each
+**Give every parallel task its own port.** OnniCode runs tasks concurrently, each
 in its own worktree, so a fixed `localhost:3000` in `e2e.config.ts` is a race
 between two tasks. e2e allocates one per run when the URL asks for port 0 and
 the app command takes the `{port}` placeholder:
@@ -175,7 +175,7 @@ page renders and never hydrates.
 `e2e explore` takes a goal instead of a test file: it plans its own steps,
 drives the app, reports findings with evidence, and exits 1 when it finds a
 functional defect (a cosmetic `warning` does not fail it). As a check step it
-is a second agent judging the first one's work, with no Onni Work agent step and
+is a second agent judging the first one's work, with no OnniCode agent step and
 no prompt to write:
 
 ```yaml
@@ -242,10 +242,10 @@ for follow-ups.
 
 ---
 
-## What Onni Work gives the check, and what it does not
+## What OnniCode gives the check, and what it does not
 
 - **cwd** is the task's worktree, and the command runs under `bash -lc`.
-- **Environment** is the Onni Work server's own `process.env` plus the **secrets**
+- **Environment** is the OnniCode server's own `process.env` plus the **secrets**
   the step may read (below). There is no per-step `env:` — workflow files are
   committed, and a secret's value does not belong in them; a step names the
   secrets it needs instead. Tests with no agent step need no model at all.
@@ -282,8 +282,8 @@ for follow-ups.
   scrubbed from the run transcript or the retry prompt, so keep anything that
   must not be logged above the floor — every real API key already is.
 
-  **Why not just `export ANTHROPIC_API_KEY` before starting Onni Work?** Because
-  Onni Work passes provider-prefixed variables (`ANTHROPIC_*`, `OPENAI_*`, …) to
+  **Why not just `export ANTHROPIC_API_KEY` before starting OnniCode?** Because
+  OnniCode passes provider-prefixed variables (`ANTHROPIC_*`, `OPENAI_*`, …) to
   the agents it starts. A key exported for e2e would reach every Claude Code or
   Codex session too, and switch it from the subscription account you chose in
   Agent accounts to API billing — silently. A secret never reaches an agent:
@@ -297,7 +297,7 @@ for follow-ups.
   in the command to get the stricter CI defaults instead.
 - **The replay cache can be shared across tasks.** Every task starts in a
   fresh worktree, and `.e2e/cache/` is gitignored, so by default each task
-  re-records every `agent.act`. Onni Work hands each check `ONNI_SHARED_CACHE_DIR`
+  re-records every `agent.act`. OnniCode hands each check `ONNI_SHARED_CACHE_DIR`
   (`~/.onni/cache/<project>`, one per project) — point the cache there:
 
   ```ts
@@ -309,11 +309,11 @@ for follow-ups.
   },
   ```
 
-  Onni Work hands every parallel task the same directory and takes no lock on it —
+  OnniCode hands every parallel task the same directory and takes no lock on it —
   it does not own the writes, your e2e tool does. A recording one task
   overwrites costs the next one a re-recording (model calls), never a wrong
   verdict: e2e verifies the end state of every replay. Two tasks writing the
-  *same* entry at once is the case Onni Work cannot speak for — if your cache
+  *same* entry at once is the case OnniCode cannot speak for — if your cache
   writer is not atomic, a torn entry surfaces as an e2e error rather than a
   re-record. Keep the cache per project (the default shape above) rather than
   sharing one across projects, and nothing prunes the directory: it is yours to
@@ -324,7 +324,7 @@ for follow-ups.
   `ONNI_BRANCH`, `ONNI_BASE`, `ONNI_STEP_ID` and `ONNI_ATTEMPT`, plus
   `ONNI_GITHUB_REPO`/`ONNI_GITHUB_NUMBER`/`ONNI_GITHUB_EVENT` on a run a GitHub
   automation launched — see the [reference](reference.md#workflow-format).
-- **No timeout.** Onni Work does not bound a check step; e2e's own startup,
+- **No timeout.** OnniCode does not bound a check step; e2e's own startup,
   test and exploration timeouts are what stop a hung app from holding the
   task's parallel slot. Keep them configured.
 - **No service orchestration.** e2e starts `app.command` and nothing else. A
@@ -398,10 +398,10 @@ event the poller cannot see yet.
 ## On every PR, in CI
 
 For teams that already run CI, the recommended "every PR" path is a GitHub
-Actions workflow using `@e2e-dev/github`, not an Onni Work automation: keep the model
+Actions workflow using `@e2e-dev/github`, not an OnniCode automation: keep the model
 key in **repository secrets**, and leave fork PRs out (GitHub does not give
-them secrets either). Onni Work's automation is for the machine you already run
-Onni Work on, with no CI to configure.
+them secrets either). OnniCode's automation is for the machine you already run
+OnniCode on, with no CI to configure.
 
 ## Cost
 

@@ -4,7 +4,7 @@ skinparam defaultFontName "Segoe UI"
 skinparam dpi 150
 skinparam classAttributeIconSize 0
 skinparam ArrowThickness 1.2
-title Onni Work — core engine classes and their seams
+title OnniCode — core engine classes and their seams
 
 class RunManager {
   <<src/workflows/run.ts:1245>>

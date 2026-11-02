@@ -1,7 +1,7 @@
 # Build and install the Windows desktop for personal use
 
 This runbook builds the Tauri shell for a Windows machine that already has Node.js 20+ and the
-Onni Work checkout. The shell does not install Node.js or download the engine. Use the current
+OnniCode checkout. The shell does not install Node.js or download the engine. Use the current
 checkout as the engine by building it and linking it before installing the desktop shell.
 
 ## 1. Build the engine
@@ -46,7 +46,7 @@ directory, so it can run while another desktop executable is open.
 
 ## 4. Install and smoke-test
 
-Run the printed `Onni Work_<version>_x64-setup.exe` and complete the NSIS install. Launch Onni Work
+Run the printed `OnniCode_<version>_x64-setup.exe` and complete the NSIS install. Launch OnniCode
 and confirm the cockpit opens and reaches the local engine. For a personal smoke check, create and
 cancel a `mock:slow` task, quit the app, reopen it, and confirm the cancelled task remains visible.
 

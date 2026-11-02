@@ -1,8 +1,8 @@
 # Outbound task webhooks
 
-Webhooks send task notifications from a running Onni Work server to your own receiver.
+Webhooks send task notifications from a running OnniCode server to your own receiver.
 Your receiver can process these events in an automation workflow. They do not start tasks or accept answers.
-Receivers get signed Onni Work JSON.
+Receivers get signed OnniCode JSON.
 
 ## Supported server platforms
 
@@ -12,8 +12,8 @@ process start + boot id + PID namespace), **macOS** (`ps` start time + `sysctl k
 delivery stays off until explicitly enabled. Ownership is fenced by an OS-verified process start
 token and, where stable, a boot-session identity, so a lock left by a crashed or rebooted process is recovered,
 while a process the OS still reports as live keeps it. If the OS cannot verify an identity (an
-unopenable process on Windows, a changed hostname, an unreadable owner file), Onni Work keeps webhooks
-unavailable instead of stealing the lock; after confirming no Onni Work process is running, an operator
+unopenable process on Windows, a changed hostname, an unreadable owner file), OnniCode keeps webhooks
+unavailable instead of stealing the lock; after confirming no OnniCode process is running, an operator
 may remove the stale `.ai/onni/webhooks/owner.lock`. Windows boot timestamps are diagnostic only:
 a changed timestamp never proves a live owner has died. Linux owners from another PID namespace
 or locks without namespace evidence remain unverifiable. On macOS, safe ownership recovery
@@ -30,11 +30,11 @@ enabled. An ownership or storage failure reports the existing storage/coordinato
 
 ## Enable and connect
 
-1. Start Onni Work with `ONNI_WEBHOOKS=1` in its server environment. Restart after changing the flag.
+1. Start OnniCode with `ONNI_WEBHOOKS=1` in its server environment. Restart after changing the flag.
    Without the flag, the Webhooks settings page explains how to enable delivery; it creates no
    webhook storage, capture observers, timers or requests.
 2. Open your project's **Settings → Webhooks**, then **Add receiver**. Use an HTTPS receiver URL.
-   Paths and query strings may contain credentials: Onni Work masks them in lists and delivery history.
+   Paths and query strings may contain credentials: OnniCode masks them in lists and delivery history.
 3. Keep **Minimal** initially. For a custom receiver, save and copy the signing key into its secret storage.
    The cockpit shows that key once. If you lose it, use **Rotate key** in the receiver's **⋯** menu.
 4. Send a test. It contains only a synthetic connection event, never a project name, task or question.
@@ -44,7 +44,7 @@ enabled. An ownership or storage failure reports the existing storage/coordinato
 
 A local server can send to a private receiver after explicit local-network consent, including for
 Test. Hosted mode requires public HTTPS. Local HTTP is unencrypted even with a signed body.
-Loopback Onni Work ports, metadata services and unsafe DNS/address forms are always denied. Redirects
+Loopback OnniCode ports, metadata services and unsafe DNS/address forms are always denied. Redirects
 and corporate environment proxies are unsupported; use a directly reachable receiver with a valid
 TLS certificate. DNS is revalidated and pinned for every attempt.
 
@@ -125,7 +125,7 @@ Do not use these notifications alone to approve payments, deployments or privile
 ## Delivery and acknowledgement
 
 Return 2xx only after the desired work is completed durably, or after it is in your own durable queue.
-The total request budget is ten seconds. Onni Work retries connection errors, 408, 429 and 5xx, using
+The total request budget is ten seconds. OnniCode retries connection errors, 408, 429 and 5xx, using
 backoff and Retry-After, within a 72-hour delivery lifetime. Other 4xx stop that delivery; 410 disables
 the receiver. No redirect is followed. Ordering across events is not guaranteed.
 Queued attention/review notifications are also subject to freshness suppression, including the
@@ -184,7 +184,7 @@ already dropped deliveries are not automatically recovered.
 
 Delivery payloads and Replay eligibility are retained for seven days after terminal completion.
 Masked delivery/activity history is retained up to thirty days within finite storage limits. If a
-delivery or activity log cannot be read, Onni Work preserves it beside the original
+delivery or activity log cannot be read, OnniCode preserves it beside the original
 (`*.corrupt-<id>`) and starts a fresh log; the receiver list reports degraded health, and neither
 capture nor delivery is disabled.
 An unreadable admission is also quarantined, but its lost delivery evidence requires a safe reset:
@@ -203,8 +203,8 @@ them; heed any warning if that write fails or another server owns the project.
 ## External automation receivers
 
 Configure the webhook URL of your own backend or automation workflow (for example Make or n8n)
-as the receiver. Onni Work sends signed JSON; your workflow decides how to format it and whether to
-send a chat message or perform another action. No Onni Work relay process is required or supplied.
+as the receiver. OnniCode sends signed JSON; your workflow decides how to format it and whether to
+send a chat message or perform another action. No OnniCode relay process is required or supplied.
 
 Follow the signature verification and duplicate-handling requirements above. A successful HTTP
 response acknowledges receipt by your workflow, not delivery to a downstream chat. If the workflow

@@ -1,4 +1,4 @@
-# FEATURES.md — bản chụp hiện trạng tính năng (Onni Work)
+# FEATURES.md — bản chụp hiện trạng tính năng (OnniCode)
 
 Ngày chụp: **2026-10-30** · nhánh `docs/architecture-snapshot` · chỉ đọc code, không sửa code.
 

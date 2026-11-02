@@ -1,6 +1,6 @@
-# AGENT_PROTOCOL.md — the Onni Work agent protocol
+# AGENT_PROTOCOL.md — the OnniCode agent protocol
 
-Onni Work runs coding-agent CLIs behind **one backend-agnostic seam** and renders
+OnniCode runs coding-agent CLIs behind **one backend-agnostic seam** and renders
 every backend through **one normalized event vocabulary**. This document is the
 operational contract for that seam: what a runner must implement, what it must
 emit, how the emissions are tested, and what a *new* runner (e.g. `pi`, PR #387)
@@ -177,7 +177,7 @@ Every v1 event stays **derivable** from the v2 stream, so a consumer can migrate
 one panel at a time. New work should read v2; v1 exists for the console renderer
 and old recordings.
 
-### Onni Work-owned run metadata events
+### OnniCode-owned run metadata events
 
 `provider-auth-required` is not emitted by a backend runner. The server derives it
 from an authoritative v1/v2 authentication error, persists a provider id, opaque
@@ -446,7 +446,7 @@ these events get persisted as NDJSON), and asserts `toStrictEqual` against the
 - **NDJSON** — one append-only `runs/<id>.ndjson` per run, one JSON object per
   line (`seq`, `ts`, `type`, free extra keys). Never rewrite, reorder or
   re-number; readers skip bad lines. Both v1 and v2 events live here; a mixed
-  file is valid. Onni Work-owned task events are additive too: for example,
+  file is valid. OnniCode-owned task events are additive too: for example,
   `provider-auth-required` records only `{ provider, authFailureId, stepId? }`
   when a runtime rejection needs user authorization; it never carries vendor
   error text or credentials.
@@ -504,7 +504,7 @@ To be first-class:
    the existing inconsistencies (opencode drops a bare model silently) — do not
    reproduce a silent-drop. A backend with no default provider gets no entry in
    `BACKEND_MODEL_MAP`'s default column, so a bare id fails loud.
-10. **Permissions** — a backend Onni Work starts in an "approve everything" mode MUST still answer an
+10. **Permissions** — a backend OnniCode starts in an "approve everything" mode MUST still answer an
    approval request that arrives anyway. No cockpit surface can answer one yet, so a run parked on
    a `session/request_permission` would be a state with no exit; `copilot-acp-runner.ts`
    auto-approves with a `note` instead.

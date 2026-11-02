@@ -78,7 +78,7 @@ const GLOBAL_SKILL_DIRS: Array<{ dir: string; source: Skill['source'] }> = [
  * same name shadows it.
  *
  * Opt-out gate: skills from a *default* skills repo appear unless the user has curated them
- * away; Onni Work ships no default source (`DEFAULT_SKILLS_REPOS` is empty, see
+ * away; OnniCode ships no default source (`DEFAULT_SKILLS_REPOS` is empty, see
  * `gatedSkillsRepos`), so this is inert until a fork configures one. `importedSkills` in this
  * repo's `.ai/onni/ui-state.json` is a tri-state:
  * ABSENT means "not curated" and every default skill shows unless an older workspace-level

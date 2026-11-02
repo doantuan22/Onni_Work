@@ -1,6 +1,6 @@
 # AGENTS.md — working in this repository
 
-Onni Work is a local cockpit for running and tracking AI coding-agent tasks in one repository.
+OnniCode is a local cockpit for running and tracking AI coding-agent tasks in one repository.
 You type a task, pick a backend (`claude`, `codex`, `opencode`, `cursor`, `pi`, `junie`,
 `copilot`, `cline`, `antigravity`) and a workflow; each task runs in its own git worktree and streams steps, tool calls,
 tokens and diffs live. A Tauri desktop shell wraps the same engine. Everything is local: no
@@ -17,12 +17,12 @@ the code win.
 
 There is no file the user must create and no setting they must set. Every capability is
 discovered from the repo, the environment, `gh` and running processes, or it degrades quietly to
-a smaller Onni Work. `.ai/onni/config.json` is optional; every key has a working default. A repo
+a smaller OnniCode. `.ai/onni/config.json` is optional; every key has a working default. A repo
 `.env` is never auto-loaded. Tracker credentials live in `onniHomeDir()/tracker-connections/`,
 written by Settings, parsed only into the project connection object — never into `process.env`.
 
 New state may be **written**, never **required**: `.ai/onni/`, `~/.cache/onni/`, `~/.onni/`.
-Delete any of them and Onni Work rebuilds what it needs. The one exception: `~/.onni` also keeps
+Delete any of them and OnniCode rebuilds what it needs. The one exception: `~/.onni` also keeps
 `config.json.bak`, so deleting `config.json` alone restores the project registry instead of
 resetting it.
 

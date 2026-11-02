@@ -524,8 +524,8 @@ export const viSettings: Record<string, string> = {
   'No subfolders here — pick this folder by typing its path above.':
     'Không có thư mục con ở đây — chọn thư mục này bằng cách nhập đường dẫn ở trên.',
   'No task worktrees on disk.': 'Không có worktree nhiệm vụ nào trên đĩa.',
-  'No team skill repository is configured. Onni Work ships none by default — add "skillsRepos" to .ai/onni/config.json to load skills from a repository of your own.':
-    'Chưa cấu hình repository skill của nhóm. Onni Work không kèm sẵn cái nào — thêm "skillsRepos" vào .ai/onni/config.json để tải skill từ repository của riêng bạn.',
+  'No team skill repository is configured. OnniCode ships none by default — add "skillsRepos" to .ai/onni/config.json to load skills from a repository of your own.':
+    'Chưa cấu hình repository skill của nhóm. OnniCode không kèm sẵn cái nào — thêm "skillsRepos" vào .ai/onni/config.json để tải skill từ repository của riêng bạn.',
   'No templates. Add one below, or reset to the built-ins.':
     'Chưa có mẫu. Thêm một mẫu bên dưới, hoặc đặt lại về mẫu có sẵn.',
   'No tracker connected.': 'Chưa kết nối tracker.',

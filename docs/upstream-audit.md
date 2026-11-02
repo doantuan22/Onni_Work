@@ -1,4 +1,4 @@
-# Kiểm toán upstream: cezar → Onni Work
+# Kiểm toán upstream: cezar → OnniCode
 
 - **Ngày:** 2026-10-29
 - **Phạm vi:** toàn bộ repo `D:\Multi Agent` (bỏ qua `node_modules`, `target`, `dist`)
@@ -269,7 +269,7 @@ Mục tiêu đúng nên là: **0 link chức năng gọi ra hạ tầng upstream
 
 1. Giữ nguyên `LICENSE` và `packages/work/LICENSE`; thêm **một dòng** `Copyright (c) 2026 <TÊN ĐẦY ĐỦ>` ngay dưới dòng gốc.
 2. Thêm `NOTICE` (hoặc `CREDITS.md`) ghi công cezar/Patryk Lewczuk + MIT + URL upstream.
-3. Viết `README.md` mới cho Onni Work: mô tả sản phẩm, cách chạy, mục "Nguồn gốc & giấy phép" trỏ tới `NOTICE`/upstream. Không dùng badge/npm link upstream.
+3. Viết `README.md` mới cho OnniCode: mô tả sản phẩm, cách chạy, mục "Nguồn gốc & giấy phép" trỏ tới `NOTICE`/upstream. Không dùng badge/npm link upstream.
 4. Xoá `README.zh-CN.md`, `README.zh-TW.md`.
 5. Manifest: giữ `"license": "MIT"`; thêm `license` cho desktop `package.json` và `Cargo.toml`; sửa `repository` (own repo hoặc bỏ), bỏ `directory` lỗi thời; thêm `author` nếu muốn.
 6. Quyết định về `CHANGELOG.md` (giữ có ghi chú nguồn / xoá).
@@ -278,7 +278,7 @@ Mục tiêu đúng nên là: **0 link chức năng gọi ra hạ tầng upstream
 
 1. **Desktop npm install (quan trọng nhất):** tách `PACKAGE` thành một hằng cấu hình duy nhất; Phase 2 đặt về chế độ "không tự cài" — khi `~/.cezar/versions` trống, hiển thị trang hướng dẫn cài thủ công thay vì `npm install @onni/work`. Không bịa package/tag mới.
 2. **Tauri updater:** xoá block `plugins.updater` (pubkey + endpoint) khỏi `tauri.conf.json`; gỡ `tauri-plugin-updater` khỏi `Cargo.toml`/`Cargo.lock` nếu không còn dùng; ẩn/disable menu "Update cezar to latest…", `check_shell_update`, `update_cezar_command`, các pill "Update/Switch version". Quyết định: xoá hẳn code hay chỉ vô hiệu hoá bằng một cờ build.
-3. **CLI:** một module cờ rõ ràng (ví dụ `self-update/availability.ts` với `SELF_UPDATE_ENABLED = false`) mà `install/update/versions/use` và help đều đọc. Khi tắt: lệnh in thông báo "tính năng đã bị vô hiệu hoá trong bản Onni Work", không gọi mạng. `uninstall-as-command` chỉ được phép gỡ package **do chính bản này cài**, không đụng package global khác.
+3. **CLI:** một module cờ rõ ràng (ví dụ `self-update/availability.ts` với `SELF_UPDATE_ENABLED = false`) mà `install/update/versions/use` và help đều đọc. Khi tắt: lệnh in thông báo "tính năng đã bị vô hiệu hoá trong bản OnniCode", không gọi mạng. `uninstall-as-command` chỉ được phép gỡ package **do chính bản này cài**, không đụng package global khác.
 4. Giữ nguyên `ONNI_DRY_RUN=1` và test offline.
 
 ### 6.3 Nhóm B-TELEMETRY
@@ -294,7 +294,7 @@ Mục tiêu đúng nên là: **0 link chức năng gọi ra hạ tầng upstream
 1. **Star-count:** chọn một trong ba:
    - (a) xoá hẳn route/UI/banner (sạch nhất);
    - (b) giữ route + contract nhưng trả `{ available: false }` vô điều kiện, ẩn chip ⭐ và dialog;
-   - (c) trỏ về repo Onni Work của bạn (vẫn là network mặc định).
+   - (c) trỏ về repo OnniCode của bạn (vẫn là network mặc định).
    Đề xuất: **(b)** nếu muốn giữ contract ổn định, **(a)** nếu muốn ít code nhất. Không chọn (c) ở Phase 2 vì cần repo công khai + quyết định sản phẩm.
 2. **Default skills repo:** `DEFAULT_SKILLS_REPOS = []`; xoá 3 dòng quảng bá trong `skills-banner.ts`; xác nhận auto-update là no-op khi danh sách rỗng; cập nhật test.
 3. **Docs site:** nếu giữ, đổi `appName`, `gitConfig`, title, bỏ link `cezar.run`; nếu xoá, gỡ `docs:dev/check/build` khỏi root scripts và xoá `docs/site`.
@@ -382,7 +382,7 @@ scope package `@open-mercato/*` và `productName`/`identifier` của desktop đ�
 
 | Cờ | Trạng thái | Tác dụng |
 | --- | --- | --- |
-| `ONNI_SELF_UPDATE` | **mới, mặc định tắt** | Chỉ giá trị đúng `1` mới bật (cùng quy ước với `ONNI_REVIEW_GATE=1`). Khi tắt: `cezar install`, `cezar update`, `cezar versions`, `cezar use`, self-update service (`/api/v1/workspace/self-update*`), dialog cập nhật trong cockpit và mọi đường cập nhật của desktop đều trả **"không khả dụng trong Onni Work"** và không gọi registry. Đọc ở `packages/work/src/self-update/enabled.ts`; desktop dùng `const SELF_UPDATE_ENABLED: bool = false` trong `packages/desktop/src-tauri/src/lib.rs` (bản build desktop hiện tại không bật cờ này). |
+| `ONNI_SELF_UPDATE` | **mới, mặc định tắt** | Chỉ giá trị đúng `1` mới bật (cùng quy ước với `ONNI_REVIEW_GATE=1`). Khi tắt: `cezar install`, `cezar update`, `cezar versions`, `cezar use`, self-update service (`/api/v1/workspace/self-update*`), dialog cập nhật trong cockpit và mọi đường cập nhật của desktop đều trả **"không khả dụng trong OnniCode"** và không gọi registry. Đọc ở `packages/work/src/self-update/enabled.ts`; desktop dùng `const SELF_UPDATE_ENABLED: bool = false` trong `packages/desktop/src-tauri/src/lib.rs` (bản build desktop hiện tại không bật cờ này). |
 | `ONNI_TELEMETRY_URL` | giữ, mặc định rỗng | Không còn endpoint upstream, nên telemetry là no-op cho tới khi người dùng tự cấu hình một endpoint của mình. Consent flow, `TELEMETRY_POLICY_VERSION` và các khoá đóng vẫn nguyên. |
 | `ONNI_NO_BANNER` | giữ, **no-op** | Promo mà nó từng tắt (banner skills + dòng star) đã bị xoá; biến còn lại chỉ để script/cấu hình cũ không vỡ. |
 
@@ -393,11 +393,11 @@ bảng env của `docs/reference.md`.
 
 | Nhóm | Commit | Nội dung |
 | --- | --- | --- |
-| A — giấy phép & ghi công | `7b11c1f` | `Copyright (c) 2026 DOANTUANIT` dưới dòng cezar gốc trong `LICENSE` và `packages/work/LICENSE`; `NOTICE` mới; `README.md` viết lại; bỏ `README.zh-CN.md`/`README.zh-TW.md`; metadata `repository`, license của Rust crate/desktop, `PKGBUILD`; `CHANGELOG.md` của cezar chuyển sang `docs/upstream/CHANGELOG-cezar.md` và `CHANGELOG.md` mới cho Onni Work. |
-| B-UPDATE | `498ecfb` | Tauri: bỏ `plugins.updater.endpoints` + `pubkey` khỏi `tauri.conf.json`, không đăng ký plugin updater, mọi nhánh install/update/restart mở trang `self_update_off`. CLI + service: gate bằng `ONNI_SELF_UPDATE`, thông điệp "không khả dụng trong Onni Work". |
+| A — giấy phép & ghi công | `7b11c1f` | `Copyright (c) 2026 DOANTUANIT` dưới dòng cezar gốc trong `LICENSE` và `packages/work/LICENSE`; `NOTICE` mới; `README.md` viết lại; bỏ `README.zh-CN.md`/`README.zh-TW.md`; metadata `repository`, license của Rust crate/desktop, `PKGBUILD`; `CHANGELOG.md` của cezar chuyển sang `docs/upstream/CHANGELOG-cezar.md` và `CHANGELOG.md` mới cho OnniCode. |
+| B-UPDATE | `498ecfb` | Tauri: bỏ `plugins.updater.endpoints` + `pubkey` khỏi `tauri.conf.json`, không đăng ký plugin updater, mọi nhánh install/update/restart mở trang `self_update_off`. CLI + service: gate bằng `ONNI_SELF_UPDATE`, thông điệp "không khả dụng trong OnniCode". |
 | B-TELEMETRY | `75a43be` | `DEFAULT_TELEMETRY_URL = ''` (service) và `DEFAULT_URL = ""` (Rust); `post()` short-circuit; `endpoint()` trả `Option<String>`; consent chỉ hỏi khi có endpoint; nút *Send error report* ẩn khi không có endpoint; Settings → Privacy hiện trạng thái "chưa cấu hình". |
 | B-PUBLISH | `a772142` | `packages/work` + `packages/api-client` `private: true`; bỏ mọi `publishConfig`; xoá `nightly.yml`, `npm-preview-cleanup.yml` và job `publish-snapshot` trong `ci.yml`; `BACKWARD_COMPATIBILITY.md` §6, `docs/publishing.md` ghi rõ "publishes nothing"; các workflow release còn lại chỉ chạy bằng dispatch/tag và cần secret + quyền npm scope của upstream nên không thể phát hành gì. |
-| B-other | commit cuối Phase 2 | star-count trả `available:false` không gọi mạng; `DEFAULT_SKILLS_REPOS = []` và xoá banner terminal (`skills-banner.ts`); `CEZAR_REPO_URL` trỏ repo Onni Work; cập nhật `AGENTS.md`, `BACKWARD_COMPATIBILITY.md`, `docs/reference.md`, `docs/server-install/ubuntu-vps.md`, `packages/api-client/README.md`, banner `docs/site/README.md`; thêm `docs/project-overview.md` + tài liệu này. |
+| B-other | commit cuối Phase 2 | star-count trả `available:false` không gọi mạng; `DEFAULT_SKILLS_REPOS = []` và xoá banner terminal (`skills-banner.ts`); `CEZAR_REPO_URL` trỏ repo OnniCode; cập nhật `AGENTS.md`, `BACKWARD_COMPATIBILITY.md`, `docs/reference.md`, `docs/server-install/ubuntu-vps.md`, `packages/api-client/README.md`, banner `docs/site/README.md`; thêm `docs/project-overview.md` + tài liệu này. |
 
 ### 10.3 Chi tiết theo quyết định
 
@@ -413,7 +413,7 @@ bảng env của `docs/reference.md`.
   built-in không đổi. Gating (`gatedSkillsRepos`/`projectGatedSkillsRepos`) vẫn chạy nhưng rỗng.
 - **Updater.** Desktop không còn endpoint/khoá nên kể cả khi bật plugin cũng không có nguồn cập nhật;
   nhánh `install/update` của shell, npm install khi máy trống và "update on restart" đều bị compile off.
-  CLI chỉ bật lại bằng `ONNI_SELF_UPDATE=1` + một nguồn phát hành riêng (Onni Work chưa có).
+  CLI chỉ bật lại bằng `ONNI_SELF_UPDATE=1` + một nguồn phát hành riêng (OnniCode chưa có).
 - **Telemetry.** Không còn URL upstream ở bất kỳ tầng nào; không có endpoint thì consent không hỏi, `post()`
   không gửi, nút gửi báo lỗi desktop bị ẩn. Việc ghi consent trong `~/.cezar/config.json` không đổi.
 - **Tài liệu.** `docs/site` chỉ thêm banner ở `README.md` (nội dung gốc cezar, không deploy — không có

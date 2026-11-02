@@ -1,4 +1,4 @@
-//! Onni Work desktop: a native window around a locally built onni.
+//! OnniCode desktop: a native window around a locally built onni.
 //!
 //! The shell is deliberately thin. It resolves the entry file of the engine it will run — a
 //! checkout named by `ONNI_DESKTOP_ENTRY`, else the active link (`~/.onni/versions/current` that
@@ -6,7 +6,7 @@
 //! `node`, `claude`, `gh` on their PATH are the ones onni sees — a GUI app inherits none of
 //! that), waits for `/api/v1/health`, and points the webview at the cockpit.
 //!
-//! Onni Work ships no signed update channel, so the shell never downloads, installs or replaces
+//! OnniCode ships no signed update channel, so the shell never downloads, installs or replaces
 //! onni; updating the engine is a rebuild plus `onni link --use` in the checkout. What the
 //! shell does on its own is the SUPERVISOR's job: launch whatever `current` points at, relaunch
 //! it when the Versions menu switches the link, and say plainly when no built engine is there.
@@ -77,7 +77,7 @@ struct Shell {
     running_version: Mutex<Option<String>>,
     /// True while a supervisor thread is alive.
     supervising: AtomicBool,
-    /// Set once the failure page's "Restart Onni Work" is under way; a second click does nothing.
+    /// Set once the failure page's "Restart OnniCode" is under way; a second click does nothing.
     restarting: AtomicBool,
     /// The last page of ours the window finished loading — where it returns after a foreign page.
     cockpit_url: Mutex<Option<url::Url>>,
@@ -137,7 +137,7 @@ const INIT_SCRIPT: &str = r#"
         chip = document.createElement('button');
         chip.type = 'button';
         chip.setAttribute('data-onni-version-chip', '');
-        chip.title = 'Switch Onni Work version';
+        chip.title = 'Switch OnniCode version';
         chip.onclick = function () { invoke('show_versions_menu'); };
         row.insertBefore(chip, row.firstChild);
       }
@@ -240,7 +240,7 @@ fn build_main_window(app: &AppHandle, shell: &Arc<Shell>) -> tauri::Result<Webvi
     let shell_for_navigation = shell.clone();
     let shell_for_page_load = shell.clone();
     let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-        .title("Onni Work")
+        .title("OnniCode")
         .inner_size(1360.0, 900.0)
         .min_inner_size(720.0, 480.0)
         .center()
@@ -334,7 +334,7 @@ fn build_menu(app: &AppHandle, shell: &Shell) -> tauri::Result<()> {
     refresh_versions_menu(app, shell);
     let app_menu = Submenu::with_items(
         app,
-        "Onni Work",
+        "OnniCode",
         true,
         &[
             &PredefinedMenuItem::about(app, None, None)?,
@@ -380,11 +380,11 @@ fn build_menu(app: &AppHandle, shell: &Shell) -> tauri::Result<()> {
 /// The app's home when its window is closed: closing hides, only Quit (or Cmd/Ctrl+Q) exits.
 /// Without a tray that would be a window nobody can bring back.
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "tray-open", "Open Onni Work", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "tray-open", "Open OnniCode", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "tray-quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &quit])?;
     let mut builder = TrayIconBuilder::with_id("onni")
-        .tooltip("Onni Work")
+        .tooltip("OnniCode")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
@@ -629,7 +629,7 @@ pub fn run() {
                 let shell = shell_for_menu.clone();
                 std::thread::spawn(move || {
                     if let Some(window) = app.get_webview_window("main") {
-                        splash_reset(&window, "Switching Onni Work…", &format!("Activating {target}."));
+                        splash_reset(&window, "Switching OnniCode…", &format!("Activating {target}."));
                     }
                     if !switch_version(&shell, &target) {
                         refresh_versions_menu(&app, &shell);
@@ -749,14 +749,14 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         shell.port.store(port, Ordering::SeqCst);
         let project = pick_project();
         refresh_versions_menu(&app, &shell);
-        splash_reset(&window, "Starting Onni Work…", &entry.to_string_lossy());
+        splash_reset(&window, "Starting OnniCode…", &entry.to_string_lossy());
 
         let log: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
         let mut child = match spawn_sidecar(&entry, port, project.as_deref(), log.clone()) {
             Ok(child) => child,
             Err(error) => {
                 desktop_diagnostic(&format!("event=spawn-failed error={error:?}"));
-                fail(&window, "Onni Work could not start", &error, "");
+                fail(&window, "OnniCode could not start", &error, "");
                 return;
             }
         };
@@ -797,7 +797,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
             let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
             let early_status = child.try_wait().ok().flatten();
             desktop_diagnostic(&format!("event=health-failed elapsed_ms={} timed_out={} exit_code={:?} pid={pid}", health_started.elapsed().as_millis(), early_status.is_none(), early_status.as_ref().and_then(std::process::ExitStatus::code)));
-            fail(&window, "Onni Work did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail);
+            fail(&window, "OnniCode did not come up", &format!("No answer on {url} within {}s (pid {pid}).", HEALTH_TIMEOUT.as_secs()), &tail);
             let kill_result = child.kill();
             child.close_job();
             desktop_diagnostic(&format!("event=sidecar-kill-after-health-failure result={kill_result:?} exit_code=unobserved pid={pid}"));
@@ -823,13 +823,13 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         let requested = shell.restart_requested.swap(false, Ordering::SeqCst);
         match status.and_then(|s| s.code()) {
             _ if requested => {
-                splash_reset(&window, "Restarting Onni Work…", "Switching to the newly installed version.");
+                splash_reset(&window, "Restarting OnniCode…", "Switching to the newly installed version.");
                 continue;
             }
             Some(code) => {
                 desktop_diagnostic(&format!("event=sidecar-exit exit_code={code} pid={pid}"));
                 let tail = log.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
-                fail(&window, "Onni Work stopped", &stopped_detail(code), &tail);
+                fail(&window, "OnniCode stopped", &stopped_detail(code), &tail);
                 return;
             }
             None => {
@@ -889,7 +889,7 @@ fn node_version(mut command: Command) -> Result<String, String> {
     }
     let major = version.split('.').next().and_then(|m| m.parse::<u32>().ok()).unwrap_or(0);
     if major < 20 {
-        return Err(format!("Node.js {version} is installed, but Onni Work needs 20 or newer."));
+        return Err(format!("Node.js {version} is installed, but OnniCode needs 20 or newer."));
     }
     Ok(version)
 }
@@ -934,7 +934,7 @@ fn output_with_timeout(command: &mut Command, timeout: Duration) -> Option<(bool
     Some((status.success(), out))
 }
 
-/// The failure page's "Restart Onni Work": stop the sidecar, then start the whole app again from a
+/// The failure page's "Restart OnniCode": stop the sidecar, then start the whole app again from a
 /// fresh process.
 #[tauri::command]
 fn restart_app(app: AppHandle, window: WebviewWindow, shell: tauri::State<'_, Arc<Shell>>) {
@@ -943,7 +943,7 @@ fn restart_app(app: AppHandle, window: WebviewWindow, shell: tauri::State<'_, Ar
     }
     let shell = shell.inner().clone();
     std::thread::spawn(move || {
-        splash_reset(&window, "Restarting Onni Work…", "");
+        splash_reset(&window, "Restarting OnniCode…", "");
         if let Some(mut child) = shell.child.lock().unwrap().take() {
             stop_sidecar(&mut child);
             let _ = child.wait();
@@ -960,7 +960,7 @@ fn require_node(window: &WebviewWindow) -> bool {
         Err(reason) => {
             fail(
                 window,
-                "Onni Work could not start Node.js",
+                "OnniCode could not start Node.js",
                 &format!("{reason} Install Node.js 20 or newer from https://nodejs.org, then press Restart."),
                 "",
             );
@@ -976,7 +976,7 @@ fn require_node(window: &WebviewWindow) -> bool {
 fn engine_missing(window: &WebviewWindow) {
     fail(
         window,
-        "No Onni Work engine found",
+        "No OnniCode engine found",
         "In this repository run npm install once, then npm run build, and register the build with \
          node packages/work/dist/index.js link --use. Alternatively set ONNI_DESKTOP_ENTRY to \
          packages/work/dist/index.js and ONNI_DESKTOP_CWD to the repository. Then press Restart.",

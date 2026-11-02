@@ -8,7 +8,7 @@ $Executable = (Resolve-Path -LiteralPath $Executable).Path
 $logPath = Join-Path $env:LOCALAPPDATA 'Onni Work\logs\desktop-sidecar.log'
 
 if (Get-Process -Name 'onni-desktop' -ErrorAction SilentlyContinue) {
-    throw 'Close every Onni Work desktop instance first, then run this script again.'
+    throw 'Close every OnniCode desktop instance first, then run this script again.'
 }
 
 $startByte = if (Test-Path -LiteralPath $logPath) { (Get-Item -LiteralPath $logPath).Length } else { 0 }

@@ -1,9 +1,9 @@
 # @onni/api-client
 
-The typed client for an [Onni Work](https://github.com/doantuan22/Onni_Work) service, and the
+The typed client for an [OnniCode](https://github.com/doantuan22/Onni_Work) service, and the
 shared contract types behind it.
 
-Onni Work is a local cockpit for running AI agent tasks in your repo. It runs as an HTTP service,
+OnniCode is a local cockpit for running AI agent tasks in your repo. It runs as an HTTP service,
 and this package is how anything else talks to it — the cockpit UI is just its first consumer.
 
 ## Status

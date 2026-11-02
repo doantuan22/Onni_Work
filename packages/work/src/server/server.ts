@@ -3375,7 +3375,7 @@ export function createApp(deps: ServerDeps) {
   // setting) is deliberately omitted.
   const workspaceConfigBody = (config: WorkspaceConfig): WorkspaceConfigResponse => ({
     branding: {
-      name: config.branding.name ?? 'onni',
+      name: config.branding.name ?? 'OnniCode',
       logoUrl: logoAssetUrl(),
     },
     browseRoot: config.browseRoot,
@@ -3675,7 +3675,7 @@ export function createApp(deps: ServerDeps) {
     })
 
     // Every skill a *default* skills repo offers, regardless of enabled state, so the Skills
-    // catalog can list and preview disabled entries. Onni Work ships no default source, so this
+    // catalog can list and preview disabled entries. OnniCode ships no default source, so this
     // answers [] unless a fork configures one; it also empties once a repo sets its own
     // `skillsRepos` (nothing is gated then). `wait=1` lets the page wait out a cold team-skill
     // cache, same as `GET /skills` (spec 005).

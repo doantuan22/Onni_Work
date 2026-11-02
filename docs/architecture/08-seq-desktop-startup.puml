@@ -11,7 +11,7 @@ participant "Sidecar Supervisor\nthread (lib.rs:666 loop)" as SUP
 participant "node process\nonni serve" as NODE
 participant "WebView\n(main window)" as WV
 
-OS -> TAURI : Onni Work.exe
+OS -> TAURI : OnniCode.exe
 TAURI -> TAURI : ctrlc handler -> kill sidecar, exit(0)\nlib.rs:552
 TAURI -> TAURI : single-instance plugin: second launch\nonly shows the existing window (lib.rs:563)
 TAURI -> TAURI : build_main_window visible:false\nuntil geometry restored (lib.rs:219)

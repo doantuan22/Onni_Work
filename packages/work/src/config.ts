@@ -19,7 +19,7 @@ const skillsRepoSchema = z.object({
 
 export type SkillsRepoSource = z.infer<typeof skillsRepoSchema>;
 
-/** No team-skill source ships by default: Onni Work resolves skills from the repo, the agent
+/** No team-skill source ships by default: OnniCode resolves skills from the repo, the agent
  *  mirrors and the user's own `skillsRepos`, and never from an upstream catalogue. */
 export const DEFAULT_SKILLS_REPOS: SkillsRepoSource[] = [];
 

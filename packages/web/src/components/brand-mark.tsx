@@ -32,7 +32,7 @@ export function BrandMark({ height = BRAND_LOCKUP.mark, className }: { height?: 
 }
 
 /** The mark beside the name, at the navigation sizes. */
-export function BrandLockup({ className, name = 'onni', logoUrl = null }: { className?: string; name?: string; logoUrl?: string | null }) {
+export function BrandLockup({ className, name = 'OnniCode', logoUrl = null }: { className?: string; name?: string; logoUrl?: string | null }) {
   return (
     <span
       data-slot="brand-lockup"

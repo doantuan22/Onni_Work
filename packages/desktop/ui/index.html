@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
-    <title>Onni Work</title>
+    <title>OnniCode</title>
     <style>
       /* The cockpit's own tokens (packages/web/src/styles/index.css) — dark is the cockpit's
          default, light follows the system. The splash cannot read the cockpit's saved theme
@@ -147,14 +147,14 @@
     <main>
       <div class="card">
         <img class="mark" src="icon.svg" alt="" aria-hidden="true" />
-        <h1 id="title">Starting Onni Work…</h1>
+        <h1 id="title">Starting OnniCode…</h1>
         <p id="detail">Launching the local cockpit.</p>
         <div id="spinner" class="spinner"></div>
         <pre id="log" class="hidden"></pre>
         <div id="actions" class="actions hidden">
           <button id="retry" class="button restart" type="button">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-            <span id="retry-label">Restart Onni Work</span>
+            <span id="retry-label">Restart OnniCode</span>
           </button>
         </div>
         <p id="hint" class="hidden"></p>
@@ -176,10 +176,10 @@
         },
       }
       const params = new URLSearchParams(location.search)
-      // Every failure page: the error, its log and "Restart Onni Work" — which restarts the app
+      // Every failure page: the error, its log and "Restart OnniCode" — which restarts the app
       // (`restart_app`).
       if (params.get('error')) {
-        window.onniSplash.fail(params.get('title') || 'Onni Work stopped', params.get('error'), params.get('log') || '')
+        window.onniSplash.fail(params.get('title') || 'OnniCode stopped', params.get('error'), params.get('log') || '')
         document.getElementById('actions').classList.remove('hidden')
         document.getElementById('retry').onclick = function () {
           const label = document.getElementById('retry-label')

@@ -1,6 +1,6 @@
 # Jira Cloud and Linear
 
-Onni Work can browse a Jira Cloud project or a Linear team and hand a selected issue to an
+OnniCode can browse a Jira Cloud project or a Linear team and hand a selected issue to an
 agent. Each local project has one saved tracker connection. GitHub remains independent.
 Browsing performs no vendor writes. Enabled event automations can launch agent workflows as described below. The visible issue list checks its first page every 60 seconds; it stops when hidden or closed.
 
@@ -13,7 +13,7 @@ Save it, choose **Browse**, search for the project/team, then **Connect**. Disco
 paginated; **Load more** reaches later results. No server restart or environment editing
 is needed. Saving credentials is local; Browse/Connect verifies vendor access.
 
-Each Onni Work project has one credential connection and one selected tracker scope. Configuring
+Each OnniCode project has one credential connection and one selected tracker scope. Configuring
 project A does not configure project B. Replacement creates a new connection identity and
 requires selecting a scope again, even if the vendor IDs happen to match. Failed credential
 storage preserves the previous credentials. Failed scope selection preserves the previous
@@ -86,7 +86,7 @@ save real credentials and never contacts vendors.
 
 Jira supports Cloud sites at `https://<site>.atlassian.net`, using account email plus
 a scoped or unscoped API token. Data Center/custom hosts and OAuth are outside this
-integration. Use the site URL, not the API gateway. Onni Work discovers the cloud ID and
+integration. Use the site URL, not the API gateway. OnniCode discovers the cloud ID and
 tries the scoped-token gateway first, with one site-origin fallback on authorization
 failure. [Create, expire and revoke Atlassian tokens](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/).
 
@@ -184,7 +184,7 @@ is unchanged. It describes the first-page check, not necessarily the displayed p
 Errors keep the displayed rows and last successful timestamp. Retries back off up to five minutes
 and respect longer provider cooldowns. Timestamp/spinner animations respect reduced motion.
 
-Local mode uses Onni Work's shared WebSocket for opaque version signals and project-scoped HTTP for
+Local mode uses OnniCode's shared WebSocket for opaque version signals and project-scoped HTTP for
 snapshots. Remote mode uses authenticated HTTP long reads, with existing SSE configuration
 reconciliation; it opens no browser WebSocket. No new configuration or credential access is needed.
 
@@ -262,7 +262,7 @@ visible but must be configured with an explicit event before it runs.
 An automation launches an ordinary agent workflow. The agent can follow instructions to prepare
 a PR or update a vendor status; the scheduler itself does not guarantee these outcomes or merge
 PRs. Tracker automation agents receive the captured project's credentials; those are never
-substituted with credentials from a later connection. Onni Work redacts known secrets from run output,
+substituted with credentials from a later connection. OnniCode redacts known secrets from run output,
 but does not sandbox a trusted agent against reading local files or sending network requests.
 
 Delivery receipts for tracker events are retained while the automation definition exists, including

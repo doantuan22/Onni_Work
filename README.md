@@ -1,4 +1,4 @@
-# Onni Work
+# OnniCode
 
 A local, desktop-first cockpit for running and tracking AI coding-agent tasks in a repository.
 You describe a task, pick a backend (Claude Code, Codex, OpenCode, Cursor Agent, pi, Junie or
@@ -11,7 +11,7 @@ Markdown under `.ai/onni/` (per project) and `~/.onni/` (per user).
 
 ## What this repository is
 
-Onni Work is a hard fork of the MIT-licensed **cezar** engine by Patryk Lewczuk, maintained as
+OnniCode is a hard fork of the MIT-licensed **cezar** engine by Patryk Lewczuk, maintained as
 its own project with its own desktop-first surface. Upstream services are not used:
 
 - self-update, CLI install/update, the desktop updater and the Open Mercato skills auto-update are
@@ -93,7 +93,7 @@ Windows, Xcode Command Line Tools on macOS, WebKitGTK on Linux. The app runs wha
 
 ## Credits
 
-Onni Work is built on **cezar** by Patryk Lewczuk. The upstream source, its documentation and its
+OnniCode is built on **cezar** by Patryk Lewczuk. The upstream source, its documentation and its
 git history were not carried over; the original MIT license and attribution are preserved in
 [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). Design history for the fork lives in `.ai/specs/`.
 

@@ -1,7 +1,7 @@
 [package]
 name = "onni-desktop"
 version = "0.1.11"
-description = "Desktop shell for Onni Work"
+description = "Desktop shell for OnniCode"
 edition = "2021"
 publish = false
 license = "MIT"

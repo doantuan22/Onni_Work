@@ -3,7 +3,7 @@
 skinparam defaultFontName "Segoe UI"
 skinparam dpi 120
 skinparam ArrowThickness 1.2
-title Onni Work — components of packages/work/src
+title OnniCode — components of packages/work/src
 
 frame "entry" {
   component "index.ts — CLI + boot\nsrc/index.ts:131 (parseArgs), :230 serve" as CLI

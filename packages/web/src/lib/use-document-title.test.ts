@@ -13,23 +13,23 @@ describe('documentTitleOf', () => {
       name: 'project and page',
       projectName: 'Storefront',
       pageLabel: 'Tasks',
-      expected: 'Storefront — Tasks · onni',
+      expected: 'Storefront — Tasks · OnniCode',
     },
     {
       name: 'project only',
       projectName: 'Storefront',
       pageLabel: null,
-      expected: 'Storefront · onni',
+      expected: 'Storefront · OnniCode',
     },
     {
       name: 'page only',
       projectName: null,
       pageLabel: 'Settings',
-      expected: 'Settings · onni',
+      expected: 'Settings · OnniCode',
     },
-    { name: 'neither part', projectName: null, pageLabel: null, expected: 'onni' },
-    { name: 'empty project', projectName: '', pageLabel: 'Tasks', expected: 'Tasks · onni' },
-    { name: 'blank parts', projectName: '  ', pageLabel: '\t', expected: 'onni' },
+    { name: 'neither part', projectName: null, pageLabel: null, expected: 'OnniCode' },
+    { name: 'empty project', projectName: '', pageLabel: 'Tasks', expected: 'Tasks · OnniCode' },
+    { name: 'blank parts', projectName: '  ', pageLabel: '\t', expected: 'OnniCode' },
   ])('formats $name', ({ projectName, pageLabel, expected }) => {
     expect(documentTitleOf({ projectName, pageLabel })).toBe(expected)
   })
@@ -55,9 +55,9 @@ describe('useDocumentTitle', () => {
       { initialProps },
     )
 
-    expect(document.title).toBe('Storefront — Tasks · onni')
+    expect(document.title).toBe('Storefront — Tasks · OnniCode')
     rerender({ projectName: 'Back office', pageLabel: null })
-    expect(document.title).toBe('Back office · onni')
+    expect(document.title).toBe('Back office · OnniCode')
   })
 
   it('updates the tab icon to the instance logo and restores the product icon when cleared', () => {

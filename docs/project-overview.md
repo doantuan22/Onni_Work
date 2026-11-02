@@ -1,4 +1,4 @@
-# Tổng quan dự án Onni Work
+# Tổng quan dự án OnniCode
 
 > Tài liệu này phản ánh **code tại nhánh `chore/docs-ai`**, commit gốc `52fc641` (2026-10-30).
 > Mọi khẳng định dưới đây đã được đối chiếu với source; chỗ nào chưa kiểm được ghi rõ.
@@ -8,7 +8,7 @@
 
 ## 1. Sản phẩm là gì
 
-Onni Work là cockpit **local** để chạy và theo dõi nhiều task của AI coding agent trên một repo.
+OnniCode là cockpit **local** để chạy và theo dõi nhiều task của AI coding agent trên một repo.
 Người dùng nhập task, chọn backend (`claude`, `codex`, `opencode`, `cursor`, `pi`, `junie`,
 `copilot`, `cline`) và workflow; mỗi task chạy trong **một git worktree riêng**, stream realtime các bước,
 tool call, token và diff, rồi dừng ở một trạng thái kết thúc do người dùng quyết định.

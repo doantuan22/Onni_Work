@@ -1,4 +1,4 @@
-# Onni Work reference
+# OnniCode reference
 
 Everything the [README](../README.md) leaves out: the full configuration, every environment variable, agent backends, remote access, multiple projects and local development.
 
@@ -9,7 +9,7 @@ Everything the [README](../README.md) leaves out: the full configuration, every 
 - [How it runs agents](#how-it-runs-agents) (environment variables, troubleshooting)
 - [Talking to a running cockpit](#talking-to-a-running-cockpit) (`onni runs`, `onni task`, `onni automation`, the HTTP API)
 - [Coding agent backends](#coding-agent-backends)
-- [Remote access (host Onni Work on a server)](#remote-access-host-onni-work-on-a-server)
+- [Remote access (host OnniCode on a server)](#remote-access-host-onni-work-on-a-server)
 - [Configuration](#configuration-optional)
 - [Worktree lifecycle scripts](#worktree-lifecycle-scripts)
 - [Builds and releases](#builds-and-releases)
@@ -40,7 +40,7 @@ Three words, no jargon — **task**, **skill**, **chain**:
 
 Five moves that make the cockpit worth the browser tab:
 
-- 🗃️ **Queue + orchestration.** Start as many tasks as you like: Onni Work runs up to
+- 🗃️ **Queue + orchestration.** Start as many tasks as you like: OnniCode runs up to
   `maxParallel` at once across every project (default **2**; a non-git directory
   always runs one) and
   holds the rest in a FIFO queue with visible positions (`#1`, `#2`, …). Cancel a
@@ -57,7 +57,7 @@ Five moves that make the cockpit worth the browser tab:
   separate worktrees, then compare their diffs side by side and **pick** one —
   the losers are archived and their worktrees cleaned up.
 - 🧹 **Bounded worktree disk.** Each task runs in its own full checkout, so a busy
-  cockpit would otherwise grow without limit. Onni Work keeps only the last
+  cockpit would otherwise grow without limit. OnniCode keeps only the last
   `worktreeRetention` **finished** worktrees on disk (default **10**; `0` =
   unlimited) and reclaims the rest — directory only, the `onni/<id8>` branch is
   always kept, so the work stays recoverable. Settings → Resources shows every
@@ -68,7 +68,7 @@ Five moves that make the cockpit worth the browser tab:
   into the agent's session, or push a `gh pr create --draft`. Nothing ever merges
   itself — you stay the merge button either way.
 - 📱 **Runs on your coding server, drives from your pocket.** The cockpit is a
-  responsive web app streaming over SSE, so the box running Onni Work can be a
+  responsive web app streaming over SSE, so the box running OnniCode can be a
   **VPS, cloud, or dedicated server** you never sit in front of. Point a browser
   — laptop or **phone** — at it and run an **always-on coding team** on the move:
   start tasks, watch them live, and hit the review gate from anywhere.
@@ -86,7 +86,7 @@ One browser window, with live task updates over Server-Sent Events:
 | **All tasks** | Every *registered project's* tasks in one table, filtered and grouped by tag, project, status or workflow — see [Grouping connected repositories](#grouping-connected-repositories-tags-and-the-all-tasks-page). Appears once a second project is registered. |
 | **Inbox** | **Opt-in** (`ONNI_FOLLOWUPS=1`; hidden by default). Follow-ups an agent left behind (`todos.json`) — one click turns a suggestion into the next task, pre-wired to its suggested skill. Off, agents are never asked to leave follow-ups; each task's own **Notes** handoff journal is unaffected. |
 | **Git** | Branch, working-tree status, diff vs HEAD, recent commits (click one for its inline patch + GitHub link), and the configurable base branch that worktrees fork from and PRs target. **Files** browses the whole repository — the tree on the left, the file on the right (syntax-highlighted, images inline, Markdown rendered with a toggle to the source), and a filter box that finds a path as you type. Every file is its own URL (`/git/files/<path>`), so a view can be refreshed or pasted to a colleague. The tree is git's own view of the repository, so `.gitignore`d build output and `node_modules` never appear — and a file git does not list cannot be opened, which is what keeps an ignored `.env` out of reach. Read-only: nothing here edits the checkout. |
-| **GitHub** | Open issues and PRs of the repo's origin, read through your logged-in `gh`. Hand an issue straight to the agent — pick a workflow and skills, one click runs it. GitHub Enterprise works the same on any domain: a remote counts as GitHub when its host is `github.com`, `*.ghe.com`, or one `gh` is signed in to (`gh auth login --hostname <host>`, or `GH_HOST`). A self-hosted server on any other domain needs that login first. github.com and Enterprise projects work side by side; Onni Work pins the right host per repo, so `GH_HOST` never has to be exported. |
+| **GitHub** | Open issues and PRs of the repo's origin, read through your logged-in `gh`. Hand an issue straight to the agent — pick a workflow and skills, one click runs it. GitHub Enterprise works the same on any domain: a remote counts as GitHub when its host is `github.com`, `*.ghe.com`, or one `gh` is signed in to (`gh auth login --hostname <host>`, or `GH_HOST`). A self-hosted server on any other domain needs that login first. github.com and Enterprise projects work side by side; OnniCode pins the right host per repo, so `GH_HOST` never has to be exported. |
 | **Skills** | Local skills plus the team skills repo, with a rendered body + prompt preview. Refresh pulls the latest from the remote. |
 | **Workflows** | Build a workflow as a node graph, or let the planner draft one from a description; save it as YAML (a plain stack of skills stays in the portable `skills:` form), import/export, or delete. Built-ins always come back. |
 | **Settings** | Appearance (dark/light theme, accent, density), agent backends, notifications, and the skills catalog. |
@@ -146,7 +146,7 @@ the repo: per-project state stays exactly where it was, in that repo's
 `.ai/onni/`.
 
 **Your first run registers the repo you start it in** — that is the whole setup.
-After that the registry is yours to curate: starting Onni Work somewhere else serves
+After that the registry is yours to curate: starting OnniCode somewhere else serves
 that folder as usual (its own tasks, its own `.ai/onni/`, reachable at
 `/p/<slug>/`) and opens the browser on it, but does not add it to the list. While
 you are in it the sidebar shows it marked **not saved**; switch to another project
@@ -162,7 +162,7 @@ Project views are scoped to their repository; **Dashboard** at `/dashboard`, **A
 ```
 
 `<projectId>` is a slug derived from the folder name (`my-app`, then `my-app-2`
-on a collision), and `/p/default/…` always means the project Onni Work was started
+on a collision), and `/p/default/…` always means the project OnniCode was started
 in. The sidebar shows one collapsible group per project — each with its own nav
 and task list — and the new-task composer names the project it will run in.
 
@@ -178,7 +178,7 @@ and task list — and the new-task composer names the project it will run in.
 
 Removing a project (**Settings → Projects**) drops the registry entry only — the
 repo and its `.ai/onni/` are never touched, so re-adding it later finds all its
-tasks intact. The project Onni Work is currently serving can't be removed from the
+tasks intact. The project OnniCode is currently serving can't be removed from the
 cockpit — stop the server and use `onni projects remove <id>` instead.
 
 **From the terminal** — the same registry, no cockpit required (handy over ssh):
@@ -257,7 +257,7 @@ is that project's own Tasks page, which is a better version of the same answer
 (live updates, the full column set, the composer). So picking a project *leaves*
 for it rather than turning the global view into a worse local one.
 
-Nothing else in Onni Work reads tags, on purpose: a tag is a lens, not a permission,
+Nothing else in OnniCode reads tags, on purpose: a tag is a lens, not a permission,
 a queue or a routing rule. Removing one changes what you see and nothing else.
 
 > The page reads a workspace-wide index capped at the newest 200 tasks per
@@ -266,7 +266,7 @@ a queue or a routing rule. Removing one changes what you see and nothing else.
 > Tasks page.
 
 **Old page URLs keep working.** Every unprefixed page path — `/`, `/tasks/<id>`,
-`/settings` — still answers, bound to the project Onni Work was started in; the
+`/settings` — still answers, bound to the project OnniCode was started in; the
 cockpit redirects flat paths to their `/p/<boot>/…` twin, so existing bookmarks
 and bookmarklets need no change. The HTTP API is the exception: it moved to
 `/api/v1/…` (see the CHANGELOG and [The HTTP API](#the-http-api)), so a script
@@ -313,7 +313,7 @@ environment plus the **secrets** it may read, which no agent step ever
 receives. A secret has a scope — the project (Settings → *Secrets*,
 `onni secrets …`) or the whole workspace (Settings → Global → *Secrets*,
 `onni secrets … --workspace`) — and audiences: `checks` (check steps) and/or
-`onni` (Onni Work's own features). By default a check step gets every
+`onni` (OnniCode's own features). By default a check step gets every
 `checks`-audience secret of the workspace and the project, the project's
 winning on a shared name; a step can bind exactly the ones it needs instead:
 
@@ -345,8 +345,8 @@ secret is written for one machine: a reset keychain or a deleted key file
 leaves the store unreadable (reported on the run as a note) until the secrets
 are stored again.
 
-Onni Work also tells a check step about the run it is verifying. These are set by
-Onni Work, not settings — a variable the run does not have is absent (never empty),
+OnniCode also tells a check step about the run it is verifying. These are set by
+OnniCode, not settings — a variable the run does not have is absent (never empty),
 and a value inherited from the server's own environment is replaced:
 
 | Variable | Value |
@@ -362,7 +362,7 @@ and a value inherited from the server's own environment is replaced:
 | `ONNI_GITHUB_REPO`, `ONNI_GITHUB_NUMBER`, `ONNI_GITHUB_EVENT` | runs a GitHub automation launched only |
 | `ONNI_PR_HEAD_SHA`, `ONNI_PR_HEAD_REF`, `ONNI_PR_BASE_REF` | runs a `checkout: "pr-head"` automation launched on a pull request's head only |
 
-`ONNI_PROJECT_ID` is the one name in that table Onni Work also reads as an *input*
+`ONNI_PROJECT_ID` is the one name in that table OnniCode also reads as an *input*
 (it is how `onni task` and `onni automation` address a cockpit, see
 [backward compatibility](../BACKWARD_COMPATIBILITY.md) §1). A run that knows its
 own project replaces it; a headless `onni run` that does not leaves whatever
@@ -483,7 +483,7 @@ whose counter never resets within a run, so every run is finite.
 
 ## How it runs agents
 
-Onni Work shells out to your locally installed, logged-in agent CLI —
+OnniCode shells out to your locally installed, logged-in agent CLI —
 **your subscription, no API key**. With the default Claude Code backend that
 means headless `stream-json` mode, tool access via `--allowedTools`, with
 unapproved tools denied without prompting (`--permission-mode dontAsk`) inside
@@ -491,7 +491,7 @@ the task's worktree — but note the zero-config default list (`Read`, `Edit`,
 `Write`, `Grep`, `Glob`, `Bash`) grants unrestricted `Bash` unless a step sets
 `bashAllowlist`, so treat a run as having full shell access in its worktree,
 not a sandboxed allowlist. Set `ONNI_APPROVAL_GATE=1` to select Claude's
-`acceptEdits` mode, but Onni Work has no cockpit permission response channel, so
+`acceptEdits` mode, but OnniCode has no cockpit permission response channel, so
 approval prompts are not actionable in the cockpit. Codex, Junie and OpenCode are driven through their own
 native protocols and don't honor `allowedTools` at all — see
 [Coding agent backends](#coding-agent-backends) for what each one actually
@@ -504,19 +504,19 @@ Useful environment variables:
 | `ONNI_DRY_RUN=1` | Use the bundled mock instead of the real `claude` CLI — the entire cockpit works offline, for demos and development. |
 | `ONNI_REMOTE_AGENT_ACCOUNTS=1` | Allow **Settings → Agent accounts** in a remote/self-hosted cockpit. Enable this only behind an authenticated perimeter: account folders expose absolute host paths and the details view can expose account identity. Remotely added folders are confined to `ONNI_BROWSE_ROOT`, including symlink ancestry. Local desktop actions stay disabled; **Connect** returns the exact login command to run on the host. |
 | `ONNI_INSTANCE_ID` | Internal server-install identity set automatically in generated systemd/launchd services; normally leave unset. It is surfaced additively by `/api/v1/health` for install verification. |
-| `ONNI_AGENT_MODELS_LOCKED=1` | Globally lock each runner to the model configured in its native Claude/Codex/OpenCode settings while keeping runner selection available. Exact `1` also delegates authentication and provider enablement to those native agents, so Onni Work skips its credential probes and provider-disable preferences. Existing Onni Work presets are preserved but ignored, and an environment change requires a restart. The config-file equivalent is `"modelsLocked": true` in global `~/.onni/config.json` or one repository's `.ai/onni/config.json`; config-file locks do not disable provider checks. |
-| `ONNI_APPROVAL_GATE=1` | Select Claude's `acceptEdits` mode. Onni Work has no cockpit permission response channel; by default, unapproved tools are denied without interrupting the run. |
+| `ONNI_AGENT_MODELS_LOCKED=1` | Globally lock each runner to the model configured in its native Claude/Codex/OpenCode settings while keeping runner selection available. Exact `1` also delegates authentication and provider enablement to those native agents, so OnniCode skips its credential probes and provider-disable preferences. Existing OnniCode presets are preserved but ignored, and an environment change requires a restart. The config-file equivalent is `"modelsLocked": true` in global `~/.onni/config.json` or one repository's `.ai/onni/config.json`; config-file locks do not disable provider checks. |
+| `ONNI_APPROVAL_GATE=1` | Select Claude's `acceptEdits` mode. OnniCode has no cockpit permission response channel; by default, unapproved tools are denied without interrupting the run. |
 | `ONNI_RUNS_KEEP=<n>` / `ONNI_ARCHIVED_RUNS_KEEP=<n>` | How many settled runs (and archived ones) a project's index keeps before the oldest are pruned. Defaults 300 / 500, minimum 1; live runs and runs pinned by an active dispatch tree are never pruned. |
-| `ONNI_DESIGN_MODE=0` | Turn off Design Mode in a task's **Preview** tab (spec `.ai/specs/2026-10-09-design-mode.md`). Unset, it is on for a local cockpit: switching it on makes Onni Work re-serve the previewed local `http://` dev server on a second `127.0.0.1` port with an element picker injected, so you can click an element and send the agent a note about it. The port opens only on that click and closes when idle. Always off on a hosted cockpit, where a loopback port reaches nobody — there is no `=1`. |
+| `ONNI_DESIGN_MODE=0` | Turn off Design Mode in a task's **Preview** tab (spec `.ai/specs/2026-10-09-design-mode.md`). Unset, it is on for a local cockpit: switching it on makes OnniCode re-serve the previewed local `http://` dev server on a second `127.0.0.1` port with an element picker injected, so you can click an element and send the agent a note about it. The port opens only on that click and closes when idle. Always off on a hosted cockpit, where a loopback port reaches nobody — there is no `=1`. |
 | `ONNI_FOLLOWUPS=1` | Turn on the global follow-up **Inbox**: agents are asked to leave follow-ups in `todos.json` when they finish, and the Inbox view appears. Off by default — each task's own **Notes** handoff journal runs either way. |
-| `ONNI_AUTOMATIONS=0` | Turn **automations** off. On by default since the automations redesign (spec `.ai/specs/2026-09-14-automations-redesign.md`): the Automations view lists GitHub-triggered and scheduled automations, and Onni Work polls GitHub or fires schedules on each enabled one while it is running — nothing runs until you enable an automation yourself. An agent can also **create an automation from a prompt**: type "whenever a PR is opened, review it" into New task — pick the built-in `create-onni-automation` skill, or just ask; every task's system prompt teaches it to recognise the intent — and the agent writes the definition and creates it through `onni automation create` (paused, with a `onni automation check` preview of what it would match), then links the Automations page. Only the exact value `0` opts out (`ONNI_AUTOMATIONS=1`, the old opt-in, is accepted and changes nothing); opted out, the nav item is absent, the endpoints answer `409`, and the workspace scheduler never starts. Read at boot, so restart after changing it; definitions, receipts and high-watermarks are kept either way. |
+| `ONNI_AUTOMATIONS=0` | Turn **automations** off. On by default since the automations redesign (spec `.ai/specs/2026-09-14-automations-redesign.md`): the Automations view lists GitHub-triggered and scheduled automations, and OnniCode polls GitHub or fires schedules on each enabled one while it is running — nothing runs until you enable an automation yourself. An agent can also **create an automation from a prompt**: type "whenever a PR is opened, review it" into New task — pick the built-in `create-onni-automation` skill, or just ask; every task's system prompt teaches it to recognise the intent — and the agent writes the definition and creates it through `onni automation create` (paused, with a `onni automation check` preview of what it would match), then links the Automations page. Only the exact value `0` opts out (`ONNI_AUTOMATIONS=1`, the old opt-in, is accepted and changes nothing); opted out, the nav item is absent, the endpoints answer `409`, and the workspace scheduler never starts. Read at boot, so restart after changing it; definitions, receipts and high-watermarks are kept either way. |
 | `ONNI_WEBHOOKS=1` | Enable project lifecycle notifications in Settings → Webhooks. Off by default; independent of graph workflow notifications. See the [receiver guide](../packages/work/docs/webhooks.md). |
 | `ONNI_WORKFLOW_WEBHOOKS=1` | Let a workflow graph's **`notify.webhook`** node POST to the URL it names (JSON: `text`, `run`, `node`). Off by default: a workflow file — which can be imported from anywhere — calling out to an arbitrary URL widens exposure, so it is opt-in. Off, the node leaves by `failed` with a note; under `ONNI_DRY_RUN=1` nothing is sent either way. |
-| `ONNI_TERMINAL=1` / `=0` | The task view's interactive **terminal** (spec `.ai/specs/2026-10-07-task-workspace.md` §6). Unset it is on for a local cockpit and off on a hosted one (`ONNI_REMOTE=1` or a non-loopback bind). `1` allows it there too — without a sign-in in front of Onni Work this hands a shell on the server to anyone your reverse proxy admits. `0` turns it off everywhere. A platform with no prebuilt PTY binary reports the terminal unavailable with a reason instead of failing. |
-| `ONNI_DISPATCH=0` | Turn OFF **task dispatch**, which is on by default: a running task may start other Onni Work tasks with `onni task create` — each in its OWN worktree forked off the parent's branch, with a budget carved out of the parent's — and they report back into the parent's session when they settle (`onni task report`). Children appear nested under their parent in the task lists. Tasks talk through a tree directory (`.ai/onni/dispatch/<root>/`: the brief, each task's order/notes/report, an inbox per task) and Onni Work wakes a parked recipient when a file lands. A `--kind review` child judges another task's branch and answers with a verdict. ON by default (the owner-approved exception to "cost-widening features are opt-in" — see `AGENTS.md`), and only the exact value `0` turns it off; with it off the `/runs/:id/dispatch` and `/runs/:id/report` routes answer `409`, no task is told about the CLI, and the cockpit hides the "Review open PRs" template. A headless `onni run` never dispatches either way — there is no cockpit for the CLI to reach, so no task is told about it. Read at boot, so restart after changing it. This is the widest cost-widening flag here — one task can start four more agents — so give dispatching tasks a budget. |
-| `ONNI_TASK_PROCESS_REAP=0` | Turn OFF **leftover-process reaping**, which is on by default (#1411): when a task settles, Onni Work stops every process still carrying that task's `ONNI_TASK_ID` in its environment — a hung test binary, a dev server, a `setsid`ed background job — with SIGTERM five seconds after the settle and SIGKILL three seconds later, and notes what it stopped in the task's timeline. On boot it does the same for tasks that settled while Onni Work was down. A task you Continue within the grace is left alone. Linux (`/proc`) and macOS (`ps -E`) use this scan. Windows task launches are owned by kill-on-close Job Objects, which stop their descendants when the task process exits or is canceled; the setting does not disable that ownership. Only the exact value `0` turns off the Linux/macOS scan. |
+| `ONNI_TERMINAL=1` / `=0` | The task view's interactive **terminal** (spec `.ai/specs/2026-10-07-task-workspace.md` §6). Unset it is on for a local cockpit and off on a hosted one (`ONNI_REMOTE=1` or a non-loopback bind). `1` allows it there too — without a sign-in in front of OnniCode this hands a shell on the server to anyone your reverse proxy admits. `0` turns it off everywhere. A platform with no prebuilt PTY binary reports the terminal unavailable with a reason instead of failing. |
+| `ONNI_DISPATCH=0` | Turn OFF **task dispatch**, which is on by default: a running task may start other OnniCode tasks with `onni task create` — each in its OWN worktree forked off the parent's branch, with a budget carved out of the parent's — and they report back into the parent's session when they settle (`onni task report`). Children appear nested under their parent in the task lists. Tasks talk through a tree directory (`.ai/onni/dispatch/<root>/`: the brief, each task's order/notes/report, an inbox per task) and OnniCode wakes a parked recipient when a file lands. A `--kind review` child judges another task's branch and answers with a verdict. ON by default (the owner-approved exception to "cost-widening features are opt-in" — see `AGENTS.md`), and only the exact value `0` turns it off; with it off the `/runs/:id/dispatch` and `/runs/:id/report` routes answer `409`, no task is told about the CLI, and the cockpit hides the "Review open PRs" template. A headless `onni run` never dispatches either way — there is no cockpit for the CLI to reach, so no task is told about it. Read at boot, so restart after changing it. This is the widest cost-widening flag here — one task can start four more agents — so give dispatching tasks a budget. |
+| `ONNI_TASK_PROCESS_REAP=0` | Turn OFF **leftover-process reaping**, which is on by default (#1411): when a task settles, OnniCode stops every process still carrying that task's `ONNI_TASK_ID` in its environment — a hung test binary, a dev server, a `setsid`ed background job — with SIGTERM five seconds after the settle and SIGKILL three seconds later, and notes what it stopped in the task's timeline. On boot it does the same for tasks that settled while OnniCode was down. A task you Continue within the grace is left alone. Linux (`/proc`) and macOS (`ps -E`) use this scan. Windows task launches are owned by kill-on-close Job Objects, which stop their descendants when the task process exits or is canceled; the setting does not disable that ownership. Only the exact value `0` turns off the Linux/macOS scan. |
 | `ONNI_AUTOSAVE=1` | Re-enable the periodic (90 s) autosave commit in task worktrees. Off by default (#471) — turn-end and pre-PR flushes always run, so branches still end complete. Every autosave names its trigger in the commit subject (`onni autosave (periodic)` vs `(turn end)` / `(run finalize)` / `(pre-PR)`), so the flushes you keep are distinguishable from the timer you disabled. |
-| `ONNI_CLAUDE_BIN=/path/to/claude` | Override which `claude` binary is used. Rarely needed: when it is unset, Onni Work takes `claude` from PATH, and failing that looks where Claude Code's own installers put it — `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin`, `/usr/local/bin` — so an install the launching shell never added to PATH is still found. |
+| `ONNI_CLAUDE_BIN=/path/to/claude` | Override which `claude` binary is used. Rarely needed: when it is unset, OnniCode takes `claude` from PATH, and failing that looks where Claude Code's own installers put it — `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin`, `/usr/local/bin` — so an install the launching shell never added to PATH is still found. |
 | `ONNI_CODEX_BIN=/path/to/codex` | Override which `codex` binary is used. |
 | `ONNI_JUNIE_BIN=/path/to/junie` | Override which `junie` binary is used. |
 | `ONNI_OPENCODE_BIN=/path/to/opencode` | Override which `opencode` binary is used. |
@@ -525,13 +525,13 @@ Useful environment variables:
 | `ONNI_COPILOT_BIN=/path/to/copilot` | Override which GitHub Copilot CLI binary is used. |
 | `ONNI_CLINE_BIN=/path/to/cline` | Override which Cline CLI binary is used. |
 | `ONNI_ANTIGRAVITY_BIN=/path/to/agy` | Override which Antigravity CLI (`agy`) binary is used. Unset: `agy` on PATH, then the installer's directory (`%LOCALAPPDATA%\agy\bin` on Windows, `~/.local/bin` elsewhere). |
-| `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | The agents' **own** variables, honoured where the vendor documents one. Setting one moves that agent's **default account** — the config folder Onni Work discovers. A *second* login of the same CLI is deliberately not an environment setting, since one process-wide value cannot differ per project: add it under **Settings → Agent accounts** and pick it per project. |
+| `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | The agents' **own** variables, honoured where the vendor documents one. Setting one moves that agent's **default account** — the config folder OnniCode discovers. A *second* login of the same CLI is deliberately not an environment setting, since one process-wide value cannot differ per project: add it under **Settings → Agent accounts** and pick it per project. |
 | `ONNI_BROWSE_ROOT=~/` | Default root for **Add project → Open local folder…**. The picker cannot navigate above it; a saved workspace value overrides the environment default and must name an existing folder. |
 | `ONNI_PROJECTS_DIR=~/onni/projects` | Default destination for **Clone from GitHub**. Saved workspace settings override it, and missing directories are created recursively. |
 | `ONNI_SUPERVISED=1` | Marks a supervised launch — the desktop shell sets it beside `ONNI_SUPERVISOR_PID`. Off by default. |
 | `ONNI_AUTONOMOUS_DEFAULT=0` | Seed the New Task Autonomous default (`0` or `1`). Without a seed, skills default on and workflows off; a saved global Resources setting overrides it. |
 | `ONNI_WORKTREE_DEFAULT=1` | Seed the New Task Worktree default (`0` or `1`). Without a seed, eligible runs default on; a saved global Resources setting overrides it. |
-| `ONNI_DISABLE_REPO_LOCK=1` | **Dangerous escape hatch:** allow any run executing in the repository root — an explicit `worktree=false` run, non-Git degradation, or a continuation whose worktree cannot be restored — to proceed without Onni Work’s repository-root lease. Agents can overwrite each other’s files or Git state; isolated worktree runs are unaffected. Off by default; only the exact value `1` enables it. |
+| `ONNI_DISABLE_REPO_LOCK=1` | **Dangerous escape hatch:** allow any run executing in the repository root — an explicit `worktree=false` run, non-Git degradation, or a continuation whose worktree cannot be restored — to proceed without OnniCode’s repository-root lease. Agents can overwrite each other’s files or Git state; isolated worktree runs are unaffected. Off by default; only the exact value `1` enables it. |
 | `ONNI_SINGLE_PROJECT=1` | Opt into a launch-project-only cockpit: only the exact value `1` enables it. Project add, edit, checkout, folder browsing, and removal are refused and only the launch project is shown. Off by default; stored registry rows are retained, so unsetting it and restarting restores the full multi-project workspace without migration or data loss. |
 | `ONNI_HIDE_TOKEN_USAGE=1` | Hide raw input/output token counts throughout the browser cockpit while leaving backend-reported cost visible. Only the exact value `1` enables it; API payloads are unchanged, and a restart is required after changing it. |
 | `ONNI_HIDE_COST=1` | Hide backend-reported monetary cost throughout the browser cockpit while leaving raw input/output token counts visible. Only the exact value `1` enables it; API payloads are unchanged, and a restart is required after changing it. |
@@ -567,7 +567,7 @@ df -i "${TMPDIR:-/tmp}"                # a tmpfs can exhaust inodes long before 
 Under quota the file is *created* and the write then fails, so the backend reads
 back a zero-byte capture file and hands the agent an empty result.
 
-**Fix.** Since #785 Onni Work gives each task its own `TMPDIR` under
+**Fix.** Since #785 OnniCode gives each task its own `TMPDIR` under
 `.ai/onni/tmp/<task-id>` and write-probes it before spawning, so a broken temp
 directory fails the task with `agent temp directory is not writable: …` on the
 task thread instead of corrupting its work. If you see that error, free space on
@@ -587,7 +587,7 @@ port was busy or you passed `--port`).
 
 ### From a shell: `onni runs`, `onni task`, `onni automation`
 
-Inside a task, Onni Work sets `ONNI_API_URL`, `ONNI_PROJECT_ID` and `ONNI_TASK_ID` for
+Inside a task, OnniCode sets `ONNI_API_URL`, `ONNI_PROJECT_ID` and `ONNI_TASK_ID` for
 the agent. From your own terminal, set the address yourself:
 
 ```bash
@@ -708,12 +708,12 @@ run on `Narrow allow-rules` and the run says so. A manager–worker preset canno
 
 ## Coding agent backends
 
-Onni Work is not married to one vendor. Every agent step runs through a single
+OnniCode is not married to one vendor. Every agent step runs through a single
 `AgentRunner` seam with seven built-in backends:
 
-| Backend | CLI | How Onni Work drives it | Tool access |
+| Backend | CLI | How OnniCode drives it | Tool access |
 |---|---|---|---|
-| **Claude Code** (default) | [`claude`](https://github.com/anthropics/claude-code) | Headless `stream-json` mode. | Per-tool `--allowedTools` (`bashAllowlist` scopes `Bash`); `dontAsk` denies unapproved tools without prompting (`ONNI_APPROVAL_GATE=1` selects `acceptEdits`, but Onni Work cannot answer permission prompts). |
+| **Claude Code** (default) | [`claude`](https://github.com/anthropics/claude-code) | Headless `stream-json` mode. | Per-tool `--allowedTools` (`bashAllowlist` scopes `Bash`); `dontAsk` denies unapproved tools without prompting (`ONNI_APPROVAL_GATE=1` selects `acceptEdits`, but OnniCode cannot answer permission prompts). |
 | **Codex** | [`codex`](https://github.com/openai/codex) | `codex app-server` — JSON-RPC over stdio, the same transport the Codex IDE extensions use. | Ignores `allowedTools`; the default auto mode uses `danger-full-access` with `approvalPolicy: never` (`ONNI_CODEX_NETWORK=0` opts into the network-blocked `workspace-write` sandbox). |
 | **Junie** _(experimental)_ | [`junie`](https://junie.jetbrains.com/cli) | `junie --acp=true` — the real Agent Client Protocol over stdio, the same transport JetBrains IDEs use. | Ignores `allowedTools`; every permission is auto-approved. |
 | **OpenCode** _(experimental)_ | [`opencode`](https://opencode.ai) | `opencode serve` — a local HTTP server with an SSE event stream. | Ignores `allowedTools` entirely; every permission is auto-approved. |
@@ -728,16 +728,16 @@ Onni Work is not married to one vendor. Every agent step runs through a single
 > OpenCode and Copilot auto-approve every permission (they ignore `allowedTools`).
 > Treat them as previews and expect rough edges.
 
-On startup Onni Work probes which CLIs are installed and the cockpit only offers
+On startup OnniCode probes which CLIs are installed and the cockpit only offers
 the backends it found — install any one of the seven and you're operational.
 
 **Models come from your own machine.** The model picker does not ship a list of
-vendor releases that goes stale between Onni Work versions. For Claude, Codex, Cursor, Junie and
-OpenCode Onni Work asks the CLI on your host what *it* currently offers (Claude
+vendor releases that goes stale between OnniCode versions. For Claude, Codex, Cursor, Junie and
+OpenCode OnniCode asks the CLI on your host what *it* currently offers (Claude
 Code's `list_models` control request; the Codex app-server's `model/list`;
 Junie's ACP `session/new` config options; `opencode models`) and shows exactly
 that, in that order — so a model your account gained yesterday is selectable
-today with no Onni Work release, and one your provider retired stops being offered.
+today with no OnniCode release, and one your provider retired stops being offered.
 Discovery is read-only, costs no tokens, and is cached briefly in memory. If the
 CLI is missing, logged out, too old or slow, the picker quietly falls back to
 that runner's built-in entries (`auto` plus Claude's tier aliases) and says so
@@ -782,9 +782,9 @@ can slot in the same way.
 
 ---
 
-## Remote access (host Onni Work on a server)
+## Remote access (host OnniCode on a server)
 
-Onni Work runs on `localhost` by default. To reach the cockpit from another machine —
+OnniCode runs on `localhost` by default. To reach the cockpit from another machine —
 a shared team box, a VPS, your phone — put an **authenticated public front** in
 front of it. The built-in installer does this interactively, per **platform
 strategy**, and never escalates silently: every privileged command is printed
@@ -807,7 +807,7 @@ On `ubuntu-vps` a single host can run several independent cockpits — add
 new domain never resumes or clobbers the first install.
 
 **Already running a reverse proxy?** If Dokploy, Coolify, Caddy or your own
-nginx already owns `:80/:443`, Onni Work's would fight it for the ports. Install the
+nginx already owns `:80/:443`, OnniCode's would fight it for the ports. Install the
 service only and let your proxy front it:
 
 ```bash
@@ -817,13 +817,13 @@ onni server-install --platform ubuntu-vps \
 
 `--bind-host` is only needed when the proxy runs in a **container** (Traefik
 can't reach the host's loopback); a host-installed proxy uses the `127.0.0.1`
-default. In this mode **your proxy must enforce authentication** — Onni Work has
+default. In this mode **your proxy must enforce authentication** — OnniCode has
 none of its own.
 
 | Provider | `--platform` | Public front |
 |----------|--------------|--------------|
 | Ubuntu / Debian VPS | `ubuntu-vps` | nginx + Let's Encrypt HTTPS, htpasswd login, systemd |
-| Ubuntu + existing proxy | `ubuntu-vps --external-proxy` | your Dokploy/Traefik/Caddy front; Onni Work ships the service only |
+| Ubuntu + existing proxy | `ubuntu-vps --external-proxy` | your Dokploy/Traefik/Caddy front; OnniCode ships the service only |
 | macOS + ngrok | `macosx-ngrok` | ngrok tunnel + `--basic-auth`, launchd |
 
 ---
@@ -846,7 +846,7 @@ never blocks startup; configured lifecycle transitions pause on malformed config
   // Only owner/name, https/ssh URLs, or local paths (`/abs`, `./rel`, `~/dir`,
   // `C:\dir`) are accepted — no ext::/fd:: transport helpers. Write a relative
   // path as `./name`, not a bare `name`. Pin `ref` to a full commit SHA to freeze
-  // the source against a moving branch head — Onni Work verifies it resolves to
+  // the source against a moving branch head — OnniCode verifies it resolves to
   // exactly that commit, and reports it as `team.commit`.
   // Skills repos shared by every project (e.g. your organisation's) are added in Settings →
   // Global → Skills, not here; they are stored in `~/.onni/config.json` (`orgSkillsRepos`)
@@ -901,7 +901,7 @@ root — live once in `~/.onni/config.json`, alongside the
 [project registry](#multiple-projects-one-cockpit), and are edited from
 **Settings → Resources** and **Settings → Projects**. A `maxParallel` left over
 in a repo's `.ai/onni/config.json` is imported into the workspace file the
-first time Onni Work boots there, and ignored afterwards.
+first time OnniCode boots there, and ignored afterwards.
 
 **Settings → Resources** opens on a live **Machine** card, and the sidebar carries
 the same numbers as a one-row **glance** (CPU, its 60 s sparkline, compact RAM)
@@ -923,7 +923,7 @@ query overrides the workspace's five-minute `staleTime`), so a cached sample can
 never be stamped as fresh.
 
 **Which numbers are effective.** The plain process reads **host totals**. When
-Onni Work runs inside a cgroup with a real limit - a Docker `--cpus`/`--cpuset-cpus`,
+OnniCode runs inside a cgroup with a real limit - a Docker `--cpus`/`--cpuset-cpus`,
 a systemd scope, a sandbox - the same payload carries an optional `container`
 object with the process's OWN cgroup limits and usage, and the card and the
 glance show those as the effective values, labelled, with the host totals kept as
@@ -951,7 +951,7 @@ says so and falls back to the authenticated same-origin route instead of showing
 
 ### Editing the agents' own config (Settings → Agent config)
 
-Onni Work picks *which* agent runs; **Settings → Agent config** lets you edit *how* it
+OnniCode picks *which* agent runs; **Settings → Agent config** lets you edit *how* it
 behaves — the raw config files Claude, Codex and OpenCode read for settings,
 MCP, and memory. In the multi-project cockpit the section is project-scoped:
 repo-relative files resolve from the selected project's root, while user-scope
@@ -998,7 +998,7 @@ The **Variables** disclosure inserts these tokens at the command editor's caret:
 | `{{ worktree_id }}` | Stable resource identity `onni-<lowercase UUID>`, retained across reclamation and recreation. |
 | `{{ task_id }}` | Original task ID, retained even if its task record is gone. |
 
-Tokens accept optional inner whitespace. **Leave them unquoted**: Onni Work adds
+Tokens accept optional inner whitespace. **Leave them unquoted**: OnniCode adds
 shell escaping, so spaces and shell punctuation in paths remain inert data.
 Static suffixes are supported:
 
@@ -1023,14 +1023,14 @@ tool, type `\{{` in the editor, including inside quoted strings:
 docker inspect --format '\{{ .Name }}' {{ worktree_id }}
 ```
 
-Onni Work consumes the escape and sends `{{ .Name }}` literally. A JSON-authored
+OnniCode consumes the escape and sends `{{ .Name }}` literally. A JSON-authored
 command needs the usual additional JSON escaping for its backslash. **Preview**
 only renders and redacts the command; it never runs a shell. Choose a real
 worktree, or use the explicitly labelled example context.
 
 Commands run sequentially as noninteractive `bash -c`, without a login profile,
 in the worktree directory with closed stdin. Bash must be available on the host;
-Onni Work does not install it or silently substitute another shell. Windows also uses
+OnniCode does not install it or silently substitute another shell. Windows also uses
 native `taskkill /PID … /T /F` to terminate an owned command tree. Native Windows
 execution was not exercised by the implementation's local fixture tests. Each
 command has a **30-minute wall-clock timeout**, with an optional
@@ -1038,7 +1038,7 @@ command has a **30-minute wall-clock timeout**, with an optional
 trigger. Stop/timeout terminates supervised children; uncertain process exit
 keeps the worktree protected until quiescence can be established.
 
-Commands inherit the Onni Work host's environment and privileges. Repository `.env`
+Commands inherit the OnniCode host's environment and privileges. Repository `.env`
 files are not automatically loaded and managed tracker/account credentials are
 not injected. Source a file explicitly if your command needs it. The visiting
 browser does not run these commands, including in remote mode. Output is
@@ -1091,7 +1091,7 @@ reclaimed, so a later recreation uses the same resource identity.
 **Before downgrading to a version without lifecycle support**, finish, Keep, or
 explicitly Force pending operations, then disable the configured hooks. Older
 binaries cannot enforce these gates and may remove directories without cleanup.
-Deleting Onni Work state cannot undo external resources or reconstruct lost ownership
+Deleting OnniCode state cannot undo external resources or reconstruct lost ownership
 information.
 
 
@@ -1099,7 +1099,7 @@ information.
 
 ## Builds and releases
 
-Onni Work publishes nothing: there are no nightlies, previews or npm releases to install with
+OnniCode publishes nothing: there are no nightlies, previews or npm releases to install with
 `npx`. Build and run it from source instead — see [Local development](#local-development) below.
 
 ---
@@ -1156,7 +1156,7 @@ rebuild is live on the next restart.
 
 A worktree has to be built to run (`npm install && npm run build` in it). Then pick one of:
 
-- **Desktop menu**: **Onni Work ▸ Versions** lists linked checkouts by branch
+- **Desktop menu**: **OnniCode ▸ Versions** lists linked checkouts by branch
   (`onni/cb28888e — 0.13.0 (worktree)`). Clicking one switches and restarts.
 - **Terminal**:
 
