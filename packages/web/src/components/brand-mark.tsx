@@ -26,7 +26,7 @@ export function BrandMark({ height = BRAND_LOCKUP.mark, className }: { height?: 
       draggable={false}
       height={height}
       width={height}
-      className={cn('shrink-0 [image-rendering:pixelated]', className)}
+      className={cn('shrink-0', className)}
     />
   )
 }
