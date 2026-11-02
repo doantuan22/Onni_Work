@@ -286,7 +286,7 @@ function RegistryTable({
           {t('No projects registered yet.')}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="relative overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
             {/* Not "registered": this table also renders the folder onni is serving without
                 having saved it, whose only action is Add project. A screen-reader user was told

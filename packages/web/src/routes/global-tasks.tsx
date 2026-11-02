@@ -836,7 +836,9 @@ function TaskTable({
   return (
     <div
       data-slot="global-tasks-table"
-      className="overflow-x-auto rounded-lg border border-border bg-card shadow-xs"
+      // `relative`: the screen-reader-only labels in the cells are absolutely positioned; without a
+      // positioned scroller they escaped its clip and widened the whole page (QA: +197 px at 1280).
+      className="relative overflow-x-auto rounded-lg border border-border bg-card shadow-xs"
     >
       <TooltipProvider>
         <table className="w-full border-collapse" aria-rowcount={tableWindow.ariaRowCount}>

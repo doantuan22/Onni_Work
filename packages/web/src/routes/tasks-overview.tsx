@@ -281,7 +281,7 @@ export function TasksOverview({
 
   return (
     <LiveNowProvider intervalMs={AGE_TICK_MS} now={now}>
-    <div data-route="tasks" className="flex min-h-full flex-col">
+    <div data-route="tasks" className="flex min-h-full min-w-0 flex-col">
       {/* Desktop header. Below `md` the shell's top bar already says "Tasks", and the drawer
           carries the shared Active/Archived tabs — repeating them here would be a third copy. */}
       <header className="sticky top-0 z-10 hidden h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5 md:flex">
@@ -341,7 +341,7 @@ export function TasksOverview({
       </header>
       {scheduledTasks}
 
-      <div className="flex flex-1 flex-col p-3 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-5 md:pb-5">
+      <div className="flex min-w-0 flex-1 flex-col p-3 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-5 md:pb-5">
         {/* No bar over the first-run hero: with nothing to narrow, filters are noise. */}
         {all.length > 0 ? (
           <TasksFilterBar
@@ -375,7 +375,7 @@ export function TasksOverview({
             {/* ≥md: the table. */}
             <div
               data-slot="tasks-table"
-              className="hidden overflow-x-auto rounded-lg border border-border bg-card shadow-xs md:block"
+              className="relative hidden overflow-x-auto rounded-lg border border-border bg-card shadow-xs md:block"
             >
               <TooltipProvider>
                 <table className="w-full border-collapse" aria-rowcount={tableWindow.ariaRowCount}>

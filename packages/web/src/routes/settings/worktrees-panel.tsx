@@ -115,7 +115,7 @@ export function WorktreesPanel() {
           {t('No task worktrees on disk.')}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="relative overflow-x-auto rounded-md border border-border">
           <table className="w-full border-collapse text-sm">
             <caption className="sr-only">{t('Task worktrees currently materialized on disk')}</caption>
             <thead>

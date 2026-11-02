@@ -39,7 +39,7 @@ export function AutomationsTable({
   const { t } = useI18n()
   const showCost = AUTOMATION_COST_VISIBLE && (data.stats.costUsd !== undefined || data.automations.some((automation) => automation.costUsd7d !== undefined))
   return (
-    <Card flush data-slot="automations-table" className="min-w-0 overflow-x-auto">
+    <Card flush data-slot="automations-table" className="relative min-w-0 overflow-x-auto">
       <table className="w-full border-collapse [&_tbody_tr:last-child>td]:border-b-0">
         <thead>
           <tr>

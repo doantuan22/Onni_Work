@@ -247,7 +247,7 @@ export function Overview({
           {t('Current workload and outcomes for the selected period. Sorted by tasks needing you, then running tasks. Counts include subtasks.')}
         </p>
         <div
-          className="overflow-x-auto px-1 pb-2"
+          className="relative overflow-x-auto px-1 pb-2"
           role="region"
           aria-label={t('Project outcomes')}
           tabIndex={0}

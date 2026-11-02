@@ -610,7 +610,7 @@ function SectionPills({
     <nav
       aria-label={t('Sections of this area')}
       data-slot="settings-nav-mobile"
-      className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 md:hidden"
+      className="relative flex shrink-0 gap-1.5 overflow-x-auto border-b border-border px-3 py-2.5 md:hidden"
     >
       {scope === 'project' ? (
         <>
