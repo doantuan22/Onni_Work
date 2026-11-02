@@ -200,7 +200,6 @@ Not a contract at all:
 - **npm packaging and external semver.** No workspace is published, no dist-tag, no `npx` install
   path, no release line, no public deprecation policy. `check:pack` guards the tarball's
   *contents* only.
-- **Upstream (`cezar`) compatibility.** History was not merged; see
-  `docs/adr/0001-hard-fork-from-cezar.md`.
+- **Upstream (`cezar`) compatibility.** History was not merged.
 - **The specs.** `.ai/specs/` is the upstream design record and may describe behavior or names
   that no longer apply. Code and `AGENTS.md` win; see `.ai/specs/README.md`.

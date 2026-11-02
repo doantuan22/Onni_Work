@@ -3,7 +3,7 @@
 - Status: accepted
 - Date: 2026-11-01
 - Evidence: [`packages/work/src/core/__fixtures__/cline/README.md`](../../packages/work/src/core/__fixtures__/cline/README.md) — four live captures from `cline` 3.0.74
-- Builds on: [ADR 0005](0005-unattended-safety.md), [ADR 0006](0006-manager-worker.md), [ADR 0007](0007-antigravity-backend.md)
+- Builds on: the unattended-safety fence, the manager-worker roster and the Antigravity backend (their ADRs were removed)
 
 ## Context
 

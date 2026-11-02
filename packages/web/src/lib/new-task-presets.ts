@@ -18,8 +18,8 @@ import type { LimitsDraft } from './run-limits'
  * The engine does NOT forbid an autonomous run in the repo working tree (it forbids auto-land and
  * fences unattended runs instead). This module is deliberately STRICTER: the panel never lets a
  * user assemble autonomous + direct checkout, because the run would write straight into a
- * checkout while the user is told nothing will pause for them. See docs/adr/0008-new-task-panel.md
- * for the recorded divergence; the engine is untouched.
+ * checkout while the user is told nothing will pause for them.
+ * The engine is untouched.
  */
 
 export type PanelSection = 'presets' | 'who' | 'where' | 'autonomy' | 'skill' | 'advanced'

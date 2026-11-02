@@ -124,13 +124,13 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   its `limits` at start; children inherit the parent's mode and may never be looser; the sweep
   (`RunManager.sweepLimits`) and the wait expiry bound cost, time and hangs in both limits modes.
   The fence is a barrier, not a sandbox — do not describe it as one. Dispatch depth and `retry_limit` stay on in "Unlimited"; the subtasks-per-tree
-  counter has its own owner-approved off switch (`safety.dispatchUnlimitedSubtasks`, Settings → Resources → Advanced). See `docs/adr/0005-unattended-safety.md`.
+  counter has its own owner-approved off switch (`safety.dispatchUnlimitedSubtasks`, Settings → Resources → Advanced).
 - **A roster is a fence, not a sandbox.** A tree started with a `roster` may dispatch only to the
   listed workers (`dispatch()` is the single check, 409 with the allowed list); workers stay at depth 1,
   keep `ONNI_API_URL` for `onni task report` and get the report-only prompt. Do not describe the roster as
   a security boundary: raw HTTP can still create a top-level run on any backend. The route path commits
   the manager's WIP before a fork and refuses (409) when it cannot; a worker's worktree is not reclaimed
-  while its tree's root is live (`protectedByLiveTree`). See `docs/adr/0006-manager-worker.md`.
+  while its tree's root is live (`protectedByLiveTree`).
 - **Local-first.** No account, no database, no cloud, no upload. `gh` and the agent CLIs run as
   the user.
 - **The API is `/api/v1` only, described by zod.** Every request and response shape is a schema
@@ -154,9 +154,9 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
 - **Antigravity fails closed.** `agy` cannot ask for approval headless, so a run starts on `files-only`
   (no commands); `allow-rules` and `bypass` are Settings → Agent permissions choices, `bypass` needs
   `confirmBypass: true` and is **never** applied to an unattended run (`effectiveAntigravityLevel`). A turn
-  that was blocked and answered nothing **fails** — `agy` itself reports it as success (ADR 0007). It is a
-  worker only (`RUNNER_CAPABILITIES.canManage`, enforced by `rosterSchema`); turning that on takes the four
-  things listed in ADR 0007 ("To enable `canManage`"), not a flag flip. It reports tokens, never USD. Do not
+  that was blocked and answered nothing **fails** — `agy` itself reports it as success. It is a
+  worker only (`RUNNER_CAPABILITIES.canManage`, enforced by `rosterSchema`); turning that on is more than a
+  flag flip (the manager's commands carry free arguments a whole-line grant cannot hold). It reports tokens, never USD. Do not
   add `--add-dir` or `agy-acp-bridge`.
   An agy `command(<line>)` grant matches the **whole command line** (measured, 10 real prompts): it is never a
   prefix and never a pattern, so a step's `bashAllowlist` entry becomes one exact line for this backend, and the
@@ -221,8 +221,7 @@ example). One socket per local cockpit — never `new WebSocket` for a feature; 
 
 ## Deliberately removed — do not reintroduce
 
-These were deleted on purpose (see `docs/adr/0002-remove-self-update-telemetry-publish.md` and
-`docs/adr/0004-remove-leftover-update-and-slack-discord.md`).
+These were deleted on purpose.
 Adding one back needs an owner decision, not a PR.
 
 - **Self-update / npm updates.** Nothing checks a registry, downloads a release or signs an
@@ -238,9 +237,9 @@ Adding one back needs an owner decision, not a PR.
 - **npm publishing.** The root and every workspace are `private`. `check:pack` exists only to
   keep the packable package honest. No publish workflow, no dist-tags, no `npx` install path.
 - **Skills auto-update.** No `npx skills` check/apply, no coordinator, no `/workspace/skills-update*`
-  routes, no `ONNI_SKILLS_AUTO_UPDATE` (ADR 0004). Skills install and update by hand.
+  routes, no `ONNI_SKILLS_AUTO_UPDATE`. Skills install and update by hand.
 - **Slack and Discord webhook formats.** Only the signed `onni.json.v1` receiver exists; chat
-  destinations go through your own endpoint (ADR 0004).
+  destinations go through your own endpoint.
 - **Docs site and release workflow.** No docs site build; `docs/` is read in the repo. No tag
   push and no release workflow — `v*` tags are never created.
 
@@ -273,11 +272,11 @@ The supported dev machine here is Windows 11 with Git Bash.
 | Git, worktrees, diff base | `packages/work/src/git-worktree.ts`, `git-diff-base.ts`, `git-remotes.ts` |
 | Workspace registry, `~/.onni` | `packages/work/src/paths.ts`, `workspace/config.ts`, `workspace/projects.ts` |
 | Manager / worker roster | `packages/contract/src/roster.ts`, `packages/work/src/workflows/manager-worker.ts`, `run.ts` (`dispatch`, `dispatchFromAgent`) |
-| Antigravity (`agy`), its permission levels | `docs/adr/0007-antigravity-backend.md`, `packages/work/src/core/antigravity-runner.ts`, `antigravity-permissions.ts`, `antigravity-ui-mapper.ts`, `__fixtures__/antigravity/` |
+| Antigravity (`agy`), its permission levels | `packages/work/src/core/antigravity-runner.ts`, `antigravity-permissions.ts`, `antigravity-ui-mapper.ts`, `__fixtures__/antigravity/` |
 | Run limits, unattended safety | `packages/contract/src/limits.ts`, `packages/work/src/workflows/limits.ts`, `push-guard.ts`, `unattended.ts` |
 | Live signals | `.ai/specs/2026-07-23-websocket-subscriptions.md`, `server/ws.ts`, `web/src/api/ws.ts` |
 | Cockpit UI | `packages/web/src/app.tsx`, `routes.tsx`, `api/` |
-| The `/new` Task settings panel, presets | `docs/adr/0008-new-task-panel.md`, `packages/web/src/components/task-settings-panel.tsx`, `packages/web/src/lib/new-task-presets.ts`, `routes/new-task.tsx` |
+| The `/new` Task settings panel, presets | `packages/web/src/components/task-settings-panel.tsx`, `packages/web/src/lib/new-task-presets.ts`, `routes/new-task.tsx` |
 | Agent config files | `packages/work/src/agent-config/` (`catalog.ts` owns vendor knowledge) |
 
 ## Related documents

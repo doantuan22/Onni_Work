@@ -96,7 +96,7 @@ One browser window, with live task updates over Server-Sent Events:
 ### New task: the Task settings panel
 
 On **New task**, the prompt takes the main column and every run setting lives in the **Task settings**
-panel on the right ([ADR 0008](adr/0008-new-task-panel.md)). The panel is open by default at 1100px and
+panel on the right. The panel is open by default at 1100px and
 wider, collapses from its header (remembered per browser), and becomes a right drawer below that width,
 opened from the summary line under the prompt and closed with Escape.
 

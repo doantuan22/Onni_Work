@@ -86,7 +86,7 @@ describe('the workspace settings API (step 2.7)', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as WorkspaceConfigResponse & Record<string, unknown>;
     expect(body).toEqual({
-      branding: { name: 'onni', logoUrl: null },
+      branding: { name: 'OnniCode', logoUrl: null },
       browseRoot: '~/',
       projectsDir: '~/onni/projects',
       orgSkillsRepos: [],
@@ -112,7 +112,7 @@ describe('the workspace settings API (step 2.7)', () => {
       agentDefaults: {},
       taskPresets: [],
       limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10_000_000, maxWallClockMinutes: 240, maxStepIterations: 30 },
-      safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
+      safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchUnlimitedSubtasks: false, dispatchRetryLimit: 1, managerComplexityPolicy: true },
       managerWorker: { presets: [], defaultPresetId: null },
       agentPermissions: { antigravity: 'files-only' },
     });
@@ -136,7 +136,7 @@ describe('the workspace settings API (step 2.7)', () => {
     expect((await (await getConfig()).json() as WorkspaceConfigResponse).branding.name).toBe('Acme Studio');
     expect(rawConfig().branding).toEqual({ name: 'Acme Studio' });
     const cleared = await putConfig({ branding: { name: null } });
-    expect((await cleared.json() as WorkspaceConfigResponse).branding.name).toBe('onni');
+    expect((await cleared.json() as WorkspaceConfigResponse).branding.name).toBe('OnniCode');
     expect(setWorkspaceConfigInputSchema.safeParse({ branding: { name: '  ' } }).success).toBe(false);
     expect((await putConfig({ branding: { name: '  ' } })).status).toBe(400);
   });
@@ -287,7 +287,7 @@ describe('the workspace settings API (step 2.7)', () => {
     });
     expect(res.status).toBe(200);
     expect((await res.json()) as WorkspaceConfigResponse).toEqual({
-      branding: { name: 'onni', logoUrl: null },
+      branding: { name: 'OnniCode', logoUrl: null },
       browseRoot: '~/',
       projectsDir: '~/onni/projects',
       orgSkillsRepos: [],
@@ -312,7 +312,7 @@ describe('the workspace settings API (step 2.7)', () => {
       agentDefaults: {},
       taskPresets: [],
       limits: { mode: 'capped', maxCostUsd: 10, maxTokens: 10_000_000, maxWallClockMinutes: 240, maxStepIterations: 30 },
-      safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchRetryLimit: 1 },
+      safety: { waitExpiryMinutes: 30, dispatchMaxDepth: 1, dispatchMaxSubtasks: 12, dispatchUnlimitedSubtasks: false, dispatchRetryLimit: 1, managerComplexityPolicy: true },
       managerWorker: { presets: [], defaultPresetId: null },
       agentPermissions: { antigravity: 'files-only' },
     });

@@ -206,7 +206,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | Exit → stop sidecar | `RunEvent::Exit` gọi `stop_sidecar` | `lib.rs:466,651` | app | CÓ TRONG CODE | `lib.rs:466` |
 | `restart_app` | IPC cho Settings | `lib.rs:873` | UI | CÓ TRONG CODE | `lib.rs:873` |
 | Debug IPC | `ONNI_DESKTOP_DEBUG_IPC=1` chỉ debug build | `lib.rs:1653,1660` | env | NỬA VỜI | không có trong `.env.example` |
-| Updater / deep-link | **không có** — đã xoá có chủ đích | `docs/adr/0002-…` | — | ĐÃ VÔ HIỆU | `lib.rs` không có path deep-link nào |
+| Updater / deep-link | **không có** — đã xoá có chủ đích | — | — | ĐÃ VÔ HIỆU | `lib.rs` không có path deep-link nào |
 | `onni link` / `unlink` | đăng ký checkout đã build vào `~/.onni/versions` cho shell | `packages/work/src/self-update/checkouts.ts` | CLI | ĐÃ XÁC MINH | `self-update/checkouts.test.ts` pass |
 
 ## 9. CLI
@@ -399,7 +399,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 
 ## 18. Manager / Worker (2026-11-01, nhánh `feat/manager-worker`)
 
-Thiết kế: [`docs/design/manager-worker.md`](design/manager-worker.md) · quyết định: [ADR 0006](adr/0006-manager-worker.md). Rào chắn điều phối, **không phải ranh giới bảo mật**.
+Thiết kế: [`docs/design/manager-worker.md`](design/manager-worker.md). Rào chắn điều phối, **không phải ranh giới bảo mật**.
 
 | Chức năng | Mô tả ngắn | Nơi trong code | Cách dùng | Trạng thái | Căn cứ |
 | --- | --- | --- | --- | --- | --- |
@@ -420,7 +420,7 @@ Thiết kế: [`docs/design/manager-worker.md`](design/manager-worker.md) · quy
 
 ## 19. Antigravity (2026-10-31, nhánh `feat/antigravity-backend`)
 
-Thiết kế/spike: [`docs/design/antigravity-spike.md`](design/antigravity-spike.md) · quyết định: [ADR 0007](adr/0007-antigravity-backend.md). Backend thứ 8, `agy -p … --output-format stream-json` qua pipe; **chỉ báo token, không có USD**.
+Thiết kế/spike: [`docs/design/antigravity-spike.md`](design/antigravity-spike.md). Backend thứ 8, `agy -p … --output-format stream-json` qua pipe; **chỉ báo token, không có USD**.
 
 | Chức năng | Mô tả ngắn | Nơi trong code | Cách dùng | Trạng thái | Căn cứ |
 | --- | --- | --- | --- | --- | --- |
