@@ -28,6 +28,7 @@ import {
   type AgentProfilesResponse,
   type BackendCheck,
   type ProviderId,
+  type ProviderStatusResponse,
   type Runner,
   type SetWorkspaceConfigInput,
 } from '@onni/api-client'
@@ -45,7 +46,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { StatusDot, type StatusDotTone } from '@/components/status-dot'
-import { RUNNER_ORDER } from '@/lib/provider-status'
+import { RUNNER_ORDER, providerStatusFor } from '@/lib/provider-status'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/toaster'
 import { OpenInMenu, cliTargetRunner } from '@/components/open-in-menu'
@@ -118,6 +119,12 @@ const PROVIDER_INSTALL: Record<ProviderId, string> = {
 }
 
 /** Same vocabulary the Providers card uses — one wording for "is this logged in?". */
+/** True when the provider is enabled and signed in — the dot beside each agent in the list. */
+function providerConnected(status: ProviderStatusResponse | undefined, provider: ProviderId): boolean {
+  const entry = providerStatusFor(status, provider)
+  return entry?.enabled === true && entry.status === 'connected'
+}
+
 const STATUS_PRESENTATION = {
   connected: { label: 'Connected', tone: 'success' },
   disconnected: { label: 'Not connected', tone: 'pending' },
@@ -156,6 +163,7 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
   const [adding, setAdding] = useState<ProviderId | null>(null)
   const [confirming, setConfirming] = useState<AgentProfile | null>(null)
   const remove = useRemoveAgentProfile()
+  const providerStatus = useProviderStatus()
 
   // Every agent gets a tab, including one that cannot carry a second login: the tab is where its
   // install state and config folder live, and hiding OpenCode would just move the question
@@ -185,7 +193,7 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
   return (
     <div
       data-slot="accounts-section"
-      className="mx-auto flex w-full max-w-2xl flex-col gap-5 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6"
+      className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6"
     >
       <div>
         <h2 className="text-sm font-semibold text-foreground">{t('Agent accounts')}</h2>
@@ -194,37 +202,38 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
         </p>
       </div>
 
-      <DefaultsForNewProjects profiles={data} />
-
       {/* Keyed so a changed `?agent=` on an already-mounted pane (back/forward, a second deep
-          link) switches the tab — `defaultValue` alone is read once. */}
-      <Tabs key={initialTab} defaultValue={initialTab}>
-        {/* An equal-width grid, not a w-fit row: nine labels overflow the max-w-2xl column. */}
+          link) switches the tab — `defaultValue` alone is read once. One list of agents (left),
+          everything about the selected one (right): status, accounts, default model, default agent. */}
+      <Tabs key={initialTab} defaultValue={initialTab} orientation="vertical" className="flex-col gap-4 md:flex-row md:items-start">
         <TabsList
           variant="line"
           data-slot="accounts-tabs"
-          className="grid h-auto w-full grid-cols-3 gap-x-1 gap-y-3 pb-2 group-data-[orientation=horizontal]/tabs:h-auto"
+          className="flex h-auto w-full flex-col gap-0.5 rounded-lg border border-border bg-card p-1.5 md:w-60 md:shrink-0"
         >
           {providers.map((provider) => (
-            <TabsTrigger key={provider} value={provider} data-provider={provider} className="h-8 flex-none">
+            <TabsTrigger key={provider} value={provider} data-provider={provider} className="h-8 w-full flex-none justify-start">
+              <StatusDot tone={providerConnected(providerStatus.data, provider) ? 'success' : 'neutral'} />
               {PROVIDER_LABEL[provider]}
             </TabsTrigger>
           ))}
         </TabsList>
 
         {providers.map((provider) => (
-          <TabsContent key={provider} value={provider} className="pt-4">
-            <AgentTab
-              provider={provider}
-              // `checks` is read defensively: health is also patched in place from the WS topic and
-              // seeded by route gates, so a partially-populated cache entry is a real state — and
-              // "Checking…" is the honest thing to show for it.
-              check={health.data?.checks?.find((c) => c.name === provider)}
-              accounts={data.profiles.filter((p) => p.provider === provider)}
-              canCarryAccounts={data.profileCapableProviders.includes(provider)}
-              onAdd={() => setAdding(provider)}
-              onRemove={setConfirming}
-            />
+          <TabsContent key={provider} value={provider} className="min-w-0">
+            <div className="flex flex-col gap-4">
+              <AgentTab
+                provider={provider}
+                // `checks` is read defensively: health is also patched in place from the WS topic and
+                // seeded by route gates, so a partially-populated cache entry is a real state.
+                check={health.data?.checks?.find((c) => c.name === provider)}
+                accounts={data.profiles.filter((p) => p.provider === provider)}
+                canCarryAccounts={data.profileCapableProviders.includes(provider)}
+                onAdd={() => setAdding(provider)}
+                onRemove={setConfirming}
+              />
+              <AgentDefaults provider={provider} profiles={data} />
+            </div>
           </TabsContent>
         ))}
       </Tabs>
@@ -377,13 +386,12 @@ function AgentTab({
  * to `~/.onni/config.json`, the account to `~/.onni/agent-accounts.json`. Neither is committable —
  * that is the point of them being here rather than in a repo's settings.
  */
-function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse }) {
+function AgentDefaults({ provider, profiles }: { provider: ProviderId; profiles: AgentProfilesResponse }) {
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const config = useWorkspaceConfig()
   const providerStatus = useProviderStatus()
-  // A row per runner, so every runner's own host catalog is needed at once (#794).
-  const catalogs = useRunnerModelCatalogs()
+  const catalog = useRunnerModelCatalogs()[provider]
   const select = useSelectAgentProfile()
 
   const save = useMutation({
@@ -394,14 +402,16 @@ function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse 
 
   if (config.data === undefined) return null
 
-  const rows = agentPickerRows(profiles.profiles)
+  const rows = agentPickerRows(profiles.profiles).filter((row) => row.runner.id === provider)
   // Absent means "no opinion", and the built-in fallback is claude — the same answer a project with
-  // no config gets today. Showing it checked is honest: it IS what an unconfigured project runs.
+  // no config gets today.
   const runner = config.data.agentDefaults.runner ?? 'claude'
-  const models = config.data.agentDefaults.models ?? {}
+  const model = (config.data.agentDefaults.models ?? {})[provider]
+  const entry = RUNNERS.find((candidate) => candidate.id === provider)
+  const catalogStatus = modelCatalogStatus(provider, catalog.data, catalog.isError)
 
   return (
-    <section data-slot="accounts-defaults" className="flex flex-col gap-3 rounded-lg border border-border bg-card/40 p-3.5">
+    <section data-slot="accounts-defaults" className="flex flex-col gap-4 rounded-lg border border-border bg-card/40 p-3.5">
       <div>
         <h3 className="text-[13px] font-semibold text-foreground">{t('Defaults for new projects')}</h3>
         <p className="text-[13px] text-muted-foreground">
@@ -409,65 +419,57 @@ function DefaultsForNewProjects({ profiles }: { profiles: AgentProfilesResponse 
         </p>
       </div>
 
-      <DefaultAgentPicker
-        rows={rows}
-        runner={runner}
-        accountFor={(id) => profiles.defaults[id] ?? null}
-        providerStatus={providerStatus}
-        disabled={save.isPending}
-        accountDisabled={select.isPending}
-        onPick={(picked, account, hasAccountChoice) => {
-          if (picked !== runner) save.mutate({ agentDefaults: { runner: picked } })
-          // `projectId: null` targets the machine-wide default rather than one repo. Only for an
-          // agent that HAS a choice of accounts: a single-login agent must not write a selection,
-          // or the store fills up with rows that say nothing.
-          if (hasAccountChoice) {
-            select.mutate(
-              { projectId: null, provider: picked, profileId: account },
-              { onError: (error: Error) => toast(error.message, { tone: 'danger' }) },
-            )
-          }
-        }}
-      />
-
-      <div className="flex flex-col gap-2">
-        <span className="text-xs text-muted-foreground">{t('Default model per agent')}</span>
-        {RUNNERS.map((entry) => (
-          <label key={entry.id} className="flex items-center gap-3">
-            <span className="w-28 shrink-0 truncate font-mono text-xs text-muted-foreground">{entry.label}</span>
-            <select
-              aria-label={t('Default model for {runner}', { runner: entry.label })}
-              data-slot="accounts-default-model"
-              data-runner={entry.id}
-              value={models[entry.id] ?? ''}
-              disabled={save.isPending}
-              onChange={(event) =>
-                save.mutate({
-                  // `null` clears the key back to "no opinion" — absence cannot say that in a
-                  // partial patch, and a stale value would keep seeding every unconfigured project.
-                  agentDefaults: {
-                    models: { [entry.id]: event.target.value || null } as Partial<
-                      Record<Runner, string | null>
-                    >,
-                  },
-                })
-              }
-              className="block w-full max-w-xs rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
-            >
-              {modelsForRunner(entry.id, catalogs[entry.id].data, [models[entry.id]]).map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.id === '' ? 'auto (default)' : model.label}
-                </option>
-              ))}
-              {modelCatalogStatus(entry.id, catalogs[entry.id].data, catalogs[entry.id].isError) ? (
-                <option disabled>
-                  {modelCatalogStatus(entry.id, catalogs[entry.id].data, catalogs[entry.id].isError)}
-                </option>
-              ) : null}
-            </select>
-          </label>
-        ))}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs text-muted-foreground">{t('Use as the default agent for new projects')}</span>
+        <DefaultAgentPicker
+          rows={rows}
+          runner={runner}
+          accountFor={(id) => profiles.defaults[id] ?? null}
+          providerStatus={providerStatus}
+          disabled={save.isPending}
+          accountDisabled={select.isPending}
+          stackedOverride={rows.length > 1}
+          onPick={(picked, account, hasAccountChoice) => {
+            if (picked !== runner) save.mutate({ agentDefaults: { runner: picked } })
+            // `projectId: null` targets the machine-wide default rather than one repo. Only for an
+            // agent that HAS a choice of accounts: a single-login agent must not write a selection.
+            if (hasAccountChoice) {
+              select.mutate(
+                { projectId: null, provider: picked, profileId: account },
+                { onError: (error: Error) => toast(error.message, { tone: 'danger' }) },
+              )
+            }
+          }}
+        />
       </div>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs text-muted-foreground">{t('Default model for {runner}', { runner: entry?.label ?? provider })}</span>
+        <select
+          aria-label={t('Default model for {runner}', { runner: entry?.label ?? provider })}
+          data-slot="accounts-default-model"
+          data-runner={provider}
+          value={model ?? ''}
+          disabled={save.isPending}
+          onChange={(event) =>
+            save.mutate({
+              // `null` clears the key back to "no opinion" — absence cannot say that in a
+              // partial patch, and a stale value would keep seeding every unconfigured project.
+              agentDefaults: {
+                models: { [provider]: event.target.value || null } as Partial<Record<Runner, string | null>>,
+              },
+            })
+          }
+          className="block w-full max-w-xs rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+        >
+          {modelsForRunner(provider, catalog.data, [model]).map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.id === '' ? 'auto (default)' : m.label}
+            </option>
+          ))}
+          {catalogStatus ? <option disabled>{catalogStatus}</option> : null}
+        </select>
+      </label>
     </section>
   )
 }

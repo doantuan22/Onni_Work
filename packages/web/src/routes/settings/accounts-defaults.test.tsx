@@ -241,7 +241,7 @@ describe('Agent accounts → Defaults for new projects', () => {
     )
     renderAccounts()
 
-    await waitFor(() => expect(rows()).toHaveLength(10))
+    await waitFor(() => expect(rows()).toHaveLength(2))
     // The built-in fallback, rendered rather than thrown.
     expect(rowFor('claude', '')?.getAttribute('aria-checked')).toBe('true')
   })
@@ -250,10 +250,12 @@ describe('Agent accounts → Defaults for new projects', () => {
     serve()
     renderAccounts()
 
-    await waitFor(() => expect(rows()).toHaveLength(10))
-    expect(rows().map((r) => r.getAttribute('data-value'))).toEqual([
-      'claude', 'claude', 'codex', 'junie', 'opencode', 'cursor', 'pi', 'copilot', 'cline', 'antigravity',
-    ])
+    await waitFor(() => expect(rows()).toHaveLength(2))
+    // One agent list on the left, and the selected agent's own picker rows on the right.
+    expect(
+      [...document.querySelectorAll('[data-slot="accounts-tabs"] [role="tab"]')].map((t) => t.getAttribute('data-provider')),
+    ).toEqual(['claude', 'codex', 'junie', 'opencode', 'cursor', 'pi', 'copilot', 'cline', 'antigravity'])
+    expect(rows().map((r) => r.getAttribute('data-value'))).toEqual(['claude', 'claude'])
     expect(rows()[1]?.textContent).toContain('~/.claude-klaudiusz')
   })
 
@@ -261,7 +263,7 @@ describe('Agent accounts → Defaults for new projects', () => {
     serve()
     renderAccounts()
 
-    await waitFor(() => expect(rows()).toHaveLength(10))
+    await waitFor(() => expect(rows()).toHaveLength(2))
     expect(rowFor('claude', '')?.getAttribute('aria-checked')).toBe('true')
   })
 
@@ -269,10 +271,11 @@ describe('Agent accounts → Defaults for new projects', () => {
     serve()
     renderAccounts()
 
-    await waitFor(() => expect(rows()).toHaveLength(10))
+    await waitFor(() => expect(rows()).toHaveLength(2))
     // Rows render before provider status answers and stay disabled until it does — wait for
     // the row to be clickable, not merely present.
-    await waitFor(() => expect(rowFor('codex')!.disabled).toBe(false))
+    fireEvent.mouseDown(document.querySelector('[role="tab"][data-provider="codex"]')!)
+    await waitFor(() => expect(rowFor('codex')).not.toBeNull())
     fireEvent.click(await enabledRow('codex'))
 
     await waitFor(() => expect(configPuts()).toHaveLength(1))
@@ -286,7 +289,7 @@ describe('Agent accounts → Defaults for new projects', () => {
     serve()
     renderAccounts()
 
-    await waitFor(() => expect(rows()).toHaveLength(10))
+    await waitFor(() => expect(rows()).toHaveLength(2))
     await waitFor(() => expect(rowFor('claude', 'klaudiusz')!.disabled).toBe(false))
     fireEvent.click(await enabledRow('claude', 'klaudiusz'))
 
@@ -314,7 +317,7 @@ describe('Agent accounts → Defaults for new projects', () => {
     serve({ accounts: { ...ACCOUNTS, defaults: { claude: 'klaudiusz' } } })
     renderAccounts()
 
-    await waitFor(() => expect(rows()).toHaveLength(10))
+    await waitFor(() => expect(rows()).toHaveLength(2))
     await waitFor(() => expect(rowFor('claude', '')!.disabled).toBe(false))
     fireEvent.click(await enabledRow('claude', ''))
 
@@ -347,7 +350,7 @@ describe('Agent accounts → Defaults for new projects', () => {
     serve()
     renderAccounts()
 
-    await waitFor(() => expect(rows()).toHaveLength(10))
+    await waitFor(() => expect(rows()).toHaveLength(2))
     const pane = defaults()
     expect(pane?.textContent).toContain('has not chosen for itself')
     expect(pane?.textContent).toContain('keeps its own')

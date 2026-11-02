@@ -789,6 +789,7 @@ export const viSettings: Record<string, string> = {
   'How waiting tasks are re-checked and continued after a usage limit.': 'Cách kiểm tra lại nhiệm vụ đang chờ và tiếp tục sau khi hết giới hạn sử dụng.',
   'New tasks': 'Nhiệm vụ mới',
   'Defaults the composer starts with.': 'Giá trị mặc định của ô soạn nhiệm vụ.',
+  'Use as the default agent for new projects': 'Đặt làm agent mặc định cho dự án mới',
   'Subtasks per tree': 'Lượt gọi worker mỗi cây',
   'Unlimited worker calls': 'Không giới hạn lượt gọi worker',
   'Total worker calls in one tree (not the number running at once). Applies when the task was not started with its own subtask limit.':

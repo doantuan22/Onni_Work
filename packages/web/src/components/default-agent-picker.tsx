@@ -61,6 +61,7 @@ export function DefaultAgentPicker({
   providerStatus,
   disabled = false,
   accountDisabled = false,
+  stackedOverride,
   onPick,
 }: {
   rows: readonly AgentPickerRow[]
@@ -75,9 +76,11 @@ export function DefaultAgentPicker({
   disabled?: boolean
   /** Account rows only: the write target is not known yet (e.g. the project registry is loading). */
   accountDisabled?: boolean
+  /** A caller showing one agent's rows only (so the list-wide count says nothing) can force the stacked form. */
+  stackedOverride?: boolean
   onPick: (runner: Runner, account: string | null, hasAccountChoice: boolean) => void
 }) {
-  const stacked = hasAgentAccounts(rows)
+  const stacked = stackedOverride ?? hasAgentAccounts(rows)
   const { t } = useI18n()
   return (
     <div
