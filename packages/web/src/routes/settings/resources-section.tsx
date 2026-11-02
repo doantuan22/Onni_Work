@@ -13,7 +13,7 @@ import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
 import { LimitsPanel } from './limits-section'
 import { MachineCard } from './machine-card'
-import { SettingsField } from './settings-field'
+import { SettingsField, SettingsGroup } from './settings-field'
 
 /**
  * Global settings → Resources: how hard the MACHINE works. `maxParallel` caps concurrent tasks
@@ -136,13 +136,14 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
   return (
     <div
       data-slot="resources-section"
-      className="mx-auto flex w-full max-w-2xl flex-col gap-7 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6"
+      className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]"
     >
-      {/* Live host totals first: they answer "how is the machine" before the knobs below answer
-          "how hard may onni push it" (spec 2026-09-20-host-resource-telemetry, §UI/UX). The
-          card owns its own subscription, so this screen is what keeps the sampler alive. */}
-      <MachineCard />
+      <div className="lg:sticky lg:top-6 lg:self-start">
+        <MachineCard />
+      </div>
 
+      <div className="flex min-w-0 flex-col gap-5">
+      <SettingsGroup title={t('Parallel runs')} description={t('How many tasks and monitoring sessions run at the same time.')}>
       <SettingsField
         title={t('Max parallel tasks')}
         hint={t('How many tasks run at once across every project. The rest wait in the queue. A non-git directory always runs one at a time.')}
@@ -169,23 +170,6 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
       </SettingsField>
 
       <SettingsField
-        title={t('Waiting-session idle timeout')}
-        hint={t('How long a plain waiting session may stay open without activity before its live backend session ends. Continue resumes it; set 0 to keep it open indefinitely.')}
-      >
-        <IntegerStepper
-          aria-label={t('Waiting-session idle timeout')}
-          data-slot="resources-idle-timeout"
-          value={config.resources.idleTimeoutMinutes ?? 0}
-          min={0}
-          max={IDLE_TIMEOUT_MAX}
-          onCommit={(minutes) => save.mutateAsync({ resources: { idleTimeoutMinutes: minutes ?? 0 } })}
-        />
-        <p className="text-[11px] text-soft-foreground">
-          {t('Minutes; 0 keeps plain waiting sessions alive. Monitoring sessions are already exempt.')}
-        </p>
-      </SettingsField>
-
-      <SettingsField
         title={t('Extra monitoring sessions')}
         hint={t('How many agent sessions may wait on CI, sub-agents, or monitored commands without using an active task slot. Extra sessions stay alive but pause the queue.')}
       >
@@ -204,7 +188,65 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           })}
         </p>
       </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup title={t('Waiting sessions and memory')} description={t('When an idle session closes, and how much memory one task may use.')}>
+      <SettingsField
+        title={t('Waiting-session idle timeout')}
+        hint={t('How long a plain waiting session may stay open without activity before its live backend session ends. Continue resumes it; set 0 to keep it open indefinitely.')}
+      >
+        <IntegerStepper
+          aria-label={t('Waiting-session idle timeout')}
+          data-slot="resources-idle-timeout"
+          value={config.resources.idleTimeoutMinutes ?? 0}
+          min={0}
+          max={IDLE_TIMEOUT_MAX}
+          onCommit={(minutes) => save.mutateAsync({ resources: { idleTimeoutMinutes: minutes ?? 0 } })}
+        />
+        <p className="text-[11px] text-soft-foreground">
+          {t('Minutes; 0 keeps plain waiting sessions alive. Monitoring sessions are already exempt.')}
+        </p>
+      </SettingsField>
 
+      <SettingsField
+        title={t('Per-task memory limit')}
+        hint={t("When a task's whole process tree crosses this, the engine pauses it with a warning and starts the next queued task. Leave empty for no limit.")}
+      >
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={MEMORY_MIN_MB}
+            step={256}
+            aria-label={t('Per-task memory limit in MiB')}
+            data-slot="resources-memory-limit"
+            value={memory}
+            disabled={save.isPending}
+            placeholder={t('no limit')}
+            onChange={(event) => setMemory(event.target.value)}
+            className="block w-32 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+          />
+          <span className="text-xs text-soft-foreground">MiB</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-action="resources-save-memory"
+            disabled={memorySaved || memoryInvalid || save.isPending}
+            onClick={saveMemory}
+          >
+            {t('Save')}
+          </Button>
+        </div>
+        {memoryInvalid ? (
+          <p data-slot="resources-memory-invalid" className="text-[11px] text-danger">
+            {t('Enter a whole number of at least {min} MiB, or leave empty for no limit.', { min: MEMORY_MIN_MB })}
+          </p>
+        ) : (
+          <p className="text-[11px] text-soft-foreground">{t('Applies to newly started tasks.')}</p>
+        )}
+      </SettingsField>
+      </SettingsGroup>
+      <SettingsGroup title={t('Monitoring and auto-resume')} description={t('How waiting tasks are re-checked and continued after a usage limit.')}>
       <SettingsField
         title={t('Monitoring wake-up')}
         hint={t('Park uses no model turns. Re-check sends the same agent a follow-up on this cadence until work completes or the 40-wakeup safety cap is reached.')}
@@ -265,46 +307,8 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           {t('Applies to Claude, Codex and OpenCode — whenever the provider says when the limit lifts.')}
         </p>
       </SettingsField>
-
-      <SettingsField
-        title={t('Per-task memory limit')}
-        hint={t("When a task's whole process tree crosses this, the engine pauses it with a warning and starts the next queued task. Leave empty for no limit.")}
-      >
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            min={MEMORY_MIN_MB}
-            step={256}
-            aria-label={t('Per-task memory limit in MiB')}
-            data-slot="resources-memory-limit"
-            value={memory}
-            disabled={save.isPending}
-            placeholder={t('no limit')}
-            onChange={(event) => setMemory(event.target.value)}
-            className="block w-32 rounded-md border border-input bg-card px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
-          />
-          <span className="text-xs text-soft-foreground">MiB</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            data-action="resources-save-memory"
-            disabled={memorySaved || memoryInvalid || save.isPending}
-            onClick={saveMemory}
-          >
-            {t('Save')}
-          </Button>
-        </div>
-        {memoryInvalid ? (
-          <p data-slot="resources-memory-invalid" className="text-[11px] text-danger">
-            {t('Enter a whole number of at least {min} MiB, or leave empty for no limit.', { min: MEMORY_MIN_MB })}
-          </p>
-        ) : (
-          <p className="text-[11px] text-soft-foreground">{t('Applies to newly started tasks.')}</p>
-        )}
-      </SettingsField>
-
+      </SettingsGroup>
+      <SettingsGroup title={t('New tasks')} description={t('Defaults the composer starts with.')}>
       <SettingsField
         title={t('New task defaults')}
         hint={t('Set stable composer defaults across projects. Explicit choices and run-shape constraints still win.')}
@@ -351,8 +355,9 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           {t('Interactive skills may recommend both off. Multi-step and parallel runs remain isolated.')}
         </p>
       </SettingsField>
-
+      </SettingsGroup>
       <LimitsPanel config={config} />
+      </div>
     </div>
   )
 }
