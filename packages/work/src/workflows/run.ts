@@ -150,7 +150,7 @@ import { resolveProfileEnvForRoot } from '../workspace/agent-profiles.ts';
 import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
-import { managerPrompt, resolveWorker, workerPrompt, workersInFlight, type RemainingBudget } from './manager-worker.ts';
+import { managerDoingComplexAlone, managerPrompt, resolveWorker, workerPrompt, workersInFlight, type RemainingBudget } from './manager-worker.ts';
 import { UNATTENDED_DENIED_TOOLS, pushGuardEnv, pushRefusal } from './push-guard.ts';
 import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf, subtreeUsage } from './limits.ts';
 import type { LimitHit, Roster, RunLimits, RunLimitsRequest } from '@onni/contract';
@@ -627,6 +627,8 @@ interface ActiveRun {
   /** Set by `dispatch()` during a turn, read and cleared at that turn's end: the run parks as a
    *  monitor for the children it just created. */
   dispatchedThisTurn?: boolean;
+  /** The complexity-policy warning has fired for this run (once per run). */
+  complexityWarned?: boolean;
   /** Release for exclusive execution in the user's repository working tree.
    *  Worktree-backed runs never need it; root runs ordinarily do unless the
    *  explicit unsafe bypass is active. */
@@ -2701,7 +2703,9 @@ export class RunManager {
     if (roster && dispatch) {
       state.dispatchPrompt = dispatch.parentRunId
         ? workerPrompt(dispatch.kind)
-        : managerPrompt(roster, this.remainingForManager(runs, dispatch.rootRunId));
+        : managerPrompt(roster, this.remainingForManager(runs, dispatch.rootRunId), {
+            complexityPolicy: this.semaphore.safety().managerComplexityPolicy !== false,
+          });
       return;
     }
     // The intent block belongs to the ROOT the user started; a child reads its order instead.
@@ -2784,17 +2788,43 @@ export class RunManager {
     const dispatch = this.dispatchOf(runId);
     const dispatched = Boolean(ctx.state.dispatchedThisTurn);
     ctx.state.dispatchedThisTurn = false;
-    if (!dispatch) return idle;
+    // Before the no-dispatch early return: a manager that never dispatched is exactly the case.
+    const nudged = this.checkManagerComplexity(runId, ctx);
+    if (!dispatch) return nudged ? { ...idle, rePrompted: true } : idle;
     if (ctx.done) return { hasDispatch: true, dispatched: false, overBudget: false, rePrompted: false };
     const note = (message: string, tone?: 'danger') =>
       this.store.appendEvent(runId, { type: 'note', stepId: ctx.stepId, message, ...(tone ? { tone } : {}) });
     const overBudget = this.enforceDispatchBudget(runId, note);
-    const rePrompted = !dispatched && !overBudget && this.deliverOwnInbox(runId, ctx.state, ctx.stepId, turnText);
+    const rePrompted = nudged || (!dispatched && !overBudget && this.deliverOwnInbox(runId, ctx.state, ctx.stepId, turnText));
     // The filesystem channel's SIGNAL: this turn may have written into a sibling's or the root's
     // inbox. Wake every parked recipient now — the writer's turn end is the one moment onni
     // knows something may have changed on disk without watching it.
     this.notifyTreeInboxes(dispatch.rootRunId, runId);
     return { hasDispatch: true, dispatched, overBudget, rePrompted };
+  }
+
+  /**
+   * The complexity policy's soft check (manager–worker). A manager that has changed many files or
+   * lines and has dispatched no worker is doing a complex task alone: say so in the log and, when
+   * the session is open and autonomous, remind the manager once. Never blocks — it only warns.
+   * Returns true when a reminder went into the session (the turn continues).
+   */
+  private checkManagerComplexity(runId: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): boolean {
+    if (ctx.done || ctx.state.complexityWarned) return false;
+    if (this.semaphore.safety().managerComplexityPolicy === false) return false;
+    const run = this.store.getRun(runId);
+    if (!run?.roster || run.dispatch?.parentRunId) return false;
+    const stat = run.diffStat;
+    if (!stat || !managerDoingComplexAlone(stat, childrenOf(this.store.listRuns(), runId).length)) return false;
+    ctx.state.complexityWarned = true;
+    const message = `manager has changed ${stat.files} files (+${stat.adds} -${stat.dels}) and dispatched no worker — by the complexity policy this size of work should be handed to workers, or split with them.`;
+    this.store.appendEvent(runId, { type: 'note', stepId: ctx.stepId, message, tone: 'danger' });
+    if (!ctx.state.autonomous || ctx.state.cancelled || !ctx.state.session?.open) return false;
+    if ((ctx.state.autoContinues ?? 0) >= MAX_AUTO_CONTINUES) return false;
+    const text = `Complexity policy reminder: you have changed ${stat.files} files (+${stat.adds} -${stat.dels}) and dispatched no worker. This is complex work. Hand the remaining independent parts to workers (or split: you take one part, workers the rest) before continuing, and say which parts go where.`;
+    if (!ctx.state.session.sendMessage([{ type: 'text', text }])) return false;
+    ctx.state.autoContinues = (ctx.state.autoContinues ?? 0) + 1;
+    return true;
   }
 
   /**
@@ -3060,7 +3090,7 @@ export class RunManager {
       const rootId = parent.dispatch?.rootRunId ?? parent.id;
       const total = runs.filter((r) => r.dispatch?.rootRunId === rootId && r.id !== rootId).length;
       if (total + 1 > subtaskCap) {
-        const refused = `this tree already has ${total} subtask${total === 1 ? '' : 's'}; ${intent?.maxSubtasks !== undefined ? `the user capped it at ${subtaskCap}` : `the cap is ${subtaskCap}`}. Finish with what exists and report.`;
+        const refused = `this tree already has ${total} subtask${total === 1 ? '' : 's'}; ${intent?.maxSubtasks !== undefined ? `the user capped it at ${subtaskCap}` : `the cap is ${subtaskCap}`}. Finish with what exists and report. If complex work remains, do not do it yourself: tell the user the worker-call limit is spent and that "Unlimited worker calls" (Settings → Resources → Advanced) lifts it.`;
         note(`dispatch refused — ${refused}`, 'danger');
         return { refused };
       }

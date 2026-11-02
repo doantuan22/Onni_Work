@@ -92,6 +92,7 @@ const safetyConfigSchema = z
     dispatchMaxSubtasks: z.number().int().min(1).max(100).default(DEFAULT_SAFETY_SETTINGS.dispatchMaxSubtasks).catch(DEFAULT_SAFETY_SETTINGS.dispatchMaxSubtasks),
     dispatchUnlimitedSubtasks: z.boolean().default(DEFAULT_SAFETY_SETTINGS.dispatchUnlimitedSubtasks).catch(DEFAULT_SAFETY_SETTINGS.dispatchUnlimitedSubtasks),
     dispatchRetryLimit: z.number().int().min(0).max(3).default(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit).catch(DEFAULT_SAFETY_SETTINGS.dispatchRetryLimit),
+    managerComplexityPolicy: z.boolean().default(true).catch(true),
   })
   .prefault(() => ({}));
 

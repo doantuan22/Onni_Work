@@ -792,6 +792,9 @@ export const viSettings: Record<string, string> = {
   'Use as the default agent for new projects': 'Đặt làm agent mặc định cho dự án mới',
   'Hide subtasks': 'Ẩn task con',
   'Show subtasks': 'Hiện task con',
+  'Hand complex work to workers': 'Giao việc phức tạp cho worker',
+  'A manager may do a small job itself (about 2 files, 40 lines). Bigger or multi-part work it must hand to workers or split with them, and onni warns it when it does a big job alone. Off restores the old behaviour.':
+    'Manager được tự làm việc nhỏ (khoảng 2 file, 40 dòng). Việc lớn hoặc nhiều phần thì phải giao cho worker hoặc chia việc cùng họ, và onni sẽ cảnh báo khi manager tự làm trọn việc lớn. Tắt để quay về hành vi cũ.',
   'Subtasks per tree': 'Lượt gọi worker mỗi cây',
   'Unlimited worker calls': 'Không giới hạn lượt gọi worker',
   'Total worker calls in one tree (not the number running at once). Applies when the task was not started with its own subtask limit.':

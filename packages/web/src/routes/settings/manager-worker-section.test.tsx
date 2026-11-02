@@ -95,6 +95,20 @@ describe('Settings → Manager–Worker', () => {
     expect(document.querySelector('[data-slot="mw-fence-note"]')?.textContent).toContain('not a security boundary')
   })
 
+  it('shows the complexity policy on by default and saves turning it off through the safety block', async () => {
+    serve()
+    renderSection()
+    const toggle = await waitFor(() => {
+      const el = document.querySelector('[data-slot="mw-complexity-policy"]')
+      expect(el).not.toBeNull()
+      return el as HTMLElement
+    })
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(toggle)
+    await waitFor(() => expect(puts()).toHaveLength(1))
+    expect(puts()[0]!.body).toEqual({ safety: { managerComplexityPolicy: false } })
+  })
+
   it('saves the default preset to the workspace config', async () => {
     serve()
     renderSection()

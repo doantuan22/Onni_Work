@@ -8,7 +8,7 @@ import { rosterSchema, type Roster } from '@onni/contract';
 import { protectedByLiveTree, reclaimWorktrees, selectReclaimableWorktrees } from '../runs/retention.ts';
 import { RunStore, type RunRecord } from '../runs/store.ts';
 import { WorkspaceSemaphore, type WorkspaceResourceLimits } from '../workspace/semaphore.ts';
-import { resolveWorker } from './manager-worker.ts';
+import { COMPLEXITY, managerDoingComplexAlone, managerPrompt, resolveWorker } from './manager-worker.ts';
 import { RunManager } from './run.ts';
 import type { WorkflowDef } from './types.ts';
 
@@ -333,5 +333,30 @@ describe('worker retention while the tree is live', () => {
     runs[0] = root('r', 'done');
     await reclaimWorktrees('/repo', fake, 1, { remove });
     expect(removed).toEqual(['/wt/w0']);
+  });
+});
+
+describe('manager complexity policy', () => {
+  const left = { unlimited: true, subtasks: 12, maxDepth: 1 };
+
+  it('is in the manager brief by default, with the thresholds and the out-of-calls rule', () => {
+    const prompt = managerPrompt(ROSTER, left);
+    expect(prompt).toContain('Sizing the work');
+    expect(prompt).toContain(`at most ${COMPLEXITY.simpleMaxFiles} files`);
+    expect(prompt).toContain('You may not do a whole complex task alone');
+    expect(prompt).toContain('Unlimited worker calls');
+  });
+
+  it('is absent when the setting is off', () => {
+    expect(managerPrompt(ROSTER, left, { complexityPolicy: false })).not.toContain('Sizing the work');
+  });
+
+  it('warns only for an unaided manager past the file or line threshold', () => {
+    expect(managerDoingComplexAlone({ files: 1, adds: 5, dels: 0 }, 0)).toBe(false);
+    expect(managerDoingComplexAlone({ files: COMPLEXITY.warnFiles, adds: 5, dels: 0 }, 0)).toBe(true);
+    expect(managerDoingComplexAlone({ files: 1, adds: COMPLEXITY.warnLines - 10, dels: 10 }, 0)).toBe(true);
+    // A manager that has dispatched anyone is working with its workers.
+    expect(managerDoingComplexAlone({ files: 20, adds: 900, dels: 0 }, 1)).toBe(false);
+    expect(managerDoingComplexAlone(undefined, 0)).toBe(false);
   });
 });

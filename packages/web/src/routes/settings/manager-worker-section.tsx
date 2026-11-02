@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { fieldClass } from '@/components/form-field'
 import { RosterEditor } from '@/components/roster-editor'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
 import { Link } from '@/lib/project-router'
@@ -57,6 +58,13 @@ function ManagerWorkerForm({ config }: { config: WorkspaceConfigResponse }) {
     onError: (error: Error) => toast(error.message, { tone: 'danger' }),
   })
   const parsed = editing ? rosterFromDraft(editing.draft) : null
+  // Shipped ON: a server that predates the key answers without it, and that must still read as on.
+  const complexityPolicy = config.safety.managerComplexityPolicy ?? true
+  const saveComplexityPolicy = useMutation({
+    mutationFn: (on: boolean) => putWorkspaceConfig({ safety: { managerComplexityPolicy: on } }),
+    onSuccess: (result) => queryClient.setQueryData(workspaceQueryKeys.config, result),
+    onError: (error: Error) => toast(error.message, { tone: 'danger' }),
+  })
 
   const commit = () => {
     if (!editing || !parsed?.ok || !editing.name.trim()) return
@@ -120,6 +128,22 @@ function ManagerWorkerForm({ config }: { config: WorkspaceConfigResponse }) {
           <option value="">{t('None')}</option>
           {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </AppSelect>
+      </SettingsField>
+
+      <SettingsField
+        title={t('Hand complex work to workers')}
+        hint={t('A manager may do a small job itself (about 2 files, 40 lines). Bigger or multi-part work it must hand to workers or split with them, and onni warns it when it does a big job alone. Off restores the old behaviour.')}
+      >
+        <label className="flex w-fit items-center gap-3">
+          <Switch
+            aria-label={t('Hand complex work to workers')}
+            data-slot="mw-complexity-policy"
+            checked={complexityPolicy}
+            disabled={saveComplexityPolicy.isPending}
+            onCheckedChange={(on) => saveComplexityPolicy.mutate(on)}
+          />
+          <span className="text-[13px] text-muted-foreground">{complexityPolicy ? t('On') : t('Off')}</span>
+        </label>
       </SettingsField>
 
       <SettingsField title={t('Limits that apply to the whole tree')} hint={t('A manager and its workers share one set of ceilings, and workers run within the parallel-task cap.')}>

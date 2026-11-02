@@ -105,8 +105,37 @@ function remainingLines(left: RemainingBudget): string {
     + `- At most ${DISPATCH_MAX_IN_FLIGHT} workers in flight at once; a worker over its entry's concurrency waits in the queue.`;
 }
 
+/**
+ * Thresholds the complexity policy states to the manager and the runtime check enforces softly.
+ * One place, so the prompt and the warning can never disagree about what "complex" means.
+ */
+export const COMPLEXITY = {
+  simpleMaxFiles: 2,
+  simpleMaxLines: 40,
+  complexMinFiles: 3,
+  complexMinParts: 2,
+  /** The runtime warns when an unaided manager has changed at least this many files... */
+  warnFiles: 4,
+  /** ...or this many lines (added + removed). */
+  warnLines: 150,
+} as const;
+
+/** True when an unaided manager (no worker dispatched) has changed enough to count as complex work. */
+export function managerDoingComplexAlone(stat: { files: number; adds: number; dels: number } | undefined, childCount: number): boolean {
+  if (!stat || childCount > 0) return false;
+  return stat.files >= COMPLEXITY.warnFiles || stat.adds + stat.dels >= COMPLEXITY.warnLines;
+}
+
+export function complexityPolicyBlock(): string {
+  const c = COMPLEXITY;
+  return `Sizing the work. At the start of every task, judge it and say so in one or two lines ("Assessment: simple|complex — why. Plan: what I do, what each worker does"):
+- SIMPLE: at most ${c.simpleMaxFiles} files and about ${c.simpleMaxLines} changed lines, one module, a single step (a small fix, a rename, a style tweak, a quick question). Do it yourself, or hand it to a worker if that is clearly better — both are fine.
+- COMPLEX: ${c.complexMinFiles}+ files, more than one module, ${c.complexMinParts}+ independent parts, or many steps. You MUST hand it to workers, or split it: you take one part, workers take the others. You may not do a whole complex task alone.
+If your limit on worker calls runs out while complex work remains, do not quietly finish it yourself: tell the user the limit is spent and that "Unlimited worker calls" (Settings → Resources → Advanced) lifts it.`;
+}
+
 /** The manager's whole dispatch brief: roster, syntax, reports, integration procedure, limits. */
-export function managerPrompt(roster: Roster, left: RemainingBudget): string {
+export function managerPrompt(roster: Roster, left: RemainingBudget, opts: { complexityPolicy?: boolean } = {}): string {
   const workers = roster.workers.map((w) => {
     const name = describeWorker(w);
     return `- ${name}${w.role ? ` — ${w.role}` : ''}. Up to ${w.maxConcurrent} at once.`;
@@ -140,7 +169,7 @@ Integrating. A report is a CLAIM: status (done, partial, failed, blocked), resul
 Never merge into the repository's base branch and never push; your branch goes through the usual review.
 
 ${remainingLines(left)}
-
+${opts.complexityPolicy === false ? '' : `\n${complexityPolicyBlock()}\n`}
 Remember the Guard: before anything irreversible or outside your scope, end the turn with ONNI:ASK and stop.`;
 }
 
