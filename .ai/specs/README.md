@@ -31,6 +31,13 @@ When a spec and the code disagree, the code is right and the spec is the
 background. Do not update a spec to match a new implementation; write the change
 down where it belongs (AGENTS.md, docs, an ADR, or the commit message).
 
+## Removed screenshots and mockups
+
+The illustrations that lived under `assets/` (screenshots, HTML mockups, one patch) were
+removed after the work they supported shipped. Image and mockup links inside the specs are
+therefore dead; the text of each spec is unchanged. They remain in git history
+(`git log -- .ai/specs/assets`). Only `assets/agent-terminal-tabs/` is kept.
+
 ## Adding a spec
 
 New design work belongs in a date-numbered spec (`YYYY-MM-DD-<slug>.md`) like the
