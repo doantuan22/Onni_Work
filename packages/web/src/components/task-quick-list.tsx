@@ -1,7 +1,7 @@
 import { queueWaitLabel } from '@/lib/queue-wait-label'
 import { ScheduledTasks } from '@/components/scheduled-tasks'
 import { useScheduledTasksGate } from '@/lib/scheduled-tasks-gate'
-import { ChevronDownIcon, ScaleIcon } from 'lucide-react'
+import { ChevronDownIcon, ChevronRightIcon, ScaleIcon } from 'lucide-react'
 import * as React from 'react'
 import { useArchiveRun, useHealth, usePinRun, useProjectRepoBase, useReferenceProjectId, useRunsForProject } from '@/api/queries'
 import { Link, scopeTo, useActiveProjectId, useProjectMatch } from '@/lib/project-router'
@@ -33,7 +33,7 @@ import {
 } from '@/lib/task-groups'
 import { filterRunsByOrigin } from '@/lib/task-filters'
 import { useTaskOrigin } from '@/lib/task-origin'
-import { dispatchKindLabel, subtaskLabel, taskTreeRows } from '@/lib/task-tree'
+import { buildTaskTree, dispatchKindLabel, flattenTaskTree, subtaskLabel, type TaskTreeNode } from '@/lib/task-tree'
 import { formatCost, taskReference, taskReferences } from '@/lib/tasks-table'
 import { usageMetricVisibility } from '@/lib/token-metrics'
 import { useNow } from '@/lib/use-now'
@@ -159,6 +159,15 @@ export function QuickListBuckets({
       return next
     })
 
+  const [folds, setFolds] = React.useState<ReadonlyMap<string, boolean>>(readFolds)
+  const toggleChildren = (runId: string, open: boolean) =>
+    setFolds((current) => {
+      const next = new Map(current)
+      next.set(runId, open)
+      writeFolds(next)
+      return next
+    })
+
   return (
     <>
       {buckets.map((bucket) => (
@@ -166,12 +175,14 @@ export function QuickListBuckets({
           <h2 className="px-3 pt-2.5 pb-1 text-[11px] font-semibold tracking-[0.04em] text-soft-foreground uppercase">
             {t(bucket.label)}
           </h2>
-          {nestRows(bucket.rows).map((node) => (
+          {nestRows(bucket.rows, folds, currentRunId).map((node) => (
             <Row
               key={node.run.id}
               row={node.run.row}
               depth={node.depth}
               childCount={node.childCount}
+              childrenOpen={node.childrenOpen}
+              onToggleChildren={toggleChildren}
               currentRunId={currentRunId}
               now={now}
               scope={scope}
@@ -202,14 +213,80 @@ export function QuickListBuckets({
  * A collapsed variant TILE is always a root: it stands for two or three runs at once, so nothing
  * can hang beneath it. Its members keep riding the tile's own expansion.
  */
-function nestRows(rows: readonly QuickListRow[]) {
-  return taskTreeRows(
+type RowInput = { id: string; dispatch?: RunRecord['dispatch']; row: QuickListRow }
+type NestedNode = TaskTreeNode<RowInput> & { childrenOpen: boolean }
+
+const FOLDS_KEY = 'onni.sidebar.taskFolds'
+
+/** The user's explicit open/closed choices, remembered across launches. Storage may be blocked. */
+function readFolds(): ReadonlyMap<string, boolean> {
+  try {
+    const raw = window.localStorage.getItem(FOLDS_KEY)
+    const parsed: unknown = raw ? JSON.parse(raw) : null
+    if (parsed && typeof parsed === 'object') {
+      return new Map(Object.entries(parsed as Record<string, unknown>).filter((e): e is [string, boolean] => typeof e[1] === 'boolean'))
+    }
+  } catch {
+    /* unreadable: start with the defaults */
+  }
+  return new Map()
+}
+
+function writeFolds(folds: ReadonlyMap<string, boolean>): void {
+  try {
+    // Bounded: only the most recent choices are worth keeping.
+    window.localStorage.setItem(FOLDS_KEY, JSON.stringify(Object.fromEntries([...folds].slice(-300))))
+  } catch {
+    /* private window or blocked storage: the choice just does not persist */
+  }
+}
+
+/** A run that still needs eyes: running/queued/waiting, or failed. */
+function needsEyes(row: QuickListRow): boolean {
+  return row.kind === 'run' && (isRunActive(row.run.status) || row.run.status === 'failed')
+}
+
+/**
+ * One bucket's rows, nested under the task that dispatched them, with finished subtrees folded.
+ *
+ * Default (no explicit choice): open when the parent or any descendant is active or failed, or when
+ * the open task sits inside it — so work in progress and the selected row are never hidden. A
+ * finished tree starts folded. An explicit chevron click wins, except it can never hide the open task.
+ */
+function nestRows(rows: readonly QuickListRow[], folds: ReadonlyMap<string, boolean>, currentRunId: string | null): NestedNode[] {
+  const roots = buildTaskTree<RowInput>(
     rows.map((row) =>
       row.kind === 'group'
         ? { id: `group:${row.groupId}`, row }
         : { id: row.run.id, dispatch: row.run.dispatch, row },
     ),
   )
+  const open = new Map<string, boolean>()
+  // Returns [subtree needs eyes, subtree contains the open task].
+  const decide = (node: TaskTreeNode<RowInput>): [boolean, boolean] => {
+    let eyes = needsEyes(node.run.row)
+    let holdsCurrent = node.run.id === currentRunId
+    for (const child of node.children) {
+      const [childEyes, childCurrent] = decide(child)
+      eyes ||= childEyes
+      holdsCurrent ||= childCurrent
+    }
+    if (node.children.length > 0) {
+      const explicit = folds.get(node.run.id)
+      const childHoldsCurrent = node.children.some((child) => containsRun(child, currentRunId))
+      open.set(node.run.id, childHoldsCurrent || (explicit ?? eyes))
+    }
+    return [eyes, holdsCurrent]
+  }
+  for (const root of roots) decide(root)
+  return flattenTaskTree(roots, (id) => open.get(id) ?? true).map((node) => ({
+    ...node,
+    childrenOpen: open.get(node.run.id) ?? true,
+  }))
+}
+
+function containsRun(node: TaskTreeNode<RowInput>, runId: string | null): boolean {
+  return runId !== null && (node.run.id === runId || node.children.some((child) => containsRun(child, runId)))
 }
 
 function ViewTab({
@@ -251,6 +328,8 @@ function Row({
   row,
   depth,
   childCount,
+  childrenOpen,
+  onToggleChildren,
   currentRunId,
   now,
   scope,
@@ -266,6 +345,9 @@ function Row({
   depth: number
   /** How many tasks THIS one dispatched — the row's "N subtasks" note. */
   childCount: number
+  /** Whether this task's subtasks are listed under it. */
+  childrenOpen: boolean
+  onToggleChildren: (runId: string, open: boolean) => void
   currentRunId: string | null
   now: number
   scope: string | null
@@ -283,6 +365,8 @@ function Row({
         run={row.run}
         depth={depth}
         childCount={childCount}
+        childrenOpen={childrenOpen}
+        onToggleChildren={onToggleChildren}
         queuePosition={row.queuePosition}
         currentRunId={currentRunId}
         now={now}
@@ -412,6 +496,8 @@ const RunRow = React.memo(function RunRow({
   run,
   depth = 0,
   childCount = 0,
+  childrenOpen = true,
+  onToggleChildren,
   queuePosition,
   currentRunId,
   now,
@@ -428,6 +514,8 @@ const RunRow = React.memo(function RunRow({
   depth?: number
   /** How many tasks THIS one dispatched. */
   childCount?: number
+  childrenOpen?: boolean
+  onToggleChildren?: (runId: string, open: boolean) => void
   queuePosition: number | null
   currentRunId: string | null
   now: number
@@ -441,6 +529,7 @@ const RunRow = React.memo(function RunRow({
   onTogglePin?: (run: RunRecord, pinned: boolean) => void
   onToggleArchive?: (run: RunRecord, archived: boolean) => void
 }) {
+  const { t } = useI18n()
   // The header's rule (`runActionFlags`): a run the engine still owns is not archivable.
   const canArchive = Boolean(onToggleArchive) && (Boolean(run.archived) || !isRunActive(run.status))
   const hasActions = Boolean(onTogglePin) || canArchive
@@ -495,6 +584,18 @@ const RunRow = React.memo(function RunRow({
     >
       {/* Outside the Link so it can lead the reference chip. The dot is a status indicator, not a
           navigation target, and the wrapper still owns the row's hover surface. */}
+      {childCount > 0 && onToggleChildren ? (
+        <button
+          type="button"
+          data-slot="subtask-toggle"
+          aria-expanded={childrenOpen}
+          aria-label={childrenOpen ? t('Hide subtasks') : t('Show subtasks')}
+          onClick={() => onToggleChildren(run.id, !childrenOpen)}
+          className="-mr-1 inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-soft-foreground hover:bg-muted hover:text-foreground"
+        >
+          <ChevronRightIcon className={cn('size-3 transition-transform', childrenOpen && 'rotate-90')} aria-hidden="true" />
+        </button>
+      ) : null}
       <StatusDot tone={attention.tone} pulse={attention.pulse} aria-label={attention.label} role="img" />
       {/* The reference, ONCE (#788, option C): the number that used to be both a `775: ` title
           prefix and a trailing `PR ↗` chip is now one leading chip that is itself the link. */}

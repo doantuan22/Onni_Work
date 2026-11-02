@@ -790,6 +790,8 @@ export const viSettings: Record<string, string> = {
   'New tasks': 'Nhiệm vụ mới',
   'Defaults the composer starts with.': 'Giá trị mặc định của ô soạn nhiệm vụ.',
   'Use as the default agent for new projects': 'Đặt làm agent mặc định cho dự án mới',
+  'Hide subtasks': 'Ẩn task con',
+  'Show subtasks': 'Hiện task con',
   'Subtasks per tree': 'Lượt gọi worker mỗi cây',
   'Unlimited worker calls': 'Không giới hạn lượt gọi worker',
   'Total worker calls in one tree (not the number running at once). Applies when the task was not started with its own subtask limit.':

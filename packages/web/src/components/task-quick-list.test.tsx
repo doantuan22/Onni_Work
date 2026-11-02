@@ -86,7 +86,10 @@ const rowsIn = (label: string): string[] =>
     (paintedText(el) ?? '').trim()
   )
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  window.localStorage.clear()
+})
 
 describe('TaskQuickList', () => {
   it('renders the buckets in the mockup order with their runs', () => {
@@ -826,6 +829,12 @@ describe('TaskQuickListContainer', () => {
  * someone is looking for it.
  */
 describe('dispatched subtasks in the quick-list', () => {
+  /** A finished parent starts folded; open every fold the way a person would. */
+  const openAll = () => {
+    for (const toggle of document.querySelectorAll<HTMLButtonElement>('[data-slot="subtask-toggle"][aria-expanded="false"]')) {
+      fireEvent.click(toggle)
+    }
+  }
   const idsIn = (label: string) =>
     [...bucket(label).querySelectorAll('[data-slot="task-row"]')].map((el) =>
       el.getAttribute('data-run-id'),
@@ -844,6 +853,8 @@ describe('dispatched subtasks in the quick-list', () => {
         }),
       ],
     })
+    expect(idsIn('Recent')).toEqual(['newer', 'parent'])
+    openAll()
     expect(idsIn('Recent')).toEqual(['newer', 'parent', 'child'])
     expect(row('child')?.getAttribute('data-depth')).toBe('1')
     expect(row('parent')?.getAttribute('data-depth')).toBe('0')
@@ -852,6 +863,43 @@ describe('dispatched subtasks in the quick-list', () => {
 
   // Buckets are the unit the sidebar renders: a child that needs you must not be filed under a
   // parent sitting in a bucket nobody is watching.
+  it('opens a parent whose child is running or failed, and folds one whose children all finished', () => {
+    renderList({
+      runs: [
+        run({ id: 'ok', status: 'done' }),
+        run({ id: 'ok-c', status: 'done', dispatch: { rootRunId: 'ok', parentRunId: 'ok' } }),
+        run({ id: 'bad', status: 'done' }),
+        run({ id: 'bad-c', status: 'failed', dispatch: { rootRunId: 'bad', parentRunId: 'bad' } }),
+      ],
+    })
+    expect(row('ok-c')).toBeNull()
+    expect(row('bad-c')).not.toBeNull()
+  })
+
+  it('remembers a fold choice across a remount', () => {
+    const runs = [
+      run({ id: 'p', status: 'done' }),
+      run({ id: 'c', status: 'done', dispatch: { rootRunId: 'p', parentRunId: 'p' } }),
+    ]
+    renderList({ runs })
+    fireEvent.click(document.querySelector('[data-slot="subtask-toggle"]') as HTMLElement)
+    expect(row('c')).not.toBeNull()
+    cleanup()
+    renderList({ runs })
+    expect(row('c')).not.toBeNull()
+  })
+
+  it('never folds away the open task', () => {
+    renderList({
+      runs: [
+        run({ id: 'p', status: 'done' }),
+        run({ id: 'c', status: 'done', dispatch: { rootRunId: 'p', parentRunId: 'p' } }),
+      ],
+      currentRunId: 'c',
+    })
+    expect(row('c')).not.toBeNull()
+  })
+
   it('keeps a child in its own bucket when the parent is in another one', () => {
     renderList({
       runs: [
@@ -880,6 +928,7 @@ describe('dispatched subtasks in the quick-list', () => {
         run({ id: 'imp', status: 'done', dispatch: { rootRunId: 'p', parentRunId: 'p' } }),
       ],
     })
+    openAll()
     const kindOf = (id: string) => row(id)?.querySelector('[data-slot="dispatch-kind"]')?.textContent ?? null
     expect(kindOf('rev')).toBe('review')
     expect(kindOf('imp')).toBe('implement')
@@ -897,6 +946,7 @@ describe('dispatched subtasks in the quick-list', () => {
       ],
       onTogglePin: vi.fn(),
     })
+    openAll()
     const meta = row('rev')?.querySelector('[data-slot="task-row-meta"]') as HTMLElement
     expect(meta.querySelector('[data-slot="dispatch-kind"]')).not.toBeNull()
     expect(meta.className).toContain('group-hover/task-row:hidden')
@@ -975,6 +1025,7 @@ describe('dispatched subtasks in the quick-list', () => {
         run({ id: 'rev', status: 'done', dispatch: { rootRunId: 'p', parentRunId: 'p', kind: 'review' } }),
       ],
     })
+    fireEvent.click(document.querySelector('[data-slot="subtask-toggle"]') as HTMLElement)
     const kind = row('rev')?.querySelector('[data-slot="dispatch-kind"]') as HTMLElement
     expect(kind.className).not.toContain('hidden')
   })
