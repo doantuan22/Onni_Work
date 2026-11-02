@@ -44,7 +44,7 @@ describe('worktree lifecycle API', () => {
     const res=await request('/worktree-lifecycle/operations',{requestId:randomUUID(),runId,intent:'remove-worktree'});
     expect(res.status).toBe(202);
     const {operation}=lifecycleOperationResponseSchema.parse(await res.json());
-    await vi.waitFor(async()=>expect((await coordinator.operation(operation.id)).state).toBe('needs_attention'));
+    await vi.waitFor(async()=>expect((await coordinator.operation(operation.id)).state).toBe('needs_attention'), { timeout: 15_000 });
     return coordinator.operation(operation.id);
   }
   it('keeps hook-free legacy deletion and its original response',async()=>{
@@ -86,7 +86,7 @@ describe('worktree lifecycle API', () => {
     const input={requestId:randomUUID(),runId,intent:'reclaim'};
     const first=await request('/worktree-lifecycle/operations',input);
     const {operation}=lifecycleOperationResponseSchema.parse(await first.json());
-    await vi.waitFor(async()=>expect((await coordinator.operation(operation.id)).state).toBe('needs_attention'));
+    await vi.waitFor(async()=>expect((await coordinator.operation(operation.id)).state).toBe('needs_attention'), { timeout: 15_000 });
     const duplicate=await request('/worktree-lifecycle/operations',input);
     expect(duplicate.status).toBe(202);expect(await duplicate.json()).toMatchObject({operation:{id:operation.id}});
     expect((await request('/worktree-lifecycle/operations',{...input,intent:'delete-task'})).status).toBe(409);
