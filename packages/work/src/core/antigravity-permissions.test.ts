@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -5,6 +8,7 @@ import {
   antigravityPermissionArgs,
   antigravitySettings,
   commandGrants,
+  discoverVerifyCommands,
   effectiveAntigravityLevel,
 } from './antigravity-permissions.ts';
 
@@ -70,5 +74,25 @@ describe('effectiveAntigravityLevel — bypass is never inherited by an unattend
     expect(effectiveAntigravityLevel('bypass', false)).toEqual({ level: 'bypass' });
     expect(effectiveAntigravityLevel('allow-rules', true)).toEqual({ level: 'allow-rules' });
     expect(effectiveAntigravityLevel('files-only', true)).toEqual({ level: 'files-only' });
+  });
+});
+
+describe('discoverVerifyCommands', () => {
+  it('turns the repo\'s verification scripts into exact lines, and nothing else', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agy-verify-'));
+    try {
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'vitest', build: 'tsc', dev: 'vite', lint: 'eslint .' } }));
+      writeFileSync(join(dir, 'Cargo.toml'), '[package]\n');
+      expect(discoverVerifyCommands(dir)).toEqual(['npm test', 'npm run build', 'npm run lint', 'cargo check', 'cargo test']);
+      expect(antigravitySettings('allow-rules', { bashAllowlist: discoverVerifyCommands(dir) })).toContain('command(npm run build)');
+      // Never at files-only: that level passes no command grants at all.
+      expect(antigravitySettings('files-only', { bashAllowlist: discoverVerifyCommands(dir) })).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it('is empty without a cwd or a manifest', () => {
+    expect(discoverVerifyCommands(undefined)).toEqual([]);
+    expect(discoverVerifyCommands(join(tmpdir(), 'agy-no-such-dir'))).toEqual([]);
   });
 });

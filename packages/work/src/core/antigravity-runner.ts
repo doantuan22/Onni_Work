@@ -31,7 +31,7 @@ import { spawnTaskProcess } from './task-process-spawn.ts';
 import { antigravityLaunch, resolveAntigravityExecutable } from './antigravity-bin.ts';
 import { probeAntigravityVersion } from './antigravity-cli.ts';
 import { AGY_ERROR_EXIT_CODE, isHeadlessPermissionDenial, needsSignIn, parseAgyError, permissionDenialHelp, signInMessage } from './antigravity-errors.ts';
-import { antigravityPermissionArgs } from './antigravity-permissions.ts';
+import { antigravityPermissionArgs, discoverVerifyCommands } from './antigravity-permissions.ts';
 import { createAntigravityState, foldAntigravityFrame } from './antigravity-ui-mapper.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
 
@@ -254,7 +254,7 @@ export class AntigravityRunner implements AgentRunner {
       ...(spec.model ? { model: spec.model } : {}),
       ...(spec.resume && spec.sessionId ? { conversationId: spec.sessionId } : {}),
       permissionLevel: level,
-      ...(spec.bashAllowlist ? { bashAllowlist: spec.bashAllowlist } : {}),
+      bashAllowlist: [...(spec.bashAllowlist ?? []), ...(level === 'allow-rules' ? discoverVerifyCommands(spec.cwd) : [])],
       ...(spec.additionalDirectories ? { directories: spec.additionalDirectories } : {}),
     });
     const promptChars = (args[1] ?? '').length;
