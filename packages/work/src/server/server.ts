@@ -3661,6 +3661,9 @@ export function createApp(deps: ServerDeps) {
           root,
           path: query.path,
           showHidden: query.showHidden === '1',
+          // The user's own machine: any folder, `root` is only the starting point. A hosted
+          // cockpit keeps the containment (registration already follows the same split).
+          unrestricted: capabilities().localHandoff,
         });
         if (!result.ok) return c.json({ error: result.error }, result.status);
         return c.json(result.body);

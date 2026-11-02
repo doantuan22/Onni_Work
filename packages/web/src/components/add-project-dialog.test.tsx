@@ -126,6 +126,17 @@ describe('AddProjectDialog', () => {
     expect(target().textContent).toBe('/home/me')
   })
 
+  it('on Windows a drive row lets you switch disks, so no drive has to be configured first', async () => {
+    const onD = { path: 'D:\\', parent: null, dirs: [{ name: 'code', path: 'D:\\code', isRepo: true }], truncated: false }
+    serve({ browse: { '': json({ ...HOME, roots: ['C:\\', 'D:\\'] }), 'D:\\': json({ ...onD, roots: ['C:\\', 'D:\\'] }) } })
+    renderDialog()
+    await waitFor(() => expect(document.querySelectorAll('[data-slot="fs-root"]')).toHaveLength(2))
+    expect(document.querySelectorAll('[data-slot="fs-root"]')[1]!.textContent).toBe('D:')
+    fireEvent.click(document.querySelectorAll('[data-slot="fs-root"]')[1]!)
+    await waitFor(() => expect(breadcrumb().textContent).toBe('D:\\'))
+    expect(rows().getByText('code')).toBeTruthy()
+  })
+
   it('navigates into a folder and back up, asking the server for each path', async () => {
     // Going back up asks for the parent by its ABSOLUTE path, not for the root sentinel — so
     // `/home/me` must be answerable both ways (`''` on first load, spelled out on the way back).

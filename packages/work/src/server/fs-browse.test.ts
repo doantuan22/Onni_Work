@@ -86,7 +86,8 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
 
   // ---- the happy path ------------------------------------------------------
 
-  it('defaults to the home root: directories only, no parent, dotfolders hidden', async () => {
+  it('defaults to the home root: directories only, dotfolders hidden (hosted: no parent)', async () => {
+    process.env.ONNI_REMOTE = '1'; // a hosted cockpit keeps the containment
     const res = await browse();
     expect(res.status).toBe(200);
     const payload = await body(res);
@@ -140,7 +141,8 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
 
   // ---- escape vectors ------------------------------------------------------
 
-  it('rejects `..` traversal out of the root (absolute and relative spellings)', async () => {
+  it('hosted: rejects `..` traversal out of the root (absolute and relative spellings)', async () => {
+    process.env.ONNI_REMOTE = '1'; // a hosted cockpit keeps the containment
     for (const path of [join(home, 'projects/../..'), join(home, '..'), '../..', 'projects/../../..']) {
       // Every case here is percent-encoded on the wire: the containment check
       // has to sit AFTER query decoding, which is where the handler reads it.
@@ -155,7 +157,8 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     expect(doubled.status).toBe(404);
   });
 
-  it('rejects an absolute path outside the root — without echoing it back', async () => {
+  it('hosted: rejects an absolute path outside the root — without echoing it back', async () => {
+    process.env.ONNI_REMOTE = '1'; // a hosted cockpit keeps the containment
     const res = await browse(`?path=${encodeURIComponent(join(outside, 'secrets'))}`);
     expect(res.status).toBe(400);
     const message = await error(res);
@@ -165,7 +168,8 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     expect(message).not.toContain(outside);
   });
 
-  it('rejects a SYMLINK that escapes the root, even though it spells as inside', async () => {
+  it('hosted: rejects a SYMLINK that escapes the root, even though it spells as inside', async () => {
+    process.env.ONNI_REMOTE = '1'; // a hosted cockpit keeps the containment
     // `~/link-outside` passes any lexical check — only realpath sees `outside`.
     for (const path of [join(home, 'link-outside'), join(home, 'link-outside/secrets')]) {
       const res = await browse(`?path=${encodeURIComponent(path)}`);
@@ -176,7 +180,8 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     }
   });
 
-  it('never LISTS an escaping symlink either (no click needed to learn it exists)', async () => {
+  it('hosted: never LISTS an escaping symlink either (no click needed to learn it exists)', async () => {
+    process.env.ONNI_REMOTE = '1'; // a hosted cockpit keeps the containment
     const payload = await body(await browse());
     expect(names(payload)).not.toContain('link-outside');
     // …while a symlink that stays inside the root is a normal, usable folder.
@@ -218,12 +223,12 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
       expect(names(payload)).toEqual(expect.arrayContaining(['repo', 'plain']));
     });
 
-    it('rejects the home directory in both hosted and local mode', async () => {
+    it('hosted: rejects the home directory; a local cockpit may open it (the root is only where it starts)', async () => {
       const res = await browse(`?path=${encodeURIComponent(home)}`);
       expect(res.status).toBe(400);
       expect(await error(res)).toBe('path is outside the browsable root');
       delete process.env.ONNI_REMOTE;
-      expect((await browse(`?path=${encodeURIComponent(home)}`)).status).toBe(400);
+      expect((await browse(`?path=${encodeURIComponent(home)}`)).status).toBe(200);
     });
 
     it('404s when browseRoot does not exist yet', async () => {
@@ -234,11 +239,64 @@ describe('GET /api/v1/fs/browse (step 4.1)', () => {
     });
   });
 
-  it('takes the zero-config browse root from ONNI_BROWSE_ROOT', async () => {
+  it('takes the zero-config browse root from ONNI_BROWSE_ROOT as the START folder (hosted: the ceiling)', async () => {
     process.env.ONNI_BROWSE_ROOT = '~/projects';
+    expect((await body(await browse())).path).toBe(join(home, 'projects'));
+    process.env.ONNI_REMOTE = '1'; // a hosted cockpit keeps the containment
     const payload = await body(await browse());
     expect(payload.path).toBe(join(home, 'projects'));
     expect(payload.parent).toBeNull();
+  });
+
+  // ---- a local cockpit: any folder, no drive or root to configure ------------------------------
+
+  describe('local cockpit — unrestricted', () => {
+    it('opens a folder anywhere on the machine, not only under the browse root', async () => {
+      process.env.ONNI_BROWSE_ROOT = '~/projects';
+      const res = await browse(`?path=${encodeURIComponent(join(outside, 'secrets'))}`);
+      expect(res.status).toBe(200);
+      expect((await body(res)).path).toBe(join(outside, 'secrets'));
+    });
+
+    it('lets you walk up past the start folder, and stops only at the top of the filesystem', async () => {
+      process.env.ONNI_BROWSE_ROOT = '~/projects';
+      const start = await body(await browse());
+      expect(start.parent).toBe(home);
+      let current = start;
+      for (let hops = 0; current.parent !== null && hops < 64; hops++) {
+        current = await body(await browse(`?path=${encodeURIComponent(current.parent)}`));
+      }
+      expect(current.parent).toBeNull();
+    });
+
+    it('follows and lists a symlink that points outside the start folder', async () => {
+      const payload = await body(await browse());
+      expect(names(payload)).toContain('link-outside');
+      const through = await browse(`?path=${encodeURIComponent(join(home, 'link-outside'))}`);
+      expect(through.status).toBe(200);
+      expect(names(await body(through))).toContain('secrets');
+    });
+
+    it('still 404s for a missing folder or a file, and 400s for a NUL byte', async () => {
+      expect((await browse(`?path=${encodeURIComponent(join(home, 'nope'))}`)).status).toBe(404);
+      expect((await browse(`?path=${encodeURIComponent(join(home, 'notes.txt'))}`)).status).toBe(404);
+      expect((await browse('?path=%00')).status).toBe(400);
+    });
+
+    it('falls back to home when the configured start folder is not there (an unplugged drive)', async () => {
+      process.env.ONNI_BROWSE_ROOT = '~/not-created';
+      expect((await body(await browse())).path).toBe(home);
+    });
+
+    it('offers the Windows drives so the picker can switch disks', async () => {
+      const payload = await body(await browse());
+      if (process.platform === 'win32') {
+        expect(payload.roots?.length ?? 0).toBeGreaterThan(0);
+        expect(payload.roots!.every((r) => /^[A-Z]:/.test(r))).toBe(true);
+      } else {
+        expect(payload.roots).toBeUndefined();
+      }
+    });
   });
 
   // ---- mounting ------------------------------------------------------------

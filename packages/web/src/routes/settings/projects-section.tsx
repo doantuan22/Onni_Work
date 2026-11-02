@@ -126,7 +126,7 @@ function ProjectsPane({
         configKey="browseRoot"
         value={config.browseRoot}
         title={t('Default browse folder')}
-        hint={t('Where “Open local folder…” starts. The picker cannot navigate above this folder.')}
+        hint={t('Where “Open local folder…” starts. You can still browse to any folder or drive from there.')}
         placeholder="~/"
         slot="browse"
         savedLabel={t('Browse folder')}

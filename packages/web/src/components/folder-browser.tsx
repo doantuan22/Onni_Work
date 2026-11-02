@@ -23,7 +23,7 @@ const errorAction =
  * Three shapes of `GET /api/v1/fs/browse` this is deliberately faithful to, because each is a
  * place a picker usually lies:
  *
- * - **`parent === null` means the browse root.** No "up" row is rendered there — the root's
+ * - **`parent === null` means the top: the browse root on a hosted cockpit, the top of the filesystem on a local one.** No "up" row is rendered there — the root's
  *   parent is not part of the surface, and a row that 400s is worse than no row.
  * - **`truncated`** is surfaced as a visible note. A silently short listing in a huge directory
  *   would read as "the folder isn't there".
@@ -103,6 +103,24 @@ export function FolderBrowser({
           </div>
         </div>
       ) : (
+        <>
+        {/* Windows: switch disks. Present only when the server is unrestricted (a local cockpit). */}
+        {(listing.data?.roots?.length ?? 0) > 1 ? (
+          <div data-slot="fs-roots" role="group" aria-label={t('Drives')} className="flex flex-wrap gap-1.5">
+            {listing.data!.roots!.map((root) => (
+              <button
+                key={root}
+                type="button"
+                data-slot="fs-root"
+                aria-pressed={listing.data!.path.toLowerCase().startsWith(root.toLowerCase())}
+                onClick={() => onEnter(root)}
+                className="rounded-md border border-border px-2 py-0.5 font-mono text-[12px] text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground"
+              >
+                {root.replace(/[\\/]+$/, '')}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <ul
           data-slot="fs-listing"
           className="max-h-64 divide-y divide-border/60 overflow-y-auto overscroll-contain rounded-md border border-border"
@@ -156,6 +174,7 @@ export function FolderBrowser({
             <li className="px-3 py-2 text-[13px] text-muted-foreground">{emptyHint}</li>
           ) : null}
         </ul>
+        </>
       )}
 
       {listing.data?.truncated ? (

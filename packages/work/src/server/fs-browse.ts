@@ -46,6 +46,8 @@ export interface FsBrowseDir {
 
 /** `GET /api/fs/browse?path=` — the spec's shape plus `truncated`. */
 export interface FsBrowseResponse {
+  /** Windows drive roots, only for an unrestricted (local) listing. */
+  roots?: string[];
   /** The realpath'd directory actually listed (never the spelling asked for —
    *  the picker's breadcrumb should show where it really is). */
   path: string;
@@ -136,6 +138,16 @@ export async function isInsideBrowseRoot(root: string, candidate: string): Promi
   return contains(realRoot, real);
 }
 
+/** The Windows drives that answer (C:..Z:); A:/B: are skipped, they can stall on an empty floppy. */
+async function windowsDriveRoots(): Promise<string[]> {
+  const letters = 'CDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const found = await Promise.all(letters.map(async (letter) => {
+    const root = `${letter}:${String.fromCharCode(92)}`;
+    return (await exists(root)) ? root : null;
+  }));
+  return found.filter((root): root is string => root !== null);
+}
+
 /** realpath or null — every "does it exist / where does it really point"
  *  question in this module is best-effort and answered without throwing. */
 async function realpathOrNull(path: string): Promise<string | null> {
@@ -168,12 +180,21 @@ export async function browseDirectory(opts: {
   root: string;
   path?: string | undefined;
   showHidden?: boolean;
+  /**
+   * A LOCAL cockpit (the user's own machine): any folder may be browsed and chosen, `root` is only
+   * where the picker starts. The containment rules below are for a hosted cockpit, where the
+   * browser is not the machine's owner, and stay exactly as they were when this is false.
+   */
+  unrestricted?: boolean;
 }): Promise<BrowseResult> {
+  const free = opts.unrestricted === true;
   // The root is realpath'd ONCE, up front: it is the yardstick every later
   // comparison uses, and comparing a resolved candidate against an
   // unresolved root would reject legitimate paths on any machine whose home
   // sits behind a symlink (macOS `/tmp`, NFS automounts, `/home` → `/usr/home`).
-  const root = await realpathOrNull(opts.root);
+  let root = await realpathOrNull(opts.root);
+  // Unrestricted: a start folder that is missing (an unplugged drive) falls back to home, never to a refusal.
+  if (root === null && free) root = (await realpathOrNull(expandTilde('~'))) ?? resolve(sep);
   // A configured browse root that does not exist yet lands here. There
   // is nothing to browse and nothing informative to say about a path the
   // caller cannot see anyway.
@@ -192,7 +213,7 @@ export async function browseDirectory(opts: {
   // Lexical gate: `..` traversal and absolute escapes die here, before any
   // syscall — so an escape attempt cannot even be used to probe which paths
   // outside the root exist (the timing/`404`-vs-`400` difference would tell).
-  if (!contains(root, target)) return { ok: false, status: 400, error: 'path is outside the browsable root' };
+  if (!free && !contains(root, target)) return { ok: false, status: 400, error: 'path is outside the browsable root' };
 
   const real = await realpathOrNull(target);
   if (real === null) return { ok: false, status: 404, error: 'no such directory' };
@@ -200,7 +221,7 @@ export async function browseDirectory(opts: {
   // chain may land anywhere. This is the check that catches a symlink planted
   // inside home pointing at `/etc` (or, in hosted mode, at the rest of the
   // host's disk).
-  if (!contains(root, real)) return { ok: false, status: 400, error: 'path is outside the browsable root' };
+  if (!free && !contains(root, real)) return { ok: false, status: 400, error: 'path is outside the browsable root' };
 
   const info = await stat(real).catch(() => null);
   // Not a directory ⇒ same answer as "not there". The picker only navigates
@@ -243,7 +264,7 @@ export async function browseDirectory(opts: {
       // ITSELF inside the root. Listing an escaping link and rejecting it on
       // click would leak the same fact one step later — that a path outside
       // the root exists.
-      if (childReal === null || !contains(root, childReal)) continue;
+      if (childReal === null || (!free && !contains(root, childReal))) continue;
       const childInfo = await stat(childReal).catch(() => null);
       if (!childInfo?.isDirectory()) continue;
     }
@@ -263,8 +284,10 @@ export async function browseDirectory(opts: {
       path: real,
       // Never above the root, even when the real parent exists — `dirname('/')`
       // is `/`, and the root's parent is simply not part of this surface.
-      parent: real === root ? null : dirname(real),
+      // Unrestricted: up to the top of the filesystem (a drive root has no parent). Contained: never above the root.
+      parent: free ? (dirname(real) === real ? null : dirname(real)) : real === root ? null : dirname(real),
       dirs,
+      ...(free && process.platform === 'win32' ? { roots: await windowsDriveRoots() } : {}),
       truncated,
     },
   };

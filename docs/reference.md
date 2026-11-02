@@ -168,9 +168,10 @@ and task list — and the new-task composer names the project it will run in.
 
 **Adding a project** — the **+** button beside *New task*:
 
-- 📂 **Open local folder…** browses from the configured browse root
-  (**Settings → Projects**, default `~/`) in a folder picker and
-  registers the folder you pick.
+- 📂 **Open local folder…** starts at the configured browse folder
+  (**Settings → Projects**, default `~/`) and can go to any folder or drive on a local
+  cockpit (Windows shows a drive row); a hosted cockpit stays confined to that root.
+  It registers the folder you pick.
 - ⬇️ **Clone from GitHub…** clones with your logged-in `gh` into the checkout
   root (**Settings → Projects**, default `~/onni/projects`) with live progress,
   then registers the clone. Close the dialog and the clone is killed and its
@@ -526,7 +527,7 @@ Useful environment variables:
 | `ONNI_CLINE_BIN=/path/to/cline` | Override which Cline CLI binary is used. |
 | `ONNI_ANTIGRAVITY_BIN=/path/to/agy` | Override which Antigravity CLI (`agy`) binary is used. Unset: `agy` on PATH, then the installer's directory (`%LOCALAPPDATA%\agy\bin` on Windows, `~/.local/bin` elsewhere). |
 | `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | The agents' **own** variables, honoured where the vendor documents one. Setting one moves that agent's **default account** — the config folder OnniCode discovers. A *second* login of the same CLI is deliberately not an environment setting, since one process-wide value cannot differ per project: add it under **Settings → Agent accounts** and pick it per project. |
-| `ONNI_BROWSE_ROOT=~/` | Default root for **Add project → Open local folder…**. The picker cannot navigate above it; a saved workspace value overrides the environment default and must name an existing folder. |
+| `ONNI_BROWSE_ROOT=~/` | Where **Add project → Open local folder…** starts. A local cockpit can browse anywhere from there; on a hosted cockpit it is the ceiling; a saved workspace value overrides the environment default and must name an existing folder. |
 | `ONNI_PROJECTS_DIR=~/onni/projects` | Default destination for **Clone from GitHub**. Saved workspace settings override it, and missing directories are created recursively. |
 | `ONNI_SUPERVISED=1` | Marks a supervised launch — the desktop shell sets it beside `ONNI_SUPERVISOR_PID`. Off by default. |
 | `ONNI_AUTONOMOUS_DEFAULT=0` | Seed the New Task Autonomous default (`0` or `1`). Without a seed, skills default on and workflows off; a saved global Resources setting overrides it. |

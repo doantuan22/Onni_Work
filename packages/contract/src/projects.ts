@@ -235,6 +235,8 @@ export const fsBrowseResponseSchema = z.object({
    *  row rather than one that 400s. */
   parent: z.string().nullable(),
   dirs: z.array(fsBrowseDirSchema),
+  /** Windows drive roots (`C:\`, `D:\`…), present only on an unrestricted (local) cockpit, so the picker can switch drives. */
+  roots: z.array(z.string()).optional(),
   /** True when the listing was capped server-side — surfaced honestly instead of showing a
    *  silently short list. */
   truncated: z.boolean(),

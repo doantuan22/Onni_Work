@@ -831,6 +831,7 @@ export const viSettings: Record<string, string> = {
   'The Cline CLI has no usage or limit command.': 'Cline CLI không có lệnh xem hạn mức.',
   'The Junie CLI has no usage or limit command.': 'Junie CLI không có lệnh xem hạn mức.',
   'pi has no usage or limit command.': 'pi không có lệnh xem hạn mức.',
+  'Drives': 'Ổ đĩa',
   'Subtasks per tree': 'Lượt gọi worker mỗi cây',
   'Unlimited worker calls': 'Không giới hạn lượt gọi worker',
   'Total worker calls in one tree (not the number running at once). Applies when the task was not started with its own subtask limit.':
@@ -1068,8 +1069,8 @@ export const viSettings: Record<string, string> = {
     'Những thư mục bạn đã thêm. Khi danh sách này còn trống, thư mục onni đang phục vụ được liệt kê là “chưa đăng ký” kèm nút Add; sau khi đã có dự án, khởi động onni ở một nơi mới sẽ không đăng ký cũng không liệt kê thư mục đó — hãy dùng “Add project” khi bạn muốn giữ nó. “Tags” nhóm các kho lưu trữ đã kết nối — gắn cho API, ứng dụng web và design system cùng một thẻ “storefront” để trang Tasks toàn cục hiển thị cả ba như một phần việc. “Max parallel” giới hạn số nhiệm vụ của dự án đó chạy cùng lúc (để trống để kế thừa giới hạn workspace); giới hạn workspace ({max}) vẫn là mức trần tổng thể, nên giá trị riêng của dự án cao hơn mức đó không có tác dụng thêm cho đến khi giới hạn workspace được nâng. Xoá dự án chỉ bỏ đăng ký — không có tệp nào trên đĩa bị xoá.',
   'Where “Clone from GitHub” and “New project” put new projects: <folder>/<project name>.':
     'Nơi “Clone from GitHub” và “New project” đặt dự án mới: <folder>/<project name>.',
-  'Where “Open local folder…” starts. The picker cannot navigate above this folder.':
-    'Nơi “Open local folder…” bắt đầu. Hộp chọn không thể đi lên trên thư mục này.',
+  'Where “Open local folder…” starts. You can still browse to any folder or drive from there.':
+    'Nơi trình chọn bắt đầu. Từ đó bạn vẫn duyệt tới được bất kỳ thư mục hay ổ đĩa nào.',
   'Your home directory or a onni task worktree cannot be a project — start onni in a project folder, or use Open local folder':
     'Thư mục home hoặc worktree nhiệm vụ của onni không thể là dự án — hãy khởi động onni trong thư mục dự án, hoặc dùng Open local folder',
   '{error} — setting unchanged': '{error} — cài đặt không thay đổi',
