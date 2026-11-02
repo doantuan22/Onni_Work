@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { runnerSchema } from './health.ts';
 import { effectiveStartAppSchema } from './start-app.ts';
 
 /**
@@ -25,6 +26,8 @@ export const terminalSessionSchema = z.object({
   exitCode: z.number().int().nullable(),
   /** The tab's name: the running (or last-run) command, else `Terminal N` (spec §6). */
   label: z.string(),
+  /** The agent CLI this tab was opened for (agent terminal tabs); absent for a plain shell. */
+  agent: runnerSchema.optional(),
   /** The shell has a live child — something would be lost by closing this tab. */
   /** `null` = this host cannot read its process table (no `ps`), so busy-ness is unknown. The
    *  cockpit treats anything but `false` as "something may be running". */
@@ -61,6 +64,10 @@ export const terminalCreateSchema = z.object({
    *  the worktree discipline does not cover, so it comes from an allowlist, never from the body
    *  verbatim. The length cap is a parse bound, not the check. */
   shell: z.string().min(1).max(512).optional(),
+  /** Open the shell and start this agent CLI in it. A runner id, never a command line: the server
+   *  maps it to the binary name, so the request cannot choose what gets typed. Project terminal
+   *  only; a task's terminal ignores it. */
+  agent: runnerSchema.optional(),
 });
 export type TerminalCreateInput = z.infer<typeof terminalCreateSchema>;
 
@@ -140,3 +147,7 @@ export const terminalSessionParamsSchema = z.object({
   sessionId: z.string(),
 });
 export type TerminalSessionParams = z.infer<typeof terminalSessionParamsSchema>;
+
+/** The project terminal's session address: the project is already in the path. */
+export const terminalProjectSessionParamsSchema = z.object({ sessionId: z.string() });
+export type TerminalProjectSessionParams = z.infer<typeof terminalProjectSessionParamsSchema>;

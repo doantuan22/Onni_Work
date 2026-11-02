@@ -531,6 +531,17 @@ export const viTasks: Record<string, string> = {
   'The task leaves the queue before it starts and completes as cancelled.':
     'Nhiệm vụ rời hàng đợi trước khi bắt đầu và kết thúc ở trạng thái đã huỷ.',
   'The terminal is not available in this cockpit.': 'Terminal không khả dụng trong cockpit này.',
+  'New terminal': 'Terminal mới',
+  'Close terminal': 'Đóng terminal',
+  Shell: 'Shell',
+  'Agent CLI': 'Agent CLI',
+  'A plain terminal in the project root. Agents started here are not tracked or limited like tasks.':
+    'Terminal thường tại thư mục gốc dự án. Agent chạy ở đây không được theo dõi hay giới hạn như nhiệm vụ.',
+  'No terminals yet. Use “New terminal” to open a shell or start an agent.':
+    'Chưa có terminal nào. Dùng “Terminal mới” để mở shell hoặc chạy một agent.',
+  'Close this terminal?': 'Đóng terminal này?',
+  'Something may still be running in it. Closing stops that process.':
+    'Có thể vẫn còn thứ đang chạy trong đó. Đóng sẽ dừng tiến trình đó.',
   'The terminal is off on this cockpit — it is off in hosted mode unless ONNI_TERMINAL=1.':
     'Terminal đang tắt trên cockpit này — nó bị tắt ở chế độ hosted trừ khi ONNI_TERMINAL=1.',
   'The workflow is asking': 'Quy trình đang hỏi',

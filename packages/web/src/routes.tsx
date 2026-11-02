@@ -51,6 +51,9 @@ const CompareVariantsRoute = lazyRoute(() =>
 const TaskCommitsRoute = lazyRoute(() =>
   import('./routes/task-git/task-commits').then((m) => ({ default: m.TaskCommitsRoute })),
 )
+const ProjectTerminalRoute = lazy(() =>
+  import('./routes/terminal/project-terminal').then((m) => ({ default: m.ProjectTerminalRoute })),
+)
 const TaskNotesRoute = lazy(() =>
   import('./routes/task-thread/task-notes').then((m) => ({ default: m.TaskNotesRoute })),
 )
@@ -405,6 +408,14 @@ export const AppRoutes = memo(function AppRoutes() {
           element={
             <Suspense fallback={<GitTabLoading tab="preview" />}>
               <TaskWorkspaceRoute view="browser" />
+            </Suspense>
+          }
+        />
+        <Route
+          path="terminal"
+          element={
+            <Suspense fallback={<GitTabLoading tab="terminal" />}>
+              <ProjectTerminalRoute />
             </Suspense>
           }
         />

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { RunnerId } from '../../core/agent-runner.ts';
 import { processJobs, type ProcessJob, type ProcessJobs } from '../../core/process-jobs.ts';
 import { SCAN_OVERLAP, type DetectedUrls } from './detected-urls.ts';
 import { foregroundCommand, hasForeground, type ProcessRow } from './foreground.ts';
@@ -81,6 +82,8 @@ export interface TerminalSessionInfo {
    * anything but `false` as "ask first".
    */
   busy: boolean | null;
+  /** The agent CLI this tab was opened for; absent for a plain shell. */
+  agent?: RunnerId;
 }
 
 export interface TerminalRead {
@@ -133,6 +136,8 @@ export interface CreateSessionInput {
   command?: string;
   /** A fixed tab name. With it, the process table never renames the session. */
   label?: string;
+  /** Recorded on the session so the tab can say which agent it hosts. Display only: starting the CLI is the route's job. */
+  agent?: RunnerId;
   /** Layered over the server's own environment — what this task's shell is told that another
    *  task's is not (its slot). Chosen by the server, never read from a request. */
   env?: Record<string, string>;
@@ -231,6 +236,7 @@ export class TerminalSessions {
         exitCode: null,
         label: input.label ?? `Terminal ${ordinal}`,
         busy: false,
+        ...(input.agent ? { agent: input.agent } : {}),
       },
       ordinal,
       service,

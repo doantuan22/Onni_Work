@@ -142,6 +142,7 @@ describe('AppShell', () => {
       'Git',
       'GitHub',
       'Automations',
+      'Terminal',
       'Skills',
       'Workflows',
       'Settings',
@@ -153,6 +154,7 @@ describe('AppShell', () => {
       '/git',
       '/github',
       '/automations',
+      '/terminal',
       '/skills',
       '/workflows',
       '/settings',
@@ -187,6 +189,7 @@ describe('AppShell', () => {
     const cases: Array<[entry: string, active: string]> = [
       ['/', 'Tasks'],
       ['/git', 'Git'],
+      ['/terminal', 'Terminal'],
       ['/skills', 'Skills'],
       // Tasks stays lit while a task thread is open (spec's "Task list & table").
       ['/tasks/abc123', 'Tasks'],
