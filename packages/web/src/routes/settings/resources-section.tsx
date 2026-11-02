@@ -137,13 +137,9 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
   return (
     <div
       data-slot="resources-section"
-      className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]"
+      className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-6 p-4 pb-[calc(90px+env(safe-area-inset-bottom))] md:p-6 md:pb-6 lg:grid-cols-[minmax(0,48rem)_minmax(22rem,30rem)] lg:justify-center lg:gap-8"
     >
-      <div className="lg:sticky lg:top-6 lg:self-start">
-        <MachineCard />
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-5">
+      <div className="flex min-w-0 flex-col gap-5 lg:order-1">
       <SettingsGroup title={t('Parallel runs')} description={t('How many tasks and monitoring sessions run at the same time.')}>
       <SettingsField
         title={t('Max parallel tasks')}
@@ -358,6 +354,10 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
       </SettingsField>
       </SettingsGroup>
       <LimitsPanel config={config} />
+      </div>
+
+      <div className="lg:sticky lg:top-6 lg:order-2 lg:self-start">
+        <MachineCard />
       </div>
     </div>
   )

@@ -106,11 +106,11 @@ export function MachineCard() {
     <section
       data-slot="machine-card"
       aria-labelledby="machine-card-title"
-      className="rounded-xl border border-border bg-card/60 p-4"
+      className="rounded-xl border border-border bg-card/60 p-5"
     >
       <header className="flex min-w-0 items-center gap-2">
         <StatusDot tone={live ? 'success' : 'neutral'} pulse={live} />
-        <h2 id="machine-card-title" className="text-sm font-semibold">
+        <h2 id="machine-card-title" className="text-base font-semibold">
           {t('Machine')}
         </h2>
         <span data-slot="machine-card-mode" className="text-[11px] text-soft-foreground">
@@ -142,20 +142,20 @@ export function MachineCard() {
         </p>
       ) : null}
 
-      <div className="mt-3 grid gap-3">
-        <div data-slot="machine-card-cpu" className="grid grid-cols-[86px_1fr] items-start gap-3">
-          <span className="pt-0.5 text-[12.5px] text-soft-foreground">
+      <div className="mt-4 grid gap-5">
+        <div data-slot="machine-card-cpu" className="grid grid-cols-1 items-start gap-1.5">
+          <span className="text-[13px] font-medium text-soft-foreground">
             {t('CPU')}{view?.cpuIsEffective === true ? ` ${t('(effective)')}` : ''}
           </span>
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <span
                 data-slot="machine-card-cpu-value"
-                className="w-32 shrink-0 text-[13px] tabular-nums"
+                className="shrink-0 text-3xl leading-none font-semibold tabular-nums"
               >
                 {cpuCoresText === undefined ? cpuValueText : `${cpuCoresText} · ${cpuValueText}`}
               </span>
-              <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              <div className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
                 {cpuFill === undefined || cpuFillPct === undefined ? null : (
                   <div
                     data-slot="machine-card-cpu-bar"
@@ -168,7 +168,7 @@ export function MachineCard() {
             {points === undefined ? null : (
               <svg
                 data-slot="machine-card-cpu-sparkline"
-                className="mt-1.5 h-8 w-full text-primary"
+                className="mt-3 h-24 w-full rounded-md bg-muted/40 text-primary"
                 viewBox={`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`}
                 preserveAspectRatio="none"
                 role="img"
@@ -190,19 +190,19 @@ export function MachineCard() {
           <>
             <div
               data-slot="machine-card-memory"
-              className="grid grid-cols-[86px_1fr] items-center gap-3"
+              className="grid grid-cols-1 items-center gap-1.5"
             >
-              <span className="text-[12.5px] text-soft-foreground">
+              <span className="text-[13px] font-medium text-soft-foreground">
                 {t('Memory')}{view.memIsEffective ? ` ${t('(effective)')}` : ''}
               </span>
               <div className="flex min-w-0 items-center gap-3">
                 <span
                   data-slot="machine-card-memory-value"
-                  className="w-32 shrink-0 text-[13px] tabular-nums"
+                  className="shrink-0 text-2xl leading-none font-semibold tabular-nums"
                 >
                   {memValueText}
                 </span>
-                <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-3 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${usedPct}%` }} />
                 </div>
               </div>
