@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { rosterSchema, type Roster } from '@onni/contract';
 import { protectedByLiveTree, reclaimWorktrees, selectReclaimableWorktrees } from '../runs/retention.ts';
 import { RunStore, type RunRecord } from '../runs/store.ts';
@@ -290,6 +290,56 @@ describe('manager–worker engine (dry-run)', () => {
     await ok(m.id, 'mock:done piece', { backend: 'pi', title: 'p' });
     expect(store.getRun(m.id)!.managerDidNotDelegate).toBeUndefined();
   }, 60_000);
+
+  describe('complexity policy reminder (real worktree, fake session)', () => {
+    const fakeState = () => {
+      const sendMessage = vi.fn(() => true);
+      return { state: { autonomous: true, autoContinues: 0, session: { open: true, sendMessage } } as never, sendMessage };
+    };
+    const writeFiles = (worktree: string, count: number) => {
+      for (let i = 0; i < count; i++) writeFileSync(join(worktree, `big-${i}.txt`), 'x\n'.repeat(5));
+    };
+    const events = (id: string) => store.readEvents(id).filter((e) => e.type === 'note' && String((e as { message?: string }).message).includes('complexity policy'));
+
+    it('warns once and reminds the manager when it edits many files and has dispatched nobody', async () => {
+      const m = await parked();
+      await waitFor(m.id, (x) => x?.worktreePath !== undefined);
+      writeFiles(store.getRun(m.id)!.worktreePath!, COMPLEXITY.warnFiles);
+      const { state, sendMessage } = fakeState();
+      expect(await manager.checkManagerComplexity(m.id, { state, stepId: 'task', done: false })).toBe(true);
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(sendMessage.mock.calls[0])).toContain('Complexity policy reminder');
+      expect(events(m.id).length).toBeGreaterThanOrEqual(1);
+      // Once per run.
+      expect(await manager.checkManagerComplexity(m.id, { state, stepId: 'task', done: false })).toBe(false);
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+    }, 60_000);
+
+    it('stays quiet for a small change, and once a worker was dispatched', async () => {
+      const small = await parked();
+      await waitFor(small.id, (x) => x?.worktreePath !== undefined);
+      writeFiles(store.getRun(small.id)!.worktreePath!, 1);
+      const a = fakeState();
+      expect(await manager.checkManagerComplexity(small.id, { state: a.state, stepId: 'task', done: false })).toBe(false);
+
+      const big = await parked();
+      await waitFor(big.id, (x) => x?.worktreePath !== undefined);
+      writeFiles(store.getRun(big.id)!.worktreePath!, COMPLEXITY.warnFiles + 1);
+      await ok(big.id, 'mock:done piece', { backend: 'pi', title: 'piece' });
+      const b = fakeState();
+      expect(await manager.checkManagerComplexity(big.id, { state: b.state, stepId: 'task', done: false })).toBe(false);
+      expect(b.sendMessage).not.toHaveBeenCalled();
+    }, 80_000);
+
+    it('only logs when the session cannot take a message', async () => {
+      const m = await parked();
+      await waitFor(m.id, (x) => x?.worktreePath !== undefined);
+      writeFiles(store.getRun(m.id)!.worktreePath!, COMPLEXITY.warnFiles);
+      const closed = { state: { autonomous: true, autoContinues: 0, session: { open: false, sendMessage: vi.fn() } } as never };
+      expect(await manager.checkManagerComplexity(m.id, { state: closed.state, stepId: 'task', done: false })).toBe(false);
+      expect(events(m.id).length).toBeGreaterThanOrEqual(1);
+    }, 60_000);
+  });
 
   it('the whole tree shares the root ceiling: workers cannot jointly outspend it', async () => {
     const m = manager.startRun(STEP, { task: 'mock:monitoring manage', roster: ROSTER, limits: { mode: 'capped', maxCostUsd: 5 } });

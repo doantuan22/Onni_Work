@@ -2789,13 +2789,14 @@ export class RunManager {
     const dispatched = Boolean(ctx.state.dispatchedThisTurn);
     ctx.state.dispatchedThisTurn = false;
     // Before the no-dispatch early return: a manager that never dispatched is exactly the case.
-    const nudged = this.checkManagerComplexity(runId, ctx);
-    if (!dispatch) return nudged ? { ...idle, rePrompted: true } : idle;
+    // Fire-and-forget: it reads git itself, and the turn must not wait on it.
+    void this.checkManagerComplexity(runId, ctx);
+    if (!dispatch) return idle;
     if (ctx.done) return { hasDispatch: true, dispatched: false, overBudget: false, rePrompted: false };
     const note = (message: string, tone?: 'danger') =>
       this.store.appendEvent(runId, { type: 'note', stepId: ctx.stepId, message, ...(tone ? { tone } : {}) });
     const overBudget = this.enforceDispatchBudget(runId, note);
-    const rePrompted = nudged || (!dispatched && !overBudget && this.deliverOwnInbox(runId, ctx.state, ctx.stepId, turnText));
+    const rePrompted = !dispatched && !overBudget && this.deliverOwnInbox(runId, ctx.state, ctx.stepId, turnText);
     // The filesystem channel's SIGNAL: this turn may have written into a sibling's or the root's
     // inbox. Wake every parked recipient now — the writer's turn end is the one moment onni
     // knows something may have changed on disk without watching it.
@@ -2807,15 +2808,25 @@ export class RunManager {
    * The complexity policy's soft check (manager–worker). A manager that has changed many files or
    * lines and has dispatched no worker is doing a complex task alone: say so in the log and, when
    * the session is open and autonomous, remind the manager once. Never blocks — it only warns.
-   * Returns true when a reminder went into the session (the turn continues).
+   * Reads the diff from git itself rather than `run.diffStat`, which `recordTurnEnd` refreshes
+   * asynchronously and so lags this very turn by one. Returns true when a reminder went in.
    */
-  private checkManagerComplexity(runId: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): boolean {
+  async checkManagerComplexity(runId: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): Promise<boolean> {
     if (ctx.done || ctx.state.complexityWarned) return false;
     if (this.semaphore.safety().managerComplexityPolicy === false) return false;
     const run = this.store.getRun(runId);
     if (!run?.roster || run.dispatch?.parentRunId) return false;
-    const stat = run.diffStat;
-    if (!stat || !managerDoingComplexAlone(stat, childrenOf(this.store.listRuns(), runId).length)) return false;
+    if (childrenOf(this.store.listRuns(), runId).length > 0) return false;
+    let stat = run.diffStat;
+    if (run.worktreePath && existsSync(run.worktreePath)) {
+      const fresh = await worktreeShortstat(run.worktreePath, run.baseBranch ?? 'HEAD', {
+        taskBranch: run.branch,
+        runStartedAt: run.startedAt,
+      }).catch(() => undefined);
+      if (fresh) stat = fresh;
+    }
+    if (!stat || !managerDoingComplexAlone(stat, 0)) return false;
+    if (ctx.state.complexityWarned) return false;
     ctx.state.complexityWarned = true;
     const message = `manager has changed ${stat.files} files (+${stat.adds} -${stat.dels}) and dispatched no worker — by the complexity policy this size of work should be handed to workers, or split with them.`;
     this.store.appendEvent(runId, { type: 'note', stepId: ctx.stepId, message, tone: 'danger' });
