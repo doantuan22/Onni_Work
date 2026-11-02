@@ -30,7 +30,7 @@ export const MAX_CHILDREN_IN_FLIGHT = DISPATCH_MAX_IN_FLIGHT;
 export const MAX_PENDING_REPORTS = 20;
 
 /** A child that still counts against the in-flight cap — anything that has not settled. */
-const IN_FLIGHT_STATUSES: readonly string[] = ['queued', 'running', 'waiting'];
+export const IN_FLIGHT_STATUSES: readonly string[] = ['queued', 'running', 'waiting'];
 
 /** The four settled statuses. A child reaching any of them reports to its parent — `cancelled`
  *  included, because a parent waiting on a child a user killed would otherwise wait forever. */
@@ -145,6 +145,51 @@ function statusToReportStatus(status: string): DispatchReport['status'] {
 }
 
 /**
+ * What a manager should do about a worker that settled without a report because it failed. A
+ * cause that repeats (permission, sign-in, billing, usage limit) is named as such: sending the same
+ * order to the same worker fails the same way, and a manager that quietly does the part itself
+ * hides the failure from the user. Pure and exported so the wording is tested.
+ */
+export function failureAdvice(child: Pick<RunRecord, 'status' | 'error' | 'failureClass' | 'runner'>): { recommended_next_action?: string } {
+  if (child.status !== 'failed' && child.status !== 'cancelled') return {};
+  const error = child.error ?? '';
+  const permission = /permission level|auto-denied|blocked by onni/i.test(error);
+  const who = child.runner ? `the ${child.runner} worker` : 'this worker';
+  if (permission) {
+    return {
+      recommended_next_action: `cause: permission — ${who} was denied a command it needs. The same order will fail the same way. Give that part to a worker from your roster with command access, or stop and tell the user to raise the permission level; do not do it yourself without saying so in your final report.`,
+    };
+  }
+  if (child.failureClass === 'transient') {
+    return { recommended_next_action: `cause: transient error — re-dispatch the same order once (its retry limit still applies), then report if it fails again.` };
+  }
+  if (child.failureClass === 'auth' || child.failureClass === 'billing' || child.failureClass === 'usage_limit') {
+    return {
+      recommended_next_action: `cause: ${child.failureClass} — re-dispatching to ${who} will fail again. Use a different worker from your roster, or report the cause to the user; do not do the part yourself without saying so.`,
+    };
+  }
+  return {};
+}
+
+/**
+ * A short status table of the tree's workers, appended to each batch of reports so the manager
+ * decides with the whole picture: who is working, who is queued, who finished or failed.
+ */
+export function workerStatusBoard(runs: readonly RunRecord[], rootId: string): string | undefined {
+  const workers = runs.filter((r) => r.dispatch?.rootRunId === rootId && r.id !== rootId);
+  if (workers.length === 0) return undefined;
+  const label = (r: RunRecord) => {
+    if (r.status === 'running' || r.status === 'waiting') return 'working';
+    if (r.status === 'queued') return 'queued';
+    if (r.status === 'done' || r.status === 'review') return 'done';
+    if (r.status === 'failed') return 'failed';
+    return r.status;
+  };
+  const lines = workers.map((r) => `- ${r.title} (${r.runner ?? 'unknown'}, ${r.id.slice(0, 8)}): ${label(r)}`);
+  return `## Workers now\n${lines.join('\n')}`;
+}
+
+/**
  * The report a settled child hands its parent, in both shapes it is needed in: the STRUCTURED
  * one (persisted on the parent as a pending report, so a restart cannot lose it) and the PROSE
  * one (delivered into the parent's session, which reads text, not JSON).
@@ -186,6 +231,7 @@ export function childSettleReport(
           side_effects: [],
           errors: child.error ? [child.error] : [],
           suggestions: [],
+          ...failureAdvice(child),
         } satisfies DispatchReport));
 
   const where = child.branch

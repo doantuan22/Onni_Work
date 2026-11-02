@@ -127,6 +127,16 @@ describe('dispatch structure', () => {
     ok(r.id, 'mock:done three', { title: 'three' });
   }, 40_000);
 
+  it('refuses the same order while its worker is still going, but not after it settled', async () => {
+    const r = await root();
+    const first = ok(r.id, 'mock:monitoring dup', { title: 'dup' });
+    expect(refused(r.id, 'mock:monitoring dup', { title: 'dup' })).toContain('already');
+    manager.cancel(first.id);
+    await waitFor(first.id, (x) => x?.status === 'cancelled');
+    // A cancelled order is a retry question (retry_limit), not a duplicate.
+    expect(refused(r.id, 'mock:monitoring dup', { title: 'dup', retry_limit: 0 })).toContain('retry limit');
+  }, 40_000);
+
   it("the unlimited switch does not lift a cap the user set on the task", async () => {
     boot({ dispatchUnlimitedSubtasks: true });
     const r = manager.startRun(STEP, { task: 'mock:monitoring root', limits: { mode: 'none' }, dispatchIntent: { maxSubtasks: 1 } });

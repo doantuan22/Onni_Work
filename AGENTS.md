@@ -123,8 +123,8 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   and gets the pre-push fence (`workflows/push-guard.ts`) plus Claude's deny rules. Every run snapshots
   its `limits` at start; children inherit the parent's mode and may never be looser; the sweep
   (`RunManager.sweepLimits`) and the wait expiry bound cost, time and hangs in both limits modes.
-  The fence is a barrier, not a sandbox — do not describe it as one. Dispatch depth, subtasks per
-  tree and `retry_limit` stay on in "Unlimited". See `docs/adr/0005-unattended-safety.md`.
+  The fence is a barrier, not a sandbox — do not describe it as one. Dispatch depth and `retry_limit` stay on in "Unlimited"; the subtasks-per-tree
+  counter has its own owner-approved off switch (`safety.dispatchUnlimitedSubtasks`, Settings → Resources → Advanced). See `docs/adr/0005-unattended-safety.md`.
 - **A roster is a fence, not a sandbox.** A tree started with a `roster` may dispatch only to the
   listed workers (`dispatch()` is the single check, 409 with the allowed list); workers stay at depth 1,
   keep `ONNI_API_URL` for `onni task report` and get the report-only prompt. Do not describe the roster as

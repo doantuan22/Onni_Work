@@ -9,12 +9,14 @@ import {
   childSettleReport,
   childTaskEnvelope,
   childrenOf,
+  failureAdvice,
   handoffSectionExcerpt,
   inFlightChildren,
   isTerminalStatus,
   pendingReportsBlock,
   remainingBudgetUsd,
   withPendingReport,
+  workerStatusBoard,
 } from './engine.ts';
 
 /**
@@ -302,3 +304,38 @@ describe('handoffSectionExcerpt', () => {
     expect(handoffSectionExcerpt(text, '## Missing')).toBe('');
   });
 });
+
+describe('manager–worker failure handling', () => {
+  it('tells the manager a permission denial will repeat and must not be redone silently', () => {
+    const advice = failureAdvice({ status: 'failed', runner: 'antigravity', error: "antigravity was blocked — blocked by Onni's permission level" })
+    expect(advice.recommended_next_action).toContain('cause: permission')
+    expect(advice.recommended_next_action).toContain('antigravity worker')
+    expect(advice.recommended_next_action).toContain('do not do it yourself without saying so')
+  })
+
+  it('suggests one retry for a transient failure and another worker for an auth failure', () => {
+    expect(failureAdvice({ status: 'failed', failureClass: 'transient' }).recommended_next_action).toContain('re-dispatch the same order once')
+    expect(failureAdvice({ status: 'failed', failureClass: 'auth', runner: 'codex' }).recommended_next_action).toContain('different worker')
+  })
+
+  it('adds nothing for a worker that succeeded, and carries the advice into the settle report', () => {
+    expect(failureAdvice({ status: 'done' })).toEqual({})
+    const { report } = childSettleReport(record({ status: 'failed', error: 'auto-denied by headless mode', runner: 'antigravity' } as Partial<RunRecord>))
+    expect(report.status).toBe('failed')
+    expect(report.recommended_next_action).toContain('cause: permission')
+  })
+
+  it('lists every worker of the tree with its state, and nothing for a tree without workers', () => {
+    const runs = [
+      record({ id: 'root', title: 'root', status: 'running' }),
+      record({ id: 'aaaaaaaa1', title: 'ui', status: 'running', runner: 'claude', dispatch: { rootRunId: 'root', parentRunId: 'root' } } as Partial<RunRecord>),
+      record({ id: 'bbbbbbbb2', title: 'api', status: 'failed', runner: 'codex', dispatch: { rootRunId: 'root', parentRunId: 'root' } } as Partial<RunRecord>),
+      record({ id: 'cccccccc3', title: 'docs', status: 'queued', runner: 'codex', dispatch: { rootRunId: 'root', parentRunId: 'root' } } as Partial<RunRecord>),
+    ]
+    const board = workerStatusBoard(runs, 'root')!
+    expect(board).toContain('ui (claude, aaaaaaaa): working')
+    expect(board).toContain('api (codex, bbbbbbbb): failed')
+    expect(board).toContain('docs (codex, cccccccc): queued')
+    expect(workerStatusBoard(runs.slice(0, 1), 'root')).toBeUndefined()
+  })
+})

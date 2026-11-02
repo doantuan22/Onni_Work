@@ -129,6 +129,8 @@ import {
   inFlightChildren,
   isTerminalStatus,
   pendingReportsBlock,
+  workerStatusBoard,
+  IN_FLIGHT_STATUSES,
   remainingBudgetUsd,
   usd,
   withPendingReport,
@@ -2751,7 +2753,9 @@ export class RunManager {
     if (!dispatch || !pending?.length) return undefined;
     const { pendingReports: _flushed, ...rest } = dispatch;
     this.store.updateRun(runId, { dispatch: rest });
-    return pendingReportsBlock(pending);
+    const block = pendingReportsBlock(pending);
+    const board = workerStatusBoard(this.store.listRuns(), dispatch.rootRunId);
+    return board && block ? `${block}\n\n${board}` : block;
   }
 
   /** Drop the one pending entry a LIVE delivery has just accepted (matched on run AND instant). */
@@ -3068,6 +3072,15 @@ export class RunManager {
     const failedTries = childrenOf(runs, parentId).filter((r) => r.title === orderTitle && (r.status === 'failed' || r.status === 'cancelled')).length;
     if (failedTries > retryLimit) {
       const refused = `"${orderTitle}" already failed ${failedTries} time${failedTries === 1 ? '' : 's'}; its retry limit is ${retryLimit}. Report the failure instead of dispatching it again.`;
+      note(`dispatch refused — ${refused}`, 'danger');
+      return { refused };
+    }
+
+    // Never run the same order twice at once: a manager that re-sends a title whose worker is still
+    // queued or working would pay for the same part twice and give two branches one scope.
+    const duplicate = childrenOf(runs, parentId).find((r) => r.title === orderTitle && IN_FLIGHT_STATUSES.includes(r.status));
+    if (duplicate) {
+      const refused = `"${orderTitle}" is already ${duplicate.status === 'queued' ? 'queued' : 'running'} as ${duplicate.id.slice(0, 8)}. Wait for its report instead of dispatching it again.`;
       note(`dispatch refused — ${refused}`, 'danger');
       return { refused };
     }
