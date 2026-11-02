@@ -315,6 +315,20 @@ describe('design guardian', () => {
   }
 
   // Not a RULES entry: the others are line-level forbidden-token regexes.
+  // P7: one Switch for the app. A hand-rolled role="switch" button would drift in size and colour.
+  it('no-raw-switch: on/off controls use components/ui/switch (the dispatch chip is the one split-pill segment)', () => {
+    const allowed = ['components/ui/switch.tsx', 'components/dispatch-toggle.tsx']
+    const violations: string[] = []
+    for (const file of sources) {
+      if (!styleSources(file) || file.ext !== '.tsx') continue
+      if (allowed.some((ok) => file.rel.endsWith(ok))) continue
+      file.lines.forEach((line, index) => {
+        if (/role=["']switch["']/.test(line)) violations.push(`packages/web/${file.rel}:${index + 1} — use <Switch> from components/ui/switch`)
+      })
+    }
+    expect(violations).toEqual([])
+  })
+
   it("no-raw-select: every dropdown is the app-drawn AppSelect, never the operating system's <select>", () => {
     const violations: string[] = []
     for (const file of sources) {

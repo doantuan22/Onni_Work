@@ -258,7 +258,7 @@ function PanelBody({
       <div
         ref={bodyRef}
         data-slot="task-settings-body"
-        className="@container flex min-h-0 flex-col gap-6 overflow-y-auto overscroll-contain p-6 [&_button.rounded-full]:h-8 [&_button.rounded-full]:rounded-lg"
+        className="@container flex min-h-0 flex-col gap-6 overflow-y-auto overscroll-contain p-6 [&_button.rounded-full:not([role=switch])]:h-8 [&_button.rounded-full:not([role=switch])]:rounded-lg"
       >
         <Section id="presets" title="Presets" description="Start from a saved way of working.">
           <PresetList
