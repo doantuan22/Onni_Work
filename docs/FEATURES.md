@@ -376,7 +376,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 
 ## 17. An toàn khi không giám sát (2026-11-01, nhánh `feat/unattended-safety`)
 
-"Run không giám sát" = `autonomous === true` **hoặc** task con trong cây dispatch (`workflows/unattended.ts`). Thiết kế: [`docs/design/unattended-safety.md`](design/unattended-safety.md); quyết định: [ADR 0005](adr/0005-unattended-safety.md).
+"Run không giám sát" = `autonomous === true` **hoặc** task con trong cây dispatch (`workflows/unattended.ts`). Thiết kế: [`docs/design/unattended-safety.md`](design/unattended-safety.md).
 
 | Chức năng | Mô tả ngắn | Nơi trong code | Cách dùng | Trạng thái | Căn cứ |
 | --- | --- | --- | --- | --- | --- |
