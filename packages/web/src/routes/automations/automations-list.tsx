@@ -52,7 +52,7 @@ export function AutomationsList({
 
   return (
     <div data-route="automations" className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5">
+      <header className="sticky top-0 z-10 flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-background px-5 max-md:py-2 md:h-14 md:flex-nowrap">
         <h1 className="text-base font-semibold">{t('Automations')}</h1>
         <Segmented<AutomationsView>
           slot="automations-view"

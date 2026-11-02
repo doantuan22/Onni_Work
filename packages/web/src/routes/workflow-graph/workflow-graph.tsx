@@ -668,7 +668,7 @@ function WorkflowGraphEditor() {
 
   return (
     <div data-route="workflows" className="flex h-full min-h-0 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
+      <header className="relative flex h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-background px-3 [&>*]:shrink-0">
         <AppSelect
           aria-label={t('Open workflow')}
           className="h-8 max-w-44 rounded-md border border-transparent bg-transparent px-1.5 text-[13px] font-medium outline-none hover:border-border focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
