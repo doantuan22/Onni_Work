@@ -19,3 +19,12 @@ if (typeof Element !== 'undefined') {
   proto.releasePointerCapture ??= () => {}
   proto.scrollIntoView ??= () => {}
 }
+
+// cmdk (the searchable AppSelect) measures its list with ResizeObserver, which jsdom lacks.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+}
