@@ -63,7 +63,7 @@ export function StepRail({ steps }: { steps: StepState[] }) {
           className="flex min-h-[22px] min-w-0 items-center gap-2 text-[13px] text-muted-foreground"
         >
           <RailIcon visual={railVisual(step.status)} />
-          <span className="min-w-0 truncate font-medium text-foreground">{step.name}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{t(step.name)}</span>
           {step.iterations > 1 ? (
             <span data-slot="step-iterations" className="shrink-0 text-xs text-soft-foreground tabular-nums">
               ×{step.iterations}
@@ -169,7 +169,7 @@ export function WorkflowSteps({ runId, steps }: { runId: string; steps: StepStat
     <Collapsible data-slot="workflow-steps" open={open} onOpenChange={toggle} className="min-w-0">
       <CollapsibleTrigger
         aria-label={t('Workflow: {step}, step {position} of {total}', {
-          step: current.name,
+          step: t(current.name),
           position: index + 1,
           total: steps.length,
         })}
@@ -184,7 +184,7 @@ export function WorkflowSteps({ runId, steps }: { runId: string; steps: StepStat
             <StepDot key={step.id} visual={railVisual(step.status)} />
           ))}
         </span>
-        <span className="min-w-0 max-w-[45%] shrink truncate font-semibold text-foreground">{current.name}</span>
+        <span className="min-w-0 max-w-[45%] shrink truncate font-semibold text-foreground">{t(current.name)}</span>
         <span className="shrink-0 text-soft-foreground tabular-nums">
           {t('step {position} of {total}', { position: index + 1, total: steps.length })}
         </span>

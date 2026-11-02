@@ -117,7 +117,7 @@ export function KeyboardSection() {
               const changed = entry.id in keybindings.overrides
               return (
                 <li key={entry.id} data-slot="shortcut-row" data-command-id={entry.id} className="flex items-center gap-2 px-3 py-1.5">
-                  <span className="min-w-0 flex-1 truncate text-sm">{entry.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{t(entry.label)}</span>
                   {isRecording ? (
                     <span data-slot="shortcut-recording" className="text-xs text-primary">
                       {problem ?? t('Press keys… (esc cancels, ⌫ removes)')}
@@ -146,7 +146,7 @@ export function KeyboardSection() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={t('Reset {command} to {shortcut}', { command: entry.label, shortcut: DEFAULT_KEYBINDINGS[entry.id] ? formatChord(DEFAULT_KEYBINDINGS[entry.id]!) : t('no shortcut') })}
+                      aria-label={t('Reset {command} to {shortcut}', { command: t(entry.label), shortcut: DEFAULT_KEYBINDINGS[entry.id] ? formatChord(DEFAULT_KEYBINDINGS[entry.id]!) : t('no shortcut') })}
                       title={t('Reset to default')}
                       onClick={() => keybindings.reset(entry.id)}
                     >

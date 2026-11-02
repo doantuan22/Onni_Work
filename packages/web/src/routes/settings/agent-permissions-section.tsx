@@ -21,7 +21,7 @@ export const PERMISSION_LEVELS: readonly { id: AgentPermissionLevel; label: stri
   {
     id: 'allow-rules',
     label: 'Narrow allow-rules — experimental',
-    hint: 'Allows only these exact commands: git status, git status --short, git diff, git diff --stat, git log --oneline, git add -A, and the step’s own test/build commands, each as the whole line. Anything added — an argument, a redirect, a pipe, a chain, a substitution — is denied, and so are git push, network tools and delete. Antigravity’s own file and web tools are NOT limited by this level. Experimental: a few forms are still untested.',
+    hint: 'Allows only these exact commands: git status, git status --short, git diff, git diff --stat, git log --oneline, git add -A, the step’s own test/build commands and the repo’s own checks (npm test, npm run build/lint/typecheck, cargo check/test), each as the whole line. Anything added — an argument, a redirect, a pipe, a chain, a substitution — is denied, and so are git push, network tools and delete. Antigravity’s own file and web tools are NOT limited by this level. Experimental: a few forms are still untested.',
   },
   {
     id: 'bypass',

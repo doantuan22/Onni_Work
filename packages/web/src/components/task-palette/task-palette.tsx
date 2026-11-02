@@ -442,18 +442,18 @@ export function TaskPalette() {
       >
         <div ref={body} data-slot="task-palette" data-mode={recording ? 'record' : renaming ? 'rename' : mode} className="contents">
           <CommandInput
-            placeholder={recording ? 'Press a shortcut — ⌫ removes it, esc cancels' : placeholder(renaming ? 'rename' : mode)}
+            placeholder={recording ? t('Press a shortcut — ⌫ removes it, esc cancels') : t(placeholder(renaming ? 'rename' : mode))}
             value={search}
             onValueChange={setSearch}
           />
           {subjectId && !renaming && mode !== 'tasks' ? <SubjectBar runId={subjectId} picked={subjectId !== pageTaskId} /> : null}
           <CommandList className="max-h-[55vh] min-h-[14rem] sm:max-h-[60vh] lg:max-h-[68vh]">
             {recording ? (
-              <CommandGroup heading={`Shortcut for ${recording.label}`}>
+              <CommandGroup heading={t('Shortcut for {command}', { command: t(recording.label) })}>
                 <CommandItem value="record" data-slot="task-palette-recorder" onSelect={() => {}}>
                   <KeyboardIcon aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate">
-                    {recording.problem ?? 'Press the keys for this command…'}
+                    {t(recording.problem ?? 'Press the keys for this command…')}
                   </span>
                   {keybindings.bindings.get(recording.id) ? (
                     <CommandShortcut>{formatChord(keybindings.bindings.get(recording.id)!)}</CommandShortcut>
@@ -554,7 +554,7 @@ function SubjectBar({ runId, picked }: { runId: string; picked: boolean }) {
       <span className="shrink-0">{t('Task')}</span>
       <span className="min-w-0 flex-1 truncate font-medium text-foreground">{runTitle(run)}</span>
       <Pill className="shrink-0" dot={attention.tone} pulse={attention.pulse}>
-        {attention.label}
+        {t(attention.label)}
       </Pill>
       {picked ? <span className="shrink-0 text-soft-foreground">⌫ back to tasks</span> : null}
     </div>
@@ -597,7 +597,7 @@ function CommandGroups({
                   className={cn('group/command', command.danger && 'data-[selected=true]:text-danger')}
                 >
                   {command.icon}
-                  <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                  <span className="min-w-0 flex-1 truncate">{t(command.label)}</span>
                   {command.unavailable ? (
                     <span className="shrink-0 truncate text-xs text-soft-foreground">{command.unavailable}</span>
                   ) : command.pressed ? (

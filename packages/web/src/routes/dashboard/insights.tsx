@@ -237,7 +237,7 @@ function FailureReason({
           {latest.title}
         </Link>{' '}
         · {projectName(latest.projectId)}
-        {latest.step ? ` · ${latest.step}` : ''} · {t('{age} ago', { age: shortAge(latest.at) })}
+        {latest.step ? ` · ${t(latest.step)}` : ''} · {t('{age} ago', { age: shortAge(latest.at) })}
       </span>
     </li>
   )
@@ -278,7 +278,7 @@ export function BackendComparison() {
             </p>
             <Coverage coverage={data.coverage} retry={() => void query.refetch()} />
             {data.backends.length ? (
-              <div className="overflow-x-auto" role="region" aria-label={t('Backend comparison')} tabIndex={0}>
+              <div className="relative overflow-x-auto" role="region" aria-label={t('Backend comparison')} tabIndex={0}>
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr>
@@ -454,7 +454,7 @@ export function AutomationOutcomes() {
                   </p>
                 )}
                 {sorted.length ? (
-                  <div className="overflow-x-auto" role="region" aria-label={t('Automation outcomes')} tabIndex={0}>
+                  <div className="relative overflow-x-auto" role="region" aria-label={t('Automation outcomes')} tabIndex={0}>
                     <table className="w-full text-left text-sm">
                       <thead>
                         <tr>

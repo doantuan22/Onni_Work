@@ -28,6 +28,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from '@/components/ui/toaster'
 import { ZoomableImage } from '@/components/zoomable-image'
 import { useI18n } from '@/lib/i18n'
+import { translateNote } from '@/lib/note-i18n'
 import { Link } from '@/lib/project-router'
 import { isImageAttachmentName, type FileDiff, type ToolKind, type UiToolItem } from '@onni/api-client'
 import { cn } from '@/lib/utils'
@@ -341,6 +342,7 @@ export function AssistantMessage({ text }: { text: string }) {
 
 /** A dim (lifecycle/note) or danger (error) transcript line. */
 export function NoteLine({ note }: { note: ThreadNote }) {
+  const { t } = useI18n()
   return (
     <div
       data-slot="note-line"
@@ -348,7 +350,7 @@ export function NoteLine({ note }: { note: ThreadNote }) {
       className={cn('px-0.5 text-xs', note.tone === 'danger' ? 'text-danger' : 'text-soft-foreground')}
     >
       {note.tone === 'danger' ? '✗ ' : '· '}
-      {note.text}
+      {translateNote(note.text, t)}
     </div>
   )
 }
