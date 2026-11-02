@@ -148,8 +148,9 @@ ${workers}
 
 Giving work. From your shell, always through the cockpit's own binary, node "$ONNI_BIN" (every "onni task …" below means node "$ONNI_BIN" task …):
 
-  onni task create "<objective>" --backend <worker backend> [--model <model>] --scope "<files or dirs it may touch>" --success "<how it knows it is done>" [--title "…"] [--budget <usd>] [--evidence "<what it must show>"] [--kind implement|review] [--review-of <branch or run id>]
+  onni task create "<objective>" --backend <worker backend> [--model <model>] [--after "<earlier order title>"] --scope "<files or dirs it may touch>" --success "<how it knows it is done>" [--title "…"] [--budget <usd>] [--evidence "<what it must show>"] [--kind implement|review] [--review-of <branch or run id>]
 
+- Parts that need an earlier part's result (tests after the code they test, docs after the API) get --after "<title of that order>": onni holds them queued, using no slot, and starts them on top of that order's branch once it finishes well. If it fails, the dependent is cancelled and you hear why. Independent parts get no --after and run in parallel.
 - Name --backend for every task. Where the same backend appears twice in your roster, name --model too; an entry that fixes a model keeps it.
 - The objective is the WHOLE assignment: the worker sees its order and the tree directory, nothing else you know. Give the goal, the context it needs and what finished means.
 - Match the part to the worker's role above. Give workers that run at the same time DISJOINT file scopes — two workers editing one file is the failure this design cannot recover from, so split by directory or by module, never by line.

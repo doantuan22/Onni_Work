@@ -2033,12 +2033,15 @@ export class RunManager {
         // Only pay for the config read when something is actually held: a queued record may name
         // no runner, and then the account it would use is the configured default.
         const defaultRunner = anyHold ? (await loadConfig(this.repoRoot)).defaultRunner : undefined;
+        this.blockOrphanedDependents();
         const startable = (id: string): boolean => {
           const queued = this.store.getRun(id);
           if (queued && anyHold && accountHeldFor(queued, holds, defaultRunner ?? 'claude')) return false;
           // A roster entry's `maxConcurrent`: a worker over its entry's cap keeps its place in
           // the queue while the others start, and wakes on the next slot release.
           if (queued && this.workerEntryFull(queued)) return false;
+          // `--after`: wait queued, holding no slot, until the siblings it depends on have finished.
+          if (queued && this.dependencyState(queued) !== 'ready') return false;
           // "Start now" goes over `maxParallel` on purpose, but a non-git root still runs one at a time.
           if (this.startNowRequested.has(id)) return repo !== null || this.busySlots() < 1;
           return capacity();
@@ -2994,6 +2997,41 @@ export class RunManager {
     return true;
   }
 
+  /**
+   * Where a queued run stands on its `--after` siblings: `ready` (none, or all finished well),
+   * `waiting` (at least one still going) or `blocked` (one failed or was cancelled, or vanished).
+   */
+  private dependencyState(run: RunRecord): 'ready' | 'waiting' | 'blocked' {
+    const after = run.dispatch?.after;
+    if (!after?.length) return 'ready';
+    let waiting = false;
+    for (const id of after) {
+      const dep = this.store.getRun(id);
+      if (!dep || dep.status === 'failed' || dep.status === 'cancelled') return 'blocked';
+      if (dep.status !== 'done' && dep.status !== 'review') waiting = true;
+    }
+    return waiting ? 'waiting' : 'ready';
+  }
+
+  /**
+   * Who fires a blocked dependent? Nothing else does: a run queued behind a failed sibling would
+   * sit in the queue forever. Cancel it with the reason, which reaches the parent as a `blocked`
+   * report (the cancel path of `cancelOne`), so the manager hears why instead of waiting.
+   */
+  private blockOrphanedDependents(): void {
+    for (const id of [...this.queue]) {
+      const run = this.store.getRun(id);
+      if (!run || this.dependencyState(run) !== 'blocked') continue;
+      const failed = (run.dispatch?.after ?? [])
+        .map((depId) => this.store.getRun(depId))
+        .find((dep) => !dep || dep.status === 'failed' || dep.status === 'cancelled');
+      this.store.updateRun(id, {
+        error: `blocked: the order it was waiting for ("${failed?.title ?? 'a removed order'}") ${failed?.status ?? 'is gone'}, so it never started`,
+      });
+      this.cancelOne(id);
+    }
+  }
+
   /** Whether the roster entry a queued worker occupies already runs its `maxConcurrent` tasks. */
   private workerEntryFull(queued: RunRecord): boolean {
     const key = queued.dispatch?.workerKey;
@@ -3126,6 +3164,28 @@ export class RunManager {
       return { refused };
     }
 
+    // `after`: resolve each named sibling now, so a typo is a refusal with the valid names rather
+    // than a worker that waits forever. Only EXISTING siblings can be named, so no cycle can form.
+    const afterIds: string[] = [];
+    if (input.after?.length) {
+      const siblings = childrenOf(runs, parentId);
+      for (const ref of input.after) {
+        const dep = siblings.find((r) => r.id === ref || r.id.startsWith(ref) && ref.length >= 6) ?? siblings.find((r) => r.title === ref);
+        if (!dep) {
+          const known = siblings.map((r) => `"${r.title}" (${r.id.slice(0, 8)})`).join(', ') || 'none yet';
+          const refused = `--after "${ref}" names no order of yours. Orders so far: ${known}. Dispatch the earlier order first.`;
+          note(`dispatch refused — ${refused}`, 'danger');
+          return { refused };
+        }
+        if (dep.status === 'failed' || dep.status === 'cancelled') {
+          const refused = `--after "${ref}": that order already ${dep.status}, so this one could never start. Fix or re-dispatch it first.`;
+          note(`dispatch refused — ${refused}`, 'danger');
+          return { refused };
+        }
+        if (!afterIds.includes(dep.id)) afterIds.push(dep.id);
+      }
+    }
+
     // The parent becomes a root on its first dispatch; a dispatched parent keeps its tree.
     const rootRunId = parent.dispatch?.rootRunId ?? parent.id;
     if (!parent.dispatch) {
@@ -3163,7 +3223,11 @@ export class RunManager {
     const record = this.startRun(opts.workflow ?? workflow, {
       // The tree directory lines are composed against the id the run is ABOUT to get: `startRun`
       // mints it, so the envelope is finished below once it exists.
-      task: childTaskEnvelope(input, { id: parentId, branch: parent.branch }, ['{{TREE_PATHS}}']),
+      task: childTaskEnvelope(
+        afterIds.length ? { ...input, after: afterIds.map((id) => { const dep = runs.find((r) => r.id === id); return `${dep?.title ?? id} (${id.slice(0, 8)}${dep?.branch ? `, branch ${dep.branch}` : ''})`; }) } : input,
+        { id: parentId, branch: parent.branch },
+        ['{{TREE_PATHS}}'],
+      ),
       // In a roster tree the worker brief comes from `prepareDispatchSession` (report-only); the
       // general dispatch prompt would teach a worker to dispatch.
       systemPrompt: roster ? undefined : composeDispatchPrompt(input.kind),
@@ -3180,13 +3244,19 @@ export class RunManager {
         ...(worker && 'ok' in worker ? { workerKey: worker.key } : {}),
         ...(input.kind && input.kind !== 'implement' ? { kind: input.kind } : {}),
         ...(input.review_of?.length ? { reviewOf: input.review_of } : {}),
+        ...(afterIds.length ? { after: afterIds } : {}),
         ...(budget.budgetUsd !== undefined ? { budgetUsd: budget.budgetUsd } : {}),
       },
     });
     // The task list shows the order's own title rather than the first line of the envelope, and
     // the child forks its worktree off the PARENT's branch: `execute()` prefers a recorded
     // `baseBranch` over the configured one, so seeding it is the whole of the change.
-    this.store.updateRun(record.id, { title, ...(parent.branch ? { baseBranch: parent.branch } : {}) });
+    // A run that waits for a sibling forks off THAT sibling's branch (which already contains the
+    // parent's tip plus its work), so it starts on top of what it depended on. More than one
+    // dependency: the first is the fork point and the order lists the rest to merge.
+    const afterBranch = afterIds.length ? runs.find((r) => r.id === afterIds[0])?.branch : undefined;
+    const forkPoint = afterBranch ?? parent.branch;
+    this.store.updateRun(record.id, { title, ...(forkPoint ? { baseBranch: forkPoint } : {}) });
     const paths = taskPaths(this.dataDir, rootRunId, record.id);
     const task = (this.store.getRun(record.id)?.task ?? '').replace('{{TREE_PATHS}}', treeEnvelopeLines(paths).join('\n'));
     this.store.updateRun(record.id, { task });

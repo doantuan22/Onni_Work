@@ -94,6 +94,8 @@ export const dispatchSchema = z.object({
   parentRunId: z.string().optional(),
   /** What this task is for. Absent = `implement`. */
   kind: dispatchKindSchema.optional(),
+  /** Sibling run ids that must settle successfully before this one starts (the order's `after`). */
+  after: z.array(z.string().max(120)).max(8).optional(),
   /** For a `review` task: the run ids or branches it reviews. */
   reviewOf: z.array(z.string().max(120)).max(8).optional(),
   /** This task's spend ceiling in USD, carved out of its parent's. Absent = none of its own. */
@@ -151,6 +153,8 @@ export const dispatchInputSchema = z
     success_criteria: z.string().max(1000).optional(),
     required_evidence: z.string().max(1000).optional(),
     retry_limit: z.number().int().min(0).max(3).optional(),
+    /** Sibling orders (titles or short ids) that must finish first; this one waits queued until they have. */
+    after: z.array(z.string().max(120)).max(8).optional(),
     /** The worker backend — the primary name; `runner` stays as the compatible alias. */
     backend: runnerSchema.optional(),
     /** The child's backend and model. Absent = the parent's. */

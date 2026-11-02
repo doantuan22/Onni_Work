@@ -291,6 +291,46 @@ describe('manager–worker engine (dry-run)', () => {
     expect(store.getRun(m.id)!.managerDidNotDelegate).toBeUndefined();
   }, 60_000);
 
+  describe('--after: ordering dependent work', () => {
+    it('holds a dependent queued until the order it depends on has finished, then starts it on that branch', async () => {
+      const m = await parked();
+      const first = await ok(m.id, 'mock:monitoring first', { backend: 'claude', model: 'haiku', title: 'first' });
+      await waitFor(first.id, (x) => x?.activity === 'monitoring');
+      const second = await ok(m.id, 'mock:done second', { backend: 'claude', model: 'sonnet', title: 'second', after: ['first'] });
+      expect(store.getRun(second.id)!.dispatch?.after).toEqual([first.id]);
+      expect(store.getRun(second.id)!.baseBranch).toBe(store.getRun(first.id)!.branch);
+      // The other worker entry is free and a slot exists, yet the dependent does not start.
+      await new Promise((r) => setTimeout(r, 600));
+      expect(store.getRun(second.id)!.status).toBe('queued');
+      expect(store.getRun(second.id)!.task).toContain('Starts after: first');
+    }, 80_000);
+
+    it('runs the dependent after a successful predecessor, in order', async () => {
+      const m = await parked();
+      const first = await ok(m.id, 'mock:done first', { backend: 'claude', model: 'haiku', title: 'first' });
+      const second = await ok(m.id, 'mock:done second', { backend: 'claude', model: 'sonnet', title: 'second', after: [first.id.slice(0, 8)] });
+      await waitFor(second.id, (x) => x?.status === 'done' || x?.status === 'review');
+      expect(Date.parse(store.getRun(second.id)!.startedAt ?? '')).toBeGreaterThanOrEqual(Date.parse(store.getRun(first.id)!.finishedAt ?? ''));
+    }, 80_000);
+
+    it('cancels the dependent with the reason when its predecessor fails, instead of leaving it queued forever', async () => {
+      const m = await parked();
+      const first = await ok(m.id, 'mock:monitoring first', { backend: 'claude', model: 'haiku', title: 'first' });
+      await waitFor(first.id, (x) => x?.activity === 'monitoring');
+      const second = await ok(m.id, 'mock:done second', { backend: 'claude', model: 'sonnet', title: 'second', after: ['first'] });
+      manager.cancel(first.id);
+      await waitFor(second.id, (x) => x?.status === 'cancelled');
+      expect(store.getRun(second.id)!.error).toContain('blocked');
+      expect(store.getRun(second.id)!.error).toContain('first');
+    }, 80_000);
+
+    it('refuses an unknown or already-failed dependency, naming the valid orders', async () => {
+      const m = await parked();
+      await ok(m.id, 'mock:monitoring first', { backend: 'claude', model: 'haiku', title: 'first' });
+      expect(await refused(m.id, 'mock:done x', { backend: 'claude', model: 'sonnet', title: 'x', after: ['nope'] })).toContain('Orders so far: "first"');
+    }, 60_000);
+  });
+
   describe('complexity policy reminder (real worktree, fake session)', () => {
     const fakeState = () => {
       const sendMessage = vi.fn(() => true);

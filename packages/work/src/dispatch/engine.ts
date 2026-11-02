@@ -113,6 +113,9 @@ export function childTaskEnvelope(
   if (child.required_evidence) lines.push(`- Required evidence: ${child.required_evidence}`);
   if (child.retry_limit !== undefined) lines.push(`- Retry limit: ${child.retry_limit}`);
   if (parent.branch) lines.push(`- Parent branch (your fork point): ${parent.branch}`);
+  if (child.after?.length) {
+    lines.push(`- Starts after: ${child.after.join(', ')} — onni holds you queued until they have finished successfully`);
+  }
   lines.push(`- Ordered by: run ${parent.id}`);
   lines.push(...extraLines);
   return `${child.objective}\n\n## Task order\n${lines.join('\n')}`;

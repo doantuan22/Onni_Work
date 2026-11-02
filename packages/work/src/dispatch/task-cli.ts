@@ -28,7 +28,7 @@ const USAGE = `onni task — dispatch onni tasks from inside a task (on by defau
 
   onni task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch|run>]
                   [--scope "…"] [--budget <usd>] [--success "…"] [--evidence "…"] [--tools A,B]
-                  [--backend ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>]
+                  [--backend ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>] [--after "<title or id of an earlier order>" …]
   onni task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
                   [--verdict approve|changes|reject] [--suggestions "…"]… [--confidence <0-1>]
                   [--side-effect "…"]… [--error "…"]… [--next "…"]
@@ -103,6 +103,7 @@ export async function runTaskCommand(
             runner: { type: 'string' },
             model: { type: 'string' },
             'retry-limit': { type: 'string' },
+            after: { type: 'string', multiple: true },
           },
         });
         const objective = positionals.join(' ').trim();
@@ -123,6 +124,7 @@ export async function runTaskCommand(
           ...(values.runner ? { runner: values.runner } : {}),
           ...(values.model ? { model: values.model } : {}),
           ...(values['retry-limit'] !== undefined ? { retry_limit: number(values['retry-limit'], 'retry-limit') } : {}),
+          ...(values.after?.length ? { after: values.after } : {}),
         };
         const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/dispatch`, {
           method: 'POST',
