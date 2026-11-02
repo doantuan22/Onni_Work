@@ -28,3 +28,8 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
     disconnect() {}
   } as unknown as typeof ResizeObserver
 }
+
+// `findBy*` / `waitFor` default to 1 s. Under the full parallel suite, the first render of a lazily
+// imported component can take longer than that; 5 s keeps them honest without racing the loader.
+import { configure } from '@testing-library/react'
+configure({ asyncUtilTimeout: 5000 })

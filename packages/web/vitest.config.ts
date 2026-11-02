@@ -12,6 +12,9 @@ export default mergeConfig(
       environment: 'jsdom',
       setupFiles: ['./src/test-setup.ts'],
       include: ['src/**/*.test.{ts,tsx}'],
+      // The full suite runs ~340 files in parallel; under that load a lazily-loaded chunk (the diff
+      // viewer) or a long scheduling flow can outlast the 5 s default. Alone they finish in ~1 s.
+      testTimeout: 20_000,
     },
   }),
 )
