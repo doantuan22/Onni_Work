@@ -16,10 +16,12 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 
 import { Link } from '@/lib/project-router'
+import { cn } from '@/lib/utils'
 
 import { useRun } from '@/api/queries'
 import type { ApiRun, WorkflowGraphNode } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
+import { useTheme } from '@/components/theme-provider'
 import { useI18n } from '@/lib/i18n'
 import {
   graphForWorkflow,
@@ -33,6 +35,7 @@ import {
 } from '@/lib/workflow-graph'
 
 import { GitTabLoadError, GitTabLoading } from '../task-git/git-tab-loading'
+import { ActivityGraph } from './activity-graph'
 import { RunHeader } from '../task-thread/run-header'
 import { backLanes, edgeStyle, edgeTypes, GraphNodeView } from './graph-node'
 import { FloatingPanel } from './workflow-graph'
@@ -97,8 +100,29 @@ export function TaskGraphRoute() {
   )
 }
 
+type GraphMode = 'activity' | 'flow'
+const MODE_KEY = 'onni.graph.mode'
+const readMode = (): GraphMode => {
+  try {
+    return window.localStorage.getItem(MODE_KEY) === 'flow' ? 'flow' : 'activity'
+  } catch {
+    return 'activity'
+  }
+}
+
 export function TaskGraphView({ run, embedded = false }: { run: ApiRun; embedded?: boolean }) {
   const { t } = useI18n()
+  // Activity (who works on what, live) is the default; the workflow flow stays one click away.
+  const { resolvedTheme } = useTheme()
+  const [mode, setMode] = useState<GraphMode>(readMode)
+  const changeMode = (next: GraphMode) => {
+    setMode(next)
+    try {
+      window.localStorage.setItem(MODE_KEY, next)
+    } catch {
+      /* storage blocked: the choice just does not persist */
+    }
+  }
   const def = run.workflowDef
   const graph = useMemo(() => (def ? graphForWorkflow(def) : null), [def])
   const overlay = useMemo(() => (graph ? runOverlay(graph, run) : null), [graph, run])
@@ -162,7 +186,26 @@ export function TaskGraphView({ run, embedded = false }: { run: ApiRun; embedded
   return (
     <div data-route="task-graph" className="flex h-full min-h-0 flex-col">
       {embedded ? null : <RunHeader run={run} tab="graph" />}
-      {!graph ? (
+      <div data-slot="graph-mode" role="group" aria-label={t('Graph view')} className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1.5">
+        {(['activity', 'flow'] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            data-mode={value}
+            onClick={() => changeMode(value)}
+            className={cn(
+              'rounded-md px-2.5 py-1 text-[12.5px] font-medium transition-colors',
+              mode === value ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {value === 'activity' ? t('Activity') : t('Flow')}
+          </button>
+        ))}
+      </div>
+      {mode === 'activity' ? (
+        <ActivityGraph run={run} />
+      ) : !graph ? (
         <CenteredState
           icon={<WorkflowIcon />}
           tone="neutral"
@@ -184,7 +227,7 @@ export function TaskGraphView({ run, embedded = false }: { run: ApiRun; embedded
             fitView
             fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
             minZoom={0.2}
-            colorMode="system"
+            colorMode={resolvedTheme === 'light' ? 'light' : 'dark'}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Dots} gap={18} size={1} />

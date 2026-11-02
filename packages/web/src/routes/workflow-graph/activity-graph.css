@@ -1,0 +1,96 @@
+/*
+ * The task Activity graph and the xyflow chrome shared with the workflow graph (P9).
+ *
+ * The library ships white zoom buttons and a light minimap; on the dark cockpit those were the
+ * stray white squares at the bottom-left of the Graph tab. They are themed here from the same
+ * tokens everything else uses, so both graph modes follow the app theme, not the OS one.
+ */
+.react-flow__controls {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: var(--card);
+  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
+  width: 28px;
+  height: 28px;
+}
+.react-flow__controls-button:last-child {
+  border-bottom: 0;
+}
+.react-flow__controls-button:hover {
+  background: var(--muted);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+  max-width: 13px;
+  max-height: 13px;
+}
+.react-flow__minimap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.react-flow__minimap-mask {
+  fill: color-mix(in srgb, var(--background) 70%, transparent);
+}
+.react-flow__attribution {
+  background: transparent;
+}
+
+/* ---- Activity graph motion ---- */
+@keyframes onni-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 28%, transparent); }
+}
+@keyframes onni-node-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes onni-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes onni-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+@keyframes onni-flow {
+  to { stroke-dashoffset: -24; }
+}
+
+.activity-node {
+  animation: onni-node-in 260ms ease-out both;
+}
+.activity-node[data-state='running'],
+.activity-node[data-state='monitoring'] {
+  animation: onni-node-in 260ms ease-out both, onni-breathe 2.2s ease-in-out 260ms infinite;
+}
+.activity-node[data-state='done'][data-fresh='true'] {
+  animation: onni-node-in 260ms ease-out both, onni-pop 420ms ease-out 260ms 1;
+}
+.activity-node[data-state='failed'][data-fresh='true'],
+.activity-node[data-state='blocked'][data-fresh='true'] {
+  animation: onni-node-in 260ms ease-out both, onni-shake 320ms ease-in-out 260ms 1;
+}
+.activity-edge-flow path.react-flow__edge-path {
+  stroke-dasharray: 6 6;
+  animation: onni-flow 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-node,
+  .activity-node[data-state] {
+    animation: none;
+  }
+  .activity-edge-flow path.react-flow__edge-path {
+    animation: none;
+    stroke-dasharray: none;
+  }
+}

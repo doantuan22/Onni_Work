@@ -131,6 +131,9 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   a security boundary: raw HTTP can still create a top-level run on any backend. The route path commits
   the manager's WIP before a fork and refuses (409) when it cannot; a worker's worktree is not reclaimed
   while its tree's root is live (`protectedByLiveTree`).
+  A manager may merge only when the root run carries `managerFullAccess` (Settings → Manager–Worker, or per task;
+  default OFF): `POST /runs/:id/merge` checks it on the server, merges locally only, never pushes, and logs every
+  attempt. It is a gate for the tool, not a sandbox — raw `git merge` in the manager's own worktree is not blocked.
 - **Local-first.** No account, no database, no cloud, no upload. `gh` and the agent CLIs run as
   the user.
 - **The API is `/api/v1` only, described by zod.** Every request and response shape is a schema
