@@ -843,9 +843,14 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
 // ---- Node.js — the one prerequisite ---------------------------------------------------------
 
 /// The `node` the shell runs: `ONNI_DESKTOP_NODE` when set (a path, or a bogus one to test the
-/// missing-Node page), else whatever the user's PATH resolves.
+/// missing-Node page), else the runtime bundled in the installer, else whatever the user's PATH
+/// resolves.
 fn node_program() -> String {
-    std::env::var("ONNI_DESKTOP_NODE").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| "node".into())
+    std::env::var("ONNI_DESKTOP_NODE")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .or_else(|| bundled_node().map(|node| node.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "node".into())
 }
 
 /// Node 20+ reachable? Returns its version, or the reason it is not. Also decides the PATH every
@@ -1969,7 +1974,30 @@ fn resolve_entry() -> Option<PathBuf> {
             return Some(explicit);
         }
     }
-    managed_entry(&onni_home().join("versions"))
+    // A linked checkout wins over the bundled engine: whoever ran `onni link --use` asked for it.
+    managed_entry(&onni_home().join("versions")).or_else(bundled_entry)
+}
+
+/// The engine the installer ships, `<folder of this executable>/engine`, laid out like one
+/// `versions/<id>` plus its own Node runtime (`packages/desktop/scripts/stage-engine.mjs`). `None`
+/// in a dev build and in an installer made without it, which then behave as before.
+fn bundled_engine_in(exe_dir: &Path) -> Option<PathBuf> {
+    let dir = exe_dir.join("engine");
+    entry_under(&dir).is_file().then_some(dir)
+}
+
+fn bundled_engine_dir() -> Option<PathBuf> {
+    bundled_engine_in(std::env::current_exe().ok()?.parent()?)
+}
+
+fn bundled_entry() -> Option<PathBuf> {
+    bundled_engine_dir().map(|dir| entry_under(&dir))
+}
+
+/// The bundled runtime, so a machine with no Node installed still starts.
+fn bundled_node() -> Option<PathBuf> {
+    let node = bundled_engine_dir()?.join(NODE_EXE);
+    node.is_file().then_some(node)
 }
 
 /// `serve` on `port`, booting into `project` through `--repo` (the sidecar's cwd is always home).
@@ -2273,6 +2301,21 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn the_bundled_engine_is_found_next_to_the_executable_only_when_it_is_complete() {
+        let scratch = Scratch::new("bundled-engine");
+        assert_eq!(bundled_engine_in(&scratch.0), None, "no engine folder, nothing bundled");
+
+        let engine = scratch.0.join("engine");
+        std::fs::create_dir_all(&engine).unwrap();
+        assert_eq!(bundled_engine_in(&scratch.0), None, "an empty engine folder is not an engine");
+
+        let entry = entry_under(&engine);
+        std::fs::create_dir_all(entry.parent().unwrap()).unwrap();
+        std::fs::write(&entry, "// entry").unwrap();
+        assert_eq!(bundled_engine_in(&scratch.0), Some(engine));
     }
 
     #[test]
