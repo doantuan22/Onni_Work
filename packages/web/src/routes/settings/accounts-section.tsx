@@ -199,9 +199,14 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
       {/* Keyed so a changed `?agent=` on an already-mounted pane (back/forward, a second deep
           link) switches the tab — `defaultValue` alone is read once. */}
       <Tabs key={initialTab} defaultValue={initialTab}>
-        <TabsList variant="line" data-slot="accounts-tabs">
+        {/* An equal-width grid, not a w-fit row: nine labels overflow the max-w-2xl column. */}
+        <TabsList
+          variant="line"
+          data-slot="accounts-tabs"
+          className="grid h-auto w-full grid-cols-3 gap-x-1 gap-y-3 pb-2 group-data-[orientation=horizontal]/tabs:h-auto"
+        >
           {providers.map((provider) => (
-            <TabsTrigger key={provider} value={provider} data-provider={provider}>
+            <TabsTrigger key={provider} value={provider} data-provider={provider} className="h-8 flex-none">
               {PROVIDER_LABEL[provider]}
             </TabsTrigger>
           ))}

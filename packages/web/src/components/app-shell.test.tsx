@@ -320,7 +320,7 @@ describe('AppShell', () => {
       // The text truncates inside the pill rather than widening it past what the row can hold.
       const label = chip.querySelector('span:not([data-slot])') as HTMLElement
       expect(label.className).toContain('truncate')
-      expect(label.textContent).toBe('v0.9.2-nightly.20260813.1')
+      expect(label.textContent).toBe('demo_dev')
       // …and the full string stays legible on hover, since the visible one may be clipped.
       expect(chip.getAttribute('title')).toBe('v0.9.2-nightly.20260813.1')
       // Everything else in the row still refuses to shrink — that is what keeps them readable.
@@ -342,8 +342,8 @@ describe('AppShell', () => {
     it('renders the repo chip and version chip from props', () => {
       renderShell('/', { repo: { name: 'onni', branch: 'main' }, version: '1.2.3' })
       expect(screen.getByText('onni / main')).toBeTruthy()
-      // The chip prefixes the raw semver from /api/v1/health — `v1.2.3`, mono, muted.
-      expect(within(footer()).getByText('v1.2.3')).toBeTruthy()
+      // The chip prefixes the fixed demo_dev label, mono, muted.
+      expect(within(footer()).getByText('demo_dev')).toBeTruthy()
     })
 
     it('renders the Inbox badge only for a non-zero count', () => {

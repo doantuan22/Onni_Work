@@ -94,7 +94,7 @@ export function diskNote(health: HealthResponse, t: Translate = english): string
 /** The trigger's hover tooltip: the onni version, then the blocker if there is one — else
  *  the optional tools still worth knowing about. Exported for the tests. */
 export function toolsTooltip(health: HealthResponse, t: Translate = english): string {
-  const base = `onni v${health.version}`
+  const base = 'onni demo_dev'
   const blocker = toolsBlocker(health, t)
   if (blocker) return `${base} · ${blocker}`
   const low =

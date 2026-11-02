@@ -596,7 +596,7 @@ describe('the settings shell', () => {
     expect(hint).not.toBeNull()
     expect(footer.querySelector('[data-slot="theme-toggle"]')).not.toBeNull()
     // The app footer's version chip, from the same cached data.
-    expect(footer.querySelector('[data-slot="version-chip"]')?.textContent).toBe('v0.14.0')
+    expect(footer.querySelector('[data-slot="version-chip"]')?.textContent).toBe('demo_dev')
     const opened = vi.fn()
     window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, opened)
     fireEvent.click(hint)

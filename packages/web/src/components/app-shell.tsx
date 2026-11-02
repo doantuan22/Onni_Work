@@ -777,7 +777,7 @@ export function VersionChip({ version }: { version: string }) {
       title={`v${version}`}
       className="flex min-w-0 items-center gap-1 rounded-full border border-border px-1.5 py-px font-mono text-[10px] font-medium text-soft-foreground"
     >
-      <span className="truncate">v{version}</span>
+      <span className="truncate">demo_dev</span>
     </span>
   )
 }
