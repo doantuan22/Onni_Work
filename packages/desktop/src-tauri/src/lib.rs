@@ -602,6 +602,12 @@ pub fn run() {
             let handle = app.handle().clone();
             build_main_window(&handle, &shell_for_setup)?;
             build_menu(&handle, &shell_for_setup)?;
+            // Windows/Linux: no menu bar under the title bar. The menu stays built for the Versions popup;
+            // WebView2/WebKitGTK handle copy/paste/undo natively. macOS keeps its global menu bar (Cmd+C needs it).
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = handle.get_webview_window("main") {
+                let _ = window.hide_menu();
+            }
             build_tray(&handle)?;
             let shell = shell_for_setup.clone();
             let supervisor_handle = handle.clone();
