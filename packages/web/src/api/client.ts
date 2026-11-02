@@ -89,6 +89,7 @@ import type {
   GithubPrChangesData,
   GroupResponse,
   HealthResponse,
+  AgentUsageResponse,
   HostUsage,
   AttachmentEntry,
   AttachmentInput,
@@ -2489,6 +2490,14 @@ export async function getWorkspaceHostUsage(opts?: ReadOptions): Promise<HostUsa
   return unwrap(
     await onni.api.v1.workspace['host-usage'].$get({}, init(opts)),
     '/workspace/host-usage',
+  )
+}
+
+/** Per-agent usage limits (P8). `refresh` skips the server's 30 s cache. */
+export async function getAgentUsage(refresh = false, opts?: ReadOptions): Promise<AgentUsageResponse> {
+  return unwrap(
+    await onni.api.v1.workspace.usage.$get({ query: refresh ? { refresh: '1' } : {} }, init(opts)),
+    '/workspace/usage',
   )
 }
 

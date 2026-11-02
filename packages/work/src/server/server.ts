@@ -104,6 +104,7 @@ import {
   updateProjectInputSchema,
 } from '@onni/contract';
 import type { MergeResult } from '@onni/contract';
+import { agentUsageOverview } from '../workspace/usage-overview.ts';
 import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, mergeInputSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
@@ -3440,6 +3441,10 @@ export function createApp(deps: ServerDeps) {
     // the topic — never a second compute path — and `cpuPct` is absent until a bounded delta
     // window exists (the card renders `sampling…` and follows up once ~2.5 s later). The read
     // keeps the sampler warm, so a cockpit polling this route gets a fresh delta each time.
+    // Per-agent usage limits (P8): Claude's last observed windows, Codex live, the rest `unsupported`.
+    // `?refresh=1` skips the 30 s cache (the widget's refresh button); never a task launch.
+    .get('/workspace/usage', async (c) => c.json(await agentUsageOverview({ force: c.req.query('refresh') === '1' })))
+
     .get('/workspace/host-usage', async (c) => {
       const usage = hostSampler.sampleHostUsage();
       hostSampler.keepWarm();

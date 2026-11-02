@@ -54,6 +54,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { DefaultAgentPicker, agentPickerRows } from '@/components/default-agent-picker'
 import { modelCatalogStatus, modelsForRunner, RUNNERS } from '@/routes/new-task-form'
 import { useI18n } from '@/lib/i18n'
+import { AgentUsage } from '@/components/agent-usage'
 import { AddAccountDialog } from './add-account-dialog'
 import { AppSelect } from '@/components/ui/app-select'
 
@@ -233,6 +234,7 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
                 onAdd={() => setAdding(provider)}
                 onRemove={setConfirming}
               />
+              <AgentUsage provider={provider} />
               <AgentDefaults provider={provider} profiles={data} />
             </div>
           </TabsContent>

@@ -30,6 +30,7 @@ import {
   getHealth,
   getLaunchKey,
   getOpenTargets,
+  getAgentUsage,
   getProviderStatus,
   getProjectRun,
   getProjectRuns,
@@ -427,6 +428,8 @@ export const workspaceQueryKeys = {
    *  on mount and on the visibility/reconnect reconcile. Workspace-led because the machine is
    *  the machine, whichever project is on screen. */
   hostUsage: ['workspace', 'host-usage'] as const,
+  /** Per-agent usage limits (P8) via `GET /api/v1/workspace/usage`. */
+  agentUsage: ['workspace', 'usage'] as const,
   /** Agent accounts via `GET /api/v1/workspace/agent-profiles` (spec 2026-07-29-agent-profiles).
    *  Workspace-led like the registry: an account describes the machine, not a repo. */
   agentProfiles: ['workspace', 'agent-profiles'] as const,
@@ -2351,6 +2354,16 @@ export function useGithubPrChanges(number: number | undefined) {
     queryKey: ['github', 'pr-changes', number ?? 0],
     queryFn: ({ signal }) => getGithubPrChanges(number as number, {}, { signal }),
     enabled: number !== undefined,
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
+/** Per-agent usage limits (P8). A slow read, so a minute fresh; the widget's button forces one. */
+export function useAgentUsage() {
+  return useQuery({
+    queryKey: workspaceQueryKeys.agentUsage,
+    queryFn: ({ signal }) => getAgentUsage(false, { signal }),
     staleTime: 60_000,
     retry: false,
   })

@@ -25,6 +25,11 @@ function sameLocation(a: UsageAccountBinding, b: UsageAccountBinding): boolean {
   return a.provider === b.provider && a.accountId === b.accountId && a.profilePath === b.profilePath;
 }
 
+/** Every stored snapshot (read-only; for the cockpit's usage overview). Never throws. */
+export function listUsageWindows(): UsageWindowsSnapshot[] {
+  return read(join(onniHomeDir(), 'usage-windows.json'));
+}
+
 /** Exact account/location/identity match. Never falls back to another account or old login. */
 export function loadUsageWindows(binding: UsageAccountBinding): UsageWindowsSnapshot | null {
   const path = join(onniHomeDir(), 'usage-windows.json');
