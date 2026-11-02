@@ -24,7 +24,7 @@ function packageVersion(dir: string): string | null {
 
 /** The onni package root inside a checkout, or null when the tree is not onni's. */
 export function onniPackageRoot(worktree: string): string | null {
-  for (const dir of [join(worktree, 'packages', 'onni'), worktree]) {
+  for (const dir of [join(worktree, 'packages', 'work'), join(worktree, 'packages', 'onni'), worktree]) {
     if (packageVersion(dir)) return dir;
   }
   return null;

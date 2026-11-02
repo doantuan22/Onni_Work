@@ -102,4 +102,13 @@ describe('linked checkouts', () => {
     expect(onniPackageRoot(flat)).toBe(flat);
     expect(onniPackageRoot(home)).toBeNull();
   });
+
+  // The package lives in packages/work now; `onni link --use` from the repo root, the command the
+  // desktop shell's "no engine found" screen tells people to run, found nothing.
+  it('finds the package in packages/work, the layout this repository has', () => {
+    const repo = join(home, 'repo-work');
+    mkdirSync(join(repo, 'packages', 'work'), { recursive: true });
+    writeFileSync(join(repo, 'packages', 'work', 'package.json'), JSON.stringify({ name: '@onni/work', version: '0.17.0' }));
+    expect(onniPackageRoot(repo)).toBe(join(repo, 'packages', 'work'));
+  });
 });
