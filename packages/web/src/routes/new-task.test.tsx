@@ -418,7 +418,6 @@ describe('the hero surface', () => {
     // Asserted here for the DEFAULT run mode only. #793: this line used to be printed
     // unconditionally, so it also claimed isolation for runs that had opted out of it — the
     // per-state cases live in "the run-mode note" below.
-    await pillReady()
     // ⌘N drops you here to type — after the provider check enables the composer, the caret
     // must land in the box without the user clicking it.
     await waitFor(() => expect(document.activeElement).toBe(textarea()))
@@ -1735,7 +1734,8 @@ describe('bookmarklet auto-start', () => {
   it('wrong key + auto=1 → blocked: prefill, a toast, focus on Start, no run, key never rendered', async () => {
     serve()
     renderNewTask('/new?skill=deploy&ref=hello&auto=1&key=wrong')
-    await pillReady('deploy')
+    // The panel is deliberately not opened: it would take focus, and this case is about Start's focus.
+    await waitFor(() => expect(textarea().disabled).toBe(false))
     await screen.findByText('Auto-start blocked (bad key) — review and press Start')
 
     expect(keyFetched()).toBe(true)
@@ -3014,8 +3014,8 @@ describe('Task settings panel on /new', () => {
     await waitFor(() =>
       expect(document.activeElement?.getAttribute('data-section')).toBe('who'),
     )
-    // A panel under the composer, not a modal: the prompt stays reachable while it is open.
-    expect(screen.queryByRole('dialog')).toBeNull()
+    // A large dialog over the composer; the prompt stays in the accessibility tree behind it.
+    expect(screen.queryByRole('dialog')).not.toBeNull()
     expect(textarea().disabled).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: 'Collapse task settings' }))

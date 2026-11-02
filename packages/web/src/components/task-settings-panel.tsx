@@ -18,6 +18,7 @@ import {
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogPortal, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useI18n } from '@/lib/i18n'
 import {
@@ -62,16 +63,32 @@ export function TaskSettingsPanel(props: TaskSettingsPanelProps) {
   const { t } = useI18n()
   if (!props.open) return null
 
-  // One wide panel that opens under the composer. It is not a modal: the prompt stays visible
-  // and editable while the settings are being changed, and nothing else on the page is inerted.
+  // A large modal (it was an inline panel under the composer, too short to work in): the title and
+  // the footer stay put, the body scrolls, and a left rail jumps between the groups.
   return (
-    <aside
-      data-slot="task-settings-panel"
-      aria-label={t('Task settings')}
-      className="mx-auto flex max-h-[90vh] w-full max-w-[720px] flex-col overflow-hidden rounded-xl border border-border bg-card/95 shadow-sm backdrop-blur-sm"
-    >
-      <PanelBody {...props} />
-    </aside>
+    // Non-modal on purpose: Radix's modal mode hides the rest of the page from assistive tech, but
+    // the prompt and Start stay live behind this surface. The dim layer is drawn here; Radix still
+    // closes on Escape. A press outside is NOT left to Radix: popovers opened from inside the panel
+    // render in portals, which Radix counts as "outside" and would close the panel under them.
+    <Dialog open modal={false} onOpenChange={props.onOpenChange}>
+      <DialogPortal>
+        <div
+          data-slot="task-settings-overlay"
+          aria-hidden="true"
+          onClick={() => props.onOpenChange(false)}
+          className="fixed inset-0 z-40 bg-black/50"
+        />
+      </DialogPortal>
+      <DialogContent
+        data-slot="task-settings-panel"
+        aria-label={t('Task settings')}
+        showCloseButton={false}
+        onInteractOutside={(event) => event.preventDefault()}
+        className="h-[min(86dvh,860px)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl"
+      >
+        <PanelBody {...props} />
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -190,6 +207,13 @@ function PanelBody({
     return () => window.clearTimeout(id)
   }, [focusSection])
 
+  const sections: readonly PanelSection[] = ['presets', 'who', 'where', 'autonomy', 'skill', 'advanced']
+  const jump = (section: PanelSection) => {
+    if (section === 'advanced') setAdvancedOpen(true)
+    const target = bodyRef.current?.querySelector<HTMLElement>(`[data-section="${section}"]`)
+    target?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+  }
+
   return (
     <>
       <header
@@ -197,7 +221,8 @@ function PanelBody({
         className="flex shrink-0 items-center gap-2 border-b border-border px-6 py-3"
       >
         <SlidersHorizontalIcon aria-hidden="true" className="size-4 shrink-0 text-primary" />
-        <h2 className="min-w-0 flex-1 text-sm font-semibold text-foreground">{t('Task settings')}</h2>
+        <DialogTitle className="min-w-0 flex-1 text-sm">{t('Task settings')}</DialogTitle>
+        <DialogDescription className="sr-only">{t('Choose how this task runs.')}</DialogDescription>
         <button
           type="button"
           data-slot="task-settings-collapse"
@@ -209,13 +234,36 @@ function PanelBody({
           <XIcon aria-hidden="true" className="size-4" />
         </button>
       </header>
+      <div className="grid min-h-0 grid-cols-1 md:grid-cols-[11rem_minmax(0,1fr)]">
+        <nav
+          data-slot="task-settings-nav"
+          aria-label={t('Task settings sections')}
+          className="hidden flex-col gap-0.5 border-r border-border p-3 md:flex"
+        >
+          {sections.map((section) => {
+            const Icon = SECTION_ICONS[section]
+            return (
+              <button
+                key={section}
+                type="button"
+                data-slot={`task-settings-nav-${section}`}
+                aria-label={t('Go to {section}', { section: t(sectionLabel(section)) })}
+                onClick={() => jump(section)}
+                className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Icon aria-hidden="true" className="size-4 shrink-0" />
+                {t(sectionLabel(section))}
+              </button>
+            )
+          })}
+        </nav>
       {/* Layout system, one place: 4px grid, 24px between groups and around the body, 32px controls
           (the composer's 26px pills grow here only), 8px control radius, 12px card radius. The
           container query is the body's own width, so the same markup is one column on a phone. */}
       <div
         ref={bodyRef}
         data-slot="task-settings-body"
-        className="@container flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 [&_button.rounded-full]:h-8 [&_button.rounded-full]:rounded-lg"
+        className="@container flex min-h-0 flex-col gap-6 overflow-y-auto overscroll-contain p-6 [&_button.rounded-full]:h-8 [&_button.rounded-full]:rounded-lg"
       >
         <Section id="presets" title="Presets" description="Start from a saved way of working.">
           <PresetList
@@ -257,6 +305,13 @@ function PanelBody({
           {advanced}
         </Section>
       </div>
+      </div>
+      <footer data-slot="task-settings-footer" className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-3">
+        <p className="text-xs text-soft-foreground">{t('Changes apply to this task as you make them.')}</p>
+        <Button type="button" size="sm" data-slot="task-settings-done" onClick={() => onOpenChange(false)}>
+          {t('Close')}
+        </Button>
+      </footer>
     </>
   )
 }

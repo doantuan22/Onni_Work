@@ -183,20 +183,23 @@ describe('Task settings panel', () => {
 
   it('hides the whole aside when collapsed', () => {
     render(panel({ open: false }))
-    expect(screen.queryByRole('complementary', { name: 'Task settings' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Task settings' })).toBeNull()
   })
 })
 
 describe('Task settings panel as one wide surface', () => {
-  it('opens inline rather than as a modal dialog', () => {
-    render(panel())
-    expect(screen.getByRole('complementary', { name: 'Task settings' })).toBeTruthy()
-    expect(screen.queryByRole('dialog')).toBeNull()
+  it('opens as a large dialog with a left rail and a Close button', () => {
+    const onOpenChange = vi.fn()
+    render(panel({ onOpenChange }))
+    expect(screen.getByRole('dialog', { name: 'Task settings' })).toBeTruthy()
+    expect(document.querySelector('[data-slot="task-settings-nav"]')).not.toBeNull()
+    fireEvent.click(document.querySelector('[data-slot="task-settings-done"]') as HTMLElement)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('renders nothing while closed', () => {
     render(panel({ open: false }))
-    expect(screen.queryByRole('complementary', { name: 'Task settings' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Task settings' })).toBeNull()
   })
 })
 
