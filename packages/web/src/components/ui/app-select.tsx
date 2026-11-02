@@ -113,7 +113,9 @@ function AppSelect({ value, defaultValue, onChange, name, searchable, disabled, 
   return (
     <Select value={toRadix(current)} disabled={disabled} {...(name ? { name } : {})} onValueChange={(next) => choose(fromRadix(next))}>
       <SelectTrigger size="sm" data-slot="app-select" data-value={current} className={cn(TRIGGER_LAYOUT, className)} {...rest}>
-        <SelectValue />
+        {/* `block!` beats the trigger's `flex` on the value slot, so a long label ends in an ellipsis
+            instead of being cut mid-word. */}
+        <SelectValue className="block! min-w-0 flex-1 truncate text-left" />
       </SelectTrigger>
       <SelectContent position="popper">
         {entries.map((entry, index) =>
