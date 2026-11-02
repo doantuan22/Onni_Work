@@ -62,6 +62,8 @@ export interface NewTaskDraft {
   limits?: RunLimitsRequest
   /** The Manager–Worker roster chosen for this task; absent = off. Sticky like Dispatch. */
   roster?: Roster
+  /** "Full quyền manager" for THIS task (the manager may merge). Never stored: like Unlimited, a grant is chosen again each time. Absent = the workspace default. */
+  managerFullAccess?: boolean
   /** The task preset the settings came from, so the panel can show "(modified)" after a reload. */
   presetId?: string
 }

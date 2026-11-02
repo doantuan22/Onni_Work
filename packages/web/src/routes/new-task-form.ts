@@ -377,6 +377,8 @@ export function buildCreateRunBody(opts: {
   readOnly?: boolean
   /** Manager–worker (docs/design/manager-worker.md): the roster this task manages. */
   roster?: Roster | null
+  /** The manager may merge; sent only when the user chose it for this task. */
+  managerFullAccess?: boolean
   /** Per-run ceilings; `default` (or absent) stays off the wire so the workspace default applies. */
   limits?: RunLimitsRequest
   /** The project defaults to in-place, so an isolated worktree must be asked for explicitly. */
@@ -402,6 +404,7 @@ export function buildCreateRunBody(opts: {
     dispatch,
     limits,
     roster,
+    managerFullAccess,
     readOnly,
     inPlaceByDefault,
   } = opts
@@ -436,6 +439,7 @@ export function buildCreateRunBody(opts: {
     dispatch: dispatch ?? undefined,
     ...(limits && limits.mode !== 'default' ? { limits } : {}),
     ...(roster ? { roster } : {}),
+    ...(roster && managerFullAccess !== undefined ? { managerFullAccess } : {}),
   }
 }
 

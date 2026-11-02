@@ -402,6 +402,8 @@ export function NewTaskRoute() {
   // The Manager–Worker roster is a way of working, so it sticks with the draft (null = off).
   const roster = draft.roster ?? null
   const changeRoster = (next: Roster | null) => update({ roster: next ?? undefined })
+  const changeFullAccess = (next: boolean | undefined) => update({ managerFullAccess: next })
+  const fullAccessOn = roster !== null && (draft.managerFullAccess ?? workspaceConfig.data?.safety?.managerFullAccess ?? false)
   const [dispatchSettingsOpen, setDispatchSettingsOpen] = useState(false)
   const dispatchHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const changeDispatch = (next: DispatchIntent | null) => {
@@ -774,6 +776,7 @@ export function NewTaskRoute() {
         autonomous: autonomousOn,
         ...(limitsRequest.ok ? { limits: limitsRequest.request } : {}),
         roster,
+        ...(draft.managerFullAccess !== undefined ? { managerFullAccess: draft.managerFullAccess } : {}),
         generateFollowups: generateFollowupsOn,
         // #374: when the Inbox's "Run" sent us here, hand the entry's id back so the server
         // records this run on it and it leaves the inbox — the audit trail the old
@@ -875,6 +878,7 @@ export function NewTaskRoute() {
     limitsMode: limitRequest.mode,
     managerWorkers: roster ? roster.workers.length : null,
     manager: roster?.manager ?? null,
+    managerFullAccess: fullAccessOn,
     baseBranch: repo.data?.baseBranch ?? null,
     readOnly: askOn,
     askAuto: draft.readOnly === undefined,
@@ -1158,7 +1162,7 @@ export function NewTaskRoute() {
                   {t('Manager and workers')}
                 </div>
                 {dispatchAvailable ? (
-                  <ManagerWorkerPill roster={roster} onRoster={changeRoster} inline onEnabledChange={setRosterMode} />
+                  <ManagerWorkerPill roster={roster} onRoster={changeRoster} inline onEnabledChange={setRosterMode} fullAccess={draft.managerFullAccess} onFullAccess={changeFullAccess} />
                 ) : (
                   <p data-slot="manager-worker-unavailable" className="text-xs text-soft-foreground">
                     {t('Manager–Worker needs Dispatch, which is off on this server or in a folder without git.')}

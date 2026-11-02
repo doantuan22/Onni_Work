@@ -257,6 +257,16 @@ describe('the summary line names the manager when a roster is on', () => {
   })
 })
 
+describe('the summary line flags a manager that may merge', () => {
+  const input = { agent: 'claude', model: 'opus', hasGit: true, worktree: true, newBranch: false, autonomous: false, limitsMode: 'default' as const, managerWorkers: 2, manager: { runner: 'claude' } }
+  it('adds a danger segment only when a roster is on and full access is granted', () => {
+    const on = taskSummarySegments({ ...input, managerFullAccess: true }).find((s) => s.key === 'manager-access')
+    expect(on).toMatchObject({ label: 'manager: full quyền', tone: 'danger' })
+    expect(taskSummarySegments({ ...input, managerFullAccess: false }).some((s) => s.key === 'manager-access')).toBe(false)
+    expect(taskSummarySegments({ ...input, managerWorkers: null, manager: null, managerFullAccess: true }).some((s) => s.key === 'manager-access')).toBe(false)
+  })
+})
+
 describe('the summary line', () => {
   const base = {
     agent: 'claude',

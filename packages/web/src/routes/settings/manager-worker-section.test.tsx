@@ -109,6 +109,23 @@ describe('Settings → Manager–Worker', () => {
     expect(puts()[0]!.body).toEqual({ safety: { managerComplexityPolicy: false } })
   })
 
+  it('full manager access is off by default and needs a confirmation before it is saved', async () => {
+    serve()
+    renderSection()
+    const toggle = await waitFor(() => {
+      const el = document.querySelector('[data-slot="mw-full-access"]')
+      expect(el).not.toBeNull()
+      return el as HTMLElement
+    })
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(toggle)
+    // Nothing is written until the warning is confirmed.
+    expect(puts()).toHaveLength(0)
+    fireEvent.click(await screen.findByText('Allow merging'))
+    await waitFor(() => expect(puts()).toHaveLength(1))
+    expect(puts()[0]!.body).toEqual({ safety: { managerFullAccess: true } })
+  })
+
   it('saves the default preset to the workspace config', async () => {
     serve()
     renderSection()

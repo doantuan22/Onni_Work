@@ -60,6 +60,13 @@ function ManagerWorkerForm({ config }: { config: WorkspaceConfigResponse }) {
   const parsed = editing ? rosterFromDraft(editing.draft) : null
   // Shipped ON: a server that predates the key answers without it, and that must still read as on.
   const complexityPolicy = config.safety.managerComplexityPolicy ?? true
+  const fullAccess = config.safety.managerFullAccess ?? false
+  const [confirmingAccess, setConfirmingAccess] = useState(false)
+  const saveFullAccess = useMutation({
+    mutationFn: (on: boolean) => putWorkspaceConfig({ safety: { managerFullAccess: on } }),
+    onSuccess: (result) => queryClient.setQueryData(workspaceQueryKeys.config, result),
+    onError: (error: Error) => toast(error.message, { tone: 'danger' }),
+  })
   const saveComplexityPolicy = useMutation({
     mutationFn: (on: boolean) => putWorkspaceConfig({ safety: { managerComplexityPolicy: on } }),
     onSuccess: (result) => queryClient.setQueryData(workspaceQueryKeys.config, result),
@@ -144,6 +151,34 @@ function ManagerWorkerForm({ config }: { config: WorkspaceConfigResponse }) {
           />
           <span className="text-[13px] text-muted-foreground">{complexityPolicy ? t('On') : t('Off')}</span>
         </label>
+      </SettingsField>
+
+      <SettingsField
+        title={t('Full manager access')}
+        hint={t('The highest permission: the manager may merge worker branches into its own branch and its branch into the local base branch. Off by default; it never pushes. A single task can override this in its Task settings.')}
+      >
+        <label className="flex w-fit items-center gap-3">
+          <Switch
+            aria-label={t('Full manager access')}
+            data-slot="mw-full-access"
+            checked={fullAccess}
+            disabled={saveFullAccess.isPending}
+            onCheckedChange={(on) => (on ? setConfirmingAccess(true) : saveFullAccess.mutate(false))}
+          />
+          <span className={fullAccess ? 'text-[13px] font-medium text-danger' : 'text-[13px] text-muted-foreground'}>{fullAccess ? t('On — managers may merge') : t('Off')}</span>
+        </label>
+        <ConfirmDialog
+          open={confirmingAccess}
+          onOpenChange={setConfirmingAccess}
+          danger
+          title={t('Give managers full access?')}
+          description={t('Every new manager–worker task will be allowed to merge worker branches into its own branch, and its branch into the base branch of its project (locally; it never pushes). You can still turn it off per task.')}
+          confirmLabel={t('Allow merging')}
+          onConfirm={() => {
+            setConfirmingAccess(false)
+            saveFullAccess.mutate(true)
+          }}
+        />
       </SettingsField>
 
       <SettingsField title={t('Limits that apply to the whole tree')} hint={t('A manager and its workers share one set of ceilings, and workers run within the parallel-task cap.')}>

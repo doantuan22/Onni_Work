@@ -319,7 +319,7 @@ export function describeRunLimits(limits: RunLimits): string {
 export type SummaryTone = 'normal' | 'warning' | 'danger'
 
 export interface SummarySegment {
-  key: 'agent' | 'model' | 'worktree' | 'branch' | 'autonomous' | 'limits' | 'manager' | 'base' | 'ask'
+  key: 'agent' | 'model' | 'worktree' | 'branch' | 'autonomous' | 'limits' | 'manager' | 'manager-access' | 'base' | 'ask'
   label: string
   tone: SummaryTone
   section: PanelSection
@@ -339,6 +339,8 @@ export function taskSummarySegments(input: {
   autonomous: boolean
   limitsMode: 'default' | 'none' | 'capped'
   managerWorkers: number | null
+  /** The manager may merge ("Full quyền manager"): shown as a warning so it is never forgotten. */
+  managerFullAccess?: boolean
   /** The roster's manager. It runs the task in place of the single agent, so the line names it. */
   manager?: { runner: string; model?: string | undefined } | null
   baseBranch?: string | null
@@ -388,6 +390,9 @@ export function taskSummarySegments(input: {
       tone: 'warning',
       section: 'who',
     })
+  }
+  if (input.managerWorkers !== null && input.managerFullAccess) {
+    segments.push({ key: 'manager-access', label: 'manager: full quyền', tone: 'danger', section: 'who' })
   }
   if (input.baseBranch) {
     segments.push({ key: 'base', label: `base ${input.baseBranch}`, tone: 'normal', section: 'where' })

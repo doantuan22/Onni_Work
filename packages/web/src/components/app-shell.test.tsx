@@ -71,7 +71,7 @@ describe('AppShell', () => {
     expect(mark!.getAttribute('height')).toBe('40')
     expect(mark!.getAttribute('width')).toBe('40')
     expect(mark!.getAttribute('aria-hidden')).toBe('true')
-    expect(mark!.className).toContain('shrink-0')
+    expect(mark!.className).toContain('[image-rendering:pixelated]')
 
     const name = lockup!.querySelector('[data-slot="brand-name"]') as HTMLElement | null
     expect(name?.textContent).toBe('onni')

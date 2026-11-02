@@ -6,6 +6,7 @@ import { chevron, chipClass } from '@/components/picker-pill'
 import { RosterEditor } from '@/components/roster-editor'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Switch } from '@/components/ui/switch'
 import { Link } from '@/lib/project-router'
 import { useI18n } from '@/lib/i18n'
@@ -37,6 +38,8 @@ export function ManagerWorkerPill({
   onRoster,
   inline,
   onEnabledChange,
+  fullAccess,
+  onFullAccess,
 }: {
   roster: Roster | null
   onRoster: (roster: Roster | null) => void
@@ -44,6 +47,9 @@ export function ManagerWorkerPill({
   inline?: boolean
   /** The switch, as the user sees it: a draft can be on before it forms a valid roster. */
   onEnabledChange?: (on: boolean) => void
+  /** This task's "Full quyền manager" choice; undefined = the workspace default. */
+  fullAccess?: boolean | undefined
+  onFullAccess?: (next: boolean | undefined) => void
 }) {
   const { t, tn } = useI18n()
   const config = useWorkspaceConfig()
@@ -54,6 +60,8 @@ export function ManagerWorkerPill({
     roster ? draftFromRoster(roster) : null,
   )
   const [open, setOpen] = useState(false)
+  const [confirmingAccess, setConfirmingAccess] = useState(false)
+  const accessOn = fullAccess ?? config.data?.safety?.managerFullAccess ?? false
   // The last roster this component reported, so an external change (preset, draft restore) is
   // distinguishable from its own echo.
   const reported = useRef<string>(roster ? JSON.stringify(roster) : '')
@@ -129,6 +137,32 @@ export function ManagerWorkerPill({
           <div className={cn(!inline && 'max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain pr-0.5')}>
             <RosterEditor draft={draft} onChange={setDraft} connected={connected} />
           </div>
+          {onFullAccess ? (
+            <label data-slot="manager-full-access" className="flex items-start gap-3 rounded-md border border-border p-2.5">
+              <Switch
+                aria-label={t('Full manager access')}
+                data-slot="manager-full-access-switch"
+                checked={accessOn}
+                onCheckedChange={(next) => (next ? setConfirmingAccess(true) : onFullAccess(false))}
+              />
+              <span className="min-w-0 text-[12.5px]">
+                <span className="font-medium text-foreground">{t('Full manager access')}</span>
+                <span className="block text-muted-foreground">{t('Lets the manager merge worker branches into its own branch and into the local base branch. Never pushes.')}</span>
+              </span>
+            </label>
+          ) : null}
+          <ConfirmDialog
+            open={confirmingAccess}
+            onOpenChange={setConfirmingAccess}
+            danger
+            title={t('Give the manager full access?')}
+            description={t('The manager will be allowed to merge worker branches into its own branch, and its branch into the base branch of this project (locally; it never pushes). Check the result before you push.')}
+            confirmLabel={t('Allow merging')}
+            onConfirm={() => {
+              setConfirmingAccess(false)
+              onFullAccess?.(true)
+            }}
+          />
           {parsed && !parsed.ok ? <p data-slot="roster-error" className="text-[12px] text-danger">{parsed.error}</p> : null}
           {gone.length > 0 ? <p className="text-[12px] text-danger">{t('Not connected: {backends} — the task would be refused.', { backends: gone.join(', ') })}</p> : null}
           {rosterNow && maxParallel !== undefined && totalConcurrency(rosterNow) > maxParallel ? (
