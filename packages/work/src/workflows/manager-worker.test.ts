@@ -291,6 +291,50 @@ describe('manager–worker engine (dry-run)', () => {
     expect(store.getRun(m.id)!.managerDidNotDelegate).toBeUndefined();
   }, 60_000);
 
+  describe('Full quyền manager: the merge permission is checked on the server', () => {
+    const commitInWorker = async (id: string, file: string) => {
+      await waitFor(id, (x) => x?.worktreePath !== undefined);
+      const wt = store.getRun(id)!.worktreePath!;
+      writeFileSync(join(wt, file), `${file}\n`);
+      await run('git', ['add', '-A'], { cwd: wt });
+      await run('git', [...GIT_ID, 'commit', '-q', '-m', `add ${file}`], { cwd: wt });
+    };
+
+    it('refuses with a clear message while the permission is off, and logs the refusal', async () => {
+      const m = await parked();
+      const out = await manager.mergeFromAgent(m.id, { into: 'task', source: 'whatever' });
+      expect(out).toEqual({ denied: expect.stringContaining('Manager chưa được cấp quyền merge') });
+      expect(store.readEvents(m.id).some((e) => e.type === 'note' && String((e as { message?: string }).message).includes('merge refused'))).toBe(true);
+    }, 60_000);
+
+    it('a worker can never merge, even in a tree whose manager may', async () => {
+      const m = startManager('mock:monitoring manage', ROSTER, { managerFullAccess: true });
+      await waitFor(m.id, (x) => x?.activity === 'monitoring');
+      const w = await ok(m.id, 'mock:monitoring work', { backend: 'claude', model: 'haiku', title: 'w' });
+      expect(await manager.mergeFromAgent(w.id, { into: 'base' })).toEqual({ denied: expect.stringContaining('only the manager') });
+    }, 80_000);
+
+    it('with the permission on: merges a worker branch into the task branch, then the task branch into the local base, and audits both', async () => {
+      writeFileSync(join(repoRoot, '.git', 'info', 'exclude'), '.ai/\n', { flag: 'a' });
+      const m = startManager('mock:monitoring manage', ROSTER, { managerFullAccess: true });
+      expect(store.getRun(m.id)!.managerFullAccess).toBe(true);
+      await waitFor(m.id, (x) => x?.activity === 'monitoring');
+      const w = await ok(m.id, 'mock:monitoring work', { backend: 'claude', model: 'haiku', title: 'w' });
+      await commitInWorker(w.id, 'from-worker.txt');
+
+      expect(await manager.mergeFromAgent(m.id, { into: 'task', source: 'not-a-worker' })).toEqual({ denied: expect.stringContaining('is not a worker of this task') });
+      const first = await manager.mergeFromAgent(m.id, { into: 'task', source: w.id.slice(0, 8) });
+      expect(first).toMatchObject({ outcome: 'merged' });
+      expect(existsSync(join(store.getRun(m.id)!.worktreePath!, 'from-worker.txt'))).toBe(true);
+
+      const second = await manager.mergeFromAgent(m.id, { into: 'base' });
+      expect(second).toMatchObject({ outcome: 'merged' });
+      expect(existsSync(join(repoRoot, 'from-worker.txt'))).toBe(true);
+      const notes = store.readEvents(m.id).map((e) => String((e as { message?: string }).message ?? ''));
+      expect(notes.filter((n) => n.startsWith('merge (')).length).toBe(2);
+    }, 120_000);
+  });
+
   describe('--after: ordering dependent work', () => {
     it('holds a dependent queued until the order it depends on has finished, then starts it on that branch', async () => {
       const m = await parked();

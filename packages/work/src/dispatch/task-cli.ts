@@ -32,6 +32,9 @@ const USAGE = `onni task — dispatch onni tasks from inside a task (on by defau
   onni task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
                   [--verdict approve|changes|reject] [--suggestions "…"]… [--confidence <0-1>]
                   [--side-effect "…"]… [--error "…"]… [--next "…"]
+  onni task merge <run id|branch>      (manager, needs "Full quyền manager") merge a worker's branch into yours
+  onni task merge --to-base            (manager) bring base into your branch, then fast-forward the local base
+  onni task merge --abort              abandon a merge left in progress
   onni task list                       the tree this task belongs to, with status and cost
   onni task tree <run id>              the tree rooted at (or containing) another run`;
 
@@ -174,6 +177,26 @@ export async function runTaskCommand(
         if (!response.ok) throw new Error(`report refused — ${await readError(response)}`);
         io.log(`report recorded — status ${values.status}${values.verdict ? `, verdict ${values.verdict}` : ''}. It is delivered to your parent when this task settles.`);
         return 0;
+      }
+      case 'merge': {
+        const { values, positionals } = parseArgs({
+          args: rest,
+          allowPositionals: true,
+          options: { 'to-base': { type: 'boolean' }, abort: { type: 'boolean' } },
+        });
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can merge');
+        const into = values['to-base'] ? 'base' : 'task';
+        const source = positionals[0];
+        if (into === 'task' && !values.abort && !source) throw new Error('name what to merge: onni task merge <run id or branch>  (or --to-base, or --abort)');
+        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/merge`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ into, ...(source ? { source } : {}), ...(values.abort ? { abort: true } : {}) }),
+        });
+        if (!response.ok) throw new Error(`merge refused — ${await readError(response)}`);
+        const result = (await response.json()) as { outcome: string; message: string };
+        io.log(`${result.outcome}: ${result.message}`);
+        return result.outcome === 'conflict' ? 3 : 0;
       }
       case 'list':
       case 'tree': {

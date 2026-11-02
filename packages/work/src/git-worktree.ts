@@ -455,7 +455,7 @@ export async function removeWorktree(
  * still saw `onni autosave` in `git log` and reasonably concluded the opt-out
  * was broken. Only commit *spacing* (~90 s ⇒ timer) told them apart.
  */
-export type AutosaveReason = 'periodic' | 'turn end' | 'run finalize' | 'pre-PR' | 'pre-dispatch' | 'wip before dispatch';
+export type AutosaveReason = 'periodic' | 'turn end' | 'run finalize' | 'pre-PR' | 'pre-dispatch' | 'wip before dispatch' | 'wip before merge';
 
 /**
  * What an autosave attempt did. `refused` and `failed` are distinct from

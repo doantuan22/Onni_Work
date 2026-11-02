@@ -67,6 +67,8 @@ export const safetySettingsSchema = z.object({
   dispatchRetryLimit: z.number().int().min(0).max(3),
   /** Manager–worker: tell a manager to hand complex work to workers instead of doing it alone. Absent = on. */
   managerComplexityPolicy: z.boolean().optional(),
+  /** Default for "Full quyền manager" (the manager may merge). Absent = off. A task can override it. */
+  managerFullAccess: z.boolean().optional(),
 });
 export type SafetySettings = z.infer<typeof safetySettingsSchema>;
 export const DEFAULT_SAFETY_SETTINGS: SafetySettings = {
@@ -76,4 +78,5 @@ export const DEFAULT_SAFETY_SETTINGS: SafetySettings = {
   dispatchUnlimitedSubtasks: false,
   dispatchRetryLimit: 1,
   managerComplexityPolicy: true,
+  managerFullAccess: false,
 };

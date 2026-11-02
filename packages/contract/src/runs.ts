@@ -194,6 +194,8 @@ export const runRecordSchema = z.object({
   limits: runLimitsSchema.optional(),
   /** Manager–worker roster of this task tree (on the root; snapshotted at start). */
   roster: rosterSchema.optional(),
+  /** The manager may merge ("Full quyền manager"): snapshotted at start on the root, absent = off. */
+  managerFullAccess: z.boolean().optional(),
   /** Set when a manager finished without handing any task to a worker. */
   managerDidNotDelegate: z.boolean().optional(),
   /** `--version` of the agent CLI that last ran this task (antigravity updates itself between runs). */
@@ -1238,6 +1240,8 @@ export const createRunInputBaseSchema = z
     limits: runLimitsRequestSchema.optional(),
     /** Start this task as the MANAGER of a worker roster (needs dispatch; forces a worktree). */
     roster: rosterSchema.optional(),
+    /** Give the manager the merge permission for this task; absent = the workspace default (off). */
+    managerFullAccess: z.boolean().optional(),
   });
 
 /** A task may be attachments alone (a pasted screenshot is a brief), but never nothing at all. */

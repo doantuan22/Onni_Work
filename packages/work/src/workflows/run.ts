@@ -150,6 +150,8 @@ import { resolveProfileEnvForRoot } from '../workspace/agent-profiles.ts';
 import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
+import type { MergeInput } from '@onni/contract';
+import { runManagerMerge, type MergeOutcome } from './manager-merge.ts';
 import { managerDoingComplexAlone, managerPrompt, resolveWorker, workerPrompt, workersInFlight, type RemainingBudget } from './manager-worker.ts';
 import { UNATTENDED_DENIED_TOOLS, pushGuardEnv, pushRefusal } from './push-guard.ts';
 import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf, subtreeUsage } from './limits.ts';
@@ -929,6 +931,8 @@ export interface StartRunInput {
   /** Start as the MANAGER of a worker roster (docs/design/manager-worker.md): takes the roster's
    *  manager backend/model, always gets a worktree, and may dispatch ONLY to the listed workers. */
   roster?: Roster;
+  /** The manager may merge ("Full quyền manager"); snapshotted on the root. */
+  managerFullAccess?: boolean;
 }
 
 /**
@@ -1824,7 +1828,7 @@ export class RunManager {
     if (input.roster) {
       // The roster is snapshotted here and never re-read: a worker cannot widen it, and a later
       // preset edit does not touch a tree that is already running.
-      this.store.updateRun(run.id, { roster: input.roster, dispatch: { ...(this.store.getRun(run.id)?.dispatch ?? { rootRunId: run.id }), rootRunId: run.id } });
+      this.store.updateRun(run.id, { roster: input.roster, ...(input.managerFullAccess ?? this.semaphore.safety().managerFullAccess ? { managerFullAccess: true } : {}), dispatch: { ...(this.store.getRun(run.id)?.dispatch ?? { rootRunId: run.id }), rootRunId: run.id } });
     }
     // Initial pasted attachments must be visible while the run is still queued (#612),
     // and must survive a restart before a slot opens. Persist them before the job
@@ -2708,6 +2712,7 @@ export class RunManager {
         ? workerPrompt(dispatch.kind)
         : managerPrompt(roster, this.remainingForManager(runs, dispatch.rootRunId), {
             complexityPolicy: this.semaphore.safety().managerComplexityPolicy !== false,
+            fullAccess: runs.find((r) => r.id === dispatch.rootRunId)?.managerFullAccess === true,
           });
       return;
     }
@@ -2805,6 +2810,65 @@ export class RunManager {
     // knows something may have changed on disk without watching it.
     this.notifyTreeInboxes(dispatch.rootRunId, runId);
     return { hasDispatch: true, dispatched, overBudget, rePrompted };
+  }
+
+  /**
+   * `POST /runs/:id/merge` — the manager's merge tool. The permission is checked HERE, on the
+   * server, against the root's snapshotted `managerFullAccess`: a prompt that is ignored changes
+   * nothing. Every attempt — allowed, refused or conflicting — is written to the task's log.
+   */
+  async mergeFromAgent(runId: string, input: MergeInput): Promise<MergeOutcome | { denied: string }> {
+    const run = this.store.getRun(runId);
+    if (!run) return { denied: `no such run: ${runId}` };
+    const note = (message: string, tone?: 'danger') =>
+      this.store.appendEvent(runId, { type: 'note', stepId: this.active.get(runId)?.currentStepId, message, ...(tone ? { tone } : {}) });
+    if (!run.roster || run.dispatch?.parentRunId) return { denied: 'only the manager of a manager–worker task can merge' };
+    if (run.managerFullAccess !== true) {
+      const denied = 'Manager chưa được cấp quyền merge. Hãy đề nghị người dùng merge thủ công, hoặc bật "Full quyền manager" trong Cài đặt nhiệm vụ.';
+      note(`merge refused — ${denied}`, 'danger');
+      return { denied };
+    }
+    if (!run.worktreePath || !run.branch || !existsSync(run.worktreePath)) return { denied: 'the manager has no worktree to merge in' };
+    let sourceBranch: string | undefined;
+    if (input.into === 'task' && !input.abort) {
+      const ref = input.source ?? '';
+      const members = this.store.listRuns().filter((r) => r.dispatch?.rootRunId === runId && r.id !== runId && r.branch);
+      const hit = members.find((r) => r.id === ref || (ref.length >= 6 && r.id.startsWith(ref)) || r.branch === ref);
+      if (!hit) {
+        const known = members.map((r) => `${r.id.slice(0, 8)} (${r.branch})`).join(', ') || 'none yet';
+        return { denied: `"${ref}" is not a worker of this task. Workers: ${known}` };
+      }
+      sourceBranch = hit.branch;
+    }
+    const saved = await autosaveCommit(run.worktreePath, 'wip before merge');
+    if (saved === 'refused' || saved === 'failed') {
+      // A half-resolved merge from an earlier conflict is fine: runManagerMerge reports it.
+      if (saved === 'failed') return { denied: 'your uncommitted work could not be committed before merging' };
+    }
+    const result = await runManagerMerge({
+      worktree: run.worktreePath,
+      taskBranch: run.branch,
+      baseBranch: run.baseBranch ?? '',
+      repoRoot: this.repoRoot,
+      into: input.into,
+      ...(sourceBranch ? { sourceBranch } : {}),
+      ...(input.abort ? { abort: true } : {}),
+    });
+    const target = input.into === 'base' ? run.baseBranch : run.branch;
+    const detail = `merge (${input.into}) ${input.source ? `${input.source} → ` : ''}${target}: ${result.outcome} — ${result.message}${'before' in result && result.before ? ` [${result.before.slice(0, 8)} → ${result.after?.slice(0, 8) ?? '?'}]` : ''}`;
+    note(detail, result.outcome === 'conflict' || result.outcome === 'refused' ? 'danger' : undefined);
+    appendLedger(this.dataDir, runId, {
+      type: 'merge',
+      runId,
+      into: input.into,
+      source: sourceBranch ?? input.source ?? null,
+      target: target ?? null,
+      outcome: result.outcome,
+      before: 'before' in result ? result.before ?? null : null,
+      after: 'after' in result ? result.after ?? null : null,
+    });
+    if (result.outcome === 'refused') return { denied: result.message };
+    return result;
   }
 
   /**

@@ -134,8 +134,15 @@ export function complexityPolicyBlock(): string {
 If your limit on worker calls runs out while complex work remains, do not quietly finish it yourself: tell the user the limit is spent and that "Unlimited worker calls" (Settings → Resources → Advanced) lifts it.`;
 }
 
+/** What a manager is told when the user granted it the merge permission. Enforced server-side too. */
+export const FULL_ACCESS_BLOCK = `Full manager access is ON for this task: you may merge. Use the merge tool, not raw git, so the server can check and log it:
+  onni task merge <worker run id or branch>   merge one worker's branch into YOUR branch
+  onni task merge --to-base                   bring the base branch into yours, then fast-forward the LOCAL base branch to yours
+  onni task merge --abort                     abandon a merge left in progress
+It never pushes, never force-updates, never deletes a branch and never rewrites history; you also must not. Commit first (a dirty worktree is refused). On a conflict the merge is left in progress in your worktree: fix the files, git add, git commit, then run the same merge again — or --abort and report why. Do not leave the repository half-merged. This permission only gathers results: complex work still goes to workers. Merge into the base branch only when the work is verified (run the repository's checks first).`;
+
 /** The manager's whole dispatch brief: roster, syntax, reports, integration procedure, limits. */
-export function managerPrompt(roster: Roster, left: RemainingBudget, opts: { complexityPolicy?: boolean } = {}): string {
+export function managerPrompt(roster: Roster, left: RemainingBudget, opts: { complexityPolicy?: boolean; fullAccess?: boolean } = {}): string {
   const workers = roster.workers.map((w) => {
     const name = describeWorker(w);
     return `- ${name}${w.role ? ` — ${w.role}` : ''}. Up to ${w.maxConcurrent} at once.`;
@@ -167,7 +174,7 @@ Integrating. A report is a CLAIM: status (done, partial, failed, blocked), resul
 3. Merge accepted branches into YOUR OWN branch, in your worktree, one at a time: git merge --no-ff <worker branch>. Resolve any conflict yourself, keeping both sides' intent.
 4. Run the repository's checks after EACH merge; fix or revert before the next one.
 5. When every part is in (or consciously left out), run the full checks once more and report the final result: what each worker delivered, what you changed, what is not done.
-Never merge into the repository's base branch and never push; your branch goes through the usual review.
+${opts.fullAccess ? FULL_ACCESS_BLOCK : "Never merge into the repository's base branch and never push; your branch goes through the usual review. (`onni task merge` is refused unless the user switched on \"Full quyền manager\"; if you need a merge you may not do, tell the user to merge by hand.)"}
 
 ${remainingLines(left)}
 ${opts.complexityPolicy === false ? '' : `\n${complexityPolicyBlock()}\n`}

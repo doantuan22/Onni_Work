@@ -26,6 +26,33 @@ export const DISPATCH_KINDS = ['implement', 'review'] as const;
 export const dispatchKindSchema = z.enum(DISPATCH_KINDS);
 export type DispatchKind = z.infer<typeof dispatchKindSchema>;
 
+/**
+ * `POST /runs/:id/merge` — the manager's merge tool (`onni task merge`). Server-checked: the tree's
+ * root must have been given "Full quyền manager" (`RunRecord.managerFullAccess`) or it is a 409.
+ *  - `into: 'task'` merges one tree member's branch (`source`: run id, short id or its branch) into
+ *    the manager's own branch;
+ *  - `into: 'base'` brings the base branch into the manager's branch (conflicts are resolved THERE,
+ *    never in the user's checkout) and then fast-forwards the local base branch. Never pushes.
+ *  - `abort: true` abandons a merge left in progress by an earlier conflict.
+ */
+export const mergeInputSchema = z
+  .object({
+    into: z.enum(['task', 'base']).default('task'),
+    source: z.string().min(1).max(200).optional(),
+    abort: z.boolean().optional(),
+  })
+  .strict();
+export type MergeInput = z.infer<typeof mergeInputSchema>;
+
+export const mergeResultSchema = z.object({
+  outcome: z.enum(['merged', 'up-to-date', 'conflict', 'aborted']),
+  message: z.string(),
+  before: z.string().optional(),
+  after: z.string().optional(),
+  files: z.array(z.string()).optional(),
+});
+export type MergeResult = z.infer<typeof mergeResultSchema>;
+
 /** `POST /runs/:id/report` — how a dispatched task reports upward (the `onni task report` CLI). */
 export const dispatchReportSchema = z.object({
   status: z.enum(['done', 'partial', 'failed', 'blocked']),

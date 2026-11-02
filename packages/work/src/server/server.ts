@@ -103,7 +103,8 @@ import {
   openProjectInSchema,
   updateProjectInputSchema,
 } from '@onni/contract';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
+import type { MergeResult } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, mergeInputSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -800,6 +801,8 @@ const startRunSchema = z
     limits: runLimitsRequestSchema.optional(),
     // Manager–worker (docs/design/manager-worker.md): this task manages the listed workers.
     roster: rosterSchema.optional(),
+    // "Full quyền manager": the manager may merge (needs a roster). Omitted = the workspace default (off).
+    managerFullAccess: z.boolean().optional(),
     // Generate follow-up inbox entries (spec 007, #444). Honoured only while
     // the `followups` capability is on (#471) — off, the server pins it to
     // false whatever the client asked for. Omitted still means "enabled" for
@@ -4532,6 +4535,7 @@ export function createApp(deps: ServerDeps) {
   const dispatchRoutes = new Hono<ProjectApiEnv>()
     .use('/runs/:id/dispatch', requireDispatch)
     .use('/runs/:id/report', requireDispatch)
+    .use('/runs/:id/merge', requireDispatch)
 
     /** Create ONE child of run `:id`. Refusals (cap, budget, settled parent) are 409 with the
      *  reason — the same text the parent's transcript notes. */
@@ -4540,6 +4544,15 @@ export function createApp(deps: ServerDeps) {
       const outcome = await manager.dispatchFromAgent(c.req.param('id'), c.req.valid('json'));
       if ('refused' in outcome) return c.json({ error: outcome.refused }, 409);
       return c.json(outcome, 201);
+    })
+
+    /** The manager's merge tool. The permission is checked in `mergeFromAgent`; a denial is 409
+     *  with the reason, a conflict is a 200 `{ outcome: 'conflict' }` (the merge stays in progress). */
+    .post('/runs/:id/merge', jsonZodValidator(mergeInputSchema), async (c) => {
+      const { manager } = c.get('project');
+      const outcome = await manager.mergeFromAgent(c.req.param('id'), c.req.valid('json'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, 409);
+      return c.json(outcome as MergeResult, 200); // `refused` is already a `denied` above
     })
 
     /** Record run `:id`'s own report. 404 when the run is not in a dispatch tree. */
@@ -4742,6 +4755,7 @@ export function createApp(deps: ServerDeps) {
         autonomous: parsed.data.autonomous,
         ...(parsed.data.limits ? { limits: parsed.data.limits } : {}),
         ...(roster ? { roster } : {}),
+        ...(roster && parsed.data.managerFullAccess !== undefined ? { managerFullAccess: parsed.data.managerFullAccess } : {}),
         // Opt-in inbox (#471): the capability is the ceiling, so a client asking
         // for follow-ups on a server that has them off gets a plain `false`
         // rather than an error — the run is still perfectly valid without them.
