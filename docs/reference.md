@@ -182,6 +182,11 @@ repo and its `.ai/onni/` are never touched, so re-adding it later finds all its
 tasks intact. The project OnniCode is currently serving can't be removed from the
 cockpit — stop the server and use `onni projects remove <id>` instead.
 
+To start a project over without unregistering it, **project Settings → General → Delete project data**
+deletes every task of that project with its chat, notes, worktree and branch (`POST /api/v1/project-data/clear`).
+You confirm by typing the project's name; running tasks are kept, and the folder and its git history are
+not touched.
+
 **From the terminal** — the same registry, no cockpit required (handy over ssh):
 
 ```bash

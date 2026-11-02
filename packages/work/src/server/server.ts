@@ -103,7 +103,8 @@ import {
   openProjectInSchema,
   updateProjectInputSchema,
 } from '@onni/contract';
-import type { MergeResult } from '@onni/contract';
+import type { ClearProjectDataResult, MergeResult } from '@onni/contract';
+import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
 import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, mergeInputSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
@@ -4602,6 +4603,36 @@ export function createApp(deps: ServerDeps) {
   };
 
   // ---- chained family: runs lifecycle + artifacts (project-scoped) ----
+  /**
+   * One task, gone with everything that belongs to it: worktree + branch (spec 006), terminals,
+   * layouts, events (the chat), handoff, images and drafts (`store.deleteRun`). Shared by the
+   * single-task delete and the per-project clear, so both clean up identically.
+   */
+  const deleteRunFully = async (
+    project: ProjectContext,
+    id: string,
+  ): Promise<{ ok: true } | { ok: false; status: 404 | 409; error: string } | { ok: false; status: 'lifecycle'; error: unknown }> => {
+    const { root: repoRoot, store, manager, dataDir } = project;
+    if (manager.isActive(id)) return { ok: false, status: 409, error: 'run is active — cancel it first' };
+    const run = store.getRun(id);
+    if (!run) return { ok: false, status: 404, error: 'not found' };
+    if (protectedByLiveTree(run, store.listRuns())) return { ok: false, status: 409, error: 'this worker belongs to a task tree that is still running — its manager may still be integrating the branch; try again when the tree has finished' };
+    try {
+      return await legacyWorktreeMutation(project, id, async () => {
+        stopTaskProcesses(id);
+        // Layouts go with the task, and only with it — archiving keeps them (spec §5.3).
+        deleteRunLayouts(dataDir, id);
+        if (run.worktreePath) await removeWorktree(repoRoot, run.worktreePath, run.branch);
+        const deleted = store.deleteRun(id);
+        // The run's `refs/onni/pr/<n>` goes with the last run that needed it (Phase 3).
+        if (deleted && run.prHead) await manager.sweepPrHeadRefs();
+        return deleted ? ({ ok: true } as const) : ({ ok: false, status: 404, error: 'not found' } as const);
+      });
+    } catch (error) {
+      return { ok: false, status: 'lifecycle', error };
+    }
+  };
+
   const runsRoutes = new Hono<ProjectApiEnv>()
     // `workflowDef` is ~1.3 MB per run; the list leaves it out (`?full=1` opts back in, GET /runs/:id is always complete).
     .get('/runs', queryZodValidator(runsListQuerySchema), (c) => {
@@ -5630,26 +5661,35 @@ export function createApp(deps: ServerDeps) {
     })
 
     .delete('/runs/:id', async (c) => {
-      const { root: repoRoot, store, manager, dataDir } = c.get('project');
-      const id = c.req.param('id');
-      if (manager.isActive(id)) return c.json({ error: 'run is active — cancel it first' }, 409);
-      const run = store.getRun(id);
-      if (!run) return c.json({ error: 'not found' }, 404);
-      if (protectedByLiveTree(run, store.listRuns())) return c.json({ error: 'this worker belongs to a task tree that is still running — its manager may still be integrating the branch; try again when the tree has finished' }, 409);
-      // Delete cleans up after itself: worktree + branch go with the run (spec 006), and so do its terminals.
-      try {
-        return await legacyWorktreeMutation(c.get('project'), id, async () => {
-          stopTaskProcesses(id);
-          // Layouts go with the task, and only with it — archiving keeps them (spec §5.3).
-          deleteRunLayouts(dataDir, id);
-          if (run.worktreePath) await removeWorktree(repoRoot, run.worktreePath, run.branch);
-          const deleted = store.deleteRun(id);
-          // The run's `refs/onni/pr/<n>` goes with the last run that needed it (Phase 3).
-          if (deleted && run.prHead) await manager.sweepPrHeadRefs();
-          if (!deleted) return c.json({ error: 'not found' }, 404);
-          return c.json({ deleted: true });
-        });
-      } catch (error) { return lifecycleError(c, error); }
+      const outcome = await deleteRunFully(c.get('project'), c.req.param('id'));
+      if (outcome.ok) return c.json({ deleted: true as const });
+      if (outcome.status === 'lifecycle') return lifecycleError(c, outcome.error);
+      return c.json({ error: outcome.error }, outcome.status);
+    })
+
+    /** Clear one project's tasks and chats (see `clearProjectDataInputSchema`). */
+    .post('/project-data/clear', jsonZodValidator(clearProjectDataInputSchema), async (c) => {
+      const project = c.get('project');
+      const confirm = c.req.valid('json').confirm;
+      const names = new Set([project.id, basename(project.root)].map((name) => name.toLowerCase()));
+      if (!names.has(confirm.toLowerCase())) {
+        return c.json({ error: 'type the project name to confirm' }, 400);
+      }
+      // Children before parents: a worker is gone before its manager, so no tree is half-orphaned.
+      const runs = [...project.store.listRuns()].sort((a, b) => Number(b.dispatch?.parentRunId !== undefined) - Number(a.dispatch?.parentRunId !== undefined));
+      let deleted = 0;
+      const skipped: ClearProjectDataResult['skipped'] = [];
+      for (const run of runs) {
+        if (!project.store.getRun(run.id)) continue;
+        if (project.manager.isActive(run.id) || run.status === 'running' || run.status === 'queued' || run.status === 'waiting') {
+          skipped.push({ id: run.id, title: run.title, reason: 'still running — stop it first' });
+          continue;
+        }
+        const outcome = await deleteRunFully(project, run.id);
+        if (outcome.ok) deleted += 1;
+        else skipped.push({ id: run.id, title: run.title, reason: outcome.status === 'lifecycle' ? String(outcome.error instanceof Error ? outcome.error.message : outcome.error) : outcome.error });
+      }
+      return c.json({ deleted, skipped } satisfies ClearProjectDataResult);
     });
 
   // ---- chained family: in-task drafts (project-scoped) ----------------------

@@ -674,6 +674,20 @@ export type MarkAllReadResponse = z.infer<typeof markAllReadResponseSchema>;
 export const deleteRunResponseSchema = z.object({ deleted: z.literal(true) });
 export type DeleteRunResponse = z.infer<typeof deleteRunResponseSchema>;
 
+/**
+ * `POST /project-data/clear` — delete every task of ONE project, with its chat (events), handoff
+ * notes, drafts, layouts, terminals, worktree and branch: the single-task delete, repeated.
+ * `confirm` must repeat the project's name (or id) so a stray call cannot wipe a project.
+ * Tasks still running or queued, and workers of a tree that is still live, are skipped and listed.
+ */
+export const clearProjectDataInputSchema = z.object({ confirm: z.string().trim().min(1).max(256) }).strict();
+export type ClearProjectDataInput = z.infer<typeof clearProjectDataInputSchema>;
+export const clearProjectDataResultSchema = z.object({
+  deleted: z.number().int().nonnegative(),
+  skipped: z.array(z.object({ id: z.string(), title: z.string(), reason: z.string() })),
+});
+export type ClearProjectDataResult = z.infer<typeof clearProjectDataResultSchema>;
+
 /** `POST /runs/:id/finish` — "no open session" is a 409. */
 export const finishResponseSchema = z.object({ finished: z.literal(true) });
 export type FinishResponse = z.infer<typeof finishResponseSchema>;

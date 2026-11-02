@@ -63,6 +63,7 @@ import type {
   StopAllResponse,
   CreateRunResponse,
   DeleteDraftResponse,
+  ClearProjectDataResult,
   DeleteRunResponse,
   DeleteWorkflowResponse,
   DraftEntry,
@@ -1751,6 +1752,17 @@ export async function deleteRun(id: string): Promise<DeleteRunResponse> {
       param: { projectId: queryScope(), id: encodeURIComponent(id) },
     }),
     runPath(id),
+  )
+}
+
+/** Deletes every task (and its chat) of ONE project; `confirm` must repeat the project's name. */
+export async function clearProjectData(projectId: string, confirm: string): Promise<ClearProjectDataResult> {
+  return unwrap(
+    await onni.api.v1.p[':projectId']['project-data'].clear.$post({
+      param: { projectId: encodeURIComponent(projectId) },
+      json: { confirm },
+    }),
+    '/project-data/clear',
   )
 }
 

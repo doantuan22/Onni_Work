@@ -12,6 +12,7 @@ import { ProjectFolderField } from './project-location'
 import { AddBootProjectButton, MaxParallelStepper, STATUS_LABEL } from './projects-section'
 import { RemoveProjectDialog, useProjectRemoval } from './remove-project'
 import { SettingsField } from './settings-field'
+import { ClearProjectData } from './clear-project-data'
 
 /**
  * Project settings → General: what THIS project is, and the few knobs that belong to the project
@@ -92,6 +93,7 @@ export function ProjectGeneral({ capabilities }: { capabilities?: Partial<Pick<C
       <ProjectFolderField />
       <ProjectFacts project={project} canRemove={managesRegistry} />
       <WebhookCard />
+      <ClearProjectData project={project} />
       {project.unregistered ? (
         <SettingsField
           title={t('Add to your projects')}

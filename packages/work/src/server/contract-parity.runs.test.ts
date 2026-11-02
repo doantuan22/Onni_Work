@@ -1,10 +1,12 @@
-import type { InferResponseType } from 'hono/client';
+import type { InferRequestType, InferResponseType } from 'hono/client';
 import { hc } from 'hono/client';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import type {
   apiRunSchema,
   archiveFinishedResponseSchema,
+  clearProjectDataInputSchema,
+  clearProjectDataResultSchema,
   cancelResponseSchema,
   continueResponseSchema,
   createPrResponseSchema,
@@ -78,8 +80,13 @@ describe('src/contract/runs.ts matches the runs routes exactly', () => {
   type AdoptPr200 = InferResponseType<Run['pr']['adopt']['$post'], 200>;
   type RemoveWorktree200 = InferResponseType<Run['remove-worktree']['$post'], 200>;
   type DeleteRun200 = InferResponseType<Run['$delete'], 200>;
+  type ClearProject = (typeof client.api.v1)['project-data']['clear']['$post'];
+  type ClearProject200 = InferResponseType<ClearProject, 200>;
+  type ClearProjectBody = InferRequestType<ClearProject>['json'];
 
   type _Checks = [
+    Assert<Exact<z.infer<typeof clearProjectDataResultSchema>, ClearProject200>>,
+    Assert<Exact<z.input<typeof clearProjectDataInputSchema>, ClearProjectBody>>,
     // the record, in both of its two forms
     Assert<Exact<z.infer<typeof apiRunSchema>[], RunsList200[number][]>>,
     Assert<Exact<z.infer<typeof apiRunSchema>, RunGet200>>,
