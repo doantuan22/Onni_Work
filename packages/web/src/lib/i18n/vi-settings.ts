@@ -971,8 +971,8 @@ export const viSettings: Record<string, string> = {
   'No account details to show.': 'Không có chi tiết tài khoản để hiển thị.',
   'Not connected': 'Chưa kết nối',
   'Not installed': 'Chưa cài đặt',
-  'One agent per tab: whether it is installed, and which logins you have. Add a second config folder to keep a work account beside a personal one; each project picks which it uses in its own Agents settings.':
-    'Mỗi tab một agent: xem nó đã được cài chưa và bạn có những đăng nhập nào. Thêm thư mục cấu hình thứ hai để giữ tài khoản công việc bên cạnh tài khoản cá nhân; mỗi dự án tự chọn dùng tài khoản nào trong cài đặt Agents của nó.',
+  'One list of agents: pick one to see whether it is installed, which logins you have and its defaults. Add a second config folder to keep a work account beside a personal one; each project picks which it uses in its own Agents settings.':
+    'Một danh sách agent: chọn một agent để xem nó đã được cài chưa, bạn có những đăng nhập nào và các mặc định của nó. Thêm thư mục cấu hình thứ hai để giữ tài khoản công việc bên cạnh tài khoản cá nhân; mỗi dự án tự chọn dùng tài khoản nào trong cài đặt Agents của nó.',
   'Opened {label}': 'Đã mở {label}',
   'Reading account details…': 'Đang đọc chi tiết tài khoản…',
   'Remove “{name}”?': 'Xoá “{name}”?',
@@ -984,7 +984,7 @@ export const viSettings: Record<string, string> = {
     'Dò lại đăng nhập của tài khoản này ngay, thay vì chờ kết quả đã lưu',
   'Show details': 'Hiện chi tiết',
   'System default': 'Mặc định của hệ thống',
-  'the discovered one': 'cái được phát hiện',
+  'the discovered one': '1 tài khoản được phát hiện',
   'This account is already connected.': 'Tài khoản này đã được kết nối.',
   'This only forgets the account. Nothing in {path} is deleted — not your login, not your sessions. Projects using it fall back to the default account, and tasks that ran under it can no longer be resumed from here.':
     'Thao tác này chỉ quên tài khoản. Không có gì trong {path} bị xoá — không xoá đăng nhập, cũng không xoá phiên. Các dự án đang dùng tài khoản này sẽ quay về tài khoản mặc định, và những nhiệm vụ đã chạy dưới tài khoản đó không thể tiếp tục từ đây nữa.',

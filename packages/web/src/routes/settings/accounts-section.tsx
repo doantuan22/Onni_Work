@@ -199,7 +199,7 @@ function AccountsPane({ data }: { data: AgentProfilesResponse }) {
       <div>
         <h2 className="text-sm font-semibold text-foreground">{t('Agent accounts')}</h2>
         <p className="text-[13px] text-muted-foreground">
-          {t('One agent per tab: whether it is installed, and which logins you have. Add a second config folder to keep a work account beside a personal one; each project picks which it uses in its own Agents settings.')}
+          {t('One list of agents: pick one to see whether it is installed, which logins you have and its defaults. Add a second config folder to keep a work account beside a personal one; each project picks which it uses in its own Agents settings.')}
         </p>
       </div>
 

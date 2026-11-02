@@ -91,7 +91,7 @@ export function DefaultAgentPicker({
         'gap-0.5 rounded-md border border-border bg-card p-0.5',
         // Stacked once accounts are in play: `claude · Klaudiusz` beside its folder does not fit a
         // segmented strip, and the folder is the part that says WHICH login this is.
-        stacked ? 'flex max-w-md flex-col' : 'flex w-fit max-w-full flex-wrap',
+        stacked ? 'flex max-w-md flex-col' : 'grid max-w-2xl grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))]',
       )}
     >
       {rows.map((row) => {
