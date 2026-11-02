@@ -55,6 +55,7 @@ import { DefaultAgentPicker, agentPickerRows } from '@/components/default-agent-
 import { modelCatalogStatus, modelsForRunner, RUNNERS } from '@/routes/new-task-form'
 import { useI18n } from '@/lib/i18n'
 import { AddAccountDialog } from './add-account-dialog'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /**
  * Global settings → Agent accounts (spec `.ai/specs/2026-07-29-agent-profiles.md`).
@@ -445,7 +446,7 @@ function AgentDefaults({ provider, profiles }: { provider: ProviderId; profiles:
 
       <label className="flex flex-col gap-1.5">
         <span className="text-xs text-muted-foreground">{t('Default model for {runner}', { runner: entry?.label ?? provider })}</span>
-        <select
+        <NativeSelect
           aria-label={t('Default model for {runner}', { runner: entry?.label ?? provider })}
           data-slot="accounts-default-model"
           data-runner={provider}
@@ -468,7 +469,7 @@ function AgentDefaults({ provider, profiles }: { provider: ProviderId; profiles:
             </option>
           ))}
           {catalogStatus ? <option disabled>{catalogStatus}</option> : null}
-        </select>
+        </NativeSelect>
       </label>
     </section>
   )

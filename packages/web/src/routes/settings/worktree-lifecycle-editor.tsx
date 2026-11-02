@@ -7,6 +7,7 @@ import { useWorktreeLifecycles } from '@/api/worktree-lifecycle'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
 import { SettingsField } from './settings-field'
+import { NativeSelect } from '@/components/ui/native-select'
 
 const empty = (): WorktreeLifecycleConfig => ({ afterCreate: [], beforeRemove: [] })
 const phases = ['afterCreate', 'beforeRemove'] as const
@@ -123,10 +124,10 @@ export function WorktreeLifecycleEditor({ config }: { config: ConfigResponse }) 
       <p className="mt-1" id="lifecycle-variable-help">{t('Values are shell-escaped; do not wrap variable tokens in quotes. Use')} <code>{'\\{{'}</code> {t('for literal double braces, for example')} <code>{"docker inspect --format '\\{{.State.Status}}' container"}</code>.</p>
     </div>
     <label className="flex flex-col gap-1 text-sm">{t('Preview context')}
-      <select value={previewWorktree} className={control} onChange={event => { setPreviewWorktree(event.target.value); setPreviews({}) }}>
+      <NativeSelect value={previewWorktree} className={control} onChange={event => { setPreviewWorktree(event.target.value); setPreviews({}) }}>
         <option value="">{t('Example values (illustrative)')}</option>
         {lifecycle.data?.worktrees.filter(worktree => worktree.onDisk).map(worktree => <option key={worktree.worktreeId} value={worktree.worktreeId}>{worktree.task?.title ?? t('Orphan {id}', { id: worktree.runId.slice(0, 8) })}</option>)}
-      </select>
+      </NativeSelect>
     </label>
     {phases.map(phase => <SettingsField key={phase} title={t(titles[phase])} hint={phase === 'afterCreate' ? t('Run after a worktree is created and before its agent starts, including recreation after reclamation.') : t('Run while the worktree files still exist, before removal or reclamation. Failure retains the directory for recovery.')}>
       {draft[phase].length === 0 && <p className="text-xs text-muted-foreground">{t('No commands. This phase completes without running a script.')}</p>}

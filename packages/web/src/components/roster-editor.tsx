@@ -6,6 +6,7 @@ import { ModelPickerField } from '@/components/model-picker-field'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/lib/i18n'
 import { emptyWorker, managerCapable, type RosterDraft, type WorkerDraft } from '@/lib/roster'
+import { NativeSelect } from '@/components/ui/native-select'
 
 function BackendSelect({
   value,
@@ -24,7 +25,7 @@ function BackendSelect({
   const options = value && !connected.includes(value) ? [...connected, value] : connected
   const { t } = useI18n()
   return (
-    <select aria-label={label} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value as Runner | '')} className={fieldClass}>
+    <NativeSelect aria-label={label} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value as Runner | '')} className={fieldClass}>
       <option value="">{t('Choose a backend…')}</option>
       {options.map((runner) => (
         <option key={runner} value={runner}>
@@ -32,7 +33,7 @@ function BackendSelect({
           {connected.includes(runner) ? '' : ` ${t('(not connected)')}`}
         </option>
       ))}
-    </select>
+    </NativeSelect>
   )
 }
 

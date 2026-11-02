@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /**
  * "Add agent account" (spec 2026-07-29-agent-profiles): point a provider at a second config
@@ -105,7 +106,7 @@ export function AddAccountDialog({
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-[13px]">
             <span className="text-muted-foreground">{t('Agent')}</span>
-            <select
+            <NativeSelect
               aria-label={t('Agent')}
               data-slot="add-account-provider"
               value={provider}
@@ -117,7 +118,7 @@ export function AddAccountDialog({
                   {id}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           <label className="flex min-w-0 flex-1 items-center gap-2 text-[13px]">
             <span className="shrink-0 text-muted-foreground">{t('Name')}</span>

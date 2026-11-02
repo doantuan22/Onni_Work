@@ -324,12 +324,17 @@ describe('design guardian', () => {
       const source = file.lines.join('\n')
       for (const match of source.matchAll(/<select\b/g)) {
         scanned += 1
+        // A raw <select> belongs only inside the shared NativeSelect; everything else uses it.
+        if (!file.rel.endsWith('components/ui/native-select.tsx')) {
+          violations.push(`packages/web/${file.rel}: use <NativeSelect> from components/ui/native-select`)
+          continue
+        }
         if (carriesFocusRing(openingTag(source, match.index), source)) continue
         const line = source.slice(0, match.index).split('\n').length
         violations.push(`packages/web/${file.rel}:${line}`)
       }
     }
-    expect(scanned, 'the <select> scan found nothing — the walker or the matcher broke').toBeGreaterThan(10)
+    expect(scanned, 'the <select> scan found nothing — the walker or the matcher broke').toBeGreaterThan(0)
     expect(
       violations,
       `native-select-focus-ring — add "outline-none focus-visible:border-ring focus-visible:ring-[3px] ${SELECT_FOCUS_MARKER}"`,

@@ -417,7 +417,7 @@ describe('normalizeDispatchIntent', () => {
       maxSubtasks: 10, inFlight: 9, runner: 'nope', model: '', budgetUsd: -1, extra: 1,
     })).toEqual({ maxSubtasks: 10 })
     expect(normalizeDispatchIntent({
-      maxSubtasks: 51, inFlight: 2, runner: 'codex', model: 'gpt-future', budgetUsd: 2.5,
+      maxSubtasks: 101, inFlight: 2, runner: 'codex', model: 'gpt-future', budgetUsd: 2.5,
     })).toEqual({ inFlight: 2, runner: 'codex', model: 'gpt-future', budgetUsd: 2.5 })
     expect(normalizeDispatchIntent({ maxSubtasks: 1.5, budgetUsd: 10_001 })).toEqual({})
   })

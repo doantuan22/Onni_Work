@@ -14,6 +14,7 @@ import { useI18n } from '@/lib/i18n'
 import { LimitsPanel } from './limits-section'
 import { MachineCard } from './machine-card'
 import { SettingsField, SettingsGroup } from './settings-field'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /**
  * Global settings → Resources: how hard the MACHINE works. `maxParallel` caps concurrent tasks
@@ -252,7 +253,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
         hint={t('Park uses no model turns. Re-check sends the same agent a follow-up on this cadence until work completes or the 40-wakeup safety cap is reached.')}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <NativeSelect
             aria-label={t('Monitoring wake-up')}
             data-slot="resources-monitoring-wake-mode"
             value={wakeMode}
@@ -262,7 +263,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           >
             <option value="park">{t('Park until resumed')}</option>
             <option value="interval">{t('Re-check on an interval')}</option>
-          </select>
+          </NativeSelect>
           {wakeMode === 'interval' ? (
             <>
               <input
@@ -292,7 +293,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
         title={t('Auto-resume after a usage limit')}
         hint={t('When an agent stops because its provider usage limit is reached, onni waits for the reset the provider named and continues the task 30 seconds later — up to 12 times in a row without you. Off leaves the task failed with its Continue button.')}
       >
-        <select
+        <NativeSelect
           aria-label={t('Auto-resume after a usage limit')}
           data-slot="resources-auto-resume"
           value={autoResume ? 'on' : 'off'}
@@ -302,7 +303,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
         >
           <option value="on">{t('On')}</option>
           <option value="off">{t('Off')}</option>
-        </select>
+        </NativeSelect>
         <p className="text-[11px] text-soft-foreground">
           {t('Applies to Claude, Codex and OpenCode — whenever the provider says when the limit lifts.')}
         </p>
@@ -316,7 +317,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
         <div className="grid gap-4 sm:grid-cols-2" data-slot="resources-composer-defaults">
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">{t('Autonomous by default')}</span>
-            <select
+            <NativeSelect
               aria-label={t('Autonomous by default')}
               value={composerDefaults.autonomous === null ? 'inherit' : composerDefaults.autonomous ? 'on' : 'off'}
               disabled={save.isPending}
@@ -326,7 +327,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
               <option value="inherit">{t('Inherit environment')}</option>
               <option value="on">{t('On')}</option>
               <option value="off">{t('Off')}</option>
-            </select>
+            </NativeSelect>
             <span className="text-[11px] text-soft-foreground">
               {t('Inherited:')}{' '}{composerDefaults.inheritedAutonomous === 'source-dependent'
                 ? t('Source-dependent — skills on, workflows off')
@@ -335,7 +336,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">{t('Use a worktree by default')}</span>
-            <select
+            <NativeSelect
               aria-label={t('Use a worktree by default')}
               value={composerDefaults.worktree === null ? 'inherit' : composerDefaults.worktree ? 'on' : 'off'}
               disabled={save.isPending}
@@ -345,7 +346,7 @@ function ResourcesForm({ config }: { config: WorkspaceConfigResponse }) {
               <option value="inherit">{t('Inherit environment')}</option>
               <option value="on">{t('On')}</option>
               <option value="off">{t('Off')}</option>
-            </select>
+            </NativeSelect>
             <span className="text-[11px] text-soft-foreground">
               {t('Inherited:')}{' '}{composerDefaults.inheritedWorktree ? t('On') : t('Off')}
             </span>

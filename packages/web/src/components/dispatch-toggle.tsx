@@ -18,6 +18,7 @@ import { useIsDesktop } from '@/lib/use-desktop'
 import { useLongPress } from '@/lib/use-long-press'
 import { cn } from '@/lib/utils'
 import { RUNNERS, modelsForRunner, type ModelPreset } from '@/routes/new-task-form'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /**
  * The composer's Dispatch toggle (spec 2026-09-10-dispatch; mockup "option 3"): an icon-only
@@ -317,7 +318,7 @@ function DispatchSettings({
 
       <div className="flex flex-col gap-2 border-t border-border pt-3">
         <Row label={t('Max subtasks')} htmlFor={`${id}-max`}>
-          <select
+          <NativeSelect
             id={`${id}-max`}
             data-slot="dispatch-max-subtasks"
             className={selectClass}
@@ -332,10 +333,10 @@ function DispatchSettings({
                 {n}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </Row>
         <Row label={t('In flight at once')} htmlFor={`${id}-flight`}>
-          <select
+          <NativeSelect
             id={`${id}-flight`}
             data-slot="dispatch-in-flight"
             className={selectClass}
@@ -351,10 +352,10 @@ function DispatchSettings({
                 {n}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </Row>
         <Row label={t('Subtask runner')} htmlFor={`${id}-runner`}>
-          <select
+          <NativeSelect
             id={`${id}-runner`}
             data-slot="dispatch-runner"
             className={selectClass}
@@ -374,10 +375,10 @@ function DispatchSettings({
                 {runner.label}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </Row>
         <Row label={t('Subtask model')} htmlFor={`${id}-model`}>
-          <select
+          <NativeSelect
             id={`${id}-model`}
             data-slot="dispatch-model"
             className={selectClass}
@@ -397,7 +398,7 @@ function DispatchSettings({
             {intent.model !== undefined && !models.some((preset) => preset.id === intent.model) ? (
               <option value={intent.model}>{intent.model}</option>
             ) : null}
-          </select>
+          </NativeSelect>
         </Row>
         <Row label={t('Budget per subtask')} htmlFor={`${id}-budget`}>
           <span className="flex items-center gap-1.5">

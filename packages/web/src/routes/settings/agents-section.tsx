@@ -24,6 +24,7 @@ import { modelCatalogStatus, modelsForRunner, RUNNERS } from '@/routes/new-task-
 import { useI18n } from '@/lib/i18n'
 import { ProviderSettings } from './provider-settings'
 import { useConfigSave } from './use-config-save'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /**
  * Settings → Agents (R6 Step 1.5, spec §"Settings"): which agent runs THIS repo's tasks —
@@ -143,7 +144,7 @@ function AgentsForm({
                     {configuredModelLabel}
                   </output>
                 ) : (
-                  <select
+                  <NativeSelect
                     aria-label={t('Default model for {runner}', { runner: runner.label })}
                     data-slot="agents-model"
                     data-runner={runner.id}
@@ -172,7 +173,7 @@ function AgentsForm({
                       </option>
                     ))}
                     {catalogStatus ? <option disabled>{catalogStatus}</option> : null}
-                  </select>
+                  </NativeSelect>
                 )}
               </label>
             )

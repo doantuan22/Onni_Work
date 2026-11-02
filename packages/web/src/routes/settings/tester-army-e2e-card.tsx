@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/toaster'
 import { useI18n, type Translate } from '@/lib/i18n'
 import { scopeTo } from '@/lib/project-router'
 import testerArmyLogo from '@/assets/integrations/tester-army.png'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /** TesterArmy's own repository — where the card sends someone who wants to know what e2e is. */
 export const TESTER_ARMY_REPO = 'https://github.com/tester-army/e2e'
@@ -160,12 +161,12 @@ export function TesterArmyE2eCard() {
       <form className="rounded-lg border border-border bg-card p-4" autoComplete="off" onSubmit={(event) => { event.preventDefault(); starting.mutate() }}>
         <h2 className="text-sm font-semibold">{installed ? t('Set up again') : t('Set up e2e')}</h2>
         <label className="mt-3 block text-sm">{t('Model provider')}
-          <select aria-label={t('Model provider')} value={provider} onChange={(event) => setProvider(event.target.value as E2eCredentialName)}
+          <NativeSelect aria-label={t('Model provider')} value={provider} onChange={(event) => setProvider(event.target.value as E2eCredentialName)}
             className="mt-1 block w-full rounded border border-border bg-background p-2 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50">
             {E2E_CREDENTIAL_NAMES.map((name) => (
               <option key={name} value={name}>{PROVIDER_LABELS[name]} ({name}){credentials.includes(name) ? ` — ${t('stored')}` : ''}</option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
         <label className="mt-3 block text-sm">{t('API key')} <span className="text-muted-foreground">{t('(optional)')}</span>
           <input aria-label={t('API key')} type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)}

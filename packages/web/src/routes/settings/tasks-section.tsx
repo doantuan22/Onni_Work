@@ -9,6 +9,7 @@ import { useI18n } from '@/lib/i18n'
 import { TrunkBasedFields } from './trunk-based-fields'
 import { SettingsField } from './settings-field'
 import { useConfigSave } from './use-config-save'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /**
  * Settings → Tasks: how a task of THIS repo behaves — which branch it forks from, whether it
@@ -58,7 +59,7 @@ function TasksForm({ config }: { config: ConfigResponse }) {
         hint={t('New task worktrees branch from this and draft PRs target it. Also settable from the Git view.')}
       >
         {repo.data?.info ? (
-          <select
+          <NativeSelect
             aria-label={t('Base branch')}
             data-slot="tasks-base-branch"
             value={config.baseBranch ?? ''}
@@ -72,7 +73,7 @@ function TasksForm({ config }: { config: ConfigResponse }) {
                 {name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         ) : (
           <p data-slot="tasks-base-branch-unavailable" className="text-[13px] text-soft-foreground">
             {repo.isPending ? t('Loading branches…') : t('Not a git repository — tasks run in place, no branching.')}

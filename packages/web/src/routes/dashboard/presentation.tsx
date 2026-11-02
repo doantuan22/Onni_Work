@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
 import { shortAge } from '@/lib/format'
+import { NativeSelect } from '@/components/ui/native-select'
 
 // The landing's eyebrow: mono caps behind a violet `//` (`section-mark`, styles/index.css).
 // A pseudo-element keeps it out of textContent (tests, the export's module titles); its empty
@@ -33,7 +34,7 @@ export const filterLabel = 'flex items-center gap-2 text-xs text-muted-foregroun
 export function FilterSelect({ className = '', ...props }: ComponentProps<'select'>) {
   return (
     <span className="relative inline-flex">
-      <select
+      <NativeSelect
         {...props}
         className={`h-9 cursor-pointer appearance-none rounded-md border bg-card-2 pr-8 pl-3 font-mono text-xs text-foreground outline-none transition-colors hover:border-foreground/20 hover:bg-muted focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 no-hover:min-h-11 ${className}`}
       />

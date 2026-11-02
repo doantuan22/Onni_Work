@@ -25,6 +25,7 @@ import { toast } from '@/components/ui/toaster'
 import { translate, useI18n, type Translate } from '@/lib/i18n'
 import { filterSkills, groupSkillsByRepo, isProjectSkill, orderSkills, skillUsedBy } from '@/lib/skills'
 import { cn } from '@/lib/utils'
+import { NativeSelect } from '@/components/ui/native-select'
 
 type SkillCatalogItem = Skill & { enabled: boolean }
 
@@ -222,7 +223,7 @@ function SkillsCatalog() {
         </div>
         {repoGroups.length > 1 ? (
           <div className="shrink-0 px-3 pb-2">
-            <select
+            <NativeSelect
               data-slot="skills-repo-filter"
               aria-label={t('Filter by repository')}
               value={activeRepo ?? '__all__'}
@@ -235,7 +236,7 @@ function SkillsCatalog() {
                   {group.label} ({group.skills.length})
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         ) : null}
         {importableQuery.isError ? (

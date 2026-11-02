@@ -4,6 +4,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { fieldClass } from '@/components/form-field'
 import { useI18n } from '@/lib/i18n'
 import type { LimitsDraft } from '@/lib/run-limits'
+import { NativeSelect } from '@/components/ui/native-select'
 
 /** Shown before "Unlimited" is accepted — anywhere it can be chosen. */
 export const UNLIMITED_WARNING =
@@ -56,7 +57,7 @@ export function RunLimitsFields({
   )
   return (
     <div data-slot="run-limits-fields" className="flex flex-col gap-3">
-      <select
+      <NativeSelect
         aria-label={t('Run limits')}
         data-slot="limits-mode"
         value={draft.mode}
@@ -67,7 +68,7 @@ export function RunLimitsFields({
         {allowDefault ? <option value="default">{t('Default (workspace setting)')}</option> : null}
         <option value="capped">{allowDefault ? t('Custom ceilings') : t('Capped — apply the ceilings below')}</option>
         <option value="none">{t('Unlimited ∞')}</option>
-      </select>
+      </NativeSelect>
       {draft.mode === 'capped' ? (
         <div className="grid grid-cols-2 gap-3">
           {field('cost', t('Max cost (USD)'), t('Backends that report no USD ignore this.'))}

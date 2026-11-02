@@ -22,6 +22,7 @@ import { trackerLosses, trackerTaskPrompt } from '@/lib/tracker-task'
 import { Markdown } from '../task-thread/markdown'
 import { TrackerHandoff, type TrackerHandoffSelection, type TrackerDraftCache } from './tracker-handoff'
 import { TrackerLabelFilter } from './tracker-label-filter'
+import { NativeSelect } from '@/components/ui/native-select'
 
 const emptySelection = (): TrackerHandoffSelection => ({ workflow: null, selectedSkills: [], engine: { runner: null, model: null, account: null } })
 
@@ -127,7 +128,7 @@ function TrackerBrowse({ scopePending, association, selectedId, drafts, selectio
       </div>
       <div className="mt-2.5 flex items-center justify-between border-b border-border pb-2">
         <h2 className="text-[13px] font-medium">{t('Issues · {count}', { count: `${items.length}${result.hasNextPage ? '+' : ''}` })}</h2>
-        <select aria-label={t('Issue state')} className="min-w-0 rounded-md border border-input bg-card px-2 py-1 text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={state} onChange={(event) => { setState(event.target.value as 'active' | 'all'); setStateExplicit(true) }}><option value="active">{t('Active')}</option><option value="all">{t('All states')}</option></select>
+        <NativeSelect aria-label={t('Issue state')} className="min-w-0 rounded-md border border-input bg-card px-2 py-1 text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50" value={state} onChange={(event) => { setState(event.target.value as 'active' | 'all'); setStateExplicit(true) }}><option value="active">{t('Active')}</option><option value="all">{t('All states')}</option></NativeSelect>
       </div>
       <form className="mt-2.5 flex items-center gap-2 pb-3" onSubmit={(event) => {
         event.preventDefault()
