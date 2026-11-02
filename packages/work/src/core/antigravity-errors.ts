@@ -62,6 +62,27 @@ export function needsSignIn(text: string): boolean {
   return SIGN_IN_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+/** agy's own headless wording when a tool needing a permission was auto-denied. */
+const HEADLESS_DENIAL = /headless mode cannot prompt|auto-denied/i;
+
+/** True when agy's stderr says a tool was denied because headless mode cannot ask for approval. */
+export function isHeadlessPermissionDenial(text: string): boolean {
+  return HEADLESS_DENIAL.test(text);
+}
+
+/**
+ * One line saying WHO blocked a command and how to unblock it. At "Files only" Onni passes agy no
+ * grants, so agy auto-denies shell commands (file edits still work); at "Allow-rules" only the
+ * listed exact lines pass. Replaces agy's own two-sentence hint, which names flags Onni owns.
+ */
+export function permissionDenialHelp(level: string): string {
+  if (level === 'bypass') {
+    return 'agy still denied a tool at "Skip all confirmations" — an unattended run never skips checks; use Allow-rules or run the task attended.';
+  }
+  const where = level === 'allow-rules' ? 'this command is not in the "Allow-rules" list' : 'shell commands are off at the "Files only" level';
+  return `blocked by Onni's permission level (agy cannot ask headless): ${where}. To allow commands, raise the level in Settings → Agents; file edits in the worktree are unaffected.`;
+}
+
 /**
  * The failure text a run shows. It contains "authentication failed … not signed in" on purpose: the
  * run engine classifies a failure as `auth` by pattern (`classifyAgentFailure`), which marks the

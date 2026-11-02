@@ -28,6 +28,8 @@ import type {
   UiToolItem,
 } from './ui-events.ts';
 
+import { permissionDenialHelp } from './antigravity-errors.ts';
+
 /** The permission levels' labels as Settings shows them (for messages the user reads). */
 const LEVEL_LABEL: Record<string, string> = {
   'files-only': 'Files only',
@@ -125,8 +127,7 @@ export function evaluateAntigravityResult(input: AntigravityResultInput): Antigr
     return {
       kind: 'fail',
       message:
-        `antigravity was blocked and produced no answer — the "${label}" permission level denied: ${denied.join('; ')}. ` +
-        'Raise the level in Settings → Agents, or give it a task that only edits files.',
+        `antigravity was blocked and produced no answer — ${permissionDenialHelp(input.level)} Denied: ${[...new Set(denied)].join('; ')}.`,
     };
   }
   if (response === '') {

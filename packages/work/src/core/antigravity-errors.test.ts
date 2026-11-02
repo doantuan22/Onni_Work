@@ -63,3 +63,18 @@ describe('antigravity errors', () => {
     expect(message.length).toBeLessThan(400);
   });
 });
+
+describe('permission denial help', () => {
+  it('recognises agy headless auto-deny wording', async () => {
+    const { isHeadlessPermissionDenial } = await import('./antigravity-errors.ts');
+    expect(isHeadlessPermissionDenial('jetski: no output produced — headless mode cannot prompt for, so it was auto-denied')).toBe(true);
+    expect(isHeadlessPermissionDenial('network error')).toBe(false);
+  });
+
+  it('names who blocked and how to unblock, per level', async () => {
+    const { permissionDenialHelp } = await import('./antigravity-errors.ts');
+    expect(permissionDenialHelp('files-only')).toContain('"Files only"');
+    expect(permissionDenialHelp('allow-rules')).toContain('"Allow-rules"');
+    expect(permissionDenialHelp('bypass')).toContain('unattended');
+  });
+});

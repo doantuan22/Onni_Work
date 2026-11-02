@@ -30,7 +30,7 @@ import { buildChildEnv } from './agent-env.ts';
 import { spawnTaskProcess } from './task-process-spawn.ts';
 import { antigravityLaunch, resolveAntigravityExecutable } from './antigravity-bin.ts';
 import { probeAntigravityVersion } from './antigravity-cli.ts';
-import { AGY_ERROR_EXIT_CODE, needsSignIn, parseAgyError, signInMessage } from './antigravity-errors.ts';
+import { AGY_ERROR_EXIT_CODE, isHeadlessPermissionDenial, needsSignIn, parseAgyError, permissionDenialHelp, signInMessage } from './antigravity-errors.ts';
 import { antigravityPermissionArgs } from './antigravity-permissions.ts';
 import { createAntigravityState, foldAntigravityFrame } from './antigravity-ui-mapper.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
@@ -426,6 +426,8 @@ export class AntigravityRunner implements AgentRunner {
         const detail = stderr ? ` — ${(structured?.text ?? stderr.split(String.fromCharCode(10)).slice(-3).join(' | ')).slice(0, 400)}` : '';
         const message = needsSignIn(saidOutside())
           ? signInMessage(structured?.text ?? lastLine)
+          : isHeadlessPermissionDenial(stderr)
+          ? `antigravity ${permissionDenialHelp(level)}`
           : `antigravity exited with code ${exitCode}${exitCode === AGY_ERROR_EXIT_CODE ? ' (the turn ended on an agent or model error)' : ''}${detail}`;
         onEvent?.({ type: 'error', message });
         throw new Error(message);
