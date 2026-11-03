@@ -186,6 +186,76 @@ export type ManagerAskInput = z.infer<typeof managerAskInputSchema>;
 export const managerAskResponseSchema = z.object({ requestId: z.string() });
 export type ManagerAskResponse = z.infer<typeof managerAskResponseSchema>;
 
+/**
+ * The tree plan (plan v2 §10, `#6A`): what the manager intends to do, in `<treeDir>/plan.json`.
+ * Display and restore only — the engine's order still comes from `after` and the queue, so a stale
+ * plan costs the manager nothing but its own confusion.
+ */
+export const PLAN_PART_STATUSES = ['planned', 'assigned', 'done', 'dropped'] as const;
+export const planPartStatusSchema = z.enum(PLAN_PART_STATUSES);
+export type PlanPartStatus = z.infer<typeof planPartStatusSchema>;
+
+export const treePlanPartSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  title: z.string().trim().min(1).max(300),
+  status: planPartStatusSchema,
+  /** A roster key (`backend:model`) or a backend that names exactly one entry, for display. */
+  worker: z.string().max(80).optional(),
+  /** The run this part was handed to. Checked against the tree before it is stored. */
+  runId: z.string().optional(),
+  /** Other part ids this one waits for. Cycles are refused by `findPlanCycle`, not by Zod. */
+  after: z.array(z.string()).max(10).optional(),
+});
+export type TreePlanPart = z.infer<typeof treePlanPartSchema>;
+
+/**
+ * Structural invariants of a part list: ids unique, every `after` pointing at a part that exists.
+ * Attached to the ARRAY (not the file object) so the PUT body and the stored file are held to the
+ * same rules. Cycles are a separate, pure check (`dispatch/tree-fs.ts`), as the plan requires.
+ */
+function refinePlanParts(parts: TreePlanPart[], ctx: z.RefinementCtx): void {
+  const ids = new Set<string>();
+  parts.forEach((part, index) => {
+    if (ids.has(part.id)) {
+      ctx.addIssue({ code: 'custom', path: [index, 'id'], message: `duplicate plan part id "${part.id}"` });
+    }
+    ids.add(part.id);
+  });
+  parts.forEach((part, index) => {
+    part.after?.forEach((ref, refIndex) => {
+      if (!ids.has(ref)) {
+        ctx.addIssue({ code: 'custom', path: [index, 'after', refIndex], message: `after "${ref}" names no part in this plan` });
+      }
+    });
+  });
+}
+
+export const treePlanPartsSchema = z.array(treePlanPartSchema).max(PLAN_MAX_PARTS).superRefine(refinePlanParts);
+
+/** GET/PUT `/runs/:id/plan`, and the file itself. An absent plan reads as `{ parts: [], updatedAt: '', revision: '0' }`. */
+export const treePlanSchema = z.object({
+  parts: treePlanPartsSchema,
+  updatedAt: z.string(),
+  revision: z.string(),
+});
+export type TreePlan = z.infer<typeof treePlanSchema>;
+
+/** `PUT /runs/:id/plan` — replace every part. `revision` is the read the manager edited, so a save
+ *  over a concurrent one is a 409 instead of a silently merged plan. The server stamps `updatedAt`. */
+export const treePlanPutSchema = z.object({
+  parts: treePlanPartsSchema,
+  revision: z.string(),
+});
+export type TreePlanPut = z.infer<typeof treePlanPutSchema>;
+
+/** `PATCH /runs/:id/plan/parts/:partId` — one part's status and/or the run it was handed to. */
+export const treePlanPatchSchema = z.object({
+  status: planPartStatusSchema.optional(),
+  /** `''` clears the link (a part that was un-dispatched); any other value is resolved in the tree. */
+  runId: z.string().optional(),
+});
+export type TreePlanPatch = z.infer<typeof treePlanPatchSchema>;
+
 /** One command a worker says it ran, and the exit code it saw (plan v2 §6.1). Never verified by
  *  onni — the report label says `worker-reported`, and `#4` is where real verification lives. */
 export const dispatchCheckSchema = z.object({
@@ -340,6 +410,9 @@ export const dispatchInputSchema = z
     retry_limit: z.number().int().min(0).max(3).optional(),
     /** Sibling orders (titles or short ids) that must finish first; this one waits queued until they have. */
     after: z.array(z.string().max(120)).max(8).optional(),
+    /** The tree-plan part this order fills. The server marks it `assigned` with the child's id,
+     *  atomically with the dispatch; an unknown part is a refusal, never a silent new one. */
+    partId: z.string().trim().min(1).max(40).optional(),
     /** The worker backend — the primary name; `runner` stays as the compatible alias. */
     backend: runnerSchema.optional(),
     /** The child's backend and model. Absent = the parent's. */

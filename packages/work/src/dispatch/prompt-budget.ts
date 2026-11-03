@@ -6,8 +6,11 @@
  */
 import { MANAGER_MEMORY_MAX_BYTES } from '@onni/contract';
 
-/** The fixed part of the existing brief (role, rules, integration procedure), measured in Đợt 0. */
-export const MANAGER_PROMPT_BASE_MAX_CHARS = 4_000;
+/** The fixed part of the existing brief (role, rules, integration procedure, complexity policy),
+ *  measured against the shipped text in `docs/design/manager-worker.md` (Phụ lục B): 6 · 413 at
+ *  the worst-case roster. The 4 000 placeholder could never bound the text it describes, and a
+ *  budget below its own text passes only until the next block is added. */
+export const MANAGER_PROMPT_BASE_MAX_CHARS = 6_500;
 /** Roster: `ROSTER_MAX_WORKERS` capability lines. */
 export const MANAGER_CAPABILITIES_MAX_CHARS = 1_200;
 /** The command block generated from `dispatch/commands.ts`. */

@@ -8,11 +8,13 @@
  * set the same three and use it too. No server, no dispatch: the command says so (`cockpit-address.ts`,
  * worded for whoever is asking) and exits 2.
  */
+import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek, type ManagerMemoryRead } from '@onni/contract';
+import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
+import { sanitizeMemoryEntry } from './memory.ts';
 import { taskUsage } from './commands.ts';
 
 export interface TaskCliEnv {
@@ -137,6 +139,7 @@ export async function runTaskCommand(
             model: { type: 'string' },
             'retry-limit': { type: 'string' },
             after: { type: 'string', multiple: true },
+            part: { type: 'string' },
           },
         });
         const objective = positionals.join(' ').trim();
@@ -158,6 +161,7 @@ export async function runTaskCommand(
           ...(values.model ? { model: values.model } : {}),
           ...(values['retry-limit'] !== undefined ? { retry_limit: number(values['retry-limit'], 'retry-limit') } : {}),
           ...(values.after?.length ? { after: values.after } : {}),
+          ...(values.part ? { partId: values.part } : {}),
         };
         const created = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/dispatch`, {
           method: 'POST',
@@ -297,6 +301,81 @@ export async function runTaskCommand(
         }, 'could not save memory —')) as ManagerMemoryRead;
         io.log(`memory now ${memory.bytes}/${memory.maxBytes} bytes`);
         return 0;
+      }
+      case 'plan': {
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can use the tree plan');
+        const scope = `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/plan`;
+        const print = (plan: TreePlan): void => {
+          if (plan.parts.length === 0) {
+            io.log('no plan yet — write one with: onni task plan set --json @plan.json');
+            return;
+          }
+          io.log(`plan: ${plan.parts.length} part${plan.parts.length === 1 ? '' : 's'} · revision ${plan.revision}${plan.updatedAt ? ` · updated ${plan.updatedAt}` : ''}`);
+          for (const part of plan.parts) {
+            const flags = [
+              part.worker ? `worker: ${sanitizeMemoryEntry(part.worker)}` : '',
+              part.after?.length ? `after: ${part.after.map((ref) => sanitizeMemoryEntry(ref)).join(', ')}` : '',
+              part.runId ? `run: ${part.runId.slice(0, 8)}` : '',
+            ].filter(Boolean).join(' · ');
+            io.log(`- [${part.status}] ${sanitizeMemoryEntry(part.id)}: ${sanitizeMemoryEntry(part.title)}${flags ? ` — ${flags}` : ''}`);
+          }
+        };
+        const [sub, ...words] = rest;
+        if (sub === undefined || sub === 'show') {
+          print((await callRoute(api, io, scope, { method: 'GET' }, 'could not read the plan —')) as TreePlan);
+          return 0;
+        }
+        if (sub === 'set') {
+          const { values } = parseArgs({ args: words, allowPositionals: false, options: { json: { type: 'string' } } });
+          if (!values.json) throw new Error(`plan set needs --json '<json>' or --json @path`);
+          let raw = values.json;
+          if (raw.startsWith('@')) {
+            try {
+              raw = readFileSync(raw.slice(1), 'utf8');
+            } catch (error) {
+              throw new Error(`could not read ${raw.slice(1)} — ${error instanceof Error ? error.message : String(error)}`);
+            }
+          }
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(raw);
+          } catch (error) {
+            throw new Error(`--json is not valid JSON — ${error instanceof Error ? error.message : String(error)}`);
+          }
+          const parts = Array.isArray(parsed) ? parsed : (parsed as { parts?: unknown } | null)?.parts;
+          if (!Array.isArray(parts)) throw new Error('the plan must be an array of parts, or an object with a "parts" array');
+          // Read for the revision, then replace: the server refuses a stale revision instead of
+          // silently merging two writers' plans.
+          const current = (await callRoute(api, io, scope, { method: 'GET' }, 'could not read the plan —')) as TreePlan;
+          const saved = (await callRoute(api, io, scope, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ parts, revision: current.revision }),
+          }, 'could not save the plan —')) as TreePlan;
+          io.log(`plan saved: ${saved.parts.length} part${saved.parts.length === 1 ? '' : 's'} · revision ${saved.revision}`);
+          return 0;
+        }
+        if (sub === 'update') {
+          const { values } = parseArgs({
+            args: words,
+            allowPositionals: false,
+            options: { part: { type: 'string' }, status: { type: 'string' }, run: { type: 'string' } },
+          });
+          if (!values.part) throw new Error('plan update needs --part <id>');
+          if (!values.status && !values.run) throw new Error('plan update needs --status and/or --run');
+          const plan = (await callRoute(api, io, `${scope}/parts/${encodeURIComponent(values.part)}`, {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              ...(values.status ? { status: values.status } : {}),
+              ...(values.run ? { runId: values.run } : {}),
+            }),
+          }, 'could not update the plan —')) as TreePlan;
+          const part = plan.parts.find((candidate) => candidate.id === values.part);
+          io.log(`plan part "${values.part}"${part ? ` → [${part.status}]` : ' updated'}`);
+          return 0;
+        }
+        throw new Error('usage: onni task plan show | plan set --json \'<json>\'|@path | plan update --part <id> --status planned|assigned|done|dropped [--run <id8>]');
       }
       case 'list':
       case 'tree': {

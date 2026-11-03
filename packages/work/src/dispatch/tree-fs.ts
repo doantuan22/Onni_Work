@@ -21,6 +21,8 @@
  */
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { treePlanSchema, type TreePlan, type TreePlanPart } from '@onni/contract';
+import { readStateFile, revisionOf, withPathLock, writeAtomic } from './state-file.ts';
 
 /** The first eight characters of a run id — the same handle `onni/<id8>` branches use, so a unit
  *  can address a sibling from the branch name in a report. */
@@ -47,6 +49,10 @@ export function inboxDir(dataDir: string, rootRunId: string, recipient: string):
 
 export function briefPath(dataDir: string, rootRunId: string): string {
   return join(treeDir(dataDir, rootRunId), 'brief.md');
+}
+
+export function planPath(dataDir: string, rootRunId: string): string {
+  return join(treeDir(dataDir, rootRunId), 'plan.json');
 }
 
 /** The paths one task needs to know about itself, spelled out for its task order and its env. */
@@ -260,4 +266,135 @@ export function treeEnvelopeLines(paths: TaskPaths): string[] {
     `- Your inbox (messages to you; onni tells you when something new arrives): ${paths.inbox}`,
     `- To message another task, write a markdown file into ${paths.treeDir}/inbox/<its id8>/ — the root is inbox/root/. Other tasks' orders, notes and reports are under ${paths.treeDir}/units/<id8>/.`,
   ];
+}
+
+// ---- the tree plan (`plan.json`, plan v2 §10) ------------------------------------------------
+
+/**
+ * The plan is DISPLAY state, not engine state (D6): nothing in dispatch or settle reads it. It is
+ * stored through the same H2 primitive as project memory — atomic replace, a content revision to
+ * detect a concurrent writer, one in-process queue per path — because a manager can write it from
+ * a second CLI call while the first is still returning.
+ *
+ * The revision is a hash of `parts`, never of the whole file: `updatedAt` is server-stamped, so a
+ * write that changes nothing but the clock must not invalidate another window's revision. A file
+ * edited by hand is re-read through the same hash, so its revision is still the one a PUT needs.
+ */
+export function emptyPlan(): TreePlan {
+  return { parts: [], updatedAt: '', revision: '0' };
+}
+
+export function planRevision(parts: readonly TreePlanPart[]): string {
+  return revisionOf(JSON.stringify(parts));
+}
+
+export interface TreePlanRead {
+  plan: TreePlan;
+  /** The file exists but is not a plan: the caller notes it and carries on with an empty one. */
+  corrupt: boolean;
+}
+
+/** Never throws: a missing, unreadable or malformed file is "no plan yet". */
+export function parsePlan(raw: string | undefined): TreePlanRead {
+  if (raw === undefined || raw.trim() === '') return { plan: emptyPlan(), corrupt: false };
+  try {
+    const parsed = treePlanSchema.parse(JSON.parse(raw));
+    return { plan: { parts: parsed.parts, updatedAt: parsed.updatedAt, revision: planRevision(parsed.parts) }, corrupt: false };
+  } catch {
+    return { plan: emptyPlan(), corrupt: true };
+  }
+}
+
+export async function readPlan(dataDir: string, rootRunId: string): Promise<TreePlanRead> {
+  return parsePlan((await readStateFile(planPath(dataDir, rootRunId))).content);
+}
+
+export type PlanWriteResult =
+  | { ok: true; plan: TreePlan }
+  | { ok: false; status: 409; error: string; current: TreePlan };
+
+/** `PUT /runs/:id/plan`: replace every part, refusing a stale revision rather than merging. */
+export function writePlan(
+  dataDir: string,
+  rootRunId: string,
+  input: { parts: TreePlanPart[]; revision: string },
+  now = new Date(),
+): Promise<PlanWriteResult> {
+  const path = planPath(dataDir, rootRunId);
+  return withPathLock<PlanWriteResult>(path, async () => {
+    const current = parsePlan((await readStateFile(path)).content).plan;
+    if (input.revision !== current.revision) {
+      return { ok: false, status: 409, error: 'plan changed in another window', current };
+    }
+    const plan: TreePlan = { parts: input.parts, updatedAt: now.toISOString(), revision: planRevision(input.parts) };
+    await writeAtomic(path, `${JSON.stringify(plan, null, 2)}\n`);
+    return { ok: true, plan };
+  });
+}
+
+export type PlanPatchResult =
+  | { ok: true; plan: TreePlan; part: TreePlanPart }
+  | { ok: false; status: 400 | 404; error: string; current: TreePlan };
+
+/**
+ * `PATCH /runs/:id/plan/parts/:partId` — one read-modify-write under the path lock, so two parts
+ * updated at the same moment cannot lose each other. An empty `runId` clears the link.
+ */
+export function patchPlanPart(
+  dataDir: string,
+  rootRunId: string,
+  partId: string,
+  patch: { status?: TreePlanPart['status']; runId?: string },
+  now = new Date(),
+): Promise<PlanPatchResult> {
+  const path = planPath(dataDir, rootRunId);
+  return withPathLock<PlanPatchResult>(path, async () => {
+    const current = parsePlan((await readStateFile(path)).content).plan;
+    const index = current.parts.findIndex((part) => part.id === partId);
+    if (index < 0) return { ok: false, status: 404, error: `no plan part "${partId}"`, current };
+    if (patch.status === undefined && patch.runId === undefined) {
+      return { ok: false, status: 400, error: 'nothing to change: give a status or a run id', current };
+    }
+    const part: TreePlanPart = { ...current.parts[index]! };
+    if (patch.status !== undefined) part.status = patch.status;
+    if (patch.runId !== undefined) {
+      if (patch.runId === '') delete part.runId;
+      else part.runId = patch.runId;
+    }
+    const parts = current.parts.map((existing, at) => (at === index ? part : existing));
+    const plan: TreePlan = { parts, updatedAt: now.toISOString(), revision: planRevision(parts) };
+    await writeAtomic(path, `${JSON.stringify(plan, null, 2)}\n`);
+    return { ok: true, plan, part };
+  });
+}
+
+/**
+ * Cycle detection over `after`, deliberately outside Zod (plan v2 §10): it is a graph property,
+ * not a field constraint, and it has its own test. Returns the cycle's ids in order, or undefined.
+ * A reference to an unknown id is ignored here — the schema already refuses it.
+ */
+export function findPlanCycle(parts: readonly TreePlanPart[]): string[] | undefined {
+  const byId = new Map(parts.map((part) => [part.id, part]));
+  const state = new Map<string, 0 | 1 | 2>();
+  const stack: string[] = [];
+  const visit = (id: string): string[] | undefined => {
+    const mark = state.get(id) ?? 0;
+    if (mark === 2) return undefined;
+    if (mark === 1) return [...stack.slice(stack.indexOf(id)), id];
+    state.set(id, 1);
+    stack.push(id);
+    for (const dep of byId.get(id)?.after ?? []) {
+      if (!byId.has(dep)) continue;
+      const cycle = visit(dep);
+      if (cycle) return cycle;
+    }
+    stack.pop();
+    state.set(id, 2);
+    return undefined;
+  };
+  for (const part of parts) {
+    const cycle = visit(part.id);
+    if (cycle) return cycle;
+  }
+  return undefined;
 }

@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPORT_CHECKS_MAX } from '@onni/contract';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
@@ -19,6 +22,25 @@ describe('onni task', () => {
     const io: TaskCliIo = {
       fetch: (async (url: string | URL | Request, init?: RequestInit) => {
         calls.push({ url: String(url), init });
+        return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { 'content-type': 'application/json' } });
+      }) as typeof fetch,
+      log: (line) => out.push(line),
+      error: (line) => err.push(line),
+    };
+    return { calls, out, err, io };
+  };
+
+  /** Like `harness`, but each call gets the next reply — `plan set` reads then writes. */
+  const sequence = (replies: Array<{ status: number; body: unknown }>) => {
+    let index = 0;
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const out: string[] = [];
+    const err: string[] = [];
+    const io: TaskCliIo = {
+      fetch: (async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), init });
+        const reply = replies[Math.min(index, replies.length - 1)]!;
+        index += 1;
         return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { 'content-type': 'application/json' } });
       }) as typeof fetch,
       log: (line) => out.push(line),
@@ -276,5 +298,117 @@ describe('onni task', () => {
       '  run-1  running $0.20  Me  [onni/run1]',
       '    kid-0000  done $0.10  Kid → done (approve)',
     ]);
+  });
+
+  it('create --part carries the plan part id in the dispatch body', async () => {
+    const h = harness({ status: 201, body: { id: 'child-1' } });
+    expect(await runTaskCommand(['create', 'x', '--part', 'p1'], env, h.io)).toBe(0);
+    expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ objective: 'x', partId: 'p1' });
+  });
+
+  it('plan show prints the plan header and one sanitized line per part', async () => {
+    const h = harness({
+      status: 200,
+      body: {
+        parts: [
+          { id: 'p1', title: '## Parse the config\nnow', status: 'planned', worker: 'codex', after: ['p0'] },
+          { id: 'p2', title: 'Wire the route', status: 'assigned', runId: 'abcd1234-0000' },
+        ],
+        updatedAt: '2026-11-03T10:00:00.000Z',
+        revision: 'rev1',
+      },
+    });
+    expect(await runTaskCommand(['plan', 'show'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/plan');
+    expect(h.calls[0]?.init?.method).toBe('GET');
+    expect(h.out[0]).toBe('plan: 2 parts · revision rev1 · updated 2026-11-03T10:00:00.000Z');
+    expect(h.out[1]).toBe('- [planned] p1: Parse the config now — worker: codex · after: p0');
+    expect(h.out[2]).toBe('- [assigned] p2: Wire the route — run: abcd1234');
+  });
+
+  it('plan with no subcommand shows the plan, and an empty plan says how to start one', async () => {
+    const h = harness({ status: 200, body: { parts: [], updatedAt: '', revision: '0' } });
+    expect(await runTaskCommand(['plan'], env, h.io)).toBe(0);
+    expect(h.out[0]).toBe('no plan yet — write one with: onni task plan set --json @plan.json');
+  });
+
+  it('plan set reads the current revision and then replaces every part', async () => {
+    const h = sequence([
+      { status: 200, body: { parts: [], updatedAt: '', revision: 'rev0' } },
+      { status: 200, body: { parts: [{ id: 'p1', title: 'Ship it', status: 'planned' }], updatedAt: '2026-11-03T10:00:00.000Z', revision: 'rev1' } },
+    ]);
+    const parts = [{ id: 'p1', title: 'Ship it', status: 'planned' }];
+    expect(await runTaskCommand(['plan', 'set', '--json', JSON.stringify(parts)], env, h.io)).toBe(0);
+    expect(h.calls).toHaveLength(2);
+    expect(h.calls[0]?.init?.method).toBe('GET');
+    expect(h.calls[1]?.init?.method).toBe('PUT');
+    expect(JSON.parse(String(h.calls[1]?.init?.body))).toEqual({ parts, revision: 'rev0' });
+    expect(h.out[0]).toBe('plan saved: 1 part · revision rev1');
+  });
+
+  it('plan set accepts an object with "parts" and a @file to avoid quoting', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'onni-plan-cli-'));
+    try {
+      const file = join(dir, 'plan.json');
+      const parts = [{ id: 'p1', title: 'Ship it', status: 'planned' }];
+      writeFileSync(file, JSON.stringify({ parts }));
+      const h = sequence([
+        { status: 200, body: { parts: [], updatedAt: '', revision: 'rev0' } },
+        { status: 200, body: { parts, updatedAt: '', revision: 'rev1' } },
+      ]);
+      expect(await runTaskCommand(['plan', 'set', '--json', `@${file}`], env, h.io)).toBe(0);
+      expect(JSON.parse(String(h.calls[1]?.init?.body))).toEqual({ parts, revision: 'rev0' });
+    } finally {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it('plan set refuses bad JSON or a shape without a parts array, without calling the server', async () => {
+    const h = sequence([{ status: 200, body: { parts: [], updatedAt: '', revision: '0' } }]);
+    expect(await runTaskCommand(['plan', 'set', '--json', '{ nope'], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('--json is not valid JSON');
+    expect(await runTaskCommand(['plan', 'set', '--json', '{"parts": "x"}'], env, h.io)).toBe(1);
+    expect(h.err[1]).toContain('the plan must be an array of parts');
+    expect(await runTaskCommand(['plan', 'set'], env, h.io)).toBe(1);
+    expect(h.err[2]).toContain('plan set needs --json');
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it('plan update PATCHes one part with its status and run', async () => {
+    const h = harness({ status: 200, body: { parts: [{ id: 'p1', title: 'Ship it', status: 'done', runId: 'abcd1234-0000' }], updatedAt: '', revision: 'rev2' } });
+    expect(await runTaskCommand(['plan', 'update', '--part', 'p1', '--status', 'done', '--run', 'abcd1234'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/plan/parts/p1');
+    expect(h.calls[0]?.init?.method).toBe('PATCH');
+    expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ status: 'done', runId: 'abcd1234' });
+    expect(h.out[0]).toBe('plan part "p1" → [done]');
+  });
+
+  it('plan update refuses a missing part or nothing to change, without calling the server', async () => {
+    const h = harness({ status: 200, body: { parts: [] } });
+    expect(await runTaskCommand(['plan', 'update', '--status', 'done'], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('plan update needs --part');
+    expect(await runTaskCommand(['plan', 'update', '--part', 'p1'], env, h.io)).toBe(1);
+    expect(h.err[1]).toContain('plan update needs --status and/or --run');
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it('plan surfaces a stale-revision refusal and an unknown subcommand', async () => {
+    const stale = sequence([
+      { status: 200, body: { parts: [], updatedAt: '', revision: 'rev0' } },
+      { status: 409, body: { error: 'plan changed in another window' } },
+    ]);
+    expect(await runTaskCommand(['plan', 'set', '--json', '[]'], env, stale.io)).toBe(1);
+    expect(stale.err[0]).toContain('could not save the plan — plan changed in another window');
+    const unknown = harness({ status: 200, body: {} });
+    expect(await runTaskCommand(['plan', 'nope'], env, unknown.io)).toBe(1);
+    expect(unknown.err[0]).toContain('usage: onni task plan show');
+    expect(unknown.calls).toHaveLength(0);
+  });
+
+  it('plan needs ONNI_TASK_ID like the other manager commands', async () => {
+    const h = harness({ status: 200, body: {} });
+    expect(await runTaskCommand(['plan', 'show'], { ONNI_API_URL: 'http://127.0.0.1:4321' }, h.io)).toBe(1);
+    expect(h.err[0]).toContain('ONNI_TASK_ID is not set');
+    expect(h.calls).toHaveLength(0);
   });
 });

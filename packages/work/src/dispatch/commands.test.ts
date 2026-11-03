@@ -12,7 +12,7 @@ import { MANAGER_COMMANDS_MAX_CHARS } from './prompt-budget.ts';
 
 /** The subcommands `runTaskCommand` actually answers; a command missing from the table is invisible
  *  to both help and the briefs (plan v2 §5 H5). */
-const CLI_COMMANDS = ['create', 'ask', 'report', 'merge', 'list', 'budget', 'peek', 'memory', 'tree'];
+const CLI_COMMANDS = ['create', 'ask', 'report', 'merge', 'list', 'budget', 'peek', 'memory', 'plan', 'tree'];
 
 describe('the command table is the one source of help and briefs', () => {
   it('holds every command the CLI answers, with a usage line and a one-line description', () => {

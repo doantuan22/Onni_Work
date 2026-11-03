@@ -462,3 +462,102 @@ that names this question.`
 **Giới hạn đã biết.** Mỗi task một câu hỏi mở (kể cả Guard); câu hỏi mở không hiện trong prompt của
 phiên đang chạy — manager đã biết vì chính nó hỏi; `timeoutMinutes` không đo thời gian user *đọc*, chỉ
 đo từ lúc hỏi; xoá run là cách duy nhất để bỏ một câu hỏi mà không trả lời (cancel cũng xoá).
+
+## Phụ lục H — Đợt 6: kế hoạch cấp cây `plan.json` (2026-11-03)
+
+Cùng nhánh `feat/manager-worker-gaps`, theo `.ai/specs/2026-11-03-manager-worker-gaps-plan.v2.md` §10.
+Mục tiêu: kế hoạch manager viết có chỗ nằm, sống qua restart và được nạp lại khi phiên mở.
+
+### File, revision và file hỏng
+
+- `<dataDir>/dispatch/<rootRunId>/plan.json` (đã nằm trong `dispatch/` của `data-gitignore.ts`, không
+  thêm entry). Ghi qua H2 của `dispatch/state-file.ts`: tmp + fsync + rename mode 0600, một hàng đợi
+  theo path (`withPathLock`), nên hai lệnh CLI cùng lúc không mất nhau.
+- `revision` là băm **của `parts`**, không của toàn file: `updatedAt` do server đóng dấu, nên một lần
+  ghi không đổi nội dung không được làm revision của cửa sổ khác thành cũ. File sửa tay được đọc lại
+  qua cùng hàm băm, nên revision vẫn là cái PUT kế tiếp cần.
+- File thiếu/rỗng là `{ parts: [], updatedAt: '', revision: '0' }`. File hỏng hoặc không qua schema:
+  cùng giá trị đó, `corrupt: true`, một note `danger` trên run, **không ném**; lần mở phiên ghi note
+  và coi như chưa có kế hoạch.
+- `PLAN_MAX_PARTS` = 50 (schema), `PLAN_PROMPT_MAX_PARTS` = 15 (brief).
+
+### Contract
+
+`treePlanPartSchema` (`id` ≤ 40, `title` ≤ 300, `status` planned|assigned|done|dropped, `worker` ≤ 80,
+`runId`, `after` ≤ 10), `treePlanPartsSchema` (tối đa 50; id duy nhất; mọi `after` trỏ tới id có thật),
+`treePlanSchema`, `treePlanPutSchema` (`parts` + `revision`), `treePlanPatchSchema` (`status?`,
+`runId?`). Chu trình `after` **không** nằm trong Zod: nó là thuộc tính đồ thị, có hàm thuần
+`findPlanCycle` và test riêng. `dispatchInputSchema` thêm `partId?`.
+
+### Route và quyền
+
+- `GET /runs/:id/plan`, `PUT /runs/:id/plan`, `PATCH /runs/:id/plan/parts/:partId`, cả ba sau
+  `requireDispatch` và cổng root manager của H1 (`403` cho worker/root không roster, `404` run lạ).
+- Ngoài schema, server kiểm: `worker` phải là một entry roster (theo `rosterWorkerKey` hoặc tên
+  backend) → `400`; `runId` phải thuộc cây của người gọi → `409`; `after` có chu trình → `400`;
+  `title` được làm sạch một dòng và redact qua `store.redactRunText` trước khi lưu (`400` nếu rỗng sau
+  làm sạch). `runId` gửi bằng tiền tố ≥ 6 ký tự được chuẩn hoá về id đầy đủ.
+- PUT sai `revision` → `409 plan changed in another window` kèm kế hoạch hiện tại; không merge.
+- PATCH là read-modify-write **trong** lock, nên hai part cập nhật cùng lúc không mất nhau; `{}` → 400,
+  part lạ → 404, `runId: ''` xoá liên kết.
+
+### `--part` khi tạo task
+
+`onni task create … --part <id>` gửi `partId`. Server kiểm **trước khi tạo bất cứ thứ gì**: part không
+tồn tại / đã `done`/`dropped` / plan hỏng → từ chối, không có worker mồ côi. Sau khi `dispatch()` trả
+id con, part được PATCH thành `assigned` + `runId` (ledger `{type:'plan',action:'assign'}` + note).
+Đây là state hiển thị: nếu lần PATCH đó hỏng, worker **vẫn** chạy và run nhận note `danger` — ghi
+được, không bắt buộc, và không rollback một task đã bắt đầu. Engine không đọc part: thứ tự vẫn do
+`--after` và hàng đợi quyết định (D6).
+
+### Prompt
+
+`ManagerSessionContext.plan` (H7) mang kế hoạch đã đọc vào brief. `planBlock`:
+tối đa `PLAN_PROMPT_MAX_PARTS` part, `planned`/`assigned` trước rồi `done`, `dropped` chỉ còn trong
+`+N more (done/dropped)`; mỗi part một dòng `- [status] title — worker: … · after: … · run: …`;
+mọi trường làm sạch một dòng như `#9` để output worker không thể giả làm heading; cả block tự cắt
+theo `MANAGER_PLAN_PROMPT_MAX_CHARS` (1 800) **tại ranh giới dòng**, trừ cả newline phân cách. Câu
+kết: `Keep the plan current: use --part when creating a task and plan update when a part finishes.`
+Block nói rõ đây là ghi chú của manager, không phải engine state.
+
+**Ngân sách prompt.** `MANAGER_PROMPT_BASE_MAX_CHARS` được sửa từ 4 000 (placeholder) thành 6 500 —
+đoạn cố định thực tế đo được 5 918 ở worst-case, và Phụ lục C đã quyết định **không nén** lời prompt
+(nén là đổi hành vi). Một trần thấp hơn chính văn bản nó bao không bảo vệ được gì; giữ nguyên 4 000
+thì thêm block plan sẽ làm test đỏ dù không có hồi quy. Tổng mới: 6 500 + 1 200 + 1 500 + 3 172 +
+1 800 + 1 000 = 15 172; fixture worst-case (memory đầy, plan đủ 15 part, câu hỏi 400 ký tự) đo được
+13 996, còn 1 176 biên.
+
+### CLI
+
+`onni task plan show` · `plan set --json '<json>' | @path` (đọc revision bằng GET rồi PUT) ·
+`plan update --part <id> --status planned|assigned|done|dropped [--run <id8>]` (PATCH, không tự GET).
+Thiếu `ONNI_TASK_ID`, JSON sai, shape không có `parts`, thiếu `--part`, hoặc không có gì để đổi đều bị
+từ chối **trước khi** gọi server. Bảng lệnh H5 thêm `plan` (role manager); block vẫn dưới
+`MANAGER_COMMANDS_MAX_CHARS` và còn đủ `onni task tree`.
+
+### Test
+
+- `dispatch/tree-fs.test.ts`: round-trip + `updatedAt` + revision; file hỏng (JSON sai và schema sai);
+  revision cũ → 409 kèm hiện tại; hai PATCH đồng thời vào p1/p2 đều được giữ; PATCH/xoá run/part lạ
+  404/không có gì đổi 400; `findPlanCycle` (DAG, chu trình, tự trỏ, ref treo).
+- `server/contract-parity.dispatch.test.ts` + schema: id trùng, `after` trỏ sai, cycle hợp lệ ở Zod
+  (được hàm riêng bắt), trần 50 part/300 ký tự/10 after, status patch lạ.
+- `server/dispatch-api.test.ts`: GET/PUT/PATCH passthrough đúng body; 403/404/409 giữ nguyên; body
+  sai cấu trúc 400 trước manager; `partId` đi qua dispatch; `ONNI_DISPATCH=0` đóng cả ba route.
+- `workflows/tree-plan.test.ts` (RunManager): đọc rỗng; ghi/đọc/ledger/note; làm sạch title; file hỏng
+  → rỗng + note + `--part` bị từ chối; 403 worker/root không roster, 404 run lạ; worker ngoài roster
+  400, run ngoài cây 409, cycle 400; revision cũ 409; PATCH từng part + validate; `--part` gán
+  `assigned` + `runId` sau khi tạo, part lạ/đã settle bị từ chối **trước khi** tạo con; worker không
+  được `--part`; dispatch không `--part` không đổi plan.
+- `dispatch/task-cli.test.ts`: `create --part`; `plan show` (rỗng và có part, làm sạch); `plan set`
+  (GET → PUT đúng revision, array và `{parts}`, `@file`, JSON sai/shape sai); `plan update` (PATCH
+  body); 409 stale; usage; thiếu `ONNI_TASK_ID`.
+- `workflows/manager-prompt.test.ts`: thứ tự planned/assigned trước done, `dropped` ẩn, `+N more`,
+  làm sạch heading; cap 15; block ≤ `MANAGER_PLAN_PROMPT_MAX_CHARS`; worst-case dưới
+  `PROMPT_MAX_CHARS`.
+
+**Giới hạn đã biết.** Plan là state hiển thị, không phải hàng đợi: sửa `after` trong plan không đổi
+thứ tự engine, và engine không đọc `status`. `dropped` không hiện trong brief (chỉ đếm). Revision chỉ
+bảo vệ người ghi qua HTTP; sửa tay `plan.json` là ghi đè có chủ ý, lần PUT kế tiếp dùng revision suy
+ra từ nội dung mới. Gán `--part` không nguyên tử với việc tạo task theo nghĩa rollback: nó kiểm trước
+để không tạo worker mồ côi, còn lần ghi sau hỏng thì báo note chứ không huỷ worker.

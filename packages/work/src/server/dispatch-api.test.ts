@@ -18,11 +18,12 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'memory' | 'ask'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'memory' | 'ask' | 'plan'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
   let peek: unknown;
+  let plan: unknown;
   let memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
   let memoryWrite: unknown = memory;
   let memoryAdd: unknown = memory;
@@ -37,6 +38,7 @@ describe('the dispatch routes', () => {
     reportOk = true;
     budget = undefined;
     peek = { workers: [], workersOmitted: 0 };
+    plan = { parts: [], updatedAt: '', revision: '0' };
     memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
     memoryWrite = memory;
     memoryAdd = memory;
@@ -70,6 +72,18 @@ describe('the dispatch routes', () => {
       askUser: (runId: string, body: unknown) => {
         calls.push({ kind: 'ask', runId, body });
         return ask;
+      },
+      readTreePlan: async (runId: string) => {
+        calls.push({ kind: 'plan', runId, body: { action: 'read' } });
+        return plan;
+      },
+      writeTreePlan: async (runId: string, body: unknown) => {
+        calls.push({ kind: 'plan', runId, body });
+        return plan;
+      },
+      patchTreePlanPart: async (runId: string, partId: string, body: unknown) => {
+        calls.push({ kind: 'plan', runId, body: { partId, ...(body as object) } });
+        return plan;
       },
     } as unknown as RunManager;
     app = createApp({ repoRoot, store, manager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
@@ -184,6 +198,72 @@ describe('the dispatch routes', () => {
     expect(calls).toEqual([]);
   });
 
+  it('reads, replaces and patches the tree plan, passing exactly the validated body', async () => {
+    const saved = {
+      parts: [{ id: 'p1', title: 'Parse the config', status: 'planned', worker: 'codex' }],
+      updatedAt: '2026-11-03T10:00:00.000Z',
+      revision: 'abcd1234',
+    };
+    plan = saved;
+    const send = (method: string, body: unknown) => ({
+      method,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const read = await apiRequest(app, '/api/v1/runs/root/plan');
+    expect(read.status).toBe(200);
+    expect(await read.json()).toEqual(saved);
+
+    const put = await apiRequest(app, '/api/v1/runs/root/plan', send('PUT', { parts: saved.parts, revision: 'abcd1234' }));
+    expect(put.status).toBe(200);
+    expect(await put.json()).toEqual(saved);
+
+    const patch = await apiRequest(app, '/api/v1/runs/root/plan/parts/p1', send('PATCH', { status: 'assigned', runId: 'child-1' }));
+    expect(patch.status).toBe(200);
+    expect(await patch.json()).toEqual(saved);
+
+    expect(calls).toEqual([
+      { kind: 'plan', runId: 'root', body: { action: 'read' } },
+      { kind: 'plan', runId: 'root', body: { parts: saved.parts, revision: 'abcd1234' } },
+      { kind: 'plan', runId: 'root', body: { partId: 'p1', status: 'assigned', runId: 'child-1' } },
+    ]);
+  });
+
+  it('maps a plan refusal status unchanged, and 400s a structurally invalid plan first', async () => {
+    for (const [denied, status] of [
+      ['only the manager of a manager–worker task can read the tree plan', 403],
+      ['no such run', 404],
+      ['plan changed in another window', 409],
+    ] as const) {
+      plan = { denied, status };
+      const res = await apiRequest(app, '/api/v1/runs/worker/plan');
+      expect(res.status).toBe(status);
+      expect(await res.json()).toEqual({ error: denied });
+    }
+    calls = [];
+    const put = (body: unknown) => apiRequest(app, '/api/v1/runs/root/plan', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    expect((await put({ parts: [{ id: 'p1', title: 'a', status: 'planned' }, { id: 'p1', title: 'b', status: 'planned' }], revision: '0' })).status).toBe(400);
+    expect((await put({ parts: [{ id: 'p1', title: 'a', status: 'planned', after: ['ghost'] }], revision: '0' })).status).toBe(400);
+    expect((await put({ parts: [{ id: 'p1', title: 'a', status: 'paused' }], revision: '0' })).status).toBe(400);
+    expect((await apiRequest(app, '/api/v1/runs/root/plan/parts/p1', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'paused' }),
+    })).status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
+  it('passes --part through the dispatch body, so the server can assign it after creating the child', async () => {
+    const res = await apiRequest(app, '/api/v1/runs/root/dispatch', json({ objective: 'take the flank', partId: 'p1' }));
+    expect(res.status).toBe(201);
+    expect(calls).toEqual([{ kind: 'dispatch', runId: 'root', body: { objective: 'take the flank', partId: 'p1' } }]);
+  });
+
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     process.env.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
@@ -194,6 +274,15 @@ describe('the dispatch routes', () => {
     }
     const add = await apiRequest(app, '/api/v1/runs/p/memory', json({ entry: 'a lesson' }));
     expect(add.status).toBe(409);
+    for (const [method, path] of [['GET', '/plan'], ['PUT', '/plan'], ['PATCH', '/plan/parts/p1']] as const) {
+      const res = await apiRequest(app, `/api/v1/runs/p${path}`, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        ...(method === 'GET' ? {} : { body: JSON.stringify({}) }),
+      });
+      expect(res.status).toBe(409);
+      expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\)/);
+    }
   });
 
   it('reads and writes project memory through the manager, settings-side and ungated', async () => {

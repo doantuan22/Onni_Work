@@ -10,6 +10,9 @@ import {
   managerMemoryAddSchema,
   managerMemoryPutSchema,
   managerMemoryReadSchema,
+  treePlanPatchSchema,
+  treePlanPutSchema,
+  treePlanSchema,
 } from '@onni/contract';
 import type { dispatchBudgetSchema, dispatchInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
@@ -44,6 +47,11 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type MemoryAddBody = InferRequestType<Run['memory']['$post']>['json'];
   type Ask200 = InferResponseType<Run['ask']['$post'], 200>;
   type AskBody = InferRequestType<Run['ask']['$post']>['json'];
+  type Plan200 = InferResponseType<Run['plan']['$get'], 200>;
+  type PlanPut200 = InferResponseType<Run['plan']['$put'], 200>;
+  type PlanPutBody = InferRequestType<Run['plan']['$put']>['json'];
+  type PlanPatch200 = InferResponseType<Run['plan']['parts'][':partId']['$patch'], 200>;
+  type PlanPatchBody = InferRequestType<Run['plan']['parts'][':partId']['$patch']>['json'];
 
   type _Checks = [
     Assert<Exact<z.infer<typeof dispatchResponseSchema>, Dispatch201>>,
@@ -63,6 +71,11 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.input<typeof managerMemoryAddSchema>, MemoryAddBody>>,
     Assert<Exact<z.infer<typeof managerAskResponseSchema>, Ask200>>,
     Assert<Exact<z.input<typeof managerAskInputSchema>, AskBody>>,
+    Assert<Exact<z.infer<typeof treePlanSchema>, Plan200>>,
+    Assert<Exact<z.infer<typeof treePlanSchema>, PlanPut200>>,
+    Assert<Exact<z.input<typeof treePlanPutSchema>, PlanPutBody>>,
+    Assert<Exact<z.infer<typeof treePlanSchema>, PlanPatch200>>,
+    Assert<Exact<z.input<typeof treePlanPatchSchema>, PlanPatchBody>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {
@@ -97,6 +110,26 @@ describe('a manager ask is bounded where the record and the model read it (#10)'
     expect(managerAskInputSchema.safeParse({ question: 'x', timeoutMinutes: 1_441 }).success).toBe(false);
     expect(managerAskInputSchema.safeParse({ question: 'x', timeoutMinutes: 1.5 }).success).toBe(false);
     expect(managerAskInputSchema.safeParse({ question: 'Postgres or SQLite?', options: [{ label: 'Postgres' }], timeoutMinutes: 1_440 }).success).toBe(true);
+  });
+});
+
+describe('a tree plan is bounded and self-consistent (#6A)', () => {
+  const part = (patch: Record<string, unknown> = {}) => ({ id: 'p1', title: 'Parse', status: 'planned', ...patch });
+
+  it('refuses duplicate ids and an `after` that names no part of the plan', () => {
+    expect(treePlanSchema.safeParse({ parts: [part(), part()], updatedAt: '', revision: '0' }).success).toBe(false);
+    expect(treePlanSchema.safeParse({ parts: [part({ after: ['ghost'] })], updatedAt: '', revision: '0' }).success).toBe(false);
+    expect(treePlanSchema.safeParse({ parts: [part({ after: ['p1'] })], updatedAt: '', revision: '0' }).success).toBe(true);
+    // Cycles are the engine's separate check, not Zod's: this shape is structurally valid here.
+    expect(treePlanSchema.safeParse({ parts: [part({ after: ['p2'] }), part({ id: 'p2', after: ['p1'] })], updatedAt: '', revision: '0' }).success).toBe(true);
+  });
+
+  it('caps the parts, the `after` list and the title, and requires a known status', () => {
+    expect(treePlanPutSchema.safeParse({ parts: Array.from({ length: 51 }, (_, i) => part({ id: `p${i}` })), revision: '0' }).success).toBe(false);
+    expect(treePlanPutSchema.safeParse({ parts: [part({ title: 'x'.repeat(301) })], revision: '0' }).success).toBe(false);
+    expect(treePlanPutSchema.safeParse({ parts: [part({ after: Array.from({ length: 11 }, (_, i) => `p${i}`) })], revision: '0' }).success).toBe(false);
+    expect(treePlanPatchSchema.safeParse({ status: 'paused' }).success).toBe(false);
+    expect(treePlanPatchSchema.safeParse({}).success).toBe(true); // the engine refuses "nothing to change"
   });
 });
 

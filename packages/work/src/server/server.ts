@@ -106,7 +106,7 @@ import {
 import type { ClearProjectDataResult, MergeResult } from '@onni/contract';
 import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema, treePlanPatchSchema, treePlanPutSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -4550,6 +4550,8 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/budget', requireDispatch)
     .use('/runs/:id/peek', requireDispatch)
     .use('/runs/:id/ask', requireDispatch)
+    .use('/runs/:id/plan', requireDispatch)
+    .use('/runs/:id/plan/parts/:partId', requireDispatch)
 
     /** Create ONE child of run `:id`. Refusals (cap, budget, settled parent) are 409 with the
      *  reason — the same text the parent's transcript notes. */
@@ -4592,6 +4594,31 @@ export function createApp(deps: ServerDeps) {
       const { manager } = c.get('project');
       const budget = manager.dispatchBudgetFor(c.req.param('id'));
       return budget ? c.json(budget) : c.json({ error: 'no such run' }, 404);
+    })
+
+    /** The tree plan (`onni task plan`, plan v2 §10). Root manager only; a corrupt file reads as
+     *  an empty plan, never a failed request. */
+    .get('/runs/:id/plan', async (c) => {
+      const { manager } = c.get('project');
+      const outcome = await manager.readTreePlan(c.req.param('id'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
+    })
+
+    /** `PUT /runs/:id/plan` — replace every part. A stale `revision` is 409 with the current plan. */
+    .put('/runs/:id/plan', jsonZodValidator(treePlanPutSchema), async (c) => {
+      const { manager } = c.get('project');
+      const outcome = await manager.writeTreePlan(c.req.param('id'), c.req.valid('json'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
+    })
+
+    /** `PATCH /runs/:id/plan/parts/:partId` — one part, read-modify-write inside the tree lock. */
+    .patch('/runs/:id/plan/parts/:partId', jsonZodValidator(treePlanPatchSchema), async (c) => {
+      const { manager } = c.get('project');
+      const outcome = await manager.patchTreePlanPart(c.req.param('id'), c.req.param('partId'), c.req.valid('json'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
     })
 
     /** What a manager sees of its workers (`onni task peek`, plan v2 §7). Read-only. Access is

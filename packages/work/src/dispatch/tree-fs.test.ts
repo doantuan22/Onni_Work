@@ -1,12 +1,16 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, sep } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   appendLedger,
+  findPlanCycle,
   inboxDigest,
   inboxName,
   listInbox,
+  patchPlanPart,
+  planPath,
+  readPlan,
   treeEnvelopeLines,
   notesSuggestions,
   seedNotes,
@@ -15,6 +19,7 @@ import {
   writeBrief,
   writeInboxMessage,
   writeOrder,
+  writePlan,
   writeReport,
 } from './tree-fs.ts';
 
@@ -116,5 +121,96 @@ describe('the tree directory', () => {
     expect(lines.some((line) => line.includes('brief.md') && /read it FIRST/.test(line))).toBe(true);
     expect(lines.some((line) => line.includes('notes.md'))).toBe(true);
     expect(lines.some((line) => line.includes('inbox/root/'))).toBe(true);
+  });
+});
+
+/**
+ * `plan.json` (plan v2 §10): the same H2 primitive as project memory — atomic write, revision
+ * conflict, one queue per path — plus a parser that never throws and a cycle check that lives
+ * outside Zod.
+ */
+describe('the tree plan', () => {
+  let dataDir: string;
+  const ROOT = 'aaaaaaaa-1111-2222-3333-444444444444';
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-plan-'));
+  });
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const parts = [
+    { id: 'p1', title: 'Parse the config', status: 'planned' as const, worker: 'codex' },
+    { id: 'p2', title: 'Wire the route', status: 'planned' as const, after: ['p1'] },
+  ];
+
+  it('round-trips a plan, stamping updatedAt and a revision of the parts', async () => {
+    expect((await readPlan(dataDir, ROOT)).plan).toEqual({ parts: [], updatedAt: '', revision: '0' });
+    const at = new Date('2026-11-03T10:00:00.000Z');
+    const written = await writePlan(dataDir, ROOT, { parts, revision: '0' }, at);
+    expect(written.ok).toBe(true);
+    if (!written.ok) return;
+    expect(written.plan.updatedAt).toBe(at.toISOString());
+    expect(written.plan.revision).not.toBe('0');
+    const read = await readPlan(dataDir, ROOT);
+    expect(read).toEqual({ plan: written.plan, corrupt: false });
+    expect(readFileSync(planPath(dataDir, ROOT), 'utf8')).toContain('"id": "p1"');
+  });
+
+  it('treats a corrupt file as no plan — a read never throws', async () => {
+    mkdirSync(join(dataDir, 'dispatch', ROOT), { recursive: true });
+    writeFileSync(planPath(dataDir, ROOT), '{ not json', 'utf8');
+    const read = await readPlan(dataDir, ROOT);
+    expect(read.corrupt).toBe(true);
+    expect(read.plan.parts).toEqual([]);
+    expect(read.plan.revision).toBe('0');
+    writeFileSync(planPath(dataDir, ROOT), JSON.stringify({ parts: [{ id: 'p1' }], updatedAt: '', revision: 'x' }), 'utf8');
+    expect((await readPlan(dataDir, ROOT)).corrupt).toBe(true);
+  });
+
+  it('refuses a stale revision and returns the current plan with it', async () => {
+    const first = await writePlan(dataDir, ROOT, { parts, revision: '0' });
+    if (!first.ok) throw new Error(first.error);
+    const stale = await writePlan(dataDir, ROOT, { parts: [], revision: '0' });
+    expect(stale).toMatchObject({ ok: false, status: 409, error: 'plan changed in another window' });
+    if (!stale.ok) expect(stale.current.revision).toBe(first.plan.revision);
+    expect((await writePlan(dataDir, ROOT, { parts, revision: first.plan.revision })).ok).toBe(true);
+  });
+
+  it('serializes concurrent patches so neither part loses the other’s update', async () => {
+    const first = await writePlan(dataDir, ROOT, { parts, revision: '0' });
+    if (!first.ok) throw new Error(first.error);
+    const [one, two] = await Promise.all([
+      patchPlanPart(dataDir, ROOT, 'p1', { status: 'done' }),
+      patchPlanPart(dataDir, ROOT, 'p2', { status: 'assigned', runId: 'run-2' }),
+    ]);
+    expect(one.ok).toBe(true);
+    expect(two.ok).toBe(true);
+    const read = await readPlan(dataDir, ROOT);
+    expect(read.plan.parts.map((part) => [part.id, part.status, part.runId])).toEqual([
+      ['p1', 'done', undefined],
+      ['p2', 'assigned', 'run-2'],
+    ]);
+  });
+
+  it('patches one part, clears a run link with an empty id, and refuses an unknown part', async () => {
+    const first = await writePlan(dataDir, ROOT, { parts, revision: '0' });
+    if (!first.ok) throw new Error(first.error);
+    const assigned = await patchPlanPart(dataDir, ROOT, 'p1', { status: 'assigned', runId: 'run-1' });
+    expect(assigned.ok && assigned.part).toMatchObject({ id: 'p1', status: 'assigned', runId: 'run-1' });
+    const cleared = await patchPlanPart(dataDir, ROOT, 'p1', { status: 'planned', runId: '' });
+    expect(cleared.ok && cleared.part.runId).toBeUndefined();
+    expect(await patchPlanPart(dataDir, ROOT, 'ghost', { status: 'done' })).toMatchObject({ ok: false, status: 404 });
+    expect(await patchPlanPart(dataDir, ROOT, 'p1', {})).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it('finds a cycle in `after` and nothing in a DAG', () => {
+    expect(findPlanCycle(parts)).toBeUndefined();
+    expect(findPlanCycle([{ id: 'a', title: 'a', status: 'planned', after: ['b'] }, { id: 'b', title: 'b', status: 'planned', after: ['a'] }]))
+      .toEqual(['a', 'b', 'a']);
+    expect(findPlanCycle([{ id: 'a', title: 'a', status: 'planned', after: ['a'] }])).toEqual(['a', 'a']);
+    // A dangling reference is the schema's refusal, not the cycle check's: stay total here.
+    expect(findPlanCycle([{ id: 'a', title: 'a', status: 'planned', after: ['ghost'] }])).toBeUndefined();
   });
 });

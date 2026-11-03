@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPart, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -108,14 +108,17 @@ import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
 import { orderPeekCandidates, peekTail, quietMinutesOf } from '../dispatch/peek.ts';
-import { appendManagerMemory, clampMemoryToTail, readManagerMemory, writeManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
-import { requireRootManager, requireSameTree } from '../dispatch/access.ts';
+import { appendManagerMemory, clampMemoryToTail, readManagerMemory, sanitizeMemoryEntry, writeManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
+import { requireRootManager, requireSameTree, treeRootOf } from '../dispatch/access.ts';
 import {
   appendLedger,
+  findPlanCycle,
   inboxDigest,
   inboxName,
   listInbox,
   notesSuggestions,
+  patchPlanPart,
+  readPlan,
   seedNotes,
   taskPaths,
   treeDir,
@@ -123,6 +126,7 @@ import {
   writeBrief,
   writeInboxMessage,
   writeOrder,
+  writePlan,
   writeReport,
 } from '../dispatch/tree-fs.ts';
 import {
@@ -2764,6 +2768,20 @@ export class RunManager {
           }
         }
       }
+      // #6A: the plan is restored from `plan.json`, so a session reopened after a restart still
+      // knows what this manager intended. Display only — nothing here decides order.
+      const planRead = await readPlan(this.dataDir, runId).catch(() => undefined);
+      if (planRead) {
+        if (planRead.corrupt) {
+          this.store.appendEvent(runId, {
+            type: 'note',
+            stepId: state.currentStepId,
+            tone: 'danger',
+            message: 'the tree plan could not be read — this session starts with an empty plan; rewrite it with `onni task plan set`',
+          });
+        }
+        if (planRead.plan.parts.length > 0) context.plan = planRead.plan;
+      }
     }
     // #10: a manager question whose deadline passed while no session was open. The record kept it
     // on purpose (the timer had nowhere to deliver the nudge); this first brief is where the
@@ -2967,6 +2985,142 @@ export class RunManager {
       message: `project memory: added one lesson (${outcome.memory.bytes}/${outcome.memory.maxBytes} bytes)`,
     });
     return outcome.memory;
+  }
+
+  /**
+   * The tree plan (plan v2 §10, `#6A`). Root manager only, like every other manager tool. Reads
+   * never throw: a corrupt `plan.json` is an empty plan plus one note, so a session still opens.
+   */
+  async readTreePlan(runId: string): Promise<TreePlan | { denied: string; status: 403 | 404 | 409 }> {
+    const run = this.store.getRun(runId);
+    const access = requireRootManager(run, 'read the tree plan');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    const read = await readPlan(this.dataDir, run!.id);
+    if (read.corrupt) {
+      this.store.appendEvent(runId, {
+        type: 'note',
+        stepId: this.active.get(runId)?.currentStepId,
+        tone: 'danger',
+        message: 'the tree plan could not be read and is being treated as empty — rewrite it with `onni task plan set`',
+      });
+    }
+    return read.plan;
+  }
+
+  /** `PUT /runs/:id/plan`: replace every part, refusing a stale revision (409) or a bad part (400/409). */
+  async writeTreePlan(runId: string, input: TreePlanPut): Promise<TreePlan | { denied: string; status: 400 | 403 | 404 | 409 }> {
+    const run = this.store.getRun(runId);
+    const access = requireRootManager(run, 'write the tree plan');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    const normalized = this.normalizePlanParts(run!, input.parts);
+    if ('denied' in normalized) return normalized;
+    const outcome = await writePlan(this.dataDir, run!.id, { parts: normalized.parts, revision: input.revision });
+    if (!outcome.ok) return { denied: outcome.error, status: 409 };
+    appendLedger(this.dataDir, run!.id, {
+      type: 'plan',
+      action: 'put',
+      parts: outcome.plan.parts.length,
+      revision: outcome.plan.revision,
+    });
+    this.store.appendEvent(runId, {
+      type: 'note',
+      stepId: this.active.get(runId)?.currentStepId,
+      message: `tree plan written: ${outcome.plan.parts.length} part${outcome.plan.parts.length === 1 ? '' : 's'}`,
+    });
+    return outcome.plan;
+  }
+
+  /** `PATCH /runs/:id/plan/parts/:partId`: one part's status and/or run, read-modify-write under the lock. */
+  async patchTreePlanPart(
+    runId: string,
+    partId: string,
+    input: TreePlanPatch,
+  ): Promise<TreePlan | { denied: string; status: 400 | 403 | 404 | 409 }> {
+    const run = this.store.getRun(runId);
+    const access = requireRootManager(run, 'update the tree plan');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    let runRef = input.runId;
+    if (runRef !== undefined && runRef !== '') {
+      const target = this.treeMember(run!, runRef);
+      if (!target) return { denied: `run "${runRef}" is not part of this task tree`, status: 409 };
+      runRef = target.id;
+    }
+    const outcome = await patchPlanPart(this.dataDir, run!.id, partId, {
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(runRef !== undefined ? { runId: runRef } : {}),
+    });
+    if (!outcome.ok) return { denied: outcome.error, status: outcome.status };
+    appendLedger(this.dataDir, run!.id, {
+      type: 'plan',
+      action: 'patch',
+      partId,
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(runRef !== undefined && runRef !== '' ? { runId: runRef } : {}),
+    });
+    this.store.appendEvent(runId, {
+      type: 'note',
+      stepId: this.active.get(runId)?.currentStepId,
+      message: `plan part "${partId}"${input.status !== undefined ? ` → ${input.status}` : ''}${runRef ? ` (${runRef.slice(0, 8)})` : ''}`,
+    });
+    return outcome.plan;
+  }
+
+  /** A run of this manager's tree, by full id or by a 6+ character prefix. */
+  private treeMember(root: RunRecord, ref: string): RunRecord | undefined {
+    return this.store.listRuns().find((run) => treeRootOf(run) === root.id && (run.id === ref || (ref.length >= 6 && run.id.startsWith(ref))));
+  }
+
+  /**
+   * Server-side plan rules that the schema cannot express: `worker` names a roster entry, `runId`
+   * names a run of THIS tree, and `after` has no cycle. Titles are flattened and redacted on the
+   * way in — a worker's output can be pasted into a title by the manager, and the title ends up in
+   * every later brief.
+   */
+  private normalizePlanParts(
+    root: RunRecord,
+    parts: TreePlanPart[],
+  ): { parts: TreePlanPart[] } | { denied: string; status: 400 | 409 } {
+    const workers = root.roster?.workers ?? [];
+    const allowed = workers.map((worker) => rosterWorkerKey(worker)).join(', ') || 'none';
+    const normalized: TreePlanPart[] = [];
+    for (const part of parts) {
+      if (part.worker !== undefined && !workers.some((worker) => rosterWorkerKey(worker) === part.worker || worker.runner === part.worker)) {
+        return { denied: `worker "${part.worker}" is not in this task's roster — allowed workers: ${allowed}`, status: 400 };
+      }
+      let runId = part.runId;
+      if (runId) {
+        const target = this.treeMember(root, runId);
+        if (!target) return { denied: `run "${runId}" is not part of this task tree`, status: 409 };
+        runId = target.id;
+      }
+      const title = sanitizeMemoryEntry(part.title, (text) => this.store.redactRunText(root.id, text));
+      if (!title) return { denied: `plan part "${part.id}" has an empty title after cleaning`, status: 400 };
+      normalized.push({ ...part, title, ...(runId !== undefined ? { runId } : {}) });
+    }
+    const cycle = findPlanCycle(normalized);
+    if (cycle) return { denied: `the plan has a cycle: ${cycle.join(' → ')}`, status: 400 };
+    return { parts: normalized };
+  }
+
+  /** `--part` on a dispatch: the part becomes `assigned` with the child's id. Ordering is still `after`. */
+  private async assignPlanPart(rootRunId: string, partId: string, childRunId: string): Promise<void> {
+    const outcome = await patchPlanPart(this.dataDir, rootRunId, partId, { status: 'assigned', runId: childRunId });
+    const stepId = this.active.get(rootRunId)?.currentStepId;
+    if (!outcome.ok) {
+      this.store.appendEvent(rootRunId, {
+        type: 'note',
+        stepId,
+        tone: 'danger',
+        message: `dispatched ${childRunId.slice(0, 8)} but the tree plan could not be updated — ${outcome.error}`,
+      });
+      return;
+    }
+    appendLedger(this.dataDir, rootRunId, { type: 'plan', action: 'assign', partId, runId: childRunId });
+    this.store.appendEvent(rootRunId, {
+      type: 'note',
+      stepId,
+      message: `plan part "${partId}" → assigned (${childRunId.slice(0, 8)})`,
+    });
   }
 
   /**
@@ -3486,6 +3640,27 @@ export class RunManager {
     input: DispatchInput,
   ): Promise<{ id: string; branch?: string } | { refused: string }> {
     const parent = this.store.getRun(parentId);
+    // `--part` (plan v2 §10): validated BEFORE anything is created, so a typo cannot leave an
+    // orphan worker whose part the plan never learned about. Marked assigned after the child id
+    // exists; the assignment is a second write, never a reason to refuse a started worker.
+    if (parent && input.partId !== undefined) {
+      const access = requireRootManager(parent, 'assign a plan part');
+      const read = access.ok ? await readPlan(this.dataDir, parent.id) : undefined;
+      const part = read?.plan.parts.find((candidate) => candidate.id === input.partId);
+      const refused = !access.ok
+        ? access.denied
+        : !read || read.corrupt
+          ? 'the tree plan could not be read — rewrite it with `onni task plan set` before using --part'
+          : !part
+            ? `plan part "${input.partId}" does not exist — add it with \`onni task plan set\`, or dispatch without --part`
+            : part.status === 'done' || part.status === 'dropped'
+              ? `plan part "${input.partId}" is ${part.status} — add a new part instead of reusing it`
+              : undefined;
+      if (refused) {
+        this.store.appendEvent(parentId, { type: 'note', stepId: this.active.get(parentId)?.currentStepId, message: `dispatch refused — ${refused}`, tone: 'danger' });
+        return { refused };
+      }
+    }
     if (parent?.worktreePath && parent.branch && existsSync(parent.worktreePath) && this.dispatchEnabled()) {
       const saved = await autosaveCommit(parent.worktreePath, 'wip before dispatch');
       if (saved === 'refused' || saved === 'failed') {
@@ -3500,7 +3675,11 @@ export class RunManager {
     // A child always runs unattended, so the level is the effective one, never raw `bypass`.
     const config = await loadWorkspaceConfig().catch(() => null);
     const configured = config?.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
-    return this.dispatch(parentId, input, { antigravityLevel: effectiveAntigravityLevel(configured, true).level });
+    const outcome = this.dispatch(parentId, input, { antigravityLevel: effectiveAntigravityLevel(configured, true).level });
+    if (!('refused' in outcome) && parent && input.partId !== undefined) {
+      await this.assignPlanPart(parent.id, input.partId, outcome.id);
+    }
+    return outcome;
   }
 
   /**

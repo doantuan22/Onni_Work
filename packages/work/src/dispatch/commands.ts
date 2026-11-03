@@ -20,7 +20,8 @@ export interface TaskCommand {
 
 const CREATE_USAGE = `onni task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch|run>]
                   [--scope "…"] [--budget <usd>] [--success "…"] [--evidence "…"] [--tools A,B]
-                  [--backend ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>] [--after "<title or id of an earlier order>" …]`;
+                  [--backend ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>] [--after "<title or id of an earlier order>" …]
+                  [--part <tree plan part id>]`;
 
 const REPORT_USAGE = `onni task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
                   [--check "<command>=<exit code>"]… [--verdict approve|changes|reject]
@@ -85,6 +86,15 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     usage: 'onni task memory add "<lesson>"   remember one lesson for later tasks in this repository',
     brief: 'onni task memory add "<lesson>"   save a durable lesson (build order, a trap, a convention) for later tasks in this repository; one line',
     oneLine: 'save a lesson for later tasks in this repository',
+  },
+  {
+    name: 'plan',
+    role: 'manager',
+    usage: `onni task plan show                     the plan you wrote for this tree, restored on every session
+  onni task plan set --json '<json>' | @file   replace every part of the plan
+  onni task plan update --part <id> --status planned|assigned|done|dropped [--run <id8>]   mark one part`,
+    brief: 'onni task plan show | plan set --json @file | plan update --part <id> --status planned|assigned|done|dropped   keep the plan current; create --part <id> marks that part assigned',
+    oneLine: 'write, show or update the plan for this task tree',
   },
   {
     name: 'tree',
