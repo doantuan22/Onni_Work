@@ -8,148 +8,581 @@
     <style>
       /* The cockpit's own tokens (packages/web/src/styles/index.css) — dark is the cockpit's
          default, light follows the system. The splash cannot read the cockpit's saved theme
-         (different origin), so this is the closest honest match. */
+         (different origin), so this is the closest honest match. The accent is the brand mark:
+         lime on black, a deeper green on paper. */
       :root {
-        --background: #0d0d0d;
-        --foreground: #ffffff;
-        --card: #171717;
-        --muted-foreground: #a3a3a3;
-        --soft-foreground: #7b7b7b;
-        --border: #262626;
+        --bg: #070809;
+        --fg: #f4f7f2;
+        --muted: #9ba49b;
+        --soft: #66706a;
+        --line: rgba(255, 255, 255, 0.07);
+        --line-strong: rgba(255, 255, 255, 0.13);
+        --panel: rgba(255, 255, 255, 0.035);
         --accent: #a8f372;
+        --accent-bright: #c9ff9f;
+        --accent-ink: #0b1407;
+        --accent-glow: rgba(168, 243, 114, 0.26);
+        --accent-line: rgba(168, 243, 114, 0.55);
+        --teal-glow: rgba(110, 231, 216, 0.12);
+        --mark-shadow: rgba(168, 243, 114, 0.22);
+        --vignette: rgba(0, 0, 0, 0.32);
+        --grid-opacity: 0.9;
+        --noise-opacity: 0.035;
         --sans: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
         --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
       }
       @media (prefers-color-scheme: light) {
         :root {
-          --background: #ffffff;
-          --foreground: #171717;
-          --card: #ffffff;
-          --muted-foreground: #5c5c5c;
-          --soft-foreground: #a3a3a3;
-          --border: #ebebeb;
+          --bg: #f4f6ef;
+          --fg: #15180f;
+          --muted: #5d6558;
+          --soft: #8b9385;
+          --line: rgba(21, 24, 15, 0.08);
+          --line-strong: rgba(21, 24, 15, 0.15);
+          --panel: rgba(255, 255, 255, 0.7);
+          --accent: #4e8f1d;
+          --accent-bright: #6bb236;
+          --accent-ink: #ffffff;
+          --accent-glow: rgba(168, 243, 114, 0.22);
+          --accent-line: rgba(94, 158, 46, 0.55);
+          --teal-glow: rgba(34, 170, 155, 0.07);
+          --mark-shadow: rgba(94, 158, 46, 0.22);
+          --vignette: rgba(21, 24, 15, 0.05);
+          --grid-opacity: 0.75;
+          --noise-opacity: 0.045;
         }
       }
       html,
       body {
         height: 100%;
         margin: 0;
-        background: var(--background);
-        color: var(--foreground);
+        background: var(--bg);
+        color: var(--fg);
         font: 13.5px/1.5 var(--sans);
         -webkit-font-smoothing: antialiased;
         -webkit-user-select: none;
         user-select: none;
+        overflow: hidden;
       }
       /* The same 28px title strip the cockpit paints under the traffic lights, draggable. */
       .titlebar {
         position: fixed;
         inset: 0 0 auto 0;
         height: 28px;
+        z-index: 3;
       }
+
+      /* ---- backdrop ---------------------------------------------------------------- */
+      .backdrop {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .backdrop::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(1100px 620px at 50% -8%, var(--accent-glow), transparent 62%),
+          radial-gradient(760px 520px at 90% 108%, var(--teal-glow), transparent 66%),
+          radial-gradient(620px 460px at 2% 98%, var(--accent-glow), transparent 70%);
+        opacity: 0.55;
+        animation: breathe-bg 12s ease-in-out infinite;
+      }
+      .grid {
+        position: absolute;
+        inset: -2px;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 46px 46px;
+        -webkit-mask-image: radial-gradient(ellipse 62% 58% at 50% 46%, #000 0%, rgba(0, 0, 0, 0.5) 48%, transparent 80%);
+        mask-image: radial-gradient(ellipse 62% 58% at 50% 46%, #000 0%, rgba(0, 0, 0, 0.5) 48%, transparent 80%);
+        opacity: var(--grid-opacity);
+      }
+      .blob {
+        position: absolute;
+        width: 540px;
+        height: 540px;
+        border-radius: 50%;
+        opacity: 0.55;
+        will-change: transform;
+      }
+      @media (prefers-color-scheme: light) {
+        .blob {
+          opacity: 0.38;
+        }
+      }
+      .blob-a {
+        left: -160px;
+        top: -150px;
+        background: radial-gradient(circle, var(--accent-glow), transparent 66%);
+        animation: drift-a 26s ease-in-out infinite alternate;
+      }
+      .blob-b {
+        right: -200px;
+        bottom: -180px;
+        background: radial-gradient(circle, var(--teal-glow), transparent 66%);
+        animation: drift-b 32s ease-in-out infinite alternate;
+      }
+      .noise {
+        position: absolute;
+        inset: 0;
+        opacity: var(--noise-opacity);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at center, transparent 52%, var(--vignette) 100%);
+      }
+
+      /* ---- stage ------------------------------------------------------------------- */
       main {
+        position: relative;
+        z-index: 1;
         height: 100%;
         display: grid;
         place-items: center;
+        padding: 44px 24px 76px;
+        box-sizing: border-box;
       }
-      .card {
-        width: min(460px, 88vw);
-        display: grid;
-        gap: 12px;
-        justify-items: center;
+      .stage {
+        width: min(620px, 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
       }
-      .mark {
-        width: 52px;
-        height: 52px;
-        border-radius: 12px;
-        display: block;
+      .stage > * {
+        animation: rise 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both;
       }
-      h1 {
-        margin: 6px 0 0;
-        font-size: 15px;
-        font-weight: 600;
-        letter-spacing: -0.01em;
+      .stage > :nth-child(1) { animation-delay: 0.04s; }
+      .stage > :nth-child(2) { animation-delay: 0.1s; }
+      .stage > :nth-child(3) { animation-delay: 0.16s; }
+      .stage > :nth-child(4) { animation-delay: 0.22s; }
+      .stage > :nth-child(5) { animation-delay: 0.28s; }
+      .stage > :nth-child(n + 6) { animation-delay: 0.32s; }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 28px;
+        color: var(--soft);
+        font: 600 10px/1 var(--sans);
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
       }
-      p {
-        margin: 0;
-        color: var(--muted-foreground);
-        font-size: 12.5px;
-        max-width: 100%;
-        overflow-wrap: anywhere;
+      .eyebrow::before,
+      .eyebrow::after {
+        content: '';
+        width: 28px;
+        height: 1px;
       }
-      .spinner {
-        width: 16px;
-        height: 16px;
-        border: 2px solid var(--border);
-        border-top-color: var(--accent);
+      .eyebrow::before { background: linear-gradient(90deg, transparent, var(--line-strong)); }
+      .eyebrow::after { background: linear-gradient(90deg, var(--line-strong), transparent); }
+
+      .mark-wrap {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 30px;
+      }
+      .mark-halo {
+        position: absolute;
+        inset: -40px;
         border-radius: 50%;
-        animation: spin 0.9s linear infinite;
-        margin-top: 4px;
+        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 68%);
+        animation: halo 5s ease-in-out infinite;
       }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
+      /* The orbit is an SVG arc rather than a masked conic gradient: mask shorthand rendering
+         differs across WebView2 / WKWebView, and an unmasked wedge looked like a stray leaf. */
+      .orbit {
+        position: absolute;
+        inset: -16px;
+        width: 128px;
+        height: 128px;
+        animation: spin 5s linear infinite;
       }
+      .orbit-base {
+        fill: none;
+        stroke: var(--line-strong);
+        stroke-width: 1;
+      }
+      .orbit-arc {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-dasharray: 74 297;
+        filter: drop-shadow(0 0 5px var(--accent-glow));
+      }
+      .mark {
+        position: relative;
+        width: 84px;
+        height: 84px;
+        border-radius: 24px;
+        display: block;
+        box-shadow:
+          0 24px 50px -22px var(--mark-shadow),
+          0 0 0 1px var(--line-strong);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.25;
+        font-weight: 600;
+        letter-spacing: -0.022em;
+        color: var(--fg);
+      }
+      .detail {
+        margin: 12px 0 0;
+        max-width: min(520px, 82vw);
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--muted);
+        font: 11px/1.5 var(--mono);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        direction: ltr;
+        unicode-bidi: plaintext;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+      /* Every failure page: the error sentence wraps instead of a path ellipsis. */
+      body.failed .detail {
+        white-space: normal;
+        overflow: visible;
+        border-radius: 12px;
+        text-align: left;
+      }
+
+      .progress {
+        position: relative;
+        width: min(300px, 62vw);
+        height: 4px;
+        margin-top: 28px;
+        border-radius: 999px;
+        background: var(--line-strong);
+        overflow: hidden;
+        box-shadow:
+          0 0 20px var(--accent-glow),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+      .progress .track {
+        position: absolute;
+        inset: 0;
+        width: 38%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, transparent 0%, var(--accent) 32%, var(--accent-bright) 64%, transparent 100%);
+        animation: sweep 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+      }
+      .progress::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        width: 18%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+        animation: sweep 2.8s linear infinite;
+        opacity: 0.3;
+      }
+
       pre {
         -webkit-user-select: text;
         user-select: text;
         text-align: left;
         width: 100%;
         box-sizing: border-box;
-        margin: 6px 0 0;
-        padding: 8px 10px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--card);
-        color: var(--muted-foreground);
-        font: 11px/1.5 var(--mono);
+        margin: 22px 0 0;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        color: var(--muted);
+        font: 11px/1.6 var(--mono);
         white-space: pre-wrap;
         overflow-wrap: anywhere;
-        max-height: 40vh;
+        max-height: 32vh;
         overflow: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--line-strong) transparent;
       }
       .actions {
         display: flex;
         gap: 8px;
-        margin-top: 6px;
+        margin-top: 22px;
       }
       .button {
         appearance: none;
-        height: 30px;
-        padding: 0 12px;
-        border-radius: 6px;
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--foreground);
-        font: 600 12.5px/28px var(--sans);
-        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 38px;
+        padding: 0 16px;
+        border-radius: 10px;
+        border: 1px solid var(--line-strong);
+        background: var(--panel);
+        color: var(--fg);
+        font: 600 12.5px/1 var(--sans);
         cursor: pointer;
-      }
-      .button:hover {
-        filter: brightness(0.96);
+        transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
       }
       .button.restart {
+        border-color: transparent;
+        background: linear-gradient(180deg, var(--accent-bright), var(--accent));
+        color: var(--accent-ink);
+        box-shadow: 0 14px 30px -14px var(--accent-glow);
+      }
+      .button:hover {
+        transform: translateY(-1px);
+      }
+      .button:active {
+        transform: translateY(0);
+      }
+      .button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .button[disabled] {
+        opacity: 0.6;
+        cursor: default;
+        transform: none;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* ---- footer ------------------------------------------------------------------ */
+      .footer {
+        position: fixed;
+        inset: auto 0 22px;
+        z-index: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        opacity: 0.85;
+        font: 500 11px/1 var(--sans);
+        letter-spacing: 0.02em;
+        pointer-events: none;
+      }
+      .footer .chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        height: 34px;
-        padding: 0 14px;
+        padding: 4px 9px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--muted);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 9.5px;
       }
-      .hidden {
-        display: none;
+      .footer .dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent-glow);
+        animation: blink 2.4s ease-in-out infinite;
+      }
+      .footer .sep {
+        opacity: 0.45;
+      }
+
+      /* ---- failure state ----------------------------------------------------------- */
+      body.failed {
+        --accent: #ff8a7a;
+        --accent-bright: #ffb3a7;
+        --accent-ink: #1a0a07;
+        --accent-glow: rgba(255, 106, 85, 0.2);
+        --accent-line: rgba(255, 138, 122, 0.55);
+        --mark-shadow: rgba(255, 106, 85, 0.2);
+      }
+      @media (prefers-color-scheme: light) {
+        body.failed {
+          --accent: #c2412d;
+          --accent-bright: #e05a43;
+          --accent-ink: #ffffff;
+          --accent-glow: rgba(255, 106, 85, 0.18);
+          --accent-line: rgba(194, 65, 45, 0.55);
+          --mark-shadow: rgba(194, 65, 45, 0.2);
+        }
+      }
+      body.failed .orbit,
+      body.failed .mark-halo {
+        animation-play-state: paused;
+      }
+      body.failed .mark-halo {
+        opacity: 0.5;
+      }
+      body.failed .orbit {
+        opacity: 0.45;
+      }
+      body.failed .backdrop::before {
+        animation: none;
+        opacity: 0.45;
+      }
+
+      /* ---- motion ------------------------------------------------------------------ */
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes halo {
+        0%,
+        100% {
+          opacity: 0.55;
+          transform: scale(0.94);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.06);
+        }
+      }
+      @keyframes breathe-bg {
+        0%,
+        100% {
+          opacity: 0.45;
+        }
+        50% {
+          opacity: 0.72;
+        }
+      }
+      @keyframes drift-a {
+        from {
+          transform: translate3d(0, 0, 0) scale(1);
+        }
+        to {
+          transform: translate3d(70px, 50px, 0) scale(1.14);
+        }
+      }
+      @keyframes drift-b {
+        from {
+          transform: translate3d(0, 0, 0) scale(1.08);
+        }
+        to {
+          transform: translate3d(-60px, -40px, 0) scale(1);
+        }
+      }
+      @keyframes sweep {
+        0% {
+          transform: translateX(-130%);
+        }
+        100% {
+          transform: translateX(330%);
+        }
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 0.45;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .backdrop::before,
+        .blob,
+        .mark-halo,
+        .orbit,
+        .progress::after,
+        .progress .track,
+        .footer .dot {
+          animation: none;
+        }
+        .stage > * {
+          animation: none;
+        }
+        .progress .track {
+          width: 100%;
+          opacity: 0.6;
+        }
+        .footer .dot {
+          opacity: 0.9;
+        }
+      }
+
+      /* ---- compact windows --------------------------------------------------------- */
+      @media (max-height: 560px), (max-width: 640px) {
+        main {
+          padding-bottom: 36px;
+        }
+        .footer {
+          display: none;
+        }
+        .eyebrow {
+          margin-bottom: 18px;
+        }
+        .mark-wrap {
+          width: 76px;
+          height: 76px;
+          margin-bottom: 18px;
+        }
+        .mark {
+          width: 66px;
+          height: 66px;
+          border-radius: 18px;
+        }
+        .orbit {
+          inset: -13px;
+          width: 102px;
+          height: 102px;
+        }
+        h1 {
+          font-size: 19px;
+        }
+        pre {
+          max-height: 38vh;
+        }
       }
     </style>
   </head>
   <body>
     <div class="titlebar" data-tauri-drag-region></div>
+    <div class="backdrop" aria-hidden="true">
+      <div class="blob blob-a"></div>
+      <div class="blob blob-b"></div>
+      <div class="grid"></div>
+      <div class="noise"></div>
+      <div class="vignette"></div>
+    </div>
     <main>
-      <div class="card">
-        <img class="mark" src="icon.svg" alt="" aria-hidden="true" />
+      <section class="stage" aria-live="polite">
+        <span class="eyebrow">Local cockpit</span>
+        <div class="mark-wrap" aria-hidden="true">
+          <div class="mark-halo"></div>
+          <svg class="orbit" viewBox="0 0 128 128">
+            <circle class="orbit-base" cx="64" cy="64" r="59" />
+            <circle class="orbit-arc" cx="64" cy="64" r="59" />
+          </svg>
+          <img class="mark" src="icon.svg" alt="" />
+        </div>
         <h1 id="title">Starting OnniCode…</h1>
-        <p id="detail">Launching the local cockpit.</p>
-        <div id="spinner" class="spinner"></div>
+        <p id="detail" class="detail">Launching the local cockpit.</p>
+        <div id="spinner" class="progress" role="progressbar" aria-label="Starting OnniCode"><span class="track"></span></div>
         <pre id="log" class="hidden"></pre>
         <div id="actions" class="actions hidden">
           <button id="retry" class="button restart" type="button">
@@ -158,17 +591,27 @@
           </button>
         </div>
         <p id="hint" class="hidden"></p>
-      </div>
+      </section>
     </main>
+    <footer class="footer">
+      <span class="chip"><span class="dot"></span>Local-first</span>
+      <span>Runs entirely on this machine</span>
+      <span class="sep">·</span>
+      <span>No account, no cloud</span>
+    </footer>
     <script>
       // The Rust side drives this page through `eval` — no Tauri IPC is needed for a splash.
       window.onniSplash = {
         set(title, detail) {
           document.getElementById('title').textContent = title
-          document.getElementById('detail').textContent = detail
+          const line = document.getElementById('detail')
+          line.textContent = detail
+          // The engine path is usually longer than the pill; the tooltip keeps it readable.
+          line.title = detail
         },
         fail(title, detail, log) {
           this.set(title, detail)
+          document.body.classList.add('failed')
           document.getElementById('spinner').classList.add('hidden')
           const pre = document.getElementById('log')
           pre.textContent = log || ''
