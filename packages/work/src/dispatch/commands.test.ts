@@ -12,7 +12,7 @@ import { MANAGER_COMMANDS_MAX_CHARS } from './prompt-budget.ts';
 
 /** The subcommands `runTaskCommand` actually answers; a command missing from the table is invisible
  *  to both help and the briefs (plan v2 §5 H5). */
-const CLI_COMMANDS = ['create', 'report', 'merge', 'list', 'budget', 'tree'];
+const CLI_COMMANDS = ['create', 'report', 'merge', 'list', 'budget', 'peek', 'tree'];
 
 describe('the command table is the one source of help and briefs', () => {
   it('holds every command the CLI answers, with a usage line and a one-line description', () => {
@@ -27,6 +27,8 @@ describe('the command table is the one source of help and briefs', () => {
   it('shows a command in the brief of the role that may use it, and not the other role’s', () => {
     expect(managerCommandsBlock()).toContain('onni task create');
     expect(managerCommandsBlock()).toContain('onni task merge');
+    expect(managerCommandsBlock()).toContain('onni task peek');
+    expect(managerCommandsBlock()).toContain('do NOT poll');
     expect(managerCommandsBlock()).not.toContain('onni task report');
     expect(workerCommandsBlock()).toContain('onni task report');
     expect(workerCommandsBlock()).not.toContain('onni task create');

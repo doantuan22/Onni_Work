@@ -2,7 +2,7 @@ import type { InferRequestType, InferResponseType } from 'hono/client';
 import { hc } from 'hono/client';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
-import { dispatchReportSchema } from '@onni/contract';
+import { dispatchPeekSchema, dispatchReportSchema } from '@onni/contract';
 import type { dispatchBudgetSchema, dispatchInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
@@ -27,6 +27,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type Merge200 = InferResponseType<Run['merge']['$post'], 200>;
   type MergeBody = InferRequestType<Run['merge']['$post']>['json'];
   type Budget200 = InferResponseType<Run['budget']['$get'], 200>;
+  type Peek200 = InferResponseType<Run['peek']['$get'], 200>;
 
   type _Checks = [
     Assert<Exact<z.infer<typeof dispatchResponseSchema>, Dispatch201>>,
@@ -38,6 +39,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.infer<typeof mergeResultSchema>, Merge200>>,
     Assert<Exact<z.input<typeof mergeInputSchema>, MergeBody>>,
     Assert<Exact<z.infer<typeof dispatchBudgetSchema>, Budget200>>,
+    Assert<Exact<z.infer<typeof dispatchPeekSchema>, Peek200>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {
@@ -58,5 +60,23 @@ describe('a report recorded before `checks` existed still parses (#7)', () => {
     expect(
       dispatchReportSchema.safeParse({ status: 'done', result: 'r', checks: [{ command: 'npm test', exitCode: 1.5 }] }).success,
     ).toBe(false);
+  });
+});
+
+describe('a peek answer is bounded at both levels (#1)', () => {
+  const entry = (patch: Record<string, unknown> = {}) => ({
+    id: 'abcd1234', title: 'w', status: 'running', tokensUsed: 0, files: [], filesOmitted: 0,
+    filesState: 'ok', quietMinutes: null, tail: [], tailTruncated: false, ...patch,
+  });
+
+  it('caps the worker list, files per worker and tail lines', () => {
+    expect(dispatchPeekSchema.safeParse({ workers: Array.from({ length: 13 }, (_, i) => entry({ id: `w${i}` })), workersOmitted: 0 }).success).toBe(false);
+    const manyFiles = Array.from({ length: 51 }, (_, i) => `f${i}`);
+    expect(dispatchPeekSchema.safeParse({ workers: [entry({ files: manyFiles })], workersOmitted: 0 }).success).toBe(false);
+    expect(dispatchPeekSchema.safeParse({ workers: [entry({ tail: Array.from({ length: 31 }, (_, i) => `l${i}`) })], workersOmitted: 0 }).success).toBe(false);
+  });
+
+  it('requires a known files state — an unknown one would hide "not looked" behind "nothing changed"', () => {
+    expect(dispatchPeekSchema.safeParse({ workers: [entry({ filesState: 'unknown' })], workersOmitted: 0 }).success).toBe(false);
   });
 });

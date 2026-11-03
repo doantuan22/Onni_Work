@@ -18,10 +18,11 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
+  let peek: unknown;
   const savedFlag = process.env.ONNI_DISPATCH;
 
   beforeEach(() => {
@@ -31,6 +32,7 @@ describe('the dispatch routes', () => {
     outcome = { id: 'child-1', branch: 'onni/child1' };
     reportOk = true;
     budget = undefined;
+    peek = { workers: [], workersOmitted: 0 };
     process.env.ONNI_DISPATCH = '1';
     const manager = {
       // The route is thin over `dispatchFromAgent` (it awaits the engine's fork), so the stub is
@@ -44,6 +46,10 @@ describe('the dispatch routes', () => {
         return reportOk;
       },
       dispatchBudgetFor: () => budget,
+      peekFor: async (runId: string, body: unknown) => {
+        calls.push({ kind: 'peek', runId, body });
+        return peek;
+      },
     } as unknown as RunManager;
     app = createApp({ repoRoot, store, manager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
   });
@@ -97,10 +103,37 @@ describe('the dispatch routes', () => {
     expect((await apiRequest(app, '/api/v1/runs/ghost/budget')).status).toBe(404);
   });
 
+  it('passes peek query through validated, and maps the manager’s denial status unchanged', async () => {
+    const res = await apiRequest(app, '/api/v1/runs/root/peek?target=abcd1234&tail=5');
+    expect(res.status).toBe(200);
+    expect(calls[0]).toEqual({ kind: 'peek', runId: 'root', body: { target: 'abcd1234', tail: 5 } });
+    expect(await res.json()).toEqual({ workers: [], workersOmitted: 0 });
+
+    calls = [];
+    await apiRequest(app, '/api/v1/runs/root/peek');
+    await apiRequest(app, '/api/v1/runs/root/peek?all=1&tail=3');
+    expect(calls.map((call) => call.body)).toEqual([{}, { all: true, tail: 3 }]);
+
+    calls = [];
+    peek = { denied: 'only the manager of a manager–worker task can peek at this task tree', status: 403 };
+    const forbidden = await apiRequest(app, '/api/v1/runs/worker/peek');
+    expect(forbidden.status).toBe(403);
+    peek = { denied: 'run 12345678 belongs to another task tree', status: 409 };
+    expect((await apiRequest(app, '/api/v1/runs/root/peek?target=other')).status).toBe(409);
+    peek = { denied: 'no such run: ghost', status: 404 };
+    expect((await apiRequest(app, '/api/v1/runs/root/peek?target=ghost')).status).toBe(404);
+  });
+
+  it('400s a peek whose tail is outside the cap, before touching the manager', async () => {
+    const res = await apiRequest(app, '/api/v1/runs/root/peek?tail=99');
+    expect(res.status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     process.env.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget']) {
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);

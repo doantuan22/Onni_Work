@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, REPORT_FILES_MAX, type AgentPermissionLevel, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -107,7 +107,8 @@ import type { DispatchBudget, DispatchInput, DispatchIntent, DispatchReport, Run
 import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
-import { requireRootManager } from '../dispatch/access.ts';
+import { orderPeekCandidates, peekTail, quietMinutesOf } from '../dispatch/peek.ts';
+import { requireRootManager, requireSameTree } from '../dispatch/access.ts';
 import {
   appendLedger,
   inboxDigest,
@@ -2791,6 +2792,93 @@ export class RunManager {
     if (!run) return undefined;
     const rootId = run.dispatch?.rootRunId ?? run.id;
     return toDispatchBudget(this.remainingForManager(this.store.listRuns(), rootId));
+  }
+
+  /**
+   * `GET /runs/:id/peek` — the root manager watching its workers (plan v2 §7). Read-only: no
+   * ledger, no transcript note, and the files come from the read-only git helper (#7's, not
+   * `worktreeChangedFiles`, which writes the index a running worker may be using).
+   *
+   * A missing `target` means the compact list: every worker, no tail. A `target` may be the root
+   * itself or any member, and turns the tail on (30 lines unless `--tail` says fewer). Only the
+   * ROOT may call: a worker looking at other workers is the short path back to a flat swarm.
+   */
+  async peekFor(
+    callerId: string,
+    query: { target?: string; all?: boolean; tail?: number },
+  ): Promise<DispatchPeek | { denied: string; status: 403 | 404 | 409 }> {
+    const caller = this.store.getRun(callerId);
+    const callerAccess = requireRootManager(caller, 'peek at this task tree');
+    if (!callerAccess.ok) return { denied: callerAccess.denied, status: callerAccess.status };
+    if (!caller) return { denied: `no such run: ${callerId}`, status: 404 };
+
+    const runs = this.store.listRuns();
+    if (query.target !== undefined) {
+      const target = runs.find((run) => run.id === query.target || (query.target!.length >= 6 && run.id.startsWith(query.target!)));
+      if (!target) return { denied: `no such run: ${query.target}`, status: 404 };
+      const sameTree = requireSameTree(caller, target);
+      if (!sameTree.ok) return { denied: sameTree.denied, status: sameTree.status };
+      const entry = await this.peekEntry(target, {
+        filesMax: PEEK_FILES_MAX,
+        tailLines: query.tail ?? PEEK_TAIL_MAX_LINES,
+      });
+      return { workers: [entry], workersOmitted: 0 };
+    }
+
+    const members = runs.filter((run) => run.dispatch?.rootRunId === caller.id && run.id !== caller.id);
+    const { chosen, omitted } = orderPeekCandidates(members, PEEK_MAX_ENTRIES);
+    // `--all --tail` splits ONE response budget evenly: twelve workers each getting the full
+    // per-entry cap would be 48 000 characters of agent context in a single command.
+    const tailMaxChars = query.tail !== undefined && chosen.length > 0
+      ? Math.max(PEEK_TAIL_MAX_CHARS_PER_LINE, Math.floor(PEEK_ALL_MAX_CHARS_TOTAL / chosen.length))
+      : undefined;
+    const workers = await Promise.all(chosen.map((run) => this.peekEntry(run, {
+      filesMax: REPORT_FILES_MAX,
+      ...(query.tail !== undefined ? { tailLines: query.tail } : {}),
+      ...(tailMaxChars !== undefined ? { tailMaxChars } : {}),
+    })));
+    return { workers, workersOmitted: omitted };
+  }
+
+  private async peekEntry(
+    run: RunRecord,
+    opts: { filesMax: number; tailLines?: number; tailMaxChars?: number },
+  ): Promise<DispatchPeekEntry> {
+    // The tail read and the last-event read are the same read: one event answers the silence
+    // question, and a tail needs a handful more to fill its lines.
+    const events = this.store.readEventsTail(run.id, opts.tailLines === undefined ? 1 : Math.min(240, opts.tailLines * 4));
+    const files = run.worktreePath
+      ? await worktreeChangedFilesReadOnly(run.worktreePath, run.baseBranch ?? 'HEAD', { max: opts.filesMax })
+      : { files: [] as string[], omitted: 0, state: 'unavailable' as const };
+    const tail = opts.tailLines === undefined
+      ? { lines: [] as string[], truncated: false }
+      : peekTail(events, {
+          maxLines: opts.tailLines,
+          ...(opts.tailMaxChars !== undefined ? { maxChars: opts.tailMaxChars } : {}),
+          redact: (line) => this.store.redactRunText(run.id, line),
+        });
+    const step = run.currentStepId ? run.steps.find((candidate) => candidate.id === run.currentStepId) : undefined;
+    return {
+      id: run.id,
+      title: run.title,
+      ...(run.runner ? { runner: run.runner } : {}),
+      ...(run.model ? { model: run.model } : {}),
+      status: run.status,
+      ...(run.activity ? { activity: run.activity } : {}),
+      ...(run.branch ? { branch: run.branch } : {}),
+      ...(run.baseBranch ? { baseBranch: run.baseBranch } : {}),
+      ...(run.startedAt ? { startedAt: run.startedAt } : {}),
+      ...(run.finishedAt ? { finishedAt: run.finishedAt } : {}),
+      ...(run.costUsd !== undefined ? { costUsd: run.costUsd } : {}),
+      tokensUsed: run.tokensUsed,
+      ...(step ? { currentStep: { name: step.name, status: step.status } } : {}),
+      files: files.files,
+      filesOmitted: files.omitted,
+      filesState: files.state,
+      quietMinutes: quietMinutesOf(events),
+      tail: tail.lines,
+      tailTruncated: tail.truncated,
+    };
   }
 
   /**

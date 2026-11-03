@@ -54,6 +54,26 @@ export const mergeResultSchema = z.object({
 export type MergeResult = z.infer<typeof mergeResultSchema>;
 
 /**
+ * Caps for the surfaces that hand manager-facing text back to a model (`#7` report, `#1` peek,
+ * `#9` memory, `#6` plan). One place: the engine's output cap, the contract's array bound and the
+ * prompt budget must agree, or a value can be written that the prompt never shows.
+ * Declared BEFORE the schemas that read them: these are constants, not hoisted imports.
+ */
+export const REPORT_FILES_MAX = 15;
+export const REPORT_CHECKS_MAX = 10;
+export const PEEK_MAX_ENTRIES = 12;
+export const PEEK_FILES_MAX = 50;
+export const PEEK_TAIL_MAX_LINES = 30;
+export const PEEK_TAIL_MAX_CHARS_PER_LINE = 200;
+export const PEEK_TAIL_MAX_CHARS_PER_ENTRY = 4_000;
+export const PEEK_ALL_MAX_CHARS_TOTAL = 8_000;
+/** UTF-8 bytes, for both writing and reading project memory into a prompt (plan v2 §8). */
+export const MANAGER_MEMORY_MAX_BYTES = 3_072;
+export const MANAGER_MEMORY_ENTRY_MAX_CHARS = 300;
+export const PLAN_MAX_PARTS = 50;
+export const PLAN_PROMPT_MAX_PARTS = 15;
+
+/**
  * What is left of a tree's ceilings, JSON-safe (plan v2 §6.2). `null` means "no ceiling on this
  * axis" everywhere — never an absent field, never `Infinity` (which `JSON.stringify` would turn
  * into `null` anyway, but one of the two would be an accident). Negatives are clamped to 0 and
@@ -70,6 +90,41 @@ export const dispatchBudgetSchema = z.object({
   overBudget: z.boolean(),
 });
 export type DispatchBudget = z.infer<typeof dispatchBudgetSchema>;
+
+/**
+ * `GET /runs/:id/peek` — a manager looking at a worker that is still running (plan v2 §7). One
+ * entry per worker; the compact answer carries no `tail`, only the state, cost, files and how
+ * long the transcript has been silent. `filesState` is NOT "nothing changed": `unavailable` and
+ * `timeout` both mean the answer is unknown, and the CLI says so in words.
+ */
+export const dispatchPeekEntrySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  runner: z.string().optional(),
+  model: z.string().optional(),
+  status: z.string(),
+  activity: z.string().optional(),
+  branch: z.string().optional(),
+  baseBranch: z.string().optional(),
+  startedAt: z.string().optional(),
+  finishedAt: z.string().optional(),
+  costUsd: z.number().optional(),
+  tokensUsed: z.number(),
+  currentStep: z.object({ name: z.string(), status: z.string() }).optional(),
+  files: z.array(z.string().max(300)).max(PEEK_FILES_MAX),
+  filesOmitted: z.number().int().nonnegative(),
+  filesState: z.enum(['ok', 'timeout', 'unavailable']),
+  quietMinutes: z.number().int().nonnegative().nullable(),
+  tail: z.array(z.string().max(PEEK_TAIL_MAX_CHARS_PER_LINE)).max(PEEK_TAIL_MAX_LINES),
+  tailTruncated: z.boolean(),
+});
+export type DispatchPeekEntry = z.infer<typeof dispatchPeekEntrySchema>;
+
+export const dispatchPeekSchema = z.object({
+  workers: z.array(dispatchPeekEntrySchema).max(PEEK_MAX_ENTRIES),
+  workersOmitted: z.number().int().nonnegative(),
+});
+export type DispatchPeek = z.infer<typeof dispatchPeekSchema>;
 
 /** One command a worker says it ran, and the exit code it saw (plan v2 §6.1). Never verified by
  *  onni — the report label says `worker-reported`, and `#4` is where real verification lives. */
@@ -112,25 +167,6 @@ export type DispatchPendingReport = z.infer<typeof dispatchPendingReportSchema>;
 export const DISPATCH_MAX_IN_FLIGHT = 4;
 /** The most subtasks a user may ask a root for through the composer. */
 export const DISPATCH_MAX_SUBTASKS = 100;
-
-/**
- * Caps for the surfaces that hand manager-facing text back to a model (`#7` report, `#1` peek,
- * `#9` memory, `#6` plan). One place: the engine's output cap, the contract's array bound and the
- * prompt budget must agree, or a value can be written that the prompt never shows.
- */
-export const REPORT_FILES_MAX = 15;
-export const REPORT_CHECKS_MAX = 10;
-export const PEEK_MAX_ENTRIES = 12;
-export const PEEK_FILES_MAX = 50;
-export const PEEK_TAIL_MAX_LINES = 30;
-export const PEEK_TAIL_MAX_CHARS_PER_LINE = 200;
-export const PEEK_TAIL_MAX_CHARS_PER_ENTRY = 4_000;
-export const PEEK_ALL_MAX_CHARS_TOTAL = 8_000;
-/** UTF-8 bytes, for both writing and reading project memory into a prompt (plan v2 §8). */
-export const MANAGER_MEMORY_MAX_BYTES = 3_072;
-export const MANAGER_MEMORY_ENTRY_MAX_CHARS = 300;
-export const PLAN_MAX_PARTS = 50;
-export const PLAN_PROMPT_MAX_PARTS = 15;
 
 /**
  * What the USER asked for when starting a task with the composer's Dispatch toggle: this task is

@@ -218,3 +218,70 @@ Cùng nhánh `feat/manager-worker-gaps`, theo `.ai/specs/2026-11-03-manager-work
   objective/`success_criteria`/`required_evidence` khớp lệnh kiểm tra (`npm test|build|lint|typecheck`,
   `cargo test|check`, `pytest`, `go test`, `make test`), manager nhận một `note` cảnh báo — **không** chặn
   dispatch. `dispatchFromAgent` nạp config mới mỗi lần gọi, nên đổi quyền giữa task có hiệu lực ở order kế tiếp.
+
+## Phụ lục E — Đợt 3: `onni task peek` (2026-11-03)
+
+Cùng nhánh `feat/manager-worker-gaps`, theo `.ai/specs/2026-11-03-manager-worker-gaps-plan.v2.md` §7.
+
+### Route và quyền
+
+- `GET /runs/:id/peek?target=&all=&tail=`: `:id` là **caller**, phải là root manager (`requireRootManager`);
+  worker gọi → 403, run không tồn tại → 404. `target` cùng cây (`requireSameTree`) → 409 nếu khác cây,
+  404 nếu không tìm thấy; `target` có thể là chính root.
+- "Root manager" giữ nguyên nghĩa của `merge` và của brief: **root có `roster`**. Một root không roster không
+  nhận `onni task` trong prompt (brief chỉ gắn với `managerPrompt`), nên route cũng không mở cho nó — hai lớp
+  nói cùng một định nghĩa.
+- Không có `target`/`all` → như `all=1`. `tail` 1–`PEEK_TAIL_MAX_LINES` (30), sai → 400.
+- Route chỉ đọc: **không** ghi ledger, note hay state; `ONNI_DISPATCH=0` đóng route như cả họ dispatch.
+
+### Chế độ gọn và tail
+
+- `all` mặc định gọn: mỗi worker chỉ có trạng thái, `activity`, chi phí, `files` (≤ `REPORT_FILES_MAX` = 15 tên),
+  `quietMinutes`; `tail` rỗng. Tail chỉ trả khi chỉ định `target` (mặc định 30 dòng) hoặc `--tail N` tường minh.
+- `--all --tail` chia đều `PEEK_ALL_MAX_CHARS_TOTAL` (8.000) cho số entry, sàn một dòng
+  (`PEEK_TAIL_MAX_CHARS_PER_LINE` = 200) — mười hai worker không thể đổ 48.000 ký tự vào ngữ cảnh manager.
+- Nhiều hơn `PEEK_MAX_ENTRIES` (12) thành viên: ưu tiên đang chạy, rồi tới settled, mỗi nhóm cũ nhất trước;
+  phần dư vào `workersOmitted`.
+
+### Files: chỉ đọc, và nói rõ khi không biết
+
+- `files` lấy từ `worktreeChangedFilesReadOnly` (H3) — không `git add -N`, nên `peek` không ghi index và không
+  tranh `index.lock` với worker đang chạy. Test so byte `index` trước/sau.
+- `filesState`: `ok` | `timeout` | `unavailable`. `unavailable` (worktree đã reclaim) và `timeout` được in thành
+  "this is NOT 'nothing changed'" / "unknown, not 'nothing changed'" — manager không được hiểu nhầm.
+- `PEEK_FILES_MAX` (50) cho `target`, 15 cho danh sách gọn.
+
+### Tail và `quietMinutes`
+
+- `store.readEventsTail(runId, n)` đọc ngược từ cuối file theo chunk 64 KiB, trần 1 MiB, bỏ mảnh dòng đầu và
+  bỏ dòng cuối bị xé — transcript toàn `item.delta` không còn bị parse cả file cho 30 dòng.
+- `peekTail` (thuần, `dispatch/peek.ts`): chỉ field `text`/`message`/`name`/`title`, gộp khoảng trắng, cắt
+  `PEEK_TAIL_MAX_CHARS_PER_LINE`, tổng `PEEK_TAIL_MAX_CHARS_PER_ENTRY`; **redact từng dòng** bằng
+  `store.redactRunText(<target run id>, …)` trước khi cắt; không trả JSON thô hay tool output đầy đủ.
+- `quietMinutes` tính từ `ts` của event cuối, `null` khi không đọc được — nghĩa là "không có event mới",
+  **không** phải "bị treo" (worker có thể đang chạy một tool dài). Brief nói đúng vậy.
+- Định dạng người đọc: block mỗi worker (id8, trạng thái, chi phí/token, bước, nhánh, files, `recent:`), tổng
+  không quá `PEEK_ALL_MAX_CHARS_TOTAL`; dòng cuối đếm `workersOmitted`.
+
+### CLI và brief
+
+- `onni task peek [<worker id>] [--all] [--tail N]` — một request; id + `--all` cùng lúc bị từ chối trước khi gọi
+  server; 404 vẫn đọc thành lệch phiên bản CLI/server qua `callRoute` (H4).
+- Bảng lệnh H5: `peek` chỉ trong brief manager, cạnh `budget`; câu nhắc "**do NOT poll** — its report arrives by
+  itself". Tổng block lệnh vẫn dưới `MANAGER_COMMANDS_MAX_CHARS` và prompt worst-case dưới `PROMPT_MAX_CHARS`.
+
+### Test
+
+- Thuần (`dispatch/peek.test.ts`): thứ tự mới nhất ở cuối, cap dòng/ký tự, redaction (secret giả không lọt),
+  `quietMinutes`, thứ tự chọn "đang chạy trước", định dạng khi files `unavailable`/`timeout`.
+- `store.test.ts`: `readEventsTail` trả đúng N event cuối trên transcript > 64 KiB, `count ≤ 0` và run lạ → `[]`,
+  dòng cuối bị xé bị bỏ chứ không làm hỏng cả tail.
+- Route (`dispatch-api.test.ts`, `contract-parity.dispatch.test.ts`): query đi đúng vào `peekFor`, 400 khi
+  `tail=99`, 404/403/409 passthrough, cổng `ONNI_DISPATCH=0`, parity hai chiều của response.
+- Engine (`dispatch-engine.test.ts`): worker gọi → 403; root gọi cùng cây ok; cây khác → 409; worktree đã reclaim
+  → `unavailable`; > `PEEK_MAX_ENTRIES` → `workersOmitted` và không tail; index worktree không đổi sau `peek`.
+- CLI (`task-cli.test.ts`): `--all` gửi một request `?all=1`, `--tail` và `target` trên cùng query, từ chối
+  `--tail 0`/id + `--all` trước khi gọi server.
+
+**Giới hạn đã biết.** `target` chỉ phân giải id đầy đủ hoặc tiền tố ≥ 6 ký tự (không có tìm mờ theo title);
+`peek` không thay `onni task list` cho cấu trúc cây; `files` là ảnh chụp tại thời điểm gọi, không phải diff.

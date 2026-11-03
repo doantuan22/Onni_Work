@@ -178,6 +178,36 @@ describe('onni task', () => {
     expect(h.out[0]).toBe('cost $3.20 · 120k tokens · 45 min · 800 steps · 2 workers left (cap 8)');
   });
 
+  it('peek asks once — compact for --all, with a tail for a named worker — and prints the blocks', async () => {
+    const body = {
+      workers: [{
+        id: 'abcd1234-0000', title: 'A worker', status: 'running', tokensUsed: 0, files: ['src/a.ts'], filesOmitted: 0,
+        filesState: 'ok', quietMinutes: 3, tail: ['recent line'], tailTruncated: false,
+      }],
+      workersOmitted: 1,
+    };
+    const all = harness({ status: 200, body });
+    expect(await runTaskCommand(['peek', '--all'], env, all.io)).toBe(0);
+    expect(all.calls).toHaveLength(1);
+    expect(all.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/peek?all=1');
+    expect(all.out[0]).toContain('abcd1234  running — A worker');
+    expect(all.out[0]).toContain('files (1): src/a.ts');
+    expect(all.out[0]).toContain('(+1 more worker not shown');
+    const one = harness({ status: 200, body });
+    expect(await runTaskCommand(['peek', 'abcd1234', '--tail', '5'], env, one.io)).toBe(0);
+    expect(one.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/peek?target=abcd1234&tail=5');
+    expect(one.out[0]).toContain('recent:\n  | recent line');
+  });
+
+  it('peek refuses a bad tail or an id plus --all without calling the server', async () => {
+    const h = harness({ status: 200, body: { workers: [], workersOmitted: 0 } });
+    expect(await runTaskCommand(['peek', '--tail', '0'], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('--tail must be 1-');
+    expect(await runTaskCommand(['peek', 'abcd1234', '--all'], env, h.io)).toBe(1);
+    expect(h.err[1]).toContain('name an id OR pass --all');
+    expect(h.calls).toHaveLength(0);
+  });
+
   it('list prints the tree this task belongs to, indented, with status, cost and verdicts', async () => {
     const h = harness({
       status: 200,

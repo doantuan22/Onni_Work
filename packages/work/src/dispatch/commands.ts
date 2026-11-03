@@ -66,6 +66,13 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: "see what is left of this tree's ceilings",
   },
   {
+    name: 'peek',
+    role: 'manager',
+    usage: 'onni task peek [<worker id>] [--all] [--tail <1-30>]   a worker\'s state, changed files and recent lines (read-only)',
+    brief: 'onni task peek [<worker id>] [--tail N]   a worker\'s state, changed files and recent lines; --all for a compact list. Peek when one has been silent a while or before you change course — do NOT poll, its report arrives by itself',
+    oneLine: "see where a worker is, what it changed and how long it has been quiet",
+  },
+  {
     name: 'tree',
     role: 'manager',
     usage: 'onni task tree <run id>              the tree rooted at (or containing) another run',

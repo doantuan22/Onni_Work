@@ -1988,6 +1988,51 @@ export class RunStore extends EventEmitter {
     }
   }
 
+  /**
+   * The last `count` parsable events, read backwards in chunks (plan v2 §7). A transcript can be
+   * huge with ephemeral `item.delta` frames; `peek` only needs its tail, and parsing the whole
+   * file for that is I/O nobody asked for. The read is capped at 1 MiB: something longer than
+   * that is outside the answer, never a reason to read the rest.
+   */
+  readEventsTail(runId: string, count: number): RunEvent[] {
+    if (count <= 0) return [];
+    let fd: number | undefined;
+    try {
+      fd = openSync(this.eventsPath(runId), 'r');
+      const size = fstatSync(fd).size;
+      const chunkSize = 64 * 1024;
+      const maxBytes = 1024 * 1024;
+      let pos = size;
+      let read = 0;
+      let text = '';
+      // One more newline than events wanted: the last line may be unterminated.
+      while (pos > 0 && (text.match(/\n/g) ?? []).length <= count && read < maxBytes) {
+        const len = Math.min(chunkSize, pos, maxBytes - read);
+        pos -= len;
+        read += len;
+        const buffer = Buffer.allocUnsafe(len);
+        readSync(fd, buffer, 0, len, pos);
+        text = buffer.toString('utf8') + text;
+      }
+      const lines = text.split('\n').filter(Boolean);
+      // A read that stopped mid-file begins inside a line: that fragment is not an event.
+      const complete = pos > 0 ? lines.slice(1) : lines;
+      const events: RunEvent[] = [];
+      for (const line of complete.slice(-count)) {
+        try {
+          events.push(JSON.parse(line) as RunEvent);
+        } catch {
+          // A torn write at the tail is not an event.
+        }
+      }
+      return events;
+    } catch {
+      return [];
+    } finally {
+      if (fd !== undefined) closeSync(fd);
+    }
+  }
+
   deleteRun(id: string): boolean {
     const existed = this.forget(id);
     if (existed) {

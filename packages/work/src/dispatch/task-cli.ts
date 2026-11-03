@@ -9,9 +9,10 @@
  * worded for whoever is asking) and exits 2.
  */
 import { parseArgs } from 'node:util';
-import { REPORT_CHECKS_MAX, type DispatchBudget } from '@onni/contract';
+import { REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
+import { formatPeek } from './peek.ts';
 import { taskUsage } from './commands.ts';
 
 export interface TaskCliEnv {
@@ -232,6 +233,30 @@ export async function runTaskCommand(
           method: 'GET',
         }, 'could not read the budget —')) as DispatchBudget;
         io.log(formatBudgetLine(budget));
+        return 0;
+      }
+      case 'peek': {
+        const { values, positionals } = parseArgs({
+          args: rest,
+          allowPositionals: true,
+          options: { all: { type: 'boolean' }, tail: { type: 'string' } },
+        });
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can peek');
+        const target = positionals[0];
+        if (target && values.all) throw new Error('name an id OR pass --all, not both');
+        const tail = number(values.tail, 'tail');
+        if (tail !== undefined && (!Number.isInteger(tail) || tail < 1 || tail > PEEK_TAIL_MAX_LINES)) {
+          throw new Error(`--tail must be 1-${PEEK_TAIL_MAX_LINES}`);
+        }
+        const params = new URLSearchParams();
+        if (target) params.set('target', target);
+        if (values.all) params.set('all', '1');
+        if (tail !== undefined) params.set('tail', String(tail));
+        const query = params.toString();
+        const peek = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/peek${query ? `?${query}` : ''}`, {
+          method: 'GET',
+        }, 'could not peek —')) as DispatchPeek;
+        io.log(formatPeek(peek));
         return 0;
       }
       case 'list':

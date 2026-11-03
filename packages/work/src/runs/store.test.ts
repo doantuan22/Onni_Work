@@ -2509,6 +2509,53 @@ describe('RunStore — seq rehydration from the persisted high-water mark', () =
   });
 });
 
+describe('RunStore — readEventsTail (plan v2 §7)', () => {
+  let dataDir: string;
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-tail-'));
+  });
+
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it('returns the last N events in order, however large the transcript before them', () => {
+    const store = RunStore.open(dataDir);
+    const run = store.createRun({ title: 't', workflow: 'w', task: 't', steps: [] });
+    // Pad past one 64 KiB read chunk: the backwards walk must stitch chunks without losing the
+    // line it started inside.
+    for (let index = 0; index < 2000; index += 1) {
+      store.appendEvent(run.id, { type: 'note', message: `${index} ${'x'.repeat(40)}` });
+    }
+    store.appendEvent(run.id, { type: 'note', message: 'second to last' });
+    store.appendEvent(run.id, { type: 'note', message: 'last' });
+
+    const tail = store.readEventsTail(run.id, 3);
+    expect(tail.map((event) => (event as { message?: string }).message?.split(' ')[0])).toEqual(['1999', 'second', 'last']);
+    expect(store.readEventsTail(run.id, 1)).toHaveLength(1);
+    expect((store.readEventsTail(run.id, 1)[0] as { message?: string }).message).toBe('last');
+  });
+
+  it('answers nothing for a count that asks for nothing, or a run with no transcript', () => {
+    const store = RunStore.open(dataDir);
+    const run = store.createRun({ title: 't', workflow: 'w', task: 't', steps: [] });
+    store.appendEvent(run.id, { type: 'note', message: 'one' });
+    expect(store.readEventsTail(run.id, 0)).toEqual([]);
+    expect(store.readEventsTail(run.id, -3)).toEqual([]);
+    expect(store.readEventsTail('never-existed', 5)).toEqual([]);
+  });
+
+  it('drops a torn last line instead of failing the whole tail', () => {
+    const store = RunStore.open(dataDir);
+    const run = store.createRun({ title: 't', workflow: 'w', task: 't', steps: [] });
+    store.appendEvent(run.id, { type: 'note', message: 'one' });
+    store.appendEvent(run.id, { type: 'note', message: 'two' });
+    appendFileSync(join(dataDir, 'runs', `${run.id}.ndjson`), '{"seq":3,"ty');
+    expect(store.readEventsTail(run.id, 5)).toHaveLength(2);
+  });
+});
+
 describe('RunStore — runs.json encoding', () => {
   let dataDir: string;
   beforeEach(() => {

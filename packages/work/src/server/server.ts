@@ -106,7 +106,7 @@ import {
 import type { ClearProjectDataResult, MergeResult } from '@onni/contract';
 import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, mergeInputSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -4546,6 +4546,7 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/report', requireDispatch)
     .use('/runs/:id/merge', requireDispatch)
     .use('/runs/:id/budget', requireDispatch)
+    .use('/runs/:id/peek', requireDispatch)
 
     /** Create ONE child of run `:id`. Refusals (cap, budget, settled parent) are 409 with the
      *  reason — the same text the parent's transcript notes. */
@@ -4579,6 +4580,24 @@ export function createApp(deps: ServerDeps) {
       const { manager } = c.get('project');
       const budget = manager.dispatchBudgetFor(c.req.param('id'));
       return budget ? c.json(budget) : c.json({ error: 'no such run' }, 404);
+    })
+
+    /** What a manager sees of its workers (`onni task peek`, plan v2 §7). Read-only. Access is
+     *  checked in `peekFor`: 404 unknown run, 403 a worker asking, 409 a run of another tree. */
+    .get('/runs/:id/peek', queryZodValidator(z.object({
+      target: z.string().trim().min(1).max(200).optional(),
+      all: queryValue,
+      tail: z.coerce.number().int().min(1).max(PEEK_TAIL_MAX_LINES).optional(),
+    }), { message: `tail must be 1-${PEEK_TAIL_MAX_LINES}` }), async (c) => {
+      const { manager } = c.get('project');
+      const { target, all, tail } = c.req.valid('query');
+      const outcome = await manager.peekFor(c.req.param('id'), {
+        ...(target !== undefined ? { target } : {}),
+        ...(all !== undefined ? { all: true } : {}),
+        ...(tail !== undefined ? { tail } : {}),
+      });
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
     });
 
   // ---- runs ----------------------------------------------------------------

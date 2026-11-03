@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { PENDING_ASK_MAX_QUESTIONS, type DispatchInput, type RunDispatch } from '@onni/contract';
+import { PENDING_ASK_MAX_QUESTIONS, PEEK_MAX_ENTRIES, rosterSchema, type DispatchInput, type RunDispatch } from '@onni/contract';
 import { runRecordSchema, RunStore, type RunRecord } from '../runs/store.ts';
 import { WorkspaceSemaphore, type WorkspaceResourceLimits } from '../workspace/semaphore.ts';
 import { RunManager } from './run.ts';
@@ -511,6 +511,70 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const suggestion = files.find((name) => name.includes('suggestions'));
       expect(suggestion).toBeTruthy();
       expect(readFileSync(join(treeDirOf(parent.id), 'inbox', 'root', suggestion!), 'utf8')).toContain('split billing out of this order');
+    }, 60_000);
+  });
+
+  // ---- peek (plan v2 §7) ---------------------------------------------------------------------
+
+  describe('peek', () => {
+    /** `peek` is a manager command (plan v2 §1.3): only a root carrying a roster sees it in its
+     *  brief, so only that shape is the "root manager" the route admits. */
+    const ROSTER = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'work' }] });
+    const managerRoot = async (): Promise<RunRecord> => {
+      const record = await parkedRoot();
+      store.updateRun(record.id, { roster: ROSTER });
+      return record;
+    };
+
+    it('shows a running worker’s state and files without writing the worktree’s index', async () => {
+      const parent = await managerRoot();
+      const child = start('mock:monitoring work', childOf(parent.id), { autonomous: true });
+      await waitFor(child.id, (r) => r?.status === 'running' && r.worktreePath !== undefined);
+      const worktree = store.getRun(child.id)!.worktreePath!;
+      writeFileSync(join(worktree, 'peeked.txt'), 'new\n');
+      const gitDir = (await run('git', ['rev-parse', '--absolute-git-dir'], { cwd: worktree })).stdout.trim();
+      const indexBefore = readFileSync(join(gitDir, 'index'));
+
+      const outcome = await manager.peekFor(parent.id, { target: child.id });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      const entry = outcome.workers[0]!;
+      expect(entry).toMatchObject({ id: child.id, status: 'running', filesState: 'ok' });
+      expect(entry.files).toContain('peeked.txt');
+      expect(entry.tail.length).toBeGreaterThan(0);
+
+      // The whole point of H3 here: a worker is running in that worktree, so `git add -N` is a
+      // race with its own index. The bytes must be identical afterwards.
+      expect(readFileSync(join(gitDir, 'index')).equals(indexBefore)).toBe(true);
+    }, 60_000);
+
+    it('lets only the root peek, and only inside its own tree; a reclaimed worktree reads unavailable', async () => {
+      const parent = await managerRoot();
+      const child = start('mock:monitoring work', childOf(parent.id), { autonomous: true });
+      await waitFor(child.id, (r) => r?.status === 'running');
+      expect(await manager.peekFor(child.id, {})).toMatchObject({ status: 403 });
+      const other = await parkedRoot();
+      expect(await manager.peekFor(parent.id, { target: other.id })).toMatchObject({ status: 409 });
+      expect(await manager.peekFor(parent.id, { target: 'nope' })).toMatchObject({ status: 404 });
+      expect('workers' in (await manager.peekFor(parent.id, { target: parent.id }))).toBe(true);
+
+      store.updateRun(child.id, { worktreePath: join(repoRoot, 'reclaimed-by-retention') });
+      const outcome = await manager.peekFor(parent.id, { target: child.id });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.workers[0]?.filesState).toBe('unavailable');
+    }, 60_000);
+
+    it('caps a compact list and counts what it hides', async () => {
+      const parent = await managerRoot();
+      for (let index = 0; index < PEEK_MAX_ENTRIES + 1; index += 1) {
+        const worker = store.createRun({ title: `worker ${index}`, workflow: 'quick-task', task: 't', steps: [] });
+        store.updateRun(worker.id, { status: 'done', dispatch: childOf(parent.id), createdAt: `2026-11-03T09:${String(index).padStart(2, '0')}:00.000Z` });
+      }
+      const outcome = await manager.peekFor(parent.id, {});
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.workers).toHaveLength(PEEK_MAX_ENTRIES);
+      expect(outcome.workersOmitted).toBe(1);
+      // Compact mode: state, files — never a tail.
+      expect(outcome.workers.every((worker) => worker.tail.length === 0)).toBe(true);
     }, 60_000);
   });
 
