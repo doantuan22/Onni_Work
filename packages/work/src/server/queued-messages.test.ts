@@ -28,6 +28,8 @@ describe('queued prompt stack routes (#472)', () => {
   let record: RunRecord;
   /** Which rung the fake engine answers on. */
   let rung: 'live' | 'queued' | 'starting' | 'closed';
+  /** What the live rung was handed — enough to pin the replyTo passthrough (#10). */
+  let delivered: { id: string; text: string; replyTo?: string } | undefined;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-472-routes-'));
@@ -37,9 +39,14 @@ describe('queued prompt stack routes (#472)', () => {
     // rather than a bounds 400), so the fixture must look queued as well as answer on that rung.
     store.updateRun(record.id, { status: 'queued' });
     rung = 'queued';
+    delivered = undefined;
 
     manager = {
-      sendMessage: () => rung === 'live',
+      sendMessage: (id: string, content: Array<{ type: string; text?: string }>, replyTo?: string) => {
+        if (rung !== 'live') return false;
+        delivered = { id, text: content.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('\n'), ...(replyTo !== undefined ? { replyTo } : {}) };
+        return true;
+      },
       enqueueMessage: (id: string, content: Array<{ type: string; text?: string }>): QueuedMessage | null => {
         if (rung !== 'queued') return null;
         const message: QueuedMessage = {
@@ -114,6 +121,14 @@ describe('queued prompt stack routes (#472)', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ delivered: true });
     expect(store.getRun(record.id)?.queuedMessages).toBeUndefined();
+  });
+
+  it('carries replyTo to the live engine so the answer names its question, and omits it otherwise (#10)', async () => {
+    rung = 'live';
+    await post({ text: 'SQLite', replyTo: 'q-1' });
+    expect(delivered).toEqual({ id: record.id, text: 'SQLite', replyTo: 'q-1' });
+    await post({ text: 'a free message' });
+    expect(delivered).toEqual({ id: record.id, text: 'a free message' });
   });
 
   it('appends to the stack and answers { queued: true } for a queued run', async () => {

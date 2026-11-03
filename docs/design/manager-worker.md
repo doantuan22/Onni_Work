@@ -356,3 +356,109 @@ Cùng nhánh `feat/manager-worker-gaps`, theo `.ai/specs/2026-11-03-manager-work
   subcommand lạ trước khi gọi server.
 - UI (`manager-memory-section.test.tsx`, jsdom): hiện bài học kèm nguồn; Save gửi `revision` đã nạp;
   đếm byte UTF-8 và khoá Save khi vượt trần; 409 → tải lại bản mới + toast; Clear chỉ sau xác nhận.
+
+## Phụ lục G — Đợt 5: manager hỏi người dùng mà không chặn lượt (2026-11-03)
+
+Cùng nhánh `feat/manager-worker-gaps`, theo `.ai/specs/2026-11-03-manager-worker-gaps-plan.v2.md` §9.
+
+### Bước 0 — ba điều đã kiểm trước khi viết code
+
+1. **`thread-state.ts` giữ đúng MỘT pending ask**, và nó được resolve bởi **bất kỳ** `user-message`
+   nào (không phân biệt câu hỏi). Vì vậy một ask không chặn không được đi vào `pendingAsk`: tin nhắn
+   tự do của user (ví dụ trả lời một Guard ask khác) sẽ xoá nó. Quyết định: manager ask vẫn là một
+   `ThreadAsk` với `fromManager: true`, nhưng **trạng thái mở suy ra từ record**
+   (`run.dispatch.softAsk.requestId === ask.id`), và `pendingAsk` vẫn chỉ thuộc Guard/workflow.
+2. **`/messages` chưa mang được `requestId`** — body chỉ có `text`/`images`/`idempotencyKey`. Đã thêm
+   `replyTo?: string` (≤ 120 ký tự) vào `messageInputSchema` **và** `continueInputSchema`; parity hai
+   chiều được giữ ở `contract-parity.dispatch.test.ts`. Không đổi hành vi khi vắng `replyTo`.
+3. **Hàng đợi `pendingReportsBlock` chỉ chứa report** của worker, không chứa câu hỏi — nên không có
+   hàng đợi mới nào cần cho ask; record là nơi duy nhất giữ câu hỏi mở.
+
+### Contract
+
+- `managerAskInputSchema`: `question` (trim, 1–2 000), `options[]` (tối đa 10; `label` ≤ 120,
+  `description` ≤ 500 tuỳ chọn), `timeoutMinutes` (số nguyên 1–1 440, tuỳ chọn).
+  Response `{ requestId }`.
+- `UiAskRequestedEvent.source` mở thành `'workflow' | 'manager'`; manager ask phát header
+  `Question from the manager`.
+- `RunDispatch.softAsk` (tuỳ chọn, nên record cũ vẫn parse): `requestId`, `askedAt`, `expiresAt?`,
+  `question` (cắt 400 ký tự — cùng biên với `pendingAsk`), `optionCount`.
+
+### Route và quyền
+
+- `POST /runs/:id/ask` (project-scoped, `requireDispatch`): `:id` phải là root manager
+  (`requireRootManager`). Trả **403** cho worker/root không roster, **404** run lạ, **409** khi run đã
+  settle (`done/failed/cancelled/review`) hoặc khi đã có `pendingAsk` **hoặc** `softAsk`
+  (`one open question per task — answer the current one first`).
+- Route **không** gọi `handleRunnerUiEvent` và **không** đụng `status`/`attentionRequest`: run tiếp
+  tục chạy sau khi hỏi. Mỗi ask ghi ledger `manager-ask` và một note `asked you: "…"` (kèm `expiresAt`
+  nếu có).
+
+### Vòng đời
+
+| Sự kiện | Hành vi |
+| --- | --- |
+| manager hỏi | phát `ask.requested` (`source: 'manager'`), ghi `dispatch.softAsk`, dựng timer nếu có `timeoutMinutes`; status không đổi |
+| trả lời đúng `replyTo` | `deliverMessage` xoá `softAsk` + timer; nội dung giao cho manager mở đầu bằng `User answered your question "<question>": <answer>` |
+| tin nhắn tự do | **không** xoá `softAsk`; vẫn deliver bình thường |
+| manager settle khi còn `softAsk` | **giữ** câu hỏi (user vẫn thấy "Needs you"); trả lời đi qua `/continue` với `replyTo` |
+| hết hạn, session mở | note + deliver đúng câu `No answer by the deadline. Take the safe default, say which one you chose, and continue.`; xoá `softAsk`. Nếu **Guard ask đang mở** (`pendingAsk`): chỉ note, giữ cả hai — một delivery sẽ trả lời hộ câu hỏi của Guard |
+| hết hạn, session đóng | chỉ note; **giữ** `softAsk` — lần mở phiên kế `loadManagerSessionContext` thấy quá hạn → `context.expiredAsk`, brief một dòng, rồi xoá (không cần field/hàng đợi mới) |
+| boot/recover | `recoverSoftAsks()` dựng lại timer từ `expiresAt`; cái đã quá hạn đi theo nhánh "session đóng" |
+| huỷ/xoá run | `clearSoftAsk` (timer trước, field sau); xoá hẳn run gọi `forgetSoftAsk` |
+
+Timer nằm trong `RunManager.softAskTimers` (giống `autoResumeTimers`), `unref()` để không giữ tiến
+trình sống; hạn chót thật vẫn là `dispatch.softAsk.expiresAt` trên record.
+
+### Chồng với Guard ask
+
+- Guard giữ `dispatch.pendingAsk` và park `waiting`; soft ask chỉ ghi `softAsk` — hai field không bao
+  giờ ghi đè nhau, và ask thứ hai bị 409 khi một trong hai còn mở.
+- UI vẽ **mọi** thẻ ask trong transcript; khi cả hai cùng mở, hàm thuần `openAskCard` (Guard trước,
+  manager sau) chọn thẻ để trỏ tới, còn `askNeedsAnswer` cho manager thẻ suy ra từ record nên thẻ
+  manager hiện lại ngay khi Guard ask được trả lời.
+- Dải "Needs you" ở sidebar (`lib/needs-you.ts`, thuần): một dòng cho run có `softAsk` (kể cả run đã
+  settle) hoặc ở trạng thái cần người; câu hỏi mở xếp trước. Không socket mới, không `refetchInterval`.
+
+### Prompt
+
+- Brief manager dạy `onni task ask "<question>" [--option …] [--timeout <minutes>]`: hỏi không dừng
+  lượt, tiếp tục điều phối worker khác, mỗi task một câu mở. Bảng lệnh H5 thêm `ask` (role manager) và
+  vẫn dưới `MANAGER_COMMANDS_MAX_CHARS`, còn đủ `onni task tree`.
+- Câu quá hạn khi phiên đóng vào brief qua `expiredAskBlock`: `A question you asked the user went
+  unanswered past its deadline: "<q>". No answer by the deadline…` — worst-case fixture (§3) có cả
+  memory đầy và câu hỏi 400 ký tự, vẫn dưới `PROMPT_MAX_CHARS`.
+
+### CLI
+
+`onni task ask "<question>" [--option "<label>" …] [--timeout <minutes>]` → `POST /runs/:id/ask`;
+thiếu `ONNI_TASK_ID`, câu hỏi rỗng, hoặc `--timeout` ngoài 1–1 440 bị từ chối **trước khi** gọi
+server. Thành công in `asked the user — question <id>. Keep working: the answer arrives as a message
+that names this question.`
+
+### Test
+
+- Engine (`workflows/soft-ask.test.ts`): ask giữa lượt không đổi `status`/`attentionRequest`, ghi
+  `softAsk` + event `source: 'manager'` + ledger + note + timer; cắt câu hỏi trong record nhưng giữ
+  nguyên trong event; 403 worker/root không roster, 404 run lạ, 409 run settle / ask thứ hai /
+  `pendingAsk` đang mở; tin nhắn tự do **không** xoá, đúng `replyTo` thì xoá và manager nhận câu mở
+  đầu đúng câu hỏi; trả lời sau settle đi qua `continueRun` và mở lại phiên; hết hạn khi không có
+  session → giữ record rồi brief kế xoá; hết hạn khi Guard ask đang mở → cả hai giữ nguyên, không
+  deliver; recover dựng lại timer; cancel queued xoá; `forgetSoftAsk`.
+- Route (`dispatch-api.test.ts`, `continue-run.test.ts`, `queued-messages.test.ts`): passthrough
+  `ask` (kèm options/timeout), 400 theo schema trước khi chạm manager, 403/409 giữ nguyên, `ONNI_DISPATCH=0`
+  đóng route; `replyTo` tới đúng `sendMessage`/`continueRun` và vắng mặt khi không gửi.
+- Contract parity: `managerAskInputSchema`/`managerAskResponseSchema` khớp type route hai chiều; biên
+  câu hỏi/option/timeout được pin.
+- Prompt (`manager-prompt.test.ts`): brief có `onni task ask` và quy tắc không chặn; `expiredAsk` vào
+  brief; worst-case dưới `PROMPT_MAX_CHARS`.
+- CLI (`task-cli.test.ts`, `commands.test.ts`): route/body, từ chối trước khi gọi server, refusal 409
+  đọc là `ask refused — …`; bảng lệnh có `ask`.
+- UI thuần/JSdom: `needsYou` (archived, trạng thái cần người, câu hỏi mở ưu tiên, không nhân đôi);
+  `ask-view` (Guard thắng khi cùng mở, manager mở theo record); `thread-state` (manager ask không bị
+  resolve bởi tin nhắn tự do, Guard resolve còn manager thì không); `ask-card` (nhãn manager, `replyTo`
+  trong lời gọi, thẻ đóng khi record hết `requestId`).
+
+**Giới hạn đã biết.** Mỗi task một câu hỏi mở (kể cả Guard); câu hỏi mở không hiện trong prompt của
+phiên đang chạy — manager đã biết vì chính nó hỏi; `timeoutMinutes` không đo thời gian user *đọc*, chỉ
+đo từ lúc hỏi; xoá run là cách duy nhất để bỏ một câu hỏi mà không trả lời (cancel cũng xoá).

@@ -8,6 +8,7 @@ import { Link } from '@/lib/project-router'
 import { cn } from '@/lib/utils'
 
 import { useAskAnswer } from './ask-answer'
+import { askNeedsAnswer } from './ask-view'
 import {
   type AskQuestionAnswer,
   type AskSelections,
@@ -61,18 +62,21 @@ export function AskCard({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
   useEffect(() => {
     if (ask.resolved) forgetAskSelections(run.id, ask)
   }, [ask, run.id])
+  // A manager ask is non-blocking: its open state comes from the RECORD, so a free message leaves
+  // it standing and the card collapses only once the record drops that `requestId` (plan v2 §9).
+  const open = askNeedsAnswer(run, ask)
   // An answered card is a static summary — split so the delivery hook (two mutations and a
   // provider-status subscription) only mounts for a question that can still be answered.
   // Threads accumulate asks; every resolved one would otherwise carry live machinery for a
   // question nobody can answer again.
-  if (ask.resolved) {
+  if (!open) {
     return (
       <div
         data-slot="ask-card"
         data-resolved="true"
         className="rounded-lg border border-border bg-card px-3.5 py-2.5 text-xs text-muted-foreground"
       >
-        <span className="text-soft-foreground">{t('Answered')}</span>
+        <span className="text-soft-foreground">{ask.resolved ? t('Answered') : t('Closed')}</span>
         {ask.answer ? (
           <span className="ml-1.5 break-words whitespace-pre-line text-foreground">{ask.answer}</span>
         ) : null}
@@ -85,7 +89,9 @@ export function AskCard({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
 /** The unanswered card: option chips wired to whichever delivery seam the run's state allows. */
 function PendingAsk({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
   const { t } = useI18n()
-  const delivery = useAskAnswer(run)
+  // A manager ask's answer names the question so the engine can retire exactly that one and the
+  // manager can tell which question a late reply belongs to (plan v2 §9).
+  const delivery = useAskAnswer(run, undefined, ask.fromManager ? ask.id : undefined)
   const blocked = delivery.blockedBy !== undefined
   const questions = ask.questions
   // One-tap only when there is a single single-select question; every other
@@ -129,7 +135,11 @@ function PendingAsk({ ask, run }: { ask: ThreadAsk; run: ApiRun }) {
     >
       <div className="mb-2.5 flex items-center gap-2">
         <span className="text-xs font-medium text-primary">
-          {ask.fromWorkflow ? t('The workflow is asking') : t('The agent is asking')}
+          {ask.fromManager
+            ? t('The manager is asking')
+            : ask.fromWorkflow
+              ? t('The workflow is asking')
+              : t('The agent is asking')}
         </span>
       </div>
       <div className="flex flex-col gap-4">

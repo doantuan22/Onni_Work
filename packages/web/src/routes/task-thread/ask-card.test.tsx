@@ -124,6 +124,27 @@ describe('AskCard — who asks', () => {
     renderAsk({ ...singleAsk, fromWorkflow: true })
     expect(screen.getByText('The workflow is asking')).toBeTruthy()
   })
+
+  it('names the manager for a non-blocking ask, and its answer names the question (plan v2 §9)', () => {
+    const asked: ApiRun = {
+      ...activeRun,
+      status: 'running',
+      dispatch: {
+        rootRunId: 'r1',
+        softAsk: { requestId: 'ask_1', askedAt: '2026-11-03T00:00:00.000Z', question: 'Which date library?', optionCount: 2 },
+      } as ApiRun['dispatch'],
+    }
+    renderAsk({ ...singleAsk, fromManager: true }, asked)
+    expect(screen.getByText('The manager is asking')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /date-fns/ }))
+    expect(mutateAsync).toHaveBeenCalledWith({ text: 'Library: date-fns', replyTo: 'ask_1' })
+  })
+
+  it('collapses a manager ask once the record drops its requestId — a free message never closes it', () => {
+    renderAsk({ ...singleAsk, fromManager: true })
+    expect(screen.getByText('Closed')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /date-fns/ })).toBeNull()
+  })
 })
 
 describe('AskCard', () => {

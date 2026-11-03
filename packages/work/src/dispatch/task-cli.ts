@@ -9,7 +9,7 @@
  * worded for whoever is asking) and exits 2.
  */
 import { parseArgs } from 'node:util';
-import { REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek, type ManagerMemoryRead } from '@onni/contract';
+import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek, type ManagerMemoryRead } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
@@ -166,6 +166,31 @@ export async function runTaskCommand(
         }, 'dispatch refused —')) as { id: string; branch?: string };
         io.log(`dispatched ${created.id}${created.branch ? ` on branch ${created.branch}` : ''}`);
         io.log('It reports into this session when it settles. End your turn with ONNI:MONITORING to wait for it.');
+        return 0;
+      }
+      case 'ask': {
+        const { values, positionals } = parseArgs({
+          args: rest,
+          allowPositionals: true,
+          options: { option: { type: 'string', multiple: true }, timeout: { type: 'string' } },
+        });
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can ask');
+        const question = positionals.join(' ').trim();
+        if (!question) throw new Error('a question is required: onni task ask "<question>"');
+        const timeout = number(values.timeout, 'timeout');
+        if (timeout !== undefined && (!Number.isInteger(timeout) || timeout < 1 || timeout > MANAGER_ASK_TIMEOUT_MINUTES_MAX)) {
+          throw new Error(`--timeout must be 1-${MANAGER_ASK_TIMEOUT_MINUTES_MAX} minutes`);
+        }
+        const asked = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/ask`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            question,
+            ...(values.option?.length ? { options: values.option.map((label) => ({ label })) } : {}),
+            ...(timeout !== undefined ? { timeoutMinutes: timeout } : {}),
+          }),
+        }, 'ask refused —')) as { requestId: string };
+        io.log(`asked the user — question ${asked.requestId}. Keep working: the answer arrives as a message that names this question.`);
         return 0;
       }
       case 'report': {

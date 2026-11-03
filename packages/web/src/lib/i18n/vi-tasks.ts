@@ -239,6 +239,7 @@ export const viTasks: Record<string, string> = {
   'Waiting for a free slot': 'Chờ slot trống',
   'Waiting for its workers': 'Đang chờ các worker',
   'Waiting for an answer': 'Chờ câu trả lời',
+  'Waiting for you': 'Đang chờ bạn',
   'Finished workers': 'Worker đã xong',
   '{count} finished workers': '{count} worker đã xong',
   'Show all': 'Hiện tất cả',
@@ -539,6 +540,7 @@ export const viTasks: Record<string, string> = {
   'The config loads and the smoke test passed in a real browser.':
     'Cấu hình tải được và bài kiểm tra nhanh đã đạt trên trình duyệt thật.',
   'The follow-up inbox is off': 'Hộp thư gợi ý tiếp theo đang tắt',
+  'The manager is asking': 'Quản lý đang hỏi',
   'The PR for this task is already open': 'PR cho nhiệm vụ này đã được mở',
   'the session has ended — sending reopens it': 'phiên đã kết thúc — gửi sẽ mở lại phiên',
   'The session has ended — your answer reopens it and goes to the agent.':

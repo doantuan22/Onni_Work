@@ -361,8 +361,9 @@ export interface UiAskRequestedEvent {
   requestId: string;
   questions: UiAskQuestion[];
   /** Who asks: absent = the agent (a `ONNI:ASK` marker); `'workflow'` = a graph gate or
-   *  question node (spec 2026-09-30-workflow-node-editor) — the card says so. */
-  source?: 'workflow';
+   *  question node (spec 2026-09-30-workflow-node-editor); `'manager'` = a root task asking
+   *  through `onni task ask` without parking its turn (plan v2 §9). The card says which. */
+  source?: 'workflow' | 'manager';
 }
 
 /**

@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -162,6 +162,7 @@ import {
   managerDoingComplexAlone,
   managerPrompt,
   resolveWorker,
+  SOFT_ASK_EXPIRED_NUDGE,
   workerPrompt,
   workersInFlight,
   type ManagerSessionContext,
@@ -526,6 +527,9 @@ interface ContinueRunOptions {
   agentProfile?: string;
   /** Continue a run a ceiling stopped, extending the ceiling that was hit (user surfaces only). */
   raiseLimits?: boolean;
+  /** The `requestId` of an open manager ask this continuation answers (plan v2 §9). Matching one
+   *  clears it and names the question in the opening prompt. */
+  replyTo?: string;
 }
 
 interface ActiveRun {
@@ -1348,6 +1352,11 @@ export class RunManager {
    *  from the record rather than losing the wait. Runs here are `failed` and therefore NOT in
    *  `active`, which is why the timer cannot live on an `ActiveRun` like the monitoring one. */
   private readonly autoResumeTimers = new Map<string, NodeJS.Timeout>();
+  /** Soft-ask deadlines (`dispatch.softAsk.expiresAt`, plan v2 §9), keyed by run id. Like
+   *  `autoResumeTimers`, the deadline itself lives on the record, so boot rebuilds a timer rather
+   *  than losing the wait — and a settled run can still carry one, which is why it cannot live on
+   *  `ActiveRun`. */
+  private readonly softAskTimers = new Map<string, NodeJS.Timeout>();
   private pumping = false;
   /** A pump that arrived while one was in flight — replayed by `pump()`'s own
    *  loop so a slot freed mid-sweep is never a lost wakeup. */
@@ -1519,6 +1528,8 @@ export class RunManager {
     }
     for (const timer of this.autoResumeTimers.values()) clearTimeout(timer);
     this.autoResumeTimers.clear();
+    for (const timer of this.softAskTimers.values()) clearTimeout(timer);
+    this.softAskTimers.clear();
     this.active.clear();
     this.waiting.clear();
     // The monitoring subsets are cleared with `waiting`, whose subset they are: a disposed
@@ -2235,6 +2246,9 @@ export class RunManager {
    */
   async recover(): Promise<void> {
     await this.lifecycle.reconcile();
+    // Plan v2 §9: a manager question outlives the process. Rebuild its deadline from the record,
+    // retire one that already passed, and never let either decision wait for the live-run sweep.
+    this.recoverSoftAsks();
     this.noteDeferredLostInRestart();
     const live = this.store
       .listRuns()
@@ -2751,6 +2765,19 @@ export class RunManager {
         }
       }
     }
+    // #10: a manager question whose deadline passed while no session was open. The record kept it
+    // on purpose (the timer had nowhere to deliver the nudge); this first brief is where the
+    // manager hears it, and the question is retired in the same breath.
+    const soft = this.store.getRun(runId)?.dispatch?.softAsk;
+    if (soft?.expiresAt !== undefined && Date.parse(soft.expiresAt) <= Date.now()) {
+      context.expiredAsk = { question: soft.question };
+      this.clearSoftAsk(runId);
+      this.store.appendEvent(runId, {
+        type: 'note',
+        stepId: state.currentStepId,
+        message: `the question "${soft.question}" went unanswered — its deadline passed while the session was closed`,
+      });
+    }
     return context;
   }
 
@@ -2940,6 +2967,147 @@ export class RunManager {
       message: `project memory: added one lesson (${outcome.memory.bytes}/${outcome.memory.maxBytes} bytes)`,
     });
     return outcome.memory;
+  }
+
+  /**
+   * `onni task ask` — the root manager asks the human a question WITHOUT parking (plan v2 §9).
+   * Deliberately NOT `dispatch.pendingAsk`: that field makes a dispatched task settle `blocked`,
+   * which is right for the Guard (an end-of-turn decision) and wrong here — this one is meant to
+   * be left open while the manager keeps working. The card rides a normal `ask.requested` event
+   * with `source: 'manager'`; nothing here touches `status` or `attentionRequest`.
+   */
+  askUser(
+    runId: string,
+    input: ManagerAskInput,
+  ): ManagerAskResponse | { denied: string; status: 403 | 404 | 409 } {
+    const run = this.store.getRun(runId);
+    const access = requireRootManager(run, 'ask the user');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    if (!run?.dispatch) return { denied: 'run is not part of a dispatch tree', status: 409 };
+    if (run.status === 'done' || run.status === 'failed' || run.status === 'cancelled' || run.status === 'review') {
+      return { denied: 'this task is not live — open it with Continue, then ask', status: 409 };
+    }
+    if (run.dispatch.pendingAsk || run.dispatch.softAsk) {
+      return { denied: 'one open question per task — answer the current one first', status: 409 };
+    }
+    const requestId = randomUUID();
+    const askedAt = new Date().toISOString();
+    const expiresAt = input.timeoutMinutes !== undefined
+      ? new Date(Date.now() + input.timeoutMinutes * 60_000).toISOString()
+      : undefined;
+    const options = input.options ?? [];
+    this.makeUiSink(runId, this.active.get(runId)?.currentStepId ?? 'ask').handle({
+      type: 'ask.requested',
+      requestId,
+      questions: [{
+        header: 'Question from the manager',
+        question: input.question,
+        options: options.map((option) => ({
+          label: option.label,
+          ...(option.description !== undefined ? { description: option.description } : {}),
+        })),
+      }],
+      source: 'manager',
+    });
+    this.updateDispatch(runId, (current) => ({
+      ...current,
+      softAsk: {
+        requestId,
+        askedAt,
+        ...(expiresAt !== undefined ? { expiresAt } : {}),
+        question: input.question.slice(0, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS),
+        optionCount: options.length,
+      },
+    }));
+    this.armSoftAskTimer(runId, expiresAt);
+    try {
+      appendLedger(this.dataDir, run.dispatch.rootRunId, {
+        type: 'manager-ask',
+        runId,
+        requestId,
+        question: input.question.slice(0, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS),
+        optionCount: options.length,
+        ...(expiresAt !== undefined ? { expiresAt } : {}),
+      });
+    } catch {
+      // best effort — the record carries the question either way
+    }
+    this.store.appendEvent(runId, {
+      type: 'note',
+      stepId: this.active.get(runId)?.currentStepId,
+      message: expiresAt !== undefined
+        ? `asked you: "${input.question}" — the manager keeps working until you answer or ${expiresAt} passes`
+        : `asked you: "${input.question}" — the manager keeps working until you answer`,
+    });
+    return { requestId };
+  }
+
+  /** The record's OPEN manager question, when `requestId` names it — the only thing an answer clears. */
+  private softAskFor(runId: string, requestId: string | undefined): RunDispatch['softAsk'] {
+    if (requestId === undefined) return undefined;
+    const soft = this.store.getRun(runId)?.dispatch?.softAsk;
+    return soft?.requestId === requestId ? soft : undefined;
+  }
+
+  /** Answer, expiry and cancel all end here: the timer goes with the field, never before it. */
+  private clearSoftAsk(runId: string): void {
+    const timer = this.softAskTimers.get(runId);
+    if (timer) clearTimeout(timer);
+    this.softAskTimers.delete(runId);
+    if (!this.store.getRun(runId)?.dispatch?.softAsk) return;
+    this.updateDispatch(runId, ({ softAsk: _answered, ...rest }) => rest);
+  }
+
+  /** Public entry for surfaces that retire a run outright (cancel, delete). */
+  forgetSoftAsk(runId: string): void {
+    this.clearSoftAsk(runId);
+  }
+
+  /** One timer per run, re-armed from the record so a restart rebuilds rather than loses it. */
+  private armSoftAskTimer(runId: string, expiresAt: string | undefined): void {
+    const prior = this.softAskTimers.get(runId);
+    if (prior) clearTimeout(prior);
+    this.softAskTimers.delete(runId);
+    if (expiresAt === undefined) return;
+    const delay = Math.max(0, Date.parse(expiresAt) - Date.now());
+    const timer = setTimeout(() => {
+      this.softAskTimers.delete(runId);
+      this.expireSoftAsk(runId);
+    }, delay);
+    timer.unref?.();
+    this.softAskTimers.set(runId, timer);
+  }
+
+  /**
+   * The deadline passed. With a live session the manager is told, by the exact nudge the plan
+   * names, and the question is retired. With no session the question STAYS on the record — that is
+   * what lets the next opening brief say it went unanswered (`loadManagerSessionContext` retires it
+   * then). Same split on boot/recover, where every session is closed by definition.
+   */
+  private expireSoftAsk(runId: string): void {
+    const soft = this.store.getRun(runId)?.dispatch?.softAsk;
+    if (!soft) return;
+    this.store.appendEvent(runId, {
+      type: 'note',
+      message: `no answer to "${soft.question}" by its deadline`,
+    });
+    const state = this.active.get(runId);
+    // A delivery retires the Guard's `pendingAsk`, so nudging here while one is open would answer a
+    // question the user never saw answered. Keep both standing instead: the question stays on the
+    // record and the Guard keeps the floor.
+    if (!state || state.cancelled || !state.session?.open || this.store.getRun(runId)?.dispatch?.pendingAsk) return;
+    this.clearSoftAsk(runId);
+    this.deliverMessage(runId, [{ type: 'text', text: SOFT_ASK_EXPIRED_NUDGE }], false);
+  }
+
+  /** Boot/recover: rebuild every live deadline; retire the ones that already passed. */
+  private recoverSoftAsks(): void {
+    for (const run of this.store.listRuns()) {
+      const soft = run.dispatch?.softAsk;
+      if (!soft) continue;
+      if (soft.expiresAt !== undefined && Date.parse(soft.expiresAt) <= Date.now()) this.expireSoftAsk(run.id);
+      else this.armSoftAskTimer(run.id, soft.expiresAt);
+    }
   }
 
   /**
@@ -4516,6 +4684,7 @@ export class RunManager {
       // transition that misses the settle hook. Without this a parent waiting on a child the user
       // cancelled from the queue would wait for a report nobody would ever send.
       void this.reportSettledChildToParent(runId);
+      this.clearSoftAsk(runId);
       return true;
     }
     const state = this.active.get(runId);
@@ -4527,11 +4696,14 @@ export class RunManager {
         // resume (a usage-limit wait or a transient retry), so it — and a cancelled parent — stops it.
         const run = this.store.getRun(runId);
         if (run?.status !== 'failed' || (run.autoResumeAt === undefined && !this.autoResumeTimers.has(runId))) return false;
-        return this.cancelAutoResume(runId);
+        const cancelled = this.cancelAutoResume(runId);
+        if (cancelled) this.clearSoftAsk(runId);
+        return cancelled;
       }
       this.cancelledStarting.add(runId);
       this.store.updateRun(runId, { status: 'cancelled', finishedAt: new Date().toISOString(), currentStepId: undefined });
       this.store.appendEvent(runId, { type: 'lifecycle', message: 'run cancelled' });
+      this.clearSoftAsk(runId);
       return true;
     }
     state.cancelled = true;
@@ -4549,6 +4721,7 @@ export class RunManager {
     }
     this.store.updateRun(runId, { status: 'cancelled', finishedAt, currentStepId: undefined });
     this.store.appendEvent(runId, { type: 'lifecycle', message: 'run cancelled' });
+    this.clearSoftAsk(runId);
     // A startup wedge has no provider session to reap, so release its slot immediately. Once a
     // session has opened, keep the slot until its interrupt/teardown settles; admitting a
     // replacement while a non-cooperative provider is still alive would violate maxParallel.
@@ -4927,8 +5100,8 @@ export class RunManager {
    * while `waiting`). Returns false when there is no open session — the GUI
    * then offers "Continue" instead.
    */
-  sendMessage(runId: string, content: PastedContent[]): boolean {
-    const delivered = this.deliverMessage(runId, content, true);
+  sendMessage(runId: string, content: PastedContent[], replyTo?: string): boolean {
+    const delivered = this.deliverMessage(runId, content, true, undefined, replyTo);
     if (delivered) {
       const state = this.active.get(runId);
       if (state) state.monitoringWakeups = 0;
@@ -4944,8 +5117,12 @@ export class RunManager {
     content: PastedContent[],
     userAuthored: boolean,
     preparedUserMessage?: PreparedUserMessage,
+    replyTo?: string,
   ): boolean {
     if (this.lifecycle.isBlocked(runId)) return false;
+    // Plan v2 §9: only the answer that names the OPEN manager question retires it. A free message
+    // — the ordinary way a Guard ask is answered — leaves it alone, so the card keeps its question.
+    const answering = userAuthored ? this.softAskFor(runId, replyTo) : undefined;
     const state = this.active.get(runId);
     // A graph gate/question parked with no session (1c) takes the user's reply as its answer.
     // Only a USER-authored message answers it: a child report or a wake nudge must not approve a gate.
@@ -4996,7 +5173,7 @@ export class RunManager {
         // be stale. Delivered as its own engine message, ahead of the one the run woke for, so a
         // user-authored wake-up stays verbatim in the transcript.
         this.deliverMessage(runId, [{ type: 'text', text: REPO_ROOT_RESUMED_NOTE }], false);
-        if (this.deliverMessage(runId, content, userAuthored, prepared)) return;
+        if (this.deliverMessage(runId, content, userAuthored, prepared, replyTo)) return;
         // The session closed while we waited: keep the message the way the ladder would.
         if (!this.enqueueMessage(runId, content)) this.deferMessage(runId, content);
       });
@@ -5025,13 +5202,14 @@ export class RunManager {
       void this.provisionTaskSkills(state, { slash: first?.type === 'text' ? leadingSlashSkillName(first.text) : undefined });
     }
     const deliverable = persisted.length
-      ? [...expanded, pastedAttachmentsNote(persisted, this.attachmentLibraryHint(persisted, state.grantedAttachmentLibrary) ??
+      ? [...this.withAnswerLead(answering?.question, prepared?.text, expanded), pastedAttachmentsNote(persisted, this.attachmentLibraryHint(persisted, state.grantedAttachmentLibrary) ??
           (imageLibraryWrites.length ? this.usableAttachmentLibrary(state.grantedAttachmentLibrary) : undefined))]
-      : expanded;
+      : this.withAnswerLead(answering?.question, prepared?.text, expanded);
     const delivered = state.session.sendMessage(deliverable);
     if (delivered) {
       for (const write of imageLibraryWrites) write();
       this.clearPendingAsk(runId);
+      if (answering) this.clearSoftAsk(runId);
       this.clearIdleTimer(state);
       this.clearMonitoringWakeTimer(state, runId);
       this.waiting.delete(runId); // resumed — the run counts against slots again
@@ -5053,6 +5231,23 @@ export class RunManager {
       }
     }
     return delivered;
+  }
+
+  /**
+   * The manager hears WHICH question an answer belongs to (plan v2 §9). Only the engine-facing
+   * blocks are prefixed — the persisted `user-message` keeps the user's own words — and the text
+   * block it replaces is dropped so the answer is read once, while attachments still ride along.
+   */
+  private withAnswerLead(question: string | undefined, answer: string | undefined, blocks: ContentBlock[]): ContentBlock[] {
+    if (question === undefined) return blocks;
+    const said = answer?.trim();
+    return [
+      {
+        type: 'text',
+        text: `User answered your question "${question}": ${said || '(see the attached files)'}`,
+      },
+      ...blocks.filter((block) => block.type !== 'text'),
+    ];
   }
 
   /** Close the open session gracefully — the run then completes as `done`
@@ -5269,7 +5464,14 @@ export class RunManager {
     const continuations = run.steps.filter((s) => s.id.startsWith('continue-')).length;
     const stepId = `continue-${continuations + 1}`;
     this.store.addStep(runId, { id: stepId, name: 'Continue', kind: 'agent' });
-    const prompt = opts.text?.trim() || 'Continue.';
+    // Plan v2 §9: a manager question may be answered after its session closed. The reminder names
+    // the question so the reopened session knows what the answer belongs to; matching one retires it.
+    const answering = this.softAskFor(runId, opts.replyTo);
+    const base = opts.text?.trim() || 'Continue.';
+    const prompt = answering
+      ? `User answered your question "${answering.question}": ${base}`
+      : base;
+    if (answering) this.clearSoftAsk(runId);
     const images = opts.images ?? [];
     if (deferForCapacity) {
       this.pendingContinuations.set(runId, {

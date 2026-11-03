@@ -70,6 +70,14 @@ export const PEEK_ALL_MAX_CHARS_TOTAL = 8_000;
 /** UTF-8 bytes, for both writing and reading project memory into a prompt (plan v2 §8). */
 export const MANAGER_MEMORY_MAX_BYTES = 3_072;
 export const MANAGER_MEMORY_ENTRY_MAX_CHARS = 300;
+/** The non-blocking manager ask (plan v2 §9): the question the model writes, and the copy that
+ *  lives on the run record — cut to the same 400 the Guard's `pendingAsk` uses. */
+export const MANAGER_ASK_QUESTION_MAX_CHARS = 2_000;
+export const MANAGER_ASK_RECORD_QUESTION_MAX_CHARS = 400;
+export const MANAGER_ASK_OPTION_LABEL_MAX_CHARS = 120;
+export const MANAGER_ASK_OPTION_DESCRIPTION_MAX_CHARS = 500;
+export const MANAGER_ASK_OPTIONS_MAX = 10;
+export const MANAGER_ASK_TIMEOUT_MINUTES_MAX = 1_440;
 export const PLAN_MAX_PARTS = 50;
 export const PLAN_PROMPT_MAX_PARTS = 15;
 
@@ -153,6 +161,30 @@ export const managerMemoryAddSchema = z.object({
   entry: z.string().trim().min(1).max(MANAGER_MEMORY_ENTRY_MAX_CHARS),
 });
 export type ManagerMemoryAdd = z.infer<typeof managerMemoryAddSchema>;
+
+/**
+ * `POST /runs/:id/ask` (plan v2 §9): a root manager asking the user a question WITHOUT parking its
+ * turn. `timeoutMinutes` is the manager choosing its own deadline; absent means the question stays
+ * open until answered or the task is cancelled.
+ */
+export const managerAskInputSchema = z.object({
+  question: z.string().trim().min(1).max(MANAGER_ASK_QUESTION_MAX_CHARS),
+  options: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(MANAGER_ASK_OPTION_LABEL_MAX_CHARS),
+        description: z.string().max(MANAGER_ASK_OPTION_DESCRIPTION_MAX_CHARS).optional(),
+      }),
+    )
+    .max(MANAGER_ASK_OPTIONS_MAX)
+    .optional(),
+  timeoutMinutes: z.number().int().min(1).max(MANAGER_ASK_TIMEOUT_MINUTES_MAX).optional(),
+});
+export type ManagerAskInput = z.infer<typeof managerAskInputSchema>;
+
+/** The id the user's answer must carry back as `replyTo`. */
+export const managerAskResponseSchema = z.object({ requestId: z.string() });
+export type ManagerAskResponse = z.infer<typeof managerAskResponseSchema>;
 
 /** One command a worker says it ran, and the exit code it saw (plan v2 §6.1). Never verified by
  *  onni — the report label says `worker-reported`, and `#4` is where real verification lives. */
@@ -271,6 +303,21 @@ export const dispatchSchema = z.object({
     .optional(),
   /** Set at turn end once `costUsd ≥ budgetUsd`: the run parks and stops auto-continuing. */
   overBudget: z.boolean().optional(),
+  /**
+   * A manager question the user has not answered yet (plan v2 §9). Unlike `pendingAsk` it never
+   * parks the run, so it is not cleared by a free message — only by the answer that carries this
+   * `requestId` as `replyTo`, by expiry, or by cancel. Kept on settle so the user still sees it.
+   */
+  softAsk: z
+    .object({
+      requestId: z.string(),
+      askedAt: z.string(),
+      /** ISO deadline; absent when the manager asked with no `timeoutMinutes`. */
+      expiresAt: z.string().optional(),
+      question: z.string().max(MANAGER_ASK_RECORD_QUESTION_MAX_CHARS),
+      optionCount: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 export type RunDispatch = z.infer<typeof dispatchSchema>;
 export type DispatchPendingAsk = NonNullable<RunDispatch['pendingAsk']>;

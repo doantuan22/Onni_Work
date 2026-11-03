@@ -63,7 +63,7 @@ describe('/api/v1/runs/:id/drafts', () => {
     app = createApp({
       repoRoot,
       store,
-      manager: { isActive: () => false } as unknown as RunManager,
+      manager: { isActive: () => false, forgetSoftAsk: () => {} } as unknown as RunManager,
       version: '0.0.0-test',
     });
     run = store.createRun({ title: 'a task', workflow: 'quick-task', task: 'a task', steps: [] });

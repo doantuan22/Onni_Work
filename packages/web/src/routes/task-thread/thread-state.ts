@@ -67,6 +67,9 @@ export interface ThreadAsk {
   answer?: string
   /** A workflow gate/question rather than the agent (spec 2026-09-30-workflow-node-editor). */
   fromWorkflow?: boolean
+  /** A root task asking through `onni task ask` — non-blocking (plan v2 §9). Its open state comes
+   *  from the RECORD (`run.dispatch.softAsk`), never from the next user message. */
+  fromManager?: boolean
 }
 
 /** A persisted, onni-owned recovery marker for a provider's runtime authentication failure. */
@@ -730,9 +733,13 @@ export function reduceThread(events: RunEvent[], options: ThreadReduceOptions = 
           questions,
           resolved: false,
           ...(event.source === 'workflow' ? { fromWorkflow: true } : {}),
+          ...(event.source === 'manager' ? { fromManager: true } : {}),
         }
         currentTurn().entries.push({ origin: 'meta', entry: ask })
-        pendingAsk = ask
+        // A Guard ask is answered by the next user message. A manager ask is NOT: a free message
+        // must leave it open, and an answer is matched by `replyTo` on the record — so it never
+        // becomes the single `pendingAsk`, and a Guard ask keeps precedence when both are open.
+        if (event.source !== 'manager') pendingAsk = ask
         break
       }
 

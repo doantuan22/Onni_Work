@@ -17,6 +17,7 @@ import { toast } from '@/components/ui/toaster'
 import { UnreadMarker } from '@/components/unread-marker'
 import { deriveAttention } from '@/lib/attention'
 import { shortAge } from '@/lib/format'
+import { needsYou } from '@/lib/needs-you'
 import { isReadDoneItem, isUnread } from '@/lib/read-state'
 import { isRunActive } from '@/lib/run-status'
 import { directionalUsageText } from '@/components/directional-usage'
@@ -104,6 +105,10 @@ export function TaskQuickList({
         </div>
       </div>
 
+      {/* Open manager questions first (plan v2 §9): a question does not park its task, so a
+          running or already-settled manager would otherwise be invisible here. SSE-fed, no socket. */}
+      {view === 'active' ? <NeedsYouStrip runs={runs} /> : null}
+
       {buckets.length === 0 ? (
         <p className="px-3 py-3.5 text-xs text-soft-foreground">
           {view === 'archived' ? t('Nothing archived yet.') : t('No tasks yet — describe one.')}
@@ -119,6 +124,39 @@ export function TaskQuickList({
           onToggleArchive={onToggleArchive}
         />
       )}
+    </div>
+  )
+}
+
+/**
+ * The compact "Needs you" strip: at most three runs that want a human, an open manager question
+ * shown with its text. `lib/needs-you.ts` decides who is here; this only paints.
+ */
+function NeedsYouStrip({ runs }: { runs: RunRecord[] }) {
+  const { t } = useI18n()
+  const items = needsYou(runs).slice(0, 3)
+  if (items.length === 0) return null
+  return (
+    <div
+      data-slot="needs-you-strip"
+      className="mx-1 mb-1 rounded-md border border-primary/25 bg-primary/[0.05] px-2.5 py-2"
+    >
+      <h2 className="mb-1 text-[10.5px] font-semibold tracking-[0.04em] text-primary uppercase">
+        {t('Waiting for you')}
+      </h2>
+      <div className="flex flex-col gap-1">
+        {items.map(({ run, question }) => (
+          <Link
+            key={run.id}
+            to={scopeTo(null, `/tasks/${run.id}`)}
+            data-slot="needs-you-row"
+            className="flex min-w-0 items-baseline gap-1.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span className="shrink-0 font-medium text-foreground">{runTitle(run)}</span>
+            <span className="truncate">{question ?? deriveAttention(run).label}</span>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }

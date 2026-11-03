@@ -5,6 +5,8 @@ import type { z } from 'zod';
 import {
   dispatchPeekSchema,
   dispatchReportSchema,
+  managerAskInputSchema,
+  managerAskResponseSchema,
   managerMemoryAddSchema,
   managerMemoryPutSchema,
   managerMemoryReadSchema,
@@ -40,6 +42,8 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type MemoryPutBody = InferRequestType<Project['manager-memory']['$put']>['json'];
   type MemoryAdd200 = InferResponseType<Run['memory']['$post'], 200>;
   type MemoryAddBody = InferRequestType<Run['memory']['$post']>['json'];
+  type Ask200 = InferResponseType<Run['ask']['$post'], 200>;
+  type AskBody = InferRequestType<Run['ask']['$post']>['json'];
 
   type _Checks = [
     Assert<Exact<z.infer<typeof dispatchResponseSchema>, Dispatch201>>,
@@ -57,6 +61,8 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.input<typeof managerMemoryPutSchema>, MemoryPutBody>>,
     Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryAdd200>>,
     Assert<Exact<z.input<typeof managerMemoryAddSchema>, MemoryAddBody>>,
+    Assert<Exact<z.infer<typeof managerAskResponseSchema>, Ask200>>,
+    Assert<Exact<z.input<typeof managerAskInputSchema>, AskBody>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {
@@ -78,6 +84,19 @@ describe('project memory is bounded and asks for an integer byte count (#9)', ()
     expect(managerMemoryReadSchema.safeParse(read).success).toBe(true);
     expect(managerMemoryReadSchema.safeParse({ ...read, bytes: -1 }).success).toBe(false);
     expect(managerMemoryReadSchema.safeParse({ ...read, maxBytes: 0 }).success).toBe(false);
+  });
+});
+
+describe('a manager ask is bounded where the record and the model read it (#10)', () => {
+  it('caps the question, the options and the timeout', () => {
+    expect(managerAskInputSchema.safeParse({ question: '   ' }).success).toBe(false);
+    expect(managerAskInputSchema.safeParse({ question: 'q'.repeat(2_001) }).success).toBe(false);
+    expect(managerAskInputSchema.safeParse({ question: 'x', options: Array.from({ length: 11 }, (_, i) => ({ label: `o${i}` })) }).success).toBe(false);
+    expect(managerAskInputSchema.safeParse({ question: 'x', options: [{ label: 'o', description: 'd'.repeat(501) }] }).success).toBe(false);
+    expect(managerAskInputSchema.safeParse({ question: 'x', timeoutMinutes: 0 }).success).toBe(false);
+    expect(managerAskInputSchema.safeParse({ question: 'x', timeoutMinutes: 1_441 }).success).toBe(false);
+    expect(managerAskInputSchema.safeParse({ question: 'x', timeoutMinutes: 1.5 }).success).toBe(false);
+    expect(managerAskInputSchema.safeParse({ question: 'Postgres or SQLite?', options: [{ label: 'Postgres' }], timeoutMinutes: 1_440 }).success).toBe(true);
   });
 });
 

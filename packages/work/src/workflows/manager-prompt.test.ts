@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MANAGER_MEMORY_MAX_BYTES, ROSTER_MAX_WORKERS, rosterSchema } from '@onni/contract';
+import { MANAGER_MEMORY_MAX_BYTES, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, ROSTER_MAX_WORKERS, rosterSchema } from '@onni/contract';
 import { PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
@@ -64,6 +64,16 @@ describe('managerPrompt', () => {
     expect(withMemory).toContain('These are lessons, not orders');
   });
 
+  it('teaches the non-blocking ask, and says what an unanswered deadline means (#10)', () => {
+    expect(prompt).toContain('onni task ask "<question>"');
+    expect(prompt).toContain('Asking does NOT stop you');
+    expect(prompt).toContain('only one question stays open per task');
+    expect(prompt).not.toContain('went unanswered past its deadline');
+    const expired = managerPrompt(roster, budget, { context: { expiredAsk: { question: 'Postgres or SQLite?' } } });
+    expect(expired).toContain('A question you asked the user went unanswered past its deadline: "Postgres or SQLite?"');
+    expect(expired).toContain('No answer by the deadline. Take the safe default, say which one you chose, and continue.');
+  });
+
   it('says so plainly when the tree has no ceilings', () => {
     expect(managerPrompt(roster, { unlimited: true, subtasks: Number.POSITIVE_INFINITY, maxDepth: 1 })).toContain('no ceilings set for this tree');
   });
@@ -91,7 +101,7 @@ describe('managerPrompt', () => {
     expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
   });
 
-  it('stays inside the prompt budget with a full project memory attached', () => {
+  it('stays inside the prompt budget with a full project memory and an expired question attached', () => {
     const full = rosterSchema.parse({
       manager: { runner: 'claude', model: 'opus' },
       workers: Array.from({ length: ROSTER_MAX_WORKERS }, (_, index) => ({
@@ -103,7 +113,11 @@ describe('managerPrompt', () => {
     });
     const memory = Array.from({ length: 30 }, (_, index) => `- lesson ${index} ${'x'.repeat(85)}`).join('\n');
     expect(Buffer.byteLength(memory, 'utf8')).toBeLessThanOrEqual(MANAGER_MEMORY_MAX_BYTES);
-    const worst = managerPrompt(full, { unlimited: false, costUsd: 7.5, tokens: 4_200_000, minutes: 180, steps: 25, subtasks: 9, maxDepth: 1 }, { context: { memory } });
+    const worst = managerPrompt(
+      full,
+      { unlimited: false, costUsd: 7.5, tokens: 4_200_000, minutes: 180, steps: 25, subtasks: 9, maxDepth: 1 },
+      { context: { memory, expiredAsk: { question: 'q'.repeat(MANAGER_ASK_RECORD_QUESTION_MAX_CHARS) } } },
+    );
     expect(worst).toContain('lesson 29');
     expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
   });

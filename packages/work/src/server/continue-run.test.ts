@@ -32,6 +32,7 @@ describe('POST /api/v1/runs/:id/continue override', () => {
     runner?: string;
     model?: string;
     agentProfile?: string;
+    replyTo?: string;
   };
   let captured: { id: string; opts: ContinueOpts } | undefined;
   let calls: number;
@@ -118,6 +119,14 @@ describe('POST /api/v1/runs/:id/continue override', () => {
     expect(res.status).toBe(200);
     expect(captured?.opts.text).toBe('keep going');
     expect(captured?.opts.runner).toBe('opencode');
+  });
+
+  it('plumbs replyTo through — answering a manager’s question reopens the session for that answer', async () => {
+    const res = await post({ text: 'SQLite', replyTo: 'q-1' });
+    expect(res.status).toBe(200);
+    expect(captured?.opts.replyTo).toBe('q-1');
+    await post({ text: 'just continue' });
+    expect(captured?.opts.replyTo).toBeUndefined();
   });
 
   it('rejects a model override while locked but still permits switching runners', async () => {

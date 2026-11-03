@@ -208,6 +208,34 @@ describe('onni task', () => {
     expect(h.calls).toHaveLength(0);
   });
 
+  it('ask posts a non-blocking question to this run’s ask route and names the id to watch for', async () => {
+    const h = harness({ status: 200, body: { requestId: 'abc-123' } });
+    expect(await runTaskCommand(['ask', 'Postgres or SQLite?', '--option', 'Postgres', '--option', 'SQLite', '--timeout', '30'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/ask');
+    expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({
+      question: 'Postgres or SQLite?',
+      options: [{ label: 'Postgres' }, { label: 'SQLite' }],
+      timeoutMinutes: 30,
+    });
+    expect(h.out[0]).toContain('asked the user — question abc-123');
+    expect(h.out[0]).toContain('Keep working');
+  });
+
+  it('ask refuses an empty question or an out-of-range timeout without calling the server', async () => {
+    const h = harness({ status: 200, body: { requestId: 'x' } });
+    expect(await runTaskCommand(['ask', '   '], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('a question is required');
+    expect(await runTaskCommand(['ask', 'why?', '--timeout', '0'], env, h.io)).toBe(1);
+    expect(h.err[1]).toContain('--timeout must be 1-');
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it('ask surfaces the manager’s refusal (a second open question) as "ask refused"', async () => {
+    const h = harness({ status: 409, body: { error: 'one open question per task — answer the current one first' } });
+    expect(await runTaskCommand(['ask', 'and another thing?'], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('ask refused — one open question per task');
+  });
+
   it('memory add posts the lesson to this run’s memory route and reports the new size', async () => {
     const h = harness({ status: 200, body: { content: '- a lesson\n', bytes: 42, maxBytes: 3072, revision: 'abcd1234' } });
     expect(await runTaskCommand(['memory', 'add', 'build', 'the', 'server', 'first'], env, h.io)).toBe(0);

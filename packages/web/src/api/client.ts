@@ -1669,6 +1669,8 @@ export interface ContinueOptions {
   idempotencyKey?: string
   /** Continue a run a ceiling stopped, raising the ceiling that was hit by one more allowance. */
   raiseLimits?: boolean
+  /** The `requestId` of an open manager ask this continuation answers (plan v2 §9). */
+  replyTo?: string
 }
 
 /** Reopen a finished run's session. 409 (with the reason) when it cannot be resumed. An optional
@@ -1683,6 +1685,7 @@ export async function continueRun(id: string, opts: ContinueOptions = {}): Promi
     ...(opts.agentProfile !== undefined ? { agentProfile: opts.agentProfile } : {}),
     ...(opts.idempotencyKey !== undefined ? { idempotencyKey: opts.idempotencyKey } : {}),
     ...(opts.raiseLimits ? { raiseLimits: true } : {}),
+    ...(opts.replyTo !== undefined ? { replyTo: opts.replyTo } : {}),
   }
   return unwrap(
     await onni.api.v1.p[':projectId'].runs[':id'].continue.$post({
@@ -1710,6 +1713,7 @@ export async function continueProjectRun(
         ...(opts.agentProfile !== undefined ? { agentProfile: opts.agentProfile } : {}),
         ...(opts.idempotencyKey !== undefined ? { idempotencyKey: opts.idempotencyKey } : {}),
         ...(opts.raiseLimits ? { raiseLimits: true } : {}),
+        ...(opts.replyTo !== undefined ? { replyTo: opts.replyTo } : {}),
       },
     }),
     runPath(id, '/continue'),

@@ -18,7 +18,7 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'memory'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'memory' | 'ask'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
@@ -26,6 +26,7 @@ describe('the dispatch routes', () => {
   let memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
   let memoryWrite: unknown = memory;
   let memoryAdd: unknown = memory;
+  let ask: unknown = { requestId: 'q-1' };
   const savedFlag = process.env.ONNI_DISPATCH;
 
   beforeEach(() => {
@@ -39,6 +40,7 @@ describe('the dispatch routes', () => {
     memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
     memoryWrite = memory;
     memoryAdd = memory;
+    ask = { requestId: 'q-1' };
     process.env.ONNI_DISPATCH = '1';
     const manager = {
       // The route is thin over `dispatchFromAgent` (it awaits the engine's fork), so the stub is
@@ -64,6 +66,10 @@ describe('the dispatch routes', () => {
       addManagerMemory: async (runId: string, body: unknown) => {
         calls.push({ kind: 'memory', runId, body });
         return memoryAdd;
+      },
+      askUser: (runId: string, body: unknown) => {
+        calls.push({ kind: 'ask', runId, body });
+        return ask;
       },
     } as unknown as RunManager;
     app = createApp({ repoRoot, store, manager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
@@ -145,11 +151,44 @@ describe('the dispatch routes', () => {
     expect(calls).toEqual([]);
   });
 
+  it('forwards a non-blocking ask with its options and timeout, and maps a refusal unchanged', async () => {
+    const res = await apiRequest(app, '/api/v1/runs/root/ask', json({
+      question: 'Postgres or SQLite?',
+      options: [{ label: 'Postgres', description: 'the deployed one' }, { label: 'SQLite' }],
+      timeoutMinutes: 30,
+    }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ requestId: 'q-1' });
+    expect(calls).toEqual([{
+      kind: 'ask',
+      runId: 'root',
+      body: { question: 'Postgres or SQLite?', options: [{ label: 'Postgres', description: 'the deployed one' }, { label: 'SQLite' }], timeoutMinutes: 30 },
+    }]);
+
+    ask = { denied: 'only the manager of a manager–worker task can ask the user', status: 403 };
+    expect((await apiRequest(app, '/api/v1/runs/worker/ask', json({ question: 'x' }))).status).toBe(403);
+    ask = { denied: 'one open question per task — answer the current one first', status: 409 };
+    expect((await apiRequest(app, '/api/v1/runs/root/ask', json({ question: 'x' }))).status).toBe(409);
+  });
+
+  it('400s an ask the schema refuses before touching the manager', async () => {
+    for (const body of [
+      { question: '   ' },
+      { question: 'x', timeoutMinutes: 0 },
+      { question: 'x', timeoutMinutes: 1_441 },
+      { question: 'x', options: Array.from({ length: 11 }, (_, index) => ({ label: `option ${index}` })) },
+      { question: 'x', options: [{ label: '   ' }] },
+    ]) {
+      expect((await apiRequest(app, '/api/v1/runs/root/ask', json(body))).status).toBe(400);
+    }
+    expect(calls).toEqual([]);
+  });
+
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     process.env.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek']) {
-      const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r' }));
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/ask']) {
+      const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r', question: 'q' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);
     }

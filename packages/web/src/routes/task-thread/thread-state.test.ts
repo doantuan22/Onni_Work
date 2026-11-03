@@ -899,8 +899,31 @@ describe('reduceThread — AskUser cards (#473)', () => {
     expect(ask).toMatchObject({ resolved: true, answer: 'Library: date-fns' })
   })
 
-  it('drops an ask.requested with no valid questions', () => {
-    expect(
+  // Plan v2 §9: a manager's ask is non-blocking. A free user message answers a Guard ask, but the
+  // manager card is retired by the RECORD (`dispatch.softAsk`) plus a reply naming its requestId —
+  // so the reducer must leave it unresolved, and the two cards must be able to coexist.
+  it('a manager ask stays unresolved after a free user message — it is not the Guard’s pending ask', () => {
+    const ask = allItems([
+      line(1, 'ask.requested', { ...ASK, source: 'manager' }),
+      line(2, 'user-message', { text: 'a free note', imageCount: 0 }),
+    ]).find((i) => i.kind === 'ask')
+    expect(ask).toMatchObject({ id: 'ask_1', resolved: false, fromManager: true })
+    expect((ask as { answer?: string }).answer).toBeUndefined()
+  })
+
+  it('a Guard ask and a manager ask coexist: the user message resolves only the Guard card', () => {
+    const asks = allItems([
+      line(1, 'ask.requested', { ...ASK, requestId: 'guard_1' }),
+      line(2, 'ask.requested', { ...ASK, requestId: 'ask_1', source: 'manager' }),
+      line(3, 'user-message', { text: 'Guard answered', imageCount: 0 }),
+    ]).filter((i) => i.kind === 'ask')
+    expect(asks).toEqual([
+      expect.objectContaining({ id: 'guard_1', resolved: true, answer: 'Guard answered' }),
+      expect.objectContaining({ id: 'ask_1', resolved: false, fromManager: true }),
+    ])
+  })
+
+  it('drops an ask.requested with no valid questions', () => {    expect(
       allItems([line(1, 'ask.requested', { requestId: 'x', questions: [] })]).some(
         (i) => i.kind === 'ask',
       ),

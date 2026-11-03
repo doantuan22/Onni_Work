@@ -591,6 +591,7 @@ const ASK_COMPARE_FIELDS = {
   resolved: true,
   answer: true,
   fromWorkflow: true,
+  fromManager: true,
 } satisfies Record<keyof ThreadAsk, true>
 
 const PROVIDER_AUTH_COMPARE_FIELDS = {

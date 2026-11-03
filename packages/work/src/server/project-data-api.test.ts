@@ -27,7 +27,11 @@ describe('POST /api/v1/project-data/clear', () => {
     app = createApp({
       repoRoot,
       store,
-      manager: { isActive: (id: string) => active.has(id), sweepPrHeadRefs: async () => {} } as unknown as RunManager,
+      manager: {
+        isActive: (id: string) => active.has(id),
+        sweepPrHeadRefs: async () => {},
+        forgetSoftAsk: () => {},
+      } as unknown as RunManager,
       version: '0.0.0-test',
     });
   });

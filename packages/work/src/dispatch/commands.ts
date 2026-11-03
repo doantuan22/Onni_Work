@@ -36,6 +36,13 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: 'hand one independent part to a worker',
   },
   {
+    name: 'ask',
+    role: 'manager',
+    usage: 'onni task ask "<question>" [--option "<label>" …] [--timeout <minutes>]   ask the user without stopping your turn',
+    brief: 'onni task ask "<question>" [--option "<label>" …] [--timeout <minutes>]   ask the user a decision you cannot make; keep working on other workers while you wait, one question open per task',
+    oneLine: 'ask the user a question without stopping your turn',
+  },
+  {
     name: 'report',
     role: 'worker',
     usage: REPORT_USAGE,

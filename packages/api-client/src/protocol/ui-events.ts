@@ -260,8 +260,9 @@ export interface UiAskRequestedEvent {
   type: 'ask.requested'
   requestId: string
   questions: UiAskQuestion[]
-  /** Who asks: absent = the agent; `'workflow'` = a graph gate or question node. */
-  source?: 'workflow'
+  /** Who asks: absent = the agent; `'workflow'` = a graph gate or question node;
+   *  `'manager'` = a root task asking without parking its turn. */
+  source?: 'workflow' | 'manager'
 }
 
 /** Cumulative-for-session raw telemetry. */

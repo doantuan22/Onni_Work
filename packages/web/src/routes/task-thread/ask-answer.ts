@@ -113,6 +113,9 @@ export interface AskAnswerDelivery {
 export function useAskAnswer(
   run: ApiRun,
   projectId?: string,
+  /** The `requestId` of an open manager ask (plan v2 §9) — sent as `replyTo` on either seam so the
+   *  engine retires exactly that question. Absent for a Guard/agent ask. */
+  replyTo?: string,
 ): AskAnswerDelivery {
   // `projectId` only from a surface standing OUTSIDE the run's project — the global Tasks page.
   // Everywhere else the scope is already the run's own and naming it would be noise.
@@ -146,7 +149,7 @@ export function useAskAnswer(
     }
     // No runner override: the server keeps the run's own backend and model, so answering a
     // question cannot silently switch engines when another provider happens to be connected.
-    return resume.mutateAsync({ text })
+    return resume.mutateAsync({ text, ...(replyTo !== undefined ? { replyTo } : {}) })
   }
 
   const send = async (text: string): Promise<string | undefined> => {
@@ -163,7 +166,7 @@ export function useAskAnswer(
         return undefined
       }
       try {
-        await sendMessage.mutateAsync({ text })
+        await sendMessage.mutateAsync({ text, ...(replyTo !== undefined ? { replyTo } : {}) })
       } catch (sendError) {
         // The cached record said "live" but the session had already closed — resume instead
         // of dropping the answer the user just gave. The old session can still be settling

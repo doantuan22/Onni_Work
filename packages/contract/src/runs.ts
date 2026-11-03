@@ -1283,7 +1283,8 @@ export type CreateRunInput = z.input<typeof createRunInputSchema>;
 /**
  * `POST /runs/:id/messages` — text and/or pasted attachments for a live session. Both keys have
  * server-side defaults, so an omitted `text` is `''` and an omitted `images` is `[]`; the refine
- * is what rejects a message that is empty in both.
+ * is what rejects a message that is empty in both. `replyTo` names the open ask this message
+ * answers (`dispatch.softAsk.requestId`); a free message leaves it absent and closes nothing.
  */
 export const messageInputSchema = z
   .object({
@@ -1291,6 +1292,8 @@ export const messageInputSchema = z
     images: attachmentListSchema.default([]),
     /** One per message, reused by its retries: a key that already landed is not delivered again. */
     idempotencyKey: z.string().uuid().optional(),
+    /** The `requestId` of the manager ask this message answers (plan v2 §9). */
+    replyTo: z.string().min(1).max(120).optional(),
   })
   .refine((m) => m.text.trim().length > 0 || m.images.length > 0, {
     message: 'message needs text or at least one attachment',
@@ -1314,6 +1317,8 @@ export const continueInputSchema = z.object({
   idempotencyKey: z.string().uuid().optional(),
   /** Continue a run a ceiling stopped: extend the ceiling that was hit by one more allowance. */
   raiseLimits: z.boolean().optional(),
+  /** The `requestId` of the manager ask this continuation answers (plan v2 §9). */
+  replyTo: z.string().min(1).max(120).optional(),
 });
 export type ContinueInput = z.input<typeof continueInputSchema>;
 

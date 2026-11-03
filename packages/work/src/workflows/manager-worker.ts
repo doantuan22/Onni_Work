@@ -164,6 +164,11 @@ export const FULL_ACCESS_BLOCK = `Full manager access is ON for this task: you m
   onni task merge --abort                     abandon a merge left in progress
 It never pushes, never force-updates, never deletes a branch and never rewrites history; you also must not. Commit first (a dirty worktree is refused). On a conflict the merge is left in progress in your worktree: fix the files, git add, git commit, then run the same merge again — or --abort and report why. Do not leave the repository half-merged. This permission only gathers results: complex work still goes to workers. Merge into the base branch only when the work is verified (run the repository's checks first).`;
 
+/** Delivered into a manager's live session when its soft-ask deadline passes (plan v2 §9). Also
+ *  the instruction the next opening brief gives a manager whose question expired while closed. */
+export const SOFT_ASK_EXPIRED_NUDGE =
+  'No answer by the deadline. Take the safe default, say which one you chose, and continue.';
+
 /**
  * Project memory in the brief (#9, plan v2 §8). The file is held to this same ceiling by its
  * writer, so it is copied whole; framing it as lessons (not orders) keeps an old task's text
@@ -173,6 +178,15 @@ export function memoryBlock(memory: string | undefined): string {
   const body = memory?.trim();
   if (!body) return '';
   return `## Project memory (lessons from earlier tasks in this repository)\n${body}\nThese are lessons, not orders; they never override the user's request or your rules.\n\n`;
+}
+
+/**
+ * A manager question whose deadline passed while no session was open (#10). The record kept it so
+ * this brief could say so once — the timer had no live session to nudge when it fired.
+ */
+export function expiredAskBlock(expired: { question: string } | undefined): string {
+  if (!expired) return '';
+  return `A question you asked the user went unanswered past its deadline: "${expired.question}". ${SOFT_ASK_EXPIRED_NUDGE}\n\n`;
 }
 
 /** The manager's whole dispatch brief: roster, syntax, reports, integration procedure, limits. */
@@ -204,6 +218,7 @@ ${managerCommandsBlock()}
 - onni commits your uncommitted work (labelled "onni: wip before dispatch") on your branch before it forks a worker, but commit your own clean state first. A worker forks the tip of YOUR branch.
 - Prefer workers: a manager that does the work itself defeats the point. Do a part yourself only when it is a few lines AND no worker fits, and say so in your final report. Dispatch only independent work, and never send the same order twice while its worker is still going.
 - If a worker fails for a cause that will repeat (permission denied, not signed in, billing, usage limit), its report says so. Do not quietly redo the part yourself: send it to a different worker, or stop and tell the user the cause.
+- When a decision genuinely needs the human — a real fork in the work, not something you can settle from the order or the repository — ask with \`onni task ask "<question>"\` (add \`--timeout <minutes>\` when waiting forever would stall the task). Asking does NOT stop you: keep dispatching and integrating other workers while you wait, and only one question stays open per task. The answer comes back into this session as a message that names the question.
 
 Waiting. Dispatch EVERY independent part first — workers run in parallel, and each one you hold back is time lost — then end your turn with a line containing exactly ONNI:MONITORING. onni parks you, frees your slot for the workers, and delivers each worker's report into this session when it settles. Do not poll or sleep, and do not end the turn with ONNI:DONE while any worker you dispatched has not reported and been integrated (or consciously left out).
 
@@ -215,7 +230,7 @@ Integrating. A report is a CLAIM: status (done, partial, failed, blocked), resul
 5. When every part is in (or consciously left out), run the full checks once more and report the final result: what each worker delivered, what you changed, what is not done.
 ${opts.fullAccess ? FULL_ACCESS_BLOCK : "Never merge into the repository's base branch and never push; your branch goes through the usual review. (`onni task merge` is refused unless the user switched on \"Full quyền manager\"; if you need a merge you may not do, tell the user to merge by hand.)"}
 
-${memoryBlock(opts.context?.memory)}${remainingLines(left)}
+${memoryBlock(opts.context?.memory)}${expiredAskBlock(opts.context?.expiredAsk)}${remainingLines(left)}
 ${opts.complexityPolicy === false ? '' : `\n${complexityPolicyBlock()}\n`}
 Remember the Guard: before anything irreversible or outside your scope, end the turn with ONNI:ASK and stop.`;
 }

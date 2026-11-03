@@ -106,7 +106,7 @@ import {
 import type { ClearProjectDataResult, MergeResult } from '@onni/contract';
 import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -1033,6 +1033,8 @@ const messageSchema = z
     text: z.string().max(100_000).default(''),
     images: attachmentListSchema.default([]),
     idempotencyKey: z.string().uuid().optional(),
+    /** The manager-ask `requestId` this message answers (plan v2 §9). Absent for a free message. */
+    replyTo: z.string().min(1).max(120).optional(),
   })
   .refine((m) => m.text.trim().length > 0 || m.images.length > 0, {
     message: 'message needs text or at least one attachment',
@@ -4547,6 +4549,7 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/merge', requireDispatch)
     .use('/runs/:id/budget', requireDispatch)
     .use('/runs/:id/peek', requireDispatch)
+    .use('/runs/:id/ask', requireDispatch)
 
     /** Create ONE child of run `:id`. Refusals (cap, budget, settled parent) are 409 with the
      *  reason — the same text the parent's transcript notes. */
@@ -4572,6 +4575,15 @@ export function createApp(deps: ServerDeps) {
       const recorded = manager.recordReport(c.req.param('id'), c.req.valid('json'));
       if (!recorded) return c.json({ error: 'run is not part of a dispatch tree' }, 404);
       return c.json({ ok: true as const });
+    })
+
+    /** `onni task ask` (plan v2 §9): a root manager asks WITHOUT parking. 409 for a non-root
+     *  caller, a second open question, or a task that is no longer live. */
+    .post('/runs/:id/ask', jsonZodValidator(managerAskInputSchema), (c) => {
+      const { manager } = c.get('project');
+      const outcome = manager.askUser(c.req.param('id'), c.req.valid('json'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
     })
 
     /** What is left of the tree's ceilings (`onni task budget`, plan v2 §6.2). Any run in the
@@ -4676,6 +4688,8 @@ export function createApp(deps: ServerDeps) {
     try {
       return await legacyWorktreeMutation(project, id, async () => {
         stopTaskProcesses(id);
+        // The open manager question goes with the task (plan v2 §9) — its timer must not outlive it.
+        manager.forgetSoftAsk(id);
         // Layouts go with the task, and only with it — archiving keeps them (spec §5.3).
         deleteRunLayouts(dataDir, id);
         if (run.worktreePath) await removeWorktree(repoRoot, run.worktreePath, run.branch);
@@ -5002,7 +5016,7 @@ export function createApp(deps: ServerDeps) {
         // (the record is written a tick later), the engine can.
         //   live session → delivered · still queued → folded into the prompt
         //   starting up or between sessions → buffered (1408d7cb) · anything else → 409
-        if (manager.sendMessage(id, content)) return c.json((answered = { delivered: true as const }));
+        if (manager.sendMessage(id, content, parsed.data.replyTo)) return c.json((answered = { delivered: true as const }));
 
         const currentRun = store.getRun(id);
         // Bounds apply only to a message that is actually about to be stacked. Without this
@@ -5156,6 +5170,7 @@ export function createApp(deps: ServerDeps) {
           model: parsed.data.model,
           agentProfile: parsed.data.agentProfile,
           ...(parsed.data.raiseLimits ? { raiseLimits: true } : {}),
+          ...(parsed.data.replyTo !== undefined ? { replyTo: parsed.data.replyTo } : {}),
         });
         if (!result.ok) return c.json({ error: result.error }, 409);
         return c.json((answered = { continued: true as const }));
