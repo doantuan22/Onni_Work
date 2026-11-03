@@ -9,7 +9,7 @@
  * worded for whoever is asking) and exits 2.
  */
 import { parseArgs } from 'node:util';
-import { REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek } from '@onni/contract';
+import { REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek, type ManagerMemoryRead } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
@@ -257,6 +257,20 @@ export async function runTaskCommand(
           method: 'GET',
         }, 'could not peek —')) as DispatchPeek;
         io.log(formatPeek(peek));
+        return 0;
+      }
+      case 'memory': {
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can write project memory');
+        const [sub, ...words] = rest;
+        if (sub !== 'add') throw new Error('usage: onni task memory add "<lesson>"');
+        const entry = words.join(' ').trim();
+        if (!entry) throw new Error('memory add needs a lesson');
+        const memory = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/memory`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ entry }),
+        }, 'could not save memory —')) as ManagerMemoryRead;
+        io.log(`memory now ${memory.bytes}/${memory.maxBytes} bytes`);
         return 0;
       }
       case 'list':

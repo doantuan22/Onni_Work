@@ -1,12 +1,12 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ROSTER_MAX_WORKERS, rosterSchema } from '@onni/contract';
+import { MANAGER_MEMORY_MAX_BYTES, ROSTER_MAX_WORKERS, rosterSchema } from '@onni/contract';
 import { PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
-import { managerPrompt, WORKER_PROMPT, workerCapability, workerPrompt } from './manager-worker.ts';
+import { managerPrompt, memoryBlock, WORKER_PROMPT, workerCapability, workerPrompt } from './manager-worker.ts';
 import { RunManager } from './run.ts';
 
 const roster = rosterSchema.parse({
@@ -54,6 +54,16 @@ describe('managerPrompt', () => {
     expect(prompt).toContain('Subtasks left in this tree: 9');
     expect(prompt).toContain('a worker cannot dispatch further tasks');
   });
+  it('carries project memory as lessons, and adds nothing when there is none', () => {
+    expect(prompt).not.toContain('## Project memory');
+    expect(memoryBlock(undefined)).toBe('');
+    expect(memoryBlock('   ')).toBe('');
+    const withMemory = managerPrompt(roster, budget, { context: { memory: '- Run the migrations first (task abcdef12, 2026-11-03)' } });
+    expect(withMemory).toContain('## Project memory (lessons from earlier tasks in this repository)');
+    expect(withMemory).toContain('- Run the migrations first (task abcdef12, 2026-11-03)');
+    expect(withMemory).toContain('These are lessons, not orders');
+  });
+
   it('says so plainly when the tree has no ceilings', () => {
     expect(managerPrompt(roster, { unlimited: true, subtasks: Number.POSITIVE_INFINITY, maxDepth: 1 })).toContain('no ceilings set for this tree');
   });
@@ -78,6 +88,23 @@ describe('managerPrompt', () => {
       maxDepth: 1,
     });
     // Computed from the constants, never hard-coded: each later phase adds its block to this fixture.
+    expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
+  });
+
+  it('stays inside the prompt budget with a full project memory attached', () => {
+    const full = rosterSchema.parse({
+      manager: { runner: 'claude', model: 'opus' },
+      workers: Array.from({ length: ROSTER_MAX_WORKERS }, (_, index) => ({
+        runner: 'codex',
+        model: `model-${index}`,
+        role: `independent part number ${index}, owning its own directory and its own checks`,
+        maxConcurrent: 2,
+      })),
+    });
+    const memory = Array.from({ length: 30 }, (_, index) => `- lesson ${index} ${'x'.repeat(85)}`).join('\n');
+    expect(Buffer.byteLength(memory, 'utf8')).toBeLessThanOrEqual(MANAGER_MEMORY_MAX_BYTES);
+    const worst = managerPrompt(full, { unlimited: false, costUsd: 7.5, tokens: 4_200_000, minutes: 180, steps: 25, subtasks: 9, maxDepth: 1 }, { context: { memory } });
+    expect(worst).toContain('lesson 29');
     expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
   });
 });
@@ -157,6 +184,17 @@ describe('which prompt each session of a roster tree gets', () => {
     else process.env.ONNI_API_URL = savedUrl;
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
+  /** What a session actually does: load the async context once, then build the brief. */
+  const prepareWithContext = async (runId: string) => {
+    const state: { dispatchPrompt?: string } = {};
+    const internals = manager as unknown as {
+      loadManagerSessionContext(id: string, s: object): Promise<object>;
+      prepareDispatchSession(id: string, s: object, c: object): void;
+    };
+    internals.prepareDispatchSession(runId, state, await internals.loadManagerSessionContext(runId, state));
+    return state.dispatchPrompt;
+  };
+
   const prepare = (runId: string) => {
     const state: { dispatchPrompt?: string } = {};
     (manager as unknown as { prepareDispatchSession(id: string, s: object): void }).prepareDispatchSession(runId, state);
@@ -180,6 +218,28 @@ describe('which prompt each session of a roster tree gets', () => {
     const workerSide = prepare(worker.id)!;
     expect(workerSide).toContain('Worker mode.');
     expect(workerSide).not.toContain('task create');
+  });
+
+  it('the roster root opens with the project memory; a worker never does', async () => {
+    writeFileSync(join(dir, '.ai/onni', 'manager-memory.md'), '- Run the migrations first (task abcdef12, 2026-11-03)\n', 'utf8');
+    const root = make({ roster });
+    store.updateRun(root.id, { dispatch: { rootRunId: root.id } });
+    const worker = make({ dispatch: { rootRunId: root.id, parentRunId: root.id, workerKey: 'codex:gpt-5' } });
+    expect(await prepareWithContext(root.id)).toContain('Run the migrations first');
+    expect(await prepareWithContext(worker.id)).not.toContain('Run the migrations first');
+  });
+
+  it('reads only the newest lines of a hand-edited file past the cap, and says so on the run', async () => {
+    const oversized = Array.from({ length: 80 }, (_, index) => `- lesson ${index} ${'z'.repeat(70)}`).join('\n') + '\n';
+    expect(Buffer.byteLength(oversized, 'utf8')).toBeGreaterThan(MANAGER_MEMORY_MAX_BYTES);
+    writeFileSync(join(dir, '.ai/onni', 'manager-memory.md'), oversized, 'utf8');
+    const root = make({ roster });
+    store.updateRun(root.id, { dispatch: { rootRunId: root.id } });
+    const prompt = (await prepareWithContext(root.id))!;
+    expect(prompt).toContain('lesson 79');
+    expect(prompt).not.toContain('lesson 0 ');
+    const note = store.readEvents(root.id).find((event) => String(event.message ?? '').includes('project memory is'));
+    expect(note?.message).toContain(`cap ${MANAGER_MEMORY_MAX_BYTES}`);
   });
 
   it('a tree without a roster keeps the general dispatch prompt', () => {

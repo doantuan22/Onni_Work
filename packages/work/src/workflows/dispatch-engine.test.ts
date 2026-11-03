@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { PENDING_ASK_MAX_QUESTIONS, PEEK_MAX_ENTRIES, rosterSchema, type DispatchInput, type RunDispatch } from '@onni/contract';
+import { MANAGER_MEMORY_MAX_BYTES, PENDING_ASK_MAX_QUESTIONS, PEEK_MAX_ENTRIES, rosterSchema, type DispatchInput, type RunDispatch } from '@onni/contract';
 import { runRecordSchema, RunStore, type RunRecord } from '../runs/store.ts';
 import { WorkspaceSemaphore, type WorkspaceResourceLimits } from '../workspace/semaphore.ts';
 import { RunManager } from './run.ts';
@@ -576,6 +576,44 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       // Compact mode: state, files — never a tail.
       expect(outcome.workers.every((worker) => worker.tail.length === 0)).toBe(true);
     }, 60_000);
+  });
+
+  // ---- project memory (#9) -------------------------------------------------------------------
+
+  describe('project memory', () => {
+    const ROSTER = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'work' }] });
+    const managerRoot = async (): Promise<RunRecord> => {
+      const record = await parkedRoot();
+      store.updateRun(record.id, { roster: ROSTER });
+      return record;
+    };
+
+    it('lets the root manager add a lesson, and records it in the tree ledger and its transcript', async () => {
+      const parent = await managerRoot();
+      const outcome = await manager.addManagerMemory(parent.id, { entry: '## Run the migrations first' });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.content).toContain(`- Run the migrations first (task ${parent.id.slice(0, 8)}`);
+      expect(readFileSync(join(repoRoot, '.ai/onni/manager-memory.md'), 'utf8')).toContain('Run the migrations first');
+      expect(readFileSync(join(treeDirOf(parent.id), 'ledger.jsonl'), 'utf8')).toContain('"type":"memory-add"');
+      expect(notes(parent.id).some((line) => line.startsWith('project memory: added one lesson'))).toBe(true);
+    }, 40_000);
+
+    it('refuses a worker, a plain root and an unknown run — the same root-with-roster gate as peek', async () => {
+      const parent = await managerRoot();
+      const worker = store.createRun({ title: 'w', workflow: 'w', task: 't', steps: [] });
+      store.updateRun(worker.id, { dispatch: childOf(parent.id) });
+      expect(await manager.addManagerMemory(worker.id, { entry: 'x' })).toMatchObject({ status: 403 });
+      const plain = await parkedRoot();
+      expect(await manager.addManagerMemory(plain.id, { entry: 'x' })).toMatchObject({ status: 403 });
+      expect(await manager.addManagerMemory('nope', { entry: 'x' })).toMatchObject({ status: 404 });
+    }, 40_000);
+
+    it('refuses a lesson that would cross the ceiling instead of truncating the file', async () => {
+      const parent = await managerRoot();
+      writeFileSync(join(repoRoot, '.ai/onni/manager-memory.md'), 'x'.repeat(MANAGER_MEMORY_MAX_BYTES), 'utf8');
+      expect(await manager.addManagerMemory(parent.id, { entry: 'one more' })).toMatchObject({ status: 409 });
+      expect(readFileSync(join(repoRoot, '.ai/onni/manager-memory.md'), 'utf8')).toHaveLength(MANAGER_MEMORY_MAX_BYTES);
+    }, 40_000);
   });
 
   // ---- the tree directory (the filesystem channel) -------------------------------------------

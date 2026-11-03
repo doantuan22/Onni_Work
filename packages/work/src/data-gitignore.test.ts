@@ -45,6 +45,11 @@ describe('ensureDataGitignore', () => {
     ]));
   });
 
+  it('ignores project memory — lessons learned in this repo are local state, not repo content', () => {
+    ensureDataGitignore(repoRoot);
+    expect(gitignore().split('\n')).toContain('manager-memory.md');
+  });
+
   it('ignores the generated unattended pre-push hook', () => {
     execFileSync('git', ['init', '-q'], { cwd: repoRoot });
     ensureDataGitignore(repoRoot);

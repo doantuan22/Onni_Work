@@ -1,5 +1,6 @@
 import {
   BellIcon,
+  BrainIcon,
   WebhookIcon,
   BookmarkIcon,
   BotIcon,
@@ -34,6 +35,7 @@ import { NotificationsSection } from './notifications-section'
 import { ProjectsSection } from './projects-section'
 import { AgentPermissionsSection } from './agent-permissions-section'
 import { ManagerWorkerSection } from './manager-worker-section'
+import { ManagerMemorySection } from './manager-memory-section'
 import { ResourcesSection } from './resources-section'
 import { SkillsSection } from './skills-section'
 import { TasksSection } from './tasks-section'
@@ -70,6 +72,7 @@ export type SettingsSectionId =
   | 'tasks'
   | 'resources'
   | 'manager-worker'
+  | 'manager-memory'
   | 'agent-permissions'
   | 'worktrees'
   | 'projects'
@@ -146,6 +149,14 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     description: 'What you write for the models: system prompt, branch naming, prompt templates.',
     icon: MessageSquareTextIcon,
     component: InstructionsSection,
+    scope: 'project',
+  },
+  {
+    id: 'manager-memory',
+    title: 'Manager memory',
+    description: 'Lessons managers leave for later tasks in this project.',
+    icon: BrainIcon,
+    component: ManagerMemorySection,
     scope: 'project',
   },
   {

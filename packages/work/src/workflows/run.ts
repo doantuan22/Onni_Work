@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -108,6 +108,7 @@ import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
 import { orderPeekCandidates, peekTail, quietMinutesOf } from '../dispatch/peek.ts';
+import { appendManagerMemory, clampMemoryToTail, readManagerMemory, writeManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
 import { requireRootManager, requireSameTree } from '../dispatch/access.ts';
 import {
   appendLedger,
@@ -2728,6 +2729,28 @@ export class RunManager {
       const configured = config.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
       context.antigravityLevel = effectiveAntigravityLevel(configured, true).level;
     }
+    // #9: only the roster ROOT reads memory — the brief it lands in exists nowhere else. A file
+    // hand-edited past its cap is read from its newest lines; the note says what happened rather
+    // than silently shrinking the manager's context.
+    const run = this.store.getRun(runId);
+    if (run?.roster && !run.dispatch?.parentRunId) {
+      const memory = await readManagerMemory(this.dataDir).catch(() => undefined);
+      if (memory) {
+        const content = memory.content.trim();
+        if (content) {
+          const clipped = memory.bytes > MANAGER_MEMORY_MAX_BYTES;
+          context.memory = clipped ? clampMemoryToTail(memory.content).trim() : content;
+          if (clipped) {
+            this.store.appendEvent(runId, {
+              type: 'note',
+              stepId: state.currentStepId,
+              tone: 'danger',
+              message: `project memory is ${memory.bytes} bytes (cap ${MANAGER_MEMORY_MAX_BYTES}); this prompt carries only its newest lines — prune it in Settings → Manager memory.`,
+            });
+          }
+        }
+      }
+    }
     return context;
   }
 
@@ -2879,6 +2902,44 @@ export class RunManager {
       tail: tail.lines,
       tailTruncated: tail.truncated,
     };
+  }
+
+  /** Project memory (plan v2 §8). Reading is project-wide, so Settings works with dispatch off. */
+  readManagerMemory(): Promise<ManagerMemoryRead> {
+    return readManagerMemory(this.dataDir);
+  }
+
+  writeManagerMemory(input: ManagerMemoryPut): Promise<MemoryWriteResult> {
+    return writeManagerMemory(this.dataDir, input);
+  }
+
+  /**
+   * `onni task memory add` — the root manager appends one lesson. The access check runs first
+   * (404/403), then the whole read-modify-write under the file's path lock; a full memory is a
+   * refusal, never a truncation. The ledger and the transcript note carry the provenance.
+   */
+  async addManagerMemory(
+    runId: string,
+    input: ManagerMemoryAdd,
+  ): Promise<ManagerMemoryRead | { denied: string; status: 400 | 403 | 404 | 409 }> {
+    const run = this.store.getRun(runId);
+    const access = requireRootManager(run, 'write project memory');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    if (!run) return { denied: `no such run: ${runId}`, status: 404 };
+    const outcome = await appendManagerMemory(this.dataDir, input.entry, runId, (text) => this.store.redactRunText(runId, text));
+    if (!outcome.ok) return { denied: outcome.error, status: outcome.status };
+    appendLedger(this.dataDir, runId, {
+      type: 'memory-add',
+      runId,
+      entry: outcome.entry,
+      bytes: outcome.memory.bytes,
+    });
+    this.store.appendEvent(runId, {
+      type: 'note',
+      stepId: this.active.get(runId)?.currentStepId,
+      message: `project memory: added one lesson (${outcome.memory.bytes}/${outcome.memory.maxBytes} bytes)`,
+    });
+    return outcome.memory;
   }
 
   /**

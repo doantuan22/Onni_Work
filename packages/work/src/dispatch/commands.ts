@@ -73,6 +73,13 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: "see where a worker is, what it changed and how long it has been quiet",
   },
   {
+    name: 'memory',
+    role: 'manager',
+    usage: 'onni task memory add "<lesson>"   remember one lesson for later tasks in this repository',
+    brief: 'onni task memory add "<lesson>"   save a durable lesson (build order, a trap, a convention) for later tasks in this repository; one line',
+    oneLine: 'save a lesson for later tasks in this repository',
+  },
+  {
     name: 'tree',
     role: 'manager',
     usage: 'onni task tree <run id>              the tree rooted at (or containing) another run',

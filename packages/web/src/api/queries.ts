@@ -63,6 +63,7 @@ import {
   getTrackerItem,
   getTrackerItems,
   getUiState,
+  getManagerMemory,
   getWorkflows,
   getWorkflowNodes,
   getWorkspaceConfig,
@@ -151,6 +152,7 @@ export const queryKeys = {
     allFor: (projectId: string) => ['e2e', projectId] as const,
     status: () => ['e2e', queryScope()] as const,
   },
+  managerMemory: () => ['manager-memory', queryScope()] as const,
   tracker: {
     allFor: (projectId: string) => ['tracker', projectId] as const,
     all: () => ['tracker', queryScope()] as const,
@@ -1490,6 +1492,14 @@ export function useUiState() {
   return useQuery({
     queryKey: queryKeys.uiState,
     queryFn: ({ signal }) => getUiState({ signal }),
+  })
+}
+
+/** Project memory (plan v2 §8): the lessons Settings edits and managers read into their brief. */
+export function useManagerMemory() {
+  return useQuery({
+    queryKey: queryKeys.managerMemory(),
+    queryFn: ({ signal }) => getManagerMemory({ signal }),
   })
 }
 

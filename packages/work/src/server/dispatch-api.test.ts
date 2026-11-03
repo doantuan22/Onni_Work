@@ -18,11 +18,14 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'memory'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
   let peek: unknown;
+  let memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
+  let memoryWrite: unknown = memory;
+  let memoryAdd: unknown = memory;
   const savedFlag = process.env.ONNI_DISPATCH;
 
   beforeEach(() => {
@@ -33,6 +36,9 @@ describe('the dispatch routes', () => {
     reportOk = true;
     budget = undefined;
     peek = { workers: [], workersOmitted: 0 };
+    memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
+    memoryWrite = memory;
+    memoryAdd = memory;
     process.env.ONNI_DISPATCH = '1';
     const manager = {
       // The route is thin over `dispatchFromAgent` (it awaits the engine's fork), so the stub is
@@ -49,6 +55,15 @@ describe('the dispatch routes', () => {
       peekFor: async (runId: string, body: unknown) => {
         calls.push({ kind: 'peek', runId, body });
         return peek;
+      },
+      readManagerMemory: async () => memory,
+      writeManagerMemory: async (body: unknown) => {
+        calls.push({ kind: 'memory', runId: 'settings', body });
+        return memoryWrite;
+      },
+      addManagerMemory: async (runId: string, body: unknown) => {
+        calls.push({ kind: 'memory', runId, body });
+        return memoryAdd;
       },
     } as unknown as RunManager;
     app = createApp({ repoRoot, store, manager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
@@ -138,5 +153,67 @@ describe('the dispatch routes', () => {
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);
     }
+    const add = await apiRequest(app, '/api/v1/runs/p/memory', json({ entry: 'a lesson' }));
+    expect(add.status).toBe(409);
+  });
+
+  it('reads and writes project memory through the manager, settings-side and ungated', async () => {
+    memory = { content: '- a lesson\n', bytes: 11, maxBytes: 3072, revision: 'abcd1234' };
+    const read = await apiRequest(app, '/api/v1/manager-memory');
+    expect(read.status).toBe(200);
+    expect(await read.json()).toEqual(memory);
+
+    const put = await apiRequest(app, '/api/v1/manager-memory', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: '- two lessons\n', revision: 'abcd1234' }),
+    });
+    expect(put.status).toBe(200);
+    expect(calls[0]).toEqual({ kind: 'memory', runId: 'settings', body: { content: '- two lessons\n', revision: 'abcd1234' } });
+
+    // The section must still be readable and editable with dispatch off — memory is a project
+    // setting, not a dispatch command.
+    process.env.ONNI_DISPATCH = '0';
+    expect((await apiRequest(app, '/api/v1/manager-memory')).status).toBe(200);
+  });
+
+  it('maps a memory write’s 409 and 400 unchanged, and passes the current file on 409', async () => {
+    memoryWrite = { ok: false, status: 409, error: 'memory changed in another window', current: memory };
+    const stale = await apiRequest(app, '/api/v1/manager-memory', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: 'x', revision: 'stale' }),
+    });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toEqual({ error: 'memory changed in another window', current: memory });
+
+    memoryWrite = { ok: false, status: 400, error: 'memory is 4000 bytes; the limit is 3072' };
+    const tooBig = await apiRequest(app, '/api/v1/manager-memory', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: 'x', revision: '0' }),
+    });
+    expect(tooBig.status).toBe(400);
+    expect(await tooBig.json()).toEqual({ error: 'memory is 4000 bytes; the limit is 3072' });
+  });
+
+  it('appends a lesson for a running task and maps the manager’s denial unchanged', async () => {
+    memory = { content: '- a lesson\n', bytes: 31, maxBytes: 3072, revision: 'ef567890' };
+    memoryAdd = memory;
+    const ok = await apiRequest(app, '/api/v1/runs/root/memory', json({ entry: '## a lesson' }));
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual(memory);
+    expect(calls[0]).toEqual({ kind: 'memory', runId: 'root', body: { entry: '## a lesson' } });
+
+    memoryAdd = { denied: 'only the manager of a manager–worker task can write project memory', status: 403 };
+    expect((await apiRequest(app, '/api/v1/runs/worker/memory', json({ entry: 'x' }))).status).toBe(403);
+    memoryAdd = { denied: 'memory is full — ask the user to prune it in Settings', status: 409 };
+    expect((await apiRequest(app, '/api/v1/runs/root/memory', json({ entry: 'x' }))).status).toBe(409);
+  });
+
+  it('400s a memory entry the schema refuses before touching the manager', async () => {
+    const res = await apiRequest(app, '/api/v1/runs/root/memory', json({ entry: '   ' }));
+    expect(res.status).toBe(400);
+    expect(calls).toEqual([]);
   });
 });

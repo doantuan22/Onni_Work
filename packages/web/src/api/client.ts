@@ -46,6 +46,8 @@ import type {
   ApiRun,
   ArchiveFinishedResponse,
   MarkAllReadResponse,
+  ManagerMemoryPut,
+  ManagerMemoryRead,
   CancelAutoResumeResponse,
   CancelResponse,
   ChangesPayload,
@@ -656,6 +658,29 @@ export async function getUiState(opts?: ReadOptions): Promise<UiState> {
       init(opts),
     ),
     '/ui-state',
+  )
+}
+
+/** Project memory (`GET /manager-memory`, plan v2 §8) — lessons managers leave for later tasks. */
+export async function getManagerMemory(opts?: ReadOptions): Promise<ManagerMemoryRead> {
+  return unwrap(
+    await onni.api.v1.p[':projectId']['manager-memory'].$get(
+      { param: { projectId: queryScope() } },
+      init(opts),
+    ),
+    '/manager-memory',
+  )
+}
+
+/** Settings save. The server refuses a stale `revision` with 409 and the current file, so a
+ *  concurrent edit is a visible conflict rather than a silently lost lesson. */
+export async function putManagerMemory(input: ManagerMemoryPut): Promise<ManagerMemoryRead> {
+  return unwrap(
+    await onni.api.v1.p[':projectId']['manager-memory'].$put(
+      { param: { projectId: queryScope() }, json: input },
+      init(),
+    ),
+    '/manager-memory',
   )
 }
 

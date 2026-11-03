@@ -126,6 +126,34 @@ export const dispatchPeekSchema = z.object({
 });
 export type DispatchPeek = z.infer<typeof dispatchPeekSchema>;
 
+/**
+ * Project memory (plan v2 §8): durable lessons a manager leaves for later tasks in this
+ * repository, in `<dataDir>/manager-memory.md`. `bytes` is UTF-8, not characters — a Vietnamese
+ * lesson costs more bytes than its `length` — and `maxBytes` travels with every answer so the
+ * Settings counter and the CLI cannot each invent their own ceiling.
+ */
+export const managerMemoryReadSchema = z.object({
+  content: z.string(),
+  bytes: z.number().int().nonnegative(),
+  maxBytes: z.number().int().positive(),
+  revision: z.string(),
+});
+export type ManagerMemoryRead = z.infer<typeof managerMemoryReadSchema>;
+
+/** `PUT /manager-memory` (Settings): `revision` is the read the user edited, so a save over a
+ *  concurrent one is a 409 instead of a silently lost lesson. */
+export const managerMemoryPutSchema = z.object({
+  content: z.string(),
+  revision: z.string(),
+});
+export type ManagerMemoryPut = z.infer<typeof managerMemoryPutSchema>;
+
+/** `POST /runs/:id/memory` (`onni task memory add`): one lesson, one line. */
+export const managerMemoryAddSchema = z.object({
+  entry: z.string().trim().min(1).max(MANAGER_MEMORY_ENTRY_MAX_CHARS),
+});
+export type ManagerMemoryAdd = z.infer<typeof managerMemoryAddSchema>;
+
 /** One command a worker says it ran, and the exit code it saw (plan v2 §6.1). Never verified by
  *  onni — the report label says `worker-reported`, and `#4` is where real verification lives. */
 export const dispatchCheckSchema = z.object({

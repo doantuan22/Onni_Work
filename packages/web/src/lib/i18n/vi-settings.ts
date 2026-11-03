@@ -1238,4 +1238,27 @@ export const viSettings: Record<string, string> = {
     'Đăng nhập phụ, cùng agent và model mà dự án dùng khi chưa tự chọn.',
   'The workspace registry and where GitHub checkouts land.':
     'Danh sách workspace và nơi lưu bản checkout GitHub.',
+  'Manager memory': 'Bộ nhớ manager',
+  'Lessons managers leave for later tasks in this project.': 'Bài học manager để lại cho các nhiệm vụ sau trong dự án này.',
+  'Manager memory did not load': 'Không tải được bộ nhớ manager',
+  'Lessons for later tasks': 'Bài học cho các nhiệm vụ sau',
+  'Managers write here with "onni task memory add". Every manager–worker task in this project reads this list into its brief when it opens — keep it short and specific.':
+    'Manager ghi vào đây bằng "onni task memory add". Mọi nhiệm vụ quản lý–worker trong dự án này đọc danh sách này vào brief khi mở phiên — hãy giữ ngắn và cụ thể.',
+  'Project memory': 'Bộ nhớ dự án',
+  '- Run the database migrations before the unit suite.\n- The payments module must not import the UI package.':
+    '- Chạy migration cơ sở dữ liệu trước bộ test unit.\n- Module payments không được import gói UI.',
+  '{bytes} / {max} bytes': '{bytes} / {max} byte',
+  'Over the limit — remove a lesson before saving.': 'Vượt giới hạn — hãy xoá bớt một bài học trước khi lưu.',
+  'Save memory': 'Lưu bộ nhớ',
+  'Clear memory': 'Xoá bộ nhớ',
+  'Stored lessons': 'Bài học đã lưu',
+  'Each line names the task that wrote it. Lessons are not orders: a manager is told they never override the user’s request.':
+    'Mỗi dòng ghi nhiệm vụ đã viết nó. Bài học không phải mệnh lệnh: manager được dặn rằng chúng không bao giờ đè lên yêu cầu của người dùng.',
+  'No lessons yet.': 'Chưa có bài học nào.',
+  'new': 'mới',
+  'Clear project memory?': 'Xoá bộ nhớ dự án?',
+  'Every stored lesson is removed. Managers that are already running keep the copy they opened with.':
+    'Mọi bài học đã lưu sẽ bị xoá. Các manager đang chạy vẫn giữ bản sao lúc mở phiên.',
+  'Project memory saved': 'Đã lưu bộ nhớ dự án',
+  'Memory changed in another window — reloaded the latest version': 'Bộ nhớ đã thay đổi ở cửa sổ khác — đã tải lại bản mới nhất',
 }

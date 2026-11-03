@@ -208,6 +208,30 @@ describe('onni task', () => {
     expect(h.calls).toHaveLength(0);
   });
 
+  it('memory add posts the lesson to this run’s memory route and reports the new size', async () => {
+    const h = harness({ status: 200, body: { content: '- a lesson\n', bytes: 42, maxBytes: 3072, revision: 'abcd1234' } });
+    expect(await runTaskCommand(['memory', 'add', 'build', 'the', 'server', 'first'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/memory');
+    expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ entry: 'build the server first' });
+    expect(h.out[0]).toBe('memory now 42/3072 bytes');
+  });
+
+  it('memory refuses an empty lesson or a subcommand it does not answer, without calling the server', async () => {
+    const h = harness({ status: 200, body: {} });
+    expect(await runTaskCommand(['memory', 'add', '  '], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('memory add needs a lesson');
+    expect(await runTaskCommand(['memory', 'read'], env, h.io)).toBe(1);
+    expect(h.err[1]).toContain('usage: onni task memory add');
+    expect(await runTaskCommand(['memory'], env, h.io)).toBe(1);
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it('memory surfaces a full-memory refusal as "could not save memory"', async () => {
+    const h = harness({ status: 409, body: { error: 'memory is full — ask the user to prune it in Settings' } });
+    expect(await runTaskCommand(['memory', 'add', 'one more'], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('could not save memory — memory is full');
+  });
+
   it('list prints the tree this task belongs to, indented, with status, cost and verdicts', async () => {
     const h = harness({
       status: 200,

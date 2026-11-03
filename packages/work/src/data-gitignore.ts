@@ -20,6 +20,7 @@ export const DATA_GITIGNORE_ENTRIES = [
   'hooks/', // generated unattended-run pre-push fence
   'webhooks/', // project-private signing keys and delivery snapshots
   'dispatch/', // filesystem channel for dispatched task trees
+  'manager-memory.md', // project memory (#9): lessons are local state, never repo content
   // The per-project attachment library (#929): every named file a user attaches to any task is
   // copied here. It is USER content — a production log, an internal PDF, a brief — so it must
   // never surface in their `git status`, let alone ride a `git add -A` into a public repo. This

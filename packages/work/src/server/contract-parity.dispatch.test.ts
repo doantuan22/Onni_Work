@@ -2,7 +2,13 @@ import type { InferRequestType, InferResponseType } from 'hono/client';
 import { hc } from 'hono/client';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
-import { dispatchPeekSchema, dispatchReportSchema } from '@onni/contract';
+import {
+  dispatchPeekSchema,
+  dispatchReportSchema,
+  managerMemoryAddSchema,
+  managerMemoryPutSchema,
+  managerMemoryReadSchema,
+} from '@onni/contract';
 import type { dispatchBudgetSchema, dispatchInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
@@ -20,6 +26,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type Assert<T extends true> = T;
 
   type Run = (typeof client.api.v1.runs)[':id'];
+  type Project = (typeof client.api.v1.p)[':projectId'];
   type Dispatch201 = InferResponseType<Run['dispatch']['$post'], 201>;
   type Report200 = InferResponseType<Run['report']['$post'], 200>;
   type DispatchBody = InferRequestType<Run['dispatch']['$post']>['json'];
@@ -28,6 +35,11 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type MergeBody = InferRequestType<Run['merge']['$post']>['json'];
   type Budget200 = InferResponseType<Run['budget']['$get'], 200>;
   type Peek200 = InferResponseType<Run['peek']['$get'], 200>;
+  type MemoryRead200 = InferResponseType<Project['manager-memory']['$get'], 200>;
+  type MemoryPut200 = InferResponseType<Project['manager-memory']['$put'], 200>;
+  type MemoryPutBody = InferRequestType<Project['manager-memory']['$put']>['json'];
+  type MemoryAdd200 = InferResponseType<Run['memory']['$post'], 200>;
+  type MemoryAddBody = InferRequestType<Run['memory']['$post']>['json'];
 
   type _Checks = [
     Assert<Exact<z.infer<typeof dispatchResponseSchema>, Dispatch201>>,
@@ -40,12 +52,32 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.input<typeof mergeInputSchema>, MergeBody>>,
     Assert<Exact<z.infer<typeof dispatchBudgetSchema>, Budget200>>,
     Assert<Exact<z.infer<typeof dispatchPeekSchema>, Peek200>>,
+    Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryRead200>>,
+    Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryPut200>>,
+    Assert<Exact<z.input<typeof managerMemoryPutSchema>, MemoryPutBody>>,
+    Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryAdd200>>,
+    Assert<Exact<z.input<typeof managerMemoryAddSchema>, MemoryAddBody>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {
     type Wrong = Mutual<{ id: string }, { id: number }>;
     const wrong: Wrong = 'schema-is-wider';
     expect(wrong).toBe('schema-is-wider');
+  });
+});
+
+describe('project memory is bounded and asks for an integer byte count (#9)', () => {
+  it('needs a revision on a write and a non-empty lesson on an append', () => {
+    expect(managerMemoryPutSchema.safeParse({ content: 'x' }).success).toBe(false);
+    expect(managerMemoryAddSchema.safeParse({ entry: '   ' }).success).toBe(false);
+  });
+
+  it('caps one lesson and every reported size', () => {
+    expect(managerMemoryAddSchema.safeParse({ entry: 'x'.repeat(301) }).success).toBe(false);
+    const read = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
+    expect(managerMemoryReadSchema.safeParse(read).success).toBe(true);
+    expect(managerMemoryReadSchema.safeParse({ ...read, bytes: -1 }).success).toBe(false);
+    expect(managerMemoryReadSchema.safeParse({ ...read, maxBytes: 0 }).success).toBe(false);
   });
 });
 
