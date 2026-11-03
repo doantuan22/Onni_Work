@@ -9,6 +9,8 @@
  */
 import {
   DISPATCH_MAX_IN_FLIGHT,
+  REPORT_FILES_MAX,
+  type DispatchCheck,
   type DispatchInput,
   type DispatchPendingReport,
   type DispatchReport,
@@ -193,6 +195,40 @@ export function workerStatusBoard(runs: readonly RunRecord[], rootId: string): s
 }
 
 /**
+ * What the settle site can add to a child's report (plan v2 §6.1). All optional: a caller that
+ * cannot read git still hands over a report, with the missing lines simply absent — never a
+ * guessed file list that reads as "changed nothing".
+ */
+export interface SettleReportContext {
+  resumeNotes?: string;
+  changedFiles?: readonly string[];
+  filesOmitted?: number;
+  filesState?: 'ok' | 'timeout' | 'unavailable';
+  headCommit?: string;
+  /** The child's own checks, already redacted by the caller. Prefer these over the stored report. */
+  checks?: readonly DispatchCheck[];
+  /** #8's formatted remaining-budget line. */
+  budgetLine?: string;
+}
+
+/** `files: a.ts, b.ts (+12 more)`; an unreadable tree says so instead of reading as empty. */
+function filesLine(context: SettleReportContext): string | undefined {
+  const state = context.filesState ?? (context.changedFiles ? 'ok' : undefined);
+  if (!state) return undefined;
+  if (state !== 'ok') return 'files: (not available)';
+  const all = context.changedFiles ?? [];
+  const shown = all.slice(0, REPORT_FILES_MAX);
+  const omitted = Math.max(context.filesOmitted ?? 0, all.length - shown.length);
+  const list = shown.length ? shown.join(', ') : 'none';
+  return `files: ${list}${omitted > 0 ? ` (+${omitted} more)` : ''}`;
+}
+
+function checksLine(checks: readonly DispatchCheck[]): string | undefined {
+  if (checks.length === 0) return undefined;
+  return `checks (worker-reported, not verified): ${checks.map((check) => `${check.command} → ${check.exitCode}`).join('; ')}`;
+}
+
+/**
  * The report a settled child hands its parent, in both shapes it is needed in: the STRUCTURED
  * one (persisted on the parent as a pending report, so a restart cannot lose it) and the PROSE
  * one (delivered into the parent's session, which reads text, not JSON).
@@ -203,16 +239,20 @@ export function workerStatusBoard(runs: readonly RunRecord[], rootId: string): s
  */
 export function childSettleReport(
   child: RunRecord,
-  context: { resumeNotes?: string } = {},
+  context: SettleReportContext = {},
 ): { text: string; report: DispatchReport } {
   const own = child.dispatch?.report;
+  // The settle site redacts each command before handing it over (a worker can echo a token in a
+  // test command). The copy — not the stored one — is what reaches the parent, here and in
+  // `pendingReportsBlock` after a restart.
+  const ownReport = own && context.checks ? { ...own, checks: [...context.checks] } : own;
   // A run that settled while still parked on its own question never got its answer: that is a
   // BLOCK, whatever onni's terminal status says. A restart force-settles every `waiting` run as
   // `done`, and reporting that upward as success would turn "I stopped and asked before doing
   // something irreversible" into a clean `done` nobody ever answered — the Guard's whole premise.
-  const unanswered = own ? undefined : child.dispatch?.pendingAsk;
+  const unanswered = ownReport ? undefined : child.dispatch?.pendingAsk;
   const report: DispatchReport =
-    own ??
+    ownReport ??
     (unanswered
       ? ({
           status: 'blocked',
@@ -222,6 +262,7 @@ export function childSettleReport(
           evidence: [],
           side_effects: [],
           errors: child.error ? [child.error] : [],
+          checks: [],
           suggestions: [],
         } satisfies DispatchReport)
       : ({
@@ -233,6 +274,7 @@ export function childSettleReport(
           evidence: [],
           side_effects: [],
           errors: child.error ? [child.error] : [],
+          checks: [],
           suggestions: [],
           ...failureAdvice(child),
         } satisfies DispatchReport));
@@ -245,9 +287,15 @@ export function childSettleReport(
   if (report.errors.length) parts.push(`errors: ${report.errors.join(' · ')}`);
   if (report.side_effects.length) parts.push(`side effects: ${report.side_effects.join(' · ')}`);
   if (report.verdict) parts.push(`verdict: ${report.verdict}`);
+  const files = filesLine(context);
+  if (files) parts.push(files);
+  if (context.headCommit) parts.push(`head: ${context.headCommit}`);
+  const checks = checksLine(context.checks ?? report.checks);
+  if (checks) parts.push(checks);
   if (report.recommended_next_action) parts.push(`recommended next: ${report.recommended_next_action}`);
   if (report.suggestions.length) parts.push(`suggestions for the root: ${report.suggestions.join(' · ')}`);
   if (child.costUsd !== undefined) parts.push(`cost ${usd(child.costUsd)}`);
+  if (context.budgetLine) parts.push(context.budgetLine);
   if (child.diffStat) {
     parts.push(`diff ${child.diffStat.files} files, +${child.diffStat.adds} -${child.diffStat.dels}`);
   }
@@ -272,6 +320,8 @@ export function pendingReportsBlock(reports: readonly DispatchPendingReport[]): 
     const parts = [`status ${entry.report.status}`, entry.report.result];
     if (entry.report.evidence.length) parts.push(`evidence: ${entry.report.evidence.join(' · ')}`);
     if (entry.report.errors.length) parts.push(`errors: ${entry.report.errors.join(' · ')}`);
+    const checks = checksLine(entry.report.checks);
+    if (checks) parts.push(checks);
     return `- "${entry.title}" (${entry.fromRunId}, ${entry.at}): ${parts.join('; ')}`;
   });
   return `## Reports from your dispatched tasks\n${lines.join('\n')}`;

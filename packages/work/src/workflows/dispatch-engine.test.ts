@@ -331,6 +331,30 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       process.env.ONNI_DISPATCH = '0';
       expect(refusal(parent.id, order('off'))).toContain('ONNI_DISPATCH=0');
     });
+
+    it('warns — without refusing — when a files-only antigravity worker is asked to verify', async () => {
+      const parent = await parkedRoot();
+      const out = manager.dispatch(parent.id, order('mock:done tidy the module', {
+        backend: 'antigravity',
+        success_criteria: 'npm run lint passes',
+      }), { antigravityLevel: 'files-only' });
+      expect('refused' in out).toBe(false);
+      expect(notes(parent.id).filter((n) => n.startsWith('warning — this worker cannot run shell commands (files-only)'))).toHaveLength(1);
+    }, 40_000);
+
+    it('stays silent at allow-rules, for another backend, and when the order asks for no verification', async () => {
+      const parent = await parkedRoot();
+      const warned = () => notes(parent.id).filter((n) => n.startsWith('warning — this worker cannot run shell commands'));
+      manager.dispatch(parent.id, order('mock:done npm test', { backend: 'antigravity' }), { antigravityLevel: 'allow-rules' });
+      expect(warned()).toHaveLength(0);
+      manager.dispatch(parent.id, order('mock:done npm test', { backend: 'codex' }), { antigravityLevel: 'files-only' });
+      expect(warned()).toHaveLength(0);
+      manager.dispatch(parent.id, order('mock:done update the README', { backend: 'antigravity' }), { antigravityLevel: 'files-only' });
+      expect(warned()).toHaveLength(0);
+      // A graph node passes no level, so a workflow child never warns.
+      manager.dispatch(parent.id, order('mock:done pytest', { backend: 'antigravity' }));
+      expect(warned()).toHaveLength(0);
+    }, 40_000);
   });
 
   // ---- reports and the settle→parent wake ----------------------------------------------------
@@ -404,6 +428,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
           status: 'done',
           result: 'Took the left flank; the login handler now answers 401.',
           evidence: ['npm test -- auth → 12 passed'],
+          checks: [],
           side_effects: [],
           errors: [],
           suggestions: [],
@@ -431,7 +456,17 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('refuses a report from a run outside any tree', () => {
       const plain = store.createRun({ title: 'plain', workflow: 'quick-task', task: 't', steps: [] });
-      expect(manager.recordReport(plain.id, { status: 'done', result: 'x', evidence: [], side_effects: [], errors: [], suggestions: [] })).toBe(false);
+      expect(manager.recordReport(plain.id, { status: 'done', result: 'x', evidence: [], side_effects: [], errors: [], checks: [], suggestions: [] })).toBe(false);
+    });
+
+    it('resolves a worker to its tree root for the budget, counting the worker against the cap', () => {
+      const parent = store.createRun({ title: 'commander', workflow: 'quick-task', task: 't', steps: [] });
+      store.updateRun(parent.id, { status: 'running', dispatch: { rootRunId: parent.id, intent: { maxSubtasks: 1 } } });
+      const child = store.createRun({ title: 'worker', workflow: 'quick-task', task: 't', steps: [] });
+      store.updateRun(child.id, { status: 'running', dispatch: { rootRunId: parent.id, parentRunId: parent.id } });
+      expect(manager.dispatchBudgetFor(child.id)).toEqual(manager.dispatchBudgetFor(parent.id));
+      expect(manager.dispatchBudgetFor(child.id)?.subtasks).toBe(0);
+      expect(manager.dispatchBudgetFor('ghost')).toBeUndefined();
     });
 
     it('persists a pending report for a parent with no session, and flushes it into its next prompt', async () => {
@@ -459,12 +494,20 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
         status: 'done',
         result: 'done',
         evidence: [],
+        checks: [],
         side_effects: [],
         errors: [],
         suggestions: ['split billing out of this order — it is a task of its own'],
       });
       await waitFor(child.id, settled, 40_000);
-      const files = readdirSync(join(treeDirOf(parent.id), 'inbox', 'root'));
+      // The report (and the suggestion it carries) is written after the settle hook's read-only
+      // git capture, so wait for the file instead of assuming the settle poll observed it.
+      const inbox = join(treeDirOf(parent.id), 'inbox', 'root');
+      const deadline = Date.now() + 10_000;
+      while (!(existsSync(inbox) && readdirSync(inbox).some((name) => name.includes('suggestions'))) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      const files = readdirSync(inbox);
       const suggestion = files.find((name) => name.includes('suggestions'));
       expect(suggestion).toBeTruthy();
       expect(readFileSync(join(treeDirOf(parent.id), 'inbox', 'root', suggestion!), 'utf8')).toContain('split billing out of this order');

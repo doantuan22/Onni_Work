@@ -9,7 +9,9 @@
  * worded for whoever is asking) and exits 2.
  */
 import { parseArgs } from 'node:util';
+import { REPORT_CHECKS_MAX, type DispatchBudget } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
+import { formatBudgetLine } from './budget-format.ts';
 import { taskUsage } from './commands.ts';
 
 export interface TaskCliEnv {
@@ -76,6 +78,17 @@ function number(value: string | undefined, name: string): number | undefined {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) throw new Error(`--${name} must be a number`);
   return parsed;
+}
+
+/**
+ * `<command>=<exit code>`, split on the LAST `=`, so a command that sets variables still reads
+ * right (`FOO=1 npm test=0`). A claim by the worker — the report labels it worker-reported.
+ */
+function checkArg(raw: string): { command: string; exitCode: number } {
+  const match = /^(.+)=(-?\d+)$/s.exec(raw);
+  const command = match?.[1]?.trim();
+  if (!match || !command) throw new Error(`--check must be "<command>=<exit code>", got "${raw}"`);
+  return { command, exitCode: Number(match[2]) };
 }
 
 export async function runTaskCommand(
@@ -162,6 +175,7 @@ export async function runTaskCommand(
             status: { type: 'string' },
             result: { type: 'string' },
             evidence: { type: 'string', multiple: true },
+            check: { type: 'string', multiple: true },
             verdict: { type: 'string' },
             suggestions: { type: 'string', multiple: true },
             confidence: { type: 'string' },
@@ -172,12 +186,15 @@ export async function runTaskCommand(
         });
         if (!values.status || !values.result) throw new Error('--status and --result are required');
         if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can report');
+        const checks = (values.check ?? []).map(checkArg);
+        if (checks.length > REPORT_CHECKS_MAX) throw new Error(`at most ${REPORT_CHECKS_MAX} --check entries`);
         const body = {
           status: values.status,
           result: values.result,
           evidence: values.evidence ?? [],
           side_effects: values['side-effect'] ?? [],
           errors: values.error ?? [],
+          checks,
           suggestions: values.suggestions ?? [],
           ...(values.verdict ? { verdict: values.verdict } : {}),
           ...(values.confidence !== undefined ? { confidence: number(values.confidence, 'confidence') } : {}),
@@ -208,6 +225,14 @@ export async function runTaskCommand(
         }, 'merge refused —')) as { outcome: string; message: string };
         io.log(`${result.outcome}: ${result.message}`);
         return result.outcome === 'conflict' ? 3 : 0;
+      }
+      case 'budget': {
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can read its budget');
+        const budget = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/budget`, {
+          method: 'GET',
+        }, 'could not read the budget —')) as DispatchBudget;
+        io.log(formatBudgetLine(budget));
+        return 0;
       }
       case 'list':
       case 'tree': {

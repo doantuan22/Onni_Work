@@ -4545,6 +4545,7 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/dispatch', requireDispatch)
     .use('/runs/:id/report', requireDispatch)
     .use('/runs/:id/merge', requireDispatch)
+    .use('/runs/:id/budget', requireDispatch)
 
     /** Create ONE child of run `:id`. Refusals (cap, budget, settled parent) are 409 with the
      *  reason — the same text the parent's transcript notes. */
@@ -4570,6 +4571,14 @@ export function createApp(deps: ServerDeps) {
       const recorded = manager.recordReport(c.req.param('id'), c.req.valid('json'));
       if (!recorded) return c.json({ error: 'run is not part of a dispatch tree' }, 404);
       return c.json({ ok: true as const });
+    })
+
+    /** What is left of the tree's ceilings (`onni task budget`, plan v2 §6.2). Any run in the
+     *  tree may ask; the arithmetic is the ROOT's, resolved inside the manager. */
+    .get('/runs/:id/budget', (c) => {
+      const { manager } = c.get('project');
+      const budget = manager.dispatchBudgetFor(c.req.param('id'));
+      return budget ? c.json(budget) : c.json({ error: 'no such run' }, 404);
     });
 
   // ---- runs ----------------------------------------------------------------

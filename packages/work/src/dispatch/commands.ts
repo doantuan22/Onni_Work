@@ -23,7 +23,8 @@ const CREATE_USAGE = `onni task create "<objective>" [--title "…"] [--kind imp
                   [--backend ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>] [--after "<title or id of an earlier order>" …]`;
 
 const REPORT_USAGE = `onni task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
-                  [--verdict approve|changes|reject] [--suggestions "…"]… [--confidence <0-1>]
+                  [--check "<command>=<exit code>"]… [--verdict approve|changes|reject]
+                  [--suggestions "…"]… [--confidence <0-1>]
                   [--side-effect "…"]… [--error "…"]… [--next "…"]`;
 
 export const TASK_COMMANDS: readonly TaskCommand[] = [
@@ -38,7 +39,7 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     name: 'report',
     role: 'worker',
     usage: REPORT_USAGE,
-    brief: 'onni task report --status done|partial|failed|blocked --result "<what you did and the state now>" [--evidence "…" …] [--suggestions "…" …] [--confidence 0.8]',
+    brief: 'onni task report --status done|partial|failed|blocked --result "<what you did and the state now>" [--evidence "…" …] [--check "npm test=0" …] [--suggestions "…" …] [--confidence 0.8]',
     oneLine: 'report your outcome before you finish',
   },
   {
@@ -56,6 +57,13 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     usage: 'onni task list                       the tree this task belongs to, with status and cost',
     brief: 'onni task list   the tree this task belongs to, with status and cost',
     oneLine: 'see the tree this task belongs to, with status and cost',
+  },
+  {
+    name: 'budget',
+    role: 'manager',
+    usage: "onni task budget                     what is left of this tree's cost, token, time, step and worker ceilings",
+    brief: "onni task budget   what is left of this tree's ceilings — ask before a large or late dispatch",
+    oneLine: "see what is left of this tree's ceilings",
   },
   {
     name: 'tree',

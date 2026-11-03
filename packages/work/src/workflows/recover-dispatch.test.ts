@@ -208,7 +208,7 @@ describe('recover() and the dispatch field', () => {
     }
   });
 
-  it('does not report an idle-closed unanswered child until its question is retired', () => {
+  it('does not report an idle-closed unanswered child until its question is retired', async () => {
     const flag = process.env.ONNI_DISPATCH;
     process.env.ONNI_DISPATCH = '1';
     const manager = new RunManager(store, repoRoot, { semaphore: frozen() });
@@ -234,14 +234,14 @@ describe('recover() and the dispatch field', () => {
         },
       });
 
-      const internal = manager as unknown as { reportSettledChildToParent(id: string): void };
-      internal.reportSettledChildToParent(child.id);
+      const internal = manager as unknown as { reportSettledChildToParent(id: string): Promise<void> };
+      await internal.reportSettledChildToParent(child.id);
       expect(store.getRun(parent.id)?.dispatch?.pendingReports).toBeUndefined();
 
       // A status transition is the existing retirement seam: it clears the unanswered hold and
       // lets the normal settle hook deliver one honest blocked outcome.
       store.updateRun(child.id, { status: 'cancelled', finishedAt: new Date().toISOString() });
-      internal.reportSettledChildToParent(child.id);
+      await internal.reportSettledChildToParent(child.id);
       expect(store.getRun(parent.id)?.dispatch?.pendingReports).toHaveLength(1);
       expect(store.getRun(parent.id)?.dispatch?.pendingReports?.[0]?.report.status).toBe('blocked');
     } finally {

@@ -183,3 +183,38 @@ với roster mẫu trong Phụ lục B, 6.413 ở worst-case fixture. Cộng cá
 biên an toàn 1.000) worst-case vẫn dưới `PROMPT_MAX_CHARS` (12.672), nên **không nén** phần cố định trong Đợt 1 —
 nén là đổi lời prompt, trái mục tiêu "không đổi hành vi". Nếu một lần chạy thật cho thấy manager bị phân tán bởi độ
 dài prompt, nén trước Đợt 4 (`#9` memory, block lớn nhất).
+
+## Phụ lục D — Đợt 2: báo cáo có bằng chứng, ngân sách đọc được, năng lực worker (2026-11-03)
+
+Cùng nhánh `feat/manager-worker-gaps`, theo `.ai/specs/2026-11-03-manager-worker-gaps-plan.v2.md` §6.
+
+### #7 — `onni task report` mang `files` và `checks`
+
+- Contract: `dispatchReportSchema` thêm `files` (≤ `REPORT_FILES_MAX` = 15) và `checks` (`{ command, exitCode }`, ≤
+  `REPORT_CHECKS_MAX` = 10, mặc định `[]`). Bản ghi cũ không có hai khoá này vẫn parse.
+- CLI: `--file <path>` lặp được; `--check "<command>=<exit code>"` — sai cú pháp là lỗi ngay, chưa gọi route.
+- Engine: `childSettleReport` đưa `checks` vào cả báo cáo đang chờ lẫn văn bản gửi manager. Báo cáo đang chờ của
+  parent chưa mở phiên giữ nguyên checks; dòng `checks` trong brief manager được nói rõ là **lời của worker, onni
+  không xác minh**, nên manager phải tự chạy lại trước khi merge.
+- Ảnh chụp file/HEAD lúc settle dùng git chỉ-đọc (H3), tối đa một lần chờ 3 s. Báo cáo đang chờ, ledger, note và
+  inbox được ghi **trước** lần chờ đó — thứ tự mà `dropActive` dựa vào không đổi; phần giao báo cáo về sau tự gọi
+  `pump()`.
+
+### #8 — `onni task budget`
+
+- `dispatchBudgetSchema` (contract) và `formatBudgetLine` (một chuỗi duy nhất) dùng ở ba nơi: `onni task budget`,
+  dòng `budget:` trong báo cáo settle gửi manager, và dòng "Remaining…" của brief.
+- `GET /runs/:id/budget` trả ngân sách của **cây** (worker quy về root), 404 ngoài cây, cùng cổng `ONNI_DISPATCH`.
+- Không còn trần → `no ceilings set for this tree`; lượt worker không giới hạn → `unlimited worker calls`; thời gian
+  không giới hạn → `unlimited time`; đã vượt → tiền tố `OVER BUDGET — `.
+
+### #3 — brief năng lực worker và cảnh báo mềm
+
+- `workerCapability(worker, { antigravityLevel })` nối vào từng dòng roster: worker chạy được lệnh gì, có báo cost và
+  token hay không. Một dòng cố định nhắc manager không giao phần cần lệnh shell cho worker không chạy được lệnh.
+- `loadManagerSessionContext` điền `antigravityLevel` qua `effectiveAntigravityLevel(configured, true)` — mức thật
+  của một lượt unattended, không bao giờ là `bypass` thô.
+- `dispatch()` nhận `opts.antigravityLevel` (graph node không truyền). Khi worker là antigravity ở `files-only` và
+  objective/`success_criteria`/`required_evidence` khớp lệnh kiểm tra (`npm test|build|lint|typecheck`,
+  `cargo test|check`, `pytest`, `go test`, `make test`), manager nhận một `note` cảnh báo — **không** chặn
+  dispatch. `dispatchFromAgent` nạp config mới mỗi lần gọi, nên đổi quyền giữa task có hiệu lực ở order kế tiếp.

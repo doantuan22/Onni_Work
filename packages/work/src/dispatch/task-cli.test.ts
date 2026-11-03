@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { REPORT_CHECKS_MAX } from '@onni/contract';
 import { RUNNER_IDS } from '../core/agent-runner.ts';
 import { runTaskCommand, type TaskCliIo } from './task-cli.ts';
 
@@ -95,11 +96,47 @@ describe('onni task', () => {
       status: 'done',
       result: 'all green',
       evidence: ['npm test → 3 passed', 'src/a.ts:1'],
+      checks: [],
       side_effects: [],
       errors: [],
       suggestions: ['split billing'],
       verdict: 'approve',
     });
+  });
+
+  it('sends --check entries, splitting on the last "=" so the command may set variables', async () => {
+    const h = harness({ status: 200, body: { ok: true } });
+    const code = await runTaskCommand(
+      ['report', '--status', 'done', '--result', 'r', '--check', 'npm test=0', '--check', 'FOO=1 npm test=2'],
+      env,
+      h.io,
+    );
+    expect(code).toBe(0);
+    expect(JSON.parse(String(h.calls[0]?.init?.body)).checks).toEqual([
+      { command: 'npm test', exitCode: 0 },
+      { command: 'FOO=1 npm test', exitCode: 2 },
+    ]);
+  });
+
+  it('rejects a malformed --check with a clear error and sends nothing', async () => {
+    const h = harness({ status: 200, body: { ok: true } });
+    expect(await runTaskCommand(['report', '--status', 'done', '--result', 'r', '--check', 'npm test'], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('--check must be "<command>=<exit code>"');
+    const empty = harness({ status: 200, body: { ok: true } });
+    expect(await runTaskCommand(['report', '--status', 'done', '--result', 'r', '--check', '=0'], env, empty.io)).toBe(1);
+    expect(empty.calls).toHaveLength(0);
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it('refuses more checks than a report can carry', async () => {
+    const h = harness({ status: 200, body: { ok: true } });
+    const args = [
+      'report', '--status', 'done', '--result', 'r',
+      ...Array.from({ length: REPORT_CHECKS_MAX + 1 }, (_, i) => ['--check', `c${i}=0`]).flat(),
+    ];
+    expect(await runTaskCommand(args, env, h.io)).toBe(1);
+    expect(h.err[0]).toContain(`at most ${REPORT_CHECKS_MAX} --check entries`);
+    expect(h.calls).toHaveLength(0);
   });
 
   it('falls back to the unscoped API without a project id, and refuses without a server', async () => {
@@ -129,6 +166,16 @@ describe('onni task', () => {
     const h = harness({ status: 200, body: {} });
     expect(await runTaskCommand(['help'], {}, h.io)).toBe(0);
     for (const runner of RUNNER_IDS) expect(containsRunnerToken(h.out[0] ?? '', runner)).toBe(true);
+  });
+
+  it('budget prints the same line the brief and the settle report use', async () => {
+    const h = harness({
+      status: 200,
+      body: { costUsd: 3.2, tokens: 120_000, minutes: 45, steps: 800, subtasks: 2, subtaskCap: 8, maxDepth: 1, overBudget: false },
+    });
+    expect(await runTaskCommand(['budget'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/budget');
+    expect(h.out[0]).toBe('cost $3.20 · 120k tokens · 45 min · 800 steps · 2 workers left (cap 8)');
   });
 
   it('list prints the tree this task belongs to, indented, with status, cost and verdicts', async () => {

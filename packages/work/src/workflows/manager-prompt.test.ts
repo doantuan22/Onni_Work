@@ -6,7 +6,7 @@ import { ROSTER_MAX_WORKERS, rosterSchema } from '@onni/contract';
 import { PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
-import { managerPrompt, WORKER_PROMPT, workerPrompt } from './manager-worker.ts';
+import { managerPrompt, WORKER_PROMPT, workerCapability, workerPrompt } from './manager-worker.ts';
 import { RunManager } from './run.ts';
 
 const roster = rosterSchema.parse({
@@ -47,15 +47,15 @@ describe('managerPrompt', () => {
     expect(prompt).toContain('never push');
   });
   it('states what is left: budget, tokens, time, steps, subtasks and depth', () => {
-    expect(prompt).toContain('$7.50 of budget');
-    expect(prompt).toContain('4,200,000 tokens');
-    expect(prompt).toContain('180 minutes of running time');
-    expect(prompt).toContain('25 agent steps');
+    expect(prompt).toContain('cost $7.50');
+    expect(prompt).toContain('4.2M tokens');
+    expect(prompt).toContain('180 min');
+    expect(prompt).toContain('25 steps');
     expect(prompt).toContain('Subtasks left in this tree: 9');
     expect(prompt).toContain('a worker cannot dispatch further tasks');
   });
   it('says so plainly when the tree has no ceilings', () => {
-    expect(managerPrompt(roster, { unlimited: true, subtasks: 12, maxDepth: 1 })).toContain('no ceiling is set for this tree');
+    expect(managerPrompt(roster, { unlimited: true, subtasks: Number.POSITIVE_INFINITY, maxDepth: 1 })).toContain('no ceilings set for this tree');
   });
 
   it('stays inside the prompt budget at worst case, roster and commands at their caps', () => {
@@ -78,6 +78,44 @@ describe('managerPrompt', () => {
       maxDepth: 1,
     });
     // Computed from the constants, never hard-coded: each later phase adds its block to this fixture.
+    expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
+  });
+});
+
+describe('workerCapability', () => {
+  it('states commands, cost and token reporting per backend', () => {
+    expect(workerCapability({ runner: 'claude' })).toBe('commands: per its own tools (onni does not restrict them) · cost: reported · tokens: reported');
+    expect(workerCapability({ runner: 'codex' })).toBe('commands: per its own tools (onni does not restrict them) · cost: not reported · tokens: reported');
+    expect(workerCapability({ runner: 'cline' })).toBe('commands: per its own tools (onni does not restrict them) · cost: not reported · tokens: not reported');
+    expect(workerCapability({ runner: 'cursor' })).toContain('cost: not reported · tokens: not reported');
+  });
+  it('states antigravity’s effective level and defaults to the closed one', () => {
+    expect(workerCapability({ runner: 'antigravity' }, { antigravityLevel: 'files-only' }))
+      .toBe('commands: none (permission files-only) · cost: not reported · tokens: reported');
+    expect(workerCapability({ runner: 'antigravity' }, { antigravityLevel: 'allow-rules' }))
+      .toBe('commands: git + repository verification scripts only (permission allow-rules) · cost: not reported · tokens: reported');
+    expect(workerCapability({ runner: 'antigravity' })).toContain('(permission files-only)');
+  });
+  it('rides on each worker line, with the routing rule stated once', () => {
+    const mixed = rosterSchema.parse({
+      manager: { runner: 'claude' },
+      workers: [{ runner: 'antigravity', role: 'UI copy' }, { runner: 'codex' }],
+    });
+    const brief = managerPrompt(mixed, budget);
+    expect(brief).toContain('- antigravity — UI copy. Up to 1 at once. commands: none (permission files-only)');
+    expect(brief).toContain('Do not give a part that needs shell commands (tests, builds, linters) to a worker whose capability line says it cannot run commands.');
+  });
+  it('keeps the worst-case brief inside the prompt budget with capability lines on every worker', () => {
+    const full = rosterSchema.parse({
+      manager: { runner: 'claude', model: 'opus' },
+      workers: Array.from({ length: ROSTER_MAX_WORKERS }, (_, index) => ({
+        runner: 'antigravity',
+        model: `model-${index}`,
+        role: `independent part number ${index}, owning its own directory and its own checks`,
+        maxConcurrent: 4,
+      })),
+    });
+    const worst = managerPrompt(full, { unlimited: false, costUsd: 7.5, tokens: 4_200_000, minutes: 180, steps: 25, subtasks: 9, maxDepth: 1 });
     expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
   });
 });
@@ -137,7 +175,7 @@ describe('which prompt each session of a roster tree gets', () => {
     store.updateStep(root.id, 'a', { costUsd: 2.5 });
     const managerSide = prepare(root.id)!;
     expect(managerSide).toContain('Manager mode.');
-    expect(managerSide).toContain('$7.50 of budget');
+    expect(managerSide).toContain('cost $7.50');
     expect(managerSide).toContain('Subtasks left in this tree: 11');
     const workerSide = prepare(worker.id)!;
     expect(workerSide).toContain('Worker mode.');

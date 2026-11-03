@@ -53,6 +53,32 @@ export const mergeResultSchema = z.object({
 });
 export type MergeResult = z.infer<typeof mergeResultSchema>;
 
+/**
+ * What is left of a tree's ceilings, JSON-safe (plan v2 §6.2). `null` means "no ceiling on this
+ * axis" everywhere — never an absent field, never `Infinity` (which `JSON.stringify` would turn
+ * into `null` anyway, but one of the two would be an accident). Negatives are clamped to 0 and
+ * remembered as `overBudget`.
+ */
+export const dispatchBudgetSchema = z.object({
+  costUsd: z.number().nonnegative().nullable(),
+  tokens: z.number().nonnegative().nullable(),
+  minutes: z.number().nonnegative().nullable(),
+  steps: z.number().int().nonnegative().nullable(),
+  subtasks: z.number().int().nonnegative().nullable(),
+  subtaskCap: z.number().int().nullable(),
+  maxDepth: z.number().int(),
+  overBudget: z.boolean(),
+});
+export type DispatchBudget = z.infer<typeof dispatchBudgetSchema>;
+
+/** One command a worker says it ran, and the exit code it saw (plan v2 §6.1). Never verified by
+ *  onni — the report label says `worker-reported`, and `#4` is where real verification lives. */
+export const dispatchCheckSchema = z.object({
+  command: z.string().trim().min(1).max(300),
+  exitCode: z.number().int(),
+});
+export type DispatchCheck = z.infer<typeof dispatchCheckSchema>;
+
 /** `POST /runs/:id/report` — how a dispatched task reports upward (the `onni task report` CLI). */
 export const dispatchReportSchema = z.object({
   status: z.enum(['done', 'partial', 'failed', 'blocked']),
@@ -62,6 +88,8 @@ export const dispatchReportSchema = z.object({
   side_effects: z.array(z.string().max(400)).max(12).default([]),
   errors: z.array(z.string().max(400)).max(12).default([]),
   recommended_next_action: z.string().max(1000).optional(),
+  /** Commands the worker says it ran, with their exit codes. A CLAIM, not a verified result. */
+  checks: z.array(dispatchCheckSchema).max(10).default([]),
   /** A REVIEW task's verdict on the branch it reviewed. The parent merges only after `approve`. */
   verdict: z.enum(['approve', 'changes', 'reject']).optional(),
   /** What the ROOT task should know that lies outside this task's order. Forwarded to the root's
@@ -91,6 +119,7 @@ export const DISPATCH_MAX_SUBTASKS = 100;
  * prompt budget must agree, or a value can be written that the prompt never shows.
  */
 export const REPORT_FILES_MAX = 15;
+export const REPORT_CHECKS_MAX = 10;
 export const PEEK_MAX_ENTRIES = 12;
 export const PEEK_FILES_MAX = 50;
 export const PEEK_TAIL_MAX_LINES = 30;

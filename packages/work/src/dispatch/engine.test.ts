@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { REPORT_FILES_MAX } from '@onni/contract';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -180,6 +181,7 @@ describe('childSettleReport', () => {
           status: 'partial',
           result: 'half of it landed',
           evidence: ['npm test → 4 passed'],
+          checks: [],
           side_effects: [],
           errors: ['the other half needs a decision'],
           suggestions: [],
@@ -265,10 +267,86 @@ describe('childSettleReport', () => {
         rootRunId: 'm',
           parentRunId: 'p',
           pendingAsk: { questions: ['old?'], askedAt: '2026-09-09T10:00:00.000Z' },
-          report: { status: 'done', result: 'answered and finished', evidence: [], side_effects: [], errors: [], suggestions: [] },
+          report: { status: 'done', result: 'answered and finished', evidence: [], side_effects: [], errors: [], checks: [], suggestions: [] },
         },
       }));
     expect(own.report.status).toBe('done');
+  });
+});
+
+describe('the evidence a settle adds (#7)', () => {
+  const settled = (over: Partial<RunRecord> = {}): RunRecord => record({ status: 'done', branch: 'onni/1', ...over });
+
+  it('lists the changed files up to the cap and says how many were left out', () => {
+    const files = Array.from({ length: REPORT_FILES_MAX + 12 }, (_, i) => `f${i}.ts`);
+    const { text } = childSettleReport(settled(), { changedFiles: files, filesOmitted: 12 });
+    expect(text).toContain('files: f0.ts, f1.ts');
+    expect(text).toContain(`f${REPORT_FILES_MAX - 1}.ts`); // the last one inside the cap
+    expect(text).toContain('(+12 more)');
+    expect(text).not.toContain(`f${REPORT_FILES_MAX}.ts`); // the first one past the cap
+  });
+
+  it('says the list is unavailable rather than empty when git could not be read', () => {
+    for (const filesState of ['timeout', 'unavailable'] as const) {
+      expect(childSettleReport(settled(), { filesState }).text).toContain('files: (not available)');
+    }
+    expect(childSettleReport(settled(), { changedFiles: [] }).text).toContain('files: none');
+    // A caller that knows nothing says nothing — the pre-#7 text must not grow a line.
+    expect(childSettleReport(settled()).text).not.toContain('files:');
+  });
+
+  it('shows HEAD and the worker-declared checks, labelled as a claim', () => {
+    const { text } = childSettleReport(settled(), {
+      headCommit: 'abc1234',
+      checks: [
+        { command: 'npm test', exitCode: 0 },
+        { command: 'npm run build', exitCode: 1 },
+      ],
+    });
+    expect(text).toContain('head: abc1234');
+    expect(text).toContain('checks (worker-reported, not verified): npm test → 0; npm run build → 1');
+  });
+
+  it('puts the redacted checks the settle site passes into the structured report too', () => {
+    const child = settled({
+      dispatch: {
+        rootRunId: 'm',
+        parentRunId: 'p',
+        report: {
+          status: 'done',
+          result: 'r',
+          evidence: [],
+          side_effects: [],
+          errors: [],
+          checks: [{ command: 'TOKEN=secret npm test', exitCode: 0 }],
+          suggestions: [],
+        },
+      },
+    });
+    const { report } = childSettleReport(child, { checks: [{ command: 'TOKEN=[REDACTED] npm test', exitCode: 0 }] });
+    expect(report.checks[0]?.command).toBe('TOKEN=[REDACTED] npm test');
+    // The run's own record is not rewritten by reporting it upward.
+    expect(child.dispatch?.report?.checks[0]?.command).toBe('TOKEN=secret npm test');
+  });
+
+  it('prints the checks in the pending-report block a restarted parent reads', () => {
+    const block = pendingReportsBlock([
+      {
+        fromRunId: 'c1',
+        title: 't',
+        at: '2026-11-03T10:00:00.000Z',
+        report: {
+          status: 'done',
+          result: 'r',
+          evidence: [],
+          side_effects: [],
+          errors: [],
+          checks: [{ command: 'npm test', exitCode: 0 }],
+          suggestions: [],
+        },
+      },
+    ]);
+    expect(block).toContain('checks (worker-reported, not verified): npm test → 0');
   });
 });
 
@@ -276,7 +354,7 @@ describe('pending reports', () => {
   const entry = (n: number) => ({
     fromRunId: `c${n}`,
     title: `child ${n}`,
-    report: { status: 'done' as const, result: `r${n}`, evidence: [], side_effects: [], errors: [], suggestions: [] },
+    report: { status: 'done' as const, result: `r${n}`, evidence: [], side_effects: [], errors: [], checks: [], suggestions: [] },
     at: '2026-09-08T10:00:00.000Z',
   });
 

@@ -21,6 +21,7 @@ describe('the dispatch routes', () => {
   let calls: Array<{ kind: 'dispatch' | 'report'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
+  let budget: Record<string, unknown> | undefined;
   const savedFlag = process.env.ONNI_DISPATCH;
 
   beforeEach(() => {
@@ -29,6 +30,7 @@ describe('the dispatch routes', () => {
     calls = [];
     outcome = { id: 'child-1', branch: 'onni/child1' };
     reportOk = true;
+    budget = undefined;
     process.env.ONNI_DISPATCH = '1';
     const manager = {
       // The route is thin over `dispatchFromAgent` (it awaits the engine's fork), so the stub is
@@ -41,6 +43,7 @@ describe('the dispatch routes', () => {
         calls.push({ kind: 'report', runId, body });
         return reportOk;
       },
+      dispatchBudgetFor: () => budget,
     } as unknown as RunManager;
     app = createApp({ repoRoot, store, manager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
   });
@@ -85,10 +88,19 @@ describe('the dispatch routes', () => {
     expect((await apiRequest(app, '/api/v1/runs/plain/report', json(report))).status).toBe(404);
   });
 
+  it('returns the tree budget for any run id, and 404 for one the manager does not know', async () => {
+    budget = { costUsd: 3.2, tokens: 120_000, minutes: null, steps: 800, subtasks: 2, subtaskCap: 8, maxDepth: 1, overBudget: false };
+    const res = await apiRequest(app, '/api/v1/runs/child-1/budget');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(budget);
+    budget = undefined;
+    expect((await apiRequest(app, '/api/v1/runs/ghost/budget')).status).toBe(404);
+  });
+
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     process.env.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report']) {
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);

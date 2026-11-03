@@ -321,7 +321,7 @@ describe('a parked monitor always has an exit', () => {
     expect(stateOf(id)?.monitoringWakeTimer).toBeUndefined();
 
     store.updateRun(childId, { status: 'done' });
-    (manager as unknown as { reportSettledChildToParent(runId: string): void }).reportSettledChildToParent(childId);
+    await (manager as unknown as { reportSettledChildToParent(runId: string): Promise<void> }).reportSettledChildToParent(childId);
     await waitFor(id, (r) => r?.status === 'waiting');
     expect(store.getRun(id)?.askParked).toBe(true);
     expect(notes(id)).toContain(`automatic monitoring wake-up cap reached (${MAX_AUTO_CONTINUES}); parked for your reply`);
@@ -345,7 +345,7 @@ describe('a parked monitor always has an exit', () => {
     // Mirror `cancelOne`'s queued branch: it settles the child and persists the report, never
     // delivering it and never pumping the manager.
     store.updateRun(childId, { status: 'cancelled', finishedAt: new Date().toISOString() });
-    (manager as unknown as { reportSettledChildToParent(runId: string): void }).reportSettledChildToParent(childId);
+    await (manager as unknown as { reportSettledChildToParent(runId: string): Promise<void> }).reportSettledChildToParent(childId);
     expect(
       store.getRun(id)?.dispatch?.pendingReports?.some((r) => r.fromRunId === childId),
     ).toBe(true);
@@ -382,7 +382,7 @@ describe('a parked monitor always has an exit', () => {
 
     // Now the queued child is cancelled without a delivered report.
     store.updateRun(childId, { status: 'cancelled', finishedAt: new Date().toISOString() });
-    (manager as unknown as { reportSettledChildToParent(runId: string): void }).reportSettledChildToParent(childId);
+    await (manager as unknown as { reportSettledChildToParent(runId: string): Promise<void> }).reportSettledChildToParent(childId);
     expect(
       store.getRun(id)?.dispatch?.pendingReports?.some((r) => r.fromRunId === childId),
     ).toBe(true);
@@ -404,7 +404,7 @@ describe('a parked monitor always has an exit', () => {
     expect(stateOf(id)?.monitoringLivenessTimer).toBeDefined();
 
     store.updateRun(childId, { status: 'cancelled' });
-    (manager as unknown as { reportSettledChildToParent(runId: string): void }).reportSettledChildToParent(childId);
+    await (manager as unknown as { reportSettledChildToParent(runId: string): Promise<void> }).reportSettledChildToParent(childId);
     expect(store.getRun(id)?.activity).toBe('monitoring');
 
     vi.advanceTimersByTime(MONITORING_LIVENESS_MS);
@@ -419,7 +419,7 @@ describe('a parked monitor always has an exit', () => {
     const state = stateOf(id);
     if (!state) throw new Error('no active state');
     state.monitoringWakeups = 7;
-    (manager as unknown as { reportSettledChildToParent(runId: string): void }).reportSettledChildToParent(childId);
+    await (manager as unknown as { reportSettledChildToParent(runId: string): Promise<void> }).reportSettledChildToParent(childId);
     expect(notes(id).some((n) => n.startsWith('report received from task'))).toBe(true);
     expect(state.monitoringWakeups).toBe(7);
   }, 30_000);

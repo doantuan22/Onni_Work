@@ -1,7 +1,8 @@
 import { rosterWorkerKey, type AgentPermissionLevel, type Roster, type RosterWorker } from '@onni/contract';
-import { DISPATCH_MAX_IN_FLIGHT } from '@onni/contract';
+import { DISPATCH_MAX_IN_FLIGHT, RUNNERS_WITHOUT_COST, RUNNERS_WITHOUT_TOKENS } from '@onni/contract';
 import { REVIEW_PROMPT } from '../dispatch/prompts.ts';
 import { managerCommandsBlock, workerCommandsBlock } from '../dispatch/commands.ts';
+import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
 import type { RunRecord } from '../runs/store.ts';
 
 /**
@@ -107,16 +108,8 @@ function subtaskLine(left: RemainingBudget): string {
 }
 
 function remainingLines(left: RemainingBudget): string {
-  const parts: string[] = [];
-  if (left.unlimited) parts.push('cost, tokens, time and steps: no ceiling is set for this tree');
-  else {
-    if (left.costUsd !== undefined) parts.push(`$${Math.max(0, left.costUsd).toFixed(2)} of budget`);
-    if (left.tokens !== undefined) parts.push(`${Math.max(0, Math.round(left.tokens)).toLocaleString('en-US')} tokens`);
-    if (left.minutes !== undefined) parts.push(`${Math.max(0, Math.round(left.minutes))} minutes of running time`);
-    if (left.steps !== undefined) parts.push(`${Math.max(0, left.steps)} agent steps`);
-  }
   const shared = left.unlimited ? '' : ' — shared by you and every worker; the whole tree stops when a ceiling is reached';
-  return `- Remaining at the start of this session: ${parts.join(', ')}${shared}.\n`
+  return `- Remaining at the start of this session: ${formatBudgetLine(toDispatchBudget(left))}${shared}.\n`
     + `- ${subtaskLine(left)} Workers run at depth ${left.maxDepth}: a worker cannot dispatch further tasks.\n`
     + `- At most ${DISPATCH_MAX_IN_FLIGHT} workers in flight at once; a worker over its entry's concurrency waits in the queue.`;
 }
@@ -150,6 +143,20 @@ export function complexityPolicyBlock(): string {
 If your limit on worker calls runs out while complex work remains, do not quietly finish it yourself: tell the user the limit is spent and that "Unlimited worker calls" (Settings → Resources → Advanced) lifts it.`;
 }
 
+/** `describeWorker`'s one-line companion: what this worker can and cannot do (plan v2 §6.3). */
+export function workerCapability(
+  worker: Pick<RosterWorker, 'runner'>,
+  ctx: { antigravityLevel?: AgentPermissionLevel } = {},
+): string {
+  const cost = RUNNERS_WITHOUT_COST.includes(worker.runner) ? 'cost: not reported' : 'cost: reported';
+  const tokens = RUNNERS_WITHOUT_TOKENS.includes(worker.runner) ? 'tokens: not reported' : 'tokens: reported';
+  if (worker.runner !== 'antigravity') return `commands: per its own tools (onni does not restrict them) · ${cost} · ${tokens}`;
+  // `bypass` is lowered for every unattended run before it reaches the worker; never show it here.
+  const level = ctx.antigravityLevel ?? 'files-only';
+  const commands = level === 'files-only' ? 'none' : 'git + repository verification scripts only';
+  return `commands: ${commands} (permission ${level}) · ${cost} · ${tokens}`;
+}
+
 /** What a manager is told when the user granted it the merge permission. Enforced server-side too. */
 export const FULL_ACCESS_BLOCK = `Full manager access is ON for this task: you may merge. Use the merge tool, not raw git, so the server can check and log it:
   onni task merge <worker run id or branch>   merge one worker's branch into YOUR branch
@@ -165,13 +172,14 @@ export function managerPrompt(
 ): string {
   const workers = roster.workers.map((w) => {
     const name = describeWorker(w);
-    return `- ${name}${w.role ? ` — ${w.role}` : ''}. Up to ${w.maxConcurrent} at once.`;
+    return `- ${name}${w.role ? ` — ${w.role}` : ''}. Up to ${w.maxConcurrent} at once. ${workerCapability(w, { ...(opts.context?.antigravityLevel ? { antigravityLevel: opts.context.antigravityLevel } : {}) })}`;
   }).join('\n');
   const manager = describeWorker(roster.manager);
   return `Manager mode. The user chose you (${manager}) to MANAGE this task: you plan, hand independent parts to workers, review what they return and integrate it. You are not one of the workers.
 
 Your workers. You may give tasks ONLY to these — the server refuses any other backend or model with a 409 that lists the allowed ones (a fence for orchestration, not a security boundary; do not try to get around it):
 ${workers}
+Do not give a part that needs shell commands (tests, builds, linters) to a worker whose capability line says it cannot run commands. Pick another worker or change the plan.
 
 Giving work. From your shell, always through the cockpit's own binary, node "$ONNI_BIN" (every "onni task …" below means node "$ONNI_BIN" task …):
 
@@ -188,7 +196,7 @@ ${managerCommandsBlock()}
 
 Waiting. Dispatch EVERY independent part first — workers run in parallel, and each one you hold back is time lost — then end your turn with a line containing exactly ONNI:MONITORING. onni parks you, frees your slot for the workers, and delivers each worker's report into this session when it settles. Do not poll or sleep, and do not end the turn with ONNI:DONE while any worker you dispatched has not reported and been integrated (or consciously left out).
 
-Integrating. A report is a CLAIM: status (done, partial, failed, blocked), result, evidence, the worker's branch (onni/<id8>) and its cost. For each report, in the order they arrive:
+Integrating. A report is a CLAIM: status (done, partial, failed, blocked), result, evidence, the worker's branch (onni/<id8>) and its cost. Its "checks" line is the worker's own word — not verified by onni: rerun the checks yourself before merging. For each report, in the order they arrive:
 1. Read the branch's diff (git diff <your branch>...<worker branch>) and run the tests it names.
 2. Do NOT merge a worker whose status is failed or blocked, or whose evidence does not hold. Re-dispatch it with a sharper order, do the part yourself, or leave it out and say so.
 3. Merge accepted branches into YOUR OWN branch, in your worktree, one at a time: git merge --no-ff <worker branch>. Resolve any conflict yourself, keeping both sides' intent.

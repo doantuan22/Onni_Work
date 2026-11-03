@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, type AgentPermissionLevel, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, REPORT_FILES_MAX, type AgentPermissionLevel, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -88,8 +88,10 @@ import {
   syncWithBase,
   uniqueBranchName,
   worktreeChangedFiles,
+  worktreeChangedFilesReadOnly,
   worktreeChangedPaths,
   worktreeDiff,
+  worktreeHeadShort,
   worktreeShortstat,
 } from '../git-worktree.ts';
 import { commentOnIssue, commentOnPr, fetchGithubChecks, updatePr } from '../server/forge/github.ts';
@@ -101,9 +103,10 @@ import type { QueuedMessage, RunRecord, RunStore, StepState } from '../runs/stor
 // Task dispatch (spec 2026-09-10-dispatch). Every import below is inert unless the feature is
 // ON *and* the run carries a `dispatch`: `dispatchOf()` is the single gate, and a run without one
 // takes byte-for-byte the path it took before this feature existed.
-import type { DispatchInput, DispatchIntent, DispatchReport, RunDispatch } from '@onni/contract';
+import type { DispatchBudget, DispatchInput, DispatchIntent, DispatchReport, RunDispatch } from '@onni/contract';
 import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
+import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
 import { requireRootManager } from '../dispatch/access.ts';
 import {
   appendLedger,
@@ -294,6 +297,8 @@ const DONE_MARKER_RE = /ONNI:DONE\s*$/;
  * backends can't split the marker across text events.
  */
 const MONITORING_MARKER_RE = /ONNI:MONITORING\s*$/;
+/** An order that asks for verification — a files-only Antigravity worker cannot run any of it. */
+const VERIFICATION_ASK_RE = /npm (run )?(test|build|lint|typecheck)|cargo (test|check)|pytest|go test|make test/i;
 /**
  * Trailing task-reference marker lines — `ONNI:PR=` / `ONNI:ISSUE=` / `ONNI:TITLE=`
  * (spec 2026-07-18-task-ref-markers), whole lines, at the very end of the turn.
@@ -2190,7 +2195,7 @@ export class RunManager {
       });
       // The third terminal transition outside `dropActive` (see `recover`): a queued run failing
       // here never became active, so its parent hears about it only from this call.
-      this.reportSettledChildToParent(run.id);
+      await this.reportSettledChildToParent(run.id);
       return;
     }
     // Re-apply the inbox ceiling (#471). `execute()` gates again at spawn time, so the agent is
@@ -2317,7 +2322,7 @@ export class RunManager {
           });
           // Same as the settled branch below: this terminal transition never passes through
           // `dropActive`, so a handed-off child still owes its parent a report.
-          this.reportSettledChildToParent(run.id);
+          await this.reportSettledChildToParent(run.id);
           continue;
         }
         for (const step of run.steps) {
@@ -2334,7 +2339,7 @@ export class RunManager {
         // PREVIOUS process and is in none of this one's registries. A settled child still owes
         // its parent a report (spec 2026-09-10-dispatch §Engine) — and a restart is precisely
         // the case the durable pending report exists for.
-        this.reportSettledChildToParent(run.id);
+        await this.reportSettledChildToParent(run.id);
         continue;
       }
       // `running` with no agent session anywhere on the record: the process died while the run
@@ -2429,7 +2434,7 @@ export class RunManager {
     if (!this.cancelledStarting.delete(runId)) return false;
     this.starting.delete(runId);
     this.redeliverDeferred(runId, 'the run was cancelled');
-    this.reportSettledChildToParent(runId);
+    void this.reportSettledChildToParent(runId);
     this.releaseSlot();
     return true;
   }
@@ -2498,7 +2503,10 @@ export class RunManager {
     // through this one method, and a parent parked on `monitoring` has no other way to learn that
     // the run it is waiting for has ended. BEFORE `releaseSlot`, so a parent that has to be
     // resumed through the queue is already queued when the pump sweeps.
-    this.reportSettledChildToParent(runId);
+    //
+    // Not awaited: the record is persisted synchronously inside (before its one git read), so the
+    // ordering above holds; a slow worktree read only delays the prose handed to the parent.
+    void this.reportSettledChildToParent(runId);
     this.releaseSlot();
     if (landOnAccept) void this.finishReview(runId);
     // A run leaving the active registry is a terminal transition (done/review/
@@ -2711,7 +2719,14 @@ export class RunManager {
    */
   private async loadManagerSessionContext(runId: string, state: ActiveRun): Promise<ManagerSessionContext> {
     const context: ManagerSessionContext = {};
-    // Each later phase fills one field here, from `runId`/`state` and its own durable source.
+    // #3: the level an Antigravity WORKER actually gets — always unattended, so `bypass` is
+    // lowered here, exactly as `agentPermissionSpec` will do when the child spawns. Read once per
+    // session; the dispatch-time warning is the fresher source of truth if the user changes it.
+    const config = await loadWorkspaceConfig().catch(() => null);
+    if (config) {
+      const configured = config.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
+      context.antigravityLevel = effectiveAntigravityLevel(configured, true).level;
+    }
     return context;
   }
 
@@ -2764,6 +2779,18 @@ export class RunManager {
       subtaskCap: cap,
       maxDepth: safety.dispatchMaxDepth,
     };
+  }
+
+  /**
+   * The tree's remaining ceilings for `onni task budget` (plan v2 §6.2). Any run in the tree may
+   * ask: the answer is always the ROOT's arithmetic, because that is where the ceilings live.
+   * Undefined only for an id the store does not know.
+   */
+  dispatchBudgetFor(runId: string): DispatchBudget | undefined {
+    const run = this.store.getRun(runId);
+    if (!run) return undefined;
+    const rootId = run.dispatch?.rootRunId ?? run.id;
+    return toDispatchBudget(this.remainingForManager(this.store.listRuns(), rootId));
   }
 
   /**
@@ -3152,7 +3179,11 @@ export class RunManager {
         return { refused };
       }
     }
-    return this.dispatch(parentId, input);
+    // Fresh config each call (plan v2 §6.3): a permission change made mid-task reaches the next order.
+    // A child always runs unattended, so the level is the effective one, never raw `bypass`.
+    const config = await loadWorkspaceConfig().catch(() => null);
+    const configured = config?.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
+    return this.dispatch(parentId, input, { antigravityLevel: effectiveAntigravityLevel(configured, true).level });
   }
 
   /**
@@ -3172,7 +3203,7 @@ export class RunManager {
     input: DispatchInput,
     /** Internal only (graph nodes — never the route): run the child as this workflow instead of
      *  the single synthetic step an agent's order gets. */
-    opts: { workflow?: WorkflowDef } = {},
+    opts: { workflow?: WorkflowDef; antigravityLevel?: AgentPermissionLevel } = {},
   ): { id: string; branch?: string } | { refused: string } {
     if (!this.dispatchEnabled()) return { refused: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0) — the operator turned it off. Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is disabled.' };
     const parent = this.store.getRun(parentId);
@@ -3312,6 +3343,16 @@ export class RunManager {
     const childModel = (worker && 'ok' in worker ? worker.model : undefined) ?? input.model
       ?? (intent?.model && sameRunner(intent.runner ?? parent.runner) ? intent.model : undefined)
       ?? (parent.model && sameRunner(parent.runner) ? parent.model : undefined);
+    // Soft warning (plan v2 §6.3): advisory only, never a refusal — the manager may still have a
+    // reason, and the worker's own report is what settles it. Graph nodes pass no level, so a
+    // workflow child never warns.
+    if (
+      opts.antigravityLevel === 'files-only'
+      && childRunner === 'antigravity'
+      && VERIFICATION_ASK_RE.test([input.objective, input.success_criteria, input.required_evidence].filter(Boolean).join('\n'))
+    ) {
+      note('warning — this worker cannot run shell commands (files-only); the order asks for verification it cannot perform. Give it to another worker or raise its permission level.');
+    }
     const record = this.startRun(opts.workflow ?? workflow, {
       // The tree directory lines are composed against the id the run is ABOUT to get: `startRun`
       // mints it, so the envelope is finished below once it exists.
@@ -3427,7 +3468,7 @@ export class RunManager {
 
   /** Notify the parent after an explicit user action retires an unanswered child question. */
   notifyQuestionRetired(runId: string): void {
-    this.reportSettledChildToParent(runId);
+    void this.reportSettledChildToParent(runId);
   }
 
   /**
@@ -3440,7 +3481,7 @@ export class RunManager {
    * open session, a still-queued prompt stack, the starting-up buffer, and finally a fresh
    * continuation for a parent that has already finished.
    */
-  private reportSettledChildToParent(runId: string): void {
+  private async reportSettledChildToParent(runId: string): Promise<void> {
     try {
       const child = this.store.getRun(runId);
       const parentId = child?.dispatch?.parentRunId;
@@ -3459,12 +3500,57 @@ export class RunManager {
       if (!parent?.dispatch) return;
 
       const resumeNotes = handoffSectionExcerpt(readHandoff(this.dataDir, runId), '## Resume notes');
-      const { text, report } = childSettleReport(child, { resumeNotes });
+      const checks = child.dispatch?.report?.checks.map((check) => ({
+        ...check,
+        command: this.store.redactRunText(child.id, check.command),
+      }));
+      // In the TEXT, not composed at flush time, so a live delivery and a pending one agree (#8).
+      const budget = this.dispatchBudgetFor(runId);
+      const context = {
+        resumeNotes,
+        ...(checks?.length ? { checks } : {}),
+        ...(budget ? { budgetLine: `budget: ${formatBudgetLine(budget)}` } : {}),
+      };
+      const base = childSettleReport(child, context);
+      // PERSISTED before any await below: `dropActive` calls this before `releaseSlot`, and the
+      // pump reads the hold off the records (see the ordering comment there). The parent must
+      // already see the outcome when a manager is woken, even if the git read is still running.
       const at = new Date().toISOString();
       this.updateDispatch(parentId, (dispatch) =>
-        withPendingReport(dispatch, { fromRunId: child.id, title: child.title, report, at }),
+        withPendingReport(dispatch, { fromRunId: child.id, title: child.title, report: base.report, at }),
       );
       const rootRunId = child.dispatch?.rootRunId ?? parent.dispatch.rootRunId;
+      appendLedger(this.dataDir, rootRunId, {
+        type: 'settle',
+        runId: child.id,
+        parentRunId: parentId,
+        status: child.status,
+        reportStatus: base.report.status,
+        ...(child.costUsd !== undefined ? { costUsd: child.costUsd } : {}),
+      });
+      this.notifyTreeInboxes(rootRunId, child.id);
+      // The delivery below is NOT user-authored, so it leaves no bubble in the parent's thread.
+      this.store.appendEvent(parentId, {
+        type: 'note',
+        message: `report received from task "${child.title}" (${child.id}) — status ${base.report.status}`,
+      });
+      // Read-only and in parallel (#7), bounded by ONE timeout (H3): the worktree may be
+      // reclaimed the moment this run leaves its active slot, so the file list and HEAD are
+      // captured here. A slow or broken git call degrades to a line that says "not available" —
+      // it never blocks or fails the report.
+      const [files, headCommit] = child.worktreePath
+        ? await Promise.all([
+            worktreeChangedFilesReadOnly(child.worktreePath, child.baseBranch ?? 'HEAD', { max: REPORT_FILES_MAX }),
+            worktreeHeadShort(child.worktreePath),
+          ])
+        : [undefined, undefined];
+      const { text, report } = files || headCommit
+        ? childSettleReport(child, {
+            ...context,
+            ...(files ? { changedFiles: files.files, filesOmitted: files.omitted, filesState: files.state } : {}),
+            ...(headCommit ? { headCommit } : {}),
+          })
+        : base;
       try {
         writeReport(this.dataDir, rootRunId, child.id, text, report);
         const suggestions = [...report.suggestions];
@@ -3480,21 +3566,6 @@ export class RunManager {
       } catch {
         // written state, never required
       }
-      appendLedger(this.dataDir, rootRunId, {
-        type: 'settle',
-        runId: child.id,
-        parentRunId: parentId,
-        status: child.status,
-        reportStatus: report.status,
-        ...(child.costUsd !== undefined ? { costUsd: child.costUsd } : {}),
-      });
-      this.notifyTreeInboxes(rootRunId, child.id);
-
-      // The delivery below is NOT user-authored, so it leaves no bubble in the parent's thread.
-      this.store.appendEvent(parentId, {
-        type: 'note',
-        message: `report received from task "${child.title}" (${child.id}) — status ${report.status}`,
-      });
 
       // A graph `dispatch` node is awaiting exactly this child (1c): hand it the outcome directly —
       // cancelled included, so the node takes its `failed` port instead of waiting forever.
@@ -3519,6 +3590,10 @@ export class RunManager {
       // restart a task a human cancelled.
       if (['done', 'failed', 'review'].includes(parent.status)) {
         this.continueRun(parentId, { text }, true);
+        // This now runs after `dropActive` released the slot and its pump swept, so the queue
+        // entry above would otherwise sit until an unrelated event — the ordering the settle
+        // hook used to guarantee by running before `releaseSlot`.
+        void this.pump();
       }
     } catch {
       // A terminal transition must never fail over its bookkeeping. The pending report is already
@@ -4291,7 +4366,7 @@ export class RunManager {
       // A queued run never entered `active`, so it never reaches `dropActive` — the one terminal
       // transition that misses the settle hook. Without this a parent waiting on a child the user
       // cancelled from the queue would wait for a report nobody would ever send.
-      this.reportSettledChildToParent(runId);
+      void this.reportSettledChildToParent(runId);
       return true;
     }
     const state = this.active.get(runId);

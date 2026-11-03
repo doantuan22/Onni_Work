@@ -2,7 +2,8 @@ import type { InferRequestType, InferResponseType } from 'hono/client';
 import { hc } from 'hono/client';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
-import type { dispatchInputSchema, dispatchReportSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
+import { dispatchReportSchema } from '@onni/contract';
+import type { dispatchBudgetSchema, dispatchInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 /**
@@ -25,6 +26,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type ReportBody = InferRequestType<Run['report']['$post']>['json'];
   type Merge200 = InferResponseType<Run['merge']['$post'], 200>;
   type MergeBody = InferRequestType<Run['merge']['$post']>['json'];
+  type Budget200 = InferResponseType<Run['budget']['$get'], 200>;
 
   type _Checks = [
     Assert<Exact<z.infer<typeof dispatchResponseSchema>, Dispatch201>>,
@@ -35,11 +37,26 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.input<typeof dispatchReportSchema>, ReportBody>>,
     Assert<Exact<z.infer<typeof mergeResultSchema>, Merge200>>,
     Assert<Exact<z.input<typeof mergeInputSchema>, MergeBody>>,
+    Assert<Exact<z.infer<typeof dispatchBudgetSchema>, Budget200>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {
     type Wrong = Mutual<{ id: string }, { id: number }>;
     const wrong: Wrong = 'schema-is-wider';
     expect(wrong).toBe('schema-is-wider');
+  });
+});
+
+describe('a report recorded before `checks` existed still parses (#7)', () => {
+  it('fills the field with an empty list', () => {
+    expect(dispatchReportSchema.parse({ status: 'done', result: 'r' }).checks).toEqual([]);
+  });
+
+  it('bounds the list and requires integer exit codes', () => {
+    const eleven = Array.from({ length: 11 }, (_, i) => ({ command: `c${i}`, exitCode: 0 }));
+    expect(dispatchReportSchema.safeParse({ status: 'done', result: 'r', checks: eleven }).success).toBe(false);
+    expect(
+      dispatchReportSchema.safeParse({ status: 'done', result: 'r', checks: [{ command: 'npm test', exitCode: 1.5 }] }).success,
+    ).toBe(false);
   });
 });
