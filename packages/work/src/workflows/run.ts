@@ -104,6 +104,7 @@ import type { QueuedMessage, RunRecord, RunStore, StepState } from '../runs/stor
 import type { DispatchInput, DispatchIntent, DispatchReport, RunDispatch } from '@onni/contract';
 import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
+import { requireRootManager } from '../dispatch/access.ts';
 import {
   appendLedger,
   inboxDigest,
@@ -152,7 +153,15 @@ import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
 import type { MergeInput } from '@onni/contract';
 import { runManagerMerge, type MergeOutcome } from './manager-merge.ts';
-import { managerDoingComplexAlone, managerPrompt, resolveWorker, workerPrompt, workersInFlight, type RemainingBudget } from './manager-worker.ts';
+import {
+  managerDoingComplexAlone,
+  managerPrompt,
+  resolveWorker,
+  workerPrompt,
+  workersInFlight,
+  type ManagerSessionContext,
+  type RemainingBudget,
+} from './manager-worker.ts';
 import { UNATTENDED_DENIED_TOOLS, pushGuardEnv, pushRefusal } from './push-guard.ts';
 import { carveChildLimits, describeHit, evaluateLimits, raiseLimits, resolveLimits, subtreeOf, subtreeUsage } from './limits.ts';
 import type { LimitHit, Roster, RunLimits, RunLimitsRequest } from '@onni/contract';
@@ -2694,13 +2703,26 @@ export class RunManager {
   }
 
   /**
+   * Everything the opening prompt needs that is read asynchronously (plan v2 §5 H7): the effective
+   * Antigravity level, project memory, the tree plan, an expired manager question. Loaded ONCE per
+   * session and awaited at both `ActiveRun` construction sites, so `prepareDispatchSession` stays
+   * sync. Every source degrades on its own: a failure leaves its field `undefined` rather than
+   * blocking the session.
+   */
+  private async loadManagerSessionContext(runId: string, state: ActiveRun): Promise<ManagerSessionContext> {
+    const context: ManagerSessionContext = {};
+    // Each later phase fills one field here, from `runId`/`state` and its own durable source.
+    return context;
+  }
+
+  /**
    * Resolve what a session needs before it opens: the dispatch prompt (with the review addendum
    * for a review child). Called from BOTH `ActiveRun` construction sites.
    *
    * Gated on `dispatchReachable`, not on the flag alone — a headless run with no cockpit behind it
    * gets no dispatch prompt and behaves exactly as it did before this feature existed.
    */
-  private prepareDispatchSession(runId: string, state: ActiveRun): void {
+  private prepareDispatchSession(runId: string, state: ActiveRun, context: ManagerSessionContext = {}): void {
     if (!this.dispatchReachable()) return;
     const dispatch = this.store.getRun(runId)?.dispatch;
     // Manager–worker tree: the root gets the manager brief, a worker the report-only one — the
@@ -2713,6 +2735,7 @@ export class RunManager {
         : managerPrompt(roster, this.remainingForManager(runs, dispatch.rootRunId), {
             complexityPolicy: this.semaphore.safety().managerComplexityPolicy !== false,
             fullAccess: runs.find((r) => r.id === dispatch.rootRunId)?.managerFullAccess === true,
+            context,
           });
       return;
     }
@@ -2822,7 +2845,8 @@ export class RunManager {
     if (!run) return { denied: `no such run: ${runId}` };
     const note = (message: string, tone?: 'danger') =>
       this.store.appendEvent(runId, { type: 'note', stepId: this.active.get(runId)?.currentStepId, message, ...(tone ? { tone } : {}) });
-    if (!run.roster || run.dispatch?.parentRunId) return { denied: 'only the manager of a manager–worker task can merge' };
+    const access = requireRootManager(run, 'merge');
+    if (!access.ok) return { denied: access.denied };
     if (run.managerFullAccess !== true) {
       const denied = 'Manager chưa được cấp quyền merge. Hãy đề nghị người dùng merge thủ công, hoặc bật "Full quyền manager" trong Cài đặt nhiệm vụ.';
       note(`merge refused — ${denied}`, 'danger');
@@ -5199,7 +5223,7 @@ export class RunManager {
     // sites (spec 2026-09-10-dispatch; AGENTS.md § "every construction site"). A Continue
     // that skipped this would resume a task with no dispatch prompt and no way to dispatch:
     // a run that quietly degrades into an ordinary task.
-    this.prepareDispatchSession(runId, state);
+    this.prepareDispatchSession(runId, state, await this.loadManagerSessionContext(runId, state));
     this.prepareAutomationsSession(state);
 
     // Cancellation may have retired this continuation while its async preparation was running.
@@ -5992,7 +6016,7 @@ export class RunManager {
     // Same rule, same reason, for the dispatch session snapshot (the dispatch prompt; the child
     // role's prompt a spawn will need). This is the FIRST of the two construction sites; the
     // twin is in `runContinuation`.
-    this.prepareDispatchSession(runId, state);
+    this.prepareDispatchSession(runId, state, await this.loadManagerSessionContext(runId, state));
     this.prepareAutomationsSession(state);
     let runError: string | null = null;
     let idleFailed = false;

@@ -53,6 +53,35 @@ describe('onni task', () => {
     expect(h.err[0]).toContain('dispatch refused — no budget left');
   });
 
+  it('reads a 404 on a route the running server lacks as a version mismatch (H4)', async () => {
+    const h = harness({ status: 404, body: { error: 'not found' } });
+    expect(await runTaskCommand(['report', '--status', 'done', '--result', 'r'], env, h.io)).toBe(1);
+    expect(h.err[0]).toContain('server does not support this command yet — restart Onni (CLI and server versions differ)');
+    expect(h.err[0]).not.toContain('not found');
+  });
+
+  it('keeps a 403 or 409 refusal prefixed with what was attempted', async () => {
+    const forbidden = harness({ status: 403, body: { error: 'only the manager of a manager–worker task can merge' } });
+    expect(await runTaskCommand(['merge', 'onni/abc'], env, forbidden.io)).toBe(1);
+    expect(forbidden.err[0]).toContain('merge refused — only the manager of a manager–worker task can merge');
+    const conflict = harness({ status: 409, body: { error: 'run 1234 belongs to another task tree' } });
+    expect(await runTaskCommand(['report', '--status', 'done', '--result', 'r'], env, conflict.io)).toBe(1);
+    expect(conflict.err[0]).toContain('report refused — run 1234 belongs to another task tree');
+  });
+
+  it('turns an unreachable cockpit into one line, not a raw fetch error', async () => {
+    const err: string[] = [];
+    const io: TaskCliIo = {
+      fetch: (async () => {
+        throw new Error('connect ECONNREFUSED');
+      }) as typeof fetch,
+      log: () => {},
+      error: (line) => err.push(line),
+    };
+    expect(await runTaskCommand(['list'], env, io)).toBe(1);
+    expect(err[0]).toBe('onni task: could not reach the cockpit — connect ECONNREFUSED');
+  });
+
   it('report posts the report with array defaults filled and the verdict', async () => {
     const h = harness({ status: 200, body: { ok: true } });
     const code = await runTaskCommand(

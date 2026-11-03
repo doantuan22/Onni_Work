@@ -10,7 +10,7 @@
  */
 import { parseArgs } from 'node:util';
 import { missingCockpitMessage } from '../cockpit-address.ts';
-import { RUNNER_IDS } from '../core/agent-runner.ts';
+import { taskUsage } from './commands.ts';
 
 export interface TaskCliEnv {
   ONNI_API_URL?: string;
@@ -26,17 +26,7 @@ export interface TaskCliIo {
 
 const USAGE = `onni task — dispatch onni tasks from inside a task (on by default; ONNI_DISPATCH=0 on the cockpit turns it off)
 
-  onni task create "<objective>" [--title "…"] [--kind implement|review] [--review-of <branch|run>]
-                  [--scope "…"] [--budget <usd>] [--success "…"] [--evidence "…"] [--tools A,B]
-                  [--backend ${RUNNER_IDS.join('|')}] [--model <model>] [--retry-limit <0-3>] [--after "<title or id of an earlier order>" …]
-  onni task report --status done|partial|failed|blocked --result "…" [--evidence "…"]…
-                  [--verdict approve|changes|reject] [--suggestions "…"]… [--confidence <0-1>]
-                  [--side-effect "…"]… [--error "…"]… [--next "…"]
-  onni task merge <run id|branch>      (manager, needs "Full quyền manager") merge a worker's branch into yours
-  onni task merge --to-base            (manager) bring base into your branch, then fast-forward the local base
-  onni task merge --abort              abandon a merge left in progress
-  onni task list                       the tree this task belongs to, with status and cost
-  onni task tree <run id>              the tree rooted at (or containing) another run`;
+${taskUsage()}`;
 
 function base(env: TaskCliEnv): { url: string; scope: string } | null {
   const url = env.ONNI_API_URL?.replace(/\/+$/, '');
@@ -53,6 +43,32 @@ async function readError(response: Response): Promise<string> {
     // not JSON
   }
   return `${response.status} ${response.statusText}`;
+}
+
+/**
+ * One wrapper for every call this CLI makes. A 404 on a route the running server does not know is a
+ * VERSION mismatch, not "no such run": saying so beats printing a bare status and sending the agent
+ * looking for a bug in its own order (plan v2 §5 H4).
+ */
+async function callRoute(
+  api: { url: string; scope: string },
+  io: TaskCliIo,
+  path: string,
+  init: RequestInit,
+  refusalPrefix?: string,
+): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await io.fetch(`${api.scope}${path}`, init);
+  } catch (error) {
+    throw new Error(`could not reach the cockpit — ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (!response.ok) {
+    if (response.status === 404) throw new Error('server does not support this command yet — restart Onni (CLI and server versions differ)');
+    const reason = await readError(response);
+    throw new Error(refusalPrefix ? `${refusalPrefix} ${reason}` : reason);
+  }
+  return response.json();
 }
 
 function number(value: string | undefined, name: string): number | undefined {
@@ -129,13 +145,11 @@ export async function runTaskCommand(
           ...(values['retry-limit'] !== undefined ? { retry_limit: number(values['retry-limit'], 'retry-limit') } : {}),
           ...(values.after?.length ? { after: values.after } : {}),
         };
-        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/dispatch`, {
+        const created = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/dispatch`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(body),
-        });
-        if (!response.ok) throw new Error(`dispatch refused — ${await readError(response)}`);
-        const created = (await response.json()) as { id: string; branch?: string };
+        }, 'dispatch refused —')) as { id: string; branch?: string };
         io.log(`dispatched ${created.id}${created.branch ? ` on branch ${created.branch}` : ''}`);
         io.log('It reports into this session when it settles. End your turn with ONNI:MONITORING to wait for it.');
         return 0;
@@ -169,12 +183,11 @@ export async function runTaskCommand(
           ...(values.confidence !== undefined ? { confidence: number(values.confidence, 'confidence') } : {}),
           ...(values.next ? { recommended_next_action: values.next } : {}),
         };
-        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/report`, {
+        await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/report`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(body),
-        });
-        if (!response.ok) throw new Error(`report refused — ${await readError(response)}`);
+        }, 'report refused —');
         io.log(`report recorded — status ${values.status}${values.verdict ? `, verdict ${values.verdict}` : ''}. It is delivered to your parent when this task settles.`);
         return 0;
       }
@@ -188,13 +201,11 @@ export async function runTaskCommand(
         const into = values['to-base'] ? 'base' : 'task';
         const source = positionals[0];
         if (into === 'task' && !values.abort && !source) throw new Error('name what to merge: onni task merge <run id or branch>  (or --to-base, or --abort)');
-        const response = await io.fetch(`${api.scope}/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/merge`, {
+        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/merge`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ into, ...(source ? { source } : {}), ...(values.abort ? { abort: true } : {}) }),
-        });
-        if (!response.ok) throw new Error(`merge refused — ${await readError(response)}`);
-        const result = (await response.json()) as { outcome: string; message: string };
+        }, 'merge refused —')) as { outcome: string; message: string };
         io.log(`${result.outcome}: ${result.message}`);
         return result.outcome === 'conflict' ? 3 : 0;
       }
@@ -202,9 +213,7 @@ export async function runTaskCommand(
       case 'tree': {
         const anchor = command === 'tree' ? rest[0] : env.ONNI_TASK_ID;
         if (!anchor) throw new Error(command === 'tree' ? 'a run id is required' : 'ONNI_TASK_ID is not set');
-        const response = await io.fetch(`${api.scope}/runs`);
-        if (!response.ok) throw new Error(`could not list runs — ${await readError(response)}`);
-        const runs = (await response.json()) as Array<{
+        const runs = (await callRoute(api, io, '/runs', { method: 'GET' }, 'could not list runs —')) as Array<{
           id: string;
           title: string;
           status: string;

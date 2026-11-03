@@ -158,3 +158,28 @@ Never merge into the repository's base branch and never push; your branch goes t
 
 Remember the Guard: before anything irreversible or outside your scope, end the turn with ONNI:ASK and stop.
 ````
+
+> Phụ lục B là bản chụp trước 2026-11-03: câu chữ hiện tại (bảng lệnh, dòng `--after`, dòng "Prefer workers") xem
+> trực tiếp `managerPrompt()` — nguồn duy nhất.
+
+## Phụ lục C — Đợt 1: hạ tầng chung (2026-11-03)
+
+Nhánh `feat/manager-worker-gaps`, theo `.ai/specs/2026-11-03-manager-worker-gaps-plan.v2.md` §5. Mục tiêu của
+đợt này là **không đổi hành vi**: chỉ dựng các viên gạch mà Đợt 2–6 cùng dùng, mỗi viên có test riêng.
+
+| Viên | Nơi ở | Việc đã làm |
+| --- | --- | --- |
+| H1 | `dispatch/access.ts` | `requireRootManager(run, action)` (403/404, cùng điều kiện `mergeFromAgent` luôn dùng) và `requireSameTree(caller, target)` (409 khác cây); `mergeFromAgent` chuyển sang helper, câu từ chối không đổi |
+| H2 | `dispatch/state-file.ts` | `readStateFile` + `revisionOf` (sha1 8 ký tự, file vắng → `"0"`), `writeAtomic` (tmp + fsync + `renameWithRetry`, POSIX `0600`), `withPathLock` (hàng đợi theo đường dẫn, dùng `serializedByPath` sẵn có) |
+| H3 | `git-worktree.ts` | `worktreeChangedFilesReadOnly` và `worktreeHeadShort`: chỉ lệnh đọc (`--no-optional-locks`), không `git add`, abort tiến trình thật khi quá hạn (mặc định 3 s), `ok｜timeout｜unavailable`, khử trùng + sắp xếp + `max`/`omitted`. Neo diff vẫn là `resolveTaskDiffBase` |
+| H4 | `dispatch/task-cli.ts` | `callRoute`: mọi lời gọi server đi qua một chỗ; 404 = lệch phiên bản CLI/server, 403/409 giữ tiền tố "… refused —", lỗi mạng thành một dòng |
+| H5 | `dispatch/commands.ts` | Một bảng `TASK_COMMANDS` cho `create/report/merge/list/tree`; `taskUsage()` nuôi help của CLI, `managerCommandsBlock()`/`workerCommandsBlock()` nuôi brief; `clampLines` cắt tại ranh giới dòng |
+| H6 | `dispatch/prompt-budget.ts`, `contract/dispatch.ts` | Trần từng block + `PROMPT_MAX_CHARS` tính từ hằng; fixture worst-case (roster đủ `ROSTER_MAX_WORKERS`) trong `manager-prompt.test.ts` |
+| H7 | `workflows/run.ts` | `loadManagerSessionContext(runId, state)` được `await` ở **cả hai** chỗ dựng `ActiveRun`; `prepareDispatchSession` vẫn sync và nhận `ManagerSessionContext` (Đợt này rỗng, mỗi đợt sau điền một field) |
+
+**Đo baseline (thay Đợt 0).** Phiên này không chạy được task manager–worker thật (cần agent CLI đã đăng nhập), nên
+`BASE` được đo tĩnh từ `managerPrompt`: 5.191 ký tự với roster tối thiểu (đã trừ bảng lệnh và dòng roster), 5.884
+với roster mẫu trong Phụ lục B, 6.413 ở worst-case fixture. Cộng các block sẽ thêm về sau (memory 3.172, plan 1.800,
+biên an toàn 1.000) worst-case vẫn dưới `PROMPT_MAX_CHARS` (12.672), nên **không nén** phần cố định trong Đợt 1 —
+nén là đổi lời prompt, trái mục tiêu "không đổi hành vi". Nếu một lần chạy thật cho thấy manager bị phân tán bởi độ
+dài prompt, nén trước Đợt 4 (`#9` memory, block lớn nhất).

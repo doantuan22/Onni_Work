@@ -12,7 +12,9 @@ import {
   pruneOrphans,
   resolveBaseRef,
   uniqueBranchName,
+  worktreeChangedFilesReadOnly,
   worktreeChangedPaths,
+  worktreeHeadShort,
   worktreeShortstat,
   worktreeSizeBytes,
 } from './git-worktree.ts';
@@ -571,6 +573,56 @@ describe('worktreeChangedPaths', () => {
     expect(await worktreeChangedPaths(repo)).toEqual(
       expect.arrayContaining(['base.txt', 'renamed.txt', 'generated/nested/output.txt']),
     );
+  });
+});
+
+describe('worktreeChangedFilesReadOnly (plan v2 §5 H3)', () => {
+  it('lists committed and uncommitted work, sorted and deduped, and leaves the index untouched', async () => {
+    const repo = await fixtureRepo('onni-readonly-files-');
+    await run('git', ['checkout', '-q', '-b', 'feat'], { cwd: repo });
+    writeFileSync(join(repo, 'committed.txt'), 'committed\n');
+    await run('git', ['add', '-A'], { cwd: repo });
+    await run('git', [...GIT_ID, 'commit', '-q', '-m', 'feat'], { cwd: repo });
+    writeFileSync(join(repo, 'base.txt'), 'changed\n');
+    writeFileSync(join(repo, 'untracked.txt'), 'new\n');
+
+    const before = (await run('git', ['ls-files', '--stage'], { cwd: repo })).stdout;
+    const result = await worktreeChangedFilesReadOnly(repo, 'main');
+    const after = (await run('git', ['ls-files', '--stage'], { cwd: repo })).stdout;
+
+    expect(result).toEqual({
+      files: ['base.txt', 'committed.txt', 'untracked.txt'],
+      omitted: 0,
+      state: 'ok',
+    });
+    expect(after).toBe(before);
+  });
+
+  it('caps the list and reports how many entries were left out', async () => {
+    const repo = await fixtureRepo('onni-readonly-max-');
+    for (const name of ['a.txt', 'b.txt', 'c.txt']) writeFileSync(join(repo, name), `${name}\n`);
+    const result = await worktreeChangedFilesReadOnly(repo, 'main', { max: 2 });
+    expect(result.state).toBe('ok');
+    expect(result.files).toEqual(['a.txt', 'b.txt']);
+    expect(result.omitted).toBe(1);
+  });
+
+  it('answers unavailable for a path git cannot read', async () => {
+    const result = await worktreeChangedFilesReadOnly(join(tmpdir(), 'onni-no-such-worktree'), 'main');
+    expect(result).toEqual({ files: [], omitted: 0, state: 'unavailable' });
+  });
+
+  it('answers timeout when the caller has already given up', async () => {
+    const repo = await fixtureRepo('onni-readonly-abort-');
+    const result = await worktreeChangedFilesReadOnly(repo, 'main', { signal: AbortSignal.abort() });
+    expect(result).toEqual({ files: [], omitted: 0, state: 'timeout' });
+  });
+
+  it('names the short HEAD commit, and nothing for a missing worktree', async () => {
+    const repo = await fixtureRepo('onni-readonly-head-');
+    const expected = (await run('git', ['rev-parse', '--short', 'HEAD'], { cwd: repo })).stdout.trim();
+    expect(await worktreeHeadShort(repo)).toBe(expected);
+    expect(await worktreeHeadShort(join(tmpdir(), 'onni-no-such-worktree'))).toBeUndefined();
   });
 });
 

@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { rosterSchema } from '@onni/contract';
+import { ROSTER_MAX_WORKERS, rosterSchema } from '@onni/contract';
+import { PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { managerPrompt, WORKER_PROMPT, workerPrompt } from './manager-worker.ts';
@@ -56,6 +57,29 @@ describe('managerPrompt', () => {
   it('says so plainly when the tree has no ceilings', () => {
     expect(managerPrompt(roster, { unlimited: true, subtasks: 12, maxDepth: 1 })).toContain('no ceiling is set for this tree');
   });
+
+  it('stays inside the prompt budget at worst case, roster and commands at their caps', () => {
+    const full = rosterSchema.parse({
+      manager: { runner: 'claude', model: 'opus' },
+      workers: Array.from({ length: ROSTER_MAX_WORKERS }, (_, index) => ({
+        runner: 'codex',
+        model: `model-${index}`,
+        role: `independent part number ${index}, owning its own directory and its own checks`,
+        maxConcurrent: 2,
+      })),
+    });
+    const worst = managerPrompt(full, {
+      unlimited: false,
+      costUsd: 7.5,
+      tokens: 4_200_000,
+      minutes: 180,
+      steps: 25,
+      subtasks: 9,
+      maxDepth: 1,
+    });
+    // Computed from the constants, never hard-coded: each later phase adds its block to this fixture.
+    expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
+  });
 });
 
 describe('workerPrompt', () => {
@@ -70,6 +94,13 @@ describe('workerPrompt', () => {
 });
 
 describe('which prompt each session of a roster tree gets', () => {
+  it('both ActiveRun construction sites await the one context loader (H7)', () => {
+    const source = readFileSync(new URL('./run.ts', import.meta.url), 'utf8');
+    const calls = [...source.matchAll(/this\.prepareDispatchSession\(([^;]*)\);/g)].map((match) => match[0]);
+    expect(calls).toHaveLength(2);
+    for (const call of calls) expect(call).toContain('await this.loadManagerSessionContext(runId, state)');
+  });
+
   let dir: string;
   let store: RunStore;
   let manager: RunManager;

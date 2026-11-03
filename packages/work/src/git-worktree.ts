@@ -858,6 +858,118 @@ export async function syncWithBase(
   return { result: 'failed', error: (merge.stderr || merge.stdout).trim().split('\n')[0] || 'git merge failed' };
 }
 
+// ---- read-only inspection (plan v2 §5 H3) -----------------------------------------------------
+//
+// `worktreeChangedFiles` above runs `git add -N .`, which WRITES the index. That is fine at settle
+// (the task is over) and wrong for a worker that is still running: it races the worker on
+// `index.lock`. These helpers never run a writing command, never take the optional lock, and abort
+// the actual child process on timeout instead of leaving it behind.
+
+export interface ReadOnlyFilesResult {
+  files: string[];
+  omitted: number;
+  state: 'ok' | 'timeout' | 'unavailable';
+}
+
+interface ReadOnlyGitResult {
+  ok: boolean;
+  stdout: string;
+}
+
+function gitReadOnly(cwd: string, args: string[], signal: AbortSignal): Promise<ReadOnlyGitResult> {
+  return new Promise((resolve) => {
+    try {
+      execFile(
+        'git',
+        ['--no-optional-locks', '-c', 'core.quotepath=off', ...args],
+        { cwd, maxBuffer: 32 * 1024 * 1024, encoding: 'utf8', signal },
+        (err, stdout) => resolve({ ok: !err, stdout: stdout ?? '' }),
+      );
+    } catch {
+      resolve({ ok: false, stdout: '' });
+    }
+  });
+}
+
+/** Paths in `git status --porcelain=v1 -z`; a rename/copy carries its original path in the next record. */
+function porcelainPaths(raw: string): string[] {
+  const records = raw.split('\0');
+  const paths: string[] = [];
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
+    if (!record || record.length < 4) continue;
+    const code = record.slice(0, 2);
+    const path = record.slice(3);
+    if (path) paths.push(path);
+    if (code.includes('R') || code.includes('C')) index += 1;
+  }
+  return paths;
+}
+
+/**
+ * Files this worktree changed against `baseRef`, without touching the index. Covers committed work
+ * (`diff --name-only <base>`) and uncommitted/untracked work (`status --porcelain`). A missing
+ * directory is `unavailable`, an overrun is `timeout` — never an empty list that reads as "changed
+ * nothing".
+ */
+export async function worktreeChangedFilesReadOnly(
+  worktreePath: string,
+  baseRef: string,
+  opts: { signal?: AbortSignal; timeoutMs?: number; max?: number } = {},
+): Promise<ReadOnlyFilesResult> {
+  if (!existsSync(worktreePath) || !isSafeGitRef(baseRef)) {
+    return { files: [], omitted: 0, state: 'unavailable' };
+  }
+  const controller = new AbortController();
+  const timeoutMs = opts.timeoutMs ?? 3_000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const forwardAbort = () => controller.abort();
+  opts.signal?.addEventListener('abort', forwardAbort, { once: true });
+  const runGit = (args: string[]) => gitReadOnly(worktreePath, args, controller.signal);
+  const timedOut = () => ({ files: [], omitted: 0, state: 'timeout' as const });
+  try {
+    if (opts.signal?.aborted) return timedOut();
+    const anchor = await resolveTaskDiffBase(runGit, baseRef);
+    if (controller.signal.aborted) return timedOut();
+    const diff = await runGit(['diff', '--name-only', anchor.base]);
+    if (controller.signal.aborted) return timedOut();
+    if (!diff.ok) return { files: [], omitted: 0, state: 'unavailable' };
+    const status = await runGit(['status', '--porcelain=v1', '-z']);
+    if (controller.signal.aborted) return timedOut();
+    if (!status.ok) return { files: [], omitted: 0, state: 'unavailable' };
+    const all = [...new Set([
+      ...diff.stdout.split('\n').map((line) => line.trim()).filter(Boolean),
+      ...porcelainPaths(status.stdout),
+    ])].sort();
+    const max = opts.max ?? all.length;
+    return { files: all.slice(0, max), omitted: Math.max(0, all.length - max), state: 'ok' };
+  } catch {
+    return controller.signal.aborted ? timedOut() : { files: [], omitted: 0, state: 'unavailable' };
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', forwardAbort);
+  }
+}
+
+/** The worktree's HEAD as a short sha, for a report that names the commit the manager may merge. */
+export async function worktreeHeadShort(
+  worktreePath: string,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<string | undefined> {
+  if (!existsSync(worktreePath)) return undefined;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 3_000);
+  const forwardAbort = () => controller.abort();
+  opts.signal?.addEventListener('abort', forwardAbort, { once: true });
+  try {
+    const head = await gitReadOnly(worktreePath, ['rev-parse', '--short', 'HEAD'], controller.signal);
+    return controller.signal.aborted || !head.ok ? undefined : head.stdout.trim() || undefined;
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', forwardAbort);
+  }
+}
+
 /** Paths this task changed vs its base — the SAME anchor `worktreeShortstat` uses (#751), so an
  *  `if` node's "paths changed" and the task's diff numbers never disagree. Null on git failure. */
 export async function worktreeChangedFiles(

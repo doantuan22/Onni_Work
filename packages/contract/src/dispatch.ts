@@ -86,6 +86,24 @@ export const DISPATCH_MAX_IN_FLIGHT = 4;
 export const DISPATCH_MAX_SUBTASKS = 100;
 
 /**
+ * Caps for the surfaces that hand manager-facing text back to a model (`#7` report, `#1` peek,
+ * `#9` memory, `#6` plan). One place: the engine's output cap, the contract's array bound and the
+ * prompt budget must agree, or a value can be written that the prompt never shows.
+ */
+export const REPORT_FILES_MAX = 15;
+export const PEEK_MAX_ENTRIES = 12;
+export const PEEK_FILES_MAX = 50;
+export const PEEK_TAIL_MAX_LINES = 30;
+export const PEEK_TAIL_MAX_CHARS_PER_LINE = 200;
+export const PEEK_TAIL_MAX_CHARS_PER_ENTRY = 4_000;
+export const PEEK_ALL_MAX_CHARS_TOTAL = 8_000;
+/** UTF-8 bytes, for both writing and reading project memory into a prompt (plan v2 §8). */
+export const MANAGER_MEMORY_MAX_BYTES = 3_072;
+export const MANAGER_MEMORY_ENTRY_MAX_CHARS = 300;
+export const PLAN_MAX_PARTS = 50;
+export const PLAN_PROMPT_MAX_PARTS = 15;
+
+/**
  * What the USER asked for when starting a task with the composer's Dispatch toggle: this task is
  * the one that fans out, within these limits. Every field optional — the bare toggle is
  * `{}`, and means "split it, engine defaults for everything". Sent on `POST /runs` as

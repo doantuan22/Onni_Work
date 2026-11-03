@@ -1,7 +1,23 @@
-import { rosterWorkerKey, type Roster, type RosterWorker } from '@onni/contract';
+import { rosterWorkerKey, type AgentPermissionLevel, type Roster, type RosterWorker } from '@onni/contract';
 import { DISPATCH_MAX_IN_FLIGHT } from '@onni/contract';
 import { REVIEW_PROMPT } from '../dispatch/prompts.ts';
+import { managerCommandsBlock, workerCommandsBlock } from '../dispatch/commands.ts';
 import type { RunRecord } from '../runs/store.ts';
+
+/**
+ * Everything a session's opening prompt needs beyond the roster and the live budget (plan v2 §5 H7).
+ * Loaded ONCE per session by `loadManagerSessionContext`, because `prepareDispatchSession` is sync
+ * and is called from both `ActiveRun` construction sites. Each later phase fills one field; a
+ * source that fails to load leaves its field `undefined` and never blocks the session.
+ */
+export interface ManagerSessionContext {
+  /** The level an unattended Antigravity turn actually gets (#3). */
+  antigravityLevel?: AgentPermissionLevel;
+  /** Project memory, already capped to `MANAGER_MEMORY_MAX_BYTES` (#9). */
+  memory?: string;
+  /** A manager question whose deadline passed while the session was closed (#10). */
+  expiredAsk?: { question: string };
+}
 
 /**
  * Manager / Worker roster arithmetic (docs/design/manager-worker.md). Pure: `dispatch()` owns the
@@ -142,7 +158,11 @@ export const FULL_ACCESS_BLOCK = `Full manager access is ON for this task: you m
 It never pushes, never force-updates, never deletes a branch and never rewrites history; you also must not. Commit first (a dirty worktree is refused). On a conflict the merge is left in progress in your worktree: fix the files, git add, git commit, then run the same merge again — or --abort and report why. Do not leave the repository half-merged. This permission only gathers results: complex work still goes to workers. Merge into the base branch only when the work is verified (run the repository's checks first).`;
 
 /** The manager's whole dispatch brief: roster, syntax, reports, integration procedure, limits. */
-export function managerPrompt(roster: Roster, left: RemainingBudget, opts: { complexityPolicy?: boolean; fullAccess?: boolean } = {}): string {
+export function managerPrompt(
+  roster: Roster,
+  left: RemainingBudget,
+  opts: { complexityPolicy?: boolean; fullAccess?: boolean; context?: ManagerSessionContext } = {},
+): string {
   const workers = roster.workers.map((w) => {
     const name = describeWorker(w);
     return `- ${name}${w.role ? ` — ${w.role}` : ''}. Up to ${w.maxConcurrent} at once.`;
@@ -155,7 +175,7 @@ ${workers}
 
 Giving work. From your shell, always through the cockpit's own binary, node "$ONNI_BIN" (every "onni task …" below means node "$ONNI_BIN" task …):
 
-  onni task create "<objective>" --backend <worker backend> [--model <model>] [--after "<earlier order title>"] --scope "<files or dirs it may touch>" --success "<how it knows it is done>" [--title "…"] [--budget <usd>] [--evidence "<what it must show>"] [--kind implement|review] [--review-of <branch or run id>]
+${managerCommandsBlock()}
 
 - Parts that need an earlier part's result (tests after the code they test, docs after the API) get --after "<title of that order>": onni holds them queued, using no slot, and starts them on top of that order's branch once it finishes well. If it fails, the dependent is cancelled and you hear why. Independent parts get no --after and run in parallel.
 - Name --backend for every task. Where the same backend appears twice in your roster, name --model too; an entry that fixes a model keeps it.
@@ -186,7 +206,7 @@ export const WORKER_PROMPT = `Worker mode. A manager task dispatched you. Do the
 
 When your assignment is settled, report before finishing (always through the cockpit's own binary, node "$ONNI_BIN"):
 
-  onni task report --status done|partial|failed|blocked --result "<what you did and the state now>" [--evidence "…" …] [--suggestions "…" …] [--confidence 0.8]
+${workerCommandsBlock()}
 
 Be honest: a done that is not done costs your manager a whole extra round trip. Evidence is commands you ran and what they printed, files you changed, tests that passed. The tree directory (ONNI_TREE_DIR) holds brief.md (the manager's objective) and your order.md; write your running notes in notes.md.
 
