@@ -2004,16 +2004,21 @@ export class RunStore extends EventEmitter {
       const maxBytes = 1024 * 1024;
       let pos = size;
       let read = 0;
-      let text = '';
+      let bytes = Buffer.alloc(0);
+      let newlines = 0;
       // One more newline than events wanted: the last line may be unterminated.
-      while (pos > 0 && (text.match(/\n/g) ?? []).length <= count && read < maxBytes) {
+      while (pos > 0 && newlines <= count && read < maxBytes) {
         const len = Math.min(chunkSize, pos, maxBytes - read);
         pos -= len;
         read += len;
         const buffer = Buffer.allocUnsafe(len);
         readSync(fd, buffer, 0, len, pos);
-        text = buffer.toString('utf8') + text;
+        for (let at = buffer.indexOf(0x0a); at !== -1; at = buffer.indexOf(0x0a, at + 1)) newlines += 1;
+        bytes = Buffer.concat([buffer, bytes]);
       }
+      // Decoded ONCE, after the chunks are joined: decoding each on its own turned a character that
+      // straddles a chunk boundary into two U+FFFD.
+      const text = bytes.toString('utf8');
       const lines = text.split('\n').filter(Boolean);
       // A read that stopped mid-file begins inside a line: that fragment is not an event.
       const complete = pos > 0 ? lines.slice(1) : lines;

@@ -2537,6 +2537,22 @@ describe('RunStore — readEventsTail (plan v2 §7)', () => {
     expect((store.readEventsTail(run.id, 1)[0] as { message?: string }).message).toBe('last');
   });
 
+  // The walk reads 64 KiB chunks backwards. Decoding each chunk on its own split a character that
+  // straddled a boundary into two U+FFFD — the tail a manager peeks at came back with holes in any
+  // text that is not ASCII. ASCII padding never exercises it, so use 2-, 3- and 4-byte characters.
+  it.each(['é', 'ệ', '😀'])('returns multi-byte text (%s) intact across read-chunk boundaries', (char) => {
+    const store = RunStore.open(dataDir);
+    const run = store.createRun({ title: 't', workflow: 'w', task: 't', steps: [] });
+    for (let index = 0; index < 7; index += 1) {
+      store.appendEvent(run.id, { type: 'note', message: `${char.repeat(18_000 + index * 5)}#${index}` });
+    }
+    const whole = store.readEvents(run.id).map((event) => (event as { message?: string }).message);
+    for (const count of [1, 2, 3, 5]) {
+      const tail = store.readEventsTail(run.id, count).map((event) => (event as { message?: string }).message);
+      expect(tail).toEqual(whole.slice(-count));
+    }
+  });
+
   it('answers nothing for a count that asks for nothing, or a run with no transcript', () => {
     const store = RunStore.open(dataDir);
     const run = store.createRun({ title: 't', workflow: 'w', task: 't', steps: [] });
