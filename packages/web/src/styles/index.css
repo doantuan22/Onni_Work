@@ -113,7 +113,8 @@
   --sidebar: var(--card);
   --muted: #262626;
   --muted-foreground: #a3a3a3;
-  --soft-foreground: #7b7b7b;
+  /* AA (4.5:1) against every dark surface it sits on, down to --card-2; pinned by theme-contrast.test.ts. */
+  --soft-foreground: #8f8f8f;
   --border: #262626;
   --input: #262626;
   --contrast: #ebebeb;
@@ -211,13 +212,18 @@
   --sidebar: #fafafa;
   --muted: #f7f7f7;
   --muted-foreground: #5c5c5c;
-  --soft-foreground: #a3a3a3;
+  /* #a3a3a3 was 2.4:1 on the light surfaces. #6b6b6b clears AA on white, --sidebar and --muted. */
+  --soft-foreground: #6b6b6b;
   --border: #ebebeb;
   --input: #ebebeb;
   --contrast: #262626;
   --contrast-foreground: #ffffff;
 
   --ring: #171717;
+
+  /* The dark violet is 3.1:1 as ink on white and as a ground for white text. This step clears AA
+   * both ways (4.6:1 on --muted), so text-violet and the white-on-violet badges stay legible. */
+  --violet: #6d5fd6;
 
   /* blue-700, not blue-300 — the same per-theme darkening the syntax blue already makes. */
   --info: #1d4ed8;
