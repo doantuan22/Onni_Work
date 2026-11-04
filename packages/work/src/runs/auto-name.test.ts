@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   autoNamingActive,
@@ -62,6 +63,39 @@ describe('sanitizeBranchName (spec 2026-10-11-branch-naming-instructions)', () =
     expect(sanitizeBranchName('')).toBeUndefined();
     expect(sanitizeBranchName('   ')).toBeUndefined();
     expect(sanitizeBranchName('?*~^:')).toBeUndefined();
+  });
+});
+
+// The sanitizer's whole job is "git will accept this", so git is the judge. The old order stripped
+// `.lock` BEFORE trimming trailing dots and dashes (`yarn.lock-` → `yarn.lock`) and cut to the
+// length cap AFTER, so both could hand back a name `git worktree add -b` refuses — and that failure
+// is swallowed (the task falls back to `onni/<id8>`, the person's naming rule silently ignored).
+describe('sanitizeBranchName agrees with git check-ref-format', () => {
+  const git = (name: string) => spawnSync('git', ['check-ref-format', '--branch', name]).status === 0;
+
+  it.each([
+    'chore/update yarn.lock-',
+    'fix yarn.lock.',
+    'feature/a.lock..',
+    'deps/package.lock.-',
+    'x.lock/.lock/',
+    `${'a'.repeat(75)}.lock.x`,
+    `${'a'.repeat(76)}.lock/b`,
+    `feature/${'segment-'.repeat(12)}x.lock-`,
+    'HEAD',
+    'head',
+    '@',
+    'feature/HEAD',
+  ])('never hands git a name it refuses: %j', (raw) => {
+    const name = sanitizeBranchName(raw);
+    if (name === undefined) return;
+    expect(git(name), `${raw} → ${name}`).toBe(true);
+    expect([...name].length).toBeLessThanOrEqual(BRANCH_NAME_MAX);
+    expect(['head', '@']).not.toContain(name.toLowerCase());
+  });
+
+  it('keeps a legitimate .lock-looking name that is not a ref suffix', () => {
+    expect(sanitizeBranchName('chore/update-yarn.lock-file')).toBe('chore/update-yarn.lock-file');
   });
 });
 

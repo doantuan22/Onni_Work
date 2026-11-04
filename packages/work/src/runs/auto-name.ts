@@ -103,27 +103,43 @@ export const BRANCH_NAME_MAX = 80;
  */
 export function sanitizeBranchName(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
-  let name = raw
-    .trim()
-    .replace(/^`+|`+$/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/[^A-Za-z0-9._/-]/g, '')
-    .replace(/\.\.+/g, '.')
-    .replace(/@\{/g, '')
-    .replace(/-{2,}/g, '-')
-    .replace(/\/{2,}/g, '/')
-    .replace(/\.lock(?=\/|$)/g, '');
-  // Each path component: no leading `.`/`-`, no trailing `.`; empty components dropped.
-  name = name
+  const name = tidyBranch(
+    raw
+      .trim()
+      .replace(/^`+|`+$/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/[^A-Za-z0-9._/-]/g, '')
+      .replace(/\.\.+/g, '.')
+      .replace(/@\{/g, '')
+      .replace(/-{2,}/g, '-')
+      .replace(/\/{2,}/g, '/'),
+  );
+  const chars = [...name];
+  // Capped AFTER tidying, then tidied again: the cut can leave a trailing `/`, `.`, `-` or `.lock`.
+  const capped = chars.length > BRANCH_NAME_MAX ? tidyBranch(chars.slice(0, BRANCH_NAME_MAX).join('')) : name;
+  // `HEAD` is not a valid branch name and `@` is a revision, not a branch.
+  if (['head', '@'].includes(capped.toLowerCase())) return undefined;
+  return capped && !capped.startsWith('-') ? capped : undefined;
+}
+
+/**
+ * Each path component: no leading `.`/`-`, no trailing `.`/`-`, never ending in `.lock` (git refuses
+ * it), empty components dropped. Repeated until stable — removing one thing can expose another
+ * (`yarn.lock-` → `yarn.lock` → `yarn`), which a single ordered pass of replaces never revisits.
+ */
+function tidyBranch(name: string): string {
+  return name
     .split('/')
-    .map((part) => part.replace(/^[.-]+/, '').replace(/[.-]+$/, ''))
+    .map((part) => {
+      let current = part;
+      for (;;) {
+        const next = current.replace(/^[.-]+/, '').replace(/[.-]+$/, '').replace(/\.lock$/, '');
+        if (next === current) return current;
+        current = next;
+      }
+    })
     .filter(Boolean)
     .join('/');
-  const chars = [...name];
-  if (chars.length > BRANCH_NAME_MAX) {
-    name = chars.slice(0, BRANCH_NAME_MAX).join('').replace(/[./-]+$/, '');
-  }
-  return name && !name.startsWith('-') ? name : undefined;
 }
 
 /** The `[onni-namer]` marker lets the ONNI_DRY_RUN mock recognize a naming call. */
