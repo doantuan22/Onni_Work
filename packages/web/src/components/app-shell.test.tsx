@@ -365,6 +365,12 @@ describe('AppShell', () => {
       expect(document.querySelector('[data-slot="nav-update-marker"]')).toBeNull()
     })
 
+    it('never scrolls the quick-list sideways', () => {
+      renderShell()
+      const list = document.querySelector('[data-slot="task-quick-list"]') as HTMLElement
+      expect(list.className).toContain('overflow-x-hidden')
+    })
+
     it('reserves the quick-list, tools and composer slots for later Steps', () => {
       renderShell()
       for (const slot of ['task-quick-list', 'tools-menu', 'composer']) {
@@ -395,6 +401,8 @@ describe('AppShell', () => {
       const scroller = document.querySelector('[data-slot="project-groups"]') as HTMLElement
       expect(scroller.contains(allTasks())).toBe(false)
       expect(scroller.className).toContain('overflow-y-auto')
+      // overflow-y alone makes overflow-x compute to `auto` — one wide row would pan the sidebar.
+      expect(scroller.className).toContain('overflow-x-hidden')
     })
 
     it('marks itself the current page only on /tasks', () => {

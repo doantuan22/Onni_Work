@@ -466,7 +466,7 @@ function SidebarContent({
               The whole area scrolls as one (per the sidebar mockup); collapsed groups are one row. */}
           <div
             data-slot="project-groups"
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pt-1.5 pb-2"
+            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-1.5 pt-1.5 pb-2"
           >
             <SidebarNavigateContext.Provider value={onNavigate}>
               {projectGroups}
@@ -525,7 +525,7 @@ function SidebarContent({
           {/* The single-project quick-list (Needs you / Working / Recent). */}
           <div
             data-slot="task-quick-list"
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 pb-2"
+            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pb-2"
           >
             {taskQuickList}
           </div>

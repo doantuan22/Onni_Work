@@ -92,6 +92,19 @@ afterEach(() => {
 })
 
 describe('TaskQuickList', () => {
+  it('keeps a long "Waiting for you" title inside the column instead of widening the scroller', () => {
+    const long = Array(3).fill('A very long task title that would push the sidebar wider than its column').join(' ')
+    renderList({
+      runs: [run({ id: 'q', title: long, status: 'running', dispatch: { rootRunId: 'q', softAsk: { question: 'Which database should I use?' } } as RunRecord['dispatch'] })],
+    })
+    const title = document.querySelector('[data-slot="needs-you-row"] > span:first-child') as HTMLElement
+    expect(title.textContent).toBe(long)
+    // jsdom has no layout, so pin the classes that bound it: a width cap plus an ellipsis.
+    expect(title.className).toContain('truncate')
+    expect(title.className).toContain('max-w-[60%]')
+    expect(title.getAttribute('title')).toBe(long)
+  })
+
   it('renders the buckets in the mockup order with their runs', () => {
     renderList({
       runs: [

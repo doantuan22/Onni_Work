@@ -152,8 +152,12 @@ function NeedsYouStrip({ runs }: { runs: RunRecord[] }) {
             data-slot="needs-you-row"
             className="flex min-w-0 items-baseline gap-1.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
-            <span className="shrink-0 font-medium text-foreground">{runTitle(run)}</span>
-            <span className="truncate">{question ?? deriveAttention(run).label}</span>
+            {/* Capped, not just `shrink-0`: an unbounded title made the row wider than the column,
+                and the scroller then panned sideways on hover. */}
+            <span className="max-w-[60%] shrink-0 truncate font-medium text-foreground" title={runTitle(run)}>
+              {runTitle(run)}
+            </span>
+            <span className="min-w-0 truncate">{question ?? deriveAttention(run).label}</span>
           </Link>
         ))}
       </div>
