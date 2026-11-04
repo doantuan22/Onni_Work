@@ -684,7 +684,9 @@ class OpencodeSession implements AgentSession {
     if (dataLines.length === 0) return;
     let evt: OpencodeEvent;
     try {
-      evt = JSON.parse(dataLines.join('\n')) as OpencodeEvent;
+      const parsed: unknown = JSON.parse(dataLines.join('\n'));
+      if (!isRecord(parsed)) return; // `data: null` parses but is not an event
+      evt = parsed as OpencodeEvent;
     } catch {
       return;
     }

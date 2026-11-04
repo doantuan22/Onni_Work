@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import { readNdjson } from './ndjson.ts';
+import { isJsonObject, readNdjson } from './ndjson.ts';
 
 const collect = async (chunks: Array<Buffer | string>): Promise<string[]> => {
   const lines: string[] = [];
@@ -39,4 +39,15 @@ describe('readNdjson', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toHaveLength(32 * 1024 * 1024);
   }, 30_000);
+});
+
+describe('isJsonObject', () => {
+  it.each(['null', '42', '0', 'true', '"text"', '[]', '[1,2]'])('refuses the valid JSON %s', (text) => {
+    expect(isJsonObject(JSON.parse(text))).toBe(false);
+  });
+
+  it('accepts an object, including an empty one', () => {
+    expect(isJsonObject(JSON.parse('{}'))).toBe(true);
+    expect(isJsonObject(JSON.parse('{"type":"result"}'))).toBe(true);
+  });
 });

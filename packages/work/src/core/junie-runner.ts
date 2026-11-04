@@ -11,7 +11,7 @@ import type {
 } from './agent-runner.ts';
 import { isSignalTerminationExit, prependSystemPrompt, terminationLabel, trackChildExit } from './agent-runner.ts';
 import { AUTO_END_DELAY_MS, DEFAULT_RUN_TIMEOUT_MS, KILL_GRACE_MS } from './claude-cli-runner.ts';
-import { readNdjson } from './ndjson.ts';
+import { isJsonObject, readNdjson } from './ndjson.ts';
 import type { UiEvent } from './ui-events.ts';
 import { V1TextCoalescer } from './v1-text-coalescer.ts';
 import {
@@ -189,7 +189,9 @@ class JunieSession implements AgentSession {
             deadline.touch();
             let msg: JunieAcpMessage;
             try {
-              msg = JSON.parse(line) as JunieAcpMessage;
+              const parsed: unknown = JSON.parse(line);
+              if (!isJsonObject(parsed)) continue; // `null` / `42` / `true` parse but are not ACP frames
+              msg = parsed as JunieAcpMessage;
             } catch {
               continue; // e.g. "[Junie] Applying staged update..." plain-text lines
             }

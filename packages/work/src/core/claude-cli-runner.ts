@@ -24,7 +24,7 @@ import { disclaimedCommand } from './disclaim-spawn.ts';
 import { spawnTaskProcess } from './task-process-spawn.ts';
 import { resolveClaudeBin } from './claude-bin.ts';
 import { costWeightedTokens, type RawUsage } from './usage.ts';
-import { readNdjson } from './ndjson.ts';
+import { isJsonObject, readNdjson } from './ndjson.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
 import { claudeMcpAllowRules, toClaudeMcpConfig, type PrivateMcpServer } from './private-mcp.ts';
 import {
@@ -277,7 +277,10 @@ export class ClaudeCliRunner implements AgentRunner {
           deadline.touch();
           let msg: ClaudeStreamMessage;
           try {
-            msg = JSON.parse(line) as ClaudeStreamMessage;
+            const parsed: unknown = JSON.parse(line);
+            // `null` / `42` / `true` parse fine but are not frames: reading `.type` would throw.
+            if (!isJsonObject(parsed)) throw new SyntaxError('not an object');
+            msg = parsed as ClaudeStreamMessage;
           } catch {
             onEvent?.({ type: 'note', message: `claude: skipped unparseable stream line: ${truncate(line)}` });
             continue;

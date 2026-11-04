@@ -26,3 +26,12 @@ export async function* readNdjson(stream: NodeJS.ReadableStream): AsyncGenerator
   const tail = pending.join('').trim();
   if (tail) yield tail;
 }
+
+/**
+ * A parsed line that is an object. `JSON.parse('null')`, `'42'` and `'true'` succeed, so "it parsed"
+ * does not mean "it is a frame": a runner that read `.type` or `.method` off one of those threw and
+ * failed the whole run over a stray line from a wrapper script, a profile or a hook.
+ */
+export function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}

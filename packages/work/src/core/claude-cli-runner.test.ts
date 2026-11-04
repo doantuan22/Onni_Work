@@ -462,3 +462,18 @@ describe('waitForExit on a signal-only exit', () => {
     expect(Date.now() - started).toBeLessThan(1_000);
   });
 });
+
+describe('a stream with JSON lines that are not objects', () => {
+  const stubBin = fileURLToPath(new URL('./__fixtures__/claude/stub-prints-non-object-json.mjs', import.meta.url));
+
+  // `null`, `42` and `true` parse as JSON, so they got past the unparseable-line guard and the next
+  // property read threw — which fails the whole run instead of skipping one stray line.
+  it('skips them like any unparseable line and still finishes the real turn', async () => {
+    const runner = new ClaudeCliRunner({ bin: stubBin, timeoutMs: 20_000 });
+    const events: AgentEvent[] = [];
+    const result = await runner.run({ userPrompt: 'do it', cwd: process.cwd() }, (event) => events.push(event));
+    expect(result.text).toContain('work done');
+    expect(events.some((event) => event.type === 'text')).toBe(true);
+    expect(events.filter((event) => event.type === 'note' && /skipped/.test(event.message)).length).toBeGreaterThan(0);
+  }, 30_000);
+});

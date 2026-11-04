@@ -17,7 +17,7 @@ import {
   KILL_GRACE_MS,
 } from './claude-cli-runner.ts';
 import { ASK_MAX_QUESTIONS, parseAskRequest, type AskQuestion } from './ask.ts';
-import { readNdjson } from './ndjson.ts';
+import { isJsonObject, readNdjson } from './ndjson.ts';
 import { skippedServersNote, toCodexConfigOverrides } from './private-mcp.ts';
 import { V1TextCoalescer } from './v1-text-coalescer.ts';
 import {
@@ -212,7 +212,9 @@ class CodexSession implements AgentSession {
             deadline.touch();
             let msg: CodexAppServerMessage;
             try {
-              msg = JSON.parse(line) as CodexAppServerMessage;
+              const parsed: unknown = JSON.parse(line);
+              if (!isJsonObject(parsed)) continue; // `null` / `42` / `true` parse but are not JSON-RPC
+              msg = parsed as CodexAppServerMessage;
             } catch {
               continue; // not JSON-RPC — skip
             }
