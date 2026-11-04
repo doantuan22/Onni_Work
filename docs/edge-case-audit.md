@@ -17,6 +17,10 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 | E4 | Thấp | Workflow `if` node | `**/` trong glob khớp nhầm tên file có tiền tố | Đã sửa | `478781d` |
 | E5 | **Cao** | Merge của manager | Worktree đã checkout nhánh khác / detached HEAD: `main` bị đẩy tới commit của nhánh kia, báo cáo vẫn ghi `onni/<task>` | Đã sửa | `5ee3cd9` |
 | E6 | Trung bình | Landing in-place | Timeout 10 phút của check không bao giờ giải phóng landing khi check bị treo | Đã sửa | `6909d3d` |
+| E7 | Trung bình | Dispatch / ngân sách | Sai số dấu phẩy động làm từ chối child xin đúng phần ngân sách còn lại ("requested $0.80 but only $0.80 left") | Đã sửa | `57b05bb` |
+| E8 | Trung bình | Lưu trữ run | `readEventsTail` làm hỏng ký tự nhiều byte nằm ngang ranh giới chunk 64 KiB (đuôi transcript mà manager `peek`) | Đã sửa | `e5f0a9a` |
+| E9 | Thấp–Trung bình | Đặt tên nhánh | `sanitizeBranchName` trả tên mà git từ chối (`yarn.lock-`, `.lock` sau khi cắt độ dài, `HEAD`); lỗi bị nuốt, quy ước đặt tên bị bỏ qua âm thầm | Đã sửa | `5af07d1` |
+| E10 | Thấp | Output của check | Giải mã từng chunk làm hỏng ký tự nhiều byte bị cắt giữa hai chunk pipe (phòng ngừa, không tái hiện được trên máy này) | Đã sửa | `75a4294` |
 
 ## E1 — Giờ hẹn trong khoảng nhảy DST chạy sai bên
 
@@ -93,3 +97,46 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 |---|---|
 | `runManagerMerge`: CAS bằng `update-ref <ref> <new> <old>`, kiểm worktree khác đang giữ nhánh base, từ chối khi checkout chính bẩn | Đúng. Chỉ thiếu kiểm HEAD (E5). |
 | `spawnTaskProcess` trên Windows | Job Object kill-on-close hoạt động như thiết kế: hủy trong ~1s. |
+
+## E7 — Làm tròn ngân sách còn lại của dispatch
+
+- **Vị trí:** `packages/work/src/dispatch/engine.ts` (`remainingBudgetUsd`), so sánh ở `RunManager.carveChildBudget` (`maxCost > remaining`).
+- **Nguyên nhân:** cộng/trừ số thực nhị phân để lại sai số: `3 − 1.1 − 1.1 = 0.7999999999999998`.
+- **Tái hiện:** ngân sách 3, hai child 1.1, child thứ ba xin đúng 0.8 thì bị từ chối với thông báo "requested $0.80 but only $0.80 of the budget is left". Tương tự `0.3 − 0.1 − 0.1`, `10 − 3×3.33`.
+- **Vì sao test cũ không bắt được:** các test của hàm dùng `toBeCloseTo`, che đúng loại sai số này.
+- **Cách sửa:** làm tròn kết quả tới 1e-6 USD; chi phí thật dưới một cent (`0.0314`) vẫn giữ nguyên. Phần dư âm cực nhỏ thành `-0`, vẫn bị coi là hết ngân sách.
+- **Kiểm chứng:** 5 test dùng `toBe` chính xác, đỏ trước sửa.
+
+## E8 — Đuôi transcript bị hỏng ký tự nhiều byte
+
+- **Vị trí:** `packages/work/src/runs/store.ts` (`readEventsTail`), dùng bởi `peek` của dispatch.
+- **Nguyên nhân:** đọc ngược từng chunk 64 KiB và giải mã từng chunk riêng; một ký tự UTF-8 nằm ngang ranh giới thành hai `U+FFFD`.
+- **Tái hiện:** 6 event, mỗi event hàng chục KB chữ `ệ`: mọi số lượng `count` thử (1–4) đều trả ít nhất một event bị hỏng so với `readEvents`.
+- **Vì sao test cũ không bắt được:** phần đệm trong test cũ chỉ là ASCII.
+- **Cách sửa:** ghép Buffer rồi giải mã một lần; đếm xuống dòng trên byte (không còn regex trên chuỗi tích luỹ, cũng bớt chi phí bình phương).
+- **Kiểm chứng:** test tham số hoá cho ký tự 2, 3 và 4 byte; hai ca 3 và 4 byte đỏ trước sửa (ca 2 byte vô tình khớp căn lề).
+
+## E9 — Tên nhánh do namer sinh ra bị git từ chối
+
+- **Vị trí:** `packages/work/src/runs/auto-name.ts` (`sanitizeBranchName`).
+- **Nguyên nhân:** `.lock` bị loại trước khi cắt dấu chấm/gạch ở cuối thành phần, và cắt độ dài diễn ra sau cùng, nên `yarn.lock-` → `yarn.lock` (git từ chối). `HEAD` cũng bị từ chối.
+- **Tái hiện:** fuzz 1277 chuỗi với `git check-ref-format --branch` làm trọng tài: 52 tên bị từ chối. Ví dụ thực tế: `chore/update yarn.lock-`, `fix yarn.lock.`.
+- **Tác động:** `git worktree add -b` thất bại, tác vụ rơi về `onni/<id8>` mà người dùng không được báo.
+- **Cách sửa:** dọn từng thành phần lặp cho đến khi ổn định (loại dấu chấm/gạch đầu cuối, đuôi `.lock`), dọn lại sau khi cắt độ dài, loại `HEAD` và `@`.
+- **Kiểm chứng:** 12 ca đối chiếu với git thật; 7 ca đỏ trước sửa. Chạy lại fuzz: 0/951 tên bị từ chối.
+
+## E10 — Output của check giải mã từng chunk (phòng ngừa)
+
+- **Vị trí:** `RunManager.runCheckStep` (`workflows/run.ts`), `runShellCheck` (`workflows/landing.ts`).
+- **Nguyên nhân:** `chunk.toString('utf8')` cho từng chunk của pipe: ký tự bị cắt giữa hai chunk thành `U+FFFD`. Output này hiện cho người dùng và được gửi ngược cho agent.
+- **Trạng thái tái hiện:** **không tái hiện được trên pipe Windows của máy này** (chunk không cắt ngang ký tự), nên không có test đỏ qua tiến trình thật. Đây là mẫu lỗi đã biết của Node nên vẫn sửa.
+- **Cách sửa:** `core/utf8-chunks.ts` (`utf8Collector`, một `StringDecoder` cho mỗi luồng). Test tất định cắt Buffer ở mọi vị trí byte và chứng minh `toString` từng chunk tạo `U+FFFD` còn collector thì không.
+
+### Bổ sung vào danh sách đã kiểm tra
+
+| Khu vực | Kết luận |
+|---|---|
+| `dispatch/tree-fs.ts` (hộp thư, kế hoạch, brief) | `recipient` và `from` chỉ đến từ mã nội bộ nên không có đường đi xuyên thư mục. Hai thông điệp cùng người gửi, cùng chủ đề, cùng mili giây sẽ trùng tên file (khả năng cực thấp). |
+| `listInbox` | So `mtime > seenAt` bằng `>`: một thông điệp đến đúng mili giây với `inboxSeenAt` có thể bị coi là đã thấy. Cửa sổ 1 ms, không sửa. |
+| `secrets-cli` nhập ẩn | Giải mã từng chunk và `value.slice(0, -1)` khi xoá lùi cắt đôi cặp thay thế (emoji). Chỉ khi dán giá trị có emoji; không sửa. |
+| `readEvents` đầy đủ | Đọc cả file một lần nên không bị E8. |
