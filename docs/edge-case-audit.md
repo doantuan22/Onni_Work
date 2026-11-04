@@ -171,3 +171,17 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 | Prompt truyền qua argv của cursor | Antigravity chặn độ dài ở 24.000 ký tự; cursor thì không, nên prompt quá dài (Windows ~32 K, Linux 128 KB một đối số) chỉ cho thông báo `spawn ENAMETOOLONG`/`E2BIG`, không treo hay mất dữ liệu. Prompt bắt đầu bằng `-` có thể bị CLI hiểu là cờ nhưng **không kiểm chứng được nếu không có binary thật**, và `--` có thể không được hỗ trợ; để nguyên theo nguyên tắc không đổi cơ chế đang chạy khi chưa có bằng chứng. |
 | `armInactivityDeadline` | Ngưỡng cứng là 8× cửa sổ im lặng, mặc định 30 phút nên không tới giới hạn 2³¹ ms của `setTimeout`; chờ của node bị chặn ở 1 tuần (≈604,8 triệu ms). |
 | `stderr` của cursor / antigravity | Giải mã từng chunk, chỉ ảnh hưởng nội dung thông báo lỗi. Không sửa. |
+
+## Câu hỏi mở (chưa kết luận, cần kiểm chứng với CLI thật)
+
+### Q1 — `total_cost_usd` của Claude là cộng dồn theo phiên hay theo lượt?
+
+- **Mâu thuẫn trong mã:** `claude-cli-runner.ts` phát `{ type: 'cost', usd: total_cost_usd }` ở mỗi frame `result`, và `RunManager` cộng `stepCost += event.usd` (v1). Trong khi `AGENT_PROTOCOL.md` ghi `costUsd` của `usage.updated` (v2) là "cumulative-for-session", và `claude-ui-mapper.ts` phát cùng giá trị làm `costUsd` v2.
+- **Nếu `total_cost_usd` là cộng dồn trong một phiên nhiều lượt:** lượt 1 tốn $1 (tổng 1), lượt 2 tốn thêm $1 (tổng 2) thì chi phí step là 1 + 2 = $3 thay vì $2, làm hạn mức `maxCostUsd` và ngân sách dispatch bị tính dư.
+- **Vì sao chưa kết luận:** toàn bộ fixture (`__fixtures__/claude/*.ndjson`) chỉ có phiên một lượt (một frame `result`), nên không có dữ liệu về lượt thứ hai. Phụ thuộc vào hành vi thật của CLI.
+- **Cách kiểm chứng:** chạy `claude -p --input-format stream-json --output-format stream-json --verbose`, gửi hai tin nhắn người dùng liên tiếp trong một tiến trình và so `total_cost_usd` của hai frame `result`. Việc này gọi API thật (tốn token) nên chưa làm.
+
+### Q2 — Hạn mức token/chi phí chỉ được cập nhật ở cuối mỗi lượt
+
+- **Quan sát:** `handleClaudeMessage` cố ý trả 0 cho frame `assistant` (tránh cộng dư, #716); token và chi phí chỉ vào ở frame `result`. Một lượt tự chủ dài (trần cứng 4 giờ) không thể bị `maxTokens` / `maxCostUsd` chặn giữa chừng; chỉ thời gian và số vòng lặp có tác dụng.
+- **Đánh giá:** đây là đánh đổi thiết kế đã được ghi chú trong mã, không phải lỗi. Nêu ra để người dùng biết hạn mức chi phí chỉ kiểm tra ở ranh giới lượt.
