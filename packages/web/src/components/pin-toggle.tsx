@@ -56,7 +56,7 @@ export function PinToggle({
           onToggle(!pinned)
         }}
         className={cn(
-          'inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-soft-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+          'inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-soft-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
           pinned && TOGGLE_ON_CLASS,
           className,
         )}
