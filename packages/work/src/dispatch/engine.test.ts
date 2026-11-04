@@ -61,6 +61,28 @@ describe('remainingBudgetUsd', () => {
     expect(remainingBudgetUsd(parent(10, 1.5), children)).toBeCloseTo(3.5);
   });
 
+  // The other tests read the sum with toBeCloseTo, which is exactly how binary-float dust got through:
+  // 3 − 1.1 − 1.1 is 0.7999999999999998, so a child asking for the exact $0.80 left was refused with
+  // "requested $0.80 but only $0.80 is left".
+  it.each<[number, number[], number]>([
+    [3, [1.1, 1.1], 0.8],
+    [0.3, [0.1, 0.1], 0.1],
+    [10, [3.33, 3.33, 3.33], 0.01],
+    [1, [0.1, 0.2, 0.3], 0.4],
+  ])('is exact in cents: a $%d budget with children %j leaves exactly $%d', (budget, kids, left) => {
+    const children = kids.map((cap, i) => record({ id: `c${i}`, dispatch: { rootRunId: 'm', parentRunId: 'p', budgetUsd: cap } }));
+    expect(remainingBudgetUsd(parent(budget), children)).toBe(left);
+  });
+
+  it('reads a fully promised budget as exactly zero, not dust either side of it', () => {
+    const children = [0.1, 0.2, 0.3].map((cap, i) => record({ id: `c${i}`, dispatch: { rootRunId: 'm', parentRunId: 'p', budgetUsd: cap } }));
+    expect(Math.abs(remainingBudgetUsd(parent(0.6), children)!)).toBe(0);
+  });
+
+  it('keeps a real sub-cent cost (it is not rounded away)', () => {
+    expect(remainingBudgetUsd(parent(1, 0.0314), [])).toBe(0.9686);
+  });
+
   it('goes negative rather than clamping — an overspent commander must read as overspent', () => {
     expect(remainingBudgetUsd(parent(1, 4), [])).toBeCloseTo(-3);
   });

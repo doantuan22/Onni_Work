@@ -79,7 +79,9 @@ export function remainingBudgetUsd(parent: RunRecord, children: readonly RunReco
       ? (settledCost ?? child.dispatch?.budgetUsd ?? 0)
       : (child.dispatch?.budgetUsd ?? 0));
   }, 0);
-  return budget - (parent.costUsd ?? 0) - promised;
+  // Rounded to a millionth of a dollar: binary-float sums of cents leave dust (3 − 1.1 − 1.1 is
+  // 0.7999999999999998), and the caller compares this to a requested cap with `>`.
+  return Math.round((budget - (parent.costUsd ?? 0) - promised) * 1e6) / 1e6;
 }
 
 /** A dollar amount as the transcript and the task order spell it. */
