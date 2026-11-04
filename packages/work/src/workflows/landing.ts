@@ -1,6 +1,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { BASH_MISSING_MESSAGE, resolveBash, withBashPath } from '../core/bash-path.ts';
 import { ONNI_DATA_EXCLUDE } from '../data-gitignore.ts';
+import { killProcessTree } from '../core/antigravity-runner.ts';
 import { gitHasIdentity, unresolvedConflicts } from '../git-worktree.ts';
 
 /**
@@ -55,26 +56,39 @@ function git(cwd: string, args: string[], timeout = 0): Promise<GitResult> {
 const reason = (res: GitResult, fallback: string) =>
   (res.stderr.trim() || res.stdout.trim()).split('\n').slice(0, 3).join('\n') || fallback;
 
-export function runShellCheck(command: string, cwd: string, env?: NodeJS.ProcessEnv): Promise<{ ok: boolean; output: string }> {
+export function runShellCheck(
+  command: string,
+  cwd: string,
+  env?: NodeJS.ProcessEnv,
+  timeoutMs = CHECK_TIMEOUT_MS,
+): Promise<{ ok: boolean; output: string }> {
   const bash = resolveBash();
   if (!bash) return Promise.resolve({ ok: false, output: BASH_MISSING_MESSAGE });
   return new Promise((resolve) => {
-    const child = spawn(bash.path, ['-lc', command], { cwd, env: withBashPath(env ?? process.env, bash) });
+    // A group of its own on POSIX, so the timeout can sweep what the check started.
+    const child = spawn(bash.path, ['-lc', command], { cwd, env: withBashPath(env ?? process.env, bash), detached: process.platform !== 'win32' });
     let output = '';
+    let settled = false;
+    const settle = (result: { ok: boolean; output: string }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
     const collect = (chunk: Buffer) => {
       output = (output + chunk.toString('utf8')).slice(-CHECK_OUTPUT_TAIL);
     };
-    const timer = setTimeout(() => child.kill('SIGTERM'), CHECK_TIMEOUT_MS);
+    // Kill the whole tree and answer now: killing only bash left its child holding the stdout pipe,
+    // so `close` never fired and this "bound" lasted as long as the hung command did.
+    const timer = setTimeout(() => {
+      killProcessTree(child, true);
+      const note = `(timed out after ${Math.round((timeoutMs / 60_000) * 10) / 10} min — killed)`;
+      settle({ ok: false, output: [output.trim(), note].filter(Boolean).join('\n') });
+    }, timeoutMs);
     child.stdout.on('data', collect);
     child.stderr.on('data', collect);
-    child.on('error', (err) => {
-      clearTimeout(timer);
-      resolve({ ok: false, output: `failed to spawn: ${err.message}` });
-    });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      resolve({ ok: code === 0, output: output.trim() || `(no output, exit ${code ?? 'signal'})` });
-    });
+    child.on('error', (err) => settle({ ok: false, output: `failed to spawn: ${err.message}` }));
+    child.on('close', (code) => settle({ ok: code === 0, output: output.trim() || `(no output, exit ${code ?? 'signal'})` }));
   });
 }
 
