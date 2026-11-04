@@ -331,6 +331,25 @@ describe('if-node helpers', () => {
     expect(globMatch('src/a.ts', 'src/aXts')).toBe(false)
   })
 
+  // `**/` is "zero or more whole directories": it ends at a `/`, so it never lets the next literal
+  // start mid-name. It used to become a bare `.*`, so `**/package.json` also matched `my-package.json`.
+  it.each<[string, string, boolean]>([
+    ['**/package.json', 'package.json', true],
+    ['**/package.json', 'packages/web/package.json', true],
+    ['**/package.json', 'my-package.json', false],
+    ['**/package.json', 'web/my-package.json', false],
+    ['src/**/x.ts', 'src/x.ts', true],
+    ['src/**/x.ts', 'src/a/b/x.ts', true],
+    ['src/**/x.ts', 'src/foox.ts', false],
+    ['**/migrations/**', 'db/migrations/001.sql', true],
+    ['**/migrations/**', 'db/my-migrations/001.sql', false],
+    ['dist/**/*.js', 'dist/x.js', true],
+    ['dist/**/*.js', 'distx.js', false],
+    ['**', 'any/depth/at/all', true],
+  ])('globMatch(%j, %j) is %s', (glob, path, expected) => {
+    expect(globMatch(glob, path)).toBe(expected)
+  })
+
   it('compareValues: numeric when both sides are numbers, string otherwise', () => {
     expect(compareValues('42', '>', 10)).toBe(true)
     expect(compareValues(3.5, '<=', '3.5')).toBe(true)

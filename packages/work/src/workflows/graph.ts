@@ -643,9 +643,12 @@ export function globMatch(glob: string, path: string): boolean {
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i] as string;
     if (c === '*' && glob[i + 1] === '*') {
-      re += '.*';
       i++;
-      if (glob[i + 1] === '/') i++;
+      // `**/` is zero or more WHOLE directories — it must end at a `/`, or `**/x.ts` matches `foox.ts`.
+      if (glob[i + 1] === '/') {
+        re += '(?:.*/)?';
+        i++;
+      } else re += '.*';
     } else if (c === '*') re += '[^/]*';
     else if (c === '?') re += '[^/]';
     else re += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
