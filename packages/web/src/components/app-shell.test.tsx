@@ -349,6 +349,16 @@ describe('AppShell', () => {
       expect(within(footer()).getByText('demo_dev')).toBeTruthy()
     })
 
+    it('puts the repo chip on its own line under the lockup, with the full text on hover', () => {
+      renderShell('/', { repo: { name: 'Multi Agent', branch: 'fix/ui-polish-review' } })
+      const chip = document.querySelector('[data-slot="repo-chip"]') as HTMLElement
+      const lockup = document.querySelector('[data-slot="brand-lockup"]') as HTMLElement
+      // Beside the fixed-width lockup the chip was squeezed to ~80px and lost the branch.
+      expect(chip.parentElement).not.toBe(lockup.parentElement)
+      expect(chip.className).toContain('truncate')
+      expect(chip.getAttribute('title')).toBe('Multi Agent / fix/ui-polish-review')
+    })
+
     it('renders the Inbox badge only for a non-zero count', () => {
       renderShell('/', { inboxCount: 2 })
       const inbox = within(nav()).getByRole('link', { name: /Inbox/ })

@@ -406,20 +406,23 @@ function SidebarContent({
       // an `@min-[…]/sidebar:` query and returns when the user drags the column wider.
       className="@container/sidebar flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
-      <div className={cn('flex items-center gap-[9px] px-3.5 pb-2.5', compactHeader ? 'pt-1.5' : 'pt-3.5')}>
-        <BrandLockup name={brandName} logoUrl={brandLogoUrl} />
+      <div className={cn('px-3.5 pb-2.5', compactHeader ? 'pt-1.5' : 'pt-3.5')}>
+        <div className="flex items-center gap-[9px]">
+          <BrandLockup name={brandName} logoUrl={brandLogoUrl} />
+          {headerAction ? <div className="ml-auto shrink-0">{headerAction}</div> : null}
+        </div>
         {/* With project groups mounted the boot repo/branch is one group header among many —
-            a chip repeating it up here would just be the first group's header said twice. */}
+            a chip repeating it up here would just be the first group's header said twice.
+            Its own line, not beside the lockup: the lockup is fixed-width, so beside it the chip
+            was squeezed to ~80px and lost the branch. */}
         {repo && !projectGroups ? (
           <span
             data-slot="repo-chip"
-            className="ml-auto min-w-0 truncate text-right font-mono text-[11px] font-medium text-soft-foreground"
+            title={`${repo.name} / ${repo.branch}`}
+            className="mt-0.5 block truncate font-mono text-[11px] font-medium text-soft-foreground"
           >
             {repo.name} / {repo.branch}
           </span>
-        ) : null}
-        {headerAction ? (
-          <div className={cn('shrink-0', (!repo || projectGroups) && 'ml-auto')}>{headerAction}</div>
         ) : null}
       </div>
 
