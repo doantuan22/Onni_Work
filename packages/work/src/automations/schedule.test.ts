@@ -172,3 +172,60 @@ describe('once (#771)', () => {
     expect(automationScheduleSchema.safeParse(once('2026-10-05', 23)).success).toBe(true);
   });
 });
+
+// A wall time inside a spring-forward gap must resolve to the instant AFTER the gap (RFC 5545:
+// read it with the offset in force before the gap), in every zone. It used to depend on how the
+// 3-step offset iteration happened to land: New York fired at 03:30, Berlin/Warsaw/Sydney/Cairo an
+// hour EARLY (01:30), and nothing pinned which side was right.
+describe('DST gaps and folds resolve to one deterministic instant', () => {
+  it.each<[string, [number, number, number, number, number], string]>([
+    ['America/New_York', [2026, 3, 8, 2, 30], '2026-03-08 03:30'],
+    [WARSAW, [2026, 3, 29, 2, 30], '2026-03-29 03:30'],
+    ['Europe/London', [2026, 3, 29, 1, 30], '2026-03-29 02:30'],
+    ['Australia/Sydney', [2025, 10, 5, 2, 30], '2025-10-05 03:30'],
+    ['Africa/Cairo', [2025, 4, 25, 0, 30], '2025-04-25 01:30'],
+    ['Asia/Beirut', [2025, 3, 30, 0, 15], '2025-03-30 01:15'],
+    // A 30-minute gap: 02:00-02:30 does not exist, so 02:15 lands at 02:45.
+    ['Australia/Lord_Howe', [2025, 10, 5, 2, 15], '2025-10-05 02:45'],
+  ])('puts the nonexistent %s wall time %j after the gap', (zone, [y, mo, d, h, mi], expected) => {
+    const instant = zonedWallTimeToUtc(y, mo, d, h, mi, zone)!;
+    expect(wall(instant, zone).slice(0, 16)).toBe(expected);
+  });
+
+  it('takes the FIRST of two instants for a wall time that occurs twice', () => {
+    // Warsaw falls back 2026-10-25 03:00 → 02:00: 02:30 happens at 00:30Z (CEST) and 01:30Z (CET).
+    expect(zonedWallTimeToUtc(2026, 10, 25, 2, 30, WARSAW)).toBe(at('2026-10-25T00:30:00Z'));
+    expect(zonedWallTimeToUtc(2026, 11, 1, 1, 30, NEW_YORK)).toBe(at('2026-11-01T05:30:00Z'));
+  });
+
+  it('reads an ordinary wall time exactly, every day of a year, in zones with every kind of DST', () => {
+    for (const zone of [NEW_YORK, WARSAW, 'Australia/Sydney', 'Australia/Lord_Howe', 'Africa/Cairo', 'Asia/Kolkata', 'Asia/Kathmandu', 'Pacific/Chatham', 'America/Sao_Paulo']) {
+      for (let day = 0; day < 365; day += 1) {
+        const date = new Date(Date.UTC(2026, 0, 1 + day));
+        const parts = [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()] as const;
+        const instant = zonedWallTimeToUtc(...parts, 12, 0, zone)!;
+        expect(wall(instant, zone).slice(0, 16), `${zone} ${parts.join('-')}`).toBe(`${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')} 12:00`);
+      }
+    }
+  });
+
+  it('never lists an instant twice or out of order — an hourly schedule across every kind of gap', () => {
+    for (const zone of [NEW_YORK, WARSAW, 'Africa/Cairo', 'Asia/Beirut', 'Antarctica/Troll', 'Australia/Lord_Howe']) {
+      const occurrences = occurrencesBetween({ type: 'hours', every: 1 }, at('2025-01-01T00:00:00Z'), at('2026-12-31T00:00:00Z'), zone, 100_000);
+      for (let i = 1; i < occurrences.length; i += 1) {
+        expect(occurrences[i]! > occurrences[i - 1]!, `${zone} #${i} ${wall(occurrences[i]!, zone)}`).toBe(true);
+      }
+    }
+  });
+
+  it('fires a midnight schedule on the day of a midnight spring-forward, not the evening before', () => {
+    // Cairo skips 00:00-01:00 on 2025-04-25.
+    const found = occurrencesBetween({ type: 'daily', hour: 0, minute: 0 }, at('2025-04-23T12:00:00Z'), at('2025-04-27T12:00:00Z'), 'Africa/Cairo');
+    expect(found.map((ms) => wall(ms, 'Africa/Cairo').slice(0, 16))).toEqual(['2025-04-24 00:00', '2025-04-25 01:00', '2025-04-26 00:00', '2025-04-27 00:00']);
+  });
+
+  it('keeps a once schedule at or after the time it names', () => {
+    const instant = onceInstant({ type: 'once', date: '2026-03-29', hour: 2, minute: 30 }, WARSAW)!;
+    expect(wall(instant, WARSAW).slice(0, 16)).toBe('2026-03-29 03:30');
+  });
+});

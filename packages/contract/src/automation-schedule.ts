@@ -202,7 +202,8 @@ export function occurrencesBetween(
     for (const [hour, minute] of wallTimesOn(s, isoWeekday(year, month, day))) {
       const at = zonedWallTimeToUtc(year, month, day, hour, minute, timeZone);
       if (at === null) return out;
-      if (at >= fromMs && at < toMs) {
+      // Two wall times can resolve to one instant (an hourly shape across a gap): list it once.
+      if (at >= fromMs && at < toMs && at > (out.at(-1) ?? -Infinity)) {
         out.push(at);
         if (out.length >= limit) return out;
       }

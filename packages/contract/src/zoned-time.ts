@@ -22,6 +22,8 @@ export interface ZonedParts {
   weekday: number;
 }
 
+const DAY_MS = 86_400_000;
+
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
 function formatter(timeZone: string): Intl.DateTimeFormat {
@@ -80,7 +82,16 @@ export function timeZoneOffsetMs(timeZone: string, utcMs: number): number | null
   return asUtc - utcMs;
 }
 
-/** The instant at which a zone's clock reads the given wall time. See the header for DST. */
+/**
+ * The instant at which a zone's clock reads the given wall time. See the header for DST.
+ *
+ * The zone's offset a day either side of the wall time names the only two candidates; one that
+ * reads back as the wall time is a real instant. Both reading back is the fall-back hour (take the
+ * first, like RFC 5545); neither is the spring-forward gap, which reads with the offset from
+ * BEFORE the gap and so lands just after it. A fixed-point iteration used to settle on
+ * either side depending on the zone's sign — `02:30` fired at 03:30 in New York and 01:30, an hour
+ * early, in Berlin or Sydney.
+ */
 export function zonedWallTimeToUtc(
   year: number,
   month: number,
@@ -90,15 +101,17 @@ export function zonedWallTimeToUtc(
   timeZone: string,
 ): number | null {
   const wallAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
-  let candidate = wallAsUtc;
-  for (let i = 0; i < 3; i += 1) {
-    const offset = timeZoneOffsetMs(timeZone, candidate);
-    if (offset === null) return null;
-    const next = wallAsUtc - offset;
-    if (Math.abs(next - candidate) < 1_000) return next;
-    candidate = next;
-  }
-  return candidate;
+  const before = timeZoneOffsetMs(timeZone, wallAsUtc - DAY_MS);
+  const after = timeZoneOffsetMs(timeZone, wallAsUtc + DAY_MS);
+  if (before === null || after === null) return null;
+  const early = wallAsUtc - before;
+  const late = wallAsUtc - after;
+  const earlyReads = timeZoneOffsetMs(timeZone, early) === before;
+  const lateReads = timeZoneOffsetMs(timeZone, late) === after;
+  if (earlyReads && lateReads) return Math.min(early, late);
+  if (earlyReads) return early;
+  if (lateReads) return late;
+  return early;
 }
 
 /** `true` when `Intl` knows the zone. */
