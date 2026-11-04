@@ -7,6 +7,7 @@ import { discoverSkills, type Skill } from './skills.ts';
 import { resolveProfileEnvForRoot } from './workspace/agent-profiles.ts';
 import { workflowStepSchema, type WorkflowStepDef } from './workflows/types.ts';
 import { E2E_CONFIG_FILES } from './e2e-setup.ts';
+import { readTextFile } from './text-decode.ts';
 
 /**
  * Chain-from-prompt (spec 008): one cheap `claude` call turns the user's task
@@ -142,7 +143,7 @@ export async function detectVerifyCommands(repoRoot: string): Promise<string[]> 
   let e2e: string | undefined;
   const pkgSchema = z.object({ scripts: z.record(z.string(), z.string()).default({}) });
   try {
-    const raw: unknown = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
+    const raw: unknown = JSON.parse(await readTextFile(join(repoRoot, 'package.json')));
     const pkg = pkgSchema.safeParse(raw);
     if (pkg.success) {
       if (pkg.data.scripts['test']) out.push('npm test');

@@ -1,9 +1,9 @@
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { worktreeLifecycleConfigSchema } from '@onni/contract';
 import { loadWorkspaceConfig, type WorkspaceConfig } from './workspace/config.ts';
 import { RUNNER_IDS } from './core/agent-runner.ts';
+import { readTextFile } from './text-decode.ts';
 
 /**
  * Optional advanced config at `.ai/onni/config.json`. Zero-config rule:
@@ -200,7 +200,7 @@ export async function loadConfig(repoRoot: string): Promise<OnniConfig> {
   const machine = (await loadWorkspaceConfig()).agentDefaults;
   let raw: string;
   try {
-    raw = await readFile(join(repoRoot, '.ai/onni', 'config.json'), 'utf8');
+    raw = await readTextFile(join(repoRoot, '.ai/onni', 'config.json'));
   } catch {
     return configSchema.parse(withMachineDefaults({}, machine));
   }
@@ -225,7 +225,7 @@ export async function loadConfig(repoRoot: string): Promise<OnniConfig> {
 async function ownWorktreeRetention(repoRoot: string): Promise<number | undefined> {
   let raw: string;
   try {
-    raw = await readFile(join(repoRoot, '.ai/onni', 'config.json'), 'utf8');
+    raw = await readTextFile(join(repoRoot, '.ai/onni', 'config.json'));
   } catch {
     return undefined; // no file — nothing set
   }
@@ -258,7 +258,7 @@ export async function projectGatedSkillsRepos(repoRoot: string): Promise<Set<str
   const none = new Set<string>();
   let raw: string;
   try {
-    raw = await readFile(join(repoRoot, '.ai/onni', 'config.json'), 'utf8');
+    raw = await readTextFile(join(repoRoot, '.ai/onni', 'config.json'));
   } catch {
     // No file — the defaults are in effect, so they are the opt-in set.
     return new Set(DEFAULT_SKILLS_REPOS.map((r) => r.repo));

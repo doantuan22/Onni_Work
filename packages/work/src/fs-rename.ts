@@ -1,5 +1,6 @@
 import { promises as fsp, renameSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
+import { decodeText } from './text-decode.ts';
 
 /**
  * `renameSync` that survives Windows' transient sharing violations (telemetry 4a7c9f6c).
@@ -67,7 +68,8 @@ export interface ReadRetryOptions {
 /** UTF-8 `readFile` under the same policy: the scanner handle that blocks a rename blocks an
  *  open too, and a caller that reads "unreadable" as "absent" then overwrites real state. */
 export async function readFileWithRetry(path: string, options: ReadRetryOptions = {}): Promise<string> {
-  const read = options.readFile ?? ((p: string) => fsp.readFile(p, 'utf8'));
+  // Decoded, not `'utf8'`: `~/.onni/config.json` is hand-edited, and a BOM or UTF-16 file must not read as corrupt.
+  const read = options.readFile ?? (async (p: string) => decodeText(await fsp.readFile(p)));
   if ((options.platform ?? process.platform) !== 'win32') return read(path);
   const sleep = options.sleep ?? delay;
   for (let attempt = 0; ; attempt += 1) {
