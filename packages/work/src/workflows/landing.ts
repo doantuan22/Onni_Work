@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import { BASH_MISSING_MESSAGE, resolveBash, withBashPath } from '../core/bash-path.ts';
 import { ONNI_DATA_EXCLUDE } from '../data-gitignore.ts';
 import { killProcessTree } from '../core/antigravity-runner.ts';
+import { utf8Collector } from '../core/utf8-chunks.ts';
 import { gitHasIdentity, unresolvedConflicts } from '../git-worktree.ts';
 
 /**
@@ -75,9 +76,12 @@ export function runShellCheck(
       clearTimeout(timer);
       resolve(result);
     };
-    const collect = (chunk: Buffer) => {
-      output = (output + chunk.toString('utf8')).slice(-CHECK_OUTPUT_TAIL);
+    const append = (text: string) => {
+      output = (output + text).slice(-CHECK_OUTPUT_TAIL);
     };
+    // One decoder per stream: a character split across two chunks must not become two U+FFFD.
+    const stdout = utf8Collector(append);
+    const stderr = utf8Collector(append);
     // Kill the whole tree and answer now: killing only bash left its child holding the stdout pipe,
     // so `close` never fired and this "bound" lasted as long as the hung command did.
     const timer = setTimeout(() => {
@@ -85,10 +89,14 @@ export function runShellCheck(
       const note = `(timed out after ${Math.round((timeoutMs / 60_000) * 10) / 10} min — killed)`;
       settle({ ok: false, output: [output.trim(), note].filter(Boolean).join('\n') });
     }, timeoutMs);
-    child.stdout.on('data', collect);
-    child.stderr.on('data', collect);
+    child.stdout.on('data', stdout.write);
+    child.stderr.on('data', stderr.write);
     child.on('error', (err) => settle({ ok: false, output: `failed to spawn: ${err.message}` }));
-    child.on('close', (code) => settle({ ok: code === 0, output: output.trim() || `(no output, exit ${code ?? 'signal'})` }));
+    child.on('close', (code) => {
+      stdout.end();
+      stderr.end();
+      settle({ ok: code === 0, output: output.trim() || `(no output, exit ${code ?? 'signal'})` });
+    });
   });
 }
 

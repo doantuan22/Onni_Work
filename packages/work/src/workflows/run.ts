@@ -31,6 +31,7 @@ import { describeReaped, reapTaskProcesses, taskProcessReapEnabled } from '../co
 import { spawnTaskProcess } from '../core/task-process-spawn.ts';
 import { processJobs } from '../core/process-jobs.ts';
 import { BASH_MISSING_MESSAGE, resolveBash, withBashPath } from '../core/bash-path.ts';
+import { utf8Collector } from '../core/utf8-chunks.ts';
 import { parseUsageLimit } from '../core/usage-limit.ts';
 import { diskFullAgentErrorText } from '../disk-space.ts';
 import { accountStateHint, classifyAgentFailure, MAX_TRANSIENT_RETRIES, transientRetryDelayMs } from '../core/agent-failure-class.ts';
@@ -9888,14 +9889,17 @@ export class RunManager {
       state.interrupt = () => child.kill('SIGTERM');
 
       let output = '';
-      const collect = (chunk: Buffer) => {
+      const append = (text: string) => {
         if (output.length < CHECK_OUTPUT_CAP) {
-          output += chunk.toString('utf8');
+          output += text;
           if (output.length >= CHECK_OUTPUT_CAP) output += '\n… (output truncated)';
         }
       };
-      child.stdout.on('data', collect);
-      child.stderr.on('data', collect);
+      // One decoder per stream: a character split across two chunks must not become two U+FFFD.
+      const stdout = utf8Collector(append);
+      const stderr = utf8Collector(append);
+      child.stdout.on('data', stdout.write);
+      child.stderr.on('data', stderr.write);
       child.on('error', (err) => {
         state.interrupt = () => undefined;
         const message = `failed to spawn: ${err.message}`;
@@ -9904,6 +9908,8 @@ export class RunManager {
       });
       child.on('close', (code) => {
         state.interrupt = () => undefined;
+        stdout.end();
+        stderr.end();
         const trimmed = output.trim() || '(no output)';
         // `code` is null when a signal killed the child; -1 then, the same value an
         // unspawnable command reports, and one no `retryOn` list can name — neither

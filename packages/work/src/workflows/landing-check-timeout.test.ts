@@ -42,6 +42,15 @@ describe('runShellCheck timeout', () => {
     expect(alive(pid)).toBe(false);
   }, 30_000);
 
+  // Decoding each pipe chunk on its own turns a character split across two chunks into two U+FFFD.
+  it.each(['ệ', '😀'])('keeps %s intact when the output spans many pipe chunks', async (char) => {
+    if (!resolveBash()) return;
+    const result = await runShellCheck(`node -e "process.stdout.write('${char}'.repeat(60000))"`, dir);
+    expect(result.ok).toBe(true);
+    expect(result.output).not.toContain('�');
+    expect(new Set(result.output)).toEqual(new Set([...char]));
+  }, 30_000);
+
   it('still reports a check that finishes in time', async () => {
     if (!resolveBash()) return;
     expect(await runShellCheck('echo fine', dir)).toMatchObject({ ok: true, output: 'fine' });
