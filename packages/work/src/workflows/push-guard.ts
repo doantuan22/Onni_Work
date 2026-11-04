@@ -52,9 +52,15 @@ export function ensurePushGuard(dataDir: string): string | undefined {
   }
 }
 
+/** More inherited pairs than any real setup has; a larger COUNT is a mistake, not a list to walk. */
+const MAX_INHERITED_CONFIG_PAIRS = 1_000;
+
 /**
  * The environment that arms the hook for one unattended run. Existing `GIT_CONFIG_*` pairs are
- * carried across so appending ours at the next index cannot orphan them.
+ * carried across, renumbered without gaps (git refuses a COUNT whose KEY_n is missing), so
+ * appending ours at the next index cannot orphan them. A COUNT that is not a plain number, or is
+ * absurdly large, is ignored — git would reject it anyway, and walking `GIT_CONFIG_COUNT=1e9`
+ * synchronously froze the server.
  */
 export function pushGuardEnv(
   dataDir: string,
@@ -63,20 +69,23 @@ export function pushGuardEnv(
 ): Record<string, string> {
   const dir = ensurePushGuard(dataDir);
   if (!dir) return {};
-  const existing = Number.parseInt(base.GIT_CONFIG_COUNT ?? '0', 10);
-  const count = Number.isInteger(existing) && existing > 0 ? existing : 0;
+  const declared = (base.GIT_CONFIG_COUNT ?? '').trim();
+  const existing = /^\d+$/.test(declared) ? Number(declared) : 0;
+  const count = existing <= MAX_INHERITED_CONFIG_PAIRS ? existing : 0;
   const env: Record<string, string> = {};
+  let next = 0;
   for (let i = 0; i < count; i++) {
     const key = base[`GIT_CONFIG_KEY_${i}`];
     const value = base[`GIT_CONFIG_VALUE_${i}`];
     if (key !== undefined && value !== undefined) {
-      env[`GIT_CONFIG_KEY_${i}`] = key;
-      env[`GIT_CONFIG_VALUE_${i}`] = value;
+      env[`GIT_CONFIG_KEY_${next}`] = key;
+      env[`GIT_CONFIG_VALUE_${next}`] = value;
+      next += 1;
     }
   }
-  env.GIT_CONFIG_COUNT = String(count + 1);
-  env[`GIT_CONFIG_KEY_${count}`] = 'core.hooksPath';
-  env[`GIT_CONFIG_VALUE_${count}`] = dir;
+  env.GIT_CONFIG_COUNT = String(next + 1);
+  env[`GIT_CONFIG_KEY_${next}`] = 'core.hooksPath';
+  env[`GIT_CONFIG_VALUE_${next}`] = dir;
   if (run.branch) env.ONNI_PUSH_ALLOW_BRANCH = run.branch;
   return env;
 }

@@ -76,6 +76,20 @@ describe('the pre-push fence for unattended runs', () => {
     expect(env).toMatchObject({ GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'user.name', GIT_CONFIG_KEY_1: 'core.hooksPath' });
   });
 
+  it('arms git even when the inherited GIT_CONFIG indexes have a hole', () => {
+    // COUNT=2 but only index 0 exists: git itself refuses a missing KEY_1, so the pairs are renumbered.
+    const env = pushGuardEnv(join(dir, 'data'), {}, { GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'user.name', GIT_CONFIG_VALUE_0: 'x' });
+    expect(sh(work, ['config', '--get', 'core.hooksPath'], env).trim()).toBe(join(dir, 'data', 'hooks').replaceAll('\\', '/'));
+    expect(sh(work, ['config', '--get', 'user.name'], env).trim()).toBe('x');
+  });
+
+  it.each(['999999999', '2147483647', '-3', 'abc', '1e9', '2.5'])('answers at once for a hostile GIT_CONFIG_COUNT of %s', (count) => {
+    const started = performance.now();
+    const env = pushGuardEnv(join(dir, 'data'), {}, { GIT_CONFIG_COUNT: count });
+    expect(performance.now() - started).toBeLessThan(250);
+    expect(env).toMatchObject({ GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.hooksPath' });
+  });
+
   it('is only a fence: --no-verify walks straight through it', () => {
     const env = pushGuardEnv(join(dir, 'data'), {});
     sh(work, [...ID, 'commit', '-q', '--allow-empty', '-m', 'sneaky']);
