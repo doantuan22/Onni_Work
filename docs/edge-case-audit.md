@@ -15,6 +15,8 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 | E2 | Trung bình | Cấu hình | `config.json` lưu BOM / UTF-16 bị bỏ qua âm thầm | Đã sửa | `16ef0f7` |
 | E3 | Thấp–Trung bình | Push guard | `GIT_CONFIG_COUNT` lớn làm treo server; chỉ số khuyết làm hỏng mọi lệnh git trong run | Đã sửa | `c9dcf0d` |
 | E4 | Thấp | Workflow `if` node | `**/` trong glob khớp nhầm tên file có tiền tố | Đã sửa | `478781d` |
+| E5 | **Cao** | Merge của manager | Worktree đã checkout nhánh khác / detached HEAD: `main` bị đẩy tới commit của nhánh kia, báo cáo vẫn ghi `onni/<task>` | Đã sửa | `5ee3cd9` |
+| E6 | Trung bình | Landing in-place | Timeout 10 phút của check không bao giờ giải phóng landing khi check bị treo | Đã sửa | `6909d3d` |
 
 ## E1 — Giờ hẹn trong khoảng nhảy DST chạy sai bên
 
@@ -65,3 +67,29 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 | `uploads.ts`, `readUpload` | Mở một descriptor cho cả kiểm tra TTL và đọc; ID kiểm bằng regex. Không thấy lỗi. |
 | `windows-read-private-file.ps1` | Kiểm kích thước hai lần, từ chối reparse point ở thành phần cuối. Các thành phần giữa đường dẫn vẫn được đi theo (đúng như tài liệu hoá). |
 | `shortAge`, `compactTokens` | Đúng ở mọi biên thử (âm, NaN, ranh giới đơn vị). |
+
+## E5 — Merge của manager tác động lên nhánh sai
+
+- **Vị trí:** `packages/work/src/workflows/manager-merge.ts` (`runManagerMerge`), gọi từ `RunManager.mergeFromAgent`.
+- **Nguyên nhân:** cả hai chế độ (`into: task`, `into: base`) hành động trên HEAD của worktree nhưng không kiểm HEAD có đang ở `taskBranch` không. Chính `git-diff-base.ts` đã ghi rõ agent có thể checkout nhánh khác trong worktree (mọi run `review/pr-N` đều làm vậy).
+- **Tái hiện (git thật):** worktree manager có commit trên `onni/mgr`, sau đó checkout `review/pr-9` (hoặc detached) và commit thêm. `into: base` trả `merged`, thông điệp "main fast-forwarded to onni/mgr", nhưng `main` thực tế bị đẩy tới commit của **nhánh khác**; commit của manager không hề được merge.
+- **Tác động:** nhánh chính bị đổi sang commit ngoài ý muốn, kèm nhật ký (ledger) sai. Chỉ xảy ra khi bật "Full quyền manager" (mặc định tắt) và manager tự checkout nhánh khác, nhưng hậu quả là sai lệch âm thầm trên nhánh chính.
+- **Cách sửa:** trước khi merge, đọc `symbolic-ref --short HEAD`; khác `taskBranch` (kể cả detached) thì `refused` với câu hướng dẫn `git checkout <taskBranch>`. Đặt sau các nhánh `--abort` và merge-đang-dở, nên các luồng cũ không đổi.
+- **Kiểm chứng:** 4 test mới (hai chế độ × nhánh khác / detached), đỏ trước sửa; 9 test cũ giữ nguyên xanh.
+
+## E6 — Timeout của check trong landing không giải phóng được
+
+- **Vị trí:** `packages/work/src/workflows/landing.ts` (`runShellCheck`).
+- **Nguyên nhân:** hết `CHECK_TIMEOUT_MS` (10 phút) chỉ `kill('SIGTERM')` tiến trình bash. Lệnh mà bash đã khởi chạy vẫn giữ pipe stdout nên `close` không phát, Promise không bao giờ settle trước khi lệnh kia tự kết thúc.
+- **Tái hiện:** cùng mẫu spawn với timeout 1 giây: `kill` gọi lúc 1s nhưng Promise chỉ settle sau 8,3s (đúng vòng đời lệnh con), cho cả ba dạng lệnh thử (lệnh trực tiếp, qua subshell, grandchild chạy nền).
+- **Tác động:** một check treo (test chờ nhập, dev server) giữ landing vô thời hạn, kể cả "ràng buộc 10 phút".
+- **Cách sửa:** spawn bash thành nhóm riêng trên POSIX; khi hết giờ gọi `killProcessTree` (dùng lại helper có sẵn, `taskkill /T` trên Windows) và settle ngay với câu "timed out … killed". `timeoutMs` thành tham số để test được.
+- **Đã loại trừ:** `RunManager.runCheckStep` dùng `spawnTaskProcess` (Job Object trên Windows). Probe cho thấy hủy ở 1 giây thì `close` phát sau 1,03s; đường đó an toàn.
+- **Kiểm chứng:** test dùng bash thật, chứng minh tiến trình con thật sự chết (kiểm bằng `process.kill(pid, 0)`); đỏ trước sửa (quá 30s).
+
+### Bổ sung vào danh sách đã kiểm tra
+
+| Khu vực | Kết luận |
+|---|---|
+| `runManagerMerge`: CAS bằng `update-ref <ref> <new> <old>`, kiểm worktree khác đang giữ nhánh base, từ chối khi checkout chính bẩn | Đúng. Chỉ thiếu kiểm HEAD (E5). |
+| `spawnTaskProcess` trên Windows | Job Object kill-on-close hoạt động như thiết kế: hủy trong ~1s. |
