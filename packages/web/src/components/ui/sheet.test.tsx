@@ -35,6 +35,14 @@ describe('SheetContent', () => {
     expect(content?.className).toContain(HEADER_RESERVE)
   })
 
+  it('slides in and out quickly — 250ms open, 200ms close, matching the dialog', () => {
+    const { content } = renderSheet()
+
+    expect(content?.className).toContain('data-[state=open]:duration-250')
+    expect(content?.className).toContain('data-[state=closed]:duration-200')
+    expect(content?.className).not.toContain('duration-500')
+  })
+
   it('gives the close button a 44px centred touch target', () => {
     renderSheet()
     const close = screen.getByRole('button', { name: 'Close' })

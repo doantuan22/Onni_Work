@@ -62,7 +62,7 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed z-50 flex flex-col gap-4 bg-background shadow-modal transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
+          "fixed z-50 flex flex-col gap-4 bg-background shadow-modal transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:animate-in data-[state=open]:duration-250",
           // The close button is positioned absolutely, so nothing else reserves its footprint and
           // header text wraps straight underneath it. Pad the header past `right-4` + the button's
           // 44px target. This has to come from here rather than SheetHeader's own base classes:
