@@ -718,14 +718,25 @@ function PageHeader({
   return (
     <header
       data-slot="settings-header"
-      className="sticky top-0 z-10 hidden h-14 shrink-0 items-center gap-3 border-b border-border bg-background px-5 md:flex"
+      className="sticky top-0 z-10 hidden h-14 shrink-0 border-b border-border bg-background px-5 md:flex"
     >
-      <PageTitle title={title} projectName={beside} as="h1" />
-      {section ? (
-        <p className="min-w-0 truncate text-[13px] text-soft-foreground">{t(section.description)}</p>
-      ) : scope === 'project' ? (
-        <p className="text-[13px] text-soft-foreground">{t('Project settings')}</p>
-      ) : null}
+      {/* Same column as the body (`mx-auto max-w-*` + its 24px inset), so the title does not sit
+          ~250px left of the form it heads. The bar and its rule stay full-width. */}
+      <div
+        data-slot="settings-header-inner"
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-3',
+          section?.measure !== 'full' && section !== null && 'mx-auto px-6',
+          section?.measure === 'wide' ? 'max-w-4xl' : section?.measure !== 'full' && section !== null && 'max-w-2xl',
+        )}
+      >
+        <PageTitle title={title} projectName={beside} as="h1" />
+        {section ? (
+          <p className="min-w-0 truncate text-[13px] text-soft-foreground">{t(section.description)}</p>
+        ) : scope === 'project' ? (
+          <p className="text-[13px] text-soft-foreground">{t('Project settings')}</p>
+        ) : null}
+      </div>
     </header>
   )
 }

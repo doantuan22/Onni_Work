@@ -99,6 +99,9 @@ export interface SettingsSection {
   scope: SettingsScope
   /** Declared but not yet implemented: no nav entry, no route (the URL is honestly a 404). */
   hidden?: boolean
+  /** The column the body centres in, so the page header can start where the content starts.
+   *  `form` (default) is `max-w-2xl`, `wide` is `max-w-4xl`, `full` is a layout that spans the pane. */
+  measure?: 'form' | 'wide' | 'full'
 }
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
@@ -223,6 +226,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     icon: GaugeIcon,
     component: ResourcesSection,
     scope: 'global',
+    measure: 'full',
   },
   {
     id: 'manager-worker',
@@ -271,6 +275,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     icon: IdCardIcon,
     component: AccountsSection,
     scope: 'global',
+    measure: 'wide',
   },
   {
     id: 'projects',
@@ -279,6 +284,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     icon: FoldersIcon,
     component: ProjectsSection,
     scope: 'global',
+    measure: 'wide',
   },
 ]
 

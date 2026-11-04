@@ -622,6 +622,23 @@ describe('the settings shell', () => {
     localStorage.removeItem('onni-sidebar-width')
   })
 
+  it.each([
+    ['/settings/agents', 'max-w-2xl'],
+    ['/settings/global/projects', 'max-w-4xl'],
+  ])('starts the page header in the body column on %s', (entry, width) => {
+    renderAt(entry, { projects: REGISTRY })
+    const inner = document.querySelector('[data-slot="settings-header-inner"]')!
+    expect(inner.className).toContain('mx-auto')
+    expect(inner.className).toContain(width)
+  })
+
+  it('leaves the header at the left edge for a body that spans the pane (Resources)', () => {
+    renderAt('/settings/global/resources', { projects: REGISTRY })
+    const inner = document.querySelector('[data-slot="settings-header-inner"]')!
+    expect(inner.className).not.toContain('mx-auto')
+    expect(inner.className).not.toContain('max-w-')
+  })
+
   it('the sidebar reuses the app sidebar frame: Back + brand up top, labelled groups, no breadcrumb', () => {
     renderAt('/settings/agents', { projects: REGISTRY })
     const sidebar = document.querySelector('[data-slot="settings-sidebar"]')!
