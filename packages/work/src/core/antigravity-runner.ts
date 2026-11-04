@@ -103,7 +103,9 @@ function wrapSpawnError(err: unknown, bin: string): Error {
 export function bufferedLines(stream: NodeJS.ReadableStream): AsyncGenerator<string> {
   stream.setEncoding('utf8');
   const lines: string[] = [];
-  let partial = '';
+  // Pieces of the unterminated line, joined only when it ends: appending to one string and
+  // re-searching it made a long line cost time quadratic in its size (see `readNdjson`).
+  const partial: string[] = [];
   let ended = false;
   let wake: (() => void) | undefined;
   const signal = () => {
@@ -111,18 +113,21 @@ export function bufferedLines(stream: NodeJS.ReadableStream): AsyncGenerator<str
     wake = undefined;
   };
   stream.on('data', (chunk: string) => {
-    partial += chunk;
+    let start = 0;
     let newline: number;
-    while ((newline = partial.indexOf('\n')) >= 0) {
-      const line = partial.slice(0, newline).trim();
-      partial = partial.slice(newline + 1);
+    while ((newline = chunk.indexOf('\n', start)) >= 0) {
+      partial.push(chunk.slice(start, newline));
+      const line = partial.join('').trim();
+      partial.length = 0;
+      start = newline + 1;
       if (line) lines.push(line);
     }
+    if (start < chunk.length) partial.push(chunk.slice(start));
     signal();
   });
   const finish = () => {
-    const tail = partial.trim();
-    partial = '';
+    const tail = partial.join('').trim();
+    partial.length = 0;
     if (tail) lines.push(tail);
     ended = true;
     signal();
