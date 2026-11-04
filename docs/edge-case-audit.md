@@ -21,6 +21,8 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 | E8 | Trung bình | Lưu trữ run | `readEventsTail` làm hỏng ký tự nhiều byte nằm ngang ranh giới chunk 64 KiB (đuôi transcript mà manager `peek`) | Đã sửa | `e5f0a9a` |
 | E9 | Thấp–Trung bình | Đặt tên nhánh | `sanitizeBranchName` trả tên mà git từ chối (`yarn.lock-`, `.lock` sau khi cắt độ dài, `HEAD`); lỗi bị nuốt, quy ước đặt tên bị bỏ qua âm thầm | Đã sửa | `5af07d1` |
 | E10 | Thấp | Output của check | Giải mã từng chunk làm hỏng ký tự nhiều byte bị cắt giữa hai chunk pipe (phòng ngừa, không tái hiện được trên máy này) | Đã sửa | `75a4294` |
+| E11 | Trung bình | Runner (đọc NDJSON) | Một dòng rất dài đến thành nhiều chunk tốn thời gian bình phương, chặn event loop (32 MB ≈ 2 s, 64 MB ≈ 8 s) | Đã sửa | `34aa31b` |
+| E12 | **Cao** | Runner claude / codex / junie | Dòng JSON hợp lệ nhưng không phải object (`null`, `42`, `true`) làm cả phiên thất bại với `TypeError` | Đã sửa | `1dbc74a` |
 
 ## E1 — Giờ hẹn trong khoảng nhảy DST chạy sai bên
 
@@ -140,3 +142,32 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 | `listInbox` | So `mtime > seenAt` bằng `>`: một thông điệp đến đúng mili giây với `inboxSeenAt` có thể bị coi là đã thấy. Cửa sổ 1 ms, không sửa. |
 | `secrets-cli` nhập ẩn | Giải mã từng chunk và `value.slice(0, -1)` khi xoá lùi cắt đôi cặp thay thế (emoji). Chỉ khi dán giá trị có emoji; không sửa. |
 | `readEvents` đầy đủ | Đọc cả file một lần nên không bị E8. |
+
+## E11 — Đọc một dòng NDJSON rất dài tốn thời gian bình phương
+
+- **Vị trí:** `packages/work/src/core/ndjson.ts` (`readNdjson`, dùng bởi claude, codex, junie, cursor, pi, ACP) và `bufferedLines` trong `antigravity-runner.ts`.
+- **Nguyên nhân:** nối chunk vào một chuỗi rồi `indexOf('
+')`. `buffer += chunk` tạo chuỗi dạng rope và mỗi lần `indexOf` buộc V8 làm phẳng (sao chép) toàn bộ buffer, nên n chunk tốn O(n²). Bản sửa đầu tiên chỉ quét phần mới (`indexOf(…, scanned)`) **vẫn chậm** vì không tránh được việc làm phẳng; phải tránh nối chuỗi.
+- **Tái hiện:** một dòng 8 MB / 32 MB / 64 MB (chunk 64 KB): 130 ms / 2059 ms / 7614 ms. Toàn bộ thời gian đó chặn event loop (SSE, WebSocket của server).
+- **Tác động:** tool result lớn trong một dòng (đọc file lớn, ảnh base64) làm cockpit đứng hình. Dòng ngắn không bị ảnh hưởng.
+- **Cách sửa:** tìm xuống dòng chỉ trong chunk mới; phần đầu của dòng chưa kết thúc giữ thành mảnh và chỉ `join` khi dòng kết thúc.
+- **Kết quả:** 64 MB còn 57 ms (32 MB: 32 ms). Test mới gồm tính đúng khi cắt chunk ở mọi vị trí byte và test thời gian tuyến tính (đỏ trước sửa: 1930 ms > 750 ms).
+
+## E12 — Một dòng JSON không phải object làm sập cả phiên
+
+- **Vị trí:** vòng đọc dòng của `claude-cli-runner.ts`, `codex-app-server-runner.ts`, `junie-runner.ts` (và dữ liệu SSE của `opencode-server-runner.ts`).
+- **Nguyên nhân:** `JSON.parse('null')`, `'42'`, `'true'` thành công nên vượt qua lớp chặn "dòng không parse được"; câu lệnh kế tiếp đọc `.type` / `.method` / `.id` ném `TypeError` bên ngoài try/catch hẹp, lỗi đi lên và kết thúc phiên. `pi-runner` và `acp-client` đã có `isRecord` nên không bị.
+- **Tái hiện:** stub `claude` in `null`, `42`, `true`, `"…"`, `[]`, `0` rồi một frame hợp lệ: run thất bại với `TypeError: Cannot read properties of null (reading 'type')`.
+- **Tác động:** một dòng lạc từ wrapper script, shell profile hay hook (`ONNI_CLAUDE_BIN` trỏ vào wrapper) là đủ giết một run đang chạy.
+- **Cách sửa:** `isJsonObject` dùng chung trong `ndjson.ts`; dòng không phải object bị bỏ qua như dòng không parse được (claude còn ghi một `note`).
+- **Kiểm chứng:** test dùng stub `claude` thật (đỏ trước sửa). Claude có test chạy qua tiến trình; codex và junie được sửa theo cùng cơ chế nhưng chưa có stub riêng (giao thức handshake phức tạp).
+- **Đã loại trừ:** tất cả 9 bộ ánh xạ UI (`map*Message`, `map*Frame`…) chạy qua 28 giá trị lạ (null, mảng, trường sai kiểu, `__proto__`…) mà không ném lỗi: 0/252 tổ hợp.
+
+### Bổ sung vào danh sách đã kiểm tra
+
+| Khu vực | Kết luận |
+|---|---|
+| `shell-env.ts` (trích dẫn POSIX và `cmd.exe`) | Giới hạn đã được ghi rõ trong mã (`"`, `%`, `!`, `&` không có escape trên `cmd.exe`) và có cổng `isShellEmbeddable` fail-closed. Không sửa. |
+| Prompt truyền qua argv của cursor | Antigravity chặn độ dài ở 24.000 ký tự; cursor thì không, nên prompt quá dài (Windows ~32 K, Linux 128 KB một đối số) chỉ cho thông báo `spawn ENAMETOOLONG`/`E2BIG`, không treo hay mất dữ liệu. Prompt bắt đầu bằng `-` có thể bị CLI hiểu là cờ nhưng **không kiểm chứng được nếu không có binary thật**, và `--` có thể không được hỗ trợ; để nguyên theo nguyên tắc không đổi cơ chế đang chạy khi chưa có bằng chứng. |
+| `armInactivityDeadline` | Ngưỡng cứng là 8× cửa sổ im lặng, mặc định 30 phút nên không tới giới hạn 2³¹ ms của `setTimeout`; chờ của node bị chặn ở 1 tuần (≈604,8 triệu ms). |
+| `stderr` của cursor / antigravity | Giải mã từng chunk, chỉ ảnh hưởng nội dung thông báo lỗi. Không sửa. |
