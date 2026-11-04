@@ -89,6 +89,17 @@ export async function runManagerMerge(ctx: MergeContext): Promise<MergeOutcome> 
     return { outcome: 'refused', message: 'a merge is in progress with all files resolved: finish it with git commit (or "onni task merge --abort"), then merge again' };
   }
 
+  // Both merges act on whatever HEAD is. An agent may have checked out another branch (every review
+  // run does) or detached: merging then moves the base to commits that are not the task branch while
+  // the result still says it is.
+  const current = (await g(worktree, ['symbolic-ref', '--short', '-q', 'HEAD'])).stdout.trim();
+  if (current !== ctx.taskBranch) {
+    return {
+      outcome: 'refused',
+      message: `your worktree is ${current ? `on "${current}"` : 'on a detached HEAD'}, not on your task branch "${ctx.taskBranch}" — check "${ctx.taskBranch}" out (git checkout ${ctx.taskBranch}) before merging, so the merge cannot act on another branch`,
+    };
+  }
+
   const status = await g(worktree, ['status', '--porcelain']);
   if (status.stdout.trim()) {
     return { outcome: 'refused', message: 'your worktree has uncommitted changes — commit them first so a merge cannot mix with unfinished work' };

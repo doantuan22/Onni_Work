@@ -125,4 +125,38 @@ describe('runManagerMerge (real git)', () => {
     expect(git(root, 'rev-parse', 'main')).toBe(git(work, 'rev-parse', 'HEAD'));
     expect(git(root, 'symbolic-ref', '--short', 'HEAD')).toBe('other');
   });
+
+  // Nothing stops an agent from checking out another branch in its worktree (every review/pr-N run
+  // does). The merge then acts on THAT branch while reporting the task branch: `main` was moved to
+  // somebody else's commits and the manager's own work was never merged.
+  describe.each([['a different branch', ['checkout', '-q', '-b', 'review/pr-9', 'main']], ['a detached HEAD', ['checkout', '-q', '--detach', 'main']]] as const)(
+    'when the worktree sits on %s instead of the task branch', (_name, checkout) => {
+      beforeEach(() => {
+        writeFileSync(join(work, 'mgr.txt'), 'manager work\n');
+        git(work, 'add', '-A');
+        git(work, 'commit', '-q', '-m', 'manager work');
+        git(work, ...checkout);
+        writeFileSync(join(work, 'other.txt'), 'somebody else\n');
+        git(work, 'add', '-A');
+        git(work, 'commit', '-q', '-m', 'other work');
+        git(root, 'checkout', '-q', '-b', 'parking');
+      });
+
+      it('refuses to move the base to commits that are not the task branch', async () => {
+        const mainBefore = git(root, 'rev-parse', 'main');
+        const r = await runManagerMerge(ctx({ into: 'base' }));
+        expect(r.outcome).toBe('refused');
+        expect(r.message).toContain('onni/mgr');
+        expect(git(root, 'rev-parse', 'main')).toBe(mainBefore);
+      });
+
+      it('refuses to merge a worker into a branch that is not the task branch', async () => {
+        commitOn('onni/w1', 'w1.txt', 'w1\n');
+        const headBefore = git(work, 'rev-parse', 'HEAD');
+        const r = await runManagerMerge(ctx({ sourceBranch: 'onni/w1' }));
+        expect(r.outcome).toBe('refused');
+        expect(git(work, 'rev-parse', 'HEAD')).toBe(headBefore);
+      });
+    },
+  );
 });
