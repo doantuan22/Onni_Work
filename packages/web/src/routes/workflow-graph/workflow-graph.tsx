@@ -47,6 +47,7 @@ import {
 import { queryKeys, useSkills, useWorkflowNodes, useWorkflows } from '@/api/queries'
 import type { WorkflowGraph, WorkflowGraphNode } from '@onni/api-client'
 import { CenteredState } from '@/components/centered-state'
+import { useTheme } from '@/components/theme-provider'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -244,6 +245,7 @@ export function FloatingPanel({
 
 function WorkflowGraphEditor() {
   const { t, tn } = useI18n()
+  const { resolvedTheme } = useTheme()
   const { name: routeName } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -797,7 +799,7 @@ function WorkflowGraphEditor() {
           fitView
           fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
           minZoom={0.2}
-          colorMode="system"
+          colorMode={resolvedTheme === 'light' ? 'light' : 'dark'}
           proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />

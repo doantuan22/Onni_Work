@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
 import type { WorkflowDef, WorkflowsResponse } from '@onni/api-client'
+import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster, resetToasts } from '@/components/ui/toaster'
+import { THEME_STORAGE_KEY } from '@/lib/theme'
 
 import { WorkflowGraphRoute } from './workflow-graph'
 
@@ -103,13 +105,15 @@ function stubFetch(overrides: Record<string, () => Response> = {}): SentRequest[
 function renderAt(entry: string) {
   render(
     <QueryClientProvider client={createQueryClient()}>
-      <MemoryRouter initialEntries={[entry]}>
-        <Routes>
-          <Route path="/workflows" element={<WorkflowGraphRoute />} />
-          <Route path="/workflows/:name" element={<WorkflowGraphRoute />} />
-        </Routes>
-        <Toaster />
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter initialEntries={[entry]}>
+          <Routes>
+            <Route path="/workflows" element={<WorkflowGraphRoute />} />
+            <Route path="/workflows/:name" element={<WorkflowGraphRoute />} />
+          </Routes>
+          <Toaster />
+        </MemoryRouter>
+      </ThemeProvider>
     </QueryClientProvider>,
   )
 }
@@ -125,6 +129,29 @@ async function clickSave() {
 }
 
 describe('WorkflowGraphRoute', () => {
+  // React Flow stamps `light`/`dark` on its wrapper, and the app's `.light` token block keys off
+  // that class — so the canvas must follow the app theme, not the OS (`colorMode="system"`).
+  it.each(['dark', 'light'] as const)('paints the canvas in the app theme (%s) even when the OS disagrees', async (theme) => {
+    const osPrefersLight = theme === 'dark'
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('light') ? osPrefersLight : !osPrefersLight,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      dispatchEvent: () => false,
+    }))
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
+    stubFetch()
+    renderAt('/workflows/ship-it')
+    await nameField()
+    const canvas = document.querySelector('.react-flow')!
+    expect(canvas.classList.contains(theme)).toBe(true)
+    expect(canvas.classList.contains(theme === 'dark' ? 'light' : 'dark')).toBe(false)
+    localStorage.removeItem(THEME_STORAGE_KEY)
+  })
+
   it('opens a saved workflow by name, and a built-in as a copy to save under a new name', async () => {
     stubFetch()
     renderAt('/workflows/ship-it')
