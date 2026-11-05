@@ -4,6 +4,7 @@
  */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -242,4 +243,19 @@ describe('buildAntigravityArgs', () => {
     const settings = JSON.parse(args[args.indexOf('--settings') + 1]!) as { permissions: { allow: string[] } };
     expect(settings.permissions.allow).toContain('write_file(C:/runs/handoff)');
   });
+});
+
+describe('AntigravityRunner stderr', () => {
+  it('keeps a character that arrives split across two stderr chunks', async () => {
+    const bin = fileURLToPath(new URL('./__fixtures__/antigravity/stub-splits-stderr-char.mjs', import.meta.url));
+    const cwd = mkdtempSync(join(tmpdir(), 'agy-stderr-'));
+    try {
+      const runner = new AntigravityRunner({ bin, ...FAST });
+      const message = await runner.run({ userPrompt: 'hi', cwd }, () => {}).then(() => '', (err: Error) => err.message);
+      expect(message).toContain('boom 🙂');
+      expect(message).not.toContain('\uFFFD');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 30_000);
 });

@@ -37,6 +37,7 @@ import {
   type CursorUiMapping,
 } from './cursor-ui-mapper.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
+import { utf8Collector } from './utf8-chunks.ts';
 
 /** The exact hand-off line of Cursor's bash launcher (`~/.local/share/cursor-agent/versions/<v>/cursor-agent`). */
 const CURSOR_LAUNCHER_EXEC = 'exec -a "$0" "$NODE_BIN" --use-system-ca "$SCRIPT_DIR/index.js" "$@"';
@@ -313,9 +314,10 @@ export class CursorAgentRunner implements AgentRunner {
       return { text, toolCalls, tokensUsed, sessionId };
     })();
 
-    child.stderr.on('data', (buf: Buffer) => {
-      stderrChunks.push(buf.toString('utf8'));
-    });
+    // One decoder per stream: a character cut between two chunks must not become U+FFFD.
+    const stderrText = utf8Collector((text) => stderrChunks.push(text));
+    child.stderr.on('data', (buf: Buffer) => stderrText.write(buf));
+    child.stderr.on('end', () => stderrText.end());
 
     const interrupt = () => {
       terminatedByOnni = true;

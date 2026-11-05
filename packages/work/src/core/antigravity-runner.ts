@@ -34,6 +34,7 @@ import { AGY_ERROR_EXIT_CODE, isHeadlessPermissionDenial, needsSignIn, parseAgyE
 import { antigravityPermissionArgs, discoverVerifyCommands } from './antigravity-permissions.ts';
 import { createAntigravityState, foldAntigravityFrame } from './antigravity-ui-mapper.ts';
 import { armInactivityDeadline, inactivityTimeoutMessage } from './inactivity-deadline.ts';
+import { utf8Collector } from './utf8-chunks.ts';
 
 /** Mid-run silence bound when the run sets none (`spec.timeoutMs` 0 = "interactive, no bound"). */
 export const DEFAULT_ANTIGRAVITY_SILENCE_MS = 30 * 60_000;
@@ -454,10 +455,13 @@ export class AntigravityRunner implements AgentRunner {
       return { text, toolCalls, tokensUsed, sessionId };
     })();
 
-    child.stderr.on('data', (buf: Buffer) => {
+    // One decoder per stream: a character cut between two chunks must not become U+FFFD.
+    const stderrText = utf8Collector((text) => {
       // Bounded: a chatty stderr must not grow without limit.
-      if (stderrChunks.join('').length < 16_000) stderrChunks.push(buf.toString('utf8'));
+      if (stderrChunks.join('').length < 16_000) stderrChunks.push(text);
     });
+    child.stderr.on('data', (buf: Buffer) => stderrText.write(buf));
+    child.stderr.on('end', () => stderrText.end());
 
     const interrupt = () => {
       terminatedByOnni = true;

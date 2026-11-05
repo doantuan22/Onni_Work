@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync as realpathOf, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { createRunner } from './runner-factory.ts';
 import {
@@ -116,4 +117,19 @@ describe('cursorLaunch', () => {
     write('v1/cursor-agent', '#!/usr/bin/env bash\nexec node elsewhere.js "$@"\n');
     expect(cursorLaunch('agent', ['-p'], env, desktop)).toEqual({ program: 'agent', args: ['-p'], env });
   });
+});
+
+describe('CursorAgentRunner stderr', () => {
+  it('keeps a character that arrives split across two stderr chunks', async () => {
+    const bin = fileURLToPath(new URL('./__fixtures__/cursor/stub-splits-stderr-char.mjs', import.meta.url));
+    const cwd = mkdtempSync(join(tmpdir(), 'cursor-stderr-'));
+    try {
+      const runner = new CursorAgentRunner({ bin, timeoutMs: 15_000 });
+      const message = await runner.run({ userPrompt: 'hi', cwd }, () => {}).then(() => '', (err: Error) => err.message);
+      expect(message).toContain('boom 🙂');
+      expect(message).not.toContain('\uFFFD');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 30_000);
 });
