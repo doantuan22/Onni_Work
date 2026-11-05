@@ -1,5 +1,6 @@
 import { realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 import { SECRET_AUDIENCES, secretNameIssue, type SecretAudience } from '@onni/contract';
 import { SecretStore, SecretsError, type SecretScopeRef } from './secrets.ts';
 import { loadWorkspaceConfig } from './config.ts';
@@ -140,6 +141,34 @@ async function registeredProject(repo: string): Promise<{ id: string; root: stri
   return config.projects.find((project) => project.root === root);
 }
 
+function dropLastCodePoint(value: string): string {
+  const last = value.charCodeAt(value.length - 1);
+  const before = value.charCodeAt(value.length - 2);
+  const pair = last >= 0xdc00 && last <= 0xdfff && before >= 0xd800 && before <= 0xdbff;
+  return value.slice(0, pair ? -2 : -1);
+}
+
+/**
+ * The hidden prompt's line editor, free of the terminal so it can be tested: bytes in, one value out.
+ * One decoder spans the chunks (a paste can split a character across reads) and backspace drops a whole
+ * code point, so an emoji is not left as a lone surrogate.
+ */
+export function createHiddenInput(): { feed: (chunk: Buffer) => { status: 'pending' } | { status: 'done'; value: string } | { status: 'cancelled' } } {
+  let value = '';
+  const decoder = new StringDecoder('utf8');
+  return {
+    feed(chunk) {
+      for (const char of decoder.write(chunk)) {
+        if (char === '\r' || char === '\n') return { status: 'done', value };
+        if (char === '\u0003') return { status: 'cancelled' };
+        if (char === '\u007f' || char === '\b') value = dropLastCodePoint(value);
+        else value += char;
+      }
+      return { status: 'pending' };
+    },
+  };
+}
+
 /**
  * The value from stdin: piped input is read whole (one trailing newline dropped); a terminal
  * gets a prompt with echo off, so the key is never on screen.
@@ -155,7 +184,6 @@ async function readValueFromStdin(): Promise<string> {
   stdin.setRawMode(true);
   stdin.resume();
   return new Promise((done, fail) => {
-    let value = '';
     const finish = (result: string | Error) => {
       stdin.setRawMode(false);
       stdin.pause();
@@ -164,13 +192,11 @@ async function readValueFromStdin(): Promise<string> {
       if (result instanceof Error) fail(result);
       else done(result);
     };
+    const input = createHiddenInput();
     const onData = (chunk: Buffer) => {
-      for (const char of chunk.toString('utf8')) {
-        if (char === '\r' || char === '\n') return finish(value);
-        if (char === '\u0003') return finish(new SecretsError('cancelled'));
-        if (char === '\u007f' || char === '\b') value = value.slice(0, -1);
-        else value += char;
-      }
+      const outcome = input.feed(chunk);
+      if (outcome.status === 'done') finish(outcome.value);
+      else if (outcome.status === 'cancelled') finish(new SecretsError('cancelled'));
     };
     stdin.on('data', onData);
   });
