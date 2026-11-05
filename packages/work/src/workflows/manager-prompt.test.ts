@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MANAGER_MEMORY_MAX_BYTES, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, PLAN_PROMPT_MAX_PARTS, ROSTER_MAX_WORKERS, rosterSchema, type TreePlan } from '@onni/contract';
+import { MANAGER_MEMORY_MAX_BYTES, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, PLAN_PROMPT_MAX_PARTS, ROSTER_MAX_WORKERS, rosterSchema, WORKER_KINDS, WORKER_TIERS, type TreePlan } from '@onni/contract';
 import { MANAGER_PLAN_PROMPT_MAX_CHARS, PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
@@ -18,6 +18,8 @@ const roster = rosterSchema.parse({
   ],
 });
 const budget = { unlimited: false, costUsd: 7.5, tokens: 4_200_000, minutes: 180, steps: 25, subtasks: 9, maxDepth: 1 };
+
+const prompt0 = managerPrompt(roster, budget);
 
 describe('managerPrompt', () => {
   const prompt = managerPrompt(roster, budget);
@@ -350,5 +352,77 @@ describe('which prompt each session of a roster tree gets', () => {
   it('a tree without a roster keeps the general dispatch prompt', () => {
     const run = make({ dispatch: { rootRunId: 'x' } });
     expect(prepare(run.id)).toContain('Dispatching tasks.');
+  });
+});
+
+describe('worker tier and kinds', () => {
+  const traited = rosterSchema.parse({
+    manager: { runner: 'claude', model: 'opus' },
+    workers: [
+      { runner: 'claude', model: 'sonnet', role: 'architecture', tier: 'heavy', kinds: ['implement', 'review'], maxConcurrent: 2 },
+      { runner: 'codex', model: 'mini', role: 'mechanical renames', tier: 'light', kinds: ['test'] },
+      { runner: 'opencode', kinds: ['explore'] },
+      { runner: 'pi', tier: 'standard' },
+    ],
+  });
+  const withTraits = managerPrompt(traited, budget);
+
+  it('shows each worker its tier and the kinds it suits, next to the role', () => {
+    expect(withTraits).toContain('- claude (sonnet) — architecture. Tier: heavy. Suits: implement, review. Up to 2 at once.');
+    expect(withTraits).toContain('- codex (mini) — mechanical renames. Tier: light. Suits: test. Up to 1 at once.');
+    expect(withTraits).toContain('- opencode. Suits: explore. Up to 1 at once.');
+    expect(withTraits).toContain('- pi. Tier: standard. Up to 1 at once.');
+  });
+
+  it('teaches the manager what the tiers mean and to match the part to them', () => {
+    expect(withTraits).toContain('heavy = hard or multi-file parts');
+    expect(withTraits).toContain('Never give a heavy part to a light worker');
+  });
+
+  it('leaves the brief byte-identical when no worker states a tier or kinds', () => {
+    expect(prompt0).not.toContain('Tier:');
+    expect(prompt0).not.toContain('Suits:');
+    expect(prompt0).not.toContain('heavy = hard');
+  });
+
+  it('keeps the worst-case roster, tier and kinds on every worker, inside the prompt budget', () => {
+    const full = rosterSchema.parse({
+      manager: { runner: 'claude', model: 'opus' },
+      workers: Array.from({ length: ROSTER_MAX_WORKERS }, (_, index) => ({
+        runner: 'codex',
+        model: `model-${index}`,
+        role: `independent part number ${index}, owning its own directory and its own checks`,
+        tier: 'heavy',
+        kinds: ['implement', 'test', 'explore', 'review'],
+        maxConcurrent: 2,
+      })),
+    });
+    const memory = Array.from({ length: 30 }, (_, index) => `- lesson ${index} ${'x'.repeat(85)}`).join('\n');
+    const worst = managerPrompt(full, budget, { context: { memory } });
+    expect(worst.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
+  });
+});
+
+describe('roster worker schema: tier and kinds', () => {
+  const parse = (worker: object) => rosterSchema.safeParse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', ...worker }] });
+
+  it('still accepts a worker with neither field, and does not invent them', () => {
+    const parsed = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'docs' }] });
+    expect(parsed.workers[0]).toEqual({ runner: 'codex', role: 'docs', maxConcurrent: 1 });
+  });
+  it('accepts every tier and every kind', () => {
+    for (const tier of WORKER_TIERS) expect(parse({ tier }).success).toBe(true);
+    expect(parse({ kinds: [...WORKER_KINDS] }).success).toBe(true);
+  });
+  it('refuses an unknown tier or kind, a repeated kind and a non-array', () => {
+    expect(parse({ tier: 'strong' }).success).toBe(false);
+    expect(parse({ kinds: ['deploy'] }).success).toBe(false);
+    expect(parse({ kinds: ['test', 'test'] }).success).toBe(false);
+    expect(parse({ kinds: 'test' }).success).toBe(false);
+    expect(parse({ tier: null }).success).toBe(false);
+  });
+  it('round-trips through JSON, as a saved preset or a run snapshot does', () => {
+    const roster = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', tier: 'heavy', kinds: ['review'] }] });
+    expect(rosterSchema.parse(JSON.parse(JSON.stringify(roster)))).toEqual(roster);
   });
 });

@@ -36,6 +36,24 @@ export function describeWorker(worker: Pick<RosterWorker, 'runner' | 'model'>): 
   return worker.model ? `${worker.runner} (${worker.model})` : worker.runner;
 }
 
+/**
+ * What the user said a worker is for: "Tier: heavy. Suits: implement, review." (either half may be
+ * absent; '' when neither is stated). Information for the manager's choice, never a limit on the worker.
+ */
+export function workerTraits(worker: Pick<RosterWorker, 'tier' | 'kinds'>): string {
+  const parts: string[] = [];
+  if (worker.tier) parts.push(`Tier: ${worker.tier}.`);
+  if (worker.kinds?.length) parts.push(`Suits: ${worker.kinds.join(', ')}.`);
+  return parts.join(' ');
+}
+
+/** The one rule that makes the traits useful; absent when no worker states any, so such a brief is unchanged. */
+function traitsGuidance(roster: Roster): string {
+  if (!roster.workers.some((w) => w.tier || w.kinds?.length)) return '';
+  return `
+- Tier says how much a worker can carry: heavy = hard or multi-file parts that need real reasoning; standard = ordinary parts; light = small mechanical parts (renames, formatting, docs, simple tests). Never give a heavy part to a light worker, and do not spend a heavy worker on a light part while a lighter one is free. "Suits" lists the kinds of part (implement, test, explore, review) the worker is meant for. Prefer a match, and say in your final report if you had to go against one.`;
+}
+
 /** "codex (gpt-5) — backend tests; opencode — docs" for refusal messages and prompts. */
 export function allowedWorkers(roster: Roster): string {
   return roster.workers.map((w) => `${describeWorker(w)}${w.role ? ` — ${w.role}` : ''}`).join('; ');
@@ -240,7 +258,8 @@ export function managerPrompt(
 ): string {
   const workers = roster.workers.map((w) => {
     const name = describeWorker(w);
-    return `- ${name}${w.role ? ` — ${w.role}` : ''}. Up to ${w.maxConcurrent} at once. ${workerCapability(w, { ...(opts.context?.antigravityLevel ? { antigravityLevel: opts.context.antigravityLevel } : {}) })}`;
+    const traits = workerTraits(w);
+    return `- ${name}${w.role ? ` — ${w.role}` : ''}.${traits ? ` ${traits}` : ''} Up to ${w.maxConcurrent} at once. ${workerCapability(w, { ...(opts.context?.antigravityLevel ? { antigravityLevel: opts.context.antigravityLevel } : {}) })}`;
   }).join('\n');
   const manager = describeWorker(roster.manager);
   return `Manager mode. The user chose you (${manager}) to MANAGE this task: you plan, hand independent parts to workers, review what they return and integrate it. You are not one of the workers.
@@ -256,7 +275,7 @@ ${managerCommandsBlock()}
 - Parts that need an earlier part's result (tests after the code they test, docs after the API) get --after "<title of that order>": onni holds them queued, using no slot, and starts them on top of that order's branch once it finishes well. If it fails, the dependent is cancelled and you hear why. Independent parts get no --after and run in parallel.
 - Name --backend for every task. Where the same backend appears twice in your roster, name --model too; an entry that fixes a model keeps it.
 - The objective is the WHOLE assignment: the worker sees its order and the tree directory, nothing else you know. Give the goal, the context it needs and what finished means.
-- Match the part to the worker's role above. Give workers that run at the same time DISJOINT file scopes — two workers editing one file is the failure this design cannot recover from, so split by directory or by module, never by line.
+- Match the part to the worker's role above. Give workers that run at the same time DISJOINT file scopes — two workers editing one file is the failure this design cannot recover from, so split by directory or by module, never by line.${traitsGuidance(roster)}
 - Omit --budget unless the user asked for a cost limit; a worker's share is carved from the remainder below.
 - onni commits your uncommitted work (labelled "onni: wip before dispatch") on your branch before it forks a worker, but commit your own clean state first. A worker forks the tip of YOUR branch.
 - Prefer workers: a manager that does the work itself defeats the point. Do a part yourself only when it is a few lines AND no worker fits, and say so in your final report. Dispatch only independent work, and never send the same order twice while its worker is still going.

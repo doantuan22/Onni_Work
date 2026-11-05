@@ -57,11 +57,30 @@ export type RosterManager = z.infer<typeof rosterManagerSchema>;
 export const ROSTER_MAX_WORKERS = 6;
 export const ROSTER_MAX_CONCURRENT = 4;
 
+/**
+ * What a worker is good for, and how much it can carry. Both are information for the MANAGER, shown
+ * in its brief so it hands each part to a fitting worker; neither limits what the worker may do and
+ * the server does not enforce them (the roster stays a fence on WHICH workers, not on what for).
+ */
+export const WORKER_KINDS = ['implement', 'test', 'explore', 'review'] as const;
+export type WorkerKind = (typeof WORKER_KINDS)[number];
+/** `heavy`: hard, multi-file, reasoning-heavy parts · `standard`: ordinary parts · `light`: small mechanical parts. */
+export const WORKER_TIERS = ['light', 'standard', 'heavy'] as const;
+export type WorkerTier = (typeof WORKER_TIERS)[number];
+
 export const rosterWorkerSchema = z.strictObject({
   runner: runnerSchema,
   model: model.optional(),
   /** Free-text strengths / role, shown to the manager verbatim. */
   role: z.string().trim().max(500).default(''),
+  /** The kinds of part this worker suits; absent = no preference stated. */
+  kinds: z
+    .array(z.enum(WORKER_KINDS))
+    .max(WORKER_KINDS.length)
+    .refine((kinds) => new Set(kinds).size === kinds.length, { error: 'kinds must not repeat' })
+    .optional(),
+  /** How heavy a part this worker can carry; absent = not stated. */
+  tier: z.enum(WORKER_TIERS).optional(),
   /** How many tasks of THIS entry run at once; extra ones wait in the queue. */
   maxConcurrent: z.number().int().min(1).max(ROSTER_MAX_CONCURRENT).default(1),
 });
