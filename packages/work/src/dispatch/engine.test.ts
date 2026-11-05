@@ -58,10 +58,10 @@ describe('remainingBudgetUsd', () => {
       record({ id: 'c1', dispatch: { rootRunId: 'm', parentRunId: 'p', budgetUsd: 3 } }),
       record({ id: 'c2', dispatch: { rootRunId: 'm', parentRunId: 'p', budgetUsd: 2 } }),
     ];
-    expect(remainingBudgetUsd(parent(10, 1.5), children)).toBeCloseTo(3.5);
+    expect(remainingBudgetUsd(parent(10, 1.5), children)).toBe(3.5);
   });
 
-  // The other tests read the sum with toBeCloseTo, which is exactly how binary-float dust got through:
+  // These read the sum with toBe, not toBeCloseTo (which is how binary-float dust got through):
   // 3 − 1.1 − 1.1 is 0.7999999999999998, so a child asking for the exact $0.80 left was refused with
   // "requested $0.80 but only $0.80 is left".
   it.each<[number, number[], number]>([
@@ -84,12 +84,12 @@ describe('remainingBudgetUsd', () => {
   });
 
   it('goes negative rather than clamping — an overspent commander must read as overspent', () => {
-    expect(remainingBudgetUsd(parent(1, 4), [])).toBeCloseTo(-3);
+    expect(remainingBudgetUsd(parent(1, 4), [])).toBe(-3);
   });
 
   it('counts a child with no ceiling of its own as promising nothing', () => {
     const children = [record({ id: 'c1', dispatch: { rootRunId: 'm', parentRunId: 'p' } })];
-    expect(remainingBudgetUsd(parent(5, 1), children)).toBeCloseTo(4);
+    expect(remainingBudgetUsd(parent(5, 1), children)).toBe(4);
   });
 
   /**
@@ -103,12 +103,12 @@ describe('remainingBudgetUsd', () => {
       record({ id: 'live', status: 'running', costUsd: 0.4, dispatch: { rootRunId: 'm', parentRunId: 'p', budgetUsd: 2.5 } }),
     ];
     // 10 − 1 (own) − 1.6 (settled, actual) − 2.5 (in flight, reserved)
-    expect(remainingBudgetUsd(parent(10, 1), children)).toBeCloseTo(4.9);
+    expect(remainingBudgetUsd(parent(10, 1), children)).toBe(4.9);
   });
 
   it('charges a settled child with no recorded cost its full ceiling — a data gap never under-charges', () => {
     const children = [record({ id: 'c1', status: 'failed', dispatch: { rootRunId: 'm', parentRunId: 'p', budgetUsd: 2 } })];
-    expect(remainingBudgetUsd(parent(5, 0), children)).toBeCloseTo(3);
+    expect(remainingBudgetUsd(parent(5, 0), children)).toBe(3);
   });
 
   it('keeps the reservation when a stored zero aggregate includes an unreported executed step', () => {

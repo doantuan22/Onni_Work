@@ -99,7 +99,7 @@ describe('run limits', () => {
     expect(refused.ok).toBe(false);
     expect(refused.error).toContain('maxCostUsd');
     expect(manager.continueRun(r.id, { raiseLimits: true }).ok).toBe(true);
-    expect(store.getRun(r.id)!.limits?.maxCostUsd).toBeCloseTo(2.2, 5);
+    expect(store.getRun(r.id)!.limits?.maxCostUsd).toBe(2.2);
     expect(store.getRun(r.id)!.limitHit).toBeUndefined();
   }, 40_000);
 
