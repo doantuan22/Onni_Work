@@ -23,6 +23,11 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 | E10 | Thấp | Output của check | Giải mã từng chunk làm hỏng ký tự nhiều byte bị cắt giữa hai chunk pipe (phòng ngừa, không tái hiện được trên máy này) | Đã sửa | `75a4294` |
 | E11 | Trung bình | Runner (đọc NDJSON) | Một dòng rất dài đến thành nhiều chunk tốn thời gian bình phương, chặn event loop (32 MB ≈ 2 s, 64 MB ≈ 8 s) | Đã sửa | `34aa31b` |
 | E12 | **Cao** | Runner claude / codex / junie | Dòng JSON hợp lệ nhưng không phải object (`null`, `42`, `true`) làm cả phiên thất bại với `TypeError` | Đã sửa | `1dbc74a` |
+| E13 | Thấp | Nhập ẩn `secrets-cli` | Giải mã từng chunk và xoá lùi theo đơn vị UTF-16 làm hỏng ký tự nhiều byte / emoji (đỏ trước sửa) | Đã sửa | `e407039` |
+| E14 | Thấp | stderr của cursor / antigravity | Giải mã từng chunk làm thông báo lỗi chứa `U+FFFD` (đỏ trước sửa, tiến trình thật) | Đã sửa | `6283590` |
+| Q1 | **Cao** | Chi phí claude | `total_cost_usd` cộng dồn theo phiên nhưng bị cộng dồn thêm: step nhiều lượt / Continue tính dư (đỏ trước sửa, số liệu CLI thật; xem Vòng 2) | Đã sửa | `eb650d9` |
+| E12b | — | Test runner | Test cho codex / junie / opencode qua hàm thuần (chỉ phòng ngừa, đỏ khi hoàn nguyên E12) | Đã thêm | `4f7f20a` |
+| E7b | — | Test ngân sách | `toBeCloseTo` thay bằng `toBe` (chỉ phòng ngừa) | Đã sửa | `4393f70` |
 
 ## E1 — Giờ hẹn trong khoảng nhảy DST chạy sai bên
 
@@ -185,3 +190,107 @@ Tệp này là sổ cái: mỗi vòng đào thêm sẽ bổ sung mục mới ở
 
 - **Quan sát:** `handleClaudeMessage` cố ý trả 0 cho frame `assistant` (tránh cộng dư, #716); token và chi phí chỉ vào ở frame `result`. Một lượt tự chủ dài (trần cứng 4 giờ) không thể bị `maxTokens` / `maxCostUsd` chặn giữa chừng; chỉ thời gian và số vòng lặp có tác dụng.
 - **Đánh giá:** đây là đánh đổi thiết kế đã được ghi chú trong mã, không phải lỗi. Nêu ra để người dùng biết hạn mức chi phí chỉ kiểm tra ở ranh giới lượt.
+
+---
+
+# Vòng 2 — xử lý các hạng mục còn mở
+
+Mục dưới đây được thêm sau khi vòng 1 đóng (E1–E12). Nhánh làm việc thực tế là `dev` (nhánh `test/edge-case-audit` không tồn tại cục bộ; các commit E1–E12 nằm trên `dev`).
+
+## Q1 — kết luận: `total_cost_usd` của Claude cộng dồn theo PHIÊN (đã sửa)
+
+- **Vị trí:** `packages/work/src/core/claude-cli-runner.ts` (frame `result`), `agent-runner.ts` (`AgentRunSpec.costBaselineUsd`), `workflows/run.ts` (hai chỗ `launch`, `sessionCostUsd`), `AGENT_PROTOCOL.md`.
+- **Nguyên nhân:** runner phát `{type:'cost', usd: total_cost_usd}` ở mỗi frame `result`, còn `RunManager` cộng `stepCost += event.usd`. `total_cost_usd` là số cộng dồn của cả phiên, nên mỗi lượt sau tính lại toàn bộ các lượt trước.
+- **Tái hiện (CLI thật, claude 2.1.316, model haiku, `claude -p --input-format stream-json --output-format stream-json --verbose`, hai tin nhắn trong CÙNG một tiến trình):** `total_cost_usd` = 0,0077524 rồi 0,01018322. Chính CLI báo chi phí riêng lượt 2 (`model_usage_since_last_result`) là 0,00243082 = 0,01018322 − 0,0077524. Mã cũ tính step = 0,0077524 + 0,01018322 = 0,01793562 (dư 76%).
+- **Phát hiện thêm (chạy `--resume` ở tiến trình mới):** tổng của tiến trình mới VẪN gồm cả phiên cũ (token trong `modelUsage` = A + B; 0,00295214 → 0,00533082), tức "theo phiên", không phải "theo tiến trình". Vì vậy một tiến trình resume phải trừ đi chi phí phiên đã có, nếu không bước Continue (một step mới) tính trùng chi phí của step trước và `run.costUsd = Σ steps` dư.
+- **Tác động:** `maxCostUsd`, ngân sách dispatch (`remainingBudgetUsd` / `carveChildBudget`) và số tiền hiển thị bị tính dư với mọi phiên nhiều lượt hoặc có Continue; child bị từ chối oan ("còn $0.002" trong khi còn $0.0098).
+- **Cách sửa:** runner giữ `lastTotalCostUsd` và phát hiệu `total − lastTotal` (không dùng heuristic "mới ≥ cũ"; số tổng không bao giờ làm giảm mốc). Phiên mới bắt đầu từ 0; `--resume` bắt đầu từ `spec.costBaselineUsd` = Σ `costUsd` của các step có cùng `sessionId` (`RunManager.sessionCostUsd`). Báo cáo đầu tiên luôn được phát kể cả 0 đô (giữ nguyên "zero là một báo cáo", `runner-reported-cost.test.ts`). v2 `costUsd` giữ nguyên (cộng dồn theo phiên, đúng như `AGENT_PROTOCOL.md` đã ghi); thêm chú thích rằng v1 `cost` là số gia của cùng chuỗi đó.
+- **Kiểm chứng:** fixture thật đã làm sạch `__fixtures__/claude/two-turn-cost.ndjson` + hai stub; 5 test mới trong `claude-cli-runner.test.ts` (hai lượt thật, ba lượt, resume có baseline, phiên mới bỏ qua baseline, ngân sách dispatch còn lại), tất cả dùng `toBe`. Đỏ trước sửa: 4/5 (ví dụ nhận 0,01793562 thay vì 0,01018322; ngân sách còn 0,002064 thay vì 0,009817). Ca "phiên mới bỏ qua baseline" xanh sẵn, chỉ là rào chắn cho việc dùng baseline sai. Fixture một lượt hiện có vẫn xanh.
+- **Chưa phủ bằng test:** việc `RunManager` truyền `costBaselineUsd` (đã typecheck, chưa có test tích hợp vì cần CLI claude thật hoặc stub đầy đủ trong RunManager).
+- **Rà soát các chỗ tiêu thụ khác:** opencode đã tự lấy hiệu (`cost - lastCost`); `limits.ts`, `carveChildBudget`, `remainingBudgetUsd` chỉ đọc `run.costUsd` = Σ chi phí step nên không cộng thêm. `pi-runner` phát chi phí theo từng message (chưa kiểm chứng là số gia hay số tích luỹ, không có binary `pi`).
+
+## E12b — test cho codex, junie và opencode (đã thêm)
+
+- **Vị trí:** `parseCodexLine` (`codex-app-server-runner.ts`), `parseJunieLine` (`junie-runner.ts`), `parseOpencodeSseFrame` (`opencode-server-runner.ts`); test `runner-non-object-lines.test.ts`.
+- **Thay đổi:** tách bước xử lý một dòng thành hàm thuần (hành vi giữ nguyên), test tham số hoá với `null`, `42`, `true`, `false`, `"text"`, `[]`, `[1,2]`, `0`, dòng không parse được, chuỗi rỗng, `{}` và một object hợp lệ.
+- **Kiểm chứng:** hoàn nguyên bản sửa E12 trong cả ba hàm → 21/44 test đỏ (7 mỗi runner), khôi phục → xanh. Lưu ý: ở dạng hàm thuần, đỏ là `AssertionError: expected 42 to be null`, không phải `TypeError` (`TypeError` chỉ xuất hiện khi vòng đọc đọc `.method` từ giá trị trả về; riêng dòng `null` thì hàm hoàn nguyên vẫn trả `null` nên ca đó không đỏ ở tầng này). Các test hiện có của ba runner vẫn xanh (115 test).
+- **Vẫn chưa có:** test chạy qua tiến trình thật cho codex và junie (giao thức handshake).
+
+## E13 — Nhập ẩn của `secrets-cli` làm hỏng ký tự nhiều byte
+
+- **Vị trí:** `packages/work/src/workspace/secrets-cli.ts` (`readValueFromStdin`, nay dùng `createHiddenInput`).
+- **Nguyên nhân:** mỗi chunk stdin được `toString('utf8')` riêng; xoá lùi dùng `value.slice(0, -1)` (một đơn vị UTF-16).
+- **Tái hiện:** test tất định cắt Buffer `key-é€🙂-ñ-𝒳` ở mọi vị trí byte và đưa từng byte một: giá trị ra sai; `ab🙂<DEL>` để lại nửa cặp thay thế.
+- **Tác động:** giá trị bí mật dán vào có ký tự ngoài ASCII có thể bị lưu sai mà không báo; thấp (chỉ khi gõ/dán trực tiếp ở prompt ẩn, không ảnh hưởng đường pipe).
+- **Cách sửa:** hàm thuần `createHiddenInput` với một `StringDecoder` cho cả luồng, xoá lùi theo code point.
+- **Kiểm chứng:** `secrets-cli-input.test.ts`, 3/5 test đỏ trước sửa, xanh sau; `secrets-cli.test.ts` cũ xanh.
+
+## E14 — stderr của cursor và antigravity giải mã từng chunk
+
+- **Vị trí:** `cursor-agent-runner.ts`, `antigravity-runner.ts`.
+- **Nguyên nhân:** `buf.toString('utf8')` cho từng chunk stderr, rồi ghép vào thông báo lỗi.
+- **Tái hiện (tiến trình thật):** stub ghi emoji 4 byte thành hai lần ghi cách nhau 150 ms: thông báo lỗi ra `... — boom ���`. Khác E10, cách tái hiện này tất định trên Windows vì hai lần ghi tách rời tạo hai sự kiện `data`.
+- **Tác động:** chỉ nội dung thông báo lỗi hiển thị cho người dùng; thấp. Vòng 1 ghi "không sửa", vòng 2 đã sửa theo yêu cầu.
+- **Cách sửa:** `utf8Collector` cho mỗi luồng stderr, `end()` ở sự kiện `end`.
+- **Kiểm chứng:** hai test mới chạy tiến trình thật, đỏ trước sửa, xanh sau; 30 test của hai runner xanh.
+
+## E7b — `toBeCloseTo` trong test tiền (phòng ngừa)
+
+- **Vị trí:** `dispatch/engine.test.ts`, `workflows/limits-run.test.ts`.
+- **Thay đổi:** mọi `toBeCloseTo` trên số tiền thay bằng `toBe`. Tất cả vẫn xanh, nên không có lỗi làm tròn ẩn khác. Các `toBeCloseTo` còn lại nằm trong `cgroup-probe.test.ts` (hạn mức CPU, không phải tiền), để nguyên.
+- **Kiểm chứng:** chỉ phòng ngừa (không có test đỏ).
+
+## Q2 — kết luận: không thực hiện, chỉ ghi tài liệu
+
+- **Lý do:** (1) frame `assistant` không có chi phí nên `maxCostUsd` không thể ước lượng giữa lượt; (2) `usage.output_tokens` ở frame `assistant` không đáng tin: trong dữ liệu thật lượt 2 báo 8 token đầu ra, `result` báo 51 (có 47 token thinking); (3) frame `assistant` lặp lại cùng `message.id` cho từng content block nên phải khử trùng, đúng loại lỗi cộng dư #716. Quy định của vòng 2: ước lượng không đáng tin thì bỏ hạng mục.
+- **Thay đổi:** `docs/reference.md` (mục Limits) nêu rõ ceiling token/chi phí chỉ kiểm tra ở ranh giới lượt.
+- **Trạng thái:** đã kết luận; không thay mã. Ngoài ra, theo quy định, Q2 chỉ làm khi Q1 đã merge được; Q1 mới nằm trên nhánh `dev`.
+
+## Hạng mục 4 — prompt bắt đầu bằng `-` ở runner cursor: chưa kiểm chứng
+
+Không có binary `cursor` / `cursor-agent` / `agent` trên máy (`which` rỗng), nên không chạy `--help`, không probe và không sửa. Trạng thái: **chưa kiểm chứng, cần binary**. Mô tả ở mục "Prompt truyền qua argv của cursor" (vòng 1) vẫn đúng.
+
+## Quét theo họ lỗi
+
+| Họ | Vị trí | Phân loại | Ghi chú |
+|---|---|---|---|
+| 1 chunk/mã hoá | `secrets-cli` | **Lỗi thật** | E13 |
+| 1 | stderr cursor, antigravity | **Lỗi thật** | E14 |
+| 1 | stderr của claude/codex/junie/pi/opencode/cline/copilot, `codex-usage-probe`, `opencode-http`, `*-model-catalog`, `process-jobs`, `checkout.ts`, `create-project.ts` | An toàn | luồng đã `setEncoding('utf8')` nên Node ghép ký tự qua chunk |
+| 1 | `runs/event-history.ts` (`createReadStream` với `encoding:'utf8'`) | An toàn | |
+| 1 | `provider-auth.ts` (`String(chunk)` để so khớp dấu hiệu giao thức), `server-install/steps.ts` (`String(d)` cho output bước cài) | Chưa kiểm chứng | không `setEncoding`; chỉ ảnh hưởng nội dung hiển thị / so khớp ASCII, chưa có probe |
+| 1 | `private-file-read.ts`, `terminal/sessions.ts` | An toàn | `setEncoding` / chuỗi từ pty |
+| 2 dữ liệu ngoài | `parseInt`/`Number` trên env: `index.ts` (`ONNI_SUPERVISOR_PID`), `runs/store.ts` (`keepLimit`), `provider-auth.ts` | An toàn | đều kiểm `isInteger`/`isFinite`/`isSafeInteger` và có mặc định; `keepLimit` chấp nhận tiền tố số của `3abc` (vô hại) |
+| 2 | `JSON.parse` rồi truy cập thuộc tính | An toàn (mẫu) | các chỗ khớp mẫu đi qua zod hoặc `unknown`; không rà từng dòng, không có tái hiện |
+| 3 số học | `stepCost +=` | **Lỗi thật** | Q1 |
+| 3 | `toBeCloseTo` ở test tiền | Phòng ngừa | E7b |
+| 3 | `run.costUsd = Σ steps` (`runs/store.ts`) | An toàn | tổng dấu phẩy động có thể lệch ~1e-17, chỉ hiển thị |
+| 4 vòng đời tiến trình | `checkout.ts`, `create-project.ts` (gh/git, `finish()` ngay khi abort), `worktree-lifecycle/executor.ts` (nhóm tiến trình + `taskkill`), `landing.ts` (E6), `runCheckStep` (Job Object, E6) | An toàn | |
+| 4 | `spawnTaskProcess` trên POSIX là `spawn` thường (không nhóm), kèm `child.kill('SIGTERM')` ở `runCheckStep` / các runner agent | **Chưa kiểm chứng** | cùng hình dạng với E6 nhưng máy này không có POSIX/WSL để probe; trên Windows đường Job Object đã được probe ở E6 |
+| 5 giả định git | `landing.ts`, `repo-sync.ts`, `git-changes.ts` | An toàn | đều đọc HEAD / upstream trước khi thao tác (rà đọc mã, không probe) |
+| 5 | `manager-merge.ts` | **Lỗi thật** | E5 (vòng 1) |
+
+## Bảng tóm tắt vòng 2 (kèm cột "Bằng chứng")
+
+| # | Khu vực | Kết luận | Bằng chứng | Commit |
+|---|---|---|---|---|
+| Q1 | Chi phí claude nhiều lượt / resume | Cộng dồn theo phiên; đã sửa | Đỏ trước sửa (4/5 test) + số liệu CLI thật | `eb650d9` |
+| E12b | Test codex / junie / opencode | Đã thêm | Đỏ khi hoàn nguyên E12 (21/44) | `4f7f20a` |
+| E13 | Nhập ẩn `secrets-cli` | Đã sửa | Đỏ trước sửa (3/5 test) | `e407039` |
+| E14 | stderr cursor / antigravity | Đã sửa | Đỏ trước sửa (tiến trình thật) | `6283590` |
+| E7b | `toBeCloseTo` trong test tiền | Đã thay bằng `toBe` | Chỉ phòng ngừa (xanh sẵn) | `4393f70` |
+| Q2 | Hạn mức giữa lượt | Không thực hiện; chỉ tài liệu | Dữ liệu thật cho thấy ước lượng không đáng tin | commit sổ |
+| H4 | Prompt `-` ở cursor | Chưa kiểm chứng, cần binary | Chưa kiểm chứng | — |
+| F4 | `kill` + chờ `close` trên POSIX | Chưa kiểm chứng, cần máy POSIX | Chưa kiểm chứng | — |
+
+## Chi phí gọi API thật (vòng 2)
+
+3 lần gọi, model `haiku` (claude-haiku-5-5), prompt `reply ok`:
+
+| Lần | Mục đích | Chi phí (USD) |
+|---|---|---|
+| 1 | một tiến trình, hai lượt (fixture hai lượt) | 0,01018322 (lượt 1: 0,0077524; lượt 2: 0,00243082) |
+| 2 | tiến trình A, một lượt (có lưu phiên) | 0,00295214 |
+| 3 | tiến trình B, `--resume` phiên A, một lượt | 0,00237868 chi mới (CLI báo tổng cộng dồn 0,00533082, đã gồm A) |
+
+**Tổng đã tiêu: 0,01551404 USD** (= 0,01018322 + 0,00533082).

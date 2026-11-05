@@ -628,6 +628,7 @@ only. A dispatched task inherits its parent's mode and may never be looser; a tr
 ceilings. Backends that report no USD (antigravity, cline, codex, copilot, cursor) ignore the cost ceiling, and cursor
 and cline report no tokens either. A run that hits a ceiling is cancelled with the reason on the record; its
 worktree and session stay, and Continue asks before raising the ceiling by one more allowance.
+Token and cost ceilings are checked when a turn ends (claude reports usage and cost only in its final `result` frame for the turn), so a single long autonomous turn can overshoot them; only the time ceiling (and the 4-hour hard cap) interrupts a turn in progress.
 
 ```bash
 onni run "refactor the parser" --limit cost=5,time=120,tokens=5000000,iterations=20
