@@ -250,7 +250,7 @@ describe('AntigravityRunner stderr', () => {
     const bin = fileURLToPath(new URL('./__fixtures__/antigravity/stub-splits-stderr-char.mjs', import.meta.url));
     const cwd = mkdtempSync(join(tmpdir(), 'agy-stderr-'));
     try {
-      const runner = new AntigravityRunner({ bin, ...FAST });
+      const runner = new AntigravityRunner({ bin, ...FAST, silenceMs: 20_000, startupMs: 20_000 });
       const message = await runner.run({ userPrompt: 'hi', cwd }, () => {}).then(() => '', (err: Error) => err.message);
       expect(message).toContain('boom 🙂');
       expect(message).not.toContain('\uFFFD');
