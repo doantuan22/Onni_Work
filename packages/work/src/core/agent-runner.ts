@@ -87,6 +87,13 @@ export interface AgentRunSpec {
    * picks up the on-disk conversation (used by "Continue" after a run ends).
    */
   resume?: boolean;
+  /**
+   * With `resume`: what the resumed session has already cost (Σ of the `cost` events of the steps
+   * that ran it). Claude's `total_cost_usd` is cumulative for the SESSION and a `--resume` process
+   * restarts from the session's total, so the runner must subtract this to emit only new spend (Q1).
+   * Ignored without `resume`.
+   */
+  costBaselineUsd?: number;
 }
 
 /**

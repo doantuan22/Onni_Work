@@ -142,6 +142,9 @@ export class ClaudeCliRunner implements AgentRunner {
     // sendMessage cannot see; unhandled, it kills the server (acfb01e4). Exit owns settlement.
     child.stdin.on('error', () => {});
     let stdinOpen = true;
+    // Session-cumulative cost already accounted for; a fresh session starts at 0, a resumed one at what it had.
+    let lastTotalCostUsd = spec.resume ? Math.max(0, spec.costBaselineUsd ?? 0) : 0;
+    let costReported = false;
     let autoEndTimer: NodeJS.Timeout | undefined;
     let eofTermTimer: NodeJS.Timeout | undefined;
     let eofKillTimer: NodeJS.Timeout | undefined;
@@ -312,7 +315,14 @@ export class ClaudeCliRunner implements AgentRunner {
 
           if (msg.type === 'result') {
             if (typeof msg.total_cost_usd === 'number' && Number.isFinite(msg.total_cost_usd) && msg.total_cost_usd >= 0) {
-              onEvent?.({ type: 'cost', usd: msg.total_cost_usd });
+              // `total_cost_usd` is cumulative for the session (Q1), the `cost` event is an increment.
+              const increment = msg.total_cost_usd - lastTotalCostUsd;
+              // The first report always goes out, even $0: a reported zero is not an absent cost.
+              if (increment > 0 || !costReported) {
+                costReported = true;
+                lastTotalCostUsd = Math.max(lastTotalCostUsd, msg.total_cost_usd);
+                onEvent?.({ type: 'cost', usd: Math.max(0, increment) });
+              }
             }
             onEvent?.({ type: 'turn-end' });
             if (opts.autoEndAfterFirstTurn && stdinOpen && !autoEndTimer) {

@@ -6219,6 +6219,7 @@ export class RunManager {
           model: continueModel,
           sessionId: launchSessionId,
           resume,
+          ...(resume ? { costBaselineUsd: this.sessionCostUsd(runId, launchSessionId) } : {}),
           timeoutMs: 0,
         },
         onEvent,
@@ -7121,6 +7122,14 @@ export class RunManager {
         : `loop "${from.name ?? from.id}" exhausted after ${from.max} iterations`;
     }
     return `node "${last?.from ?? '?'}" ended on "${last?.port ?? '?'}" with nothing wired`;
+  }
+
+  /** What a session has cost so far: the steps that ran it. A resumed claude process reports the session's
+   *  cumulative total, so its runner subtracts this to emit only new spend (Q1). */
+  private sessionCostUsd(runId: string, sessionId: string): number {
+    return (this.store.getRun(runId)?.steps ?? [])
+      .filter((step) => step.sessionId === sessionId)
+      .reduce((sum, step) => sum + (step.costUsd ?? 0), 0);
   }
 
   /**
@@ -8345,6 +8354,7 @@ export class RunManager {
           model: backendModel,
           sessionId: launchSessionId,
           resume,
+          ...(resume ? { costBaselineUsd: this.sessionCostUsd(runId, launchSessionId) } : {}),
           // Interactive sessions have no runner timeout — the idle timer rules.
           //
           // A non-final step keeps the runner's timeout (`DEFAULT_RUN_TIMEOUT_MS`

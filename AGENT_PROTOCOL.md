@@ -154,7 +154,7 @@ type AgentEvent =
   | { type: 'tool-result'; toolCallId: string; result: string; isError: boolean }
   | { type: 'image'; mediaType: string; data: string }        // base64; run manager re-emits a URL
   | { type: 'token-usage'; tokensUsed: number }
-  | { type: 'cost'; usd: number }
+  | { type: 'cost'; usd: number }                            // an INCREMENT: the run manager sums them (claude's cumulative `total_cost_usd` is differenced in the runner, Q1)
   | { type: 'session'; sessionId: string }                    // backend's real session id, once known
   | { type: 'turn-end'; reason?: 'context-compaction' }       // optional, additive (#955)
   | { type: 'note'; message: string }
@@ -257,7 +257,7 @@ type UiEvent =
   | UiPermissionRequestedEvent  // 'permission.requested' — RESERVED (types only; wired when approvals become optional)
   | UiPermissionResolvedEvent   // 'permission.resolved'  — RESERVED
   | UiAskRequestedEvent      // 'ask.requested'    — requestId, questions[] (AskUser; the cockpit renders option chips)
-  | UiUsageUpdatedEvent      // 'usage.updated'    — usage: TokenUsage, costUsd? (cumulative-for-session)
+  | UiUsageUpdatedEvent      // 'usage.updated'    — usage: TokenUsage, costUsd? (cumulative-for-session); v1 `cost` is the increment of the same series
   | UiImageEvent;            // 'image'            — itemId?, mediaType, data (base64; manager re-emits URL)
 ```
 

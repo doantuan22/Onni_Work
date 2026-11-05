@@ -19,6 +19,8 @@ import {
   KILL_GRACE_MS,
   waitForExit,
 } from './claude-cli-runner.ts';
+import type { RunRecord } from '@onni/contract';
+import { remainingBudgetUsd } from '../dispatch/engine.ts';
 import type { UiEvent } from './ui-events.ts';
 
 /** Only the escalation tests below swap the child out; every other test in this
@@ -475,5 +477,57 @@ describe('a stream with JSON lines that are not objects', () => {
     expect(result.text).toContain('work done');
     expect(events.some((event) => event.type === 'text')).toBe(true);
     expect(events.filter((event) => event.type === 'note' && /skipped/.test(event.message)).length).toBeGreaterThan(0);
+  }, 30_000);
+});
+
+/**
+ * Q1 — `total_cost_usd` is cumulative for the SESSION, not per turn. Measured on the real CLI
+ * (2.1.316, haiku, one process, two turns): 0.0077524 then 0.01018322; the CLI's own per-turn figure
+ * for turn 2 (`model_usage_since_last_result`) was 0.00243082 = the difference. The v1 `cost` event is
+ * an increment (RunManager does `stepCost += usd`), so the runner must emit the difference.
+ */
+describe('claude session-cumulative total_cost_usd (Q1)', () => {
+  const fixtureBin = fileURLToPath(new URL('./__fixtures__/claude/stub-replays-two-turn-cost.mjs', import.meta.url));
+  const totalsBin = fileURLToPath(new URL('./__fixtures__/claude/stub-replays-cumulative-totals.mjs', import.meta.url));
+
+  const costs = async (bin: string, env: Record<string, string>, extra: Record<string, unknown> = {}): Promise<number[]> => {
+    const runner = new ClaudeCliRunner({ bin, timeoutMs: 20_000 });
+    const events: AgentEvent[] = [];
+    await runner.run({ userPrompt: 'reply ok', cwd: process.cwd(), env, ...extra }, (event) => events.push(event));
+    return events.flatMap((event) => (event.type === 'cost' ? [event.usd] : []));
+  };
+  const sum = (values: number[]): number => values.reduce((total, value) => total + value, 0);
+
+  it('charges a two-turn session its real total, not turn 1 twice', async () => {
+    const emitted = await costs(fixtureBin, {});
+    expect(emitted).toHaveLength(2);
+    expect(emitted[0]).toBe(0.0077524000000000004);
+    expect(sum(emitted)).toBe(0.01018322);
+  }, 30_000);
+
+  it('charges three turns their real total', async () => {
+    // Binary fractions, so the sum is exact and `toBe` is meaningful.
+    const emitted = await costs(totalsBin, { STUB_TOTALS: JSON.stringify([0.25, 0.5, 0.875]) });
+    expect(emitted).toEqual([0.25, 0.25, 0.375]);
+    expect(sum(emitted)).toBe(0.875);
+  }, 30_000);
+
+  it('a resumed process starts from the cost its session already had', async () => {
+    // `--resume` replays the session: the first result of the new process already contains turn 1.
+    const emitted = await costs(fixtureBin, { STUB_RESUMED: '1' }, { resume: true, costBaselineUsd: 0.0077524000000000004 });
+    expect(sum([0.0077524000000000004, ...emitted])).toBe(0.01018322);
+  }, 30_000);
+
+  it('a fresh session starts from zero', async () => {
+    const emitted = await costs(totalsBin, { STUB_TOTALS: JSON.stringify([0.5]) }, { costBaselineUsd: 0.25 });
+    expect(emitted).toEqual([0.5]);
+  }, 30_000);
+
+  it('does not refuse a child that asks for the budget really left', async () => {
+    const spent = sum(await costs(fixtureBin, {}));
+    const parent = { id: 'p', dispatch: { rootRunId: 'm', budgetUsd: 0.02 }, steps: [] } as unknown as RunRecord;
+    const child = { id: 'c', status: 'done', costUsd: spent, dispatch: { rootRunId: 'm', parentRunId: 'p', budgetUsd: 0.02 }, steps: [] } as unknown as RunRecord;
+    // 0.02 − 0.01018322, rounded to 1e-6: a child may ask for 0.0098. Counting turn 1 twice left 0.002.
+    expect(remainingBudgetUsd(parent, [child])).toBe(0.009817);
   }, 30_000);
 });
