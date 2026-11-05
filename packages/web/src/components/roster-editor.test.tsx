@@ -16,7 +16,7 @@ afterEach(() => {
 const draft: RosterDraft = {
   managerRunner: 'claude',
   managerModel: '',
-  workers: [{ runner: 'codex', model: '', role: '', maxConcurrent: 1 }],
+  workers: [{ runner: 'codex', model: '', role: '', kinds: [], tier: '', maxConcurrent: 1 }],
 }
 
 const renderEditor = (ui: ReactElement) =>
@@ -40,6 +40,31 @@ describe('RosterEditor', () => {
     fireEvent.click(screen.getByText('Add worker'))
     expect(onChange.mock.calls.at(-1)![0].workers).toHaveLength(2)
     expect((screen.getByLabelText('Remove worker 1') as HTMLButtonElement).disabled).toBe(true)
+  })
+  it('sets a tier from the three levels, or clears it', async () => {
+    const onChange = vi.fn()
+    renderEditor(<RosterEditor draft={draft} onChange={onChange} connected={['claude', 'codex']} />)
+    const trigger = screen.getByLabelText('Worker 1 tier')
+    expect(await optionValues(trigger)).toEqual(['', 'light', 'standard', 'heavy'])
+    await pickOption(trigger, 'heavy')
+    expect(onChange).toHaveBeenLastCalledWith({ ...draft, workers: [{ ...draft.workers[0], tier: 'heavy' }] })
+  })
+  it('toggles the kinds a worker suits, keeping them in a fixed order and without repeats', () => {
+    const onChange = vi.fn()
+    const withReview: RosterDraft = { ...draft, workers: [{ ...draft.workers[0]!, kinds: ['review'] }] }
+    renderEditor(<RosterEditor draft={withReview} onChange={onChange} connected={['claude', 'codex']} />)
+    const group = screen.getByRole('group', { name: 'Worker 1 suits' })
+    const review = group.querySelector('[data-kind="review"]')!
+    expect(review.getAttribute('aria-pressed')).toBe('true')
+    expect(group.querySelector('[data-kind="test"]')!.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(group.querySelector('[data-kind="implement"]')!)
+    expect(onChange).toHaveBeenLastCalledWith({ ...withReview, workers: [{ ...withReview.workers[0], kinds: ['implement', 'review'] }] })
+    fireEvent.click(review)
+    expect(onChange).toHaveBeenLastCalledWith({ ...withReview, workers: [{ ...withReview.workers[0], kinds: [] }] })
+  })
+  it('locks tier and kinds while the editor is disabled', () => {
+    renderEditor(<RosterEditor draft={draft} onChange={vi.fn()} connected={['claude', 'codex']} disabled />)
+    expect(screen.getByRole('group', { name: 'Worker 1 suits' }).querySelectorAll('button:disabled')).toHaveLength(4)
   })
   it('offers the backend’s own model list, filtered as you type, instead of a free-text guess', async () => {
     vi.stubGlobal(

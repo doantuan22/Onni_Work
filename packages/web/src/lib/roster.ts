@@ -1,4 +1,4 @@
-import { rosterSchema, ROSTER_MAX_CONCURRENT, runnerCanManage, type ManagerPreset, type ProviderStatusResponse, type Roster, type Runner } from '@onni/api-client'
+import { rosterSchema, ROSTER_MAX_CONCURRENT, runnerCanManage, type ManagerPreset, type ProviderStatusResponse, type Roster, type Runner, type WorkerKind, type WorkerTier } from '@onni/api-client'
 
 /**
  * Manager–worker roster helpers (docs/design/manager-worker.md). The backends offered are the ones
@@ -10,6 +10,10 @@ export interface WorkerDraft {
   runner: Runner | ''
   model: string
   role: string
+  /** Kinds of part the worker suits; empty = not stated. */
+  kinds: WorkerKind[]
+  /** How heavy a part it can carry; '' = not stated. */
+  tier: WorkerTier | ''
   maxConcurrent: number
 }
 
@@ -29,7 +33,7 @@ export function connectedBackends(status: ProviderStatusResponse | undefined): R
 }
 
 export function emptyWorker(runner: Runner | '' = ''): WorkerDraft {
-  return { runner, model: '', role: '', maxConcurrent: 1 }
+  return { runner, model: '', role: '', kinds: [], tier: '', maxConcurrent: 1 }
 }
 
 /** Connected backends that may hold the manager role (`canManage`, ADR 0007). */
@@ -52,7 +56,7 @@ export function draftFromRoster(roster: Roster): RosterDraft {
   return {
     managerRunner: roster.manager.runner,
     managerModel: roster.manager.model ?? '',
-    workers: roster.workers.map((w) => ({ runner: w.runner, model: w.model ?? '', role: w.role, maxConcurrent: w.maxConcurrent })),
+    workers: roster.workers.map((w) => ({ runner: w.runner, model: w.model ?? '', role: w.role, kinds: [...(w.kinds ?? [])], tier: w.tier ?? '', maxConcurrent: w.maxConcurrent })),
   }
 }
 
@@ -63,6 +67,9 @@ export function rosterFromDraft(draft: RosterDraft): { ok: true; roster: Roster 
       runner: w.runner || undefined,
       ...(w.model.trim() ? { model: w.model.trim() } : {}),
       role: w.role,
+      // Absent, not empty: a worker that states nothing must serialise exactly as before.
+      ...(w.kinds.length ? { kinds: w.kinds } : {}),
+      ...(w.tier ? { tier: w.tier } : {}),
       maxConcurrent: Math.min(Math.max(1, Math.round(w.maxConcurrent)), ROSTER_MAX_CONCURRENT),
     })),
   })
