@@ -561,3 +561,11 @@ thứ tự engine, và engine không đọc `status`. `dropped` không hiện tr
 bảo vệ người ghi qua HTTP; sửa tay `plan.json` là ghi đè có chủ ý, lần PUT kế tiếp dùng revision suy
 ra từ nội dung mới. Gán `--part` không nguyên tử với việc tạo task theo nghĩa rollback: nó kiểm trước
 để không tạo worker mồ côi, còn lần ghi sau hỏng thì báo note chứ không huỷ worker.
+
+## Phụ lục: tier và kinds của worker
+
+`rosterWorkerSchema` có thêm hai trường **optional**: `tier` (`light|standard|heavy`) và `kinds` (mảng không lặp của `implement|test|explore|review`). 
+Chúng chỉ là thông tin cho manager: `managerPrompt` in `Tier: …. Suits: ….` cạnh `role` và thêm một quy tắc ghép việc với worker 
+(chỉ khi có ít nhất một worker khai báo), còn server không kiểm tra và không đổi quyền của worker. Worker không khai báo thì brief giữ nguyên 
+từng byte, preset và run cũ vẫn parse. Cố ý không thêm `--kind` vào `onni task create` hay từ chối ở `dispatch()`: người dùng muốn 
+manager biết để chọn đúng, không muốn giới hạn worker.

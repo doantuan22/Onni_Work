@@ -659,7 +659,11 @@ onni run "migrate the API to v2" --manager claude:opus --workers codex:gpt-5,ope
 ```
 
 Each worker is a backend, an optional model (the same backend may appear twice on different models), a
-free-text role the manager reads, and how many of its tasks run at once. Only backends that are connected
+free-text role the manager reads, an optional **tier** (`light`, `standard` or `heavy`: how hard a part it can carry),
+the **kinds** of part it suits (any of `implement`, `test`, `explore`, `review`), and how many of its tasks run at once.
+Tier and kinds are shown to the manager next to the role, with a rule to match each part to a fitting worker; they are
+information for its choice, not a limit: the server does not enforce them and the worker keeps every permission it had.
+A worker with neither set is described exactly as before. Only backends that are connected
 and enabled can be chosen. The manager hands work over with `onni task create … --backend X --model Y`
 (`--runner` still works); the server answers a backend outside the roster with `409` and the allowed list.
 Workers fork the manager's branch (its uncommitted work is committed first as `onni: wip before dispatch`),
