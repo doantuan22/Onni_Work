@@ -67,6 +67,17 @@ const RESUME_LOCK_RETRY_MS: readonly number[] = [250, 500, 1_000, 2_000, 4_000, 
  * `spec.allowedTools` is ignored. `ONNI_CODEX_NETWORK=0` retains the previous
  * network-blocked `workspace-write` sandbox as an explicit restriction.
  */
+/** One stdout line as a JSON-RPC message, or `null` for a line to skip (not JSON, or JSON that is
+ *  not an object: `null` / `42` / `true` parse but are not JSON-RPC). */
+export function parseCodexLine(line: string): CodexAppServerMessage | null {
+  try {
+    const parsed: unknown = JSON.parse(line);
+    return isJsonObject(parsed) ? (parsed as CodexAppServerMessage) : null;
+  } catch {
+    return null;
+  }
+}
+
 export class CodexAppServerRunner implements AgentRunner {
   readonly backend = 'codex' as const;
 
@@ -210,14 +221,8 @@ class CodexSession implements AgentSession {
           for await (const line of readNdjson(this.child.stdout)) {
             if (this.timedOut) break;
             deadline.touch();
-            let msg: CodexAppServerMessage;
-            try {
-              const parsed: unknown = JSON.parse(line);
-              if (!isJsonObject(parsed)) continue; // `null` / `42` / `true` parse but are not JSON-RPC
-              msg = parsed as CodexAppServerMessage;
-            } catch {
-              continue; // not JSON-RPC — skip
-            }
+            const msg = parseCodexLine(line);
+            if (!msg) continue;
             if (msg.method === 'account/rateLimits/updated') {
               emitUsageWindows(spec.onUsageWindows, normalizeCodexUsageWindows(msg.params));
             }

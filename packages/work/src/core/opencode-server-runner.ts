@@ -677,19 +677,8 @@ class OpencodeSession implements AgentSession {
   }
 
   private handleFrame(frame: string): void {
-    const dataLines = frame
-      .split('\n')
-      .filter((l) => l.startsWith('data:'))
-      .map((l) => l.slice(5).trim());
-    if (dataLines.length === 0) return;
-    let evt: OpencodeEvent;
-    try {
-      const parsed: unknown = JSON.parse(dataLines.join('\n'));
-      if (!isRecord(parsed)) return; // `data: null` parses but is not an event
-      evt = parsed as OpencodeEvent;
-    } catch {
-      return;
-    }
+    const evt = parseOpencodeSseFrame(frame);
+    if (!evt) return;
     // The bus's own keep-alives prove the server is up, not that the agent is working.
     if (evt.type !== 'server.heartbeat' && evt.type !== 'server.connected') this.deadline.touch();
     this.emitUi((state) => mapOpencodeEvent(evt, state));
@@ -960,6 +949,22 @@ function canonicalPath(path: string): string {
 
 /** The URL line opencode prints once listening — matched on stdout or stderr. */
 const SERVER_URL_RE = /https?:\/\/(?:[\d.]+|localhost):\d+/;
+
+/** One SSE frame as an event, or `null` to skip it (no `data:` line, not JSON, or JSON that is not an
+ *  object: `data: null` parses but is not an event). */
+export function parseOpencodeSseFrame(frame: string): OpencodeEvent | null {
+  const dataLines = frame
+    .split('\n')
+    .filter((l) => l.startsWith('data:'))
+    .map((l) => l.slice(5).trim());
+  if (dataLines.length === 0) return null;
+  try {
+    const parsed: unknown = JSON.parse(dataLines.join('\n'));
+    return isRecord(parsed) ? (parsed as OpencodeEvent) : null;
+  } catch {
+    return null;
+  }
+}
 
 function parseRecord(text: string): Record<string, unknown> {
   try {

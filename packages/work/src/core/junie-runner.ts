@@ -71,6 +71,17 @@ export interface JunieRunnerOptions {
  * never observed firing live with brave_mode on, but implemented per protocol
  * for robustness rather than left to hang the turn.
  */
+/** One stdout line as an ACP message, or `null` for a line to skip: plain text such as
+ *  "[Junie] Applying staged update...", or JSON that is not an object (`null` / `42` / `true`). */
+export function parseJunieLine(line: string): JunieAcpMessage | null {
+  try {
+    const parsed: unknown = JSON.parse(line);
+    return isJsonObject(parsed) ? (parsed as JunieAcpMessage) : null;
+  } catch {
+    return null;
+  }
+}
+
 export class JunieRunner implements AgentRunner {
   readonly backend = 'junie' as const;
 
@@ -187,14 +198,8 @@ class JunieSession implements AgentSession {
           for await (const line of readNdjson(this.child.stdout)) {
             if (this.timedOut) break;
             deadline.touch();
-            let msg: JunieAcpMessage;
-            try {
-              const parsed: unknown = JSON.parse(line);
-              if (!isJsonObject(parsed)) continue; // `null` / `42` / `true` parse but are not ACP frames
-              msg = parsed as JunieAcpMessage;
-            } catch {
-              continue; // e.g. "[Junie] Applying staged update..." plain-text lines
-            }
+            const msg = parseJunieLine(line);
+            if (!msg) continue;
             this.dispatch(msg);
           }
         };
