@@ -5,6 +5,8 @@ import type { z } from 'zod';
 import {
   dispatchPeekSchema,
   dispatchReportSchema,
+  dispatchSchema,
+  dispatchVerifyResultSchema,
   managerAskInputSchema,
   managerAskResponseSchema,
   managerMemoryAddSchema,
@@ -14,7 +16,7 @@ import {
   treePlanPutSchema,
   treePlanSchema,
 } from '@onni/contract';
-import type { dispatchBudgetSchema, dispatchInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
+import type { dispatchBudgetSchema, dispatchInputSchema, dispatchVerifyInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 /**
@@ -40,6 +42,8 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type MergeBody = InferRequestType<Run['merge']['$post']>['json'];
   type Budget200 = InferResponseType<Run['budget']['$get'], 200>;
   type Peek200 = InferResponseType<Run['peek']['$get'], 200>;
+  type Verify200 = InferResponseType<Run['verify']['$post'], 200>;
+  type VerifyBody = InferRequestType<Run['verify']['$post']>['json'];
   type MemoryRead200 = InferResponseType<Project['manager-memory']['$get'], 200>;
   type MemoryPut200 = InferResponseType<Project['manager-memory']['$put'], 200>;
   type MemoryPutBody = InferRequestType<Project['manager-memory']['$put']>['json'];
@@ -64,6 +68,8 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.input<typeof mergeInputSchema>, MergeBody>>,
     Assert<Exact<z.infer<typeof dispatchBudgetSchema>, Budget200>>,
     Assert<Exact<z.infer<typeof dispatchPeekSchema>, Peek200>>,
+    Assert<Exact<z.infer<typeof dispatchVerifyResultSchema>, Verify200>>,
+    Assert<Exact<z.input<typeof dispatchVerifyInputSchema>, VerifyBody>>,
     Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryRead200>>,
     Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryPut200>>,
     Assert<Exact<z.input<typeof managerMemoryPutSchema>, MemoryPutBody>>,
@@ -162,5 +168,41 @@ describe('a peek answer is bounded at both levels (#1)', () => {
 
   it('requires a known files state — an unknown one would hide "not looked" behind "nothing changed"', () => {
     expect(dispatchPeekSchema.safeParse({ workers: [entry({ filesState: 'unknown' })], workersOmitted: 0 }).success).toBe(false);
+  });
+});
+
+describe('a verify answer is bounded at both levels (wave A1)', () => {
+  const result = (patch: Record<string, unknown> = {}) => ({
+    command: 'npm test', outcome: 'failed', exitCode: 1, durationMs: 5, timedOut: false, tail: [], tailTruncated: false, ...patch,
+  });
+  const answer = (patch: Record<string, unknown> = {}) => ({
+    state: 'failed', source: 'required-checks', startedAt: 'now', durationMs: 1, results: [result()],
+    runsUsed: 1, runsMax: 3, warnings: [], ...patch,
+  });
+
+  it('accepts a normal answer and rejects every overflow', () => {
+    expect(dispatchVerifyResultSchema.safeParse(answer()).success).toBe(true);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ results: Array.from({ length: 11 }, () => result()) })).success).toBe(false);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ results: [result({ tail: Array.from({ length: 41 }, () => 'l') })] })).success).toBe(false);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ results: [result({ tail: ['x'.repeat(201)] })] })).success).toBe(false);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ warnings: Array.from({ length: 6 }, () => 'w') })).success).toBe(false);
+  });
+
+  it('rejects unknown state, reasonCode and outcome, and requires runsMax', () => {
+    expect(dispatchVerifyResultSchema.safeParse(answer({ state: 'unknown' })).success).toBe(false);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ state: 'unavailable', reasonCode: 'who-knows' })).success).toBe(false);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ results: [result({ outcome: 'maybe' })] })).success).toBe(false);
+    const { runsMax: _omit, ...without } = answer();
+    expect(dispatchVerifyResultSchema.safeParse(without).success).toBe(false);
+  });
+
+  it('keeps old records parseable and rejects a stored unavailable verdict', () => {
+    expect(dispatchSchema.safeParse({ rootRunId: 'r' }).success).toBe(true);
+    const stored = (state: string) => ({
+      rootRunId: 'r',
+      verify: { runs: 1, last: { at: 'now', state, source: 'discovered', results: [{ command: 'npm test', outcome: 'passed', exitCode: 0 }] } },
+    });
+    expect(dispatchSchema.safeParse(stored('passed')).success).toBe(true);
+    expect(dispatchSchema.safeParse(stored('unavailable')).success).toBe(false);
   });
 });

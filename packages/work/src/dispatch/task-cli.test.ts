@@ -221,6 +221,42 @@ describe('onni task', () => {
     expect(one.out[0]).toContain('recent:\n  | recent line');
   });
 
+  it('verify posts the target and --only, prints the verdict and maps the exit code', async () => {
+    const result = (state: string) => ({
+      state, source: 'required-checks', headCommit: 'abc1234', startedAt: 'now', durationMs: 2000,
+      results: [{ command: 'npm test', outcome: state === 'passed' ? 'passed' : 'failed', exitCode: state === 'passed' ? 0 : 1, durationMs: 10, timedOut: false, tail: state === 'passed' ? [] : ['boom'], tailTruncated: false }],
+      runsUsed: 2, runsMax: 3, warnings: [],
+      ...(state === 'unavailable' ? { reasonCode: 'no-bash', reason: 'bash was not found' } : {}),
+    });
+    const passed = harness({ status: 200, body: result('passed') });
+    expect(await runTaskCommand(['verify', 'abcd1234', '--only', 'npm test', '--only', 'npm run build'], env, passed.io)).toBe(0);
+    expect(passed.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/verify');
+    expect(JSON.parse(String(passed.calls[0]?.init?.body))).toEqual({ target: 'abcd1234', only: ['npm test', 'npm run build'] });
+    expect(passed.out[0]).toContain('PASSED');
+    expect(passed.out[0]).toContain('run 2 of 3');
+    const failed = harness({ status: 200, body: result('failed') });
+    expect(await runTaskCommand(['verify', 'abcd1234'], env, failed.io)).toBe(3);
+    expect(JSON.parse(String(failed.calls[0]?.init?.body))).toEqual({ target: 'abcd1234' });
+    expect(failed.out[0]).toContain('FAILED');
+    expect(failed.out[0]).toContain('| boom');
+    const unavailable = harness({ status: 200, body: result('unavailable') });
+    expect(await runTaskCommand(['verify', 'abcd1234'], env, unavailable.io)).toBe(4);
+    expect(unavailable.out[0]).toContain('UNAVAILABLE');
+  });
+
+  it('verify needs one worker id, prints a refusal with its prefix and the version sentence on 404', async () => {
+    const none = harness({ status: 200, body: {} });
+    expect(await runTaskCommand(['verify'], env, none.io)).toBe(1);
+    expect(none.err[0]).toContain('a worker id is required');
+    expect(none.calls).toHaveLength(0);
+    const refused = harness({ status: 409, body: { error: 'worker abcd1234 is still running' } });
+    expect(await runTaskCommand(['verify', 'abcd1234'], env, refused.io)).toBe(1);
+    expect(refused.err[0]).toContain('verify refused — worker abcd1234 is still running');
+    const old = harness({ status: 404, body: { error: 'x' } });
+    expect(await runTaskCommand(['verify', 'abcd1234'], env, old.io)).toBe(1);
+    expect(old.err[0]).toContain('server does not support this command yet');
+  });
+
   it('peek refuses a bad tail or an id plus --all without calling the server', async () => {
     const h = harness({ status: 200, body: { workers: [], workersOmitted: 0 } });
     expect(await runTaskCommand(['peek', '--tail', '0'], env, h.io)).toBe(1);

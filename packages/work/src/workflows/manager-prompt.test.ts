@@ -135,6 +135,17 @@ describe('managerPrompt', () => {
     expect(injected.split('\n').filter((line) => line.startsWith('## '))).toHaveLength(1);
   });
 
+  it('tells the manager to verify before merging instead of rerunning the checks itself', () => {
+    expect(prompt).toContain('onni task verify <id>');
+    expect(prompt).toContain('Verify BEFORE you merge');
+    expect(prompt).not.toContain('rerun the checks yourself before merging');
+  });
+
+  it('keeps the Guard line and the never-push rule in the fixed text', () => {
+    expect(prompt).toContain('Remember the Guard: before anything irreversible or outside your scope, end the turn with ONNI:ASK and stop.');
+    expect(prompt).toContain('never push');
+  });
+
   it('says so plainly when the tree has no ceilings', () => {
     expect(managerPrompt(roster, { unlimited: true, subtasks: Number.POSITIVE_INFINITY, maxDepth: 1 })).toContain('no ceilings set for this tree');
   });

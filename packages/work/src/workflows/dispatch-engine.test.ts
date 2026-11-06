@@ -595,9 +595,27 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const exitCode = exitByCommand[opts.command] ?? 0;
       return { ...okRun, exitCode, output: exitCode === 0 ? '' : `FAILED with sk-ant-secret-1234 here\n${opts.command} broke` };
     };
-    const useVerifyDeps = (deps: NonNullable<ConstructorParameters<typeof RunManager>[2]>['verifyDeps']): void => {
-      manager.dispose();
-      manager = new RunManager(store, repoRoot, { semaphore: new WorkspaceSemaphore(), verifyDeps: deps });
+    const until = async (cond: () => boolean) => {
+      const deadline = Date.now() + 15_000;
+      while (!cond()) {
+        if (Date.now() > deadline) throw new Error('condition not met');
+        await new Promise((r) => setTimeout(r, 25));
+      }
+    };
+    // One manager for the test (swapping it would dispose the parked root); the seam reads `current`.
+    type Deps = NonNullable<NonNullable<ConstructorParameters<typeof RunManager>[2]>['verifyDeps']>;
+    let current: Deps = {};
+    const useVerifyDeps = (deps: Deps): void => {
+      current = deps;
+    };
+    /** Roots park on the dry-run mock; verify itself must see a real (non-dry) environment. */
+    const verify = async (...args: Parameters<RunManager['verifyFor']>) => {
+      process.env.ONNI_DRY_RUN = '';
+      try {
+        return await manager.verifyFor(...args);
+      } finally {
+        process.env.ONNI_DRY_RUN = '1';
+      }
     };
     const writeChecks = (checks: string[]) => {
       mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
@@ -618,8 +636,16 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     beforeEach(() => {
       calls.length = 0;
       for (const key of Object.keys(exitByCommand)) delete exitByCommand[key];
-      process.env.ONNI_DRY_RUN = '';
       useVerifyDeps({ runCommand: fakeRunner, resolveBash: FAKE_BASH });
+      manager.dispose();
+      manager = new RunManager(store, repoRoot, {
+        semaphore: new WorkspaceSemaphore(),
+        verifyDeps: {
+          runCommand: (o) => (current.runCommand ?? fakeRunner)(o),
+          resolveBash: () => (current.resolveBash ?? FAKE_BASH)(),
+          now: () => (current.now ?? Date.now)(),
+        },
+      });
     });
 
     it('runs the required checks in a settled worker, stores the verdict and leaves a trail', async () => {
@@ -630,7 +656,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       store.registerRunSecrets(worker.id, ['sk-ant-secret-1234']);
       writeReport(join(repoRoot, '.ai/onni'), parent.id, worker.id, 'Report body', {});
 
-      const outcome = await manager.verifyFor(parent.id, { target: worker.id.slice(0, 8) });
+      const outcome = await verify(parent.id, { target: worker.id.slice(0, 8) });
       if ('denied' in outcome) throw new Error(outcome.denied);
       expect(outcome).toMatchObject({ state: 'failed', source: 'required-checks', runsUsed: 1, runsMax: 3 });
       expect(outcome.results.map((entry) => [entry.command, entry.outcome])).toEqual([['npm test', 'passed'], ['npm run build', 'failed']]);
@@ -651,21 +677,21 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       writeChecks(['npm test']);
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
-      expect(await manager.verifyFor(worker.id, { target: worker.id })).toMatchObject({ status: 403 });
-      expect(await manager.verifyFor('no-such-run', { target: worker.id })).toMatchObject({ status: 404 });
+      expect(await verify(worker.id, { target: worker.id })).toMatchObject({ status: 403 });
+      expect(await verify('no-such-run', { target: worker.id })).toMatchObject({ status: 404 });
       const other = await managerRoot();
       const foreign = settledWorker(other.id);
-      expect(await manager.verifyFor(parent.id, { target: foreign.id })).toMatchObject({ status: 409 });
-      expect(await manager.verifyFor(parent.id, { target: parent.id })).toMatchObject({ status: 409 });
-      expect(await manager.verifyFor(parent.id, { target: 'zzzzzzzz' })).toMatchObject({ status: 404 });
+      expect(await verify(parent.id, { target: foreign.id })).toMatchObject({ status: 409 });
+      expect(await verify(parent.id, { target: parent.id })).toMatchObject({ status: 409 });
+      expect(await verify(parent.id, { target: 'zzzzzzzz' })).toMatchObject({ status: 404 });
       const twin = store.createRun({ title: 'twin', workflow: 'quick-task', task: 't', steps: [] });
       store.updateRun(twin.id, { status: 'done', dispatch: childOf(parent.id), worktreePath: repoRoot });
       const shared = worker.id.slice(0, 1);
       const sameStart = store.listRuns().filter((r) => r.id.startsWith(shared));
       if (sameStart.length > 1) {
-        expect(await manager.verifyFor(parent.id, { target: shared.padEnd(6, shared) })).toMatchObject({ status: expect.any(Number) });
+        expect(await verify(parent.id, { target: shared.padEnd(6, shared) })).toMatchObject({ status: expect.any(Number) });
       }
-      expect(await manager.verifyFor(parent.id, { target: worker.id, only: ['rm -rf /'] })).toMatchObject({ status: 400 });
+      expect(await verify(parent.id, { target: worker.id, only: ['rm -rf /'] })).toMatchObject({ status: 400 });
       expect(calls).toEqual([]);
     }, 60_000);
 
@@ -674,13 +700,13 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const parent = await managerRoot();
       for (const status of ['running', 'queued', 'waiting'] as const) {
         const worker = settledWorker(parent.id, { status });
-        const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+        const outcome = await verify(parent.id, { target: worker.id });
         expect(outcome).toMatchObject({ status: 409 });
         expect((outcome as { denied: string }).denied).toContain(status);
       }
       for (const status of ['failed', 'cancelled'] as const) {
         const worker = settledWorker(parent.id, { status });
-        expect('denied' in (await manager.verifyFor(parent.id, { target: worker.id }))).toBe(false);
+        expect('denied' in (await verify(parent.id, { target: worker.id }))).toBe(false);
       }
     }, 60_000);
 
@@ -689,13 +715,13 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
       store.updateRun(worker.id, { worktreePath: join(repoRoot, 'gone') });
-      const gone = await manager.verifyFor(parent.id, { target: worker.id });
+      const gone = await verify(parent.id, { target: worker.id });
       expect(gone).toMatchObject({ state: 'unavailable', reasonCode: 'no-worktree', runsUsed: 0 });
       store.updateRun(worker.id, { worktreePath: repoRoot });
       for (let n = 1; n <= 3; n += 1) {
-        expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'passed', runsUsed: n });
+        expect(await verify(parent.id, { target: worker.id })).toMatchObject({ state: 'passed', runsUsed: n });
       }
-      const fourth = await manager.verifyFor(parent.id, { target: worker.id });
+      const fourth = await verify(parent.id, { target: worker.id });
       expect(fourth).toMatchObject({ status: 409 });
       expect((fourth as { denied: string }).denied).toContain('3 of 3');
       store.flush();
@@ -721,13 +747,14 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const parent = await managerRoot();
       const a = settledWorker(parent.id);
       const b = settledWorker(parent.id);
-      const first = manager.verifyFor(parent.id, { target: a.id });
-      await new Promise((r) => setTimeout(r, 100));
-      expect(await manager.verifyFor(parent.id, { target: b.id })).toMatchObject({ status: 409 });
+      const first = verify(parent.id, { target: a.id });
+      await until(() => release !== undefined);
+      expect(await verify(parent.id, { target: b.id })).toMatchObject({ status: 409 });
       release?.();
       expect(await first).toMatchObject({ state: 'passed' });
-      const second = manager.verifyFor(parent.id, { target: b.id });
-      await new Promise((r) => setTimeout(r, 100));
+      release = undefined;
+      const second = verify(parent.id, { target: b.id });
+      await until(() => release !== undefined);
       manager.cancel(parent.id);
       const aborted = await second;
       expect(sawAbort).toBe(true);
@@ -740,11 +767,9 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       writeChecks(['npm test']);
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
-      process.env.ONNI_DRY_RUN = '1';
       expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'dry-run' });
-      process.env.ONNI_DRY_RUN = '';
       useVerifyDeps({ runCommand: fakeRunner, resolveBash: () => null });
-      const noBash = await manager.verifyFor(parent.id, { target: worker.id });
+      const noBash = await verify(parent.id, { target: worker.id });
       expect(noBash).toMatchObject({ state: 'unavailable', reasonCode: 'no-bash' });
       expect((noBash as { reason: string }).reason).toBe(BASH_MISSING_MESSAGE);
       useVerifyDeps({ runCommand: fakeRunner, resolveBash: FAKE_BASH });
@@ -752,7 +777,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const empty = store.getRun(parent.id)!;
       store.updateRun(parent.id, { worktreePath: join(repoRoot, 'no-such-manager-tree') });
       expect(empty).toBeDefined();
-      expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'no-commands' });
+      expect(await verify(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'no-commands' });
       expect(calls).toEqual([]);
       expect(store.getRun(worker.id)?.dispatch?.verify).toBeUndefined();
     }, 60_000);
@@ -770,7 +795,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: workerTree });
       writeFileSync(join(workerTree, 'package.json'), JSON.stringify({ scripts: { test: 'true' } }));
       const worker = settledWorker(parent.id, { worktreePath: workerTree, baseBranch: 'HEAD' });
-      const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+      const outcome = await verify(parent.id, { target: worker.id });
       rmSync(managerTree, { recursive: true, force: true });
       rmSync(workerTree, { recursive: true, force: true });
       if ('denied' in outcome) throw new Error(outcome.denied);
@@ -793,7 +818,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       });
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
-      const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+      const outcome = await verify(parent.id, { target: worker.id });
       if ('denied' in outcome) throw new Error(outcome.denied);
       expect(outcome.results.map((entry) => entry.outcome)).toEqual(['passed', 'skipped', 'skipped']);
       expect(calls).toEqual(['one']);
@@ -803,7 +828,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       writeChecks(['npm test']);
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
-      const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+      const outcome = await verify(parent.id, { target: worker.id });
       if ('denied' in outcome) throw new Error(outcome.denied);
       const head = outcome.headCommit!;
       const verified = store.getRun(worker.id)!;
@@ -823,7 +848,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const gitDir = (await run('git', ['rev-parse', '--absolute-git-dir'], { cwd: repoRoot })).stdout.trim();
       writeFileSync(join(repoRoot, 'untracked-by-verify.txt'), 'x\n');
       const before = readFileSync(join(gitDir, 'index'));
-      await manager.verifyFor(parent.id, { target: worker.id });
+      await verify(parent.id, { target: worker.id });
       expect(readFileSync(join(gitDir, 'index')).equals(before)).toBe(true);
     }, 60_000);
   });
