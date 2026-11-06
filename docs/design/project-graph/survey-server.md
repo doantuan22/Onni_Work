@@ -1,0 +1,160 @@
+Truy cập web trực tiếp: có — đã truy cập nguồn chính thức ngày 2026-11-06.
+
+# Khảo sát server/engine cho Project Graph
+
+Phạm vi: khảo sát mã hiện có, không triển khai tính năng. Các đề xuất bên dưới là suy luận từ cấu trúc đang chạy, không phải API đã tồn tại. Tất cả đường dẫn mã đều tương đối từ gốc repository.
+
+## 1. Vị trí engine, mẫu module và vòng đời
+
+Một vị trí phù hợp là `packages/work/src/project-graph/`, tách bộ trích xuất, mô hình graph, cache và coordinator khỏi HTTP/CLI. Tách tiếp `packages/work/src/server/project-graph.ts` hoặc một builder ở `server.ts` để không biến `server.ts` vốn đã 8,422 dòng thành chỗ chứa parser. Giữ dependency Node trong `@onni/work`; `packages/contract` và `packages/api-client` phải tiếp tục Node-free. [AGENTS.md](../../../AGENTS.md) · [server.ts](../../../packages/work/src/server/server.ts) (`createApp`)
+
+| Họ hiện có | Cấu trúc | State/lifecycle | Công tắc |
+| --- | --- | --- | --- |
+| Automations | `automations/types.ts`, `store.ts`, `coordinator.ts`, `scheduler.ts`, `task-template.ts`, poller/runner riêng | `AutomationCoordinator` mở store theo project root; `WorkspaceAutomationScheduler` giữ một timer cho item sớm nhất; boot chỉ nạp project có định nghĩa và khởi động scheduler sau khi server nghe cổng | Mặc định bật theo quy tắc đã duyệt; `ONNI_AUTOMATIONS=0` tắt routes, warmup và scheduler |
+| Dispatch | `dispatch/engine.ts`, `tree-fs.ts`, `state-file.ts`, `commands.ts`, `prompts.ts` | Gọi theo yêu cầu qua CLI/API; nội dung cây task nằm trong `.ai/onni/dispatch/`; không có poller chạy nền | Mặc định bật; `ONNI_DISPATCH=0` chặn dispatch |
+| Worktree lifecycle | `worktree-lifecycle/store.ts`, `coordinator.ts`, `executor.ts`, `config.ts` | Store lưu `lifecycle/worktrees/` và `lifecycle/operations/`; coordinator bắt đầu sau khi server nghe cổng hoặc khi project context được mở | Không thấy công tắc `ONNI_*` riêng; vòng đời gắn vào server/manager |
+
+Nguồn: [automations/coordinator.ts](../../../packages/work/src/automations/coordinator.ts) (`AutomationCoordinator.store`, `refresh`), [automations/scheduler.ts](../../../packages/work/src/automations/scheduler.ts) (`WorkspaceAutomationScheduler.start`, `stop`, `schedule`), [server.ts](../../../packages/work/src/server/server.ts) (`automationsEnabled`, `automationScheduler`), [dispatch/engine.ts](../../../packages/work/src/dispatch/engine.ts), [dispatch/tree-fs.ts](../../../packages/work/src/dispatch/tree-fs.ts), [worktree-lifecycle/store.ts](../../../packages/work/src/worktree-lifecycle/store.ts) (`LifecycleStore`), [worktree-lifecycle/coordinator.ts](../../../packages/work/src/worktree-lifecycle/coordinator.ts) (`start`), [index.ts](../../../packages/work/src/index.ts) (`httpServer.once('listening')`).
+
+Mẫu nên sao chép: module riêng theo domain; schema/types riêng; store nhận `dataDir` qua constructor/factory thay vì đọc global ở import-time; coordinator sở hữu mỗi project/root một store; scheduler/listener chỉ khởi động khi cần và có `stop` đối xứng. Bắt đầu index khi UI/CLI/agent hỏi hoặc khi project được mở, không quét nền vô hạn. Nếu muốn watcher nền, parser subprocess hoặc chi phí CPU đáng kể thì cần một quyết định default/off-switch theo `AGENTS.md`; thêm/xóa `ONNI_PROJECT_GRAPH` phải cập nhật `.env.example`. [automations/store.ts](../../../packages/work/src/automations/store.ts), [worktree-lifecycle/store.ts](../../../packages/work/src/worktree-lifecycle/store.ts), [`.env.example`](../../../.env.example)
+
+## 2. State, cache và atomic writes
+
+State riêng repository sống ở `<repo>/.ai/onni/`: `index.ts` tạo `dataDir` từ `repoRoot`, gọi `RunStore.open(dataDir)` và `ensureDataGitignore`. `~/.onni/` do `onniHomeDir()` quản lý registry/config, global UI state và agent account; không nên đặt project graph ở đó vì một cache phải gắn với đúng checkout/project. `~/.cache/onni/` hiện dùng làm cache tải skills, không phải state project. [index.ts](../../../packages/work/src/index.ts) (`openStore`), [paths.ts](../../../packages/work/src/paths.ts) (`onniHomeDir`, `workspaceConfigPath`, `workspaceUiStatePath`), [workspace/config.ts](../../../packages/work/src/workspace/config.ts)
+
+`DATA_GITIGNORE_ENTRIES` liệt kê state theo từng path; hiện có `runs/`, `dispatch/`, `lifecycle/`, `automations.json`, các state/log tương ứng và không có ignore bao trùm mọi thứ trong `.ai/onni/`. Cache mới phải thêm ví dụ `project-graph/` vào danh sách này cùng commit; việc thiếu mục có thể đưa cache/user data vào `git status`. `ONNI_DATA_EXCLUDE` loại `.ai/onni` khỏi diff của task, nhưng không thay thế ignore entry. [data-gitignore.ts](../../../packages/work/src/data-gitignore.ts) (`DATA_GITIGNORE_ENTRIES`, `ensureDataGitignore`, `ONNI_DATA_EXCLUDE`)
+
+`dispatch/state-file.ts` cung cấp primitive phù hợp cho file graph nhỏ: `writeAtomic()` tạo tmp, ghi và `fsync`, rename có retry Windows, đặt mode `0600` best-effort; `withPathLock()` serialize read-modify-write trong một process. Nó không phải khóa liên-process. Với nhiều cockpit/process trên cùng project, dùng các blob cache bất biến theo `commit + content/parser/schema version` và cập nhật manifest/pointer dưới lock liên-process (Automations dùng `proper-lockfile` làm ví dụ). Không lưu absolute path vào cache key nếu muốn cache di chuyển được. [dispatch/state-file.ts](../../../packages/work/src/dispatch/state-file.ts) (`writeAtomic`, `withPathLock`), [automations/store.ts](../../../packages/work/src/automations/store.ts) (`proper-lockfile`, leases)
+
+Cache là bản dựng lại được: file mất, hỏng hoặc version cũ thì tạo lại; không bao giờ là điều kiện boot, không trộn với `runs.json`, và người dùng xóa được toàn bộ `project-graph/`. Giữ cache dưới `.ai/onni/`, atomic update manifest, và khi schema/parser thay đổi thì bỏ cache cũ thay vì cố đọc mơ hồ. Quy tắc “state được ghi, không bắt buộc” và degradation thành giá trị thay vì throw nằm trong [AGENTS.md](../../../AGENTS.md).
+
+## 3. HTTP contract và route family
+
+`createApp()` trong `packages/work/src/server/server.ts` tạo các Hono family bằng `new Hono<ProjectApiEnv>()`, chain handler trong family rồi chain `.route('/', family)` vào `v1`. Sau đó `v1` được mount ở cả `/api/v1/p/:projectId` và `/api/v1`; không gọi `app.get()` rời vì Hono mất route type và `AppType` không thấy route. `AppType` là `ReturnType<typeof createApp>` trong `server/app-type.ts`. [server.ts](../../../packages/work/src/server/server.ts) (`automationsRoutes`, `dispatchRoutes`, `v1`, các mount `V1_SCOPED_PREFIX`/`V1_PREFIX`), [app-type.ts](../../../packages/work/src/server/app-type.ts)
+
+Mỗi request/response mới thuộc `packages/contract/src/project-graph.ts` (tên đề xuất): Zod schema và `z.infer`, export qua `packages/contract/src/index.ts`, không import `node:*`. Body, params và query được kiểm bằng middleware `jsonZodValidator`, `paramZodValidator`, `queryZodValidator` trong `server/validators.ts`, không `safeParse` thủ công trong handler. Route phải trả đúng status/payload mà contract khai báo. Contract hiện được inline vào `packages/work/dist/contract/` ở postbuild; cross-package import dùng package name. [contract/index.ts](../../../packages/contract/src/index.ts), [validators.ts](../../../packages/work/src/server/validators.ts), [inline-contract.mjs](../../../packages/work/scripts/inline-contract.mjs), [AGENTS.md](../../../AGENTS.md)
+
+Checklist thêm family:
+
+1. Tạo schema/type Node-free và export trong `packages/contract/src/index.ts`.
+2. Tạo builder Hono có kiểu đầy đủ và dùng validators làm middleware; lấy root/store từ project context thay vì tự tìm cwd.
+3. Chain family vào `v1` (hoặc workspace family đúng scope), để cả hai mount point và `AppType` nhìn thấy route.
+4. Thêm typed wrapper/hook cần thiết ở `packages/api-client` và UI; không viết lại payload types thủ công.
+5. Thêm contract-parity cho request/response; `route-parity.test.ts` kiểm hai mount point; `versioned-surface.test.ts` bắt route rơi khỏi typed `/api/v1`; `typed-bodies.test.ts` khóa kiểu body.
+6. Kiểm tra đường lui khi cache thiếu/hỏng và đảm bảo status/payload khớp schema.
+
+Các family Automations/Dispatch hiện có parity riêng tại `server/contract-parity.automations.test.ts` và `server/contract-parity.dispatch.test.ts`. [server](../../../packages/work/src/server/server.ts), [route-parity.test.ts](../../../packages/work/src/server/route-parity.test.ts), [versioned-surface.test.ts](../../../packages/work/src/server/versioned-surface.test.ts), [typed-bodies.test.ts](../../../packages/work/src/server/typed-bodies.test.ts), [contract-parity.automations.test.ts](../../../packages/work/src/server/contract-parity.automations.test.ts), [contract-parity.dispatch.test.ts](../../../packages/work/src/server/contract-parity.dispatch.test.ts)
+
+## 4. WebSocket bus và cập nhật graph
+
+Bus là `/api/v1/ws`, một socket chung cho nhiều topic. Client `subscribeTopic()` đếm listener; server chỉ gọi publisher `start()` ở chuyển trạng thái 0→1 và gọi hàm stop ở 1→0. Khi subscribe, snapshot gửi ngay; publisher chỉ phát khi dữ liệu đổi. [server/ws.ts](../../../packages/work/src/server/ws.ts) (`WS_PATH`, `createSocketHub`, `registerTopic`), [web/api/ws.ts](../../../packages/web/src/api/ws.ts) (`subscribeTopic`), [spec WebSocket subscriptions](../../../.ai/specs/2026-07-23-websocket-subscriptions.md)
+
+Thêm topic ví dụ `project-graph:<projectId>`: `snapshot` trả graph revision/cache hiện tại, `start` nghe notifier từ coordinator chứ không tự re-index định kỳ, và stop gỡ listener. Topic chỉ phát version/invalidation hoặc payload nhỏ; HTTP/CLI đọc graph theo truy vấn. Nội dung project/path/symbol không nên public cho mọi local origin: `loopbackReadable` mặc định `false`, giữ mặc định đó. Frontend dùng `subscribeTopic` trong `useEffect` và return unsubscribe; không tạo `new WebSocket` cho tính năng riêng. Nếu topic dynamic, disposer của `registerTopic` phải dọn registration. [server/ws.ts](../../../packages/work/src/server/ws.ts) (`TopicPublisher`, `TopicOptions`, `registerTopic`, `subscribe`, `unsubscribe`), [spec §Adding a server-side topic](../../../.ai/specs/2026-07-23-websocket-subscriptions.md)
+
+## 5. CLI và cách agent được biết lệnh graph
+
+CLI không phải package riêng: `packages/work/src/index.ts` dispatch các lệnh như `task`, `automation`, `runs`, `serve` và giữ `RunManager`. Mẫu mới là parser `project-graph/graph-cli.ts` và một nhánh trong `index.ts`, dùng cùng binary `node "$ONNI_BIN" graph ...`; không dựa vào bản `onni` ngoài PATH. `automation-cli.ts`, `runs-cli.ts`, `dispatch/task-cli.ts` là ví dụ các adapter subcommand. [index.ts](../../../packages/work/src/index.ts), [automations/automation-cli.ts](../../../packages/work/src/automations/automation-cli.ts), [runs/runs-cli.ts](../../../packages/work/src/runs/runs-cli.ts), [dispatch/task-cli.ts](../../../packages/work/src/dispatch/task-cli.ts)
+
+Để agent biết lệnh, cần sửa các điểm tiêm nội dung thay vì chỉ thêm CLI:
+
+- `dispatch/commands.ts` là một nguồn cho `onni task` help và lệnh manager/worker được chèn vào brief; các helper `managerCommandsBlock()`/`workerCommandsBlock()` lọc theo role. Với `onni graph`, nên có bảng/help riêng, hoặc một entry lệnh phù hợp thay vì giả làm lệnh `task`.
+- `dispatch/prompts.ts` là prompt worker chung; `workflows/manager-worker.ts` chèn command blocks; `dispatch/prompt-budget.ts` giới hạn block manager. Thêm hướng dẫn vào đây phải có cap và test budget.
+- `workflows/run.ts` ghép system prompt (`composeSystemPrompt`, `composeDispatchPrompt`), chuẩn bị Automation prompt ở `prepareAutomationsSession`, và nạp skills; các đường start/continuation cần cùng injection để agent đang chạy và agent mới được chỉ dẫn nhất quán.
+- `automations/prompts.ts` và `automations/builtin-skill.ts` là mẫu cho hướng dẫn ngắn và skill tích hợp chỉ khi capability reachable. `skills.ts` khám phá skill local/project/global/team; `skills-provision.ts` đưa skill tới backend. Có thể thêm built-in `project-graph` skill hoặc một chỉ dẫn ngắn truy vấn theo yêu cầu, nhưng không nhét toàn bộ graph vào system prompt.
+- `index.ts` đặt `ONNI_BIN` cho runner; `RunManager.agentEnvForStep` truyền entrypoint này. Không có binary/env thì hướng dẫn phải nói rõ graph không khả dụng.
+
+`server/project-context.ts` là context runtime per-project, không phải trình dựng graph hay kho tài liệu mã nguồn. Context trả về cho agent nên là output bounded của truy vấn (`neighbors`, `impact`, `path`, `context`) gồm IDs/đường dẫn/provenance và ngân sách token; graph có thể bổ sung cho instructions/skills hiện có thay vì thay thế chúng. [dispatch/commands.ts](../../../packages/work/src/dispatch/commands.ts), [dispatch/prompts.ts](../../../packages/work/src/dispatch/prompts.ts), [manager-worker.ts](../../../packages/work/src/workflows/manager-worker.ts), [prompt-budget.ts](../../../packages/work/src/dispatch/prompt-budget.ts), [workflows/run.ts](../../../packages/work/src/workflows/run.ts), [automations/prompts.ts](../../../packages/work/src/automations/prompts.ts), [automations/builtin-skill.ts](../../../packages/work/src/automations/builtin-skill.ts), [skills.ts](../../../packages/work/src/skills.ts), [skills-provision.ts](../../../packages/work/src/skills-provision.ts), [project-context.ts](../../../packages/work/src/server/project-context.ts)
+
+## 6. Git, history, rename và worktree overlay
+
+`git-diff-base.ts::resolveTaskDiffBase` là quy tắc duy nhất cho ref neo diff task; không tự tính lại ở graph. `git-worktree.ts::worktreeChangedFilesReadOnly()` lấy `git diff --name-only <base>` cộng `git status --porcelain -z`, có timeout mặc định 3 giây, `AbortSignal`, giới hạn max paths và kết quả `timeout`/`unavailable` riêng. Dùng helper này cho overlay và touched-file capture, không chạy lệnh ghi hoặc fetch. `git-refs.ts::isSafeGitRef()` chặn ref option-like. [git-diff-base.ts](../../../packages/work/src/git-diff-base.ts) (`resolveTaskDiffBase`), [git-worktree.ts](../../../packages/work/src/git-worktree.ts) (`worktreeChangedFilesReadOnly`, `gitReadOnly`), [git-refs.ts](../../../packages/work/src/git-refs.ts)
+
+Đã có history primitive: `server/git-changes.ts::collectRunCommits()` chạy `git log` trên `base..HEAD`; `collectCommitChanges()` chạy `git diff-tree -r -M` và parse `--name-status -z`, `--numstat -z`, nên rename được nhận diện. `listRepoPaths()` dựa trên tracked files và untracked nhưng không ignored, giới hạn 20,000 path/8 MiB. Đây là nguồn tốt cho index file và history bounded. [server/git-changes.ts](../../../packages/work/src/server/git-changes.ts) (`collectRunCommits`, `collectCommitChanges`, `listRepoPaths`, `REPO_TREE_CAP`, `REPO_TREE_BYTES_CAP`)
+
+Chưa thấy co-change miner hoặc graph index lưu cạnh “hai file cùng commit”. Có thể bổ sung job đọc commit gần nhất với giới hạn commit/path, nhận rename từ `-M`, rồi lưu cạnh suy luận có count/window/provenance; tránh full-history scan trên mỗi request. Cũng chưa có graph HEAD cộng overlay worktree; giữ cache base bất biến và tạo overlay ngắn hạn trên commit/head hiện tại theo `resolveTaskDiffBase`. Overlay bị hủy/rebuild khi worktree đổi hoặc biến mất; không sửa graph base để phản ánh dirty files. [git-changes.ts](../../../packages/work/src/server/git-changes.ts), [git-worktree.ts](../../../packages/work/src/git-worktree.ts)
+
+## 7. Run history và cạnh touched-by-run
+
+`RunRecord.diffStat` chỉ lưu `adds`, `dels`, `files` (và `repointed`), được refresh mỗi turn end; nó không lưu danh sách đường dẫn. Events được ghi trong `.ai/onni/runs/<runId>.ndjson`; v1 có `tool-call`/`tool-result`, v2 có item events và tool input tùy backend. `RunStore.appendEvent()` redacts trước khi ghi/phát vì tool-result có thể chứa secret. Không nên suy ra touched edge từ raw transcript: schema tool/backend không bảo đảm có một trường path chuẩn, input/output có thể chứa prompt hoặc secrets. [runs/store.ts](../../../packages/work/src/runs/store.ts) (`runRecordSchema`, `appendEvent`, `eventsPath`), [contract/runs.ts](../../../packages/contract/src/runs.ts) (`diffStatSchema`), [core/ui-events.ts](../../../packages/work/src/core/ui-events.ts), [runs/event-history.ts](../../../packages/work/src/runs/event-history.ts)
+
+Đã có một ví dụ capture path an toàn hơn: khi worker report đến, `workflows/run.ts` lấy `worktreeChangedFilesReadOnly()` và HEAD trước khi worktree được reclaim, rồi thêm `changedFiles`, `filesOmitted`, `filesState` vào report context. Có thể tạo cạnh `run -> file` từ cùng snapshot trước cleanup, giữ `runId`, project-relative path, HEAD/base, timestamp và provenance; không lưu prompt/tool output, không xuất absolute root, lọc secret path và giới hạn số path. Việc nối `run -> symbol` chỉ nên là cạnh suy luận từ file diff/parser, không khẳng định agent thực sự sửa symbol nào. [workflows/run.ts](../../../packages/work/src/workflows/run.ts) (`child report capture`, `recordTurnEnd`), [git-worktree.ts](../../../packages/work/src/git-worktree.ts) (`worktreeChangedFilesReadOnly`)
+
+## 8. Tích hợp Automations mà không nhập nhằng tính năng
+
+Contract hiện định nghĩa automation kinds `github`, `schedule`, `tracker`; `AutomationDefinition` chứa `enabled`, event/filter/schedule và một `task` thông thường. `AutomationStore` dùng `automations.json`, `automation-state.json`, `automation-receipts.ndjson`, `automation-log.ndjson`; `AutomationCoordinator` mở đúng một store cho mỗi real project root; `WorkspaceAutomationScheduler` giữ một timer cho các definition enabled. `task-template.ts` validate/render placeholders rồi gọi `RunManager` để tạo ordinary run. Đây là subsystem riêng, không nên biến graph query thành automation hay tái sử dụng automation files cho index. [contract/automations.ts](../../../packages/contract/src/automations.ts) (`automationKindSchema`, `automationDefinitionSchema`), [automations/types.ts](../../../packages/work/src/automations/types.ts), [automations/store.ts](../../../packages/work/src/automations/store.ts), [automations/coordinator.ts](../../../packages/work/src/automations/coordinator.ts), [automations/scheduler.ts](../../../packages/work/src/automations/scheduler.ts), [automations/task-template.ts](../../../packages/work/src/automations/task-template.ts)
+
+Mẫu tương thích cho “node action”: thêm optional `owner: { kind: 'graph-node', nodeId }` (hoặc một liên kết node→automation ID ở graph layer), nhưng giữ nguyên `kind`, event, schedule và task hiện hành. Khi UI chọn Schedule trên một node, tạo automation `schedule` bình thường và gắn owner ref; graph chỉ hiển thị action đó. Nếu cần trigger khi graph node đổi, sau này thêm kind/schema mới dạng `graph` + `graphTrigger` được validate và một nhánh scheduler rõ ràng; không đổi nghĩa của GitHub/tracker events, không buộc definition cũ có field mới. Validate `nodeId` tồn tại ở project graph, giữ node ID ổn định qua rename, và nếu graph unavailable thì không launch trigger đó. Đây là đề xuất additive; chưa có owner-node field hay graph trigger trong code. [automations/types.ts](../../../packages/work/src/automations/types.ts), [automations/scheduler.ts](../../../packages/work/src/automations/scheduler.ts), [automations/task-template.ts](../../../packages/work/src/automations/task-template.ts)
+
+## 9. Language tooling: trạng thái thực tế và lựa chọn parser
+
+Root `package.json` và `packages/work/package.json` khai báo `typescript: ^7.0.2`; ở work đây là `devDependency`, không phải runtime dependency. Worktree không có link trong `node_modules` (`npm ls typescript --depth=0` trả `(empty)`), nhưng Node resolve được package từ parent `D:\Multi Agent\node_modules/typescript`, phiên bản 7.0.2. Probe bằng script tạm ngoài repo rồi tự xóa cho kết quả: `require('typescript').createProgram` không có; `typescript/unstable/sync` và `/async` export `Project`; `typescript/unstable/ast` export AST/scanner helpers. `node "D:\Multi Agent\node_modules\typescript\bin\tsc" --version` in `Version 7.0.2`. Do đó không đúng khi kết luận “chỉ có native tsc”, nhưng API cũ `ts.createProgram` không có ở root package export; JavaScript API hiện tại được gắn nhãn `unstable`. [package.json](../../../package.json), [packages/work/package.json](../../../packages/work/package.json), [TypeScript Compiler API wiki](https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API) (truy cập 2026-11-06), [TypeScript native port](https://github.com/microsoft/typescript-go) (truy cập 2026-11-06)
+
+`npm pack --dry-run --json -w @onni/work` trả gói 18 file ở checkout này; chưa có `dist/` build nên đây không phải release-ready tarball. Manifest chỉ đặt TypeScript trong `devDependencies`; `files` gói `dist`, `web/dist`, `scripts`, `README.md`. `scripts/check-pack.mjs` kiểm dist-to-source mapping và web assets; `pack-check.ts` không kiểm runtime parser dependency. Vì vậy code runtime import parser phải khai báo dependency trong workspace `@onni/work` (script build cũng tính là importer), không trông cậy vào root devDependency/ancestor `node_modules`; API contract/api-client vẫn không nhận Node dependency. [packages/work/package.json](../../../packages/work/package.json), [check-pack.mjs](../../../packages/work/scripts/check-pack.mjs), [pack-check.ts](../../../packages/work/src/pack-check.ts), [AGENTS.md](../../../AGENTS.md)
+
+| Lựa chọn | Fact đã kiểm | Hệ quả |
+| --- | --- | --- |
+| TypeScript 7 API | Package hiện có native `tsc` và API `typescript/unstable/*`; `Project` có trong sync/async, nhưng không có `ts.createProgram` ở export root. Wiki Compiler API cảnh báo tài liệu cũ mô tả TS 6 trở xuống và TS 7.1 có API khác. | Hữu ích để trích symbol TypeScript nếu adapter bám đúng phiên bản, nhưng unstable API và native optional packages là rủi ro nâng cấp/runtime. Không đặt nền graph trên `ts.createProgram`. |
+| ts-morph | Dự án mô tả mình là wrapper của TypeScript Compiler API; compatibility với TS 7.0.2 **chưa kiểm** bằng một run local. | Không suy ra tương thích TypeScript 7 từ tên package; xác nhận pin/API tương thích trước khi thêm runtime dependency. Thay đổi TypeScript 7 làm compatibility thành câu hỏi mở. |
+| Tree-sitter/WASM | Dự án mô tả parser đa ngôn ngữ, incremental, chịu được syntax error; cung cấp WASM binding. | Hợp với graph nhiều ngôn ngữ và incremental AST; cần chọn/bundle grammar và kiểm Windows/WASM package/runtime. |
+| es-module-lexer | Lexer nhỏ tập trung import/export/module syntax; full build hỗ trợ JS/TS module syntax. | Phù hợp first pass cho `imports` edges và incremental file hashing; không đủ cho type, symbol references hay call graph. |
+| Regex | Không cần parser dependency. | Dùng được cho file extension/path hoặc format đơn giản; không đáng tin cho imports/symbols khi có comments, strings, TSX, dynamic import. |
+
+Nguồn ngoài, truy cập 2026-11-06: [TypeScript Compiler API wiki](https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API), [ts-morph project](https://github.com/dsherret/ts-morph), [Tree-sitter README](https://github.com/tree-sitter/tree-sitter), [es-module-lexer README](https://github.com/guybedford/es-module-lexer). Gợi ý kỹ thuật: bắt đầu bằng adapter hẹp với `es-module-lexer` cho module edges và hash file; làm spike riêng nếu symbol-level cần TS7 `Project` hoặc Tree-sitter. Tất cả package mới thuộc `@onni/work` nếu runtime server import chúng; không nhập vào `contract`/`api-client`.
+
+## 10. Quy mô hiện tại và ước lượng graph
+
+Đếm trong `packages/{contract,api-client,work,web}/src`, extension `.ts/.tsx/.js/.jsx/.mts/.cts`, loại `*.test.*`/`*.testkit.*`; đếm dòng vật lý. Import edges là scan gần đúng các import/export tương đối một dòng, chỉ dấu nháy đơn, nên bỏ sót multiline, alias, package imports và dynamic edges.
+
+| Package | Production source files | LOC |
+| --- | ---: | ---: |
+| `packages/contract` | 38 | 7,443 |
+| `packages/api-client` | 6 | 823 |
+| `packages/work` | 302 | 88,926 |
+| `packages/web` | 451 | 102,183 |
+| **Tổng** | **797** | **199,375** |
+
+Trong các package source trees có thêm 837 test/testkit files và 191,823 LOC. File lớn nhất gồm `workflows/run.ts` 10,144 dòng, `server/server.ts` 8,422, `server/forge/github.ts` 3,560, `web/api/client.ts` 2,992, `web/api/queries.ts` 2,380, `runs/store.ts` 2,294. Import fan-in gần đúng: `core/agent-runner.ts` 46, `runs/store.ts` 28, `paths.ts` 22, `workspace/config.ts` 19; fan-out: `server/server.ts` 110, `workflows/run.ts` 69, `contract/index.ts` 37, `index.ts` 36. [metrics command: recursive Node scan over four package `src` directories]
+
+Ước lượng sàn cho graph file-level: khoảng 800 production source nodes và ~1,510 relative static-import edges; nếu đưa test/testkit vào thì ít nhất khoảng 1,634 code-file nodes trước docs/config/workflows và edges ngoài import (contract->route->client->hook, docs, git co-change, run-touch). `server/git-changes.ts` có comment rằng repository này có khoảng 1,900 paths và đặt cap 20,000; con số đó là comment tại implementation; tổng path toàn repo chưa được đếm lại ở survey này (**chưa kiểm**). Symbol nodes và co-change edges sẽ làm graph lớn hơn nhiều; bắt đầu với file nodes để giữ RAM/latency dễ đo. [server/git-changes.ts](../../../packages/work/src/server/git-changes.ts) (`REPO_TREE_CAP`)
+
+## 11. Performance, safety, secrets và Windows
+
+Không scan/parsing đồng bộ toàn repo trên event loop khi có HTTP request. Dùng async file reads, job queue có concurrency cap, chunk/yield, cancel bằng `AbortSignal`, giới hạn bytes/file, tổng bytes, nodes/edges, time và output token budget. `worktreeChangedFilesReadOnly()` làm mẫu 3s timeout + AbortSignal; `git-changes.ts` đặt repo path cap 20,000/8 MiB, file-content cap 512 KiB, diff cap 200 KiB; `git-worktree.ts` dùng 400 KiB diff cap và giới hạn scan marker 2 MiB. Index nền nếu có phải cancellable và không giữ toàn AST của repo trong RAM. [git-worktree.ts](../../../packages/work/src/git-worktree.ts) (`DIFF_CAP`, `worktreeChangedFilesReadOnly`), [server/git-changes.ts](../../../packages/work/src/server/git-changes.ts) (`REPO_TREE_CAP`, `REPO_TREE_BYTES_CAP`, `FILE_CONTENT_CAP`, `PATCH_CAP`)
+
+Repo path list hiện dựa trên Git tracked paths cộng untracked-not-ignored; `.gitignore` không loại file đã track. Do đó graph phải vừa tôn trọng `git ls-files --exclude-standard`/ignore, vừa có denylist nhạy cảm rõ ràng: `.env`, `.env.*` (trừ `.env.example`), credential/key/certificate files, `.npmrc` nếu chứa token. Không đọc hoặc lưu file content của các path này. Chỉ lưu project-relative path/IDs, local-only; không upload. Redaction event hiện có không thay thế allow/deny path policy của index. `AGENTS.md` cũng xác nhận `.env` không auto-load và state không được chứa secrets. [server/git-changes.ts](../../../packages/work/src/server/git-changes.ts) (`listRepoPaths`), [core/secret-redaction.ts](../../../packages/work/src/core/secret-redaction.ts), [AGENTS.md](../../../AGENTS.md)
+
+Windows: normalize bằng `node:path`, serialize graph path thành dạng repo-relative ổn định; không nối path POSIX thủ công, không đi theo symlink/junction ra khỏi root, xử lý case-insensitive volume, CRLF, rename retry và `EPERM`. Permissions `0600` best-effort vì Windows không mô phỏng POSIX mode. Đừng yêu cầu symlink để hoạt động; Windows lifecycle/version layout dùng junction, tests symlink có thể `EPERM` nếu Developer Mode tắt. Theo AGENTS, native Windows `npm test`/`npm run test:unit` có nhiều lỗi môi trường `/bin/sh`, chmod, symlink và cleanup; CI là thẩm quyền. [fs-rename.ts](../../../packages/work/src/fs-rename.ts), [worktree-lifecycle/store.ts](../../../packages/work/src/worktree-lifecycle/store.ts), [AGENTS.md](../../../AGENTS.md) (“Windows development machine”)
+
+Index content local và deterministic mặc định; optional AI summary phải OFF theo brief, gắn nhãn AI-written/provenance. Query agent cần truncate theo token budget, trả nguồn/provenance, không nhúng snippets của secret files. Graph reads phải degrade khi Git/index/parser unavailable; query không được làm boot thất bại.
+
+## 12. Quy ước test áp dụng
+
+Vitest test đặt cạnh code (`foo.ts` + `foo.test.ts`); logic core nhỏ có thể có node:test trong `packages/work/test/unit`. Không dùng `.skip`, `.todo`, `.only`. `npm test` và `npm run test:unit` phải server-free/browser-free. Với graph: unit test parser fixtures và provenance; temp git repo test cache invalidation/rename/overlay/cancel; test cache thiếu/hỏng rebuild; test `.env`/ignored file bị loại; test output token/file caps; test Windows path/case/CRLF bằng platform guards bên trong test, không skip callsite. [AGENTS.md](../../../AGENTS.md) (“Conventions”), [packages/work/src](../../../packages/work/src), [packages/work/test/unit](../../../packages/work/test/unit)
+
+## Risks and open questions for the plan
+
+- Chọn phạm vi v1: file/import graph hay symbol/reference graph; cái sau đòi parser/type semantics và tốn bộ nhớ hơn.
+- Có cần đa ngôn ngữ ngay từ đầu không, hay TypeScript/JavaScript trước rồi Tree-sitter sau?
+- TypeScript 7 `unstable` API có được chấp nhận/pin không; ai giữ compatibility gate khi API đổi?
+- Cần baseline graph ở HEAD, committed branch, hay base branch; overlay dirty worktree cập nhật ở nhịp nào?
+- Co-change mining giới hạn bao nhiêu commit và xử lý merge/rename/copy thế nào?
+- Stable node IDs qua rename/move: path ID đơn giản hay Git rename history/declared IDs?
+- Có background indexing không; nếu có, chính sách default, cancel, scheduler, CPU/memory cap và `ONNI_*` flag là gì?
+- Payload WS chỉ invalidation hay snapshot; project topic identity/cleanup khi project bị unregister?
+- Secret-file denylist chính xác ra sao; có xử lý file secret tên tùy biến, symlink, tracked secret và `.gitignore` negation?
+- Run touched edges cần giữ bao lâu, xóa theo retention của runs hay cache riêng?
+- Graph-node action chỉ owner metadata cho schedule hiện có hay cần graph-change automation kind mới?
+- Node/symbol content nào được đưa vào agent context; cap token, output redaction và provenance format nào?
+
+## Reusable building blocks
+
+- Per-project path/root: [paths.ts](../../../packages/work/src/paths.ts) (`onniHomeDir`); [index.ts](../../../packages/work/src/index.ts) (`openStore`).
+- Optional data-dir ignore: [data-gitignore.ts](../../../packages/work/src/data-gitignore.ts) (`DATA_GITIGNORE_ENTRIES`, `ensureDataGitignore`).
+- Atomic small state writes: [dispatch/state-file.ts](../../../packages/work/src/dispatch/state-file.ts) (`writeAtomic`, `withPathLock`, `revisionOf`).
+- Cross-process lease/store pattern: [automations/store.ts](../../../packages/work/src/automations/store.ts) (`AutomationStore`, lease); [worktree-lifecycle/store.ts](../../../packages/work/src/worktree-lifecycle/store.ts) (`LifecycleStore`).
+- Git anchors, safe refs, read-only file list: [git-diff-base.ts](../../../packages/work/src/git-diff-base.ts) (`resolveTaskDiffBase`); [git-refs.ts](../../../packages/work/src/git-refs.ts) (`isSafeGitRef`); [git-worktree.ts](../../../packages/work/src/git-worktree.ts) (`worktreeChangedFilesReadOnly`, `worktreeHeadShort`).
+- Repository path caps and rename-aware history: [server/git-changes.ts](../../../packages/work/src/server/git-changes.ts) (`listRepoPaths`, `collectRunCommits`, `collectCommitChanges`, `parseNameStatus`).
+- Run persistence/redaction: [runs/store.ts](../../../packages/work/src/runs/store.ts) (`RunStore`, `appendEvent`, `redact`).
+- Typed HTTP shape: [server/app-type.ts](../../../packages/work/src/server/app-type.ts) (`AppType`); [server/validators.ts](../../../packages/work/src/server/validators.ts); [contract/index.ts](../../../packages/contract/src/index.ts).
+- Demand-driven live signal: [server/ws.ts](../../../packages/work/src/server/ws.ts) (`createSocketHub`, `registerTopic`); [web/api/ws.ts](../../../packages/web/src/api/ws.ts) (`subscribeTopic`).
+- Agent CLI/prompt/skill integration: [index.ts](../../../packages/work/src/index.ts), [dispatch/commands.ts](../../../packages/work/src/dispatch/commands.ts), [dispatch/prompts.ts](../../../packages/work/src/dispatch/prompts.ts), [dispatch/prompt-budget.ts](../../../packages/work/src/dispatch/prompt-budget.ts), [skills.ts](../../../packages/work/src/skills.ts), [automations/builtin-skill.ts](../../../packages/work/src/automations/builtin-skill.ts), [workflows/run.ts](../../../packages/work/src/workflows/run.ts).
