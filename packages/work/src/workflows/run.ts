@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPart, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, VERIFY_COMMAND_TIMEOUT_MS, VERIFY_MAX_RUNS_PER_WORKER, VERIFY_TOTAL_TIMEOUT_MS, type DispatchVerifyInput, type DispatchVerifyResult, type DispatchVerifyCommandResult, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPart, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -110,9 +110,12 @@ import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
 import { orderPeekCandidates, peekTail, quietMinutesOf } from '../dispatch/peek.ts';
 import { appendManagerMemory, clampMemoryToTail, readManagerMemory, sanitizeMemoryEntry, writeManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
-import { requireRootManager, requireSameTree, treeRootOf } from '../dispatch/access.ts';
+import { requireRootManager, requireSameTree, resolveRunRef, treeRootOf } from '../dispatch/access.ts';
+import { assembleCommandResults, buildVerifyEnv, capWarnings, resolveVerifyCommands, verifyStateOf, verifySummary, type RawCommandRun } from '../dispatch/verify.ts';
+import { runVerifyCommand } from '../dispatch/verify-exec.ts';
 import {
   appendLedger,
+  appendReportSection,
   findPlanCycle,
   inboxDigest,
   inboxName,
@@ -1299,6 +1302,9 @@ export class RunManager {
   readonly lifecycle: WorktreeLifecycleCoordinator;
 
   private readonly active = new Map<string, ActiveRun>();
+  /** One `onni task verify` per tree (checks share ports and caches); aborted by cancel/dispose. */
+  private readonly verifying = new Map<string, AbortController>();
+  private readonly verifyDeps: { runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number };
   /** Check ownership survives a parked continuation without persisting transient state. */
   private readonly checkArtifactSnapshots = new Map<string, Map<string, string>>();
   /** A failed checkpoint remains unsafe when a parked run is continued. */
@@ -1444,8 +1450,15 @@ export class RunManager {
       /** How long a fork waits for the namer's branch (spec 2026-10-11-branch-naming-instructions).
        *  Tests shorten it; the default is the slow-model budget. */
       branchNameWaitMs?: number;
+      /** Test seam for `onni task verify`: the command runner, the bash lookup and the clock. */
+      verifyDeps?: Partial<{ runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number }>;
     } = {},
   ) {
+    this.verifyDeps = {
+      runCommand: options.verifyDeps?.runCommand ?? runVerifyCommand,
+      resolveBash: options.verifyDeps?.resolveBash ?? resolveBash,
+      now: options.verifyDeps?.now ?? Date.now,
+    };
     this.dataDir = join(repoRoot, '.ai/onni');
     this.branchNameWaitMs = options.branchNameWaitMs ?? BRANCH_NAME_WAIT_MS;
     this.projectId = options.projectId;
@@ -1508,6 +1521,7 @@ export class RunManager {
    * dispose only guarantees the manager makes no further moves on its own.
    */
   dispose(): void {
+    for (const controller of this.verifying.values()) controller.abort();
     ++this.queueReasonRevision;
     this.store.off('run', this.onRunHoldInputs);
     this.store.off('deleted', this.onRunDeletedHolds);
@@ -2948,6 +2962,209 @@ export class RunManager {
       tail: tail.lines,
       tailTruncated: tail.truncated,
     };
+  }
+
+  /**
+   * `POST /runs/:id/verify` — the root manager has onni run the repository's checks inside a SETTLED
+   * worker's worktree (wave A1). `:id` is the caller; the worker travels in `input.target`. Every
+   * refusal about WHO or WHICH STATE is a 4xx; "cannot run here" is a 200 `unavailable` value.
+   * This is a barrier, not a sandbox: it runs repo-defined scripts from a tree the worker wrote.
+   */
+  async verifyFor(
+    callerId: string,
+    input: DispatchVerifyInput,
+  ): Promise<DispatchVerifyResult | { denied: string; status: 400 | 403 | 404 | 409 }> {
+    const caller = this.store.getRun(callerId);
+    const callerAccess = requireRootManager(caller, 'verify a worker');
+    if (!callerAccess.ok) return { denied: callerAccess.denied, status: callerAccess.status };
+    if (!caller) return { denied: `no such run: ${callerId}`, status: 404 };
+
+    const target = resolveRunRef(this.store.listRuns(), input.target);
+    if (target === 'none') return { denied: `no such run: ${input.target}`, status: 404 };
+    if (target === 'ambiguous') return { denied: `ambiguous id "${input.target}" — give more characters`, status: 409 };
+    const sameTree = requireSameTree(caller, target);
+    if (!sameTree.ok) return { denied: sameTree.denied, status: sameTree.status };
+    const id8 = target.id.slice(0, 8);
+    if (target.id === caller.id || target.dispatch?.rootRunId !== caller.id) {
+      return { denied: 'verify checks a worker of this task, not the manager itself', status: 409 };
+    }
+    if (!isTerminalStatus(target.status) || this.isActive(target.id)) {
+      return { denied: `worker ${id8} is still ${target.status} — verify runs only on a settled worker`, status: 409 };
+    }
+    const used = target.dispatch?.verify?.runs ?? 0;
+    if (used >= VERIFY_MAX_RUNS_PER_WORKER) {
+      const last = target.dispatch?.verify?.last?.state;
+      return {
+        denied: `${used} of ${VERIFY_MAX_RUNS_PER_WORKER} verify runs used for ${id8}${last ? `; last: ${last}` : ''}`,
+        status: 409,
+      };
+    }
+    if (this.verifying.has(caller.id)) {
+      return { denied: 'another verify is running for this task tree', status: 409 };
+    }
+    // Claimed before the first await: two simultaneous calls must not both pass the check above.
+    const controller = new AbortController();
+    this.verifying.set(caller.id, controller);
+    try {
+      const resolved = await resolveVerifyCommands({
+        repoRoot: this.repoRoot,
+        ...(caller.worktreePath ? { managerWorktree: caller.worktreePath } : {}),
+        ...(input.only ? { only: input.only } : {}),
+      });
+      if ('error' in resolved) return { denied: resolved.error, status: 400 };
+      return await this.runVerify(caller, target, resolved, controller);
+    } finally {
+      this.verifying.delete(caller.id);
+    }
+  }
+
+  private async runVerify(
+    caller: RunRecord,
+    target: RunRecord,
+    resolved: { source: 'required-checks' | 'discovered' | 'none'; commands: string[] },
+    controller: AbortController,
+  ): Promise<DispatchVerifyResult> {
+    const startedAt = new Date(this.verifyDeps.now()).toISOString();
+    const t0 = this.verifyDeps.now();
+    const used = target.dispatch?.verify?.runs ?? 0;
+    const redact = (text: string) => this.store.redactRunText(target.id, text);
+    const unavailable = (reasonCode: NonNullable<DispatchVerifyResult['reasonCode']>, reason: string): DispatchVerifyResult => {
+      const result: DispatchVerifyResult = {
+        state: 'unavailable',
+        reasonCode,
+        reason: reason.slice(0, 400),
+        source: resolved.source,
+        startedAt,
+        durationMs: 0,
+        results: [],
+        runsUsed: used,
+        runsMax: VERIFY_MAX_RUNS_PER_WORKER,
+        warnings: [],
+      };
+      this.recordVerify(caller, target, result);
+      return result;
+    };
+
+    if (process.env.ONNI_DRY_RUN === '1') return unavailable('dry-run', 'ONNI_DRY_RUN=1 — no check is executed');
+    const worktree = target.worktreePath;
+    if (!worktree || !existsSync(worktree)) {
+      return unavailable('no-worktree', "the worker's worktree is gone — it was reclaimed; nothing to run in");
+    }
+    if (resolved.commands.length === 0) {
+      return unavailable('no-commands', 'no required checks are configured and none could be discovered: expected package.json scripts test/build/lint/typecheck/check or a Cargo.toml');
+    }
+    const bash = this.verifyDeps.resolveBash();
+    if (!bash) return unavailable('no-bash', BASH_MISSING_MESSAGE);
+
+    // Counted BEFORE spawning so a crashed or aborted verify cannot be repeated for free.
+    this.updateDispatch(target.id, (d) => ({ ...d, verify: { runs: used + 1, ...(d.verify?.last ? { last: d.verify.last } : {}) } }));
+
+    const warnings: string[] = [];
+    const [files, headCommit] = await Promise.all([
+      worktreeChangedFilesReadOnly(worktree, target.baseBranch ?? 'HEAD', { max: 200 }),
+      worktreeHeadShort(worktree),
+    ]);
+    if (files.files.some((file) => /(^|\/)(package\.json|Cargo\.toml)$/.test(file))) {
+      warnings.push('this worker changed package.json or Cargo.toml — verify runs its scripts, so a green result is only as honest as that change');
+    }
+
+    const env = buildVerifyEnv(process.env);
+    const raws: RawCommandRun[] = [];
+    for (const command of resolved.commands) {
+      const remaining = VERIFY_TOTAL_TIMEOUT_MS - (this.verifyDeps.now() - t0);
+      if (controller.signal.aborted || remaining <= 0) {
+        raws.push({ command, outcome: 'skipped', exitCode: null, durationMs: 0, timedOut: false, output: '' });
+        continue;
+      }
+      const run = await this.verifyDeps.runCommand({
+        bashPath: bash.path,
+        pathDirs: bash.pathDirs,
+        command,
+        cwd: worktree,
+        env,
+        timeoutMs: Math.min(VERIFY_COMMAND_TIMEOUT_MS, remaining),
+        signal: controller.signal,
+      });
+      if (run.spawnError) {
+        // A spawn failure (a POSIX box without bash) is not a verdict on the worker's code.
+        raws.push({ command, outcome: 'skipped', exitCode: null, durationMs: run.durationMs, timedOut: false, output: '' });
+        warnings.push(`could not start "${command.slice(0, 80)}": ${run.spawnError}`);
+        continue;
+      }
+      const outcome: RawCommandRun['outcome'] = run.timedOut ? 'timed-out' : run.aborted ? 'skipped' : run.exitCode === 0 ? 'passed' : 'failed';
+      raws.push({ command, outcome, exitCode: run.exitCode, durationMs: run.durationMs, timedOut: run.timedOut, output: run.output });
+    }
+    const results = assembleCommandResults(raws, redact);
+    const result: DispatchVerifyResult = {
+      state: verifyStateOf(results),
+      source: resolved.source,
+      ...(headCommit ? { headCommit } : {}),
+      startedAt,
+      durationMs: Math.max(0, this.verifyDeps.now() - t0),
+      results,
+      runsUsed: used + 1,
+      runsMax: VERIFY_MAX_RUNS_PER_WORKER,
+      warnings: capWarnings(warnings.map(redact)),
+    };
+    const lastSource = resolved.source === 'none' ? undefined : resolved.source;
+    if (lastSource) {
+      this.updateDispatch(target.id, (d) => ({
+        ...d,
+        verify: {
+          runs: d.verify?.runs ?? used + 1,
+          last: {
+            at: startedAt,
+            ...(headCommit ? { headCommit } : {}),
+            state: result.state === 'failed' ? 'failed' : 'passed',
+            source: lastSource,
+            results: results.map(({ command, outcome, exitCode }) => ({ command, outcome, exitCode })),
+          },
+        },
+      }));
+    }
+    this.recordVerify(caller, target, result);
+    return result;
+  }
+
+  /** Ledger line (numbers only), a note on the manager and on the worker, and the report-file section. */
+  private recordVerify(caller: RunRecord, target: RunRecord, result: DispatchVerifyResult): void {
+    const id8 = target.id.slice(0, 8);
+    const rootRunId = target.dispatch?.rootRunId ?? caller.id;
+    const failed = result.results.filter((entry) => entry.outcome === 'failed' || entry.outcome === 'timed-out').length;
+    appendLedger(this.dataDir, rootRunId, {
+      type: 'verify',
+      runId: caller.id,
+      targetRunId: target.id,
+      state: result.state,
+      source: result.source,
+      commands: result.results.length,
+      failed,
+      ...(result.headCommit ? { headCommit: result.headCommit } : {}),
+      durationMs: result.durationMs,
+      runsUsed: result.runsUsed,
+    });
+    const redact = (text: string) => this.store.redactRunText(target.id, text);
+    const detail = result.state === 'unavailable'
+      ? `unavailable: ${result.reason ?? result.reasonCode}`
+      : `${result.state} — ${verifySummary(result.results)} (${result.runsUsed} of ${result.runsMax} runs used)`;
+    this.store.appendEvent(caller.id, {
+      type: 'note',
+      stepId: this.active.get(caller.id)?.currentStepId,
+      message: redact(`verify ${id8} "${target.title}": ${detail}`),
+      ...(result.state === 'failed' ? { tone: 'danger' as const } : {}),
+    });
+    if (result.state === 'unavailable') return;
+    this.store.appendEvent(target.id, {
+      type: 'note',
+      message: `verified by its manager: ${result.state}${result.headCommit ? ` @ ${result.headCommit}` : ''}`,
+    });
+    appendReportSection(
+      this.dataDir,
+      rootRunId,
+      target.id,
+      'Verification',
+      redact(`- ${result.state} @ ${result.headCommit ?? 'unknown head'}, ${result.startedAt}\n- ${verifySummary(result.results)}`),
+    );
   }
 
   /** Project memory (plan v2 §8). Reading is project-wide, so Settings works with dispatch off. */
@@ -4825,6 +5042,7 @@ export class RunManager {
    * this run's own — a cascade that cancelled nothing must not make `cancel` claim it did.
    */
   cancel(runId: string): boolean {
+    this.verifying.get(runId)?.abort();
     if (this.lifecycle.isBlocked(runId)) return false;
     this.cancelDescendants(runId, new Set([runId]));
     return this.cancelOne(runId);

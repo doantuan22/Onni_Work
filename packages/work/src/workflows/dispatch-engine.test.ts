@@ -9,6 +9,9 @@ import { MANAGER_MEMORY_MAX_BYTES, PENDING_ASK_MAX_QUESTIONS, PEEK_MAX_ENTRIES, 
 import { runRecordSchema, RunStore, type RunRecord } from '../runs/store.ts';
 import { WorkspaceSemaphore, type WorkspaceResourceLimits } from '../workspace/semaphore.ts';
 import { RunManager } from './run.ts';
+import { BASH_MISSING_MESSAGE } from '../core/bash-path.ts';
+import { childSettleReport } from '../dispatch/engine.ts';
+import { writeReport } from '../dispatch/tree-fs.ts';
 import type { WorkflowDef } from './types.ts';
 
 const run = promisify(execFile);
@@ -575,6 +578,253 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       expect(outcome.workersOmitted).toBe(1);
       // Compact mode: state, files — never a tail.
       expect(outcome.workers.every((worker) => worker.tail.length === 0)).toBe(true);
+    }, 60_000);
+  });
+
+  // ---- onni task verify (wave A1) ------------------------------------------------------------
+
+  describe('verify', () => {
+    const ROSTER = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'work' }] });
+    type Runner = NonNullable<NonNullable<ConstructorParameters<typeof RunManager>[2]>['verifyDeps']>['runCommand'];
+    const FAKE_BASH = () => ({ path: 'bash', pathDirs: [] as string[] });
+    const okRun = { exitCode: 0, timedOut: false, aborted: false, output: '', durationMs: 5 };
+    const calls: string[] = [];
+    const exitByCommand: Record<string, number> = {};
+    const fakeRunner: Runner = async (opts) => {
+      calls.push(opts.command);
+      const exitCode = exitByCommand[opts.command] ?? 0;
+      return { ...okRun, exitCode, output: exitCode === 0 ? '' : `FAILED with sk-ant-secret-1234 here\n${opts.command} broke` };
+    };
+    const useVerifyDeps = (deps: NonNullable<ConstructorParameters<typeof RunManager>[2]>['verifyDeps']): void => {
+      manager.dispose();
+      manager = new RunManager(store, repoRoot, { semaphore: new WorkspaceSemaphore(), verifyDeps: deps });
+    };
+    const writeChecks = (checks: string[]) => {
+      mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
+      writeFileSync(join(repoRoot, '.ai/onni/config.json'), JSON.stringify({ requiredChecks: checks }));
+    };
+    const managerRoot = async (): Promise<RunRecord> => {
+      const record = await parkedRoot();
+      store.updateRun(record.id, { roster: ROSTER });
+      return record;
+    };
+    /** A settled worker whose worktree is the (real, git) temp repository. */
+    const settledWorker = (parentId: string, patch: Partial<RunRecord> = {}): RunRecord => {
+      const worker = store.createRun({ title: 'worker', workflow: 'quick-task', task: 't', steps: [] });
+      store.updateRun(worker.id, { status: 'done', dispatch: childOf(parentId), worktreePath: repoRoot, ...patch });
+      return store.getRun(worker.id)!;
+    };
+
+    beforeEach(() => {
+      calls.length = 0;
+      for (const key of Object.keys(exitByCommand)) delete exitByCommand[key];
+      process.env.ONNI_DRY_RUN = '';
+      useVerifyDeps({ runCommand: fakeRunner, resolveBash: FAKE_BASH });
+    });
+
+    it('runs the required checks in a settled worker, stores the verdict and leaves a trail', async () => {
+      writeChecks(['npm test', 'npm run build']);
+      exitByCommand['npm run build'] = 1;
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      store.registerRunSecrets(worker.id, ['sk-ant-secret-1234']);
+      writeReport(join(repoRoot, '.ai/onni'), parent.id, worker.id, 'Report body', {});
+
+      const outcome = await manager.verifyFor(parent.id, { target: worker.id.slice(0, 8) });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome).toMatchObject({ state: 'failed', source: 'required-checks', runsUsed: 1, runsMax: 3 });
+      expect(outcome.results.map((entry) => [entry.command, entry.outcome])).toEqual([['npm test', 'passed'], ['npm run build', 'failed']]);
+      const failed = outcome.results[1]!;
+      expect(failed.tail.join('\n')).toContain('npm run build broke');
+      expect(failed.tail.join('\n')).not.toContain('sk-ant-secret-1234'.slice(0, 0) + 'sk-ant-secret-1234');
+      expect(calls).toEqual(['npm test', 'npm run build']);
+      expect(store.getRun(worker.id)?.dispatch?.verify).toMatchObject({ runs: 1, last: { state: 'failed', source: 'required-checks' } });
+      const ledger = readFileSync(join(treeDirOf(parent.id), 'ledger.jsonl'), 'utf8');
+      expect(ledger).toContain('"type":"verify"');
+      expect(ledger).not.toContain('npm run build');
+      expect(notes(parent.id).some((line) => line.startsWith(`verify ${worker.id.slice(0, 8)}`) && line.includes('failed'))).toBe(true);
+      expect(notes(worker.id).some((line) => line.startsWith('verified by its manager: failed'))).toBe(true);
+      expect(readFileSync(join(treeDirOf(parent.id), 'units', worker.id.slice(0, 8), 'report.md'), 'utf8')).toContain('## Verification');
+    }, 60_000);
+
+    it('refuses on the server: a worker, an unknown caller, another tree, itself, an ambiguous id, an unknown --only', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      expect(await manager.verifyFor(worker.id, { target: worker.id })).toMatchObject({ status: 403 });
+      expect(await manager.verifyFor('no-such-run', { target: worker.id })).toMatchObject({ status: 404 });
+      const other = await managerRoot();
+      const foreign = settledWorker(other.id);
+      expect(await manager.verifyFor(parent.id, { target: foreign.id })).toMatchObject({ status: 409 });
+      expect(await manager.verifyFor(parent.id, { target: parent.id })).toMatchObject({ status: 409 });
+      expect(await manager.verifyFor(parent.id, { target: 'zzzzzzzz' })).toMatchObject({ status: 404 });
+      const twin = store.createRun({ title: 'twin', workflow: 'quick-task', task: 't', steps: [] });
+      store.updateRun(twin.id, { status: 'done', dispatch: childOf(parent.id), worktreePath: repoRoot });
+      const shared = worker.id.slice(0, 1);
+      const sameStart = store.listRuns().filter((r) => r.id.startsWith(shared));
+      if (sameStart.length > 1) {
+        expect(await manager.verifyFor(parent.id, { target: shared.padEnd(6, shared) })).toMatchObject({ status: expect.any(Number) });
+      }
+      expect(await manager.verifyFor(parent.id, { target: worker.id, only: ['rm -rf /'] })).toMatchObject({ status: 400 });
+      expect(calls).toEqual([]);
+    }, 60_000);
+
+    it('runs only on a settled worker', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      for (const status of ['running', 'queued', 'waiting'] as const) {
+        const worker = settledWorker(parent.id, { status });
+        const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+        expect(outcome).toMatchObject({ status: 409 });
+        expect((outcome as { denied: string }).denied).toContain(status);
+      }
+      for (const status of ['failed', 'cancelled'] as const) {
+        const worker = settledWorker(parent.id, { status });
+        expect('denied' in (await manager.verifyFor(parent.id, { target: worker.id }))).toBe(false);
+      }
+    }, 60_000);
+
+    it('allows three runs per worker, counts only real ones, and survives a restart', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      store.updateRun(worker.id, { worktreePath: join(repoRoot, 'gone') });
+      const gone = await manager.verifyFor(parent.id, { target: worker.id });
+      expect(gone).toMatchObject({ state: 'unavailable', reasonCode: 'no-worktree', runsUsed: 0 });
+      store.updateRun(worker.id, { worktreePath: repoRoot });
+      for (let n = 1; n <= 3; n += 1) {
+        expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'passed', runsUsed: n });
+      }
+      const fourth = await manager.verifyFor(parent.id, { target: worker.id });
+      expect(fourth).toMatchObject({ status: 409 });
+      expect((fourth as { denied: string }).denied).toContain('3 of 3');
+      store.flush();
+      const reopened = RunStore.open(join(repoRoot, '.ai/onni'));
+      expect(reopened.getRun(worker.id)?.dispatch?.verify?.runs).toBe(3);
+    }, 60_000);
+
+    it('holds one verify per tree, releases the slot afterwards and lets cancel abort it', async () => {
+      writeChecks(['npm test']);
+      let release: (() => void) | undefined;
+      let sawAbort = false;
+      useVerifyDeps({
+        resolveBash: FAKE_BASH,
+        runCommand: (opts) =>
+          new Promise((resolve) => {
+            release = () => resolve({ ...okRun });
+            opts.signal?.addEventListener('abort', () => {
+              sawAbort = true;
+              resolve({ ...okRun, exitCode: null, aborted: true });
+            });
+          }),
+      });
+      const parent = await managerRoot();
+      const a = settledWorker(parent.id);
+      const b = settledWorker(parent.id);
+      const first = manager.verifyFor(parent.id, { target: a.id });
+      await new Promise((r) => setTimeout(r, 100));
+      expect(await manager.verifyFor(parent.id, { target: b.id })).toMatchObject({ status: 409 });
+      release?.();
+      expect(await first).toMatchObject({ state: 'passed' });
+      const second = manager.verifyFor(parent.id, { target: b.id });
+      await new Promise((r) => setTimeout(r, 100));
+      manager.cancel(parent.id);
+      const aborted = await second;
+      expect(sawAbort).toBe(true);
+      expect(aborted).toMatchObject({ results: [{ outcome: 'skipped' }] });
+      // released: the entry is gone after an abort too
+      expect((manager as unknown as { verifying: Map<string, unknown> }).verifying.size).toBe(0);
+    }, 60_000);
+
+    it('answers “cannot run” as a value and spends nothing', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      process.env.ONNI_DRY_RUN = '1';
+      expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'dry-run' });
+      process.env.ONNI_DRY_RUN = '';
+      useVerifyDeps({ runCommand: fakeRunner, resolveBash: () => null });
+      const noBash = await manager.verifyFor(parent.id, { target: worker.id });
+      expect(noBash).toMatchObject({ state: 'unavailable', reasonCode: 'no-bash' });
+      expect((noBash as { reason: string }).reason).toBe(BASH_MISSING_MESSAGE);
+      useVerifyDeps({ runCommand: fakeRunner, resolveBash: FAKE_BASH });
+      writeChecks([]);
+      const empty = store.getRun(parent.id)!;
+      store.updateRun(parent.id, { worktreePath: join(repoRoot, 'no-such-manager-tree') });
+      expect(empty).toBeDefined();
+      expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'no-commands' });
+      expect(calls).toEqual([]);
+      expect(store.getRun(worker.id)?.dispatch?.verify).toBeUndefined();
+    }, 60_000);
+
+    it('discovers checks from the manager’s tree, and warns when the worker changed package.json', async () => {
+      const parent = await managerRoot();
+      const managerTree = mkdtempSync(join(tmpdir(), 'onni-verify-mgr-'));
+      writeFileSync(join(managerTree, 'package.json'), JSON.stringify({ scripts: { test: 'x' } }));
+      store.updateRun(parent.id, { worktreePath: managerTree });
+      // a worker tree that DEFINES another script must not widen the list
+      const workerTree = mkdtempSync(join(tmpdir(), 'onni-verify-wrk-'));
+      writeFileSync(join(workerTree, 'package.json'), JSON.stringify({ scripts: { test: 'x', build: 'y' } }));
+      await run('git', ['init', '-q', '-b', 'main'], { cwd: workerTree });
+      await run('git', ['add', '-A'], { cwd: workerTree });
+      await run('git', [...GIT_ID, 'commit', '-q', '-m', 'base'], { cwd: workerTree });
+      writeFileSync(join(workerTree, 'package.json'), JSON.stringify({ scripts: { test: 'true' } }));
+      const worker = settledWorker(parent.id, { worktreePath: workerTree, baseBranch: 'HEAD' });
+      const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+      rmSync(managerTree, { recursive: true, force: true });
+      rmSync(workerTree, { recursive: true, force: true });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.source).toBe('discovered');
+      expect(outcome.results.map((entry) => entry.command)).toEqual(['npm test']);
+      expect(outcome.warnings.some((line) => line.includes('package.json'))).toBe(true);
+    }, 60_000);
+
+    it('skips what is left once the total deadline is spent', async () => {
+      writeChecks(['one', 'two', 'three']);
+      let clock = 0;
+      useVerifyDeps({
+        resolveBash: FAKE_BASH,
+        now: () => clock,
+        runCommand: async (opts) => {
+          calls.push(opts.command);
+          clock += 300_000;
+          return { ...okRun };
+        },
+      });
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.results.map((entry) => entry.outcome)).toEqual(['passed', 'skipped', 'skipped']);
+      expect(calls).toEqual(['one']);
+    }, 60_000);
+
+    it('replaces the worker-reported label for the same head and marks it stale after the branch moves', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      const outcome = await manager.verifyFor(parent.id, { target: worker.id });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      const head = outcome.headCommit!;
+      const verified = store.getRun(worker.id)!;
+      const claims = { checks: [{ command: 'npm test', exitCode: 1 }], headCommit: head };
+      const same = childSettleReport(verified, claims).text;
+      expect(same).toContain('verified by onni');
+      expect(same).toContain('MISMATCH');
+      const moved = childSettleReport(verified, { checks: claims.checks, headCommit: 'abcdef0123' }).text;
+      expect(moved).toContain('worker-reported, not verified');
+      expect(moved).toContain('stale');
+    }, 60_000);
+
+    it('never touches the worker’s index', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      const gitDir = (await run('git', ['rev-parse', '--absolute-git-dir'], { cwd: repoRoot })).stdout.trim();
+      writeFileSync(join(repoRoot, 'untracked-by-verify.txt'), 'x\n');
+      const before = readFileSync(join(gitDir, 'index'));
+      await manager.verifyFor(parent.id, { target: worker.id });
+      expect(readFileSync(join(gitDir, 'index')).equals(before)).toBe(true);
     }, 60_000);
   });
 
