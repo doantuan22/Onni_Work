@@ -6,7 +6,7 @@ của chủ dự án (góp ý để tối ưu việc thực thi, hướng tới 
 Phạm vi: chỉ phần Manager–Worker. Phần **ngữ cảnh dự án** (AGENTS.md, memory, handoff, tài liệu thiết kế)
 được bàn riêng và không nằm trong tài liệu này.
 
-Đọc kèm: [`manager-worker.md`](manager-worker.md), [`YEUCAU.md`](../../YEUCAU.md),
+Đọc kèm: [`manager-worker.md`](manager-worker.md), `YEUCAU.md` (đã xóa khỏi cây làm việc; xem bản cuối bằng `git show 7d9bfdd:YEUCAU.md`),
 [`.ai/specs/2026-11-03-manager-worker-gaps-plan.v2.md`](../../.ai/specs/2026-11-03-manager-worker-gaps-plan.v2.md),
 [`AGENTS.md`](../../AGENTS.md).
 
@@ -18,7 +18,7 @@ Phạm vi: chỉ phần Manager–Worker. Phần **ngữ cảnh dự án** (AGEN
 
 ## 1. Hiện trạng (đã đối chiếu code)
 
-Phần lớn 10 mục trong `YEUCAU.md` đã có trong code: `onni task peek`, `budget`, `ask` (không chặn lượt),
+Phần lớn 10 mục trong `YEUCAU.md` (bản cũ) đã có trong code: `onni task peek`, `budget`, `ask` (không chặn lượt),
 `memory`, `plan`, `--after`, dòng khả năng (capability) của từng worker trong brief, và `tier`/`kinds` trong
 roster. Bộ lệnh `onni task` hiện có: `create`, `ask`, `report`, `merge`, `budget`, `peek`, `memory`, `plan`,
 `list`, `tree` (`packages/work/src/dispatch/task-cli.ts`).
