@@ -1,17 +1,25 @@
 import { execFile } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
   branchFor,
+  addDetachedWorktree,
+  classifyMergeTree,
   chooseForkBase,
   createWorktree,
+  dropOnniDataPaths,
+  parseGitVersion,
   parseShortstat,
   pruneOrphans,
+  removeDetachedWorktree,
   resolveBaseRef,
+  resolveReadOnlyDiffBase,
+  trialMergeTree,
   uniqueBranchName,
+  withBaselineWorktree,
   worktreeChangedFilesReadOnly,
   worktreeChangedPaths,
   worktreeHeadShort,
@@ -623,6 +631,173 @@ describe('worktreeChangedFilesReadOnly (plan v2 §5 H3)', () => {
     const expected = (await run('git', ['rev-parse', '--short', 'HEAD'], { cwd: repo })).stdout.trim();
     expect(await worktreeHeadShort(repo)).toBe(expected);
     expect(await worktreeHeadShort(join(tmpdir(), 'onni-no-such-worktree'))).toBeUndefined();
+  });
+});
+
+describe('trialMergeTree', () => {
+  const oid = 'a'.repeat(40);
+
+  it('classifies clean output, conflicts, unsupported git, bad refs, and caps files', () => {
+    expect(classifyMergeTree({ exitCode: 0, stdout: `${oid}\0`, stderr: '' })).toEqual({
+      state: 'clean', files: [], omitted: 0,
+    });
+    expect(classifyMergeTree({ exitCode: 1, stdout: `${oid}\0f.txt\0`, stderr: '' })).toEqual({
+      state: 'conflict', files: ['f.txt'], omitted: 0,
+    });
+    expect(classifyMergeTree({ exitCode: 1, stdout: `${oid}\0f.txt\0\0ignored\0`, stderr: '' })).toEqual({
+      state: 'conflict', files: ['f.txt'], omitted: 0,
+    });
+    expect(classifyMergeTree({
+      exitCode: 1,
+      stdout: '',
+      stderr: 'merge-tree: nope - not something we can merge\nsecond line',
+    })).toEqual({
+      state: 'unavailable', files: [], omitted: 0, reason: 'merge-tree: nope - not something we can merge',
+    });
+    expect(classifyMergeTree({ exitCode: 129, stdout: '', stderr: 'usage: git merge-tree' })).toEqual({
+      state: 'unavailable', files: [], omitted: 0, reason: 'needs git 2.38 or newer',
+    });
+    expect(classifyMergeTree({ exitCode: 1, stdout: `${oid}\0c.txt\0a.txt\0b.txt\0`, stderr: '' }, 2)).toEqual({
+      state: 'conflict', files: ['a.txt', 'b.txt'], omitted: 1,
+    });
+  });
+
+  it('parses vendor version suffixes and rejects malformed output', () => {
+    expect(parseGitVersion('git version 2.56.0.windows.2')).toEqual([2, 56, 0]);
+    expect(parseGitVersion('not git')).toBeNull();
+  });
+
+  it('previews real clean/conflicting merges without changing refs, index, or worktree', async () => {
+    const repo = await fixtureRepo('onni-merge-tree-');
+    const probe = await run('git', ['merge-tree', '--write-tree', 'refs/heads/main', 'refs/heads/main'], { cwd: repo }).catch(() => null);
+    if (!probe) return;
+
+    await run('git', ['checkout', '-q', '-b', 'left'], { cwd: repo });
+    writeFileSync(join(repo, 'left.txt'), 'left\n');
+    await run('git', ['add', '-A'], { cwd: repo });
+    await run('git', [...GIT_ID, 'commit', '-q', '-m', 'left'], { cwd: repo });
+    await run('git', ['checkout', '-q', 'main'], { cwd: repo });
+    await run('git', ['checkout', '-q', '-b', 'right'], { cwd: repo });
+    writeFileSync(join(repo, 'right.txt'), 'right\n');
+    await run('git', ['add', '-A'], { cwd: repo });
+    await run('git', [...GIT_ID, 'commit', '-q', '-m', 'right'], { cwd: repo });
+
+    await run('git', ['checkout', '-q', 'main'], { cwd: repo });
+    await run('git', ['checkout', '-q', '-b', 'conflict-left'], { cwd: repo });
+    writeFileSync(join(repo, 'base.txt'), 'left change\n');
+    await run('git', ['add', 'base.txt'], { cwd: repo });
+    await run('git', [...GIT_ID, 'commit', '-q', '-m', 'conflict left'], { cwd: repo });
+    await run('git', ['checkout', '-q', 'main'], { cwd: repo });
+    await run('git', ['checkout', '-q', '-b', 'conflict-right'], { cwd: repo });
+    writeFileSync(join(repo, 'base.txt'), 'right change\n');
+    await run('git', ['add', 'base.txt'], { cwd: repo });
+    await run('git', [...GIT_ID, 'commit', '-q', '-m', 'conflict right'], { cwd: repo });
+    writeFileSync(join(repo, 'dirty.txt'), 'untracked\n');
+
+    const refsBefore = (await run('git', ['for-each-ref', '--format=%(refname) %(objectname)'], { cwd: repo })).stdout;
+    const indexBefore = (await run('git', ['ls-files', '--stage'], { cwd: repo })).stdout;
+    const statusBefore = (await run('git', ['status', '--porcelain'], { cwd: repo })).stdout;
+
+    expect(await trialMergeTree(repo, 'left', 'right')).toEqual({ state: 'clean', files: [], omitted: 0 });
+    expect(await trialMergeTree(repo, 'conflict-left', 'conflict-right')).toEqual({
+      state: 'conflict', files: ['base.txt'], omitted: 0,
+    });
+    expect((await trialMergeTree(repo, 'left', 'missing-branch')).state).toBe('unavailable');
+    expect((await trialMergeTree(repo, '--help', 'main')).state).toBe('unavailable');
+
+    expect((await run('git', ['for-each-ref', '--format=%(refname) %(objectname)'], { cwd: repo })).stdout).toBe(refsBefore);
+    expect((await run('git', ['ls-files', '--stage'], { cwd: repo })).stdout).toBe(indexBefore);
+    expect((await run('git', ['status', '--porcelain'], { cwd: repo })).stdout).toBe(statusBefore);
+  });
+
+  it('returns timeout for an already-aborted request without spawning git', async () => {
+    const repo = await fixtureRepo('onni-merge-tree-abort-');
+    expect(await trialMergeTree(repo, 'main', 'main', { signal: AbortSignal.abort() })).toEqual({
+      state: 'timeout', files: [], omitted: 0,
+    });
+  });
+});
+
+describe('resolveReadOnlyDiffBase', () => {
+  it('returns the fork-point sha without refreshing the index and degrades on unsafe or missing inputs', async () => {
+    const repo = await fixtureRepo('onni-readonly-base-');
+    const expected = (await run('git', ['rev-parse', 'HEAD'], { cwd: repo })).stdout.trim();
+    await run('git', ['checkout', '-q', '-b', 'task'], { cwd: repo });
+    writeFileSync(join(repo, 'task.txt'), 'task change\n');
+    await run('git', ['add', '-A'], { cwd: repo });
+    await run('git', [...GIT_ID, 'commit', '-q', '-m', 'task'], { cwd: repo });
+    const before = (await run('git', ['ls-files', '--stage'], { cwd: repo })).stdout;
+
+    expect(await resolveReadOnlyDiffBase(repo, 'main', { taskBranch: 'task' })).toBe(expected);
+    expect((await run('git', ['ls-files', '--stage'], { cwd: repo })).stdout).toBe(before);
+    expect(await resolveReadOnlyDiffBase(repo, '-unsafe')).toBeUndefined();
+    expect(await resolveReadOnlyDiffBase(join(tmpdir(), 'onni-no-such-worktree'), 'main')).toBeUndefined();
+    expect(await resolveReadOnlyDiffBase(repo, 'main', { signal: AbortSignal.abort() })).toBeUndefined();
+  });
+});
+
+describe('dropOnniDataPaths', () => {
+  it('drops only paths under the root .ai/onni directory', () => {
+    expect(dropOnniDataPaths([
+      '.ai/onni/dispatch/runs.json', '.ai/onni', 'src/.ai/onni-like.ts', 'src/.ai/onni/file.ts', 'src/app.ts',
+    ])).toEqual(['src/.ai/onni-like.ts', 'src/.ai/onni/file.ts', 'src/app.ts']);
+  });
+});
+
+describe('withBaselineWorktree', () => {
+  it('adds and removes a detached worktree under the ignored baseline temp directory', async () => {
+    const repo = await fixtureRepo('onni-baseline-add-remove-');
+    const baseSha = (await run('git', ['rev-parse', 'HEAD'], { cwd: repo })).stdout.trim();
+    const path = join(repo, '.ai', 'onni', 'tmp', 'verify-baseline', 'manual-check');
+
+    expect(await addDetachedWorktree(repo, path, baseSha)).toEqual({ available: true });
+    expect((await run('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: path })).stdout.trim()).toBe('HEAD');
+    expect(await removeDetachedWorktree(repo, path)).toEqual({ cleanup: 'removed' });
+    expect(existsSync(path)).toBe(false);
+  });
+
+  it('cleans up after success, a callback error, and a timeout', async () => {
+    const repo = await fixtureRepo('onni-baseline-worktree-');
+    const baseSha = (await run('git', ['rev-parse', 'HEAD'], { cwd: repo })).stdout.trim();
+
+    const completed = await withBaselineWorktree(repo, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', baseSha, async () => 'ok');
+    expect(completed).toMatchObject({ state: 'completed', value: 'ok', cleanup: 'removed' });
+    expect(existsSync(completed.worktreePath)).toBe(false);
+
+    const failed = await withBaselineWorktree(repo, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', baseSha, async () => {
+      throw new Error('baseline command failed');
+    });
+    expect(failed).toMatchObject({ state: 'failed', reason: 'baseline command failed', cleanup: 'removed' });
+    expect(existsSync(failed.worktreePath)).toBe(false);
+
+    const timeout = await withBaselineWorktree(repo, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', baseSha, async (_path, signal) => new Promise<never>((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+    }), { timeoutMs: 20 });
+    expect(timeout).toMatchObject({ state: 'timeout', cleanup: 'removed' });
+    expect(existsSync(timeout.worktreePath)).toBe(false);
+  });
+
+  it('removes a node_modules directory link before deleting the baseline, preserving its target', async () => {
+    const repo = await fixtureRepo('onni-baseline-link-');
+    const baseSha = (await run('git', ['rev-parse', 'HEAD'], { cwd: repo })).stdout.trim();
+    const workerDependencies = join(repo, 'worker-node-modules');
+    mkdirSync(workerDependencies);
+    writeFileSync(join(workerDependencies, 'preserve.txt'), 'keep\n');
+    let linked = false;
+
+    const result = await withBaselineWorktree(repo, 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', baseSha, async (path) => {
+      try {
+        symlinkSync(workerDependencies, join(path, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+        linked = true;
+      } catch {
+        return 'symlink-unavailable';
+      }
+      return 'linked';
+    });
+
+    expect(result.cleanup).toBe('removed');
+    expect(existsSync(result.worktreePath)).toBe(false);
+    if (linked) expect(readFileSync(join(workerDependencies, 'preserve.txt'), 'utf8')).toBe('keep\n');
   });
 });
 

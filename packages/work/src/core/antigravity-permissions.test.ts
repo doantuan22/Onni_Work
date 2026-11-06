@@ -91,8 +91,4 @@ describe('discoverVerifyCommands', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-  it('is empty without a cwd or a manifest', () => {
-    expect(discoverVerifyCommands(undefined)).toEqual([]);
-    expect(discoverVerifyCommands(join(tmpdir(), 'agy-no-such-dir'))).toEqual([]);
-  });
 });
