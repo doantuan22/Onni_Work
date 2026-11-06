@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, realpathSync, type Dirent } from 'node:fs';
-import { readdir, readFile, rm, stat } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { lstat, mkdir, readdir, readFile, rm, rmdir, stat, unlink } from 'node:fs/promises';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { diskFloorRefusal } from './disk-space.ts';
 import { resolveTaskDiffBase } from './git-diff-base.ts';
 import { isSafeGitRef } from './git-refs.ts';
@@ -38,15 +39,19 @@ interface RegisteredWorktree {
 function git(
   cwd: string,
   args: string[],
-  opts: { timeout?: number; env?: NodeJS.ProcessEnv } = {},
+  opts: { timeout?: number; env?: NodeJS.ProcessEnv; signal?: AbortSignal } = {},
 ): Promise<GitResult> {
   return new Promise((resolve) => {
-    execFile(
-      'git',
-      args,
-      { cwd, maxBuffer: 32 * 1024 * 1024, encoding: 'utf8', ...opts },
-      (err, stdout, stderr) => resolve({ ok: !err, stdout: stdout ?? '', stderr: stderr ?? '' }),
-    );
+    try {
+      execFile(
+        'git',
+        args,
+        { cwd, maxBuffer: 32 * 1024 * 1024, encoding: 'utf8', ...opts },
+        (err, stdout, stderr) => resolve({ ok: !err, stdout: stdout ?? '', stderr: stderr ?? '' }),
+      );
+    } catch (error) {
+      resolve({ ok: false, stdout: '', stderr: error instanceof Error ? error.message : String(error) });
+    }
   });
 }
 
@@ -874,6 +879,8 @@ export interface ReadOnlyFilesResult {
 interface ReadOnlyGitResult {
   ok: boolean;
   stdout: string;
+  stderr: string;
+  exitCode: number | null;
 }
 
 function gitReadOnly(cwd: string, args: string[], signal: AbortSignal): Promise<ReadOnlyGitResult> {
@@ -883,10 +890,17 @@ function gitReadOnly(cwd: string, args: string[], signal: AbortSignal): Promise<
         'git',
         ['--no-optional-locks', '-c', 'core.quotepath=off', ...args],
         { cwd, maxBuffer: 32 * 1024 * 1024, encoding: 'utf8', signal },
-        (err, stdout) => resolve({ ok: !err, stdout: stdout ?? '' }),
+        (err, stdout, stderr) => resolve({
+          ok: !err,
+          stdout: stdout ?? '',
+          stderr: stderr ?? '',
+          exitCode: err && typeof (err as NodeJS.ErrnoException).code === 'number'
+            ? (err as NodeJS.ErrnoException & { code: number }).code
+            : err ? null : 0,
+        }),
       );
     } catch {
-      resolve({ ok: false, stdout: '' });
+      resolve({ ok: false, stdout: '', stderr: '', exitCode: null });
     }
   });
 }
@@ -968,6 +982,363 @@ export async function worktreeHeadShort(
     clearTimeout(timer);
     opts.signal?.removeEventListener('abort', forwardAbort);
   }
+}
+
+export type TrialMergeState = 'clean' | 'conflict' | 'unavailable' | 'timeout';
+
+export interface TrialMergeResult {
+  state: TrialMergeState;
+  files: string[];
+  omitted: number;
+  reason?: string;
+}
+
+const DEFAULT_TRIAL_MERGE_MAX_FILES = 15;
+
+/** spec 2026-11-06 §4.2: exit 1 is a conflict only when output starts with a tree oid. */
+export function classifyMergeTree(
+  run: { exitCode: number | null; stdout: string; stderr: string },
+  max = DEFAULT_TRIAL_MERGE_MAX_FILES,
+): TrialMergeResult {
+  const supported = 'needs git 2.38 or newer';
+  if (run.exitCode === 129 || /unknown option|usage:.*merge-tree/i.test(run.stderr)) {
+    return { state: 'unavailable', files: [], omitted: 0, reason: supported };
+  }
+
+  const treePrefix = /^[0-9a-f]{40,64}\0/i;
+  const hasTree = treePrefix.test(run.stdout);
+  if (run.exitCode === 0 && hasTree) return { state: 'clean', files: [], omitted: 0 };
+  if (run.exitCode === 1 && hasTree) {
+    const records = run.stdout.split('\0');
+    const paths: string[] = [];
+    for (let index = 1; index < records.length; index += 1) {
+      const path = records[index];
+      if (!path) break;
+      paths.push(path);
+    }
+    const files = [...new Set(paths)].sort();
+    const limit = Number.isFinite(max) ? Math.max(0, Math.trunc(max)) : DEFAULT_TRIAL_MERGE_MAX_FILES;
+    return { state: 'conflict', files: files.slice(0, limit), omitted: Math.max(0, files.length - limit) };
+  }
+
+  const reason = run.stderr.trim().split(/\r?\n/, 1)[0] || 'git merge-tree failed';
+  return { state: 'unavailable', files: [], omitted: 0, reason };
+}
+
+/** Parse common Git version output, including vendor suffixes such as `.windows.2`. */
+export function parseGitVersion(stdout: string): [number, number, number] | null {
+  const match = /^\s*git version (\d+)\.(\d+)\.(\d+)(?:[.-][^\s]+)?\s*$/i.exec(stdout);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+/**
+ * spec 2026-11-06 §4.2: preview a two-branch merge without changing refs, the index, or worktree files. Git may write
+ * unreferenced objects in `.git/objects`; `git gc` can collect them. Older Git versions degrade to
+ * `unavailable` instead of being mistaken for a clean merge.
+ */
+export async function trialMergeTree(
+  repoRoot: string,
+  leftBranch: string,
+  rightBranch: string,
+  opts: { signal?: AbortSignal; timeoutMs?: number; max?: number } = {},
+): Promise<TrialMergeResult> {
+  if (!isSafeGitRef(leftBranch) || !isSafeGitRef(rightBranch)) {
+    return { state: 'unavailable', files: [], omitted: 0, reason: 'refusing unsafe branch name' };
+  }
+  if (!existsSync(repoRoot)) return { state: 'unavailable', files: [], omitted: 0, reason: 'repository is unavailable' };
+
+  const controller = new AbortController();
+  const timeoutMs = opts.timeoutMs ?? 10_000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const forwardAbort = () => controller.abort();
+  opts.signal?.addEventListener('abort', forwardAbort, { once: true });
+  try {
+    if (opts.signal?.aborted) return { state: 'timeout', files: [], omitted: 0 };
+    const result = await gitReadOnly(repoRoot, [
+      'merge-tree', '--write-tree', '--name-only', '--no-messages', '-z',
+      `refs/heads/${leftBranch}`, `refs/heads/${rightBranch}`,
+    ], controller.signal);
+    if (controller.signal.aborted) return { state: 'timeout', files: [], omitted: 0 };
+    return classifyMergeTree(result, opts.max ?? DEFAULT_TRIAL_MERGE_MAX_FILES);
+  } catch {
+    return controller.signal.aborted
+      ? { state: 'timeout', files: [], omitted: 0 }
+      : { state: 'unavailable', files: [], omitted: 0, reason: 'git merge-tree failed' };
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', forwardAbort);
+  }
+}
+
+/** spec 2026-11-06 §4.3: resolve a reliable fork-point commit using only local, lock-free Git reads. */
+export async function resolveReadOnlyDiffBase(
+  worktreePath: string,
+  baseRef: string,
+  opts: { taskBranch?: string; runStartedAt?: string; signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<string | undefined> {
+  if (!existsSync(worktreePath) || !isSafeGitRef(baseRef)) return undefined;
+  if (opts.taskBranch && !isSafeGitRef(opts.taskBranch)) return undefined;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 3_000);
+  const forwardAbort = () => controller.abort();
+  opts.signal?.addEventListener('abort', forwardAbort, { once: true });
+  const runGit = async (args: string[]) => {
+    const result = await gitReadOnly(worktreePath, args, controller.signal);
+    return { ok: result.ok, stdout: result.stdout };
+  };
+  try {
+    if (opts.signal?.aborted) return undefined;
+    const resolved = await resolveTaskDiffBase(runGit, baseRef, {
+      ...(opts.taskBranch ? { taskBranch: opts.taskBranch } : {}),
+      ...(opts.runStartedAt ? { runStartedAt: opts.runStartedAt } : {}),
+    });
+    if (controller.signal.aborted || !/^[0-9a-f]{40,64}$/i.test(resolved.base)) return undefined;
+    const commit = await runGit(['rev-parse', '--verify', '--quiet', `${resolved.base}^{commit}`]);
+    if (controller.signal.aborted || !commit.ok) return undefined;
+    const sha = commit.stdout.trim();
+    return /^[0-9a-f]{40,64}$/i.test(sha) ? sha : undefined;
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', forwardAbort);
+  }
+}
+
+/** spec 2026-11-06 §4.4: remove Onni state paths from worker-owned file lists. */
+export function dropOnniDataPaths(paths: string[]): string[] {
+  return paths.filter((path) => {
+    const normalized = path.replace(/\\/g, '/');
+    return normalized !== '.ai/onni' && !normalized.startsWith('.ai/onni/');
+  });
+}
+
+export interface DetachedWorktreeResult {
+  available: boolean;
+  reason?: string;
+}
+
+export type DetachedWorktreeCleanup = 'removed' | 'left-behind';
+
+export interface BaselineWorktreeResult<T> {
+  state: 'completed' | 'failed' | 'unavailable' | 'timeout';
+  worktreePath: string;
+  cleanup: DetachedWorktreeCleanup;
+  value?: T;
+  reason?: string;
+}
+
+const BASELINE_WORKTREES_DIR = '.ai/onni/tmp/verify-baseline';
+const TEMP_GIT_TIMEOUT_MS = 15_000;
+
+function isBaselineWorktreePath(repoRoot: string, worktreePath: string): boolean {
+  const root = resolve(repoRoot, BASELINE_WORKTREES_DIR);
+  const path = resolve(worktreePath);
+  const rel = relative(root, path);
+  return rel !== '' && rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
+function isCanonicalBaselineParent(repoRoot: string, worktreePath: string): boolean {
+  try {
+    const realRepoRoot = realpathSync(repoRoot);
+    const expected = resolve(realRepoRoot, BASELINE_WORKTREES_DIR);
+    const actual = realpathSync(resolve(repoRoot, BASELINE_WORKTREES_DIR));
+    const actualParent = realpathSync(resolve(worktreePath, '..'));
+    const samePath = (left: string, right: string) => process.platform === 'win32'
+      ? left.toLowerCase() === right.toLowerCase()
+      : left === right;
+    return samePath(actual, expected) && samePath(actualParent, expected);
+  } catch {
+    return false;
+  }
+}
+
+function firstGitError(result: GitResult): string {
+  return (result.stderr || result.stdout).trim().split(/\r?\n/, 1)[0] || 'git worktree command failed';
+}
+
+async function settleWithin(promise: Promise<unknown>, timeoutMs: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    promise.then(() => undefined, () => undefined),
+    new Promise<void>((resolve) => { timer = setTimeout(resolve, timeoutMs); }),
+  ]);
+  if (timer) clearTimeout(timer);
+}
+
+/** spec 2026-11-06 §7.2: add a detached baseline worktree under `.ai/onni/tmp/verify-baseline/`. */
+export async function addDetachedWorktree(
+  repoRoot: string,
+  worktreePath: string,
+  commitSha: string,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<DetachedWorktreeResult> {
+  if (!existsSync(repoRoot)) return { available: false, reason: 'repository is unavailable' };
+  if (!isBaselineWorktreePath(repoRoot, worktreePath)) {
+    return { available: false, reason: 'baseline worktree path must be under .ai/onni/tmp/verify-baseline' };
+  }
+  if (!/^[0-9a-f]{40,64}$/i.test(commitSha)) {
+    return { available: false, reason: 'baseline ref must be a commit sha' };
+  }
+  try {
+    await mkdir(resolve(worktreePath, '..'), { recursive: true });
+    if (!isCanonicalBaselineParent(repoRoot, worktreePath)) {
+      return { available: false, reason: 'baseline temp directory is not a real directory under the repository' };
+    }
+    try {
+      await lstat(resolve(worktreePath));
+      return { available: false, reason: 'baseline worktree path already exists' };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+    const result = await git(repoRoot, ['worktree', 'add', '--detach', resolve(worktreePath), commitSha], {
+      timeout: opts.timeoutMs ?? TEMP_GIT_TIMEOUT_MS,
+      ...(opts.signal ? { signal: opts.signal } : {}),
+    });
+    return result.ok ? { available: true } : { available: false, reason: firstGitError(result) };
+  } catch {
+    return { available: false, reason: 'could not create baseline worktree' };
+  }
+}
+
+/** Remove a baseline worktree, detaching any node_modules directory link before recursive cleanup. */
+export async function removeDetachedWorktree(
+  repoRoot: string,
+  worktreePath: string,
+): Promise<{ cleanup: DetachedWorktreeCleanup; reason?: string }> {
+  if (!isBaselineWorktreePath(repoRoot, worktreePath)) {
+    return { cleanup: 'left-behind', reason: 'refusing to remove a path outside the baseline temp directory' };
+  }
+
+  const absolutePath = resolve(worktreePath);
+  try {
+    const entry = await lstat(absolutePath);
+    if (entry.isSymbolicLink() || !isCanonicalBaselineParent(repoRoot, absolutePath)) {
+      return { cleanup: 'left-behind', reason: 'refusing to recurse through an unexpected baseline path' };
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      await git(repoRoot, ['worktree', 'prune'], { timeout: TEMP_GIT_TIMEOUT_MS });
+      return { cleanup: 'removed' };
+    }
+    return { cleanup: 'left-behind', reason: 'could not inspect baseline worktree path' };
+  }
+
+  const nodeModules = join(absolutePath, 'node_modules');
+  try {
+    const link = await lstat(nodeModules);
+    if (link.isSymbolicLink()) {
+      const target = await stat(nodeModules).catch(() => undefined);
+      if (process.platform === 'win32' && target?.isDirectory()) await rmdir(nodeModules);
+      else await unlink(nodeModules);
+      await lstat(nodeModules).then(
+        () => { throw new Error('node_modules link remains after unlink'); },
+        (error: NodeJS.ErrnoException) => { if (error.code !== 'ENOENT') throw error; },
+      );
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      return { cleanup: 'left-behind', reason: 'could not safely remove the baseline node_modules link' };
+    }
+  }
+
+  await git(repoRoot, ['worktree', 'remove', '--force', absolutePath], { timeout: TEMP_GIT_TIMEOUT_MS });
+  await rm(absolutePath, { recursive: true, force: true, maxRetries: 2, retryDelay: 50 }).catch(() => undefined);
+  await git(repoRoot, ['worktree', 'prune'], { timeout: TEMP_GIT_TIMEOUT_MS });
+  return existsSync(absolutePath)
+    ? { cleanup: 'left-behind', reason: 'baseline worktree directory remains after cleanup' }
+    : { cleanup: 'removed' };
+}
+
+/** spec 2026-11-06 §7.2: cleanup runs in `finally` after success, callback errors, aborts, or timeouts. */
+export async function withBaselineWorktree<T>(
+  repoRoot: string,
+  runId: string,
+  commitSha: string,
+  operation: (worktreePath: string, signal: AbortSignal) => Promise<T>,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<BaselineWorktreeResult<T>> {
+  const id = runId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 8) || 'baseline';
+  const worktreePath = resolve(repoRoot, BASELINE_WORKTREES_DIR, `${id}-${Date.now().toString(36)}-${randomUUID()}`);
+  const timeoutMs = opts.timeoutMs ?? 140_000;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let abortReject: ((reason: Error) => void) | undefined;
+  let timedOut: Promise<never> | undefined;
+  const onAbort = () => {
+    controller.abort();
+    abortReject?.(new Error('baseline worktree timed out or was aborted'));
+  };
+
+  let state: BaselineWorktreeResult<T>['state'] = 'unavailable';
+  let value: T | undefined;
+  let reason: string | undefined;
+  let attemptedAdd = false;
+  let running: Promise<T> | undefined;
+  let cleanup: DetachedWorktreeCleanup = 'removed';
+  try {
+    if (!/^[0-9a-f]{40,64}$/i.test(commitSha)) {
+      reason = 'baseline ref must be a commit sha';
+    } else if (opts.signal?.aborted) {
+      state = 'timeout';
+      reason = 'baseline worktree timed out or was aborted';
+    } else {
+      attemptedAdd = true;
+      const added = await addDetachedWorktree(repoRoot, worktreePath, commitSha, {
+        ...(opts.signal ? { signal: opts.signal } : {}),
+        timeoutMs: TEMP_GIT_TIMEOUT_MS,
+      });
+      if (!added.available) {
+        state = opts.signal?.aborted ? 'timeout' : 'unavailable';
+        reason = added.reason;
+      } else {
+        timedOut = new Promise<never>((_, reject) => { abortReject = reject; });
+        void timedOut.catch(() => undefined);
+        opts.signal?.addEventListener('abort', onAbort, { once: true });
+        if (opts.signal?.aborted) onAbort();
+        else timer = setTimeout(onAbort, timeoutMs);
+
+        if (controller.signal.aborted) {
+          state = 'timeout';
+          reason = 'baseline worktree timed out or was aborted';
+        } else {
+          running = Promise.resolve().then(() => operation(worktreePath, controller.signal));
+          void running.catch(() => undefined);
+          try {
+            value = await Promise.race([running, timedOut]);
+            state = 'completed';
+          } catch (error) {
+            state = controller.signal.aborted ? 'timeout' : 'failed';
+            reason = error instanceof Error ? error.message : String(error);
+            if (controller.signal.aborted) await settleWithin(running, TEMP_GIT_TIMEOUT_MS);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    state = opts.signal?.aborted || controller.signal.aborted ? 'timeout' : 'unavailable';
+    reason = error instanceof Error ? error.message : String(error);
+    if (controller.signal.aborted && running) await settleWithin(running, TEMP_GIT_TIMEOUT_MS);
+  } finally {
+    if (timer) clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', onAbort);
+    controller.abort();
+    if (attemptedAdd) {
+      const removed = await removeDetachedWorktree(repoRoot, worktreePath);
+      cleanup = removed.cleanup;
+      if (removed.reason && !reason) reason = removed.reason;
+    }
+  }
+
+  return {
+    state,
+    worktreePath,
+    cleanup,
+    ...(value !== undefined ? { value } : {}),
+    ...(reason ? { reason } : {}),
+  };
 }
 
 /** Paths this task changed vs its base — the SAME anchor `worktreeShortstat` uses (#751), so an
