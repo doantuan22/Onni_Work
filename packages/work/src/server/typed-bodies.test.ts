@@ -46,8 +46,8 @@ describe('every mutating route carries a typed body into AppType', () => {
     Assert<HasTypedBody<'/api/v1/automations/:id/check', '$post'>>,
     Assert<HasTypedBody<'/api/v1/runs/:id/dispatch', '$post'>>,
     Assert<HasTypedBody<'/api/v1/runs/:id/report', '$post'>>,
-    Assert<HasTypedBody<'/api/v1/runs/:id/message', '$post'>>,
-    Assert<HasTypedBody<'/api/v1/runs/:id/cancel', '$post'>>,
+    Assert<HasTypedBody<'/api/v1/runs/:id/worker-message', '$post'>>,
+    Assert<HasTypedBody<'/api/v1/runs/:id/worker-cancel', '$post'>>,
     Assert<HasTypedBody<'/api/v1/projects', '$post'>>,
     Assert<HasTypedBody<'/api/v1/projects/checkout', '$post'>>,
     Assert<HasTypedBody<'/api/v1/projects/:projectId', '$patch'>>,
@@ -88,10 +88,10 @@ describe('every mutating route carries a typed body into AppType', () => {
     Mutual<z.infer<typeof setWorkspaceUiStateInputSchema>, WorkspaceUiStatePutBody>
   >;
   type _ManagerMessageInputCheck = Assert<
-    Mutual<z.input<typeof dispatchManagerMessageInputSchema>, Schema['/api/v1/runs/:id/message']['$post']['input']['json']>
+    Mutual<z.input<typeof dispatchManagerMessageInputSchema>, Schema['/api/v1/runs/:id/worker-message']['$post']['input']['json']>
   >;
   type _ManagerCancelInputCheck = Assert<
-    Mutual<z.input<typeof dispatchManagerCancelInputSchema>, Schema['/api/v1/runs/:id/cancel']['$post']['input']['json']>
+    Mutual<z.input<typeof dispatchManagerCancelInputSchema>, Schema['/api/v1/runs/:id/worker-cancel']['$post']['input']['json']>
   >;
 
   /** Same idea for the routes that validate a path param or the query string. */

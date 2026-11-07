@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MANAGER_MEMORY_MAX_BYTES, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, PLAN_PROMPT_MAX_PARTS, ROSTER_MAX_WORKERS, rosterSchema, WORKER_KINDS, WORKER_TIERS, type TreePlan } from '@onni/contract';
-import { MANAGER_PLAN_PROMPT_MAX_CHARS, PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
+import { managerCommandsBlock } from '../dispatch/commands.ts';
+import { MANAGER_COMMANDS_MAX_CHARS, MANAGER_PLAN_PROMPT_MAX_CHARS, PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import { RunStore } from '../runs/store.ts';
 import { WorkspaceSemaphore } from '../workspace/semaphore.ts';
 import { managerPrompt, memoryBlock, planBlock, WORKER_PROMPT, workerCapability, workerPrompt } from './manager-worker.ts';
@@ -39,6 +40,15 @@ describe('managerPrompt', () => {
     expect(prompt).toContain('Dispatch EVERY independent part first');
     expect(prompt).toContain('do not end the turn with ONNI:DONE while any worker you dispatched has not reported');
     expect(prompt).toContain('server refuses any other backend or model with a 409');
+  });
+  it('includes manager message and cancel commands within the dedicated command budget', () => {
+    const commands = managerCommandsBlock();
+    expect(commands.length).toBeLessThanOrEqual(MANAGER_COMMANDS_MAX_CHARS);
+    expect(commands).toContain('onni task message <worker> "<text>"');
+    expect(commands).toContain('does not answer its Guard/ask');
+    expect(commands).toContain('onni task cancel <worker> [--reason "..."]');
+    expect(commands).toContain('blocked report preserves partial work for review');
+    expect(prompt).toContain(commands);
   });
   it('spells out the integration procedure', () => {
     expect(prompt).toContain('git merge --no-ff <worker branch>');

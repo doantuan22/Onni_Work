@@ -224,7 +224,7 @@ describe('onni task', () => {
   it('message posts one text to the project-scoped manager route and explains its receipt', async () => {
     const h = harness({ status: 200, body: { deliveryId: 'delivery-1234', targetId: 'worker/with space', state: 'acknowledged', capability: 'steer' } });
     expect(await runTaskCommand(['message', 'worker/with space', 'finish the parser'], env, h.io)).toBe(0);
-    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/message');
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/worker-message');
     expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ target: 'worker/with space', text: 'finish the parser' });
     expect(h.out[0]).toContain('acknowledged (steer)');
     expect(h.out[0]).toContain('not proof the worker read or understood it');
@@ -249,7 +249,7 @@ describe('onni task', () => {
   it('cancel posts the target and optional reason, and prints the blocked manager report', async () => {
     const h = harness({ status: 200, body: { targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked', reason: 'scope withdrawn' } });
     expect(await runTaskCommand(['cancel', 'worker-1', '--reason', 'scope withdrawn'], env, h.io)).toBe(0);
-    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/cancel');
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/worker-cancel');
     expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ target: 'worker-1', reason: 'scope withdrawn' });
     expect(h.out[0]).toContain('manager report status blocked');
     expect(h.out[0]).toContain('scope withdrawn');

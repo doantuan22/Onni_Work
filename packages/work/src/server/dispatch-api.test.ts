@@ -33,6 +33,7 @@ describe('the dispatch routes', () => {
   let message: unknown = { deliveryId: 'd-1', targetId: 'worker-1', state: 'queued', capability: 'steer' };
   let cancel: unknown = { targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked' };
   let serverEnv: NodeJS.ProcessEnv;
+  let userCancelCalls: string[];
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-dispatch-api-'));
@@ -49,6 +50,7 @@ describe('the dispatch routes', () => {
     ask = { requestId: 'q-1' };
     message = { deliveryId: 'd-1', targetId: 'worker-1', state: 'queued', capability: 'steer' };
     cancel = { targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked' };
+    userCancelCalls = [];
     conflicts = { workers: [], workersOmitted: 0, overlaps: [], overlapsOmitted: 0, trialMerges: [], trialMergesSkipped: 0, trialState: 'ran', checkedAt: 'now' };
     serverEnv = { ONNI_DISPATCH: '1' };
     const manager = {
@@ -95,6 +97,10 @@ describe('the dispatch routes', () => {
       cancelFor: (runId: string, body: unknown) => {
         calls.push({ kind: 'cancel', runId, body });
         return cancel;
+      },
+      cancel: (runId: string) => {
+        userCancelCalls.push(runId);
+        return true;
       },
       readTreePlan: async (runId: string) => {
         calls.push({ kind: 'plan', runId, body: { action: 'read' } });
@@ -321,28 +327,28 @@ describe('the dispatch routes', () => {
 
   it('passes manager message and cancel bodies through validation and preserves values and denial statuses', async () => {
     const messageBody = { target: 'worker-1', text: 'finish the parser' };
-    const messageResponse = await apiRequest(app, '/api/v1/runs/root/message', json(messageBody));
+    const messageResponse = await apiRequest(app, '/api/v1/runs/root/worker-message', json(messageBody));
     expect(messageResponse.status).toBe(200);
     expect(await messageResponse.json()).toEqual(message);
     expect(calls[0]).toEqual({ kind: 'message', runId: 'root', body: messageBody });
 
     calls = [];
     const cancelBody = { target: 'worker-1', reason: 'scope withdrawn' };
-    const cancelResponse = await apiRequest(app, '/api/v1/runs/root/cancel', json(cancelBody));
+    const cancelResponse = await apiRequest(app, '/api/v1/runs/root/worker-cancel', json(cancelBody));
     expect(cancelResponse.status).toBe(200);
     expect(await cancelResponse.json()).toEqual(cancel);
     expect(calls[0]).toEqual({ kind: 'cancel', runId: 'root', body: cancelBody });
 
     message = { deliveryId: 'd-2', targetId: 'worker-1', state: 'rejected', capability: 'unsupported', reasonCode: 'backend-unsupported' };
-    const unsupported = await apiRequest(app, '/api/v1/runs/root/message', json(messageBody));
+    const unsupported = await apiRequest(app, '/api/v1/runs/root/worker-message', json(messageBody));
     expect(unsupported.status).toBe(200);
     expect(await unsupported.json()).toEqual(message);
 
     for (const status of [400, 403, 404, 409]) {
       message = { denied: 'no', status };
-      expect((await apiRequest(app, '/api/v1/runs/root/message', json(messageBody))).status).toBe(status);
+      expect((await apiRequest(app, '/api/v1/runs/root/worker-message', json(messageBody))).status).toBe(status);
       cancel = { denied: 'no', status };
-      expect((await apiRequest(app, '/api/v1/runs/root/cancel', json(cancelBody))).status).toBe(status);
+      expect((await apiRequest(app, '/api/v1/runs/root/worker-cancel', json(cancelBody))).status).toBe(status);
     }
 
     calls = [];
@@ -350,18 +356,18 @@ describe('the dispatch routes', () => {
       { target: 'worker-1' },
       { target: 'worker-1', text: 'x', extra: true },
       { target: 'worker-1', text: 'x'.repeat(2_001) },
-    ]) expect((await apiRequest(app, '/api/v1/runs/root/message', json(invalid))).status).toBe(400);
+    ]) expect((await apiRequest(app, '/api/v1/runs/root/worker-message', json(invalid))).status).toBe(400);
     for (const invalid of [
       { target: 'worker-1', reason: 'x'.repeat(501) },
       { target: 'worker-1', reason: 'stop', extra: true },
-    ]) expect((await apiRequest(app, '/api/v1/runs/root/cancel', json(invalid))).status).toBe(400);
+    ]) expect((await apiRequest(app, '/api/v1/runs/root/worker-cancel', json(invalid))).status).toBe(400);
     expect(calls).toEqual([]);
   });
 
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     serverEnv.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', env: serverEnv, providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/conflicts', '/api/v1/runs/p/message', '/api/v1/runs/p/cancel', '/api/v1/runs/p/ask']) {
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/conflicts', '/api/v1/runs/p/worker-message', '/api/v1/runs/p/worker-cancel', '/api/v1/runs/p/ask']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r', question: 'q' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);
@@ -377,6 +383,15 @@ describe('the dispatch routes', () => {
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\)/);
     }
+  });
+
+  it('keeps the bodyless cockpit cancel available while dispatch is disabled', async () => {
+    const runId = store.createRun({ title: 'cancel target', workflow: 'quick-task', task: 'cancel target', steps: [] }).id;
+    serverEnv.ONNI_DISPATCH = '0';
+    const response = await apiRequest(app, `/api/v1/runs/${runId}/cancel`, { method: 'POST' });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ cancelled: true });
+    expect(userCancelCalls).toEqual([runId]);
   });
 
   it('reads and writes project memory through the manager, settings-side and ungated', async () => {

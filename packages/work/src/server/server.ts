@@ -4554,8 +4554,8 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/peek', requireDispatch)
     .use('/runs/:id/verify', requireDispatch)
     .use('/runs/:id/conflicts', requireDispatch)
-    .use('/runs/:id/message', requireDispatch)
-    .use('/runs/:id/cancel', requireDispatch)
+    .use('/runs/:id/worker-message', requireDispatch)
+    .use('/runs/:id/worker-cancel', requireDispatch)
     .use('/runs/:id/ask', requireDispatch)
     .use('/runs/:id/plan', requireDispatch)
     .use('/runs/:id/plan/parts/:partId', requireDispatch)
@@ -4570,13 +4570,13 @@ export function createApp(deps: ServerDeps) {
     })
 
     /** Root-manager controls for a direct worker. Guard questions remain for the user to answer. */
-    .post('/runs/:id/message', jsonZodValidator(dispatchManagerMessageInputSchema), (c) => {
+    .post('/runs/:id/worker-message', jsonZodValidator(dispatchManagerMessageInputSchema), (c) => {
       const { manager } = c.get('project');
       const outcome = manager.messageFor(c.req.param('id'), c.req.valid('json'));
       if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
       return c.json(outcome);
     })
-    .post('/runs/:id/cancel', jsonZodValidator(dispatchManagerCancelInputSchema), (c) => {
+    .post('/runs/:id/worker-cancel', jsonZodValidator(dispatchManagerCancelInputSchema), (c) => {
       const { manager } = c.get('project');
       const outcome = manager.cancelFor(c.req.param('id'), c.req.valid('json'));
       if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);

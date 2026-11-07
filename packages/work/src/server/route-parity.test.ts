@@ -87,7 +87,7 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
       store,
       // Only routes that never reach the manager are exercised, plus
       // `isActive` guards on 404-paths — a stub keeps the suite hermetic.
-      manager: { isActive: () => false } as unknown as RunManager,
+      manager: { isActive: () => false, cancel: () => true } as unknown as RunManager,
       version: '0.0.0-test',
       contexts,
     });
@@ -175,7 +175,8 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
       'GET /runs/:id/history',
       'GET /runs/:id/history-context',
       'POST /runs',
-      'POST /runs/:id/message',
+      'POST /runs/:id/worker-message',
+      'POST /runs/:id/worker-cancel',
       'POST /runs/:id/cancel',
       'POST /runs/archive-finished',
       'PUT /ui-state',
@@ -243,8 +244,9 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     // 404: unknown ids.
     await expectParity('/runs/no-such-run/archive', json('POST', {}));
     await expectParity('/runs/no-such-run/pin', json('POST', {}));
-    await expectParity(`/runs/${runId}/message`, json('POST', {}));
-    await expectParity(`/runs/${runId}/cancel`, json('POST', {}));
+    await expectParity(`/runs/${runId}/worker-message`, json('POST', {}));
+    await expectParity(`/runs/${runId}/worker-cancel`, json('POST', {}));
+    await expectParity(`/runs/${runId}/cancel`, () => ({ method: 'POST' }));
     await expectParity('/runs/no-such-run', json('PATCH', { title: 't' }));
     await expectParity('/workflows/no-such-workflow', () => ({
       method: 'DELETE',

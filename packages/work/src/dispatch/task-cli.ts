@@ -301,7 +301,7 @@ export async function runTaskCommand(
         if (!text || text.length > MANAGER_MESSAGE_MAX_CHARS) {
           throw new Error(`message text must be 1-${MANAGER_MESSAGE_MAX_CHARS} characters`);
         }
-        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/message`, {
+        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/worker-message`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ target, text }),
@@ -328,7 +328,7 @@ export async function runTaskCommand(
         if (reason !== undefined && (!reason || reason.length > MANAGER_CANCEL_REASON_MAX_CHARS)) {
           throw new Error(`--reason must be 1-${MANAGER_CANCEL_REASON_MAX_CHARS} characters`);
         }
-        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/cancel`, {
+        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/worker-cancel`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ target, ...(reason !== undefined ? { reason } : {}) }),
