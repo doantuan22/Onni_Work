@@ -77,7 +77,7 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     name: 'peek',
     role: 'manager',
     usage: 'onni task peek [<worker id>] [--all] [--tail <1-30>]   a worker\'s state, changed files and recent lines (read-only)',
-    brief: 'onni task peek [<worker id>] [--tail N]   a worker\'s state, changed files and recent lines; --all for a compact list. Peek when one has been silent a while or before you change course — do NOT poll, its report arrives by itself',
+    brief: 'onni task peek [<worker id>] [--tail N]   worker status, changed files and recent lines; --all for a compact list. Peek after silence or before changing course; do NOT poll, reports arrive by themselves',
     oneLine: "see where a worker is, what it changed and how long it has been quiet",
   },
   {
@@ -95,10 +95,17 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: 'stop a worker and preserve its partial work for review',
   },
   {
+    name: 'redirect',
+    role: 'manager',
+    usage: 'onni task redirect <worker id> "<instruction>"   stop and re-dispatch the same order with this direction',
+    brief: 'onni task redirect <worker> "<instruction>"   stop and re-dispatch the same order with this direction',
+    oneLine: 'replace a worker with a fresh run using the same order and a new direction',
+  },
+  {
     name: 'verify',
     role: 'manager',
     usage: 'onni task verify <worker id> [--only "<command>"]… [--baseline]   run checks in a SETTLED worker\'s worktree; --baseline compares failures to the base (heuristic)',
-    brief: 'onni task verify <worker id> [--only "<command>" …] [--baseline]   run checks in a settled worker\'s tree; --baseline reports only failures that are NEW compared with the base (heuristic). 3 runs; may take ~5 min',
+    brief: 'onni task verify <worker id> [--only "<command>" …] [--baseline]   run checks in a settled worker\'s tree; --baseline shows new failures vs base (heuristic); 3 runs, ~5 min',
     oneLine: "have onni run the repository's checks in a settled worker's worktree",
   },
   {

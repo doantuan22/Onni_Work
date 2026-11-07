@@ -61,6 +61,8 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type MessageBody = InferRequestType<Run['worker-message']['$post']>['json'];
   type Cancel200 = InferResponseType<Run['worker-cancel']['$post'], 200>;
   type CancelBody = InferRequestType<Run['worker-cancel']['$post']>['json'];
+  type Redirect200 = InferResponseType<Run['worker-redirect']['$post'], 200>;
+  type RedirectBody = InferRequestType<Run['worker-redirect']['$post']>['json'];
   type MemoryRead200 = InferResponseType<Project['manager-memory']['$get'], 200>;
   type MemoryPut200 = InferResponseType<Project['manager-memory']['$put'], 200>;
   type MemoryPutBody = InferRequestType<Project['manager-memory']['$put']>['json'];
@@ -91,6 +93,8 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.input<typeof dispatchManagerMessageInputSchema>, MessageBody>>,
     Assert<Exact<z.infer<typeof dispatchManagerCancelResultSchema>, Cancel200>>,
     Assert<Exact<z.input<typeof dispatchManagerCancelInputSchema>, CancelBody>>,
+    Assert<Exact<z.infer<typeof dispatchManagerRedirectResultSchema>, Redirect200>>,
+    Assert<Exact<z.input<typeof dispatchManagerRedirectInputSchema>, RedirectBody>>,
     Assert<Exact<z.input<typeof dispatchVerifyInputSchema>, VerifyBody>>,
     Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryRead200>>,
     Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryPut200>>,

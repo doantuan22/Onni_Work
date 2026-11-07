@@ -10,7 +10,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, MANAGER_CANCEL_REASON_MAX_CHARS, MANAGER_MESSAGE_MAX_CHARS, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, type DispatchBudget, type DispatchConflicts, type DispatchManagerCancelResult, type DispatchManagerMessageResult, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
+import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, MANAGER_CANCEL_REASON_MAX_CHARS, MANAGER_MESSAGE_MAX_CHARS, MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, type DispatchBudget, type DispatchConflicts, type DispatchManagerCancelResult, type DispatchManagerMessageResult, type DispatchManagerRedirectResult, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
@@ -42,15 +42,20 @@ function base(env: TaskCliEnv): { url: string; scope: string } | null {
   return { url, scope };
 }
 
-async function readError(response: Response): Promise<string> {
+async function readError(response: Response): Promise<{ message: string; body?: unknown }> {
   try {
-    const body = (await response.json()) as { error?: unknown };
-    if (typeof body.error === 'string') return body.error;
+    const body: unknown = await response.json();
+    if (typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string') {
+      return { message: body.error, body };
+    }
+    return { message: `${response.status} ${response.statusText}`, body };
   } catch {
     // not JSON
   }
-  return `${response.status} ${response.statusText}`;
+  return { message: `${response.status} ${response.statusText}` };
 }
+
+type RefusalFormatter = (status: number, body: unknown, reason: string) => string;
 
 /**
  * One wrapper for every call this CLI makes. A 404 on a route the running server does not know is a
@@ -62,7 +67,7 @@ async function callRoute(
   io: TaskCliIo,
   path: string,
   init: RequestInit,
-  refusalPrefix?: string,
+  refusalPrefix?: string | RefusalFormatter,
 ): Promise<unknown> {
   let response: Response;
   try {
@@ -72,8 +77,9 @@ async function callRoute(
   }
   if (!response.ok) {
     if (response.status === 404) throw new Error('server does not support this command yet — restart Onni (CLI and server versions differ)');
-    const reason = await readError(response);
-    throw new Error(refusalPrefix ? `${refusalPrefix} ${reason}` : reason);
+    const failure = await readError(response);
+    if (typeof refusalPrefix === 'function') throw new Error(refusalPrefix(response.status, failure.body, failure.message));
+    throw new Error(refusalPrefix ? `${refusalPrefix} ${failure.message}` : failure.message);
   }
   return response.json();
 }
@@ -334,6 +340,30 @@ export async function runTaskCommand(
           body: JSON.stringify({ target, ...(reason !== undefined ? { reason } : {}) }),
         }, 'cancel refused —')) as DispatchManagerCancelResult;
         io.log(`cancelled worker ${result.targetId}; manager report status ${result.reportStatus}${result.reason ? ` — ${result.reason}` : ''}`);
+        return 0;
+      }
+      case 'redirect': {
+        const { positionals } = parseArgs({ args: rest, allowPositionals: true, options: {} });
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can redirect a worker');
+        if (positionals.length !== 2 || !positionals[0]?.trim()) {
+          throw new Error('usage: onni task redirect <worker id> "<instruction>"');
+        }
+        const target = positionals[0].trim();
+        const instruction = positionals[1]?.trim() ?? '';
+        if (!instruction || instruction.length > MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS) {
+          throw new Error(`redirect instruction must be 1-${MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS} characters`);
+        }
+        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/worker-redirect`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ target, instruction }),
+        }, (status, body, reason) => {
+          if (status === 409 && typeof body === 'object' && body !== null && 'cancelledRunId' in body && typeof body.cancelledRunId === 'string') {
+            return `source ${body.cancelledRunId} was cancelled; replacement was refused — ${reason}`;
+          }
+          return `redirect refused — ${reason}`;
+        })) as DispatchManagerRedirectResult;
+        io.log(`redirected worker ${result.cancelledRunId} to replacement ${result.replacement.id}${result.replacement.branch ? ` on branch ${result.replacement.branch}` : ''}; repointed ${result.repointedDependents} dependent${result.repointedDependents === 1 ? '' : 's'}`);
         return 0;
       }
       case 'verify': {

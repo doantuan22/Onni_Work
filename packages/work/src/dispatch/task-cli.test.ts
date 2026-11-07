@@ -273,6 +273,44 @@ describe('onni task', () => {
     expect(old.err[0]).toContain('server does not support this command yet');
   });
 
+  it('redirect posts one instruction and prints the replacement and repointed dependent count', async () => {
+    const h = harness({
+      status: 200,
+      body: {
+        cancelledRunId: 'worker-1-full',
+        replacement: { id: 'replacement-2-full', branch: 'onni/replacement2' },
+        repointedDependents: 3,
+        retryAccounting: 'excluded',
+      },
+    });
+    expect(await runTaskCommand(['redirect', 'worker-1', 'Keep the parser streaming'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/worker-redirect');
+    expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ target: 'worker-1', instruction: 'Keep the parser streaming' });
+    expect(h.out[0]).toContain('replacement replacement-2-full on branch onni/replacement2');
+    expect(h.out[0]).toContain('repointed 3 dependents');
+  });
+
+  it('redirect validates locally and distinguishes a post-cancel refusal from an ordinary refusal', async () => {
+    const h = harness({ status: 200, body: {} });
+    for (const args of [['redirect'], ['redirect', 'worker'], ['redirect', 'worker', 'instruction', 'extra'], ['redirect', 'worker', '--bogus'], ['redirect', 'worker', '   '], ['redirect', 'worker', 'x'.repeat(1_001)]]) {
+      expect(await runTaskCommand(args, env, h.io)).toBe(1);
+    }
+    expect(h.calls).toHaveLength(0);
+
+    const refused = harness({ status: 409, body: { error: 'worker is settled' } });
+    expect(await runTaskCommand(['redirect', 'worker', 'try again'], env, refused.io)).toBe(1);
+    expect(refused.err[0]).toContain('redirect refused — worker is settled');
+    expect(refused.err[0]).not.toContain('was cancelled');
+
+    const postCancel = harness({ status: 409, body: { error: 'worker cap reached', cancelledRunId: 'worker-full-id', retryAccounting: 'excluded' } });
+    expect(await runTaskCommand(['redirect', 'worker', 'try again'], env, postCancel.io)).toBe(1);
+    expect(postCancel.err[0]).toContain('source worker-full-id was cancelled; replacement was refused — worker cap reached');
+
+    const old = harness({ status: 404, body: { error: 'not found' } });
+    expect(await runTaskCommand(['redirect', 'worker', 'try again'], env, old.io)).toBe(1);
+    expect(old.err[0]).toContain('server does not support this command yet');
+  });
+
   it('verify posts the target and --only, prints the verdict and maps the exit code', async () => {
     const result = (state: string) => ({
       state, source: 'required-checks', headCommit: 'abc1234', startedAt: 'now', durationMs: 2000,
