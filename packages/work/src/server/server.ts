@@ -291,7 +291,6 @@ import { ProjectContextError, ProjectContexts, type ProjectContext } from './pro
 import { fetchRepo, pullRepo, pushRepo, repoSyncStatus, syncRepo, type SyncActionResult } from './repo-sync.ts';
 import type { RepoSync } from '@onni/contract';
 import { reviewGateEnabled } from '../runs/review-gate.ts';
-import { readUiState, uiStatePath } from '../ui-state.ts';
 import { agentHomePaths, onniHomeDir, expandTilde, isAbsolutePath } from '../paths.ts';
 import { renameWithRetry } from '../fs-rename.ts';
 import { agentAccountsEnabled, isLoopbackHostHeader, normalizeHostname, resolveCapabilities } from './capabilities.ts';
@@ -304,6 +303,7 @@ import { fetchGithub, fetchGithubChecks, fetchGithubComments, fetchGithubPrDiff,
 import { ensureLaunchKey } from './launch-key.ts';
 import { launchKeyRoutes } from './routes/launch-key.ts';
 import { skillsRoutes } from './routes/skills.ts';
+import { uiStateRoutes } from './routes/ui-state.ts';
 import { openInTerminal } from './open-in-terminal.ts';
 import {
   agentCliRunner,
@@ -3677,29 +3677,6 @@ export function createApp(deps: ServerDeps) {
         return c.json(result.body);
       },
     );
-
-  // ---- chained family: GUI prefs / ui-state (project-scoped) ----
-  const uiStateRoutes = new Hono<ProjectApiEnv>()
-    .get('/ui-state', async (c) => c.json(await readUiState(c.get('project').root)))
-
-    // On `use`, not inline on the route — see the workspace ui-state PUT above.
-    .use('/ui-state', bodyLimit({ maxSize: UI_STATE_BODY_LIMIT }))
-
-    .put('/ui-state', jsonZodValidator(uiStateBody), async (c) => {
-      const { root: repoRoot, dataDir } = c.get('project');
-      // `.passthrough()` keeps unknown prefs (BACKWARD_COMPATIBILITY §3), but a
-      // single request may not stuff an unbounded key set (#429) — the shared
-      // schema+cap half of both ui-state routes lives in `uiStateBody`.
-      const parsed = { data: c.req.valid('json') };
-      const merged = { ...(await readUiState(repoRoot)), ...parsed.data };
-      try {
-        await mkdir(dataDir, { recursive: true });
-        await writeFile(uiStatePath(repoRoot), `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
-      } catch (err) {
-        return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
-      }
-      return c.json(merged);
-    });
 
   // ---- chained family: workflows (project-scoped) --------------------------
   // One chained expression, mounted by `createApp` into BOTH the legacy `api`
@@ -7817,7 +7794,7 @@ export function createApp(deps: ServerDeps) {
       refreshTeamSkills,
       waitForTeamSkills,
     }))
-    .route('/', uiStateRoutes)
+    .route('/', uiStateRoutes({ uiStateBody, maxBodySize: UI_STATE_BODY_LIMIT }))
     .route('/', workflowsRoutes)
     .route('/', planRoutes)
     .route('/', automationsRoutes)
