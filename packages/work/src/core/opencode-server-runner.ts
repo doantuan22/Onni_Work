@@ -279,6 +279,13 @@ class OpencodeSession implements AgentSession {
   }
 
   sendMessage(content: ContentBlock[]): boolean {
+    return this.sendMessageWithReceipt(content, () => undefined);
+  }
+
+  sendMessageWithReceipt(
+    content: ContentBlock[],
+    onReceipt: (receipt: { state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }) => void,
+  ): boolean {
     if (!this.serverOpen) return false;
     if (this.autoEndTimer) {
       clearTimeout(this.autoEndTimer);
@@ -286,10 +293,17 @@ class OpencodeSession implements AgentSession {
     }
     const text = textOf(content);
     if (!text) return true;
+    let receiptSent = false;
+    const receipt = (value: { state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }) => {
+      if (receiptSent) return;
+      receiptSent = true;
+      onReceipt(value);
+    };
     void this.ready
-      .then(() => this.prompt(text))
+      .then(() => this.prompt(text, receipt))
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
+        receipt({ state: 'rejected', reasonCode: 'async-rejected' });
         this.emit({ type: 'note', message: `opencode: prompt failed: ${message}` });
       });
     return true;
@@ -544,7 +558,10 @@ class OpencodeSession implements AgentSession {
    * always used, with `armTurnGrace()` as the bounded way out when no such
    * signal is coming.
    */
-  private async prompt(text: string): Promise<void> {
+  private async prompt(
+    text: string,
+    onReceipt?: (receipt: { state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }) => void,
+  ): Promise<void> {
     if (!this.sessionId) return;
     // A prompt posted while a turn is still in flight supersedes it — the
     // cockpit lets a user type into a running task (#986), so this is reachable.
@@ -573,6 +590,7 @@ class OpencodeSession implements AgentSession {
     try {
       const res = await this.http('POST', `/session/${this.sessionId}/message`, body);
       this.absorbUsage(res);
+      onReceipt?.({ state: 'acknowledged' });
     } catch (err) {
       // A transport drop on a session the event bus still shows alive is no
       // evidence about the agent — swallow it and keep listening. Anything
@@ -586,6 +604,7 @@ class OpencodeSession implements AgentSession {
     }
     this.turnPostSettled = true;
     if (failure !== undefined) {
+      onReceipt?.({ state: 'rejected', reasonCode: 'async-rejected' });
       this.finishTurn();
       throw failure;
     }

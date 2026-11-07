@@ -291,7 +291,7 @@ export function childSettleReport(
   // `done`, and reporting that upward as success would turn "I stopped and asked before doing
   // something irreversible" into a clean `done` nobody ever answered — the Guard's whole premise.
   const unanswered = ownReport ? undefined : child.dispatch?.pendingAsk;
-  const report: DispatchReport =
+  const settledReport: DispatchReport =
     ownReport ??
     (unanswered
       ? ({
@@ -318,6 +318,23 @@ export function childSettleReport(
           suggestions: [],
           ...failureAdvice(child),
         } satisfies DispatchReport));
+  const cancellation = child.dispatch?.managerCancellation;
+  const salvageFiles = context.filesState === 'ok'
+    ? `${(context.changedFiles ?? []).slice(0, 16).join(', ') || 'none'}${context.filesOmitted ? ` (+${context.filesOmitted} more)` : ''}`
+    : `unavailable (${context.filesState ?? 'not read'})`;
+  const diffSummary = child.diffStat
+    ? `${child.diffStat.files} files, +${child.diffStat.adds} -${child.diffStat.dels} (last recorded)`
+    : context.filesState === 'ok'
+      ? `${(context.changedFiles?.length ?? 0) + (context.filesOmitted ?? 0)} changed files observed; line counts unavailable`
+      : 'unavailable';
+  const salvage = `salvage: worker ${child.id}, branch ${child.branch ?? 'unavailable'}, base ${child.baseBranch ?? 'unknown'}, HEAD ${context.headCommit ?? 'unavailable'}, changed files ${salvageFiles}, diff ${diffSummary}`;
+  const report: DispatchReport = cancellation
+    ? {
+        ...settledReport,
+        status: 'blocked',
+        result: `${settledReport.result.slice(0, 1_300)}; cancelled by manager${cancellation.reason ? `: ${cancellation.reason}` : ''}; ${salvage}; partial/unverified, and uncommitted edits may remain (no final autosave is promised)`.slice(0, 4_000),
+      }
+    : settledReport;
 
   const where = child.branch
     ? `${child.id}, branch ${child.branch}${child.baseBranch ? ` off ${child.baseBranch}` : ''}`
