@@ -303,6 +303,7 @@ import { isGithubHost } from '../github-hosts.ts';
 import { fetchGithub, fetchGithubChecks, fetchGithubComments, fetchGithubPrDiff, fetchGithubRefStatus, forgetRefStatus, readCachedRefStatuses, refNumberFromUrl, searchGithubItems, GithubPrNotFoundError, GH_CHECKS_MAX, GH_SEARCH_MAX, GH_REF_STATUS_MAX } from './github.ts';
 import { ensureLaunchKey } from './launch-key.ts';
 import { launchKeyRoutes } from './routes/launch-key.ts';
+import { skillsRoutes } from './routes/skills.ts';
 import { openInTerminal } from './open-in-terminal.ts';
 import {
   agentCliRunner,
@@ -3676,40 +3677,6 @@ export function createApp(deps: ServerDeps) {
         return c.json(result.body);
       },
     );
-
-  // ---- chained family: skills (project-scoped) ----
-  const skillsRoutes = new Hono<ProjectApiEnv>()
-    .get('/skills', queryZodValidator(waitQuery), async (c) => {
-      const repoRoot = c.get('project').root;
-      // The default read stays fast and starts the team load in the background.
-      // The cockpit follows it with `wait=1`, off the render path, so a cold
-      // cache converges without polling or a manual reload (spec 005 / #555).
-      if (c.req.valid('query').wait === '1') await waitForTeamSkills(repoRoot);
-      return c.json(await discoverSkills(repoRoot));
-    })
-
-    // Every skill a *default* skills repo offers, regardless of enabled state, so the Skills
-    // catalog can list and preview disabled entries. OnniCode ships no default source, so this
-    // answers [] unless a fork configures one; it also empties once a repo sets its own
-    // `skillsRepos` (nothing is gated then). `wait=1` lets the page wait out a cold team-skill
-    // cache, same as `GET /skills` (spec 005).
-    .get('/skills/importable', queryZodValidator(waitQuery), async (c) => {
-      const repoRoot = c.get('project').root;
-      const gated = await gatedSkillsRepos(repoRoot);
-      if (gated.size === 0) return c.json([]);
-      if (c.req.valid('query').wait === '1') await waitForTeamSkills(repoRoot);
-      const importable = getTeamSkillsCached(repoRoot).filter((skill) => skill.team && gated.has(skill.team.repo));
-      return c.json(importable);
-    })
-
-    // Refresh team skills (spec 005): clone/fetch the configured skills repos,
-    // then return the merged catalog. Degrades quietly — offline just means the
-    // team entries stay as they were (or absent).
-    .post('/skills/refresh', async (c) => {
-      const { root: repoRoot } = c.get('project');
-      await refreshTeamSkills(repoRoot);
-      return c.json(await discoverSkills(repoRoot));
-    });
 
   // ---- chained family: GUI prefs / ui-state (project-scoped) ----
   const uiStateRoutes = new Hono<ProjectApiEnv>()
@@ -7842,7 +7809,14 @@ export function createApp(deps: ServerDeps) {
   const v1 = new Hono<ProjectApiEnv>()
     .use('*', resolveProjectScope)
     .route('/', launchKeyRoutes())
-    .route('/', skillsRoutes)
+    .route('/', skillsRoutes({
+      waitQuery,
+      discoverSkills,
+      gatedSkillsRepos,
+      getTeamSkillsCached,
+      refreshTeamSkills,
+      waitForTeamSkills,
+    }))
     .route('/', uiStateRoutes)
     .route('/', workflowsRoutes)
     .route('/', planRoutes)
