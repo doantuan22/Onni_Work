@@ -70,6 +70,7 @@ import { createModelsRoutes } from './routes/models.ts';
 import { createFsBrowseRoutes } from './routes/fs-browse.ts';
 import { createWorkspaceSecretsRoutes } from './routes/workspace-secrets.ts';
 import { createPreviewRoutes } from './routes/preview.ts';
+import { createHealthRoutes } from './routes/health.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -1993,13 +1994,7 @@ export function createApp(deps: ServerDeps) {
     return healthCache.payload;
   };
 
-  // ---- chained family: health (workspace-level) ----------------------------
-  // Written as ONE chained expression rather than a loose `app.get(...)`
-  // statement because Hono accumulates its route types through the chain: a
-  // statement's return value is discarded, so `typeof app` would record nothing
-  // and `hc<AppType>` would have no endpoint to offer. `createApp` mounts this
-  // under both `/api` (the frozen legacy spelling) and `/api/v1`.
-  const healthRoutes = new Hono().get('/health', async (c) => c.json(await readHealth()));
+  const healthRoutes = createHealthRoutes({ readHealth });
 
   // The push twin of the poll it replaced (#369): while at least one cockpit
   // holds the `health` topic the server re-reads the snapshot on the old 5 s
