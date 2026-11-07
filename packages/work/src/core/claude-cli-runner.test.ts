@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentEvent } from './agent-runner.ts';
+import type { AgentEvent, AgentSession } from './agent-runner.ts';
 import { isSignalTerminationExit, prependSystemPrompt } from './agent-runner.ts';
 import {
   buildClaudeArgs,
@@ -411,6 +411,46 @@ describe('ClaudeCliRunner private MCP (spec 2026-10-07-private-project-mcp)', ()
       rmSync(cwd, { force: true, recursive: true });
     }
   });
+});
+
+describe('Claude same-session messages', () => {
+  it('accepts a live follow-up on stdin without claiming a protocol receipt', async () => {
+    const mockBin = fileURLToPath(new URL('../../scripts/mock-claude.mjs', import.meta.url));
+    const events: AgentEvent[] = [];
+    let session!: AgentSession;
+    let followUpAccepted: boolean | undefined;
+    let turnEnds = 0;
+    let resolveTwoTurns!: () => void;
+    const twoTurnsEnded = new Promise<void>((resolve) => {
+      resolveTwoTurns = resolve;
+    });
+
+    session = new ClaudeCliRunner({ bin: mockBin, timeoutMs: 60_000 }).startSession(
+      {
+        userPrompt: 'mock:pause',
+        cwd: process.cwd(),
+        env: { ONNI_HANDOFF_FILE: '', ONNI_TODOS_FILE: '', ONNI_MOCK_PACE: '0' },
+      },
+      (event) => {
+        events.push(event);
+        if (event.type === 'tool-call' && followUpAccepted === undefined) {
+          // Claude accepts the user frame on the current CLI session's stdin.
+          followUpAccepted = session.sendMessage([{ type: 'text', text: 'manager direction' }]);
+        }
+        if (event.type === 'turn-end' && ++turnEnds === 2) resolveTwoTurns();
+      },
+    );
+
+    try {
+      expect(session.sendMessageWithReceipt).toBeUndefined();
+      await twoTurnsEnded;
+      expect(followUpAccepted).toBe(true);
+      expect(events.some((event) => event.type === 'text' && event.text.includes('Follow-up #1 received: "manager direction"'))).toBe(true);
+    } finally {
+      session.end();
+      await session.result;
+    }
+  }, 20_000);
 });
 
 describe('a CLI that dies before reading its prompt', () => {

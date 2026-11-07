@@ -48,11 +48,15 @@ describe('CursorAgentRunner mock bin', () => {
   it('feeds stream-json and emits text + done, with no duplicate terminal events', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'cursor-runner-'));
     try {
-      const events: Array<{ type: string }> = [];
+      const events: Array<{ type: string; message?: string }> = [];
       const runner = new CursorAgentRunner({ bin: mockCursorAgentPath(), timeoutMs: 15_000 });
-      const result = await runner.run({ userPrompt: 'hi', cwd }, (e) => events.push(e));
+      const session = runner.startSession({ userPrompt: 'hi', cwd }, (e) => events.push(e));
+      const result = await session.result;
       expect(result.text).toContain('mock: cursor');
       expect(events.map((e) => e.type)).toEqual(['session', 'text', 'turn-end', 'done']);
+      expect(session.sendMessageWithReceipt).toBeUndefined();
+      expect(session.sendMessage([{ type: 'text', text: 'more' }])).toBe(false);
+      expect(events.some((event) => event.type === 'note' && event.message?.includes('one-shot'))).toBe(true);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentEvent } from './agent-runner.ts';
+import type { AgentEvent, AgentSession } from './agent-runner.ts';
 import { KILL_GRACE_MS } from './claude-cli-runner.ts';
 import { JunieRunner } from './junie-runner.ts';
 
@@ -46,6 +46,41 @@ describe('JunieRunner against the mock ACP process', () => {
     expect(events).toContainEqual({ type: 'tool-result', toolCallId: 'call-1', result: ' M src/example.ts', isError: false });
     expect(events.at(-1)).toEqual({ type: 'done' });
     expect(events.some((e) => e.type === 'error')).toBe(false);
+  }, 15_000);
+
+  it('queues an ordered follow-up in the same ACP session without claiming a receipt', async () => {
+    const events: AgentEvent[] = [];
+    let session!: AgentSession;
+    let followUpAccepted: boolean | undefined;
+    let sentWhileFirstTurnWasLive = false;
+    let turnEnds = 0;
+    let resolveTwoTurns!: () => void;
+    const twoTurnsEnded = new Promise<void>((resolve) => {
+      resolveTwoTurns = resolve;
+    });
+
+    session = new JunieRunner({ bin: mockBin, timeoutMs: 0 }).startSession(
+      { userPrompt: 'first prompt', cwd: process.cwd() },
+      (event) => {
+        events.push(event);
+        if (event.type === 'text' && followUpAccepted === undefined) {
+          sentWhileFirstTurnWasLive = turnEnds === 0;
+          followUpAccepted = session.sendMessage([{ type: 'text', text: 'manager direction' }]);
+        }
+        if (event.type === 'turn-end' && ++turnEnds === 2) resolveTwoTurns();
+      },
+    );
+
+    try {
+      expect(session.sendMessageWithReceipt).toBeUndefined();
+      await twoTurnsEnded;
+      expect(sentWhileFirstTurnWasLive).toBe(true);
+      expect(followUpAccepted).toBe(true);
+      expect(events.filter((event) => event.type === 'turn-end')).toHaveLength(2);
+    } finally {
+      session.end();
+      await session.result;
+    }
   }, 15_000);
 
   it('surfaces a failed turn (a session/prompt JSON-RPC error) as an AgentEvent error', async () => {

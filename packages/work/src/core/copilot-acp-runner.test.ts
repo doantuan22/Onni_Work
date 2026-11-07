@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { AgentEvent } from './agent-runner.ts';
+import type { AgentEvent, AgentSession } from './agent-runner.ts';
 import { createRunner } from './runner-factory.ts';
 import { COPILOT_AUTH_FAILURE_MESSAGE } from './copilot-ui-mapper.ts';
 import { CopilotAcpRunner, buildCopilotArgs, copilotExitMessage } from './copilot-acp-runner.ts';
@@ -160,6 +160,41 @@ describe('CopilotAcpRunner — one turn over the mock', () => {
 });
 
 describe('CopilotAcpRunner — session lifecycle', () => {
+  it('queues a follow-up behind the in-flight ACP turn without claiming a receipt', async () => {
+    const c = collect();
+    let session!: AgentSession;
+    let followUpAccepted: boolean | undefined;
+    let turnEnds = 0;
+    let resolveTwoTurns!: () => void;
+    const twoTurnsEnded = new Promise<void>((resolve) => {
+      resolveTwoTurns = resolve;
+    });
+
+    session = new CopilotAcpRunner({ bin: MOCK }).startSession(
+      { userPrompt: 'first', cwd },
+      (event) => {
+        c.events.push(event);
+        if (event.type === 'tool-call' && followUpAccepted === undefined) {
+          // ACP cannot steer the active turn; the runner holds this prompt until that turn ends.
+          followUpAccepted = session.sendMessage([{ type: 'text', text: 'manager direction' }]);
+        }
+        if (event.type === 'turn-end' && ++turnEnds === 2) resolveTwoTurns();
+      },
+      { onUiEvent: c.onUiEvent },
+    );
+
+    try {
+      expect(session.sendMessageWithReceipt).toBeUndefined();
+      await twoTurnsEnded;
+      expect(followUpAccepted).toBe(true);
+      expect(c.events.some((event) => event.type === 'text' && event.text.includes('Copilot mock answering turn 2: manager direction'))).toBe(true);
+      expect(c.ui.filter((event) => event.type === 'turn.started')).toHaveLength(2);
+    } finally {
+      session.end();
+      await session.result;
+    }
+  });
+
   it('keeps the same ACP session across a follow-up, in order', async () => {
     const c = collect();
     const session = new CopilotAcpRunner({ bin: MOCK }).startSession({ userPrompt: 'first', cwd }, c.onEvent, {

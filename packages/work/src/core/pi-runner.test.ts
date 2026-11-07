@@ -1,9 +1,10 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { AgentEvent } from './agent-runner.js';
+import type { AgentEvent, AgentSession } from './agent-runner.js';
 import { buildChildEnv } from './agent-env.js';
 import { detectEnvironment } from './backend-detect.js';
 import { createRunner } from './runner-factory.js';
@@ -80,6 +81,46 @@ describe('a dry-run pi session emits normalized AgentEvents', () => {
     expect(types.filter((t) => t === 'done')).toHaveLength(1);
     expect(result.text.length).toBeGreaterThan(0);
   });
+});
+
+describe('Pi same-session messages', () => {
+  it('steers the live RPC session and leaves the receipt at adapter acceptance', async () => {
+    const mockBin = fileURLToPath(new URL('../../scripts/mock-pi-rpc.mjs', import.meta.url));
+    const cwd = mkdtempSync(join(tmpdir(), 'onni-pi-message-'));
+    const events: AgentEvent[] = [];
+    let session!: AgentSession;
+    let followUpAccepted: boolean | undefined;
+    let sentWhileFirstTurnWasLive = false;
+    let turnEnds = 0;
+    let resolveTwoTurns!: () => void;
+    const twoTurnsEnded = new Promise<void>((resolve) => {
+      resolveTwoTurns = resolve;
+    });
+
+    session = new PiRunner({ bin: mockBin, timeoutMs: 60_000 }).startSession(
+      { userPrompt: 'first prompt', cwd },
+      (event) => {
+        events.push(event);
+        if (event.type === 'text' && followUpAccepted === undefined) {
+          sentWhileFirstTurnWasLive = turnEnds === 0;
+          followUpAccepted = session.sendMessage([{ type: 'text', text: 'manager direction' }]);
+        }
+        if (event.type === 'turn-end' && ++turnEnds === 2) resolveTwoTurns();
+      },
+    );
+
+    try {
+      expect(session.sendMessageWithReceipt).toBeUndefined();
+      await twoTurnsEnded;
+      expect(sentWhileFirstTurnWasLive).toBe(true);
+      expect(followUpAccepted).toBe(true);
+      expect(events.some((event) => event.type === 'text' && event.text.includes('Investigating: manager direction'))).toBe(true);
+    } finally {
+      session.end();
+      await session.result;
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 20_000);
 });
 
 describe('pi RPC argv', () => {
