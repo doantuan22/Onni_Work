@@ -22,11 +22,25 @@ export interface VerifyExecResult {
   output: string;
   durationMs: number;
   spawnError?: string;
+  spawnErrorCode?: string;
 }
 
 export interface VerifyExecDeps {
   spawn: typeof spawn;
   now: () => number;
+}
+
+function utf8Tail(bytes: Buffer, maxBytes: number): Buffer {
+  if (maxBytes <= 0) return Buffer.alloc(0);
+  let start = Math.max(0, bytes.length - maxBytes);
+  // The collector gives complete code points; the byte window can still start inside one.
+  while (start < bytes.length && (bytes[start]! & 0xc0) === 0x80) start++;
+  if (start < bytes.length) {
+    const lead = bytes[start]!;
+    const needed = lead >= 0xf0 ? 4 : lead >= 0xe0 ? 3 : lead >= 0xc2 ? 2 : 1;
+    if (start + needed > bytes.length) start = bytes.length;
+  }
+  return bytes.subarray(start);
 }
 
 export function runVerifyCommand(
@@ -44,14 +58,14 @@ export function runVerifyCommand(
 ): Promise<VerifyExecResult> {
   const spawnFn = deps.spawn ?? spawn;
   const now = deps.now ?? Date.now;
-  const cap = opts.captureBytes ?? VERIFY_CAPTURE_BYTES;
+  const cap = Math.max(0, opts.captureBytes ?? VERIFY_CAPTURE_BYTES);
   const startedAt = now();
   return new Promise((resolve) => {
-    let output = '';
+    let captured: Buffer<ArrayBufferLike> = Buffer.alloc(0);
     let settled = false;
     let timedOut = false;
     let aborted = false;
-    const finish = (exitCode: number | null, spawnError?: string) => {
+    const finish = (exitCode: number | null, spawnError?: string, spawnErrorCode?: string) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -60,9 +74,10 @@ export function runVerifyCommand(
         exitCode,
         timedOut,
         aborted,
-        output,
+        output: captured.toString('utf8'),
         durationMs: Math.max(0, now() - startedAt),
         ...(spawnError ? { spawnError } : {}),
+        ...(spawnErrorCode ? { spawnErrorCode } : {}),
       });
     };
     let child: ChildProcessWithoutNullStreams;
@@ -77,11 +92,22 @@ export function runVerifyCommand(
         windowsHide: true,
       }) as unknown as ChildProcessWithoutNullStreams;
     } catch (err) {
-      resolve({ exitCode: null, timedOut: false, aborted: false, output: '', durationMs: 0, spawnError: (err as Error).message });
+      const error = err as NodeJS.ErrnoException;
+      resolve({
+        exitCode: null,
+        timedOut: false,
+        aborted: false,
+        output: '',
+        durationMs: Math.max(0, now() - startedAt),
+        spawnError: error.message,
+        ...(error.code ? { spawnErrorCode: error.code } : {}),
+      });
       return;
     }
     const append = (text: string) => {
-      output = output.length + text.length > cap ? (output + text).slice(-cap) : output + text;
+      if (cap === 0 || text.length === 0) return;
+      const bytes = Buffer.from(text, 'utf8');
+      captured = utf8Tail(Buffer.concat([captured, bytes]), cap);
     };
     const stdout = utf8Collector(append);
     const stderr = utf8Collector(append);
@@ -98,7 +124,8 @@ export function runVerifyCommand(
       stop();
     }, Math.max(1, opts.timeoutMs));
     const onAbort = () => {
-      aborted = true;
+      if (opts.signal?.reason === 'verify-total-timeout') timedOut = true;
+      else aborted = true;
       stop();
     };
     if (opts.signal?.aborted) {
@@ -108,7 +135,10 @@ export function runVerifyCommand(
     opts.signal?.addEventListener('abort', onAbort, { once: true });
     child.stdout?.on('data', stdout.write);
     child.stderr?.on('data', stderr.write);
-    child.on('error', (err) => finish(null, err.message));
+    child.on('error', (err) => {
+      const error = err as NodeJS.ErrnoException;
+      finish(null, error.message, error.code);
+    });
     child.on('close', (code) => {
       stdout.end();
       stderr.end();

@@ -88,6 +88,13 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: "have onni run the repository's checks in a settled worker's worktree",
   },
   {
+    name: 'conflicts',
+    role: 'manager',
+    usage: 'onni task conflicts [<worker id>]   ADVISORY: show shared changed files, files outside a path-like scope and trial-merge results; never blocks a merge',
+    brief: 'onni task conflicts [<worker id>]   advisory, never blocks: files workers share, files outside path-like scopes, and trial-merge results. Run it before merging and when workers run side by side',
+    oneLine: 'see which files workers share and whether a merge would conflict',
+  },
+  {
     name: 'memory',
     role: 'manager',
     usage: 'onni task memory add "<lesson>"   remember one lesson for later tasks in this repository',

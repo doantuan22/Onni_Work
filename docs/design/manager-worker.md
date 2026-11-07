@@ -591,3 +591,11 @@ Chúng chỉ là thông tin cho manager: `managerPrompt` in `Tier: …. Suits: �
 (chỉ khi có ít nhất một worker khai báo), còn server không kiểm tra và không đổi quyền của worker. Worker không khai báo thì brief giữ nguyên 
 từng byte, preset và run cũ vẫn parse. Cố ý không thêm `--kind` vào `onni task create` hay từ chối ở `dispatch()`: người dùng muốn 
 manager biết để chọn đúng, không muốn giới hạn worker.
+
+## Appendix J — Wave A2: `onni task conflicts` (2026-11-06)
+
+`onni task conflicts [<worker id>]` cung cấp cho root manager báo cáo tham khảo về các tệp worker cùng thay đổi, tệp nằm ngoài scope dạng đường dẫn và kết quả thử merge chỉ đọc. Lệnh dùng được cả khi worker đang chạy; worktree bị thiếu hoặc đã thu hồi được ghi là chưa rõ, không bao giờ bị hiểu là “không trùng”. Scope là câu chữ tự do được đánh dấu và không diễn giải như đường dẫn.
+
+Route `GET /runs/:id/conflicts` thuộc nhóm dispatch nên `ONNI_DISPATCH=0` sẽ tắt route này. Query `target` không bắt buộc, dùng để giới hạn các cặp trùng và lượt thử merge cho một worker. Chỉ root manager được gọi; target phải thuộc cùng cây. Việc quét worker dùng các helper git status/diff chỉ đọc, với tổng ngân sách 20 giây cho mỗi lần gọi. Kết quả giới hạn số worker, cặp, danh sách tệp và lượt thử merge. Trường `dispatch.scope` tùy chọn lưu scope mới; run cũ lấy dòng `- Scope:` cuối cùng trong envelope.
+
+Thử merge chỉ dùng các commit trên đầu branch. Thay đổi chưa commit xuất hiện trong danh sách tệp trùng nhưng không ảnh hưởng kết quả thử. `git merge-tree --write-tree` không cập nhật ref, index hay tệp worktree; git không hỗ trợ hoặc branch bị thiếu sẽ trả trạng thái unavailable rõ ràng. Báo cáo chỉ để tham khảo và không bao giờ chặn merge. Xem `.ai/specs/2026-11-06-manager-worker-wave-a.md` §6.

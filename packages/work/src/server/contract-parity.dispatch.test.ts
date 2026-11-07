@@ -3,6 +3,7 @@ import { hc } from 'hono/client';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
+  dispatchConflictsSchema,
   dispatchPeekSchema,
   dispatchReportSchema,
   dispatchSchema,
@@ -44,6 +45,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type Peek200 = InferResponseType<Run['peek']['$get'], 200>;
   type Verify200 = InferResponseType<Run['verify']['$post'], 200>;
   type VerifyBody = InferRequestType<Run['verify']['$post']>['json'];
+  type Conflicts200 = InferResponseType<Run['conflicts']['$get'], 200>;
   type MemoryRead200 = InferResponseType<Project['manager-memory']['$get'], 200>;
   type MemoryPut200 = InferResponseType<Project['manager-memory']['$put'], 200>;
   type MemoryPutBody = InferRequestType<Project['manager-memory']['$put']>['json'];
@@ -69,6 +71,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.infer<typeof dispatchBudgetSchema>, Budget200>>,
     Assert<Exact<z.infer<typeof dispatchPeekSchema>, Peek200>>,
     Assert<Exact<z.infer<typeof dispatchVerifyResultSchema>, Verify200>>,
+    Assert<Exact<z.infer<typeof dispatchConflictsSchema>, Conflicts200>>,
     Assert<Exact<z.input<typeof dispatchVerifyInputSchema>, VerifyBody>>,
     Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryRead200>>,
     Assert<Exact<z.infer<typeof managerMemoryReadSchema>, MemoryPut200>>,
@@ -204,5 +207,32 @@ describe('a verify answer is bounded at both levels (wave A1)', () => {
     });
     expect(dispatchSchema.safeParse(stored('passed')).success).toBe(true);
     expect(dispatchSchema.safeParse(stored('unavailable')).success).toBe(false);
+  });
+});
+
+describe('a conflicts answer is bounded at both levels (wave A2)', () => {
+  const worker = (patch: Record<string, unknown> = {}) => ({
+    id: 'worker-1', title: 'worker', status: 'done', filesCount: 1, filesTruncated: false,
+    filesState: 'ok', scopeState: 'none', outsideScope: [], outsideScopeOmitted: 0, ...patch,
+  });
+  const answer = (patch: Record<string, unknown> = {}) => ({
+    workers: [worker()], workersOmitted: 0, overlaps: [], overlapsOmitted: 0, trialMerges: [],
+    trialMergesSkipped: 0, trialState: 'ran', checkedAt: 'now', ...patch,
+  });
+
+  it('caps workers, pairs, trial merges and file names', () => {
+    expect(dispatchConflictsSchema.safeParse(answer()).success).toBe(true);
+    expect(dispatchConflictsSchema.safeParse(answer({ workers: Array.from({ length: 13 }, (_, i) => worker({ id: 'w' + i })) })).success).toBe(false);
+    expect(dispatchConflictsSchema.safeParse(answer({ overlaps: Array.from({ length: 21 }, (_, i) => ({ a: 'a' + i, b: 'b' + i, files: [], filesOmitted: 0 })) })).success).toBe(false);
+    expect(dispatchConflictsSchema.safeParse(answer({ trialMerges: Array.from({ length: 9 }, () => ({ kind: 'worker-worker', left: 'a', right: 'b', state: 'clean', files: [], filesOmitted: 0 })) })).success).toBe(false);
+    expect(dispatchConflictsSchema.safeParse(answer({ workers: [worker({ outsideScope: Array.from({ length: 16 }, (_, i) => 'f' + i) })] })).success).toBe(false);
+  });
+
+  it('rejects unknown worker and trial states and keeps scope optional on old run records', () => {
+    expect(dispatchConflictsSchema.safeParse(answer({ workers: [worker({ filesState: 'unknown' })] })).success).toBe(false);
+    expect(dispatchConflictsSchema.safeParse(answer({ workers: [worker({ scopeState: 'unknown' })] })).success).toBe(false);
+    expect(dispatchConflictsSchema.safeParse(answer({ trialMerges: [{ kind: 'worker-worker', left: 'a', right: 'b', state: 'unknown', files: [], filesOmitted: 0 }] })).success).toBe(false);
+    expect(dispatchSchema.safeParse({ rootRunId: 'r' }).success).toBe(true);
+    expect(dispatchSchema.safeParse({ rootRunId: 'r', scope: 'src/' }).success).toBe(true);
   });
 });

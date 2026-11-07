@@ -89,6 +89,10 @@ export const VERIFY_TAIL_MAX_LINES = 40;
 export const VERIFY_TAIL_MAX_CHARS_PER_LINE = 200;
 export const VERIFY_TAIL_TOTAL_MAX_CHARS = 8_000;
 export const VERIFY_WARNINGS_MAX = 5;
+/** `onni task conflicts` (wave A2): bounds on a manager-facing overlap and trial report. */
+export const CONFLICTS_MAX_PAIRS = 20;
+export const CONFLICTS_FILES_MAX = REPORT_FILES_MAX;
+export const CONFLICTS_TRIAL_MAX = 8;
 
 /**
  * What is left of a tree's ceilings, JSON-safe (plan v2 §6.2). `null` means "no ceiling on this
@@ -186,6 +190,59 @@ export const dispatchVerifyResultSchema = z.object({
   warnings: z.array(z.string().max(300)).max(VERIFY_WARNINGS_MAX),
 });
 export type DispatchVerifyResult = z.infer<typeof dispatchVerifyResultSchema>;
+
+export const CONFLICT_FILES_STATES = ['ok', 'timeout', 'unavailable'] as const;
+export const CONFLICT_SCOPE_STATES = ['none', 'free-text', 'checked'] as const;
+export const CONFLICT_TRIAL_STATES = ['clean', 'conflict', 'unavailable', 'timeout'] as const;
+
+export const dispatchConflictWorkerSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.string(),
+  branch: z.string().optional(),
+  headCommit: z.string().max(40).optional(),
+  filesCount: z.number().int().nonnegative(),
+  filesTruncated: z.boolean(),
+  filesState: z.enum(CONFLICT_FILES_STATES),
+  scopeState: z.enum(CONFLICT_SCOPE_STATES),
+  outsideScope: z.array(z.string().max(300)).max(CONFLICTS_FILES_MAX),
+  outsideScopeOmitted: z.number().int().nonnegative(),
+});
+export type DispatchConflictWorker = z.infer<typeof dispatchConflictWorkerSchema>;
+
+export const dispatchConflictOverlapSchema = z.object({
+  a: z.string(),
+  b: z.string(),
+  files: z.array(z.string().max(300)).max(CONFLICTS_FILES_MAX),
+  filesOmitted: z.number().int().nonnegative(),
+});
+export type DispatchConflictOverlap = z.infer<typeof dispatchConflictOverlapSchema>;
+
+export const dispatchTrialMergeSchema = z.object({
+  kind: z.enum(['worker-worker', 'into-manager']),
+  left: z.string(),
+  right: z.string(),
+  leftHead: z.string().max(40).optional(),
+  rightHead: z.string().max(40).optional(),
+  state: z.enum(CONFLICT_TRIAL_STATES),
+  files: z.array(z.string().max(300)).max(CONFLICTS_FILES_MAX),
+  filesOmitted: z.number().int().nonnegative(),
+  reason: z.string().max(300).optional(),
+});
+export type DispatchTrialMerge = z.infer<typeof dispatchTrialMergeSchema>;
+
+export const dispatchConflictsSchema = z.object({
+  workers: z.array(dispatchConflictWorkerSchema).max(PEEK_MAX_ENTRIES),
+  workersOmitted: z.number().int().nonnegative(),
+  overlaps: z.array(dispatchConflictOverlapSchema).max(CONFLICTS_MAX_PAIRS),
+  overlapsOmitted: z.number().int().nonnegative(),
+  trialMerges: z.array(dispatchTrialMergeSchema).max(CONFLICTS_TRIAL_MAX),
+  trialMergesSkipped: z.number().int().nonnegative(),
+  trialState: z.enum(['ran', 'unavailable']),
+  trialReason: z.string().max(300).optional(),
+  checkedAt: z.string(),
+});
+export type DispatchConflicts = z.infer<typeof dispatchConflictsSchema>;
 
 /**
  * Project memory (plan v2 §8): durable lessons a manager leaves for later tasks in this
@@ -442,6 +499,8 @@ export const dispatchSchema = z.object({
     })
     .optional(),
   /** `onni task verify` bookkeeping on the WORKER's record (wave A1): runs used and the last verdict. No tails. */
+  /** The manager's original dispatch scope, retained for advisory conflicts reports (wave A2). */
+  scope: z.string().max(1_000).optional(),
   verify: z
     .object({
       runs: z.number().int().nonnegative(),

@@ -226,9 +226,55 @@ export async function chooseForkBase(
 }
 
 /** Does the local branch exist? False on any git failure (never throws). */
-export async function localBranchExists(repoRoot: string, branch: string): Promise<boolean> {
+export async function localBranchExists(
+  repoRoot: string,
+  branch: string,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<boolean> {
   if (!isSafeGitRef(branch)) return false;
+  if (opts.signal || opts.timeoutMs !== undefined) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 2_000);
+    const forwardAbort = () => controller.abort();
+    opts.signal?.addEventListener('abort', forwardAbort, { once: true });
+    try {
+      if (opts.signal?.aborted) return false;
+      const result = await gitReadOnly(repoRoot, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], controller.signal);
+      return !controller.signal.aborted && result.ok;
+    } finally {
+      clearTimeout(timer);
+      opts.signal?.removeEventListener('abort', forwardAbort);
+    }
+  }
   return (await git(repoRoot, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`])).ok;
+}
+
+/** Read-only check: is `candidate` a strict descendant of `base` in the local repository? */
+export async function localBranchAheadReadOnly(
+  repoRoot: string,
+  base: string,
+  candidate: string,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<boolean> {
+  if (!existsSync(repoRoot) || !isSafeGitRef(base) || !isSafeGitRef(candidate)) return false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 3_000);
+  const forwardAbort = () => controller.abort();
+  opts.signal?.addEventListener('abort', forwardAbort, { once: true });
+  try {
+    if (opts.signal?.aborted) return false;
+    const result = await gitReadOnly(repoRoot, [
+      'rev-list', '--left-right', '--count', `refs/heads/${base}...refs/heads/${candidate}`,
+    ], controller.signal);
+    if (controller.signal.aborted || !result.ok) return false;
+    const counts = /^(\d+)\s+(\d+)$/.exec(result.stdout.trim());
+    return Boolean(counts && Number(counts[1]) === 0 && Number(counts[2]) > 0);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', forwardAbort);
+  }
 }
 
 export function worktreePathFor(repoRoot: string, runId: string): string {

@@ -257,6 +257,44 @@ describe('onni task', () => {
     expect(old.err[0]).toContain('server does not support this command yet');
   });
 
+  it('conflicts fetches an advisory report with or without one target and returns success for conflicts', async () => {
+    const body = {
+      workers: [
+        { id: 'worker-a', title: 'A', status: 'done', filesCount: 1, filesTruncated: false, filesState: 'ok', scopeState: 'none', outsideScope: [], outsideScopeOmitted: 0 },
+        { id: 'worker-b', title: 'B', status: 'done', filesCount: 1, filesTruncated: false, filesState: 'ok', scopeState: 'none', outsideScope: [], outsideScopeOmitted: 0 },
+      ],
+      workersOmitted: 0,
+      overlaps: [{ a: 'worker-a', b: 'worker-b', files: ['src/shared.ts'], filesOmitted: 0 }],
+      overlapsOmitted: 0,
+      trialMerges: [],
+      trialMergesSkipped: 0,
+      trialState: 'ran',
+      checkedAt: 'now',
+    };
+    const all = harness({ status: 200, body });
+    expect(await runTaskCommand(['conflicts'], env, all.io)).toBe(0);
+    expect(all.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/conflicts');
+    expect(all.out[0]).toContain('advisory only');
+    expect(all.out[0]).toContain('overlap (1 file): worker-a and worker-b');
+
+    const one = harness({ status: 200, body });
+    expect(await runTaskCommand(['conflicts', 'worker-b'], env, one.io)).toBe(0);
+    expect(one.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/conflicts?target=worker-b');
+  });
+
+  it('conflicts accepts at most one target and reports refusals and version mismatch', async () => {
+    const tooMany = harness({ status: 200, body: {} });
+    expect(await runTaskCommand(['conflicts', 'a', 'b'], env, tooMany.io)).toBe(1);
+    expect(tooMany.err[0]).toContain('usage: onni task conflicts');
+    expect(tooMany.calls).toHaveLength(0);
+    const refused = harness({ status: 409, body: { error: 'target is outside the task tree' } });
+    expect(await runTaskCommand(['conflicts', 'worker-a'], env, refused.io)).toBe(1);
+    expect(refused.err[0]).toContain('conflicts refused — target is outside the task tree');
+    const old = harness({ status: 404, body: { error: 'x' } });
+    expect(await runTaskCommand(['conflicts'], env, old.io)).toBe(1);
+    expect(old.err[0]).toContain('server does not support this command yet');
+  });
+
   it('peek refuses a bad tail or an id plus --all without calling the server', async () => {
     const h = harness({ status: 200, body: { workers: [], workersOmitted: 0 } });
     expect(await runTaskCommand(['peek', '--tail', '0'], env, h.io)).toBe(1);

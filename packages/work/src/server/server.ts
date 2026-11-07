@@ -4550,6 +4550,7 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/budget', requireDispatch)
     .use('/runs/:id/peek', requireDispatch)
     .use('/runs/:id/verify', requireDispatch)
+    .use('/runs/:id/conflicts', requireDispatch)
     .use('/runs/:id/ask', requireDispatch)
     .use('/runs/:id/plan', requireDispatch)
     .use('/runs/:id/plan/parts/:partId', requireDispatch)
@@ -4646,6 +4647,17 @@ export function createApp(deps: ServerDeps) {
     .post('/runs/:id/verify', jsonZodValidator(dispatchVerifyInputSchema), async (c) => {
       const { manager } = c.get('project');
       const outcome = await manager.verifyFor(c.req.param('id'), c.req.valid('json'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
+    })
+
+    /** Read-only overlap and trial-merge report. Access is checked by the manager; the result is advisory. */
+    .get('/runs/:id/conflicts', queryZodValidator(z.object({
+      target: z.string().trim().min(1).max(200).optional(),
+    })), async (c) => {
+      const { manager } = c.get('project');
+      const { target } = c.req.valid('query');
+      const outcome = await manager.conflictsFor(c.req.param('id'), target !== undefined ? { target } : {});
       if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
       return c.json(outcome);
     });

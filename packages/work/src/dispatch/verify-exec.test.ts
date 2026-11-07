@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -40,8 +41,27 @@ describe('runVerifyCommand', () => {
   it('bounds captured output', async () => {
     if (!bash) return;
     const result = await exec('yes | head -c 2000000', { captureBytes: 10_000 });
-    expect(result.output.length).toBeLessThanOrEqual(10_000);
+    expect(Buffer.byteLength(result.output, 'utf8')).toBeLessThanOrEqual(10_000);
   }, 30_000);
+
+  it('keeps a byte-capped tail on UTF-8 code point boundaries', async () => {
+    if (!bash) return;
+    const result = await exec("printf '\\342\\202\\254\\342\\202\\254\\342\\202\\254'", { captureBytes: 7 });
+    expect(result.output).toBe('€€');
+    expect(Buffer.byteLength(result.output, 'utf8')).toBeLessThanOrEqual(7);
+  }, 30_000);
+
+  it('reports a missing bash executable as ENOENT', async () => {
+    const result = await runVerifyCommand({
+      bashPath: join(tmpdir(), `onni-missing-bash-${randomUUID()}.exe`),
+      pathDirs: [],
+      command: 'true',
+      cwd,
+      env: buildVerifyEnv(process.env),
+      timeoutMs: 1_000,
+    });
+    expect(result.spawnErrorCode).toBe('ENOENT');
+  }, 10_000);
 
   it('aborts promptly on a signal', async () => {
     if (!bash) return;
@@ -49,16 +69,17 @@ describe('runVerifyCommand', () => {
     const pending = exec('sleep 30', { signal: controller.signal });
     setTimeout(() => controller.abort(), 200);
     expect(await pending).toMatchObject({ aborted: true, exitCode: null });
+
+    const totalDeadline = new AbortController();
+    const totalPending = exec('sleep 30', { signal: totalDeadline.signal });
+    setTimeout(() => totalDeadline.abort('verify-total-timeout'), 200);
+    expect(await totalPending).toMatchObject({ aborted: false, timedOut: true, exitCode: null });
   }, 30_000);
 
   it('closes stdin and hides ONNI_* from the child', async () => {
     if (!bash) return;
-    process.env.ONNI_VERIFY_TEST_SECRET = 'leak';
-    try {
-      const result = await exec('read x; echo "ci=$CI secret=${ONNI_VERIFY_TEST_SECRET:-none}"');
-      expect(result.output).toContain('ci=1 secret=none');
-    } finally {
-      delete process.env.ONNI_VERIFY_TEST_SECRET;
-    }
+    const env = buildVerifyEnv({ ...process.env, ONNI_VERIFY_TEST_SECRET: 'leak' });
+    const result = await exec('read x; echo "ci=$CI secret=${ONNI_VERIFY_TEST_SECRET:-none}"', { env });
+    expect(result.output).toContain('ci=1 secret=none');
   }, 30_000);
 });
