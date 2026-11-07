@@ -67,6 +67,7 @@ import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { jsonZodValidator, multipartZodValidator, paramZodValidator, queryZodValidator } from './validators.ts';
 import { createModelsRoutes } from './routes/models.ts';
+import { createFsBrowseRoutes } from './routes/fs-browse.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -3644,29 +3645,14 @@ export function createApp(deps: ServerDeps) {
   // Partial updates only — absent keys stay untouched. Bounds mirror the
   // workspace schema (src/workspace/config.ts, step 1.2) exactly, so a value
   // this route accepts can never be degraded away by the next load's `.catch`.
-  // ---- chained family: filesystem browse (workspace-level) ----
-  const fsBrowseRoutes = new Hono<ProjectApiEnv>()
-    .get(
-      '/fs/browse',
-      queryZodValidator(z.object({ path: queryValue, showHidden: queryValue })),
-      async (c) => {
-        if (capabilities().singleProject) {
-          return c.json(singleProjectRefusal('folder browsing'), 409);
-        }
-        const query = c.req.valid('query');
-        const root = resolveBrowseRoot(await workspaceBrowseRoot());
-        const result = await browseDirectory({
-          root,
-          path: query.path,
-          showHidden: query.showHidden === '1',
-          // The user's own machine: any folder, `root` is only the starting point. A hosted
-          // cockpit keeps the containment (registration already follows the same split).
-          unrestricted: capabilities().localHandoff,
-        });
-        if (!result.ok) return c.json({ error: result.error }, result.status);
-        return c.json(result.body);
-      },
-    );
+  const fsBrowseRoutes = createFsBrowseRoutes({
+    browseDirectory,
+    capabilities,
+    queryValue,
+    resolveBrowseRoot,
+    singleProjectRefusal,
+    workspaceBrowseRoot,
+  });
 
   // ---- chained family: launch-key (project-scoped) ----
   const launchKeyRoutes = new Hono<ProjectApiEnv>()
