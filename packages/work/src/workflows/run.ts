@@ -1304,7 +1304,7 @@ export class RunManager {
   private readonly active = new Map<string, ActiveRun>();
   /** One `onni task verify` per tree (checks share ports and caches); aborted by cancel/dispose. */
   private readonly verifying = new Map<string, AbortController>();
-  private readonly verifyDeps: { runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number };
+  private readonly verifyDeps: { runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number; env: NodeJS.ProcessEnv };
   /** Check ownership survives a parked continuation without persisting transient state. */
   private readonly checkArtifactSnapshots = new Map<string, Map<string, string>>();
   /** A failed checkpoint remains unsafe when a parked run is continued. */
@@ -1451,13 +1451,14 @@ export class RunManager {
        *  Tests shorten it; the default is the slow-model budget. */
       branchNameWaitMs?: number;
       /** Test seam for `onni task verify`: the command runner, the bash lookup and the clock. */
-      verifyDeps?: Partial<{ runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number }>;
+      verifyDeps?: Partial<{ runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number; env: NodeJS.ProcessEnv }>;
     } = {},
   ) {
     this.verifyDeps = {
       runCommand: options.verifyDeps?.runCommand ?? runVerifyCommand,
       resolveBash: options.verifyDeps?.resolveBash ?? resolveBash,
       now: options.verifyDeps?.now ?? Date.now,
+      env: options.verifyDeps?.env ?? process.env,
     };
     this.dataDir = join(repoRoot, '.ai/onni');
     this.branchNameWaitMs = options.branchNameWaitMs ?? BRANCH_NAME_WAIT_MS;
@@ -3005,6 +3006,7 @@ export class RunManager {
     // Claimed before the first await: two simultaneous calls must not both pass the check above.
     const controller = new AbortController();
     this.verifying.set(caller.id, controller);
+    const totalTimer = setTimeout(() => controller.abort('verify-total-timeout'), VERIFY_TOTAL_TIMEOUT_MS);
     try {
       const resolved = await resolveVerifyCommands({
         repoRoot: this.repoRoot,
@@ -3014,6 +3016,7 @@ export class RunManager {
       if ('error' in resolved) return { denied: resolved.error, status: 400 };
       return await this.runVerify(caller, target, resolved, controller);
     } finally {
+      clearTimeout(totalTimer);
       this.verifying.delete(caller.id);
     }
   }
@@ -3045,7 +3048,7 @@ export class RunManager {
       return result;
     };
 
-    if (process.env.ONNI_DRY_RUN === '1') return unavailable('dry-run', 'ONNI_DRY_RUN=1 — no check is executed');
+    if (this.verifyDeps.env.ONNI_DRY_RUN === '1') return unavailable('dry-run', 'ONNI_DRY_RUN=1 — no check is executed');
     const worktree = target.worktreePath;
     if (!worktree || !existsSync(worktree)) {
       return unavailable('no-worktree', "the worker's worktree is gone — it was reclaimed; nothing to run in");
@@ -3053,11 +3056,8 @@ export class RunManager {
     if (resolved.commands.length === 0) {
       return unavailable('no-commands', 'no required checks are configured and none could be discovered: expected package.json scripts test/build/lint/typecheck/check or a Cargo.toml');
     }
-    const bash = this.verifyDeps.resolveBash();
+    const bash = this.verifyDeps.resolveBash({ env: this.verifyDeps.env });
     if (!bash) return unavailable('no-bash', BASH_MISSING_MESSAGE);
-
-    // Counted BEFORE spawning so a crashed or aborted verify cannot be repeated for free.
-    this.updateDispatch(target.id, (d) => ({ ...d, verify: { runs: used + 1, ...(d.verify?.last ? { last: d.verify.last } : {}) } }));
 
     const warnings: string[] = [];
     const [files, headCommit] = await Promise.all([
@@ -3068,13 +3068,20 @@ export class RunManager {
       warnings.push('this worker changed package.json or Cargo.toml — verify runs its scripts, so a green result is only as honest as that change');
     }
 
-    const env = buildVerifyEnv(process.env);
+    const env = buildVerifyEnv(this.verifyDeps.env);
     const raws: RawCommandRun[] = [];
+    let counted = false;
+    let firstAttempt = true;
     for (const command of resolved.commands) {
       const remaining = VERIFY_TOTAL_TIMEOUT_MS - (this.verifyDeps.now() - t0);
       if (controller.signal.aborted || remaining <= 0) {
         raws.push({ command, outcome: 'skipped', exitCode: null, durationMs: 0, timedOut: false, output: '' });
         continue;
+      }
+      if (!counted) {
+        // Reserve before the first spawn so a crashed or aborted verify cannot be repeated for free.
+        this.updateDispatch(target.id, (d) => ({ ...d, verify: { runs: used + 1, ...(d.verify?.last ? { last: d.verify.last } : {}) } }));
+        counted = true;
       }
       const run = await this.verifyDeps.runCommand({
         bashPath: bash.path,
@@ -3085,7 +3092,23 @@ export class RunManager {
         timeoutMs: Math.min(VERIFY_COMMAND_TIMEOUT_MS, remaining),
         signal: controller.signal,
       });
+      const wasFirstAttempt = firstAttempt;
+      firstAttempt = false;
       if (run.spawnError) {
+        if (wasFirstAttempt && run.spawnErrorCode === 'ENOENT') {
+          // POSIX resolveBash returns a command name; ENOENT is the first proof bash is absent.
+          this.updateDispatch(target.id, (d) => {
+            const runs = Math.max(0, (d.verify?.runs ?? used + 1) - 1);
+            if (runs === 0 && !d.verify?.last) {
+              const restored = { ...d };
+              delete restored.verify;
+              return restored;
+            }
+            return { ...d, verify: { runs, ...(d.verify?.last ? { last: d.verify.last } : {}) } };
+          });
+          counted = false;
+          return unavailable('no-bash', BASH_MISSING_MESSAGE);
+        }
         // A spawn failure (a POSIX box without bash) is not a verdict on the worker's code.
         raws.push({ command, outcome: 'skipped', exitCode: null, durationMs: run.durationMs, timedOut: false, output: '' });
         warnings.push(`could not start "${command.slice(0, 80)}": ${run.spawnError}`);
@@ -3102,12 +3125,12 @@ export class RunManager {
       startedAt,
       durationMs: Math.max(0, this.verifyDeps.now() - t0),
       results,
-      runsUsed: used + 1,
+      runsUsed: used + (counted ? 1 : 0),
       runsMax: VERIFY_MAX_RUNS_PER_WORKER,
       warnings: capWarnings(warnings.map(redact)),
     };
     const lastSource = resolved.source === 'none' ? undefined : resolved.source;
-    if (lastSource) {
+    if (lastSource && counted) {
       this.updateDispatch(target.id, (d) => ({
         ...d,
         verify: {

@@ -585,13 +585,17 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
   describe('verify', () => {
     const ROSTER = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'work' }] });
-    type Runner = NonNullable<NonNullable<ConstructorParameters<typeof RunManager>[2]>['verifyDeps']>['runCommand'];
+    type Deps = NonNullable<NonNullable<ConstructorParameters<typeof RunManager>[2]>['verifyDeps']>;
+    type Runner = NonNullable<Deps['runCommand']>;
     const FAKE_BASH = () => ({ path: 'bash', pathDirs: [] as string[] });
+    let verifyEnv: NodeJS.ProcessEnv;
     const okRun = { exitCode: 0, timedOut: false, aborted: false, output: '', durationMs: 5 };
     const calls: string[] = [];
     const exitByCommand: Record<string, number> = {};
+    let observedChildEnv: NodeJS.ProcessEnv | undefined;
     const fakeRunner: Runner = async (opts) => {
       calls.push(opts.command);
+      observedChildEnv = opts.env;
       const exitCode = exitByCommand[opts.command] ?? 0;
       return { ...okRun, exitCode, output: exitCode === 0 ? '' : `FAILED with sk-ant-secret-1234 here\n${opts.command} broke` };
     };
@@ -603,20 +607,11 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       }
     };
     // One manager for the test (swapping it would dispose the parked root); the seam reads `current`.
-    type Deps = NonNullable<NonNullable<ConstructorParameters<typeof RunManager>[2]>['verifyDeps']>;
     let current: Deps = {};
     const useVerifyDeps = (deps: Deps): void => {
       current = deps;
     };
-    /** Roots park on the dry-run mock; verify itself must see a real (non-dry) environment. */
-    const verify = async (...args: Parameters<RunManager['verifyFor']>) => {
-      process.env.ONNI_DRY_RUN = '';
-      try {
-        return await manager.verifyFor(...args);
-      } finally {
-        process.env.ONNI_DRY_RUN = '1';
-      }
-    };
+    const verify = (...args: Parameters<RunManager['verifyFor']>) => manager.verifyFor(...args);
     const writeChecks = (checks: string[]) => {
       mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
       writeFileSync(join(repoRoot, '.ai/onni/config.json'), JSON.stringify({ requiredChecks: checks }));
@@ -636,13 +631,15 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     beforeEach(() => {
       calls.length = 0;
       for (const key of Object.keys(exitByCommand)) delete exitByCommand[key];
+      verifyEnv = { ...process.env, ONNI_DRY_RUN: '' };
       useVerifyDeps({ runCommand: fakeRunner, resolveBash: FAKE_BASH });
       manager.dispose();
       manager = new RunManager(store, repoRoot, {
         semaphore: new WorkspaceSemaphore(),
         verifyDeps: {
+          env: verifyEnv,
           runCommand: (o) => (current.runCommand ?? fakeRunner)(o),
-          resolveBash: () => (current.resolveBash ?? FAKE_BASH)(),
+          resolveBash: (options) => (current.resolveBash ?? FAKE_BASH)(options),
           now: () => (current.now ?? Date.now)(),
         },
       });
@@ -650,6 +647,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
     it('runs the required checks in a settled worker, stores the verdict and leaves a trail', async () => {
       writeChecks(['npm test', 'npm run build']);
+      verifyEnv.HOME = 'verify-injected-home';
       exitByCommand['npm run build'] = 1;
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
@@ -664,6 +662,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       expect(failed.tail.join('\n')).toContain('npm run build broke');
       expect(failed.tail.join('\n')).not.toContain('sk-ant-secret-1234'.slice(0, 0) + 'sk-ant-secret-1234');
       expect(calls).toEqual(['npm test', 'npm run build']);
+      expect(observedChildEnv?.HOME).toBe('verify-injected-home');
+      expect(observedChildEnv?.ONNI_DRY_RUN).toBeUndefined();
       expect(store.getRun(worker.id)?.dispatch?.verify).toMatchObject({ runs: 1, last: { state: 'failed', source: 'required-checks' } });
       const ledger = readFileSync(join(treeDirOf(parent.id), 'ledger.jsonl'), 'utf8');
       expect(ledger).toContain('"type":"verify"');
@@ -767,11 +767,19 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       writeChecks(['npm test']);
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
+      verifyEnv.ONNI_DRY_RUN = '1';
       expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'dry-run' });
+      verifyEnv.ONNI_DRY_RUN = '';
       useVerifyDeps({ runCommand: fakeRunner, resolveBash: () => null });
       const noBash = await verify(parent.id, { target: worker.id });
       expect(noBash).toMatchObject({ state: 'unavailable', reasonCode: 'no-bash' });
       expect((noBash as { reason: string }).reason).toBe(BASH_MISSING_MESSAGE);
+      useVerifyDeps({
+        runCommand: async () => ({ ...okRun, exitCode: null, spawnError: 'spawn bash ENOENT', spawnErrorCode: 'ENOENT' }),
+        resolveBash: FAKE_BASH,
+      });
+      expect(await verify(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'no-bash', runsUsed: 0 });
+      expect(store.getRun(worker.id)?.dispatch?.verify).toBeUndefined();
       useVerifyDeps({ runCommand: fakeRunner, resolveBash: FAKE_BASH });
       writeChecks([]);
       const empty = store.getRun(parent.id)!;
