@@ -10,7 +10,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, type DispatchBudget, type DispatchConflicts, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
+import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, MANAGER_CANCEL_REASON_MAX_CHARS, MANAGER_MESSAGE_MAX_CHARS, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, type DispatchBudget, type DispatchConflicts, type DispatchManagerCancelResult, type DispatchManagerMessageResult, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
@@ -288,6 +288,52 @@ export async function runTaskCommand(
           method: 'GET',
         }, 'could not peek —')) as DispatchPeek;
         io.log(formatPeek(peek));
+        return 0;
+      }
+      case 'message': {
+        const { positionals } = parseArgs({ args: rest, allowPositionals: true, options: {} });
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can message a worker');
+        if (positionals.length !== 2 || !positionals[0]?.trim()) {
+          throw new Error('usage: onni task message <worker id> "<text>"');
+        }
+        const [target, rawText] = positionals;
+        const text = rawText?.trim() ?? '';
+        if (!text || text.length > MANAGER_MESSAGE_MAX_CHARS) {
+          throw new Error(`message text must be 1-${MANAGER_MESSAGE_MAX_CHARS} characters`);
+        }
+        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/message`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ target, text }),
+        }, 'message refused —')) as DispatchManagerMessageResult;
+        const detail = `manager message ${result.deliveryId.slice(0, 8)} to ${target}: ${result.state} (${result.capability})${result.reasonCode ? ` — ${result.reasonCode}` : ''}`;
+        const caveat = 'adapter acceptance is not proof the worker read or understood it';
+        if (result.state === 'rejected' || result.state === 'expired') {
+          io.error(`${detail}; ${caveat}`);
+          return 3;
+        }
+        io.log(`${detail}; ${caveat}`);
+        return 0;
+      }
+      case 'cancel': {
+        const { values, positionals } = parseArgs({
+          args: rest,
+          allowPositionals: true,
+          options: { reason: { type: 'string' } },
+        });
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can cancel a worker');
+        const target = positionals[0]?.trim();
+        if (!target || positionals.length !== 1) throw new Error('usage: onni task cancel <worker id> [--reason "<reason>"]');
+        const reason = values.reason?.trim();
+        if (reason !== undefined && (!reason || reason.length > MANAGER_CANCEL_REASON_MAX_CHARS)) {
+          throw new Error(`--reason must be 1-${MANAGER_CANCEL_REASON_MAX_CHARS} characters`);
+        }
+        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/cancel`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ target, ...(reason !== undefined ? { reason } : {}) }),
+        }, 'cancel refused —')) as DispatchManagerCancelResult;
+        io.log(`cancelled worker ${result.targetId}; manager report status ${result.reportStatus}${result.reason ? ` — ${result.reason}` : ''}`);
         return 0;
       }
       case 'verify': {

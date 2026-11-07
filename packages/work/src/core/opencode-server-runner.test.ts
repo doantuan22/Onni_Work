@@ -491,6 +491,34 @@ describe('#897 a turn that outlives its prompt POST', () => {
     await session.result;
   }, 30_000);
 
+  it('acknowledges a manager message when its correlated prompt POST succeeds', async () => {
+    const runner = new OpencodeServerRunner({ bin: mockBin, timeoutMs: 60_000 });
+    const { events, onEvent } = record();
+    const session = runner.startSession({ userPrompt: 'check the tree', cwd: process.cwd() }, onEvent, {});
+    await afterTurnEnds(events, 1);
+    const receipt = new Promise<{ state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }>((resolve) => {
+      expect(session.sendMessageWithReceipt?.([{ type: 'text', text: 'continue with the tests' }], resolve)).toBe(true);
+    });
+    await expect(receipt).resolves.toEqual({ state: 'acknowledged' });
+    await afterTurnEnds(events, 2);
+    session.end();
+    await session.result;
+  }, 30_000);
+
+  it('rejects a manager message after the correlated prompt POST returns an error', async () => {
+    const runner = new OpencodeServerRunner({ bin: mockBin, timeoutMs: 60_000 });
+    const { events, onEvent } = record();
+    const session = runner.startSession({ userPrompt: 'check the tree', cwd: process.cwd() }, onEvent, {});
+    await afterTurnEnds(events, 1);
+    const receipt = new Promise<{ state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }>((resolve) => {
+      expect(session.sendMessageWithReceipt?.([{ type: 'text', text: '#http-error' }], resolve)).toBe(true);
+    });
+    await expect(receipt).resolves.toEqual({ state: 'rejected', reasonCode: 'async-rejected' });
+    await expect.poll(() => notes(events).some((note) => note.includes('opencode: prompt failed:'))).toBe(true);
+    session.end();
+    await session.result.catch(() => undefined);
+  }, 30_000);
+
   it('a turn that finishes normally is unchanged: one turn-end, after the last part, no note', async () => {
     const runner = new OpencodeServerRunner({ bin: mockBin, timeoutMs: 60_000 });
     const { events, onEvent } = record();

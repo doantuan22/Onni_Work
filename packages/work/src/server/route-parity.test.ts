@@ -175,6 +175,8 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
       'GET /runs/:id/history',
       'GET /runs/:id/history-context',
       'POST /runs',
+      'POST /runs/:id/message',
+      'POST /runs/:id/cancel',
       'POST /runs/archive-finished',
       'PUT /ui-state',
       'PUT /config',
@@ -241,6 +243,8 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     // 404: unknown ids.
     await expectParity('/runs/no-such-run/archive', json('POST', {}));
     await expectParity('/runs/no-such-run/pin', json('POST', {}));
+    await expectParity(`/runs/${runId}/message`, json('POST', {}));
+    await expectParity(`/runs/${runId}/cancel`, json('POST', {}));
     await expectParity('/runs/no-such-run', json('PATCH', { title: 't' }));
     await expectParity('/workflows/no-such-workflow', () => ({
       method: 'DELETE',
