@@ -4591,6 +4591,23 @@ export class RunManager {
         ...(input.scope ? { scope: input.scope } : {}),
         ...(afterIds.length ? { after: afterIds } : {}),
         ...(budget.budgetUsd !== undefined ? { budgetUsd: budget.budgetUsd } : {}),
+        order: {
+          objective: input.objective,
+          title,
+          kind: input.kind ?? 'implement',
+          ...(input.scope !== undefined ? { scope: input.scope } : {}),
+          ...(input.allowed_tools !== undefined ? { allowedTools: input.allowed_tools } : {}),
+          ...(input.max_cost !== undefined ? { maxCost: input.max_cost } : {}),
+          ...(input.success_criteria !== undefined ? { successCriteria: input.success_criteria } : {}),
+          ...(input.required_evidence !== undefined ? { requiredEvidence: input.required_evidence } : {}),
+          retryLimit,
+          backend: childRunner ?? 'claude',
+          ...(childModel !== undefined ? { model: childModel } : {}),
+          ...(worker && 'ok' in worker ? { workerKey: worker.key } : {}),
+          after: afterIds,
+          ...(input.review_of !== undefined ? { reviewOf: input.review_of } : {}),
+          ...(input.partId !== undefined ? { partId: input.partId } : {}),
+        },
       },
     });
     // The task list shows the order's own title rather than the first line of the envelope, and

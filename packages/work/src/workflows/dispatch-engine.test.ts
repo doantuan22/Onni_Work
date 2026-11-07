@@ -177,7 +177,23 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       }));
       const child = store.getRun(created.id);
       expect(child?.title).toBe('Take the left flank');
-      expect(child?.dispatch).toEqual({ rootRunId: parent.id, parentRunId: parent.id, scope: 'src/left/**', budgetUsd: 2.5 });
+      expect(child?.dispatch).toMatchObject({
+        rootRunId: parent.id,
+        parentRunId: parent.id,
+        scope: 'src/left/**',
+        budgetUsd: 2.5,
+        order: {
+          objective: 'mock:done take the left flank',
+          title: 'Take the left flank',
+          kind: 'implement',
+          scope: 'src/left/**',
+          maxCost: 2.5,
+          successCriteria: 'the left half compiles and its tests pass',
+          retryLimit: 1,
+          backend: 'claude',
+          after: [],
+        },
+      });
       expect(child?.autonomous).toBe(true);
       // The child forks off the PARENT's branch, which is what `execute()` reads.
       expect(child?.baseBranch).toBe(store.getRun(parent.id)?.branch);

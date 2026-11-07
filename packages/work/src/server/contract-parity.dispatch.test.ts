@@ -4,6 +4,16 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
   dispatchConflictsSchema,
+  dispatchManagerCancelInputSchema,
+  dispatchManagerCancelResultSchema,
+  dispatchManagerCapabilitySchema,
+  dispatchManagerDeliveryRecordSchema,
+  dispatchManagerDeliveryStateSchema,
+  dispatchManagerMessageInputSchema,
+  dispatchManagerMessageResultSchema,
+  dispatchManagerRedirectInputSchema,
+  dispatchManagerRedirectResultSchema,
+  dispatchOrderSnapshotSchema,
   dispatchPeekSchema,
   dispatchReportSchema,
   dispatchSchema,
@@ -223,6 +233,45 @@ describe('a verify answer is bounded at both levels (wave A1)', () => {
     });
     expect(dispatchSchema.safeParse(stored('passed')).success).toBe(true);
     expect(dispatchSchema.safeParse(stored('unavailable')).success).toBe(false);
+  });
+
+  it('defines bounded manager message and cancellation contracts and retains optional metadata', () => {
+    expect(dispatchManagerMessageInputSchema.safeParse({ target: ' worker-1 ', text: ' give it a direction ' }).data)
+      .toEqual({ target: 'worker-1', text: 'give it a direction' });
+    expect(dispatchManagerMessageInputSchema.safeParse({ target: 'worker-1', text: 'x'.repeat(2_001) }).success).toBe(false);
+    expect(dispatchManagerCancelInputSchema.safeParse({ target: 'worker-1', reason: '  stop here  ' }).data)
+      .toEqual({ target: 'worker-1', reason: 'stop here' });
+    expect(dispatchManagerCancelInputSchema.safeParse({ target: 'worker-1', reason: 'x'.repeat(501) }).success).toBe(false);
+    expect(dispatchManagerCancelResultSchema.safeParse({ targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked' }).success).toBe(true);
+    expect(dispatchManagerMessageResultSchema.safeParse({
+      deliveryId: 'd-1', targetId: 'worker-1', state: 'delivered', capability: 'steer',
+    }).success).toBe(true);
+    expect(dispatchManagerDeliveryStateSchema.options).toEqual(['queued', 'delivered', 'acknowledged', 'rejected', 'expired']);
+    expect(dispatchManagerCapabilitySchema.options).toEqual(['steer', 'ordered-queue', 'unsupported']);
+    expect(dispatchManagerRedirectInputSchema.safeParse({ target: 'worker-1', instruction: 'x'.repeat(1_001) }).success).toBe(false);
+    expect(dispatchManagerRedirectResultSchema.safeParse({
+      cancelledRunId: 'old', replacement: { id: 'new' }, repointedDependents: 0, retryAccounting: 'excluded',
+    }).success).toBe(true);
+  });
+
+  it('bounds delivery metadata and accepts dispatch records written before and after wave B', () => {
+    const record = {
+      deliveryId: 'd-1', state: 'queued', createdAt: '2026-11-07T00:00:00.000Z',
+      updatedAt: '2026-11-07T00:00:00.000Z', capability: 'ordered-queue',
+    };
+    expect(dispatchManagerDeliveryRecordSchema.safeParse(record).success).toBe(true);
+    expect(dispatchManagerDeliveryRecordSchema.safeParse({ ...record, state: 'sent' }).success).toBe(false);
+    expect(dispatchManagerDeliveryRecordSchema.safeParse({ ...record, deliveryId: 'd'.repeat(121) }).success).toBe(false);
+    const order = {
+      objective: 'fix the bug', title: 'bug fix', kind: 'implement', retryLimit: 1, backend: 'claude', after: [],
+    };
+    expect(dispatchOrderSnapshotSchema.safeParse(order).success).toBe(true);
+    expect(dispatchSchema.safeParse({ rootRunId: 'old-root' }).success).toBe(true);
+    expect(dispatchSchema.safeParse({
+      rootRunId: 'new-root', order,
+      managerDeliveries: [record],
+      managerCancellation: { byRunId: 'manager', requestedAt: '2026-11-07T00:00:00.000Z', reason: 'redacted reason' },
+    }).success).toBe(true);
   });
 });
 
