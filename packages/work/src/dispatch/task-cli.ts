@@ -10,10 +10,11 @@
  */
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, type DispatchBudget, type DispatchPeek, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
+import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, type DispatchBudget, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
+import { formatVerify } from './verify.ts';
 import { sanitizeMemoryEntry } from './memory.ts';
 import { taskUsage } from './commands.ts';
 
@@ -287,6 +288,24 @@ export async function runTaskCommand(
         }, 'could not peek —')) as DispatchPeek;
         io.log(formatPeek(peek));
         return 0;
+      }
+      case 'verify': {
+        const { values, positionals } = parseArgs({
+          args: rest,
+          allowPositionals: true,
+          options: { only: { type: 'string', multiple: true } },
+        });
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can verify a worker');
+        const target = positionals[0];
+        if (!target || positionals.length !== 1) throw new Error('a worker id is required: onni task verify <worker id>');
+        const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/verify`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ target, ...(values.only?.length ? { only: values.only } : {}) }),
+          signal: AbortSignal.timeout(VERIFY_TOTAL_TIMEOUT_MS + 30_000),
+        }, 'verify refused —')) as DispatchVerifyResult;
+        io.log(formatVerify(result, target.slice(0, 8)));
+        return result.state === 'passed' ? 0 : result.state === 'failed' ? 3 : 4;
       }
       case 'memory': {
         if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can write project memory');

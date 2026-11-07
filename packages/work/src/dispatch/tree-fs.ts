@@ -164,6 +164,26 @@ export function writeReport(dataDir: string, rootRunId: string, runId: string, t
   );
 }
 
+/**
+ * Append a titled section to an existing `units/<id8>/report.md` (wave A1: onni's own verification
+ * result lands under the worker's claim). Best-effort like `appendLedger`: a missing report is a
+ * tree with no history, not an error. Never rewrites `writeReport`'s "Settled:" line.
+ */
+export function appendReportSection(dataDir: string, rootRunId: string, runId: string, heading: string, body: string): boolean {
+  try {
+    const path = taskPaths(dataDir, rootRunId, runId).report;
+    if (!existsSync(path)) return false;
+    appendFileSync(path, `
+## ${heading}
+
+${body}
+`, 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** `ledger.jsonl` — one appended line per engine event. Best-effort: a ledger write must never
  *  fail a turn end, and a missing ledger is a tree with no history, not a broken one. */
 export function appendLedger(dataDir: string, rootRunId: string, entry: Record<string, unknown>): void {

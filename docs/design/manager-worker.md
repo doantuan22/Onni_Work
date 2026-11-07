@@ -562,6 +562,28 @@ bảo vệ người ghi qua HTTP; sửa tay `plan.json` là ghi đè có chủ �
 ra từ nội dung mới. Gán `--part` không nguyên tử với việc tạo task theo nghĩa rollback: nó kiểm trước
 để không tạo worker mồ côi, còn lần ghi sau hỏng thì báo note chứ không huỷ worker.
 
+## Phụ lục I — Đợt A1: `onni task verify` (2026-11-06)
+
+Manager nhận báo cáo của worker như một **lời khai** (dòng `checks (worker-reported, not verified)`). `onni task verify <worker id> [--only "<lệnh>"]…` cho onni tự chạy các check của repo trong worktree của worker đã **settle** và trả kết quả của chính onni. Spec: `.ai/specs/2026-11-06-manager-worker-wave-a.md` §5. Phần `--baseline` (A1b) chưa làm.
+
+**Route.** `POST /runs/:id/verify` (`:id` là manager gọi — cùng quy ước với `merge`/`peek`; worker nằm trong body `target`). Nằm trong chuỗi `dispatchRoutes`, có `.use('/runs/:id/verify', requireDispatch)` nên `ONNI_DISPATCH=0` → 409. Body `{ target, only? }` (`.strict()`): **không có trường `command`**, `only` chỉ chọn trong danh sách server đã tự phân giải, nên route không phải endpoint chạy lệnh tuỳ ý. Schema ở `packages/contract/src/dispatch.ts` (`dispatchVerifyInputSchema`, `dispatchVerifyResultSchema`, hằng số `VERIFY_*`), có test parity hai chiều.
+
+**Kiểm tra phía server** (`RunManager.verifyFor`, theo thứ tự): chỉ root manager (403/404, `requireRootManager`); `target` giải qua `resolveRunRef` (id đầy đủ hoặc prefix ≥ 6 ký tự, hai prefix trùng → 409 `ambiguous`); cùng cây (409); không phải chính manager (409); worker phải ở trạng thái settle **và** không `isActive` (409); tối đa **3 lần/worker** (`VERIFY_MAX_RUNS_PER_WORKER`, lưu ở `dispatch.verify.runs`, sống qua restart; lần chạy được tính *trước* khi spawn); mỗi cây chỉ một verify tại một thời điểm (409 `busy`); `only` lạ → 400.
+
+**Lệnh nào được chạy.** `requiredChecks` trong config của *checkout* (không bao giờ đọc bản trong worktree của worker); nếu rỗng thì `discoverVerifyCommands` (đã tách ra `core/verify-commands.ts`) chạy trên worktree của **manager**, không phải của worker — worker không thể tự đổi tên script để lọt vào danh sách. Tối đa 10 lệnh.
+
+**Thực thi** (`dispatch/verify-exec.ts`, file duy nhất có side effect): `bash -lc`, tuần tự, stdin đóng, `windowsHide`; mỗi lệnh timeout 120 s, tổng 280 s (client HTTP chỉ chờ ~300 s trước khi có header), hết hạn thì `killProcessTree` rồi trả kết quả ngay và huỷ pipe (grandchild giữ pipe không kéo dài hạn). Phần lệnh còn lại sau hạn tổng là `skipped`. `cancel(manager)`/`dispose()` huỷ verify đang chạy. **Env tối thiểu** (`buildVerifyEnv`): allowlist, không bao giờ `{...process.env}`; bỏ mọi tên giống `TOKEN|SECRET|PASSWORD|API_KEY|AUTH` và toàn bộ `ONNI_*` (script được verify không gọi ngược `onni task` với tư cách manager); thêm `CI=1`, `NO_COLOR=1`, `GIT_TERMINAL_PROMPT=0`. Hệ quả có chủ ý: check cần secret sẽ fail trung thực.
+
+**Kết quả bị chặn và che.** Buffer cuộn 256 KiB mỗi lệnh; chỉ lệnh fail/timeout mới có `tail` (≤ 40 dòng × 200 ký tự, tổng ≤ 8 000 ký tự chia đều, sàn 400); ANSI bị bỏ; lệnh và từng dòng qua `redactRunText`. Không bao giờ ném lỗi vì "không chạy được": HTTP 200 `state: 'unavailable'` với `reasonCode` ∈ `dry-run | no-worktree | no-commands | no-bash` (Windows không có Git bash → `BASH_MISSING_MESSAGE`); các trường hợp này **không** tính vào hạn mức 3 lần. Lỗi spawn từng lệnh (POSIX thiếu bash) thành `skipped` kèm warning.
+
+**Dấu vết.** Ledger `type:'verify'` (chỉ số liệu ngắn, không có lệnh/output), note trên manager và trên worker, và mục `## Verification` nối vào `units/<id8>/report.md` (`appendReportSection`). `dispatch.verify.last` lưu verdict (không có tail; `unavailable` không bao giờ được lưu).
+
+**Thay nhãn `worker-reported`.** Tin báo đã giao không sửa được, nên `reconcileChecks` (engine) quyết định dòng `checks` ở *các báo cáo sau*: chưa verify → chuỗi cũ, từng byte; verify cùng head (so prefix sha ≥ 7) → `checks (verified by onni at <sha>, …)` + `MISMATCH with the worker's claim` / `also claimed, not verified`; head khác hoặc không rõ → nhãn cũ + `[an earlier onni verify … is stale]`, nên worker được continue và settle lại không thừa hưởng màu xanh cũ.
+
+**Brief.** Bảng lệnh có `verify` ngay sau `peek`, `MANAGER_COMMANDS_MAX_CHARS` 1 500 → 1 800; đoạn "Integrating" bảo manager verify trước khi merge và đặt timeout shell ≥ 6 phút.
+
+**Giới hạn đã biết.** Đây là rào chắn, không phải sandbox: verify chạy script do repo định nghĩa trong cây worker đã viết; worker sửa `scripts.test` trong `package.json` có thể làm check xanh giả — nếu worker đổi `package.json`/`Cargo.toml` thì kết quả kèm warning. Check chạy trên cây của worker, không phải kết quả sau merge (bước 4 của "Integrating" vẫn do manager làm). Lệnh dùng chung cổng/cache nên chạy tuần tự, một verify mỗi cây. `peek` và `merge` vẫn giữ bản giải id cũ (lấy khớp đầu tiên); chỉ `verify` dùng `resolveRunRef` — nên gom lại ở đợt sau. Vault secret (`checks` audience) chưa truyền cho verify.
+
 ## Phụ lục: tier và kinds của worker
 
 `rosterWorkerSchema` có thêm hai trường **optional**: `tier` (`light|standard|heavy`) và `kinds` (mảng không lặp của `implement|test|explore|review`). 

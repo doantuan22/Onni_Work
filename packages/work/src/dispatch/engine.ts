@@ -225,9 +225,47 @@ function filesLine(context: SettleReportContext): string | undefined {
   return `files: ${list}${omitted > 0 ? ` (+${omitted} more)` : ''}`;
 }
 
-function checksLine(checks: readonly DispatchCheck[]): string | undefined {
-  if (checks.length === 0) return undefined;
+function claimedChecksLine(checks: readonly DispatchCheck[]): string {
   return `checks (worker-reported, not verified): ${checks.map((check) => `${check.command} → ${check.exitCode}`).join('; ')}`;
+}
+
+type VerifyLast = NonNullable<NonNullable<RunDispatch['verify']>['last']>;
+
+/** Heads compare as sha prefixes (>= 7 chars): the report's is short, verify's may be longer. */
+function sameHead(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b || a.length < 7 || b.length < 7) return false;
+  return a.startsWith(b) || b.startsWith(a);
+}
+
+/**
+ * The checks line, reconciled with an `onni task verify` result (wave A1). No verification: the
+ * legacy worker-reported string, byte for byte. A verification of the SAME head replaces the claim
+ * with onni's own exit codes and says where they disagree; one of another/unknown head is stale
+ * (the branch moved) and never lends its green to later work.
+ */
+export function reconcileChecks(
+  claims: readonly DispatchCheck[],
+  verification: VerifyLast | undefined,
+  currentHead: string | undefined,
+): string | undefined {
+  if (!verification) return claims.length === 0 ? undefined : claimedChecksLine(claims);
+  const sha = verification.headCommit ?? 'unknown head';
+  if (!sameHead(verification.headCommit, currentHead)) {
+    const stale = `[an earlier onni verify at ${sha} is stale: the branch has moved]`;
+    return claims.length === 0 ? stale : `${claimedChecksLine(claims)} ${stale}`;
+  }
+  const ran = verification.results.filter((entry) => entry.outcome !== 'skipped');
+  const shown = ran.map((entry) => `${entry.command} → ${entry.exitCode ?? entry.outcome}`).join('; ');
+  const parts = [`checks (verified by onni at ${sha}, ${verification.at}): ${shown || 'none ran'}`];
+  for (const claim of claims) {
+    const got = ran.find((entry) => entry.command === claim.command);
+    if (!got) {
+      parts.push(`also claimed, not verified: ${claim.command} → ${claim.exitCode}`);
+    } else if ((got.exitCode === 0) !== (claim.exitCode === 0)) {
+      parts.push(`MISMATCH with the worker's claim: "${claim.command}" claimed ${claim.exitCode}, onni got ${got.exitCode ?? got.outcome}`);
+    }
+  }
+  return parts.join('; ');
 }
 
 /**
@@ -292,7 +330,7 @@ export function childSettleReport(
   const files = filesLine(context);
   if (files) parts.push(files);
   if (context.headCommit) parts.push(`head: ${context.headCommit}`);
-  const checks = checksLine(context.checks ?? report.checks);
+  const checks = reconcileChecks(context.checks ?? report.checks, child.dispatch?.verify?.last, context.headCommit);
   if (checks) parts.push(checks);
   if (report.recommended_next_action) parts.push(`recommended next: ${report.recommended_next_action}`);
   if (report.suggestions.length) parts.push(`suggestions for the root: ${report.suggestions.join(' · ')}`);
@@ -322,7 +360,7 @@ export function pendingReportsBlock(reports: readonly DispatchPendingReport[]): 
     const parts = [`status ${entry.report.status}`, entry.report.result];
     if (entry.report.evidence.length) parts.push(`evidence: ${entry.report.evidence.join(' · ')}`);
     if (entry.report.errors.length) parts.push(`errors: ${entry.report.errors.join(' · ')}`);
-    const checks = checksLine(entry.report.checks);
+    const checks = reconcileChecks(entry.report.checks, undefined, undefined);
     if (checks) parts.push(checks);
     return `- "${entry.title}" (${entry.fromRunId}, ${entry.at}): ${parts.join('; ')}`;
   });

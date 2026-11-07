@@ -80,6 +80,15 @@ export const MANAGER_ASK_OPTIONS_MAX = 10;
 export const MANAGER_ASK_TIMEOUT_MINUTES_MAX = 1_440;
 export const PLAN_MAX_PARTS = 50;
 export const PLAN_PROMPT_MAX_PARTS = 15;
+/** `onni task verify` (wave A1): bounds on what a manager can make onni run and read back. */
+export const VERIFY_MAX_COMMANDS = 10;
+export const VERIFY_MAX_RUNS_PER_WORKER = 3;
+export const VERIFY_COMMAND_TIMEOUT_MS = 120_000;
+export const VERIFY_TOTAL_TIMEOUT_MS = 280_000;
+export const VERIFY_TAIL_MAX_LINES = 40;
+export const VERIFY_TAIL_MAX_CHARS_PER_LINE = 200;
+export const VERIFY_TAIL_TOTAL_MAX_CHARS = 8_000;
+export const VERIFY_WARNINGS_MAX = 5;
 
 /**
  * What is left of a tree's ceilings, JSON-safe (plan v2 §6.2). `null` means "no ceiling on this
@@ -133,6 +142,50 @@ export const dispatchPeekSchema = z.object({
   workersOmitted: z.number().int().nonnegative(),
 });
 export type DispatchPeek = z.infer<typeof dispatchPeekSchema>;
+
+export const VERIFY_STATES = ['passed', 'failed', 'unavailable'] as const;
+export const VERIFY_SOURCES = ['required-checks', 'discovered', 'none'] as const;
+export const VERIFY_UNAVAILABLE_CODES = ['no-bash', 'no-commands', 'no-worktree', 'dry-run', 'git-unreadable'] as const;
+export const VERIFY_OUTCOMES = ['passed', 'failed', 'timed-out', 'skipped'] as const;
+
+/**
+ * `POST /runs/:id/verify` — `:id` is the calling manager (the caller convention of `merge`/`peek`),
+ * `target` the settled worker. There is deliberately no `command` field: `only` can merely SELECT
+ * among the commands the server resolved, so the route is not a remote-exec endpoint.
+ */
+export const dispatchVerifyInputSchema = z
+  .object({
+    target: z.string().trim().min(1).max(200),
+    only: z.array(z.string().trim().min(1).max(2_000)).max(VERIFY_MAX_COMMANDS).optional(),
+  })
+  .strict();
+export type DispatchVerifyInput = z.input<typeof dispatchVerifyInputSchema>;
+
+export const dispatchVerifyCommandResultSchema = z.object({
+  command: z.string().max(300),
+  outcome: z.enum(VERIFY_OUTCOMES),
+  exitCode: z.number().int().nullable(),
+  durationMs: z.number().int().nonnegative(),
+  timedOut: z.boolean(),
+  tail: z.array(z.string().max(VERIFY_TAIL_MAX_CHARS_PER_LINE)).max(VERIFY_TAIL_MAX_LINES),
+  tailTruncated: z.boolean(),
+});
+export type DispatchVerifyCommandResult = z.infer<typeof dispatchVerifyCommandResultSchema>;
+
+export const dispatchVerifyResultSchema = z.object({
+  state: z.enum(VERIFY_STATES),
+  reasonCode: z.enum(VERIFY_UNAVAILABLE_CODES).optional(),
+  reason: z.string().max(400).optional(),
+  source: z.enum(VERIFY_SOURCES),
+  headCommit: z.string().max(40).optional(),
+  startedAt: z.string(),
+  durationMs: z.number().int().nonnegative(),
+  results: z.array(dispatchVerifyCommandResultSchema).max(VERIFY_MAX_COMMANDS),
+  runsUsed: z.number().int().nonnegative(),
+  runsMax: z.number().int().positive(),
+  warnings: z.array(z.string().max(300)).max(VERIFY_WARNINGS_MAX),
+});
+export type DispatchVerifyResult = z.infer<typeof dispatchVerifyResultSchema>;
 
 /**
  * Project memory (plan v2 §8): durable lessons a manager leaves for later tasks in this
@@ -386,6 +439,29 @@ export const dispatchSchema = z.object({
       expiresAt: z.string().optional(),
       question: z.string().max(MANAGER_ASK_RECORD_QUESTION_MAX_CHARS),
       optionCount: z.number().int().nonnegative(),
+    })
+    .optional(),
+  /** `onni task verify` bookkeeping on the WORKER's record (wave A1): runs used and the last verdict. No tails. */
+  verify: z
+    .object({
+      runs: z.number().int().nonnegative(),
+      last: z
+        .object({
+          at: z.string(),
+          headCommit: z.string().max(40).optional(),
+          state: z.enum(['passed', 'failed']),
+          source: z.enum(['required-checks', 'discovered']),
+          results: z
+            .array(
+              z.object({
+                command: z.string().max(300),
+                outcome: z.enum(VERIFY_OUTCOMES),
+                exitCode: z.number().int().nullable(),
+              }),
+            )
+            .max(VERIFY_MAX_COMMANDS),
+        })
+        .optional(),
     })
     .optional(),
 });

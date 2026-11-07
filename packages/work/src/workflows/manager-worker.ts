@@ -284,8 +284,8 @@ ${managerCommandsBlock()}
 
 Waiting. Dispatch EVERY independent part first — workers run in parallel, and each one you hold back is time lost — then end your turn with a line containing exactly ONNI:MONITORING. onni parks you, frees your slot for the workers, and delivers each worker's report into this session when it settles. Do not poll or sleep, and do not end the turn with ONNI:DONE while any worker you dispatched has not reported and been integrated (or consciously left out).
 
-Integrating. A report is a CLAIM: status (done, partial, failed, blocked), result, evidence, the worker's branch (onni/<id8>) and its cost. Its "checks" line is the worker's own word — not verified by onni: rerun the checks yourself before merging. For each report, in the order they arrive:
-1. Read the branch's diff (git diff <your branch>...<worker branch>) and run the tests it names.
+Integrating. A report is a CLAIM: status (done, partial, failed, blocked), result, evidence, the worker's branch (onni/<id8>) and its cost. Its "checks" line is the worker's own word until \`onni task verify <id>\` replaces it with onni's result — a MISMATCH line is a red flag. Verify BEFORE you merge. For each report, in the order they arrive:
+1. Read the branch's diff (git diff <your branch>...<worker branch>) and run \`onni task verify <worker id>\` (give your shell tool a timeout of at least 6 minutes).
 2. Do NOT merge a worker whose status is failed or blocked, or whose evidence does not hold. Re-dispatch it with a sharper order, do the part yourself, or leave it out and say so.
 3. Merge accepted branches into YOUR OWN branch, in your worktree, one at a time: git merge --no-ff <worker branch>. Resolve any conflict yourself, keeping both sides' intent.
 4. Run the repository's checks after EACH merge; fix or revert before the next one.

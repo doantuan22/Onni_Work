@@ -106,7 +106,7 @@ import {
 import type { ClearProjectDataResult, MergeResult } from '@onni/contract';
 import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema, treePlanPatchSchema, treePlanPutSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, dispatchVerifyInputSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema, treePlanPatchSchema, treePlanPutSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -4549,6 +4549,7 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/merge', requireDispatch)
     .use('/runs/:id/budget', requireDispatch)
     .use('/runs/:id/peek', requireDispatch)
+    .use('/runs/:id/verify', requireDispatch)
     .use('/runs/:id/ask', requireDispatch)
     .use('/runs/:id/plan', requireDispatch)
     .use('/runs/:id/plan/parts/:partId', requireDispatch)
@@ -4635,6 +4636,16 @@ export function createApp(deps: ServerDeps) {
         ...(all !== undefined ? { all: true } : {}),
         ...(tail !== undefined ? { tail } : {}),
       });
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
+    })
+
+    /** `onni task verify` (wave A1): the root manager has onni run the repo's checks inside a SETTLED
+     *  worker's worktree. 4xx: 403 non-root, 404 unknown, 409 other tree / not settled / cap / busy,
+     *  400 unknown `only` entry. A check that cannot run is a 200 with state 'unavailable'. */
+    .post('/runs/:id/verify', jsonZodValidator(dispatchVerifyInputSchema), async (c) => {
+      const { manager } = c.get('project');
+      const outcome = await manager.verifyFor(c.req.param('id'), c.req.valid('json'));
       if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
       return c.json(outcome);
     });

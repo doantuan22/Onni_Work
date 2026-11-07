@@ -81,6 +81,13 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: "see where a worker is, what it changed and how long it has been quiet",
   },
   {
+    name: 'verify',
+    role: 'manager',
+    usage: 'onni task verify <worker id> [--only "<command>"]…   run the repository\'s checks in a SETTLED worker\'s worktree and get onni\'s own pass/fail',
+    brief: 'onni task verify <worker id> [--only "<command>" …]   onni runs the repo\'s checks inside a settled worker\'s worktree (not yours): its result replaces the worker\'s claimed checks. 3 runs per worker; may take up to ~5 min',
+    oneLine: "have onni run the repository's checks in a settled worker's worktree",
+  },
+  {
     name: 'memory',
     role: 'manager',
     usage: 'onni task memory add "<lesson>"   remember one lesson for later tasks in this repository',

@@ -27,6 +27,19 @@ export function requireRootManager(run: RunRecord | undefined, action = 'manage 
   return { ok: true };
 }
 
+/**
+ * Resolve a run reference: an exact id, else a prefix of at least 6 characters. Two prefix matches
+ * are `'ambiguous'` rather than silently picking the first (`peek`/`merge` keep their older copy).
+ */
+export function resolveRunRef(runs: readonly RunRecord[], ref: string): RunRecord | 'none' | 'ambiguous' {
+  const exact = runs.find((run) => run.id === ref);
+  if (exact) return exact;
+  if (ref.length < 6) return 'none';
+  const matches = runs.filter((run) => run.id.startsWith(ref));
+  if (matches.length === 0) return 'none';
+  return matches.length === 1 ? matches[0]! : 'ambiguous';
+}
+
 /** A target must live in the caller's tree; anything else is a refusal, never a silent empty answer. */
 export function requireSameTree(caller: RunRecord, target: RunRecord): Access {
   if (treeRootOf(caller) === treeRootOf(target)) return { ok: true };

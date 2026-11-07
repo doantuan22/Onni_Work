@@ -18,11 +18,12 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'memory' | 'ask' | 'plan'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'verify' | 'memory' | 'ask' | 'plan'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
   let peek: unknown;
+  let verify: unknown = { state: 'passed' };
   let plan: unknown;
   let memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
   let memoryWrite: unknown = memory;
@@ -59,6 +60,10 @@ describe('the dispatch routes', () => {
       peekFor: async (runId: string, body: unknown) => {
         calls.push({ kind: 'peek', runId, body });
         return peek;
+      },
+      verifyFor: async (runId: string, body: unknown) => {
+        calls.push({ kind: 'verify', runId, body });
+        return verify;
       },
       readManagerMemory: async () => memory,
       writeManagerMemory: async (body: unknown) => {
@@ -264,10 +269,26 @@ describe('the dispatch routes', () => {
     expect(calls).toEqual([{ kind: 'dispatch', runId: 'root', body: { objective: 'take the flank', partId: 'p1' } }]);
   });
 
+  it('passes the verify body through validated and maps the manager’s denial status unchanged', async () => {
+    verify = { state: 'passed' };
+    const ok = await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'abcd1234', only: ['npm test'] }));
+    expect(ok.status).toBe(200);
+    expect(calls[0]).toEqual({ kind: 'verify', runId: 'root', body: { target: 'abcd1234', only: ['npm test'] } });
+    for (const status of [400, 403, 404, 409]) {
+      verify = { denied: 'no', status };
+      expect((await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'abcd1234' }))).status).toBe(status);
+    }
+    const before = calls.length;
+    expect((await apiRequest(app, '/api/v1/runs/root/verify', json({}))).status).toBe(400);
+    expect((await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'a', command: 'rm -rf /' }))).status).toBe(400);
+    expect((await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'a', only: Array.from({ length: 11 }, () => 'x') }))).status).toBe(400);
+    expect(calls).toHaveLength(before);
+  });
+
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     process.env.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/ask']) {
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/ask']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r', question: 'q' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);
