@@ -61,6 +61,7 @@ interface OrderRecord {
   reportText?: string;
   report?: Record<string, unknown>;
   planPart?: PlanPart;
+  neverStarted?: boolean;
 }
 
 interface Tally {
@@ -306,6 +307,7 @@ function inferredStart(order: OrderRecord, orders: OrderRecord[]): { at?: number
 }
 
 function isConcurrent(a: OrderRecord, b: OrderRecord, orders: OrderRecord[]): boolean | undefined {
+  if (a.neverStarted || b.neverStarted) return false;
   const aInfo = inferredStart(a, orders);
   const bInfo = inferredStart(b, orders);
   if (aInfo.pending || bInfo.pending) return false;
@@ -458,6 +460,60 @@ function reportChecksPassed(order: OrderRecord): boolean {
   );
 }
 
+function parseFileList(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    if (value.length === 0 || !value.every((entry) => typeof entry === 'string')) return undefined;
+    return value as string[];
+  }
+  if (typeof value !== 'string' || !value.trim() || /\+\s*\d+\s+more|omitted/i.test(value)) return undefined;
+  const files = value.split(/,\s*/).map((entry) => entry.trim().replace(/^[-*]\s*/, '').replace(/^`|`$/g, ''));
+  return files.every(Boolean) ? files : undefined;
+}
+
+function reportedFiles(order: OrderRecord): string[] | undefined {
+  const structuredFiles = parseFileList(order.report?.files);
+  if (structuredFiles) return structuredFiles;
+
+  for (const text of [order.reportText, order.orderText]) {
+    if (!text) continue;
+    const match = text.match(/(?:^|[;·])\s*(?:[-*]\s*)?files\s*:\s*([^;·\r\n]+)/im);
+    const files = match ? parseFileList(match[1]) : undefined;
+    if (files) return files;
+  }
+  return undefined;
+}
+
+function isDocumentationPath(path: string): boolean {
+  const normalized = path.replace(/\\/g, '/').replace(/^\.\//, '').toLocaleLowerCase('en-US');
+  if (!normalized || normalized.startsWith('/') || /^[a-z]:\//i.test(normalized) || normalized.split('/').includes('..')) return false;
+  return /\.(?:md|mdx|txt)$/.test(normalized) || normalized.startsWith('docs/') || normalized.startsWith('.ai/specs/');
+}
+
+function docsOnly(order: OrderRecord): boolean {
+  const files = reportedFiles(order);
+  return Boolean(files?.length && files.every(isDocumentationPath));
+}
+
+const START_EVENT_TYPES = new Set(['start', 'started', 'run-start', 'run-started', 'worker-start', 'worker-started', 'guard-ask', 'verify']);
+
+function ledgerShowsStarted(order: OrderRecord, events: LedgerEvent[]): boolean {
+  return events.some((event) => {
+    if (event.runId !== order.runId && event.targetRunId !== order.runId) return false;
+    if (typeof event.type === 'string' && START_EVENT_TYPES.has(event.type.toLocaleLowerCase('en-US'))) return true;
+    if (event.started === true || event.everStarted === true) return true;
+    return ['startedAt', 'runStartedAt'].some((key) => {
+      if (!Object.prototype.hasOwnProperty.call(event, key)) return false;
+      const value = event[key];
+      if (value === null || value === undefined) return false;
+      return true;
+    });
+  });
+}
+
+function cancelledBeforeStart(order: OrderRecord, events: LedgerEvent[]): boolean {
+  return String(order.settle?.status ?? '') === 'cancelled' && !ledgerShowsStarted(order, events);
+}
+
 function scoreMerges(events: LedgerEvent[], orders: OrderRecord[], parts: PlanPart[]): Tally {
   const score = tally();
   const partById = new Map(parts.flatMap((part) => part.id ? [[part.id, part] as const] : []));
@@ -480,7 +536,8 @@ function scoreMerges(events: LedgerEvent[], orders: OrderRecord[], parts: PlanPa
       && event.targetRunId === order.runId && event.state === 'passed'
       && timeOf(event) !== undefined && mergeAt !== undefined && timeOf(event)! <= mergeAt)
       || (reportChecksPassed(order) && timeOf(order.settle) !== undefined && mergeAt !== undefined && timeOf(order.settle)! <= mergeAt);
-    if (verifyPassed) record(score, 'pass', `${order.id8}: merge followed a passing verify or all-passing worker checks`);
+    if (docsOnly(order)) record(score, 'pass', `${order.id8}: docs-only, no checks needed`);
+    else if (verifyPassed) record(score, 'pass', `${order.id8}: merge followed a passing verify or all-passing worker checks`);
     else record(score, 'fail', `${order.id8}: merge had no earlier passing verify or all-passing worker checks`);
 
     const dependencies = dependenciesOf(order, orders, partById);
@@ -568,6 +625,7 @@ export function scoreManagerTree(treeDir: string): ManagerEvaluation {
       order.settle = { type: 'settle', runId: event.runId, status: 'cancelled', reportStatus: 'blocked', at: event.at };
     }
   }
+  for (const order of orders) order.neverStarted = cancelledBeforeStart(order, events);
 
   return {
     treeDir,

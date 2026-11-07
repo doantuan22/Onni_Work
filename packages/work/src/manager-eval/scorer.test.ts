@@ -42,6 +42,87 @@ describe('scoreManagerTree', () => {
     expect(score.details).toContain('dddd0001: failure was followed by a retry (dddd0002)');
   });
 
+  it('accepts a complete docs-only report file list without checks', () => {
+    const score = criterion('docs-only-merge', 'merge-order-and-checks');
+
+    expect(score.status).toBe('pass');
+    expect(score.details).toContain('eeee0001: docs-only, no checks needed');
+  });
+
+  it.each([
+    'notes.txt',
+    'handbook.mdx',
+    'docs/reference/data.json',
+    '.ai/specs/archive',
+  ])('treats documentation path %s as documentation', (path) => {
+    const tree = copyFixture('docs-only-merge');
+    const reportPath = join(tree, 'units', 'eeee0001', 'report.md');
+    const report = readFileSync(reportPath, 'utf8').replace('docs/design/worker-sandbox.md', path);
+    writeFileSync(reportPath, report, 'utf8');
+
+    const score = scoreManagerTree(tree).criteria.find((item) => item.id === 'merge-order-and-checks')!;
+    expect(score.status).toBe('pass');
+    expect(score.details).toContain('eeee0001: docs-only, no checks needed');
+  });
+
+  it('keeps the check requirement when a merge has no complete reported file list', () => {
+    const tree = copyFixture('docs-only-merge');
+    const reportPath = join(tree, 'units', 'eeee0001', 'report.md');
+    const report = readFileSync(reportPath, 'utf8').replace('files: docs/design/worker-sandbox.md; ', '');
+    writeFileSync(reportPath, report, 'utf8');
+
+    const score = scoreManagerTree(tree).criteria.find((item) => item.id === 'merge-order-and-checks')!;
+    expect(score.status).toBe('fail');
+    expect(score.details).toContain('eeee0001: merge had no earlier passing verify or all-passing worker checks');
+  });
+
+  it('does not infer docs-only when a reported file list contains code', () => {
+    const tree = copyFixture('docs-only-merge');
+    const reportPath = join(tree, 'units', 'eeee0001', 'report.md');
+    const report = readFileSync(reportPath, 'utf8').replace(
+      'files: docs/design/worker-sandbox.md;',
+      'files: docs/design/worker-sandbox.md, packages/work/src/index.ts;',
+    );
+    writeFileSync(reportPath, report, 'utf8');
+
+    const score = scoreManagerTree(tree).criteria.find((item) => item.id === 'merge-order-and-checks')!;
+    expect(score.status).toBe('fail');
+  });
+
+  it('does not score missing timestamps for a cancelled order with no ledger start as a concurrency gap', () => {
+    const score = criterion('cancelled-before-start', 'concurrent-scopes');
+
+    expect(score.status).toBe('n/a');
+    expect(score.unscored).toBe(0);
+    expect(score.details).toEqual([]);
+  });
+
+  it('keeps a missing timestamp unscored when the cancelled order has a ledger start', () => {
+    const tree = copyFixture('cancelled-before-start');
+    const ledgerPath = join(tree, 'ledger.jsonl');
+    const ledger = readFileSync(ledgerPath, 'utf8').replace('"startedAt":null', '"startedAt":"2026-11-01T09:59:00.000Z"');
+    writeFileSync(ledgerPath, ledger, 'utf8');
+
+    const score = scoreManagerTree(tree).criteria.find((item) => item.id === 'concurrent-scopes')!;
+    expect(score.status).toBe('unscored');
+    expect(score.unscored).toBe(1);
+  });
+
+  it('treats a guard ask as evidence the cancelled order had started', () => {
+    const tree = copyFixture('cancelled-before-start');
+    const ledgerPath = join(tree, 'ledger.jsonl');
+    const ledger = `${readFileSync(ledgerPath, 'utf8')}\n${JSON.stringify({
+      at: '2026-11-01T09:59:00.000Z',
+      type: 'guard-ask',
+      runId: 'aaaa0001-1111-4111-8111-111111111111',
+    })}\n`;
+    writeFileSync(ledgerPath, ledger, 'utf8');
+
+    const score = scoreManagerTree(tree).criteria.find((item) => item.id === 'concurrent-scopes')!;
+    expect(score.status).toBe('unscored');
+    expect(score.unscored).toBe(1);
+  });
+
   it('uses an inbox failure note when the failed worker has no report and was not retried', () => {
     const tree = copyFixture('worker-fails');
     const ledgerPath = join(tree, 'ledger.jsonl');
