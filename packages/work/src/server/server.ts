@@ -302,6 +302,7 @@ import { parseRemote, resolveForge, type ForgeAvailability } from './forge/index
 import { isGithubHost } from '../github-hosts.ts';
 import { fetchGithub, fetchGithubChecks, fetchGithubComments, fetchGithubPrDiff, fetchGithubRefStatus, forgetRefStatus, readCachedRefStatuses, refNumberFromUrl, searchGithubItems, GithubPrNotFoundError, GH_CHECKS_MAX, GH_SEARCH_MAX, GH_REF_STATUS_MAX } from './github.ts';
 import { ensureLaunchKey } from './launch-key.ts';
+import { launchKeyRoutes } from './routes/launch-key.ts';
 import { openInTerminal } from './open-in-terminal.ts';
 import {
   agentCliRunner,
@@ -3675,10 +3676,6 @@ export function createApp(deps: ServerDeps) {
         return c.json(result.body);
       },
     );
-
-  // ---- chained family: launch-key (project-scoped) ----
-  const launchKeyRoutes = new Hono<ProjectApiEnv>()
-    .get('/launch-key', (c) => c.json({ key: c.get('project').launchKey }));
 
   // ---- chained family: skills (project-scoped) ----
   const skillsRoutes = new Hono<ProjectApiEnv>()
@@ -7844,7 +7841,7 @@ export function createApp(deps: ServerDeps) {
 
   const v1 = new Hono<ProjectApiEnv>()
     .use('*', resolveProjectScope)
-    .route('/', launchKeyRoutes)
+    .route('/', launchKeyRoutes())
     .route('/', skillsRoutes)
     .route('/', uiStateRoutes)
     .route('/', workflowsRoutes)
