@@ -114,6 +114,67 @@ describe('manager message and cancellation controls', () => {
     expect(settle.report.evidence).toContain('parser added');
   });
 
+  it('does not redirect while a cancelled source session is still active', async () => {
+    const order: DispatchOrderSnapshot = {
+      objective: 'Implement the parser',
+      title: 'parser worker',
+      kind: 'implement',
+      retryLimit: 1,
+      backend: 'codex',
+      after: [],
+    };
+    const source = queuedWorker('codex', { order }, 'parser worker');
+    const dependent = queuedWorker('codex', { after: [source.id] }, 'dependent');
+    const seam = manager as unknown as {
+      queue: string[];
+      pendingJobs: Map<string, unknown>;
+      active: Map<string, unknown>;
+      waitInactive: (runId: string, timeoutMs: number) => Promise<boolean>;
+    };
+    seam.queue = seam.queue.filter((id) => id !== source.id);
+    seam.pendingJobs.delete(source.id);
+    store.updateRun(source.id, { status: 'running' });
+    const session = {
+      result: new Promise(() => {}),
+      open: true,
+      sendMessage: vi.fn(() => true),
+      end: vi.fn(),
+      interrupt: vi.fn(),
+    };
+    seam.active.set(source.id, {
+      ownerToken: Symbol('source'),
+      cancelled: false,
+      interrupt: vi.fn(),
+      cwd: root,
+      session,
+      sessionEverOpened: true,
+      autosaveExcludedPaths: new Map(),
+      checkInProgress: false,
+      autosaveCheckpointBlocked: false,
+    });
+    vi.spyOn(seam, 'waitInactive').mockResolvedValue(false);
+    vi.spyOn(manager as unknown as { pump: () => Promise<void> }, 'pump').mockResolvedValue();
+
+    const originalDispatch = manager.dispatch.bind(manager);
+    const dispatch = vi.spyOn(manager, 'dispatch').mockImplementation((parentId, input, options) => {
+      if (options?.preflightOnly) return originalDispatch(parentId, input, options);
+      const replacement = store.createRun({ title: input.title!, task: input.objective, workflow: '(planned)', runner: 'codex', steps: [] });
+      store.updateRun(replacement.id, {
+        dispatch: { rootRunId: managerRunId, parentRunId: managerRunId, redirectedFrom: source.id, order },
+      });
+      return { id: replacement.id };
+    });
+
+    const result = await manager.redirectFor(managerRunId, { target: source.id, instruction: 'Use a safer parser' });
+    expect(result).toEqual({ denied: 'source did not stop within 10 s', status: 409 });
+    expect(store.getRun(source.id)?.status).toBe('cancelled');
+    expect(store.getRun(source.id)?.dispatch?.redirectOperation).toMatchObject({ state: 'failed', refusal: 'source did not stop within 10 s' });
+    expect(store.getRun(dependent.id)?.status).toBe('cancelled');
+    expect(dispatch.mock.calls.filter(([, , options]) => !options?.preflightOnly)).toHaveLength(0);
+    expect(seam.active.has(source.id)).toBe(true);
+    await vi.waitFor(() => expect(store.getRun(managerRunId)?.dispatch?.pendingReports?.some((entry) => entry.fromRunId === dependent.id)).toBe(true));
+  });
+
   it('redirects a saved order and repoints every queued dependent without losing other edges', async () => {
     const predecessorA = queuedWorker('codex', {}, 'predecessor A');
     const predecessorB = queuedWorker('codex', {}, 'predecessor B');

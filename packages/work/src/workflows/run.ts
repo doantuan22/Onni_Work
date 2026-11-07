@@ -3528,9 +3528,11 @@ export class RunManager {
 
     const cancelled = await this.cancelRedirectSource(target.id);
     if (!cancelled) {
-      const refusal = `worker ${target.id.slice(0, 8)} could not be cancelled`;
-      this.failRedirectOperation(target.id, refusal);
-      return { denied: refusal, status: 409 };
+      const refusal = this.isActive(target.id)
+        ? 'source did not stop within 10 s'
+        : `worker ${target.id.slice(0, 8)} could not be cancelled`;
+      const safe = this.failRedirectOperation(target.id, refusal);
+      return { denied: safe, status: 409 };
     }
     this.updateDispatch(target.id, (dispatch) => ({
       ...dispatch,
@@ -3579,7 +3581,7 @@ export class RunManager {
     // shared cancel path so its lifecycle hooks, report and delivery expiry still run.
     if (!wasActive && !this.starting.has(runId) && !this.queue.includes(runId)) this.queue.push(runId);
     if (!this.cancel(runId)) return this.store.getRun(runId)?.status === 'cancelled';
-    if (wasActive || this.starting.has(runId)) await this.waitInactive(runId, 10_000);
+    if ((wasActive || this.starting.has(runId)) && !await this.waitInactive(runId, 10_000)) return false;
     return this.store.getRun(runId)?.status === 'cancelled';
   }
 
