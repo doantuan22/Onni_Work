@@ -1,0 +1,4 @@
+{"at":"invalid-dispatch-time","type":"dispatch","runId":"aaaa0001-1111-4111-8111-111111111111","title":"Cancelled before launch"}
+{"at":"invalid-settle-time","type":"settle","runId":"aaaa0001-1111-4111-8111-111111111111","status":"cancelled","reportStatus":"blocked","startedAt":null}
+{"at":"2026-11-01T10:00:00.000Z","type":"dispatch","runId":"bbbb0002-2222-4222-8222-222222222222","title":"Independent work"}
+{"at":"2026-11-01T10:05:00.000Z","type":"settle","runId":"bbbb0002-2222-4222-8222-222222222222","status":"done"}
