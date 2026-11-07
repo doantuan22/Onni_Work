@@ -116,6 +116,15 @@ describe('formatPeek', () => {
     expect(text).toContain('  recent:\n  | one\n  | two\n  | … truncated');
   });
 
+  it('prints the latest delivery state without exposing its message text', () => {
+    const text = formatPeek(peek([entry({
+      lastManagerDelivery: { deliveryId: 'delivery-1234', state: 'rejected', capability: 'steer', reasonCode: 'async-rejected' },
+    })]));
+    expect(text).toContain('manager delivery: rejected (steer)');
+    expect(text).toContain('async-rejected [delivery]');
+    expect(text).not.toContain('please change the implementation');
+  });
+
   it('counts the workers it did not show, and handles an empty tree', () => {
     expect(formatPeek(peek([entry()], 3))).toContain('(+3 more workers not shown');
     expect(formatPeek(peek([]))).toBe('no workers in this tree yet');

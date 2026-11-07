@@ -311,6 +311,7 @@ describe('an asynchronous turn/start or turn/steer rejection (#955)', () => {
   it('surfaces a refused follow-up turn/start as an error, not a quiet note', async () => {
     const runner = new CodexAppServerRunner({ bin: mockBin, timeoutMs: 0 });
     const events: AgentEvent[] = [];
+    const receipts: Array<{ state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }> = [];
     let sawTurnEnd: () => void = () => {};
     const firstTurnEnd = new Promise<void>((resolve) => {
       sawTurnEnd = resolve;
@@ -324,12 +325,13 @@ describe('an asynchronous turn/start or turn/steer rejection (#955)', () => {
     );
     await firstTurnEnd;
 
-    expect(session.sendMessage([{ type: 'text', text: 'Continue' }])).toBe(true);
+    expect(session.sendMessageWithReceipt?.([{ type: 'text', text: 'Continue' }], (receipt) => receipts.push(receipt))).toBe(true);
     await expect
       .poll(() => events.some((e) => e.type === 'error'), { timeout: 10_000 })
       .toBe(true);
     const error = events.find((e) => e.type === 'error');
     expect(error).toMatchObject({ type: 'error', message: expect.stringContaining('busy compacting context') });
+    expect(receipts).toEqual([{ state: 'rejected', reasonCode: 'async-rejected' }]);
     session.end();
     await session.result.catch(() => undefined);
   }, 20_000);
@@ -341,6 +343,7 @@ describe('an asynchronous turn/start or turn/steer rejection (#955)', () => {
     // problem the run does not have. What was lost is the follow-up, and the note says so.
     const runner = new CodexAppServerRunner({ bin: mockBin, timeoutMs: 0 });
     const events: AgentEvent[] = [];
+    const receipts: Array<{ state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }> = [];
     let sawText: () => void = () => {};
     const firstText = new Promise<void>((resolve) => {
       sawText = resolve;
@@ -355,7 +358,7 @@ describe('an asynchronous turn/start or turn/steer rejection (#955)', () => {
     );
     await firstText;
 
-    expect(session.sendMessage([{ type: 'text', text: 'Continue' }])).toBe(true);
+    expect(session.sendMessageWithReceipt?.([{ type: 'text', text: 'Continue' }], (receipt) => receipts.push(receipt))).toBe(true);
     await expect
       .poll(() => events.some((e) => e.type === 'note' && e.message.includes('did not reach the model')), {
         timeout: 10_000,
@@ -365,7 +368,29 @@ describe('an asynchronous turn/start or turn/steer rejection (#955)', () => {
       message: expect.stringContaining('expectedTurnId'),
     });
     expect(events.some((e) => e.type === 'error')).toBe(false);
+    expect(receipts).toEqual([{ state: 'rejected', reasonCode: 'async-rejected' }]);
     expect(session.open).toBe(true); // the live turn was NOT torn down
+    session.end();
+    await session.result.catch(() => undefined);
+  }, 20_000);
+
+  it('acknowledges a follow-up only after the correlated app-server response', async () => {
+    const runner = new CodexAppServerRunner({ bin: mockBin, timeoutMs: 0 });
+    const events: AgentEvent[] = [];
+    let sawFirstTurnEnd: () => void = () => {};
+    const firstTurnEnd = new Promise<void>((resolve) => { sawFirstTurnEnd = resolve; });
+    const session = runner.startSession(
+      { userPrompt: 'check the tree', cwd: process.cwd() },
+      (event) => {
+        events.push(event);
+        if (event.type === 'turn-end') sawFirstTurnEnd();
+      },
+    );
+    await firstTurnEnd;
+    const receipt = new Promise<{ state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }>((resolve) => {
+      expect(session.sendMessageWithReceipt?.([{ type: 'text', text: 'Continue' }], resolve)).toBe(true);
+    });
+    await expect(receipt).resolves.toEqual({ state: 'acknowledged' });
     session.end();
     await session.result.catch(() => undefined);
   }, 20_000);

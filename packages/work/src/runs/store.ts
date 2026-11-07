@@ -129,6 +129,8 @@ const stepStateSchema = z.object({
 const queuedMessageSchema = z.object({
   id: z.string(),
   text: z.string(),
+  /** Correlates a manager delivery accepted while this task was queued; old queue entries omit it. */
+  managerDeliveryId: z.string().max(120).optional(),
   /** `/api/v1/runs/:id/images/…` URLs — the base64 never enters `runs.json`. */
   images: z.array(z.string()).optional(),
   createdAt: z.string(),

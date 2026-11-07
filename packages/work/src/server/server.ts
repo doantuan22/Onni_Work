@@ -106,7 +106,7 @@ import {
 import type { ClearProjectDataResult, MergeResult } from '@onni/contract';
 import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchReportSchema, dispatchVerifyInputSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema, treePlanPatchSchema, treePlanPutSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchManagerCancelInputSchema, dispatchManagerMessageInputSchema, dispatchReportSchema, dispatchVerifyInputSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema, treePlanPatchSchema, treePlanPutSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -340,6 +340,8 @@ export interface ServerDeps {
   store: RunStore;
   manager: RunManager;
   version: string;
+  /** Environment snapshot for capability gates; tests inject values rather than mutating process.env. */
+  env?: NodeJS.ProcessEnv;
   /** Host the HTTP server binds (default 127.0.0.1). A non-loopback host
    *  implies hosted mode — `capabilities.localHandoff:false`. */
   bindHost?: string;
@@ -1354,6 +1356,7 @@ async function probeWritableDir(dir: string, create: boolean): Promise<string | 
 // with nothing to offer. See the `routed` assembly at the end of the function.
 export function createApp(deps: ServerDeps) {
   const { version, bindHost, bootProjectId } = deps;
+  const env = deps.env ?? process.env;
   // Boot singletons keep DELIBERATELY distinct names (`boot*`): every
   // project-scoped handler must resolve its `{store, manager, root, dataDir,
   // launchKey}` from `c.get('project')` — a bare `store`/`repoRoot` in a
@@ -1537,7 +1540,7 @@ export function createApp(deps: ServerDeps) {
   // ONNI_REMOTE flips take effect live (and tests can toggle it).
   const trackers = createTrackerService();
   const trackerWatches = new TrackerWatches(trackers, deps.socketHub);
-  const capabilities = () => resolveCapabilities(process.env, bindHost);
+  const capabilities = () => resolveCapabilities(env, bindHost);
   // The task terminal's registry (spec `2026-10-07-task-workspace` §6): one per server, because a
   // shell outlives the request that opened it and belongs to the host, not to a project context.
   const detectedUrls = new DetectedUrls();
@@ -1677,7 +1680,7 @@ export function createApp(deps: ServerDeps) {
   // handler mutates state. Rebinding, which WOULD make those reads legible, is
   // what check 1 stops.
   const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-  const isHostedMode = () => !resolveCapabilities(process.env, bindHost).localHandoff;
+  const isHostedMode = () => !resolveCapabilities(env, bindHost).localHandoff;
   app.use('/api/*', async (c, next) => {
     const hostName = hostnameOfHost(c.req.header('host'));
     // Strict twin of `isLoopbackHost`: a *missing* Host is untrusted here (an
@@ -4551,6 +4554,8 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/peek', requireDispatch)
     .use('/runs/:id/verify', requireDispatch)
     .use('/runs/:id/conflicts', requireDispatch)
+    .use('/runs/:id/worker-message', requireDispatch)
+    .use('/runs/:id/worker-cancel', requireDispatch)
     .use('/runs/:id/ask', requireDispatch)
     .use('/runs/:id/plan', requireDispatch)
     .use('/runs/:id/plan/parts/:partId', requireDispatch)
@@ -4562,6 +4567,20 @@ export function createApp(deps: ServerDeps) {
       const outcome = await manager.dispatchFromAgent(c.req.param('id'), c.req.valid('json'));
       if ('refused' in outcome) return c.json({ error: outcome.refused }, 409);
       return c.json(outcome, 201);
+    })
+
+    /** Root-manager controls for a direct worker. Guard questions remain for the user to answer. */
+    .post('/runs/:id/worker-message', jsonZodValidator(dispatchManagerMessageInputSchema), (c) => {
+      const { manager } = c.get('project');
+      const outcome = manager.messageFor(c.req.param('id'), c.req.valid('json'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
+    })
+    .post('/runs/:id/worker-cancel', jsonZodValidator(dispatchManagerCancelInputSchema), (c) => {
+      const { manager } = c.get('project');
+      const outcome = manager.cancelFor(c.req.param('id'), c.req.valid('json'));
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json(outcome);
     })
 
     /** The manager's merge tool. The permission is checked in `mergeFromAgent`; a denial is 409
@@ -8118,7 +8137,7 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
   // the UI — no scheduler, no GitHub polling, no launched runs — so every entry point into the
   // workspace scheduler below is gated on it. Read per call rather than captured, for the same
   // reason `capabilities()` is inside `createApp`: tests flip the variable between apps.
-  const automationsEnabled = () => resolveCapabilities(process.env, deps.bindHost).automations;
+  const automationsEnabled = () => resolveCapabilities(deps.env ?? process.env, deps.bindHost).automations;
   let rescheduleAutomations = () => {};
   const appCleanups: Array<() => void> = [];
   const app = createApp({
@@ -8164,7 +8183,7 @@ export function startServer(deps: ServerDeps, port: number): ServerType & { shut
           ? { root: deps.repoRoot, manager: deps.manager, store: deps.store }
           : await sharedContexts.context(projectId);
       };
-      const dispatchEnabled = resolveCapabilities(process.env, deps.bindHost).dispatch;
+      const dispatchEnabled = resolveCapabilities(deps.env ?? process.env, deps.bindHost).dispatch;
       return {
         projectId,
         store,

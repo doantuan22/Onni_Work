@@ -81,6 +81,20 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: "see where a worker is, what it changed and how long it has been quiet",
   },
   {
+    name: 'message',
+    role: 'manager',
+    usage: 'onni task message <worker id> "<text>"   send a direction to a live or queued worker; does not answer its Guard/ask',
+    brief: 'onni task message <worker> "<text>"   direct a live or queued worker; this does not answer its Guard/ask',
+    oneLine: 'send a direction to a worker without answering its Guard/ask',
+  },
+  {
+    name: 'cancel',
+    role: 'manager',
+    usage: 'onni task cancel <worker id> [--reason "<reason>"]   stop a live worker and give the manager a blocked report',
+    brief: 'onni task cancel <worker> [--reason "..."]   stop a live worker; its blocked report preserves partial work for review',
+    oneLine: 'stop a worker and preserve its partial work for review',
+  },
+  {
     name: 'verify',
     role: 'manager',
     usage: 'onni task verify <worker id> [--only "<command>"]… [--baseline]   run checks in a SETTLED worker\'s worktree; --baseline compares failures to the base (heuristic)',
