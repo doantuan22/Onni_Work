@@ -99,6 +99,33 @@ export const CONFLICTS_MAX_PAIRS = 20;
 export const CONFLICTS_FILES_MAX = REPORT_FILES_MAX;
 export const CONFLICTS_TRIAL_MAX = 8;
 
+export const dispatchManagerDeliveryStateSchema = z.enum([
+  'queued',
+  'delivered',
+  'acknowledged',
+  'rejected',
+  'expired',
+]);
+export type DispatchManagerDeliveryState = z.infer<typeof dispatchManagerDeliveryStateSchema>;
+export const dispatchManagerCapabilitySchema = z.enum(['steer', 'ordered-queue', 'unsupported']);
+export type DispatchManagerCapability = z.infer<typeof dispatchManagerCapabilitySchema>;
+export const dispatchManagerDeliveryReasonCodeSchema = z.enum([
+  'backend-unsupported',
+  'runner-rejected',
+  'async-rejected',
+  'target-settled',
+  'process-restarted',
+]);
+export type DispatchManagerDeliveryReasonCode = z.infer<typeof dispatchManagerDeliveryReasonCodeSchema>;
+export const MANAGER_DELIVERY_STRING_MAX_CHARS = 120;
+export const dispatchManagerDeliverySummarySchema = z.strictObject({
+  deliveryId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  state: dispatchManagerDeliveryStateSchema,
+  capability: dispatchManagerCapabilitySchema,
+  reasonCode: dispatchManagerDeliveryReasonCodeSchema.optional(),
+});
+export type DispatchManagerDeliverySummary = z.infer<typeof dispatchManagerDeliverySummarySchema>;
+
 export const VERIFY_BASELINE_VERDICTS = ['no-new-failures', 'new-failures', 'inconclusive'] as const;
 
 /**
@@ -143,6 +170,7 @@ export const dispatchPeekEntrySchema = z.object({
   filesOmitted: z.number().int().nonnegative(),
   filesState: z.enum(['ok', 'timeout', 'unavailable']),
   quietMinutes: z.number().int().nonnegative().nullable(),
+  lastManagerDelivery: dispatchManagerDeliverySummarySchema.optional(),
   tail: z.array(z.string().max(PEEK_TAIL_MAX_CHARS_PER_LINE)).max(PEEK_TAIL_MAX_LINES),
   tailTruncated: z.boolean(),
 });
@@ -433,28 +461,6 @@ export const dispatchPendingReportSchema = z.object({
 });
 export type DispatchPendingReport = z.infer<typeof dispatchPendingReportSchema>;
 
-export const dispatchManagerDeliveryStateSchema = z.enum([
-  'queued',
-  'delivered',
-  'acknowledged',
-  'rejected',
-  'expired',
-]);
-export type DispatchManagerDeliveryState = z.infer<typeof dispatchManagerDeliveryStateSchema>;
-
-export const dispatchManagerCapabilitySchema = z.enum(['steer', 'ordered-queue', 'unsupported']);
-export type DispatchManagerCapability = z.infer<typeof dispatchManagerCapabilitySchema>;
-
-export const dispatchManagerDeliveryReasonCodeSchema = z.enum([
-  'backend-unsupported',
-  'runner-rejected',
-  'async-rejected',
-  'target-settled',
-  'process-restarted',
-]);
-export type DispatchManagerDeliveryReasonCode = z.infer<typeof dispatchManagerDeliveryReasonCodeSchema>;
-
-export const MANAGER_DELIVERY_STRING_MAX_CHARS = 120;
 export const dispatchManagerDeliveryRecordSchema = z.strictObject({
   deliveryId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
   state: dispatchManagerDeliveryStateSchema,

@@ -65,6 +65,10 @@ import {
   PENDING_ASK_MAX_QUESTIONS,
   sanitizeAttachmentName,
   storedAttachmentExtension,
+  MANAGER_CANCEL_REASON_MAX_CHARS,
+  MANAGER_DELIVERIES_MAX_OUTSTANDING,
+  MANAGER_DELIVERIES_MAX_RETAINED,
+  MANAGER_MESSAGE_MAX_CHARS,
 } from '@onni/contract';
 import type { AgentEvent, AgentRunResult, ContentBlock } from '../core/agent-runner.ts';
 import { discoverSkills, type Skill } from '../skills.ts';
@@ -111,7 +115,21 @@ import type { QueuedMessage, RunRecord, RunStore, StepState } from '../runs/stor
 // Task dispatch (spec 2026-09-10-dispatch). Every import below is inert unless the feature is
 // ON *and* the run carries a `dispatch`: `dispatchOf()` is the single gate, and a run without one
 // takes byte-for-byte the path it took before this feature existed.
-import type { DispatchBudget, DispatchInput, DispatchIntent, DispatchReport, DispatchVerifyBaseline, RunDispatch } from '@onni/contract';
+import type {
+  DispatchBudget,
+  DispatchInput,
+  DispatchIntent,
+  DispatchManagerCancelInput,
+  DispatchManagerCancelResult,
+  DispatchManagerDeliveryRecord,
+  DispatchManagerDeliveryReasonCode,
+  DispatchManagerDeliveryState,
+  DispatchManagerMessageInput,
+  DispatchManagerMessageResult,
+  DispatchReport,
+  DispatchVerifyBaseline,
+  RunDispatch,
+} from '@onni/contract';
 import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
@@ -1376,6 +1394,10 @@ export class RunManager {
   /** Messages that landed in the dequeue → session-open gap (#472), flushed as
    *  ordinary follow-up turns the moment the session opens. In-memory only. */
   private readonly deferredMessages = new Map<string, PastedContent[][]>();
+  /** Manager receipt IDs aligned with `deferredMessages`; buffers without an ID are ordinary user messages. */
+  private readonly deferredManagerDeliveryIds = new Map<string, Array<string | undefined>>();
+  /** Deferred messages redelivered as a continuation keep their IDs only until a session opens. */
+  private readonly continuationManagerDeliveryIds = new Map<string, string[]>();
   /** Armed usage-limit resumes, keyed by run id (spec
    *  2026-08-03-auto-resume-after-usage-limit). The DEADLINE itself lives on the record
    *  (`autoResumeAt`) — this map holds only the process-local timer, so a restart rebuilds it
@@ -1447,6 +1469,7 @@ export class RunManager {
 
   /** See the constructor option of the same name. */
   private readonly secrets: SecretStore;
+  private readonly managerEnv: () => NodeJS.ProcessEnv;
 
   /** See the constructor option of the same name. */
   private readonly resolveTrackerEnv: ((root: string, expected: TrackerAssociation | undefined) => Promise<Record<string, string>>) | undefined;
@@ -1469,6 +1492,8 @@ export class RunManager {
       /** How long a fork waits for the namer's branch (spec 2026-10-11-branch-naming-instructions).
        *  Tests shorten it; the default is the slow-model budget. */
       branchNameWaitMs?: number;
+      /** Environment snapshot seam for capability checks; tests inject values instead of mutating process.env. */
+      env?: () => NodeJS.ProcessEnv;
       /** Test seam for `onni task verify`: runner, bash, clock, environment and baseline deadline. */
       verifyDeps?: Partial<{
         runCommand: typeof runVerifyCommand;
@@ -1486,6 +1511,7 @@ export class RunManager {
       env: options.verifyDeps?.env ?? (() => process.env),
       baselineTimeoutMs: options.verifyDeps?.baselineTimeoutMs ?? VERIFY_TOTAL_TIMEOUT_MS / 2,
     };
+    this.managerEnv = options.env ?? (() => process.env);
     this.dataDir = join(repoRoot, '.ai/onni');
     this.branchNameWaitMs = options.branchNameWaitMs ?? BRANCH_NAME_WAIT_MS;
     this.projectId = options.projectId;
@@ -2298,6 +2324,7 @@ export class RunManager {
     // retire one that already passed, and never let either decision wait for the live-run sweep.
     this.recoverSoftAsks();
     this.noteDeferredLostInRestart();
+    this.expireLostManagerDeliveriesAfterRestart();
     const live = this.store
       .listRuns()
       .filter((r) => ['queued', 'waiting', 'running'].includes(r.status))
@@ -2595,6 +2622,7 @@ export class RunManager {
     }
     // After `scheduleAutoResumeIfLimited`: a run parked for its usage window keeps that schedule.
     this.redeliverDeferred(runId, stoppedBy ?? (this.autoResumeTimers.has(runId) ? 'the task is waiting for its usage limit to reset' : undefined));
+    this.expireUnacceptedManagerDeliveries(runId, 'target-settled');
   }
 
   /**
@@ -2622,6 +2650,7 @@ export class RunManager {
     // A continuation already owns the run: its session's open flushes the buffer.
     if (this.active.has(runId) || this.starting.has(runId)) return;
     const pending = this.deferredMessages.get(runId);
+    const deliveryIds = this.deferredManagerDeliveryIds.get(runId) ?? [];
     this.setDeferred(runId, undefined);
     if (!pending?.length) return;
     const undelivered = (reason: string, count = pending.length): void => {
@@ -2632,10 +2661,14 @@ export class RunManager {
     };
     if (stoppedBy) return undelivered(stoppedBy);
     if (this.isQueued(runId)) {
-      for (const content of pending) {
+      for (let index = 0; index < pending.length; index += 1) {
+        const content = pending[index]!;
         const run = this.store.getRun(runId);
         const refusal = run ? queuedStackRefusal(this.dataDir, run, content) : 'the task is gone';
-        if (refusal || !this.enqueueMessage(runId, content)) undelivered(refusal ?? 'the task already started', 1);
+        if (refusal || !this.enqueueMessage(runId, content, deliveryIds[index])) {
+          undelivered(refusal ?? 'the task already started', 1);
+          if (deliveryIds[index]) this.recordManagerDeliveryTransition(runId, deliveryIds[index]!, 'expired', 'target-settled');
+        }
       }
       return;
     }
@@ -2643,18 +2676,30 @@ export class RunManager {
     const text = pending.map(messageText).filter((t) => t.trim()).join('\n\n');
     const refusal = continuePromptRefusal(text, blocks);
     if (refusal) return undelivered(refusal);
+    const resumedDeliveryIds = deliveryIds.filter((id): id is string => id !== undefined);
+    if (resumedDeliveryIds.length) this.continuationManagerDeliveryIds.set(runId, resumedDeliveryIds);
     const resumed = this.continueRun(runId, { text, images: blocks.filter((b) => b.type !== 'text') });
-    if (!resumed.ok) undelivered(resumed.error ?? 'continue could not start');
+    if (!resumed.ok) {
+      this.continuationManagerDeliveryIds.delete(runId);
+      for (const id of resumedDeliveryIds) this.recordManagerDeliveryTransition(runId, id, 'expired', 'target-settled');
+      undelivered(resumed.error ?? 'continue could not start');
+    }
   }
 
   /**
    * The one writer of `deferredMessages`. A marker file mirrors how many are held, so a restart —
    * which loses the buffer itself — can still say so on the run (`noteDeferredLostInRestart`).
    */
-  private setDeferred(runId: string, pending: PastedContent[][] | undefined): void {
+  private setDeferred(
+    runId: string,
+    pending: PastedContent[][] | undefined,
+    deliveryIds?: Array<string | undefined>,
+  ): void {
     const marker = join(this.dataDir, 'runs', `${runId}${DEFERRED_MARKER_SUFFIX}`);
     if (pending?.length) {
       this.deferredMessages.set(runId, pending);
+      if (deliveryIds !== undefined) this.deferredManagerDeliveryIds.set(runId, deliveryIds);
+      else if (!this.deferredManagerDeliveryIds.has(runId)) this.deferredManagerDeliveryIds.set(runId, pending.map(() => undefined));
       try {
         mkdirSync(dirname(marker), { recursive: true });
         writeFileSync(marker, String(pending.length));
@@ -2663,7 +2708,8 @@ export class RunManager {
       }
       return;
     }
-    if (!this.deferredMessages.delete(runId)) return;
+    this.deferredMessages.delete(runId);
+    this.deferredManagerDeliveryIds.delete(runId);
     try {
       rmSync(marker, { force: true });
     } catch {
@@ -2737,7 +2783,7 @@ export class RunManager {
 
   /** Is dispatch on at all? One read, so the gate cannot drift between the sites below. */
   private dispatchEnabled(): boolean {
-    return resolveCapabilities().dispatch;
+    return resolveCapabilities(this.managerEnv()).dispatch;
   }
 
   /**
@@ -3206,6 +3252,249 @@ export class RunManager {
     }
   }
 
+  /** `POST /runs/:id/message` — send one bounded instruction to a live or queued direct worker. */
+  messageFor(
+    callerId: string,
+    input: DispatchManagerMessageInput,
+  ): DispatchManagerMessageResult | { denied: string; status: 400 | 403 | 404 | 409 } {
+    if (!this.dispatchEnabled()) return { denied: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0)', status: 409 };
+    const caller = this.store.getRun(callerId);
+    const access = requireRootManager(caller, 'message a worker');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    if (!caller) return { denied: `no such run: ${callerId}`, status: 404 };
+
+    const target = resolveRunRef(this.store.listRuns(), input.target);
+    if (target === 'none') return { denied: `no such run: ${input.target}`, status: 404 };
+    if (target === 'ambiguous') return { denied: `ambiguous id "${input.target}" — give more characters`, status: 409 };
+    const sameTree = requireSameTree(caller, target);
+    if (!sameTree.ok) return { denied: sameTree.denied, status: sameTree.status };
+    if (target.id === caller.id || target.dispatch?.rootRunId !== caller.id) {
+      return { denied: 'message target must be a worker of this task', status: 409 };
+    }
+    if (!['queued', 'running', 'waiting'].includes(target.status)) {
+      return { denied: `worker ${target.id.slice(0, 8)} is settled (${target.status})`, status: 409 };
+    }
+    if (target.status === 'waiting' && (target.dispatch?.pendingAsk !== undefined || target.askParked === true)) {
+      return { denied: 'worker is waiting for the user to answer its Guard/ask; a manager message cannot answer it', status: 409 };
+    }
+    const live = this.active.get(target.id);
+    if (!live?.session?.open && live?.graphAnswer) {
+      return { denied: 'worker is waiting for a workflow answer; a manager message cannot answer it', status: 409 };
+    }
+
+    const text = this.store.redactRunText(target.id, input.text).trim();
+    if (!text || text.length > MANAGER_MESSAGE_MAX_CHARS) {
+      return { denied: `message text must be 1-${MANAGER_MESSAGE_MAX_CHARS} characters after redaction`, status: 400 };
+    }
+    const backend = target.runner ?? 'claude';
+    const capability = backend === 'cursor' || backend === 'antigravity'
+      ? 'unsupported'
+      : backend === 'junie' || backend === 'cline' || backend === 'copilot'
+        ? 'ordered-queue'
+        : 'steer';
+    const prior = target.dispatch.managerDeliveries ?? [];
+    const outstanding = prior.filter((delivery) => delivery.state === 'queued' || delivery.state === 'delivered').length;
+    if (capability !== 'unsupported' && outstanding >= MANAGER_DELIVERIES_MAX_OUTSTANDING) {
+      return { denied: `worker already has ${outstanding} outstanding manager deliveries (cap ${MANAGER_DELIVERIES_MAX_OUTSTANDING})`, status: 409 };
+    }
+
+    const now = new Date().toISOString();
+    const deliveryId = randomUUID();
+    const state: DispatchManagerDeliveryState = capability === 'unsupported' ? 'rejected' : 'queued';
+    const reasonCode: DispatchManagerDeliveryReasonCode | undefined = capability === 'unsupported' ? 'backend-unsupported' : undefined;
+    const record: DispatchManagerDeliveryRecord = {
+      deliveryId,
+      state,
+      createdAt: now,
+      updatedAt: now,
+      capability,
+      ...(reasonCode ? { reasonCode } : {}),
+    };
+    this.updateDispatch(target.id, (dispatch) => ({
+      ...dispatch,
+      managerDeliveries: [...(dispatch.managerDeliveries ?? []), record].slice(-MANAGER_DELIVERIES_MAX_RETAINED),
+    }));
+    const summary = text.replace(/\s+/g, ' ').slice(0, 240);
+    const rootRunId = target.dispatch.rootRunId;
+    appendLedger(this.dataDir, rootRunId, {
+      type: 'message',
+      runId: caller.id,
+      targetRunId: target.id,
+      deliveryId,
+      state,
+      capability,
+      ...(reasonCode ? { reasonCode } : {}),
+      text: summary,
+    });
+
+    if (capability !== 'unsupported') {
+      const content: PastedContent[] = [{ type: 'text', text }];
+      const liveAccepted = this.sendMessage(target.id, content, undefined, deliveryId);
+      if (!liveAccepted) {
+        if (this.enqueueMessage(target.id, content, deliveryId)) {
+          this.recordManagerUserMessage(target.id, text);
+        } else if (this.deferMessage(target.id, content, deliveryId)) {
+          this.recordManagerUserMessage(target.id, text);
+        } else {
+          this.recordManagerDeliveryTransition(target.id, deliveryId, 'rejected', 'runner-rejected');
+        }
+      } else if (this.managerDeliveryFor(target.id, deliveryId)?.state === 'queued') {
+        // A repo-root lease resume was accepted into its wait; the actual runner boundary is later.
+        this.recordManagerUserMessage(target.id, text);
+      }
+    }
+
+    const latest = this.managerDeliveryFor(target.id, deliveryId) ?? record;
+    const title = this.store.redactRunText(target.id, target.title).replace(/\s+/g, ' ').slice(0, 120);
+    this.store.appendEvent(caller.id, {
+      type: 'note',
+      stepId: this.active.get(caller.id)?.currentStepId,
+      message: `manager message to "${title}" (${target.id.slice(0, 8)}) — ${latest.state} (${capability})${latest.reasonCode ? `: ${latest.reasonCode}` : ''}: ${summary}`,
+    });
+    this.store.appendEvent(target.id, {
+      type: 'note',
+      message: `manager delivery ${deliveryId.slice(0, 8)} state ${latest.state} (${capability})${latest.reasonCode ? ` — ${latest.reasonCode}` : ''}`,
+    });
+    return {
+      deliveryId,
+      targetId: target.id,
+      state: latest.state,
+      capability,
+      ...(latest.reasonCode ? { reasonCode: latest.reasonCode } : {}),
+    };
+  }
+
+  /** `POST /runs/:id/cancel` — preserve a manager's reason before reusing the shared cancel path. */
+  cancelFor(
+    callerId: string,
+    input: DispatchManagerCancelInput,
+  ): DispatchManagerCancelResult | { denied: string; status: 400 | 403 | 404 | 409 } {
+    if (!this.dispatchEnabled()) return { denied: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0)', status: 409 };
+    const caller = this.store.getRun(callerId);
+    const access = requireRootManager(caller, 'cancel a worker');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    if (!caller) return { denied: `no such run: ${callerId}`, status: 404 };
+
+    const target = resolveRunRef(this.store.listRuns(), input.target);
+    if (target === 'none') return { denied: `no such run: ${input.target}`, status: 404 };
+    if (target === 'ambiguous') return { denied: `ambiguous id "${input.target}" — give more characters`, status: 409 };
+    const sameTree = requireSameTree(caller, target);
+    if (!sameTree.ok) return { denied: sameTree.denied, status: sameTree.status };
+    if (target.id === caller.id || target.dispatch?.rootRunId !== caller.id) {
+      return { denied: 'cancel target must be a worker of this task', status: 409 };
+    }
+    if (!['queued', 'running', 'waiting'].includes(target.status)) {
+      return { denied: `worker ${target.id.slice(0, 8)} is settled (${target.status})`, status: 409 };
+    }
+    const reason = input.reason === undefined ? undefined : this.store.redactRunText(target.id, input.reason).trim();
+    if (reason !== undefined && (!reason || reason.length > MANAGER_CANCEL_REASON_MAX_CHARS)) {
+      return { denied: `cancel reason must be 1-${MANAGER_CANCEL_REASON_MAX_CHARS} characters after redaction`, status: 400 };
+    }
+    const marker = { byRunId: caller.id, requestedAt: new Date().toISOString(), ...(reason ? { reason } : {}) };
+    this.updateDispatch(target.id, (dispatch) => ({ ...dispatch, managerCancellation: marker }));
+    const detail = reason ?? 'cancelled by manager';
+    const safeDetail = this.store.redactRunText(target.id, detail).slice(0, MANAGER_CANCEL_REASON_MAX_CHARS);
+    this.store.appendEvent(target.id, { type: 'lifecycle', message: `cancelled by manager ${caller.id.slice(0, 8)} — ${safeDetail}` });
+    this.store.appendEvent(caller.id, {
+      type: 'note',
+      stepId: this.active.get(caller.id)?.currentStepId,
+      message: `cancelling worker ${target.id.slice(0, 8)} — ${safeDetail}`,
+    });
+    appendLedger(this.dataDir, target.dispatch.rootRunId, {
+      type: 'cancel',
+      runId: caller.id,
+      targetRunId: target.id,
+      reason: safeDetail,
+    });
+    if (!this.cancel(target.id)) {
+      this.updateDispatch(target.id, ({ managerCancellation: _marker, ...dispatch }) => dispatch);
+      return { denied: `worker ${target.id.slice(0, 8)} could not be cancelled`, status: 409 };
+    }
+    return {
+      targetId: target.id,
+      status: 'cancelled' as const,
+      reportStatus: 'blocked' as const,
+      ...(reason ? { reason } : {}),
+    };
+  }
+
+  private managerDeliveryFor(runId: string, deliveryId: string): DispatchManagerDeliveryRecord | undefined {
+    return this.store.getRun(runId)?.dispatch?.managerDeliveries?.find((delivery) => delivery.deliveryId === deliveryId);
+  }
+
+  private recordManagerDeliveryTransition(
+    runId: string,
+    deliveryId: string,
+    state: DispatchManagerDeliveryState,
+    reasonCode?: DispatchManagerDeliveryReasonCode,
+  ): void {
+    const run = this.store.getRun(runId);
+    const previous = run?.dispatch?.managerDeliveries?.find((delivery) => delivery.deliveryId === deliveryId);
+    if (!run?.dispatch || !previous || previous.state === state) return;
+    const allowed = previous.state === 'queued'
+      ? ['delivered', 'rejected', 'expired'].includes(state)
+      : previous.state === 'delivered' && ['acknowledged', 'rejected'].includes(state);
+    if (!allowed) return;
+    const { reasonCode: _previousReason, ...withoutReason } = previous;
+    const updated: DispatchManagerDeliveryRecord = {
+      ...withoutReason,
+      state,
+      updatedAt: new Date().toISOString(),
+      ...(reasonCode ? { reasonCode } : {}),
+    };
+    this.updateDispatch(runId, (dispatch) => ({
+      ...dispatch,
+      managerDeliveries: [
+        ...(dispatch.managerDeliveries ?? []).filter((delivery) => delivery.deliveryId !== deliveryId),
+        updated,
+      ].slice(-MANAGER_DELIVERIES_MAX_RETAINED),
+    }));
+    appendLedger(this.dataDir, run.dispatch.rootRunId, {
+      type: 'message-delivery',
+      targetRunId: runId,
+      deliveryId,
+      state,
+      capability: previous.capability,
+      ...(reasonCode ? { reasonCode } : {}),
+    });
+  }
+
+  private recordManagerUserMessage(runId: string, text: string): void {
+    this.store.appendEvent(runId, {
+      type: 'user-message',
+      stepId: this.active.get(runId)?.currentStepId,
+      text,
+      imageCount: 0,
+      images: [],
+    });
+  }
+
+  private markQueuedManagerDeliveriesDelivered(runId: string): void {
+    const run = this.store.getRun(runId);
+    const ids = new Set([
+      ...(run?.queuedMessages ?? []).flatMap((message) => message.managerDeliveryId ? [message.managerDeliveryId] : []),
+      ...(this.continuationManagerDeliveryIds.get(runId) ?? []),
+    ]);
+    for (const id of ids) this.recordManagerDeliveryTransition(runId, id, 'delivered');
+    this.continuationManagerDeliveryIds.delete(runId);
+  }
+
+  private expireUnacceptedManagerDeliveries(runId: string, reasonCode: 'target-settled' | 'process-restarted'): void {
+    const run = this.store.getRun(runId);
+    if (!run?.dispatch) return;
+    const persistedQueueIds = new Set((run.queuedMessages ?? []).flatMap((message) => message.managerDeliveryId ? [message.managerDeliveryId] : []));
+    for (const delivery of run.dispatch.managerDeliveries ?? []) {
+      if (delivery.state !== 'queued') continue;
+      if (reasonCode === 'process-restarted' && persistedQueueIds.has(delivery.deliveryId) && !isTerminalStatus(run.status)) continue;
+      if (reasonCode === 'target-settled' && !isTerminalStatus(run.status)) continue;
+      this.recordManagerDeliveryTransition(runId, delivery.deliveryId, 'expired', reasonCode);
+    }
+  }
+
+  private expireLostManagerDeliveriesAfterRestart(): void {
+    for (const run of this.store.listRuns()) this.expireUnacceptedManagerDeliveries(run.id, 'process-restarted');
+  }
+
   private async peekEntry(
     run: RunRecord,
     opts: { filesMax: number; tailLines?: number; tailMaxChars?: number },
@@ -3224,6 +3513,7 @@ export class RunManager {
           redact: (line) => this.store.redactRunText(run.id, line),
         });
     const step = run.currentStepId ? run.steps.find((candidate) => candidate.id === run.currentStepId) : undefined;
+    const lastManagerDelivery = run.dispatch?.managerDeliveries?.at(-1);
     return {
       id: run.id,
       title: run.title,
@@ -3242,6 +3532,16 @@ export class RunManager {
       filesOmitted: files.omitted,
       filesState: files.state,
       quietMinutes: quietMinutesOf(events),
+      ...(lastManagerDelivery
+        ? {
+            lastManagerDelivery: {
+              deliveryId: lastManagerDelivery.deliveryId,
+              state: lastManagerDelivery.state,
+              capability: lastManagerDelivery.capability,
+              ...(lastManagerDelivery.reasonCode ? { reasonCode: lastManagerDelivery.reasonCode } : {}),
+            },
+          }
+        : {}),
       tail: tail.lines,
       tailTruncated: tail.truncated,
     };
@@ -4717,6 +5017,7 @@ export class RunManager {
       if (!child || !parentId) return;
       if (!this.dispatchEnabled()) return;
       if (!isTerminalStatus(child.status)) return;
+      const managerCancelled = child.dispatch?.managerCancellation !== undefined;
       // A closed session can leave an unanswered ONNI:ASK as terminal `failed` while the
       // question remains under the user's control (`awaitingAnswerSince`). That is a hold, not
       // an outcome: reporting it now would make the parent plan around work that may still be
@@ -4724,7 +5025,7 @@ export class RunManager {
       // clears this field and reaches this hook again with the real outcome. A monitor handed
       // to the user carries the same marker but no pending question: its work is unfinished
       // and nobody is waiting on an answer the parent could pre-empt, so it reports.
-      if (child.awaitingAnswerSince !== undefined && child.dispatch?.pendingAsk) return;
+      if (child.awaitingAnswerSince !== undefined && child.dispatch?.pendingAsk && !managerCancelled) return;
       const parent = this.store.getRun(parentId);
       if (!parent?.dispatch) return;
 
@@ -4740,13 +5041,30 @@ export class RunManager {
         ...(checks?.length ? { checks } : {}),
         ...(budget ? { budgetLine: `budget: ${formatBudgetLine(budget)}` } : {}),
       };
-      const base = childSettleReport(child, context);
+      const reportTitle = this.store.redactRunText(child.id, child.title).slice(0, 120);
+      const redactReport = (report: DispatchReport): DispatchReport => ({
+        ...report,
+        result: this.store.redactRunText(child.id, report.result).slice(0, 4_000),
+        evidence: report.evidence.map((item) => this.store.redactRunText(child.id, item).slice(0, 400)),
+        side_effects: report.side_effects.map((item) => this.store.redactRunText(child.id, item).slice(0, 400)),
+        errors: report.errors.map((item) => this.store.redactRunText(child.id, item).slice(0, 400)),
+        checks: report.checks.map((check) => ({ ...check, command: this.store.redactRunText(child.id, check.command).slice(0, 300) })),
+        suggestions: report.suggestions.map((item) => this.store.redactRunText(child.id, item).slice(0, 400)),
+        ...(report.recommended_next_action !== undefined
+          ? { recommended_next_action: this.store.redactRunText(child.id, report.recommended_next_action).slice(0, 1_000) }
+          : {}),
+      });
+      const safeSettle = (settle: ReturnType<typeof childSettleReport>) => ({
+        report: redactReport(settle.report),
+        text: this.store.redactRunText(child.id, settle.text).slice(0, 6_000),
+      });
+      const base = safeSettle(childSettleReport(child, context));
       // PERSISTED before any await below: `dropActive` calls this before `releaseSlot`, and the
       // pump reads the hold off the records (see the ordering comment there). The parent must
       // already see the outcome when a manager is woken, even if the git read is still running.
       const at = new Date().toISOString();
       this.updateDispatch(parentId, (dispatch) =>
-        withPendingReport(dispatch, { fromRunId: child.id, title: child.title, report: base.report, at }),
+        withPendingReport(dispatch, { fromRunId: child.id, title: reportTitle, report: base.report, at }),
       );
       const rootRunId = child.dispatch?.rootRunId ?? parent.dispatch.rootRunId;
       appendLedger(this.dataDir, rootRunId, {
@@ -4761,7 +5079,7 @@ export class RunManager {
       // The delivery below is NOT user-authored, so it leaves no bubble in the parent's thread.
       this.store.appendEvent(parentId, {
         type: 'note',
-        message: `report received from task "${child.title}" (${child.id}) — status ${base.report.status}`,
+        message: `report received from task "${reportTitle}" (${child.id}) — status ${base.report.status}`,
       });
       // Read-only and in parallel (#7), bounded by ONE timeout (H3): the worktree may be
       // reclaimed the moment this run leaves its active slot, so the file list and HEAD are
@@ -4773,22 +5091,37 @@ export class RunManager {
             worktreeHeadShort(child.worktreePath),
           ])
         : [undefined, undefined];
-      const { text, report } = files || headCommit
+      const capturedFiles = managerCancelled && files
+        ? {
+            ...files,
+            files: files.files.slice(0, 16),
+            omitted: files.omitted + Math.max(0, files.files.length - 16),
+          }
+        : files;
+      const settle = files || headCommit
         ? childSettleReport(child, {
             ...context,
-            ...(files ? { changedFiles: files.files, filesOmitted: files.omitted, filesState: files.state } : {}),
+            ...(capturedFiles ? { changedFiles: capturedFiles.files, filesOmitted: capturedFiles.omitted, filesState: capturedFiles.state } : {}),
             ...(headCommit ? { headCommit } : {}),
           })
         : base;
+      const safe = 'report' in settle && 'text' in settle ? safeSettle(settle) : base;
+      const { text, report } = safe;
+      this.updateDispatch(parentId, (dispatch) => ({
+        ...dispatch,
+        pendingReports: (dispatch.pendingReports ?? []).map((entry) =>
+          entry.fromRunId === child.id && entry.at === at ? { ...entry, title: reportTitle, report } : entry,
+        ),
+      }));
       try {
         writeReport(this.dataDir, rootRunId, child.id, text, report);
         const suggestions = [...report.suggestions];
         const fromNotes = notesSuggestions(this.dataDir, rootRunId, child.id);
-        if (fromNotes) suggestions.push(fromNotes);
+        if (fromNotes) suggestions.push(this.store.redactRunText(child.id, fromNotes).slice(0, 3_000));
         if (suggestions.length && child.id !== rootRunId) {
           writeInboxMessage(this.dataDir, rootRunId, 'root', {
             from: child.id,
-            subject: `Suggestions from task "${child.title}"`,
+            subject: `Suggestions from task "${reportTitle}"`,
             body: suggestions.map((line) => `- ${line}`).join('\n'),
           });
         }
@@ -4807,7 +5140,7 @@ export class RunManager {
 
       // A CANCELLED child is persisted and nothing more: a cancel cascades children-first, so the
       // parent is already cancelled — or about to be — and every live rung below would fight that.
-      if (child.status === 'cancelled') return;
+      if (child.status === 'cancelled' && !managerCancelled) return;
 
       const blocks: PastedContent[] = [{ type: 'text', text }];
       if (this.deliverMessage(parentId, blocks, false) || this.enqueueMessage(parentId, blocks)) {
@@ -5593,6 +5926,7 @@ export class RunManager {
       this.startNowRequested.delete(runId);
       this.store.updateRun(runId, { status: 'cancelled', finishedAt: new Date().toISOString() });
       this.store.appendEvent(runId, { type: 'lifecycle', message: 'cancelled while queued' });
+      this.expireUnacceptedManagerDeliveries(runId, 'target-settled');
       // A queued run never entered `active`, so it never reaches `dropActive` — the one terminal
       // transition that misses the settle hook. Without this a parent waiting on a child the user
       // cancelled from the queue would wait for a report nobody would ever send.
@@ -5616,6 +5950,7 @@ export class RunManager {
       this.cancelledStarting.add(runId);
       this.store.updateRun(runId, { status: 'cancelled', finishedAt: new Date().toISOString(), currentStepId: undefined });
       this.store.appendEvent(runId, { type: 'lifecycle', message: 'run cancelled' });
+      this.expireUnacceptedManagerDeliveries(runId, 'target-settled');
       this.clearSoftAsk(runId);
       return true;
     }
@@ -5634,6 +5969,7 @@ export class RunManager {
     }
     this.store.updateRun(runId, { status: 'cancelled', finishedAt, currentStepId: undefined });
     this.store.appendEvent(runId, { type: 'lifecycle', message: 'run cancelled' });
+    this.expireUnacceptedManagerDeliveries(runId, 'target-settled');
     this.clearSoftAsk(runId);
     // A startup wedge has no provider session to reap, so release its slot immediately. Once a
     // session has opened, keep the slot until its interrupt/teardown settles; admitting a
@@ -5844,7 +6180,7 @@ export class RunManager {
   }
 
   /** Split a pasted message into the persisted shape a stacked message holds. */
-  private toQueuedMessage(runId: string, content: PastedContent[]): QueuedMessage {
+  private toQueuedMessage(runId: string, content: PastedContent[], managerDeliveryId?: string): QueuedMessage {
     const text = content
       .filter((b): b is Extract<ContentBlock, { type: 'text' }> => b.type === 'text')
       .map((b) => b.text)
@@ -5853,6 +6189,7 @@ export class RunManager {
     return {
       id: randomUUID(),
       text,
+      ...(managerDeliveryId ? { managerDeliveryId } : {}),
       ...(images.length ? { images } : {}),
       createdAt: new Date().toISOString(),
     };
@@ -5863,11 +6200,11 @@ export class RunManager {
    * entry, or null when the run has already started — the caller then falls
    * through to `deferMessage`.
    */
-  enqueueMessage(runId: string, content: PastedContent[]): QueuedMessage | null {
+  enqueueMessage(runId: string, content: PastedContent[], managerDeliveryId?: string): QueuedMessage | null {
     if (!this.isQueued(runId)) return null;
     const run = this.store.getRun(runId);
     if (!run) return null;
-    const message = this.toQueuedMessage(runId, content);
+    const message = this.toQueuedMessage(runId, content, managerDeliveryId);
     this.store.updateRun(runId, { queuedMessages: [...(run.queuedMessages ?? []), message] });
     return message;
   }
@@ -5891,6 +6228,7 @@ export class RunManager {
     const replacement: QueuedMessage = {
       id: msgId,
       text: edit.text ?? current.text,
+      ...(current.managerDeliveryId ? { managerDeliveryId: current.managerDeliveryId } : {}),
       ...(replacementImages?.length ? { images: replacementImages } : {}),
       createdAt: current.createdAt,
     };
@@ -5977,7 +6315,7 @@ export class RunManager {
    * The buffer lives on the manager rather than the `ActiveRun` because the
    * `ActiveRun` does not exist yet for part of this window.
    */
-  deferMessage(runId: string, content: PastedContent[]): boolean {
+  deferMessage(runId: string, content: PastedContent[], managerDeliveryId?: string): boolean {
     // The window spans two sub-states: `starting` (no `ActiveRun` yet) and the
     // longer stretch where the `ActiveRun` exists but the backend is still being
     // spawned. `execute()` deletes the run from `starting` as soon as it builds
@@ -5992,7 +6330,9 @@ export class RunManager {
     // nothing opens a session there soon, so the message would sit unseen; it answers 409 as before.
     const sessionGap = state !== undefined && !state.cancelled && !state.session?.open && !this.waiting.has(runId) && !this.lifecycle.isBlocked(runId);
     if (!startingUp && !sessionGap) return false;
-    this.setDeferred(runId, [...(this.deferredMessages.get(runId) ?? []), content]);
+    const pending = this.deferredMessages.get(runId) ?? [];
+    const deliveryIds = this.deferredManagerDeliveryIds.get(runId) ?? pending.map(() => undefined);
+    this.setDeferred(runId, [...pending, content], [...deliveryIds, managerDeliveryId]);
     return true;
   }
 
@@ -6000,12 +6340,21 @@ export class RunManager {
   private flushDeferred(runId: string): void {
     const pending = this.deferredMessages.get(runId);
     if (!pending?.length) return;
+    const deliveryIds = this.deferredManagerDeliveryIds.get(runId) ?? [];
     // Re-buffer whatever the session refused rather than dropping it. `sendMessage`
     // answers false when the session is not open yet — and silently losing a message
     // here would be precisely the failure `deferMessage` exists to prevent. Anything
     // left over is retried by the next session that opens on this run.
-    const unsent = pending.filter((content) => !this.sendMessage(runId, content));
-    this.setDeferred(runId, unsent);
+    const unsent: PastedContent[][] = [];
+    const unsentIds: Array<string | undefined> = [];
+    pending.forEach((content, index) => {
+      const managerDeliveryId = deliveryIds[index];
+      if (!this.sendMessage(runId, content, undefined, managerDeliveryId)) {
+        unsent.push(content);
+        unsentIds.push(managerDeliveryId);
+      }
+    });
+    this.setDeferred(runId, unsent, unsentIds);
   }
 
   /**
@@ -6013,8 +6362,8 @@ export class RunManager {
    * while `waiting`). Returns false when there is no open session — the GUI
    * then offers "Continue" instead.
    */
-  sendMessage(runId: string, content: PastedContent[], replyTo?: string): boolean {
-    const delivered = this.deliverMessage(runId, content, true, undefined, replyTo);
+  sendMessage(runId: string, content: PastedContent[], replyTo?: string, managerDeliveryId?: string): boolean {
+    const delivered = this.deliverMessage(runId, content, true, undefined, replyTo, managerDeliveryId);
     if (delivered) {
       const state = this.active.get(runId);
       if (state) state.monitoringWakeups = 0;
@@ -6031,6 +6380,7 @@ export class RunManager {
     userAuthored: boolean,
     preparedUserMessage?: PreparedUserMessage,
     replyTo?: string,
+    managerDeliveryId?: string,
   ): boolean {
     if (this.lifecycle.isBlocked(runId)) return false;
     // Plan v2 §9: only the answer that names the OPEN manager question retires it. A free message
@@ -6066,13 +6416,15 @@ export class RunManager {
       const imageLibraryWrites: Array<() => void> = [];
       const persisted = this.persistPastedAttachments(runId, content, imageLibraryWrites);
       prepared = { text, persisted, imageLibraryWrites };
-      this.store.appendEvent(runId, {
-        type: 'user-message',
-        stepId: state.currentStepId,
-        text,
-        imageCount: content.filter((b) => b.type === 'image').length,
-        images: persisted.map((saved) => saved.url),
-      });
+      if (!managerDeliveryId) {
+        this.store.appendEvent(runId, {
+          type: 'user-message',
+          stepId: state.currentStepId,
+          text,
+          imageCount: content.filter((b) => b.type === 'image').length,
+          images: persisted.map((saved) => saved.url),
+        });
+      }
     }
     // A parked in-place run gave the working-tree lease back (`parkRepoRoot`). It must own the
     // tree again before its session resumes, and the lease is asynchronous — so the message is
@@ -6080,15 +6432,29 @@ export class RunManager {
     // delivered once the tree is ours. Every wake-up that lands meanwhile rides the same wait.
     if (state.repoRootParked && !(state.repoRootResume === undefined && this.claimFreeRepoRoot(state))) {
       const resume = (state.repoRootResume ??= this.resumeRepoRoot(runId, state));
+      if (managerDeliveryId && userAuthored && preparedUserMessage === undefined) {
+        this.store.appendEvent(runId, {
+          type: 'user-message',
+          stepId: state.currentStepId,
+          text: prepared?.text ?? messageText(content),
+          imageCount: content.filter((b) => b.type === 'image').length,
+          images: prepared?.persisted.map((saved) => saved.url) ?? [],
+        });
+      }
       void resume.then((acquired) => {
-        if (!acquired) return;
+        if (!acquired) {
+          if (managerDeliveryId) this.recordManagerDeliveryTransition(runId, managerDeliveryId, 'rejected', 'target-settled');
+          return;
+        }
         // Another in-place task held the tree while we waited, so this session's picture of it may
         // be stale. Delivered as its own engine message, ahead of the one the run woke for, so a
         // user-authored wake-up stays verbatim in the transcript.
         this.deliverMessage(runId, [{ type: 'text', text: REPO_ROOT_RESUMED_NOTE }], false);
-        if (this.deliverMessage(runId, content, userAuthored, prepared, replyTo)) return;
+        if (this.deliverMessage(runId, content, userAuthored, prepared, replyTo, managerDeliveryId)) return;
         // The session closed while we waited: keep the message the way the ladder would.
-        if (!this.enqueueMessage(runId, content)) this.deferMessage(runId, content);
+        if (!this.enqueueMessage(runId, content, managerDeliveryId) && !this.deferMessage(runId, content, managerDeliveryId)) {
+          if (managerDeliveryId) this.recordManagerDeliveryTransition(runId, managerDeliveryId, 'rejected', 'runner-rejected');
+        }
       });
       return true;
     }
@@ -6118,7 +6484,45 @@ export class RunManager {
       ? [...this.withAnswerLead(answering?.question, prepared?.text, expanded), pastedAttachmentsNote(persisted, this.attachmentLibraryHint(persisted, state.grantedAttachmentLibrary) ??
           (imageLibraryWrites.length ? this.usableAttachmentLibrary(state.grantedAttachmentLibrary) : undefined))]
       : this.withAnswerLead(answering?.question, prepared?.text, expanded);
-    const delivered = state.session.sendMessage(deliverable);
+    let returned = false;
+    let receiptBeforeReturn: { state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' } | undefined;
+    const onReceipt = (receipt: { state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }): void => {
+      if (!managerDeliveryId) return;
+      if (!returned) {
+        receiptBeforeReturn = receipt;
+        return;
+      }
+      this.recordManagerDeliveryTransition(
+        runId,
+        managerDeliveryId,
+        receipt.state,
+        receipt.state === 'rejected' ? receipt.reasonCode ?? 'async-rejected' : undefined,
+      );
+    };
+    const delivered = managerDeliveryId && state.session.sendMessageWithReceipt
+      ? state.session.sendMessageWithReceipt(deliverable, onReceipt)
+      : state.session.sendMessage(deliverable);
+    if (delivered && managerDeliveryId) {
+      if (userAuthored && preparedUserMessage === undefined) {
+        this.store.appendEvent(runId, {
+          type: 'user-message',
+          stepId: state.currentStepId,
+          text: prepared?.text ?? messageText(content),
+          imageCount: content.filter((b) => b.type === 'image').length,
+          images: prepared?.persisted.map((saved) => saved.url) ?? [],
+        });
+      }
+      this.recordManagerDeliveryTransition(runId, managerDeliveryId, 'delivered');
+    }
+    returned = true;
+    if (receiptBeforeReturn && managerDeliveryId) {
+      this.recordManagerDeliveryTransition(
+        runId,
+        managerDeliveryId,
+        receiptBeforeReturn.state,
+        receiptBeforeReturn.state === 'rejected' ? receiptBeforeReturn.reasonCode ?? 'async-rejected' : undefined,
+      );
+    }
     if (delivered) {
       for (const write of imageLibraryWrites) write();
       this.clearPendingAsk(runId);
@@ -6964,6 +7368,7 @@ export class RunManager {
       );
       state.session = resume ? resumeGuard.track(started) : started;
       state.sessionEverOpened = true;
+      this.markQueuedManagerDeliveriesDelivered(runId);
       this.flushDeferred(runId);
       state.interrupt = () => started.interrupt();
       if (started.pid !== undefined) registerRunProcess(runId, started.pid);
@@ -9117,6 +9522,7 @@ export class RunManager {
     const attach = (started: AgentSession, resume: boolean): AgentSession => {
       state.session = resume ? resumeGuard.track(started) : started;
       state.sessionEverOpened = true;
+      this.markQueuedManagerDeliveriesDelivered(runId);
       // A Finish pressed on an earlier step's session is not a repeat of one on this session.
       state.finishRequested = undefined;
       state.acceptReviewOnDrop = undefined;

@@ -314,6 +314,13 @@ class CodexSession implements AgentSession {
   }
 
   sendMessage(content: ContentBlock[]): boolean {
+    return this.sendMessageWithReceipt(content, () => undefined);
+  }
+
+  sendMessageWithReceipt(
+    content: ContentBlock[],
+    onReceipt: (receipt: { state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }) => void,
+  ): boolean {
     if (!this.stdinOpen) return false;
     if (this.autoEndTimer) {
       clearTimeout(this.autoEndTimer);
@@ -325,15 +332,18 @@ class CodexSession implements AgentSession {
       const pending = this.pendingUserInput;
       this.pendingUserInput = undefined;
       this.rpc.respond({ id: pending.rpcId, result: { answers: userInputAnswers(pending.questions, text) } });
+      onReceipt({ state: 'acknowledged' });
       return true;
     }
     // Wait for the thread to exist, then steer the live turn or start a new one.
     void this.ready
       .then(() => this.startOrSteerTurn(text))
+      .then(() => onReceipt({ state: 'acknowledged' }))
       .catch((err: unknown) => {
         if (this.followUpDeliveryOpen) {
           this.emit(this.asyncTurnFailure(err instanceof Error ? err.message : String(err)));
         }
+        onReceipt({ state: 'rejected', reasonCode: 'async-rejected' });
       });
     return true;
   }
