@@ -49,12 +49,14 @@ describe('manager–worker engine (dry-run)', () => {
   let repoRoot: string;
   let store: RunStore;
   let manager: RunManager;
+  let semaphore: WorkspaceSemaphore;
   const started: string[] = [];
   const saved: Record<string, string | undefined> = {};
 
   const boot = (limits: Partial<WorkspaceResourceLimits> = {}) => {
     manager?.dispose();
-    manager = new RunManager(store, repoRoot, { semaphore: new WorkspaceSemaphore({ initial: { maxParallel: 4, maxMonitoringSessions: 0, ...limits } }) });
+    semaphore = new WorkspaceSemaphore({ initial: { maxParallel: 4, maxMonitoringSessions: 0, ...limits } });
+    manager = new RunManager(store, repoRoot, { semaphore });
   };
 
   beforeEach(async () => {
@@ -366,6 +368,74 @@ describe('manager–worker engine (dry-run)', () => {
       await waitFor(second.id, (x) => x?.status === 'cancelled');
       expect(store.getRun(second.id)!.error).toContain('blocked');
       expect(store.getRun(second.id)!.error).toContain('first');
+    }, 80_000);
+
+    it('waits for every predecessor and starts only after both have finished', async () => {
+      const m = await parked();
+      const a = await ok(m.id, 'mock:monitoring A', { backend: 'claude', model: 'haiku', title: 'A' });
+      const b = await ok(m.id, 'mock:monitoring B', { backend: 'claude', model: 'sonnet', title: 'B' });
+      await Promise.all([
+        waitFor(a.id, (x) => x?.activity === 'monitoring'),
+        waitFor(b.id, (x) => x?.activity === 'monitoring'),
+      ]);
+      expect(store.getRun(a.id)!.status).toBe('running');
+      expect(store.getRun(b.id)!.status).toBe('running');
+
+      const busyBefore = semaphore.busy();
+      const c = await ok(m.id, 'mock:monitoring C', { backend: 'claude', model: 'haiku', title: 'C', after: ['A', 'B'] });
+      expect(store.getRun(c.id)!.dispatch?.after).toEqual([a.id, b.id]);
+      expect(store.getRun(c.id)!.status).toBe('queued');
+      // A dependency wait must not consume one of the workspace's run slots.
+      expect(semaphore.busy()).toBe(busyBefore);
+
+      expect(manager.sendMessage(a.id, [{ type: 'text', text: 'mock:done A finished' }])).toBe(true);
+      await waitFor(a.id, (x) => x?.status === 'done' || x?.status === 'review');
+      expect(store.getRun(b.id)!.status).toBe('running');
+      expect(store.getRun(c.id)!.status).toBe('queued');
+
+      expect(manager.sendMessage(b.id, [{ type: 'text', text: 'mock:done B finished' }])).toBe(true);
+      await waitFor(b.id, (x) => x?.status === 'done' || x?.status === 'review');
+      await waitFor(c.id, (x) => x?.activity === 'monitoring');
+      expect(store.getRun(c.id)!.status).toBe('running');
+    }, 100_000);
+
+    it('uses the first dependency as the fork point and names the other branch in the task order', async () => {
+      const m = await parked();
+      const a = await ok(m.id, 'mock:monitoring A', { backend: 'claude', model: 'haiku', title: 'A' });
+      const b = await ok(m.id, 'mock:monitoring B', { backend: 'claude', model: 'sonnet', title: 'B' });
+      await Promise.all([
+        waitFor(a.id, (x) => x?.activity === 'monitoring'),
+        waitFor(b.id, (x) => x?.activity === 'monitoring'),
+      ]);
+
+      const forward = await ok(m.id, 'mock:monitoring combine A and B', { backend: 'pi', title: 'forward', after: ['A', 'B'] });
+      const reverse = await ok(m.id, 'mock:monitoring combine B and A', { backend: 'pi', title: 'reverse', after: ['B', 'A'] });
+      const runA = store.getRun(a.id)!;
+      const runB = store.getRun(b.id)!;
+      const runForward = store.getRun(forward.id)!;
+      const runReverse = store.getRun(reverse.id)!;
+
+      expect(runForward.baseBranch).toBe(runA.branch);
+      expect(runReverse.baseBranch).toBe(runB.branch);
+      // A is the fork point; the order still gives the worker B's branch to merge.
+      expect(runForward.task).toContain(`Starts after: A (${a.id.slice(0, 8)}, branch ${runA.branch}), B (${b.id.slice(0, 8)}, branch ${runB.branch})`);
+    }, 80_000);
+
+    it('cancels C with a reason naming B when B fails', async () => {
+      const m = await parked();
+      const a = await ok(m.id, 'mock:monitoring A', { backend: 'claude', model: 'haiku', title: 'A' });
+      const b = await ok(m.id, 'mock:monitoring B', { backend: 'claude', model: 'sonnet', title: 'B' });
+      await Promise.all([
+        waitFor(a.id, (x) => x?.activity === 'monitoring'),
+        waitFor(b.id, (x) => x?.activity === 'monitoring'),
+      ]);
+      const c = await ok(m.id, 'mock:monitoring C', { backend: 'pi', title: 'C', after: ['A', 'B'] });
+      expect(store.getRun(c.id)!.status).toBe('queued');
+
+      expect(manager.sendMessage(b.id, [{ type: 'text', text: 'mock:auth-error B failed' }])).toBe(true);
+      await waitFor(b.id, (x) => x?.status === 'failed');
+      await waitFor(c.id, (x) => x?.status === 'cancelled');
+      expect(store.getRun(c.id)!.error).toContain('B');
     }, 80_000);
 
     it('refuses an unknown or already-failed dependency, naming the valid orders', async () => {
