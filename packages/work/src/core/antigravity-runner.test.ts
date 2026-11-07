@@ -135,6 +135,7 @@ describe('AntigravityRunner (mock agy)', () => {
 
   it('sendMessage is refused with a note: print mode is one turn per process', async () => {
     const { events, session } = await runTurn('hi');
+    expect(session.sendMessageWithReceipt).toBeUndefined();
     expect(session.sendMessage([{ type: 'text', text: 'more' }])).toBe(false);
     expect(events.some((e) => e.type === 'note' && e.message.includes('one-shot'))).toBe(true);
   }, 20_000);
