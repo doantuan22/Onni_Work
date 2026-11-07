@@ -339,6 +339,36 @@ describe('manager message and cancellation controls', () => {
     expect(store.getRun(dependent.id)?.status).toBe('cancelled');
   });
 
+  it('redacts and caps a redirect preflight refusal before returning or logging it', async () => {
+    const order: DispatchOrderSnapshot = {
+      objective: 'Implement the parser',
+      title: 'parser worker',
+      kind: 'implement',
+      retryLimit: 1,
+      backend: 'codex',
+      after: [],
+    };
+    const source = queuedWorker('codex', { order }, 'parser worker');
+    const secret = 'preflight-secret-value';
+    store.registerRunSecrets(source.id, [secret]);
+    const rawRefusal = `preflight refused: ${secret} ${'reason '.repeat(100)}`;
+    vi.spyOn(manager, 'dispatch').mockReturnValue({ refused: rawRefusal });
+
+    const result = await manager.redirectFor(managerRunId, { target: source.id, instruction: 'Use a safer parser' });
+
+    expect(result).toMatchObject({ status: 409 });
+    if (!('denied' in result)) throw new Error('expected preflight denial');
+    expect(result.denied).not.toContain(secret);
+    expect(result.denied.length).toBeLessThanOrEqual(500);
+    const note = store.readEvents(managerRunId).find((event) =>
+      event.type === 'note' && typeof event.message === 'string' && event.message.startsWith('redirect preflight refused'),
+    );
+    expect(note?.message).toBeDefined();
+    if (typeof note?.message !== 'string') throw new Error('expected a logged refusal string');
+    expect(note.message).not.toContain(secret);
+    expect(note.message.length).toBeLessThanOrEqual(500);
+  });
+
   it('recovers a redirect persisted mid-cancel after a manager restart', async () => {
     const order: DispatchOrderSnapshot = {
       objective: 'Implement the parser',

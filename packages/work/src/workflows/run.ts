@@ -3497,7 +3497,16 @@ export class RunManager {
     // Exercise the same admission gates before the cancellation becomes irreversible. Dispatch
     // repeats them after cancellation, when in-flight and budget accounting reflect the new state.
     const preflight = this.dispatch(caller.id, redirectInput, { redirectOrigin, preflightOnly: true });
-    if ('refused' in preflight) return { denied: preflight.refused, status: 409 };
+    if ('refused' in preflight) {
+      const refusal = this.store.redactRunText(target.id, preflight.refused).replace(/\s+/g, ' ').trim()
+        .slice(0, MANAGER_CANCEL_REASON_MAX_CHARS) || 'replacement admission refused';
+      this.store.appendEvent(caller.id, {
+        type: 'note',
+        stepId: this.active.get(caller.id)?.currentStepId,
+        message: `redirect preflight refused — ${refusal}`.slice(0, MANAGER_CANCEL_REASON_MAX_CHARS),
+      });
+      return { denied: refusal, status: 409 };
+    }
 
     const requestedAt = new Date().toISOString();
     const operationId = randomUUID();
