@@ -61,6 +61,7 @@ import { basename, dirname, join, posix, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Hono, type Context } from 'hono';
 import { groupsRoutes } from './routes/groups.ts';
+import { openTargetsRoutes } from './routes/open-targets.ts';
 import type { Next } from 'hono';
 import { serve, type ServerType } from '@hono/node-server';
 import { bodyLimit } from 'hono/body-limit';
@@ -5998,37 +5999,6 @@ export function createApp(deps: ServerDeps) {
     );
 
   // ---- chained family: open-targets (project-scoped) ----
-  const openTargetsRoutes = new Hono<ProjectApiEnv>()
-    .get('/open-targets', (c) => c.json({ targets: capabilities().localHandoff ? detectOpenTargets() : [] }))
-
-    // Open the PROJECT ROOT itself (Settings → "Project folder" → Open with). The run route
-    // above opens a task worktree and needs a run to name one; this is the repo the cockpit is
-    // scoped to, which the scope middleware has already resolved — so no path is accepted from
-    // the client and there is nothing to contain.
-    .post('/open-in', jsonZodValidator(openProjectInSchema), async (c) => {
-      const { root } = c.get('project');
-      if (!capabilities().localHandoff) {
-        return c.json(
-          { error: 'local handoff is disabled — this cockpit runs in hosted mode (ONNI_REMOTE)' },
-          409,
-        );
-      }
-      const { target } = c.req.valid('json');
-      // Refused here rather than left to the menu, on the same principle as the accounts route:
-      // a `cli:<runner>` handoff would START AN AGENT in the checkout everything else runs in a
-      // worktree to protect. Which app APPLIES is a property of the route, not of one client.
-      if (agentCliRunner(target) !== null) {
-        return c.json({ error: 'agent CLIs open a task worktree, not the project folder' }, 400);
-      }
-      if (!detectOpenTargets().some((candidate) => candidate.id === target)) {
-        return c.json({ error: `no such app on this machine: ${target}` }, 400);
-      }
-      const opened = await openApp(target, root);
-      if (!opened) return c.json({ error: `could not open ${target}`, path: root }, 409);
-      // After the allowlist and the open: a closed label set (see the run route above).
-      return c.json({ opened: true as const, path: root });
-    });
-
   // Agent screenshots and user attachments — what the run manager persisted out of tool
   // results and pasted messages (`persistAttachment`). `basename` pins reads inside the
   // run's own dir.
@@ -7748,7 +7718,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', draftRoutes)
     .route('/', layoutRoutes)
     .route('/', groupsRoutes({ pickSchema, stopTaskProcesses, legacyWorktreeMutation }))
-    .route('/', openTargetsRoutes)
+    .route('/', openTargetsRoutes({ capabilities, detectOpenTargets, agentCliRunner, openApp }))
     .route('/', worktreesRoutes)
     .route('/', worktreeLifecycleRoutes({ stopTaskProcesses }))
     .route('/', todosRoutes)
