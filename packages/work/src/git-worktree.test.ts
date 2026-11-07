@@ -11,6 +11,8 @@ import {
   chooseForkBase,
   createWorktree,
   dropOnniDataPaths,
+  localBranchAheadReadOnly,
+  localBranchExists,
   parseGitVersion,
   parseShortstat,
   pruneOrphans,
@@ -104,9 +106,14 @@ describe('parseShortstat', () => {
 describe('worktreeSizeBytes (#483)', () => {
   it('returns a positive byte count for a real directory', async () => {
     const repo = await fixtureRepo('onni-du-');
+    const duAvailable = await run('du', ['-sk', repo]).then(() => true, () => false);
     const size = await worktreeSizeBytes(repo);
-    expect(size).not.toBeNull();
-    expect(size!).toBeGreaterThan(0);
+    if (duAvailable) {
+      expect(size).not.toBeNull();
+      expect(size!).toBeGreaterThan(0);
+    } else {
+      expect(size).toBeNull();
+    }
   });
 
   it('degrades to null for a path that does not exist (du errors)', async () => {
@@ -665,6 +672,23 @@ describe('trialMergeTree', () => {
   it('parses vendor version suffixes and rejects malformed output', () => {
     expect(parseGitVersion('git version 2.56.0.windows.2')).toEqual([2, 56, 0]);
     expect(parseGitVersion('not git')).toBeNull();
+  });
+
+  it('detects a strict local branch descendant without changing refs', async () => {
+    const repo = await fixtureRepo('onni-branch-ahead-');
+    await run('git', ['checkout', '-q', '-b', 'ahead'], { cwd: repo });
+    writeFileSync(join(repo, 'ahead.txt'), 'ahead\n');
+    await run('git', ['add', '-A'], { cwd: repo });
+    await run('git', [...GIT_ID, 'commit', '-q', '-m', 'ahead'], { cwd: repo });
+    await run('git', ['checkout', '-q', 'main'], { cwd: repo });
+    const refsBefore = (await run('git', ['for-each-ref', '--format=%(refname) %(objectname)'], { cwd: repo })).stdout;
+    expect(await localBranchAheadReadOnly(repo, 'main', 'ahead')).toBe(true);
+    expect(await localBranchAheadReadOnly(repo, 'ahead', 'main')).toBe(false);
+    expect(await localBranchAheadReadOnly(repo, 'main', 'main')).toBe(false);
+    expect(await localBranchAheadReadOnly(repo, '--help', 'main')).toBe(false);
+    expect(await localBranchAheadReadOnly(repo, 'main', 'ahead', { signal: AbortSignal.abort() })).toBe(false);
+    expect(await localBranchExists(repo, 'main', { signal: AbortSignal.abort() })).toBe(false);
+    expect((await run('git', ['for-each-ref', '--format=%(refname) %(objectname)'], { cwd: repo })).stdout).toBe(refsBefore);
   });
 
   it('previews real clean/conflicting merges without changing refs, index, or worktree', async () => {

@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -177,7 +177,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       }));
       const child = store.getRun(created.id);
       expect(child?.title).toBe('Take the left flank');
-      expect(child?.dispatch).toEqual({ rootRunId: parent.id, parentRunId: parent.id, budgetUsd: 2.5 });
+      expect(child?.dispatch).toEqual({ rootRunId: parent.id, parentRunId: parent.id, scope: 'src/left/**', budgetUsd: 2.5 });
       expect(child?.autonomous).toBe(true);
       // The child forks off the PARENT's branch, which is what `execute()` reads.
       expect(child?.baseBranch).toBe(store.getRun(parent.id)?.branch);
@@ -858,6 +858,107 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const before = readFileSync(join(gitDir, 'index'));
       await verify(parent.id, { target: worker.id });
       expect(readFileSync(join(gitDir, 'index')).equals(before)).toBe(true);
+    }, 60_000);
+  });
+
+  // ---- conflicts (wave A2) ------------------------------------------------------------------
+
+  describe('conflicts', () => {
+    const ROSTER = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'work' }] });
+    const managerRoot = async (): Promise<RunRecord> => {
+      const record = await parkedRoot();
+      store.updateRun(record.id, { roster: ROSTER });
+      return store.getRun(record.id)!;
+    };
+    const workerTree = async (
+      parent: RunRecord,
+      name: string,
+      files: Record<string, string>,
+      opts: { scope?: string; status?: 'done' | 'running' } = {},
+    ): Promise<RunRecord> => {
+      if (!parent.branch) throw new Error('manager branch is required for the git fixture');
+      const branch = 'onni/conflicts-' + name + '-' + parent.id.slice(0, 6);
+      const worktreePath = join(repoRoot, '.ai', 'onni', 'conflict-worktrees', name);
+      mkdirSync(join(repoRoot, '.ai', 'onni', 'conflict-worktrees'), { recursive: true });
+      await run('git', ['worktree', 'add', '-q', '-b', branch, worktreePath, parent.branch], { cwd: repoRoot });
+      for (const [file, contents] of Object.entries(files)) {
+        const path = join(worktreePath, file);
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, contents);
+      }
+      await run('git', ['add', '-A'], { cwd: worktreePath });
+      await run('git', [...GIT_ID, 'commit', '-q', '-m', 'worker ' + name], { cwd: worktreePath });
+      const worker = store.createRun({ title: name, workflow: 'quick-task', task: 'worker order', steps: [] });
+      store.updateRun(worker.id, {
+        status: opts.status ?? 'done',
+        dispatch: { ...childOf(parent.id), ...(opts.scope ? { scope: opts.scope } : {}) },
+        branch,
+        baseBranch: parent.branch,
+        worktreePath,
+      });
+      return store.getRun(worker.id)!;
+    };
+
+    it('reports worker overlaps and out-of-scope paths, accepts a running worker, and leaves git state untouched', async () => {
+      const parent = await managerRoot();
+      const workerA = await workerTree(parent, 'scope-a', { 'src/b/shared.ts': 'export const side = "a";\n' }, { scope: 'src/a/' });
+      const workerB = await workerTree(parent, 'running-b', { 'src/b/shared.ts': 'export const side = "b";\n' }, { scope: 'the auth module', status: 'running' });
+      const worktrees = [parent.worktreePath!, workerA.worktreePath!, workerB.worktreePath!];
+      const snapshot = async (path: string) => ({
+        index: (await run('git', ['ls-files', '--stage'], { cwd: path })).stdout,
+        status: (await run('git', ['status', '--porcelain'], { cwd: path })).stdout,
+      });
+      const before = await Promise.all(worktrees.map(snapshot));
+      const refsBefore = (await run('git', ['for-each-ref', '--format=%(refname) %(objectname)'], { cwd: repoRoot })).stdout;
+      const notesBefore = notes(parent.id);
+      const supported = await run('git', ['merge-tree', '--write-tree', 'refs/heads/main', 'refs/heads/main'], { cwd: repoRoot }).then(() => true, () => false);
+
+      const outcome = await manager.conflictsFor(parent.id, { target: workerA.id.slice(0, 8) });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.workers.map((worker) => [worker.id, worker.filesState, worker.scopeState])).toContainEqual([workerB.id, 'ok', 'free-text']);
+      expect(outcome.workers.find((worker) => worker.id === workerA.id)).toMatchObject({ scopeState: 'checked', outsideScope: ['src/b/shared.ts'] });
+      expect(outcome.overlaps).toHaveLength(1);
+      expect(new Set([outcome.overlaps[0]!.a, outcome.overlaps[0]!.b])).toEqual(new Set([workerA.id, workerB.id]));
+      expect(outcome.overlaps[0]?.files).toEqual(['src/b/shared.ts']);
+      expect(outcome.trialMerges[0]).toMatchObject({ kind: 'worker-worker', state: supported ? 'conflict' : 'unavailable' });
+      if (supported) expect(outcome.trialMerges[0]?.files).toContain('src/b/shared.ts');
+      expect(notes(parent.id)).toEqual(notesBefore);
+      expect((await run('git', ['for-each-ref', '--format=%(refname) %(objectname)'], { cwd: repoRoot })).stdout).toBe(refsBefore);
+      expect(await Promise.all(worktrees.map(snapshot))).toEqual(before);
+    }, 60_000);
+
+    it('returns explicit unknown values and fences caller and target access', async () => {
+      const parent = await managerRoot();
+      const running = store.createRun({ title: 'running', workflow: 'quick-task', task: 't', steps: [] });
+      store.updateRun(running.id, { status: 'running', dispatch: childOf(parent.id) });
+      const unknownTree = await manager.conflictsFor(parent.id, { target: running.id });
+      if ('denied' in unknownTree) throw new Error(unknownTree.denied);
+      expect(unknownTree.workers[0]).toMatchObject({ id: running.id, filesState: 'unavailable', scopeState: 'none' });
+
+      expect(await manager.conflictsFor(running.id, {})).toMatchObject({ status: 403 });
+      expect(await manager.conflictsFor('no-such-run', {})).toMatchObject({ status: 404 });
+      expect(await manager.conflictsFor(parent.id, { target: 'no-such-run' })).toMatchObject({ status: 404 });
+      expect(await manager.conflictsFor(parent.id, { target: parent.id })).toMatchObject({ status: 409 });
+      const foreign = store.createRun({ title: 'foreign', workflow: 'quick-task', task: 't', steps: [] });
+      store.updateRun(foreign.id, { dispatch: { rootRunId: foreign.id } });
+      expect(await manager.conflictsFor(parent.id, { target: foreign.id })).toMatchObject({ status: 409 });
+      const ambiguousA = store.createRun({ id: 'abcdef1234567890abcdef01', title: 'a', workflow: 'quick-task', task: 't', steps: [] });
+      const ambiguousB = store.createRun({ id: 'abcdef1234567890abcdef02', title: 'b', workflow: 'quick-task', task: 't', steps: [] });
+      store.updateRun(ambiguousA.id, { dispatch: childOf(parent.id) });
+      store.updateRun(ambiguousB.id, { dispatch: childOf(parent.id) });
+      expect(await manager.conflictsFor(parent.id, { target: 'abcdef1234567890abcdef' })).toMatchObject({ status: 409 });
+    }, 60_000);
+
+    it('trials a settled worker branch ahead of the manager when changed paths overlap', async () => {
+      const parent = await managerRoot();
+      const worker = await workerTree(parent, 'into-manager', { 'a.txt': 'worker committed change\n' });
+      const managerFile = join(parent.worktreePath!, 'a.txt');
+      writeFileSync(managerFile, 'export const manager = true;\n');
+      const outcome = await manager.conflictsFor(parent.id);
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      const trial = outcome.trialMerges.find((entry) => entry.kind === 'into-manager' && entry.right === worker.id);
+      expect(trial, JSON.stringify(outcome)).toMatchObject({ kind: 'into-manager', left: parent.id, right: worker.id, state: 'clean' });
+      expect(outcome.workers.find((entry) => entry.id === worker.id)?.headCommit).toBeTruthy();
     }, 60_000);
   });
 

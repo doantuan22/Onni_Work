@@ -1,6 +1,6 @@
 import { completionReason } from './completion-reason.ts';
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, VERIFY_COMMAND_TIMEOUT_MS, VERIFY_MAX_RUNS_PER_WORKER, VERIFY_TOTAL_TIMEOUT_MS, type DispatchVerifyInput, type DispatchVerifyResult, type DispatchVerifyCommandResult, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPart, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, VERIFY_COMMAND_TIMEOUT_MS, VERIFY_MAX_RUNS_PER_WORKER, VERIFY_TOTAL_TIMEOUT_MS, CONFLICTS_FILES_MAX, CONFLICTS_MAX_PAIRS, CONFLICTS_TRIAL_MAX, type DispatchConflicts, type DispatchConflictWorker, type DispatchTrialMerge, type DispatchVerifyInput, type DispatchVerifyResult, type DispatchVerifyCommandResult, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPart, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -84,6 +84,9 @@ import {
   branchFor,
   chooseForkBase,
   commitAll,
+  dropOnniDataPaths,
+  localBranchAheadReadOnly,
+  localBranchExists,
   pushBranch,
   resolveBaseRef,
   syncWithBase,
@@ -94,6 +97,7 @@ import {
   worktreeDiff,
   worktreeHeadShort,
   worktreeShortstat,
+  trialMergeTree,
 } from '../git-worktree.ts';
 import { commentOnIssue, commentOnPr, fetchGithubChecks, updatePr } from '../server/forge/github.ts';
 import { createDraftPr } from '../server/pr.ts';
@@ -109,6 +113,7 @@ import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
 import { orderPeekCandidates, peekTail, quietMinutesOf } from '../dispatch/peek.ts';
+import { capOverlaps, findOverlaps, outsideScope, parseScope, scopeOf } from '../dispatch/conflicts.ts';
 import { appendManagerMemory, clampMemoryToTail, readManagerMemory, sanitizeMemoryEntry, writeManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
 import { requireRootManager, requireSameTree, resolveRunRef, treeRootOf } from '../dispatch/access.ts';
 import { assembleCommandResults, buildVerifyEnv, capWarnings, resolveVerifyCommands, verifyStateOf, verifySummary, type RawCommandRun } from '../dispatch/verify.ts';
@@ -2924,6 +2929,260 @@ export class RunManager {
     return { workers, workersOmitted: omitted };
   }
 
+  /** Read-only advisory overlap report for the root manager (wave A2). */
+  async conflictsFor(
+    callerId: string,
+    query: { target?: string } = {},
+  ): Promise<DispatchConflicts | { denied: string; status: 403 | 404 | 409 }> {
+    const caller = this.store.getRun(callerId);
+    const callerAccess = requireRootManager(caller, 'check this task tree for conflicts');
+    if (!callerAccess.ok) return { denied: callerAccess.denied, status: callerAccess.status };
+    if (!caller) return { denied: 'no such run: ' + callerId, status: 404 };
+
+    const runs = this.store.listRuns();
+    let targetId: string | undefined;
+    if (query.target !== undefined) {
+      const target = resolveRunRef(runs, query.target);
+      if (target === 'none') return { denied: 'no such run: ' + query.target, status: 404 };
+      if (target === 'ambiguous') return { denied: 'ambiguous id "' + query.target + '" — give more characters', status: 409 };
+      const sameTree = requireSameTree(caller, target);
+      if (!sameTree.ok) return { denied: sameTree.denied, status: sameTree.status };
+      if (target.id === caller.id || target.dispatch?.rootRunId !== caller.id) {
+        return { denied: 'conflicts target must be a worker of this task', status: 409 };
+      }
+      targetId = target.id;
+    }
+
+    const members = runs.filter((run) => run.dispatch?.rootRunId === caller.id && run.id !== caller.id);
+    const { chosen, omitted: workersOmitted } = orderPeekCandidates(members, PEEK_MAX_ENTRIES);
+    const startedAt = Date.now();
+    const controller = new AbortController();
+    const totalTimer = setTimeout(() => controller.abort('conflicts-total-timeout'), 20_000);
+    const timeoutForRemaining = (): number => Math.max(1, Math.min(5_000, 20_000 - (Date.now() - startedAt)));
+    const redact = (runId: string, text: string): string =>
+      this.store.redactRunText(runId, text).replace(/\s+/g, ' ').trim().slice(0, 300);
+
+    type WorkerScan = {
+      run: RunRecord;
+      files: string[];
+      worker: DispatchConflictWorker;
+    };
+    const inspectWorker = async (run: RunRecord): Promise<WorkerScan> => {
+      let changed: Awaited<ReturnType<typeof worktreeChangedFilesReadOnly>> = {
+        files: [],
+        omitted: 0,
+        state: 'unavailable',
+      };
+      let headCommit: string | undefined;
+      if (run.worktreePath) {
+        try {
+          [changed, headCommit] = await Promise.all([
+            worktreeChangedFilesReadOnly(run.worktreePath, run.baseBranch ?? 'HEAD', {
+              signal: controller.signal,
+              timeoutMs: timeoutForRemaining(),
+              max: 2_000,
+            }),
+            worktreeHeadShort(run.worktreePath, { signal: controller.signal, timeoutMs: timeoutForRemaining() }),
+          ]);
+        } catch {
+          changed = { files: [], omitted: 0, state: controller.signal.aborted ? 'timeout' : 'unavailable' };
+        }
+      }
+      const files = dropOnniDataPaths(changed.files);
+      const parsedScope = parseScope(scopeOf(run));
+      const outside = changed.state === 'ok' ? outsideScope(files, parsedScope, CONFLICTS_FILES_MAX) : { files: [], omitted: 0 };
+      const worker: DispatchConflictWorker = {
+        id: run.id,
+        title: redact(run.id, run.title),
+        status: run.status,
+        ...(run.branch ? { branch: redact(run.id, run.branch).slice(0, 200) } : {}),
+        ...(headCommit ? { headCommit: headCommit.slice(0, 40) } : {}),
+        filesCount: changed.state === 'ok' ? files.length + changed.omitted : 0,
+        filesTruncated: changed.state === 'ok' && changed.omitted > 0,
+        filesState: changed.state,
+        scopeState: parsedScope.state,
+        outsideScope: outside.files.map((file) => redact(run.id, file)),
+        outsideScopeOmitted: outside.omitted,
+      };
+      return { run, files, worker };
+    };
+
+    try {
+      const managerWorktree = caller.worktreePath;
+      const managerFilesPromise = managerWorktree
+        ? worktreeChangedFilesReadOnly(managerWorktree, caller.baseBranch ?? 'HEAD', {
+            signal: controller.signal,
+            timeoutMs: timeoutForRemaining(),
+            max: 2_000,
+          }).catch(() => ({ files: [], omitted: 0, state: controller.signal.aborted ? 'timeout' as const : 'unavailable' as const }))
+        : Promise.resolve({ files: [], omitted: 0, state: 'unavailable' as const });
+      const managerHeadPromise = managerWorktree
+        ? worktreeHeadShort(managerWorktree, { signal: controller.signal, timeoutMs: timeoutForRemaining() }).catch(() => undefined)
+        : Promise.resolve(undefined);
+      const [scans, managerFilesResult, managerHead] = await Promise.all([
+        Promise.all(chosen.map(inspectWorker)),
+        managerFilesPromise,
+        managerHeadPromise,
+      ]);
+      const managerFiles = managerFilesResult.state === 'ok'
+        ? dropOnniDataPaths(managerFilesResult.files)
+        : [];
+      const sources = scans.map((scan) => ({
+        id: scan.run.id,
+        files: scan.files,
+        filesState: scan.worker.filesState,
+      }));
+      const allOverlaps = findOverlaps(sources, { ...(targetId ? { target: targetId } : {}) });
+      const cappedOverlaps = capOverlaps(allOverlaps, CONFLICTS_MAX_PAIRS, CONFLICTS_FILES_MAX);
+      const overlaps = cappedOverlaps.overlaps.map((overlap) => {
+        const left = scans.find((scan) => scan.run.id === overlap.a);
+        const right = scans.find((scan) => scan.run.id === overlap.b);
+        const names = overlap.files.map((file) => {
+          let safe = left ? redact(left.run.id, file) : file.slice(0, 300);
+          if (right) safe = redact(right.run.id, safe);
+          return safe;
+        });
+        return {
+          a: overlap.a,
+          b: overlap.b,
+          files: names,
+          filesOmitted: overlap.filesOmitted,
+        };
+      });
+
+      const managerCandidateScans = scans.filter((scan) =>
+        isTerminalStatus(scan.run.status) &&
+        scan.run.branch &&
+        caller.branch &&
+        scan.worker.filesState === 'ok' &&
+        managerFilesResult.state === 'ok' &&
+        (!targetId || scan.run.id === targetId) &&
+        findOverlaps([
+          { id: caller.id, files: managerFiles, filesState: 'ok' },
+          { id: scan.run.id, files: scan.files, filesState: scan.worker.filesState },
+        ]).length > 0,
+      );
+      const ahead = await Promise.all(managerCandidateScans.map(async (scan) => {
+        const remaining = 20_000 - (Date.now() - startedAt);
+        if (remaining <= 0 || controller.signal.aborted) return false;
+        return localBranchAheadReadOnly(this.repoRoot, caller.branch!, scan.run.branch!, {
+          signal: controller.signal,
+          timeoutMs: Math.min(3_000, remaining),
+        });
+      }));
+      const intoManager = managerCandidateScans.filter((_scan, index) => ahead[index]);
+      const candidates: Array<{
+        kind: 'worker-worker' | 'into-manager';
+        left: RunRecord;
+        right: RunRecord;
+        leftHead?: string;
+        rightHead?: string;
+      }> = [
+        ...allOverlaps.map((overlap) => ({
+          kind: 'worker-worker' as const,
+          left: scans.find((scan) => scan.run.id === overlap.a)!.run,
+          right: scans.find((scan) => scan.run.id === overlap.b)!.run,
+          leftHead: scans.find((scan) => scan.run.id === overlap.a)?.worker.headCommit,
+          rightHead: scans.find((scan) => scan.run.id === overlap.b)?.worker.headCommit,
+        })),
+        ...intoManager.map((scan) => ({
+          kind: 'into-manager' as const,
+          left: caller,
+          right: scan.run,
+          ...(managerHead ? { leftHead: managerHead } : {}),
+          ...(scan.worker.headCommit ? { rightHead: scan.worker.headCommit } : {}),
+        })),
+      ];
+
+      const trialMerges: DispatchTrialMerge[] = [];
+      let trialState: DispatchConflicts['trialState'] = 'ran';
+      let trialReason: string | undefined;
+      for (const candidate of candidates.slice(0, CONFLICTS_TRIAL_MAX)) {
+        const remaining = 20_000 - (Date.now() - startedAt);
+        if (controller.signal.aborted || remaining <= 0) break;
+        if (!candidate.left.branch || !candidate.right.branch) {
+          trialMerges.push({
+            kind: candidate.kind,
+            left: candidate.left.id,
+            right: candidate.right.id,
+            ...(candidate.leftHead ? { leftHead: candidate.leftHead } : {}),
+            ...(candidate.rightHead ? { rightHead: candidate.rightHead } : {}),
+            state: 'unavailable',
+            files: [],
+            filesOmitted: 0,
+            reason: 'a local branch is unavailable',
+          });
+          continue;
+        }
+        const [leftExists, rightExists] = await Promise.all([
+          localBranchExists(this.repoRoot, candidate.left.branch, {
+            signal: controller.signal,
+            timeoutMs: Math.min(1_000, remaining),
+          }),
+          localBranchExists(this.repoRoot, candidate.right.branch, {
+            signal: controller.signal,
+            timeoutMs: Math.min(1_000, remaining),
+          }),
+        ]);
+        if (!leftExists || !rightExists) {
+          trialMerges.push({
+            kind: candidate.kind,
+            left: candidate.left.id,
+            right: candidate.right.id,
+            ...(candidate.leftHead ? { leftHead: candidate.leftHead } : {}),
+            ...(candidate.rightHead ? { rightHead: candidate.rightHead } : {}),
+            state: 'unavailable',
+            files: [],
+            filesOmitted: 0,
+            reason: 'a local branch is unavailable',
+          });
+          continue;
+        }
+        const preview = await trialMergeTree(this.repoRoot, candidate.left.branch, candidate.right.branch, {
+          signal: controller.signal,
+          timeoutMs: Math.min(10_000, remaining),
+          max: CONFLICTS_FILES_MAX,
+        });
+        const redactTrialFile = (file: string): string =>
+          redact(candidate.kind === 'into-manager' ? candidate.right.id : candidate.left.id,
+            redact(candidate.right.id, file));
+        trialMerges.push({
+          kind: candidate.kind,
+          left: candidate.left.id,
+          right: candidate.right.id,
+          ...(candidate.leftHead ? { leftHead: candidate.leftHead.slice(0, 40) } : {}),
+          ...(candidate.rightHead ? { rightHead: candidate.rightHead.slice(0, 40) } : {}),
+          state: preview.state,
+          files: preview.files.map(redactTrialFile),
+          filesOmitted: preview.omitted,
+          ...(preview.reason ? { reason: redact(candidate.right.id, preview.reason) } : {}),
+        });
+        if (preview.state === 'unavailable' && preview.reason?.includes('needs git 2.38 or newer')) {
+          trialState = 'unavailable';
+          trialReason = redact(candidate.right.id, preview.reason);
+          break;
+        }
+      }
+      if (controller.signal.aborted && trialMerges.length === 0) {
+        trialState = 'unavailable';
+        trialReason = 'conflict analysis exceeded its 20 second budget';
+      }
+      return {
+        workers: scans.map(({ worker }) => worker),
+        workersOmitted,
+        overlaps,
+        overlapsOmitted: cappedOverlaps.omitted,
+        trialMerges,
+        trialMergesSkipped: Math.max(0, candidates.length - trialMerges.length),
+        trialState,
+        ...(trialReason ? { trialReason: trialReason.slice(0, 300) } : {}),
+        checkedAt: new Date().toISOString(),
+      };
+    } finally {
+      clearTimeout(totalTimer);
+    }
+  }
+
   private async peekEntry(
     run: RunRecord,
     opts: { filesMax: number; tailLines?: number; tailMaxChars?: number },
@@ -4114,6 +4373,7 @@ export class RunManager {
         ...(worker && 'ok' in worker ? { workerKey: worker.key } : {}),
         ...(input.kind && input.kind !== 'implement' ? { kind: input.kind } : {}),
         ...(input.review_of?.length ? { reviewOf: input.review_of } : {}),
+        ...(input.scope ? { scope: input.scope } : {}),
         ...(afterIds.length ? { after: afterIds } : {}),
         ...(budget.budgetUsd !== undefined ? { budgetUsd: budget.budgetUsd } : {}),
       },

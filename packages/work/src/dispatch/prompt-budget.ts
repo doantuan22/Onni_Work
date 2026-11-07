@@ -14,7 +14,7 @@ export const MANAGER_PROMPT_BASE_MAX_CHARS = 6_500;
 /** Roster: `ROSTER_MAX_WORKERS` capability lines. */
 export const MANAGER_CAPABILITIES_MAX_CHARS = 1_200;
 /** The command block generated from `dispatch/commands.ts`. */
-export const MANAGER_COMMANDS_MAX_CHARS = 1_800;
+export const MANAGER_COMMANDS_MAX_CHARS = 2_100;
 /** Project memory: the file's own byte cap plus its two header/footer lines. */
 export const MANAGER_MEMORY_PROMPT_MAX_CHARS = MANAGER_MEMORY_MAX_BYTES + 100;
 /** The tree plan's block. */

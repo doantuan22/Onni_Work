@@ -34,6 +34,7 @@ describe('managerPrompt', () => {
     expect(prompt).toContain('onni task create "<objective>" --backend <worker backend> [--model <model>]');
     expect(prompt).not.toContain('--runner');
     expect(prompt).toContain('DISJOINT file scopes');
+    expect(prompt).toContain('onni task conflicts shows whether they actually stayed apart');
     expect(prompt).toContain('ONNI:MONITORING');
     expect(prompt).toContain('Dispatch EVERY independent part first');
     expect(prompt).toContain('do not end the turn with ONNI:DONE while any worker you dispatched has not reported');

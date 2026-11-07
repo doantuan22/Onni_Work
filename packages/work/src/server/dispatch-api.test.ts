@@ -18,12 +18,13 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'verify' | 'memory' | 'ask' | 'plan'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'verify' | 'conflicts' | 'memory' | 'ask' | 'plan'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
   let peek: unknown;
   let verify: unknown = { state: 'passed' };
+  let conflicts: unknown = { workers: [], workersOmitted: 0, overlaps: [], overlapsOmitted: 0, trialMerges: [], trialMergesSkipped: 0, trialState: 'ran', checkedAt: 'now' };
   let plan: unknown;
   let memory = { content: '', bytes: 0, maxBytes: 3072, revision: '0' };
   let memoryWrite: unknown = memory;
@@ -44,6 +45,7 @@ describe('the dispatch routes', () => {
     memoryWrite = memory;
     memoryAdd = memory;
     ask = { requestId: 'q-1' };
+    conflicts = { workers: [], workersOmitted: 0, overlaps: [], overlapsOmitted: 0, trialMerges: [], trialMergesSkipped: 0, trialState: 'ran', checkedAt: 'now' };
     process.env.ONNI_DISPATCH = '1';
     const manager = {
       // The route is thin over `dispatchFromAgent` (it awaits the engine's fork), so the stub is
@@ -65,6 +67,10 @@ describe('the dispatch routes', () => {
         calls.push({ kind: 'verify', runId, body });
         return verify;
       },
+    conflictsFor: async (runId: string, body: unknown) => {
+      calls.push({ kind: 'conflicts', runId, body });
+      return conflicts;
+    },
       readManagerMemory: async () => memory,
       writeManagerMemory: async (body: unknown) => {
         calls.push({ kind: 'memory', runId: 'settings', body });
@@ -285,10 +291,28 @@ describe('the dispatch routes', () => {
     expect(calls).toHaveLength(before);
   });
 
+  it('passes the conflicts query through validated and maps manager denials unchanged', async () => {
+    const res = await apiRequest(app, '/api/v1/runs/root/conflicts?target=abcd1234');
+    expect(res.status).toBe(200);
+    expect(calls[0]).toEqual({ kind: 'conflicts', runId: 'root', body: { target: 'abcd1234' } });
+    expect(await res.json()).toEqual(conflicts);
+
+    calls = [];
+    await apiRequest(app, '/api/v1/runs/root/conflicts');
+    expect(calls).toEqual([{ kind: 'conflicts', runId: 'root', body: {} }]);
+    for (const status of [403, 404, 409]) {
+      conflicts = { denied: 'no', status };
+      expect((await apiRequest(app, '/api/v1/runs/root/conflicts?target=worker')).status).toBe(status);
+    }
+    calls = [];
+    expect((await apiRequest(app, '/api/v1/runs/root/conflicts?target=' + 'x'.repeat(201))).status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     process.env.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/ask']) {
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/conflicts', '/api/v1/runs/p/ask']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r', question: 'q' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);
