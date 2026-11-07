@@ -164,14 +164,19 @@ export function formatConflicts(answer: DispatchConflicts): string {
     const more = overlap.filesOmitted > 0 ? ' (+' + overlap.filesOmitted + ' more)' : '';
     lines.push('overlap (' + count + ' file' + (count === 1 ? '' : 's') + '): ' + overlap.a.slice(0, 8) + ' and ' + overlap.b.slice(0, 8) + ' both changed ' + overlap.files.join(', ') + more);
   }
+  const overlapCheckIncomplete = answer.workersOmitted > 0 || answer.workers.some(
+    (worker) => worker.filesState !== 'ok' || worker.filesTruncated,
+  );
   if (
     answer.overlaps.length === 0 &&
     answer.overlapsOmitted === 0 &&
     answer.workers.length > 0 &&
-    answer.workers.every((worker) => worker.filesState === 'ok')
+    !overlapCheckIncomplete
   ) {
     lines.push('no shared files between workers');
   }
+  if (overlapCheckIncomplete) lines.push('overlap check incomplete');
+  if (answer.overlapsOmitted > 0) lines.push('+' + answer.overlapsOmitted + ' more overlap(s) not shown');
   for (const worker of answer.workers.filter((entry) => entry.scopeState === 'checked' && entry.outsideScope.length > 0)) {
     const more = worker.outsideScopeOmitted > 0 ? ' (+' + worker.outsideScopeOmitted + ' more)' : '';
     lines.push('outside scope: ' + worker.id.slice(0, 8) + ' changed ' + worker.outsideScope.join(', ') + more);

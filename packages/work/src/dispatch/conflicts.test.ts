@@ -148,4 +148,27 @@ describe('formatConflicts', () => {
     expect(text).toContain('files unknown');
     expect(text).not.toContain('no shared files');
   });
+
+  it('marks incomplete scans and reports omitted overlap pairs', () => {
+    const complete = answer({
+      workers: [
+        { id: 'worker-a', title: 'A', status: 'done', filesCount: 0, filesTruncated: false, filesState: 'ok', scopeState: 'none', outsideScope: [], outsideScopeOmitted: 0 },
+        { id: 'worker-b', title: 'B', status: 'done', filesCount: 0, filesTruncated: false, filesState: 'ok', scopeState: 'none', outsideScope: [], outsideScopeOmitted: 0 },
+      ],
+    });
+    expect(formatConflicts(complete)).toContain('no shared files between workers');
+
+    const omittedWorker = formatConflicts(answer({ workers: complete.workers, workersOmitted: 1 }));
+    expect(omittedWorker).toContain('overlap check incomplete');
+    expect(omittedWorker).not.toContain('no shared files between workers');
+
+    const truncatedWorker = formatConflicts(answer({
+      workers: [{ ...complete.workers[0]!, filesTruncated: true }],
+    }));
+    expect(truncatedWorker).toContain('overlap check incomplete');
+    expect(truncatedWorker).not.toContain('no shared files between workers');
+
+    const cappedPairs = formatConflicts(answer({ overlapsOmitted: 3 }));
+    expect(cappedPairs).toContain('+3 more overlap(s) not shown');
+  });
 });

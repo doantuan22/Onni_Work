@@ -45,6 +45,25 @@ describe('resolveVerifyCommands', () => {
     const bad = await resolveVerifyCommands({ repoRoot: repo, only: ['rm -rf /'] });
     expect(bad).toEqual({ error: 'unknown check "rm -rf /"; available: a, b, c' });
   });
+
+  it('redacts and bounds an unknown selector and its available checks', async () => {
+    const secret = 'VERIFY_SELECTOR_SECRET';
+    config(Array.from({ length: 10 }, (_, index) => `check-${index} ${secret} ${'x'.repeat(140)}`));
+    const bad = await resolveVerifyCommands({
+      repoRoot: repo,
+      only: [`${secret} ${'y'.repeat(150)}`],
+      redact: (text) => text.replaceAll(secret, '[redacted]'),
+    });
+    if (!('error' in bad)) throw new Error('expected an unknown check refusal');
+    expect(bad.error).not.toContain(secret);
+    const selector = bad.error.match(/^unknown check "([^"]+)"/)?.[1];
+    const available = bad.error.split('; available: ')[1]!;
+    expect(selector?.length).toBeLessThanOrEqual(120);
+    expect(available.length).toBeLessThanOrEqual(1_000);
+    expect(available).not.toContain(secret);
+    expect(available.split(', ').every((entry) => entry === '+N more' || entry.length <= 120)).toBe(true);
+    expect(available).toMatch(/\+\d+ more$/);
+  });
 });
 
 describe('buildVerifyEnv', () => {

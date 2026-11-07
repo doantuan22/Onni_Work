@@ -693,6 +693,17 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
         expect(await verify(parent.id, { target: shared.padEnd(6, shared) })).toMatchObject({ status: expect.any(Number) });
       }
       expect(await verify(parent.id, { target: worker.id, only: ['rm -rf /'] })).toMatchObject({ status: 400 });
+      const secret = 'verify-selector-secret-1234';
+      store.registerRunSecrets(worker.id, [secret]);
+      writeChecks(Array.from({ length: 10 }, (_, index) => `check-${index} ${secret} ${'x'.repeat(140)}`));
+      const longSelector = await verify(parent.id, { target: worker.id, only: [`${secret} ${'y'.repeat(150)}`] });
+      expect(longSelector).toMatchObject({ status: 400 });
+      const refusal = (longSelector as { denied: string }).denied;
+      expect(refusal).not.toContain(secret);
+      expect(refusal.match(/^unknown check "([^"]+)"/)?.[1]?.length).toBeLessThanOrEqual(120);
+      const available = refusal.split('; available: ')[1]!;
+      expect(available.length).toBeLessThanOrEqual(1_000);
+      expect(available).not.toContain(secret);
       expect(calls).toEqual([]);
     }, 60_000);
 

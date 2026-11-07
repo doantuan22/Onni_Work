@@ -3294,6 +3294,7 @@ export class RunManager {
         repoRoot: this.repoRoot,
         ...(caller.worktreePath ? { managerWorktree: caller.worktreePath } : {}),
         ...(input.only ? { only: input.only } : {}),
+        redact: (text) => this.store.redactRunText(target.id, text),
       });
       if ('error' in resolved) return { denied: resolved.error, status: 400 };
       return await this.runVerify(caller, target, resolved, controller, input.baseline === true);

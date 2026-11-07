@@ -22,6 +22,31 @@ export interface ResolvedChecks {
   commands: string[];
 }
 
+const REFUSAL_ENTRY_MAX_CHARS = 120;
+const REFUSAL_LIST_MAX_CHARS = 1_000;
+
+function refusalEntry(text: string, redact: (text: string) => string): string {
+  const clean = redact(text).replace(/\s+/g, ' ').trim();
+  return clean.length > REFUSAL_ENTRY_MAX_CHARS
+    ? clean.slice(0, REFUSAL_ENTRY_MAX_CHARS - 1) + '…'
+    : clean;
+}
+
+function formatAvailableChecks(commands: readonly string[], redact: (text: string) => string): string {
+  const entries = commands.map((command) => refusalEntry(command, redact));
+  const included: string[] = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const candidate = [...included, entries[index]!].join(', ');
+    const omitted = entries.length - index - 1;
+    const suffix = omitted > 0 ? ', +' + omitted + ' more' : '';
+    if (candidate.length + suffix.length > REFUSAL_LIST_MAX_CHARS) break;
+    included.push(entries[index]!);
+  }
+  const omitted = entries.length - included.length;
+  const rendered = included.join(', ') + (omitted > 0 ? (included.length > 0 ? ', ' : '') + '+' + omitted + ' more' : '');
+  return rendered.slice(0, REFUSAL_LIST_MAX_CHARS);
+}
+
 /**
  * The commands verify may run, resolved on the SERVER. The project's `requiredChecks` come from the
  * checkout's config (never a worker's tracked copy); otherwise discovery runs on the MANAGER's
@@ -31,6 +56,7 @@ export async function resolveVerifyCommands(input: {
   repoRoot: string;
   managerWorktree?: string;
   only?: readonly string[];
+  redact?: (text: string) => string;
 }): Promise<ResolvedChecks | { error: string }> {
   let required: string[] = [];
   try {
@@ -53,8 +79,11 @@ export async function resolveVerifyCommands(input: {
     const wanted = new Set(input.only.map((line) => line.trim()));
     const unknown = [...wanted].filter((line) => !commands.includes(line));
     if (unknown.length > 0) {
+      const redact = input.redact ?? ((text: string) => text);
+      const selector = refusalEntry(unknown[0]!, redact);
+      const available = commands.length > 0 ? formatAvailableChecks(commands, redact) : '(none)';
       return {
-        error: `unknown check "${unknown[0]}"; available: ${commands.length ? commands.join(', ') : '(none)'}`,
+        error: `unknown check "${selector}"; available: ${available}`,
       };
     }
     commands = commands.filter((line) => wanted.has(line));
