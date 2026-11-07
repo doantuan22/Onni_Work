@@ -608,15 +608,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
     const useVerifyDeps = (deps: Deps): void => {
       current = deps;
     };
-    /** Roots park on the dry-run mock; verify itself must see a real (non-dry) environment. */
-    const verify = async (...args: Parameters<RunManager['verifyFor']>) => {
-      process.env.ONNI_DRY_RUN = '';
-      try {
-        return await manager.verifyFor(...args);
-      } finally {
-        process.env.ONNI_DRY_RUN = '1';
-      }
-    };
+    /** Roots park on the dry-run mock; verify injects a non-dry environment without changing process.env. */
+    const verify = (...args: Parameters<RunManager['verifyFor']>) => manager.verifyFor(...args);
     const writeChecks = (checks: string[]) => {
       mkdirSync(join(repoRoot, '.ai/onni'), { recursive: true });
       writeFileSync(join(repoRoot, '.ai/onni/config.json'), JSON.stringify({ requiredChecks: checks }));
@@ -644,6 +637,7 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
           runCommand: (o) => (current.runCommand ?? fakeRunner)(o),
           resolveBash: () => (current.resolveBash ?? FAKE_BASH)(),
           now: () => (current.now ?? Date.now)(),
+          env: () => current.env?.() ?? { ...process.env, ONNI_DRY_RUN: '' },
         },
       });
     });
@@ -767,7 +761,8 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       writeChecks(['npm test']);
       const parent = await managerRoot();
       const worker = settledWorker(parent.id);
-      expect(await manager.verifyFor(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'dry-run' });
+      useVerifyDeps({ env: () => ({ ONNI_DRY_RUN: '1' }) });
+      expect(await verify(parent.id, { target: worker.id })).toMatchObject({ state: 'unavailable', reasonCode: 'dry-run' });
       useVerifyDeps({ runCommand: fakeRunner, resolveBash: () => null });
       const noBash = await verify(parent.id, { target: worker.id });
       expect(noBash).toMatchObject({ state: 'unavailable', reasonCode: 'no-bash' });
@@ -850,6 +845,107 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       const before = readFileSync(join(gitDir, 'index'));
       await verify(parent.id, { target: worker.id });
       expect(readFileSync(join(gitDir, 'index')).equals(before)).toBe(true);
+    }, 60_000);
+
+    it('re-runs only failed checks on the base, sharing the same injected env and classifying pre-existing failures', async () => {
+      writeChecks(['npm test', 'npm run build']);
+      exitByCommand['npm test'] = 1;
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      const runEnvs: NodeJS.ProcessEnv[] = [];
+      const runCwds: string[] = [];
+      useVerifyDeps({
+        resolveBash: FAKE_BASH,
+        runCommand: async (opts) => {
+          runEnvs.push(opts.env);
+          runCwds.push(opts.cwd);
+          const failed = opts.command === 'npm test';
+          return { ...okRun, exitCode: failed ? 1 : 0, output: failed ? 'FAIL src/auth.test.ts:17 rejects a token' : '' };
+        },
+      });
+
+      const outcome = await verify(parent.id, { target: worker.id, baseline: true });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.baseline).toMatchObject({
+        method: 'heuristic', state: 'compared', verdict: 'no-new-failures',
+        newCount: 0, preExistingCount: 1, inconclusiveCount: 0, cleanup: 'removed',
+      });
+      expect(outcome.baseline?.verdict).toBeDefined();
+      expect(runCwds.filter((cwd) => cwd !== repoRoot)).toHaveLength(1);
+      expect(runEnvs[0]).toBe(runEnvs[1]);
+      expect(readdirSync(join(repoRoot, '.ai/onni/tmp/verify-baseline'))).toHaveLength(0);
+    }, 60_000);
+
+    it('classifies a worker-only failure as new and removes the linked node_modules before cleanup', async () => {
+      writeChecks(['npm test']);
+      const workerModules = join(repoRoot, 'node_modules');
+      mkdirSync(workerModules, { recursive: true });
+      writeFileSync(join(workerModules, 'preserve.txt'), 'keep');
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      const baselineModuleSeen: boolean[] = [];
+      useVerifyDeps({
+        resolveBash: FAKE_BASH,
+        runCommand: async (opts) => {
+          if (opts.cwd !== repoRoot) baselineModuleSeen.push(existsSync(join(opts.cwd, 'node_modules', 'preserve.txt')));
+          return opts.cwd === repoRoot
+            ? { ...okRun, exitCode: 1, output: 'FAIL src/new.test.ts:4 worker regression' }
+            : { ...okRun, exitCode: 0, output: '' };
+        },
+      });
+
+      const outcome = await verify(parent.id, { target: worker.id, baseline: true });
+      if ('denied' in outcome) throw new Error(outcome.denied);
+      expect(outcome.baseline).toMatchObject({ state: 'compared', verdict: 'new-failures', newCount: 1, cleanup: 'removed' });
+      expect(outcome.baseline?.results[0]).toMatchObject({ classification: 'new-failure', workerExitCode: 1, baselineExitCode: 0 });
+      expect(baselineModuleSeen).toEqual([true]);
+      expect(outcome.warnings).toContain("baseline shares the worker's node_modules");
+      expect(readFileSync(join(workerModules, 'preserve.txt'), 'utf8')).toBe('keep');
+      expect(readdirSync(join(repoRoot, '.ai/onni/tmp/verify-baseline'))).toHaveLength(0);
+    }, 60_000);
+
+    it('cleans the baseline worktree when a baseline runner throws or times out', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      useVerifyDeps({
+        resolveBash: FAKE_BASH,
+        runCommand: async (opts) => {
+          if (opts.cwd !== repoRoot) throw new Error('injected baseline runner failure');
+          return { ...okRun, exitCode: 1, output: 'FAIL test worker failure' };
+        },
+      });
+      const failed = await verify(parent.id, { target: worker.id, baseline: true });
+      if ('denied' in failed) throw new Error(failed.denied);
+      expect(failed.baseline).toMatchObject({ state: 'unavailable', cleanup: 'removed' });
+      expect(readdirSync(join(repoRoot, '.ai/onni/tmp/verify-baseline'))).toHaveLength(0);
+
+      useVerifyDeps({
+        resolveBash: FAKE_BASH,
+        runCommand: async (opts) => opts.cwd === repoRoot
+          ? { ...okRun, exitCode: 1, output: 'FAIL test worker failure' }
+          : { ...okRun, exitCode: null, timedOut: true, output: '' },
+      });
+      const timedOut = await verify(parent.id, { target: worker.id, baseline: true });
+      if ('denied' in timedOut) throw new Error(timedOut.denied);
+      expect(timedOut.baseline).toMatchObject({ state: 'compared', verdict: 'inconclusive', inconclusiveCount: 1, cleanup: 'removed' });
+      expect(readdirSync(join(repoRoot, '.ai/onni/tmp/verify-baseline'))).toHaveLength(0);
+    }, 60_000);
+
+    it('does not create a baseline tree when no worker check failed and preserves the worker result when no base is reliable', async () => {
+      writeChecks(['npm test']);
+      const parent = await managerRoot();
+      const worker = settledWorker(parent.id);
+      const passing = await verify(parent.id, { target: worker.id, baseline: true });
+      if ('denied' in passing) throw new Error(passing.denied);
+      expect(passing).toMatchObject({ state: 'passed', baseline: { state: 'compared', verdict: 'no-new-failures', results: [], cleanup: 'removed' } });
+      expect(existsSync(join(repoRoot, '.ai/onni/tmp/verify-baseline'))).toBe(false);
+
+      exitByCommand['npm test'] = 1;
+      const noBaseWorker = settledWorker(parent.id, { baseBranch: '--invalid-ref' });
+      const noBase = await verify(parent.id, { target: noBaseWorker.id, baseline: true });
+      if ('denied' in noBase) throw new Error(noBase.denied);
+      expect(noBase).toMatchObject({ state: 'failed', baseline: { state: 'unavailable', reason: 'no reliable diff base for this worker' } });
     }, 60_000);
   });
 

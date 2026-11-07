@@ -89,6 +89,7 @@ export const VERIFY_TAIL_MAX_LINES = 40;
 export const VERIFY_TAIL_MAX_CHARS_PER_LINE = 200;
 export const VERIFY_TAIL_TOTAL_MAX_CHARS = 8_000;
 export const VERIFY_WARNINGS_MAX = 5;
+export const VERIFY_BASELINE_VERDICTS = ['no-new-failures', 'new-failures', 'inconclusive'] as const;
 
 /**
  * What is left of a tree's ceilings, JSON-safe (plan v2 §6.2). `null` means "no ceiling on this
@@ -157,6 +158,7 @@ export const dispatchVerifyInputSchema = z
   .object({
     target: z.string().trim().min(1).max(200),
     only: z.array(z.string().trim().min(1).max(2_000)).max(VERIFY_MAX_COMMANDS).optional(),
+    baseline: z.boolean().optional(),
   })
   .strict();
 export type DispatchVerifyInput = z.input<typeof dispatchVerifyInputSchema>;
@@ -172,6 +174,27 @@ export const dispatchVerifyCommandResultSchema = z.object({
 });
 export type DispatchVerifyCommandResult = z.infer<typeof dispatchVerifyCommandResultSchema>;
 
+export const dispatchVerifyBaselineSchema = z.object({
+  method: z.literal('heuristic'),
+  state: z.enum(['compared', 'unavailable']),
+  reason: z.string().max(300).optional(),
+  baseRef: z.string().max(40).optional(),
+  verdict: z.enum(VERIFY_BASELINE_VERDICTS).optional(),
+  results: z.array(z.object({
+    command: z.string().max(300),
+    classification: z.enum(['new-failure', 'new-signatures', 'pre-existing', 'inconclusive']),
+    workerExitCode: z.number().int().nullable(),
+    baselineExitCode: z.number().int().nullable(),
+    newSignatures: z.array(z.string().max(200)).max(10),
+    newSignaturesOmitted: z.number().int().nonnegative(),
+  })).max(VERIFY_MAX_COMMANDS),
+  newCount: z.number().int().nonnegative(),
+  preExistingCount: z.number().int().nonnegative(),
+  inconclusiveCount: z.number().int().nonnegative(),
+  cleanup: z.enum(['removed', 'left-behind']),
+});
+export type DispatchVerifyBaseline = z.infer<typeof dispatchVerifyBaselineSchema>;
+
 export const dispatchVerifyResultSchema = z.object({
   state: z.enum(VERIFY_STATES),
   reasonCode: z.enum(VERIFY_UNAVAILABLE_CODES).optional(),
@@ -181,6 +204,7 @@ export const dispatchVerifyResultSchema = z.object({
   startedAt: z.string(),
   durationMs: z.number().int().nonnegative(),
   results: z.array(dispatchVerifyCommandResultSchema).max(VERIFY_MAX_COMMANDS),
+  baseline: dispatchVerifyBaselineSchema.optional(),
   runsUsed: z.number().int().nonnegative(),
   runsMax: z.number().int().positive(),
   warnings: z.array(z.string().max(300)).max(VERIFY_WARNINGS_MAX),

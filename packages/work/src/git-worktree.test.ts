@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -17,6 +17,7 @@ import {
   removeDetachedWorktree,
   resolveBaseRef,
   resolveReadOnlyDiffBase,
+  sweepVerifyBaselines,
   trialMergeTree,
   uniqueBranchName,
   withBaselineWorktree,
@@ -798,6 +799,32 @@ describe('withBaselineWorktree', () => {
     expect(result.cleanup).toBe('removed');
     expect(existsSync(result.worktreePath)).toBe(false);
     if (linked) expect(readFileSync(join(workerDependencies, 'preserve.txt'), 'utf8')).toBe('keep\n');
+  });
+
+  it('sweeps only baseline temp worktrees older than one hour', async () => {
+    const repo = await fixtureRepo('onni-baseline-sweep-');
+    const baseSha = (await run('git', ['rev-parse', 'HEAD'], { cwd: repo })).stdout.trim();
+    const oldPath = join(repo, '.ai', 'onni', 'tmp', 'verify-baseline', 'old-baseline');
+    const freshPath = join(repo, '.ai', 'onni', 'tmp', 'verify-baseline', 'fresh-baseline');
+    expect((await addDetachedWorktree(repo, oldPath, baseSha)).available).toBe(true);
+    expect((await addDetachedWorktree(repo, freshPath, baseSha)).available).toBe(true);
+    const now = Date.now();
+    const old = new Date(now - 2 * 60 * 60 * 1_000);
+    utimesSync(oldPath, old, old);
+
+    await pruneOrphans(repo, new Set());
+    expect(existsSync(oldPath)).toBe(true);
+
+    const taskTree = join(repo, '.ai', 'onni', 'worktrees', 'keep-task-tree');
+    mkdirSync(taskTree, { recursive: true });
+    writeFileSync(join(taskTree, 'preserve.txt'), 'keep');
+    utimesSync(taskTree, old, old);
+
+    const swept = await sweepVerifyBaselines(repo, { now });
+    expect(swept).toEqual({ removed: [oldPath], leftBehind: [] });
+    expect(existsSync(oldPath)).toBe(false);
+    expect(existsSync(freshPath)).toBe(true);
+    expect(readFileSync(join(taskTree, 'preserve.txt'), 'utf8')).toBe('keep');
   });
 });
 

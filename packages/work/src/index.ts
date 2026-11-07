@@ -16,7 +16,7 @@ import {
 } from './core/provider-auth.ts';
 import { applyProviderEnablement } from './core/provider-availability.ts';
 import { ensureDataGitignore } from './data-gitignore.ts';
-import { pruneOrphans } from './git-worktree.ts';
+import { pruneOrphans, sweepVerifyBaselines } from './git-worktree.ts';
 import { getRepoInfo } from './server/git.ts';
 import { DEFAULT_WORKTREE_RETENTION, loadConfig, resolveWorktreeRetention } from './config.ts';
 import { reclaimWorktrees } from './runs/retention.ts';
@@ -318,6 +318,13 @@ async function serveCommand(
 
   // Startup reconcile (spec 006): sweep worktrees whose run no longer exists.
   if (repo) {
+    const baselineSweep = await sweepVerifyBaselines(repoRoot).catch(() => ({ removed: [], leftBehind: [] }));
+    if (baselineSweep.removed.length > 0) {
+      console.log(`  cleaned ${baselineSweep.removed.length} stale verify baseline worktree(s)`);
+    }
+    if (baselineSweep.leftBehind.length > 0) {
+      console.warn(`  could not safely remove ${baselineSweep.leftBehind.length} stale verify baseline worktree(s)`);
+    }
     const orphans = await pruneOrphans(repoRoot, new Set(store.listRuns().map((r) => r.id)), id => manager.lifecycle.allowOrphanPrune(id)).catch(
       () => [] as string[],
     );

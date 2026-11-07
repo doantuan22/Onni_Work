@@ -9,11 +9,13 @@ import {
   VERIFY_TAIL_MAX_LINES,
   VERIFY_TAIL_TOTAL_MAX_CHARS,
   VERIFY_WARNINGS_MAX,
+  type DispatchVerifyBaseline,
   type DispatchVerifyCommandResult,
   type DispatchVerifyResult,
 } from '@onni/contract';
 import { loadConfig } from '../config.ts';
 import { discoverVerifyCommands } from '../core/verify-commands.ts';
+import { VERIFY_BASELINE_DISCLAIMER } from './baseline.ts';
 
 export interface ResolvedChecks {
   source: 'required-checks' | 'discovered' | 'none';
@@ -199,6 +201,30 @@ export function formatVerify(result: DispatchVerifyResult, targetId8: string): s
       if (entry.tailTruncated) lines.push('    | … truncated');
     }
   }
+  if (result.baseline) lines.push(...formatBaseline(result.baseline));
   for (const warning of result.warnings) lines.push(`! ${warning}`);
   return lines.join('\n');
+}
+
+function formatBaseline(baseline: DispatchVerifyBaseline): string[] {
+  const lines = [`baseline (HEURISTIC${baseline.baseRef ? `, at ${baseline.baseRef}` : ''}):`, `  ${VERIFY_BASELINE_DISCLAIMER}`];
+  if (baseline.state === 'unavailable') {
+    lines.push(`  UNAVAILABLE — ${baseline.reason ?? 'the baseline could not be checked'}`);
+  } else {
+    for (const entry of baseline.results) {
+      if (entry.classification === 'new-failure' || entry.classification === 'new-signatures') {
+        if (entry.newSignatures.length > 0) {
+          for (const signature of entry.newSignatures) lines.push(`  NEW ${entry.command}: ${signature}${entry.newSignaturesOmitted ? ' …' : ''}`);
+        } else {
+          lines.push(`  NEW ${entry.command}: worker exit ${entry.workerExitCode ?? '?'}; baseline exit ${entry.baselineExitCode ?? '?'}`);
+        }
+      } else if (entry.classification === 'inconclusive') {
+        lines.push(`  INCONCLUSIVE ${entry.command}: worker exit ${entry.workerExitCode ?? '?'}; baseline exit ${entry.baselineExitCode ?? '?'}`);
+      }
+    }
+    if (baseline.preExistingCount > 0) lines.push(`  ${baseline.preExistingCount} pre-existing failure(s) excluded`);
+    lines.push(`  verdict: ${baseline.verdict ?? 'inconclusive'}`);
+  }
+  lines.push(`  cleanup: ${baseline.cleanup}`);
+  return lines;
 }
