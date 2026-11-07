@@ -3318,7 +3318,10 @@ export class RunManager {
         ? 'ordered-queue'
         : 'steer';
     const prior = target.dispatch.managerDeliveries ?? [];
-    const outstanding = prior.filter((delivery) => delivery.state === 'queued' || delivery.state === 'delivered').length;
+    const canReceiveCorrelatedReceipts = typeof live?.session?.sendMessageWithReceipt === 'function';
+    const outstanding = prior.filter((delivery) =>
+      delivery.state === 'queued' || (canReceiveCorrelatedReceipts && delivery.state === 'delivered'),
+    ).length;
     if (capability !== 'unsupported' && outstanding >= MANAGER_DELIVERIES_MAX_OUTSTANDING) {
       return { denied: `worker already has ${outstanding} outstanding manager deliveries (cap ${MANAGER_DELIVERIES_MAX_OUTSTANDING})`, status: 409 };
     }

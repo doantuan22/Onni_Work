@@ -61,6 +61,40 @@ describe('manager message and cancellation controls', () => {
     expect(saved.dispatch?.managerDeliveries?.[0]).not.toHaveProperty('text');
   });
 
+  it('counts delivered messages only while correlated receipts can still arrive', () => {
+    const liveWorker = (runner: 'claude' | 'codex', receiptAware: boolean) => {
+      const worker = queuedWorker(runner);
+      const seam = manager as unknown as {
+        queue: string[];
+        pendingJobs: Map<string, unknown>;
+        active: Map<string, unknown>;
+      };
+      seam.queue = seam.queue.filter((id) => id !== worker.id);
+      seam.pendingJobs.delete(worker.id);
+      store.updateRun(worker.id, { status: 'running' });
+      const session = {
+        open: true,
+        sendMessage: vi.fn(() => true),
+        ...(receiptAware ? { sendMessageWithReceipt: vi.fn((_content: unknown, _onReceipt: unknown) => true) } : {}),
+      };
+      seam.active.set(worker.id, { cancelled: false, session, monitoringWakeups: 0 });
+      return worker;
+    };
+
+    const claudeWorker = liveWorker('claude', false);
+    const claudeResults = Array.from({ length: 6 }, (_, index) =>
+      manager.messageFor(managerRunId, { target: claudeWorker.id, text: `message ${index + 1}` }),
+    );
+    expect(claudeResults.every((result) => 'state' in result && result.state === 'delivered')).toBe(true);
+
+    const codexWorker = liveWorker('codex', true);
+    const codexResults = Array.from({ length: 5 }, (_, index) =>
+      manager.messageFor(managerRunId, { target: codexWorker.id, text: `message ${index + 1}` }),
+    );
+    expect(codexResults.every((result) => 'state' in result && result.state === 'delivered')).toBe(true);
+    expect(manager.messageFor(managerRunId, { target: codexWorker.id, text: 'sixth message' })).toMatchObject({ status: 409 });
+  });
+
   it.each([
     ['claude', 'steer'], ['codex', 'steer'], ['opencode', 'steer'], ['pi', 'steer'],
     ['junie', 'ordered-queue'], ['cline', 'ordered-queue'], ['copilot', 'ordered-queue'],
