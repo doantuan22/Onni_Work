@@ -304,6 +304,7 @@ import { ensureLaunchKey } from './launch-key.ts';
 import { launchKeyRoutes } from './routes/launch-key.ts';
 import { skillsRoutes } from './routes/skills.ts';
 import { uiStateRoutes } from './routes/ui-state.ts';
+import { secretsRoutes } from './routes/secrets.ts';
 import { openInTerminal } from './open-in-terminal.ts';
 import {
   agentCliRunner,
@@ -6589,26 +6590,6 @@ export function createApp(deps: ServerDeps) {
     }
     return removed ? null : { status: 404 as const, error: 'no secret with that name' };
   };
-  const secretsRoutes = new Hono<ProjectApiEnv>()
-    .get('/secrets', async (c) => {
-      const project = c.get('project');
-      return c.json(await secretsList({ kind: 'project', projectId: project.id, root: project.root }), 200);
-    })
-    .put('/secrets/:name', paramZodValidator(secretParamsSchema), jsonZodValidator(secretValueInputSchema), async (c) => {
-      const project = c.get('project');
-      if (project.id === 'default') return c.json(unregisteredSecrets, 409);
-      const failed = await putSecret({ kind: 'project', projectId: project.id, root: project.root }, c.req.valid('param').name, c.req.valid('json'));
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    })
-    .delete('/secrets/:name', paramZodValidator(secretParamsSchema), async (c) => {
-      const project = c.get('project');
-      if (project.id === 'default') return c.json(unregisteredSecrets, 409);
-      const failed = await deleteSecret({ kind: 'project', projectId: project.id, root: project.root }, c.req.valid('param').name);
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    });
-
   // ---- chained family: one-click e2e setup ----------------------------------
   // Spec 2026-10-10-e2e-one-click-setup. `GET /e2e` says what the project has; `POST /e2e/setup`
   // stores the model key (when given) as a `checks` secret and starts the setup as an ordinary
@@ -7812,7 +7793,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', sseRoutes)
     .route('/', githubRoutes)
     .route('/', trackerRoutes)
-    .route('/', secretsRoutes)
+    .route('/', secretsRoutes({ secretsList, putSecret, deleteSecret, unregisteredSecrets }))
     .route('/', e2eRoutes)
     .route('/', repoRoutes)
     .route('/', configRoutes)
