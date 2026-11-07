@@ -1,0 +1,8 @@
+{"at":"2026-11-03T12:00:00.000Z","type":"dispatch","runId":"eeee0001-5555-4555-8555-555555555555","parentRunId":"root0000-0000-4000-8000-000000000000","kind":"implement","title":"Update config behavior"}
+{"at":"2026-11-03T12:01:00.000Z","type":"dispatch","runId":"ffff0002-6666-4666-8666-666666666666","parentRunId":"root0000-0000-4000-8000-000000000000","kind":"implement","title":"Update config documentation"}
+{"at":"2026-11-03T12:08:00.000Z","type":"settle","runId":"eeee0001-5555-4555-8555-555555555555","parentRunId":"root0000-0000-4000-8000-000000000000","status":"done","reportStatus":"done"}
+{"at":"2026-11-03T12:09:00.000Z","type":"verify","runId":"root0000-0000-4000-8000-000000000000","targetRunId":"eeee0001-5555-4555-8555-555555555555","state":"passed"}
+{"at":"2026-11-03T12:10:00.000Z","type":"merge","runId":"root0000-0000-4000-8000-000000000000","into":"task","source":"onni/eeee0001","outcome":"merged"}
+{"at":"2026-11-03T12:11:00.000Z","type":"settle","runId":"ffff0002-6666-4666-8666-666666666666","parentRunId":"root0000-0000-4000-8000-000000000000","status":"done","reportStatus":"done"}
+{"at":"2026-11-03T12:12:00.000Z","type":"verify","runId":"root0000-0000-4000-8000-000000000000","targetRunId":"ffff0002-6666-4666-8666-666666666666","state":"passed"}
+{"at":"2026-11-03T12:14:00.000Z","type":"merge","runId":"root0000-0000-4000-8000-000000000000","into":"task","source":"onni/ffff0002","outcome":"merged"}

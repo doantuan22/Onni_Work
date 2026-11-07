@@ -1,0 +1,9 @@
+{
+  "parts": [
+    { "id": "api", "title": "Add API helper", "status": "done", "worker": "codex:gpt-5", "runId": "aaaa0001-1111-4111-8111-111111111111" },
+    { "id": "test", "title": "Add API tests", "status": "done", "worker": "claude:sonnet", "runId": "bbbb0002-2222-4222-8222-222222222222" },
+    { "id": "review", "title": "Review API helper", "status": "done", "worker": "claude:sonnet", "runId": "cccc0003-3333-4333-8333-333333333333", "after": ["api"] }
+  ],
+  "updatedAt": "2026-11-01T10:24:00.000Z",
+  "revision": "fixture"
+}

@@ -1,0 +1,8 @@
+{
+  "parts": [
+    { "id": "config", "title": "Update config behavior", "status": "done", "worker": "codex:gpt-5", "runId": "eeee0001-5555-4555-8555-555555555555" },
+    { "id": "docs", "title": "Update config documentation", "status": "done", "worker": "claude:sonnet", "runId": "ffff0002-6666-4666-8666-666666666666" }
+  ],
+  "updatedAt": "2026-11-03T12:14:00.000Z",
+  "revision": "fixture"
+}

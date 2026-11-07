@@ -1,0 +1,7 @@
+{
+  "parts": [
+    { "id": "cache", "title": "Implement cache adapter", "status": "done", "worker": "claude:sonnet", "runId": "dddd0002-4444-4444-8444-444444444444" }
+  ],
+  "updatedAt": "2026-11-02T11:14:00.000Z",
+  "revision": "fixture"
+}
