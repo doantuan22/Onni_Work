@@ -3335,7 +3335,10 @@ export class RunManager {
         ? 'ordered-queue'
         : 'steer';
     const prior = target.dispatch.managerDeliveries ?? [];
-    const outstanding = prior.filter((delivery) => delivery.state === 'queued' || delivery.state === 'delivered').length;
+    const canReceiveCorrelatedReceipts = typeof live?.session?.sendMessageWithReceipt === 'function';
+    const outstanding = prior.filter((delivery) =>
+      delivery.state === 'queued' || (canReceiveCorrelatedReceipts && delivery.state === 'delivered'),
+    ).length;
     if (capability !== 'unsupported' && outstanding >= MANAGER_DELIVERIES_MAX_OUTSTANDING) {
       return { denied: `worker already has ${outstanding} outstanding manager deliveries (cap ${MANAGER_DELIVERIES_MAX_OUTSTANDING})`, status: 409 };
     }
@@ -3511,7 +3514,16 @@ export class RunManager {
     // Exercise the same admission gates before the cancellation becomes irreversible. Dispatch
     // repeats them after cancellation, when in-flight and budget accounting reflect the new state.
     const preflight = this.dispatch(caller.id, redirectInput, { redirectOrigin, preflightOnly: true });
-    if ('refused' in preflight) return { denied: preflight.refused, status: 409 };
+    if ('refused' in preflight) {
+      const refusal = this.store.redactRunText(target.id, preflight.refused).replace(/\s+/g, ' ').trim()
+        .slice(0, MANAGER_CANCEL_REASON_MAX_CHARS) || 'replacement admission refused';
+      this.store.appendEvent(caller.id, {
+        type: 'note',
+        stepId: this.active.get(caller.id)?.currentStepId,
+        message: `redirect preflight refused — ${refusal}`.slice(0, MANAGER_CANCEL_REASON_MAX_CHARS),
+      });
+      return { denied: refusal, status: 409 };
+    }
 
     const requestedAt = new Date().toISOString();
     const operationId = randomUUID();
@@ -3545,9 +3557,11 @@ export class RunManager {
 
     const cancelled = await this.cancelRedirectSource(target.id);
     if (!cancelled) {
-      const refusal = `worker ${target.id.slice(0, 8)} could not be cancelled`;
-      this.failRedirectOperation(target.id, refusal);
-      return { denied: refusal, status: 409 };
+      const refusal = this.isActive(target.id)
+        ? 'source did not stop within 10 s'
+        : `worker ${target.id.slice(0, 8)} could not be cancelled`;
+      const safe = this.failRedirectOperation(target.id, refusal);
+      return { denied: safe, status: 409 };
     }
     this.updateDispatch(target.id, (dispatch) => ({
       ...dispatch,
@@ -3596,7 +3610,7 @@ export class RunManager {
     // shared cancel path so its lifecycle hooks, report and delivery expiry still run.
     if (!wasActive && !this.starting.has(runId) && !this.queue.includes(runId)) this.queue.push(runId);
     if (!this.cancel(runId)) return this.store.getRun(runId)?.status === 'cancelled';
-    if (wasActive || this.starting.has(runId)) await this.waitInactive(runId, 10_000);
+    if ((wasActive || this.starting.has(runId)) && !await this.waitInactive(runId, 10_000)) return false;
     return this.store.getRun(runId)?.status === 'cancelled';
   }
 
