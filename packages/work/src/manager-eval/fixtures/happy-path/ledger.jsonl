@@ -1,0 +1,12 @@
+{"at":"2026-11-01T10:00:00.000Z","type":"dispatch","runId":"aaaa0001-1111-4111-8111-111111111111","parentRunId":"root0000-0000-4000-8000-000000000000","kind":"implement","title":"Add API helper"}
+{"at":"2026-11-01T10:01:00.000Z","type":"dispatch","runId":"bbbb0002-2222-4222-8222-222222222222","parentRunId":"root0000-0000-4000-8000-000000000000","kind":"test","title":"Add API tests"}
+{"at":"2026-11-01T10:08:00.000Z","type":"settle","runId":"bbbb0002-2222-4222-8222-222222222222","parentRunId":"root0000-0000-4000-8000-000000000000","status":"done","reportStatus":"done"}
+{"at":"2026-11-01T10:09:00.000Z","type":"verify","runId":"root0000-0000-4000-8000-000000000000","targetRunId":"bbbb0002-2222-4222-8222-222222222222","state":"passed"}
+{"at":"2026-11-01T10:10:00.000Z","type":"settle","runId":"aaaa0001-1111-4111-8111-111111111111","parentRunId":"root0000-0000-4000-8000-000000000000","status":"done","reportStatus":"done"}
+{"at":"2026-11-01T10:11:00.000Z","type":"verify","runId":"root0000-0000-4000-8000-000000000000","targetRunId":"aaaa0001-1111-4111-8111-111111111111","state":"passed"}
+{"at":"2026-11-01T10:12:00.000Z","type":"merge","runId":"root0000-0000-4000-8000-000000000000","into":"task","source":"onni/aaaa0001","outcome":"merged"}
+{"at":"2026-11-01T10:13:00.000Z","type":"merge","runId":"root0000-0000-4000-8000-000000000000","into":"task","source":"onni/bbbb0002","outcome":"merged"}
+{"at":"2026-11-01T10:14:00.000Z","type":"dispatch","runId":"cccc0003-3333-4333-8333-333333333333","parentRunId":"root0000-0000-4000-8000-000000000000","kind":"review","title":"Review API helper"}
+{"at":"2026-11-01T10:20:00.000Z","type":"settle","runId":"cccc0003-3333-4333-8333-333333333333","parentRunId":"root0000-0000-4000-8000-000000000000","status":"done","reportStatus":"done"}
+{"at":"2026-11-01T10:21:00.000Z","type":"verify","runId":"root0000-0000-4000-8000-000000000000","targetRunId":"cccc0003-3333-4333-8333-333333333333","state":"passed"}
+{"at":"2026-11-01T10:23:00.000Z","type":"merge","runId":"root0000-0000-4000-8000-000000000000","into":"task","source":"onni/cccc0003","outcome":"merged"}

@@ -1,0 +1,6 @@
+{"at":"2026-11-02T11:00:00.000Z","type":"dispatch","runId":"dddd0001-3333-4333-8333-333333333333","parentRunId":"root0000-0000-4000-8000-000000000000","kind":"implement","title":"Implement cache adapter"}
+{"at":"2026-11-02T11:04:00.000Z","type":"settle","runId":"dddd0001-3333-4333-8333-333333333333","parentRunId":"root0000-0000-4000-8000-000000000000","status":"failed","reportStatus":"failed"}
+{"at":"2026-11-02T11:06:00.000Z","type":"dispatch","runId":"dddd0002-4444-4444-8444-444444444444","parentRunId":"root0000-0000-4000-8000-000000000000","kind":"implement","title":"Implement cache adapter","workerKey":"claude:sonnet"}
+{"at":"2026-11-02T11:12:00.000Z","type":"settle","runId":"dddd0002-4444-4444-8444-444444444444","parentRunId":"root0000-0000-4000-8000-000000000000","status":"done","reportStatus":"done"}
+{"at":"2026-11-02T11:13:00.000Z","type":"verify","runId":"root0000-0000-4000-8000-000000000000","targetRunId":"dddd0002-4444-4444-8444-444444444444","state":"passed"}
+{"at":"2026-11-02T11:14:00.000Z","type":"merge","runId":"root0000-0000-4000-8000-000000000000","into":"task","source":"onni/dddd0002","outcome":"merged"}
