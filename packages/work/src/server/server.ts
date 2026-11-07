@@ -66,6 +66,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { jsonZodValidator, multipartZodValidator, paramZodValidator, queryZodValidator } from './validators.ts';
+import { createModelsRoutes } from './routes/models.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -99,7 +100,6 @@ import {
   MAX_ATTACHMENTS_TOTAL_BASE64,
   stagedUploadSchema,
   uploadIdParamSchema,
-  modelDiscoveryRunnerSchema,
   openProjectInSchema,
   updateProjectInputSchema,
 } from '@onni/contract';
@@ -2075,15 +2075,7 @@ export function createApp(deps: ServerDeps) {
   // cold, which is exactly the state every reader already handles.
   if (deps.socketHub) void warmAgentKnowledge();
 
-  // ---- chained family: host model catalog (workspace-level) ----
-  const modelsRoutes = new Hono<ProjectApiEnv>()
-    // `modelDiscoveryRunnerSchema` is the contract's own list of the runners with an
-    // authoritative host-local catalog (#794, #784), so the client compiles against exactly what
-    // this validates. A runner absent from it has no discovery path and this 400s.
-    .get('/models', queryZodValidator(z.object({ runner: z.union([z.string(), z.array(z.string()).transform((v) => v[0] as string)]).pipe(modelDiscoveryRunnerSchema) }), { message: 'runner must be claude, codex, opencode, cursor, pi, junie, or antigravity' }), async (c) => {
-      const query = { data: c.req.valid('query') };
-      return c.json(await modelCatalog.get(query.data.runner));
-    });
+  const modelsRoutes = createModelsRoutes({ modelCatalog });
 
   /**
    * Resolve `profileId` (absent = the discovered default) into a concrete account for `provider`.
