@@ -1,8 +1,10 @@
 import { mkdtempSync, rmSync } from 'node:fs';
+import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PassThrough } from 'node:stream';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { resolveBash } from '../core/bash-path.ts';
 import { buildVerifyEnv } from './verify.ts';
 import { runVerifyCommand } from './verify-exec.ts';
@@ -37,6 +39,55 @@ describe('runVerifyCommand', () => {
     expect(held.timedOut).toBe(true);
     expect(Date.now() - t0).toBeLessThan(10_000);
   }, 30_000);
+
+  it('attempts a process-group sweep when the shell leader already exited', async () => {
+    let exitCode: number | null = null;
+    const child = Object.assign(new EventEmitter(), {
+      pid: 12345,
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      signalCode: null,
+      killed: false,
+      kill: vi.fn(),
+      get exitCode() { return exitCode; },
+    });
+    const spawn = vi.fn(() => child as never);
+    const killProcessTree = vi.fn();
+    const pending = runVerifyCommand({
+      bashPath: 'bash', pathDirs: [], command: 'sleep 30 &', cwd,
+      env: buildVerifyEnv(process.env), timeoutMs: 30,
+    }, { spawn: spawn as never, killProcessTree, platform: 'linux' });
+    setTimeout(() => { exitCode = 0; }, 5);
+
+    expect(await pending).toMatchObject({ timedOut: true, exitCode: null });
+    expect(killProcessTree).toHaveBeenCalledWith(child, true, true);
+  }, 10_000);
+
+  it('keeps the Windows shell alive to own ordinary background jobs', async () => {
+    const child = Object.assign(new EventEmitter(), {
+      pid: 12346,
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      exitCode: null,
+      signalCode: null,
+      killed: false,
+      kill: vi.fn(),
+    });
+    let spawnedArgs: string[] = [];
+    const spawn = vi.fn((_file: string, args: string[]) => {
+      spawnedArgs = args;
+      return child as never;
+    });
+    const pending = runVerifyCommand({
+      bashPath: 'bash', pathDirs: [], command: 'check &', cwd,
+      env: buildVerifyEnv(process.env), timeoutMs: 1_000,
+    }, { spawn: spawn as never, platform: 'win32' });
+    expect(spawnedArgs[1]).toContain('wait; exit "$__onni_verify_exit"');
+    child.emit('close', 0);
+    await expect(pending).resolves.toMatchObject({ exitCode: 0, timedOut: false });
+  }, 10_000);
 
   it('bounds captured output', async () => {
     if (!bash) return;

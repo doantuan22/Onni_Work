@@ -28,6 +28,8 @@ export interface VerifyExecResult {
 export interface VerifyExecDeps {
   spawn: typeof spawn;
   now: () => number;
+  killProcessTree: typeof killProcessTree;
+  platform: NodeJS.Platform;
 }
 
 function utf8Tail(bytes: Buffer, maxBytes: number): Buffer {
@@ -58,6 +60,8 @@ export function runVerifyCommand(
 ): Promise<VerifyExecResult> {
   const spawnFn = deps.spawn ?? spawn;
   const now = deps.now ?? Date.now;
+  const killTree = deps.killProcessTree ?? killProcessTree;
+  const platform = deps.platform ?? process.platform;
   const cap = Math.max(0, opts.captureBytes ?? VERIFY_CAPTURE_BYTES);
   const startedAt = now();
   return new Promise((resolve) => {
@@ -82,11 +86,15 @@ export function runVerifyCommand(
     };
     let child: ChildProcessWithoutNullStreams;
     try {
-      child = spawnFn(opts.bashPath, ['-lc', opts.command], {
+      // Keep bash alive for ordinary jobs so taskkill /T can see them; commands that exit the shell or disown/reparent children remain a gap.
+      const shellCommand = platform === 'win32'
+        ? `${opts.command}\n__onni_verify_exit=$?; wait; exit "$__onni_verify_exit"`
+        : opts.command;
+      child = spawnFn(opts.bashPath, ['-lc', shellCommand], {
         cwd: opts.cwd,
         env: withBashPath(opts.env, { path: opts.bashPath, pathDirs: opts.pathDirs }),
         // A group of its own on POSIX so the deadline can sweep what the check started.
-        detached: process.platform !== 'win32',
+        detached: platform !== 'win32',
         // stdin closed: a check must never wait on input. No console window on Windows.
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
@@ -114,7 +122,8 @@ export function runVerifyCommand(
     // Kill the whole tree and answer NOW; destroying the pipes keeps a grandchild that holds
     // stdout from stretching the bound (the bug `runShellCheck` documents).
     const stop = () => {
-      killProcessTree(child, true);
+      // POSIX can still signal the detached group after its shell leader exits.
+      killTree(child, true, true);
       child.stdout?.destroy();
       child.stderr?.destroy();
       finish(null);
