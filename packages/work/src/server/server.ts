@@ -69,6 +69,7 @@ import { jsonZodValidator, multipartZodValidator, paramZodValidator, queryZodVal
 import { createModelsRoutes } from './routes/models.ts';
 import { createFsBrowseRoutes } from './routes/fs-browse.ts';
 import { createWorkspaceSecretsRoutes } from './routes/workspace-secrets.ts';
+import { createPreviewRoutes } from './routes/preview.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -80,7 +81,6 @@ import {
   type PickVariantResponse,
   type RunIndexEntry,
   type RunsIndexResponse,
-  designProxyRequestSchema,
   type WorkspaceConfigResponse,
   workspaceBrandingLogoResponseSchema,
   githubListQuerySchema,
@@ -3345,15 +3345,7 @@ export function createApp(deps: ServerDeps) {
   // this server can never be mirrored.
   const designProxies = deps.designProxies ?? new DesignProxies();
   deps.onDispose?.(() => designProxies.closeAll());
-  const previewRoutes = new Hono().post('/preview/design-proxy', jsonZodValidator(designProxyRequestSchema), async (c) => {
-    if (!capabilities().designMode) {
-      return c.json({ error: 'Design Mode is not available on this cockpit' }, 409);
-    }
-    const host = c.req.header('host');
-    const opened = await designProxies.open({ ...c.req.valid('json'), forbidden: host ? [`http://${host}`] : [] });
-    if (!opened.ok) return c.json({ error: opened.reason }, 400);
-    return c.json({ origin: opened.origin });
-  });
+  const previewRoutes = createPreviewRoutes({ capabilities, designProxies });
 
   // ---- GUI clone (multi-project spec, step 4.3) ----------------------------
   // "Add project → Clone from GitHub": clone into the checkout root, then
