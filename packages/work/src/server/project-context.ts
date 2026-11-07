@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { AutomationStore } from '../automations/store.ts';
 import { reconcileAutomationReceipts } from '../automations/task-template.ts';
 import { DEFAULT_WORKTREE_RETENTION, resolveWorktreeRetention } from '../config.ts';
-import { pruneOrphans } from '../git-worktree.ts';
+import { pruneOrphans, sweepVerifyBaselines } from '../git-worktree.ts';
 import { armRepoHandle } from '../runs/arm-repo-handle.ts';
 import { reclaimWorktrees } from '../runs/retention.ts';
 import { RunStore } from '../runs/store.ts';
@@ -267,6 +267,7 @@ export class ProjectContexts {
       // best-effort sweeps serveCommand runs for the boot project, gated on the
       // root actually being a git repo.
       if (await getRepoInfo(project.root)) {
+        await sweepVerifyBaselines(project.root).catch(() => ({ removed: [], leftBehind: [] }));
         await pruneOrphans(project.root, new Set(store.listRuns().map((r) => r.id)), id => manager.lifecycle.allowOrphanPrune(id)).catch(
           () => [] as string[],
         );

@@ -294,7 +294,7 @@ export async function runTaskCommand(
         const { values, positionals } = parseArgs({
           args: rest,
           allowPositionals: true,
-          options: { only: { type: 'string', multiple: true } },
+          options: { only: { type: 'string', multiple: true }, baseline: { type: 'boolean' } },
         });
         if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can verify a worker');
         const target = positionals[0];
@@ -302,10 +302,18 @@ export async function runTaskCommand(
         const result = (await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/verify`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ target, ...(values.only?.length ? { only: values.only } : {}) }),
+          body: JSON.stringify({
+            target,
+            ...(values.only?.length ? { only: values.only } : {}),
+            ...(values.baseline ? { baseline: true } : {}),
+          }),
           signal: AbortSignal.timeout(VERIFY_TOTAL_TIMEOUT_MS + 30_000),
         }, 'verify refused —')) as DispatchVerifyResult;
         io.log(formatVerify(result, target.slice(0, 8)));
+        if (result.baseline) {
+          if (result.baseline.state === 'unavailable') return 4;
+          return result.baseline.verdict === 'no-new-failures' ? 0 : result.baseline.verdict === 'new-failures' ? 3 : 4;
+        }
         return result.state === 'passed' ? 0 : result.state === 'failed' ? 3 : 4;
       }
       case 'conflicts': {

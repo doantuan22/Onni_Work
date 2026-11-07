@@ -7,7 +7,7 @@ import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-
 import { TrackerAgentBindingError } from '../server/tracker/agent-credentials.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { mkdir, realpath, access } from 'node:fs/promises';
+import { mkdir, realpath, access, lstat as lstatPath, stat as statPath, symlink as symlinkPath } from 'node:fs/promises';
 import { assertOnniHomeWriteIsSandboxed, onniHomeDir } from '../paths.ts';
 import { basename, dirname, join, resolve as resolvePath } from 'node:path';
 import {
@@ -88,9 +88,12 @@ import {
   localBranchAheadReadOnly,
   localBranchExists,
   pushBranch,
+  removeDetachedWorktree,
   resolveBaseRef,
   syncWithBase,
   uniqueBranchName,
+  resolveReadOnlyDiffBase,
+  withBaselineWorktree,
   worktreeChangedFiles,
   worktreeChangedFilesReadOnly,
   worktreeChangedPaths,
@@ -108,7 +111,7 @@ import type { QueuedMessage, RunRecord, RunStore, StepState } from '../runs/stor
 // Task dispatch (spec 2026-09-10-dispatch). Every import below is inert unless the feature is
 // ON *and* the run carries a `dispatch`: `dispatchOf()` is the single gate, and a run without one
 // takes byte-for-byte the path it took before this feature existed.
-import type { DispatchBudget, DispatchInput, DispatchIntent, DispatchReport, RunDispatch } from '@onni/contract';
+import type { DispatchBudget, DispatchInput, DispatchIntent, DispatchReport, DispatchVerifyBaseline, RunDispatch } from '@onni/contract';
 import { resolveCapabilities } from '../server/capabilities.ts';
 import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
@@ -117,7 +120,9 @@ import { capOverlaps, findOverlaps, outsideScope, parseScope, scopeOf } from '..
 import { appendManagerMemory, clampMemoryToTail, readManagerMemory, sanitizeMemoryEntry, writeManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
 import { requireRootManager, requireSameTree, resolveRunRef, treeRootOf } from '../dispatch/access.ts';
 import { assembleCommandResults, buildVerifyEnv, capWarnings, resolveVerifyCommands, verifyStateOf, verifySummary, type RawCommandRun } from '../dispatch/verify.ts';
+import { baselineVerdict, classifyBaselineFailure, VERIFY_BASELINE_METHOD } from '../dispatch/baseline.ts';
 import { runVerifyCommand } from '../dispatch/verify-exec.ts';
+import { diskFloorRefusal } from '../disk-space.ts';
 import {
   appendLedger,
   appendReportSection,
@@ -1309,7 +1314,16 @@ export class RunManager {
   private readonly active = new Map<string, ActiveRun>();
   /** One `onni task verify` per tree (checks share ports and caches); aborted by cancel/dispose. */
   private readonly verifying = new Map<string, AbortController>();
-  private readonly verifyDeps: { runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number; env: NodeJS.ProcessEnv };
+  /** Temp baseline worktrees a link prevented `withBaselineWorktree` from safely removing. */
+  private readonly baselineTrees = new Set<string>();
+  private disposed = false;
+  private readonly verifyDeps: {
+    runCommand: typeof runVerifyCommand;
+    resolveBash: typeof resolveBash;
+    now: () => number;
+    env: () => NodeJS.ProcessEnv;
+    baselineTimeoutMs: number;
+  };
   /** Check ownership survives a parked continuation without persisting transient state. */
   private readonly checkArtifactSnapshots = new Map<string, Map<string, string>>();
   /** A failed checkpoint remains unsafe when a parked run is continued. */
@@ -1455,15 +1469,22 @@ export class RunManager {
       /** How long a fork waits for the namer's branch (spec 2026-10-11-branch-naming-instructions).
        *  Tests shorten it; the default is the slow-model budget. */
       branchNameWaitMs?: number;
-      /** Test seam for `onni task verify`: the command runner, the bash lookup and the clock. */
-      verifyDeps?: Partial<{ runCommand: typeof runVerifyCommand; resolveBash: typeof resolveBash; now: () => number; env: NodeJS.ProcessEnv }>;
+      /** Test seam for `onni task verify`: runner, bash, clock, environment and baseline deadline. */
+      verifyDeps?: Partial<{
+        runCommand: typeof runVerifyCommand;
+        resolveBash: typeof resolveBash;
+        now: () => number;
+        env: () => NodeJS.ProcessEnv;
+        baselineTimeoutMs: number;
+      }>;
     } = {},
   ) {
     this.verifyDeps = {
       runCommand: options.verifyDeps?.runCommand ?? runVerifyCommand,
       resolveBash: options.verifyDeps?.resolveBash ?? resolveBash,
       now: options.verifyDeps?.now ?? Date.now,
-      env: options.verifyDeps?.env ?? process.env,
+      env: options.verifyDeps?.env ?? (() => process.env),
+      baselineTimeoutMs: options.verifyDeps?.baselineTimeoutMs ?? VERIFY_TOTAL_TIMEOUT_MS / 2,
     };
     this.dataDir = join(repoRoot, '.ai/onni');
     this.branchNameWaitMs = options.branchNameWaitMs ?? BRANCH_NAME_WAIT_MS;
@@ -1527,7 +1548,9 @@ export class RunManager {
    * dispose only guarantees the manager makes no further moves on its own.
    */
   dispose(): void {
+    this.disposed = true;
     for (const controller of this.verifying.values()) controller.abort();
+    for (const path of this.baselineTrees) this.retryBaselineCleanup(path);
     ++this.queueReasonRevision;
     this.store.off('run', this.onRunHoldInputs);
     this.store.off('deleted', this.onRunDeletedHolds);
@@ -3273,7 +3296,7 @@ export class RunManager {
         ...(input.only ? { only: input.only } : {}),
       });
       if ('error' in resolved) return { denied: resolved.error, status: 400 };
-      return await this.runVerify(caller, target, resolved, controller);
+      return await this.runVerify(caller, target, resolved, controller, input.baseline === true);
     } finally {
       clearTimeout(totalTimer);
       this.verifying.delete(caller.id);
@@ -3285,6 +3308,7 @@ export class RunManager {
     target: RunRecord,
     resolved: { source: 'required-checks' | 'discovered' | 'none'; commands: string[] },
     controller: AbortController,
+    compareBaseline: boolean,
   ): Promise<DispatchVerifyResult> {
     const startedAt = new Date(this.verifyDeps.now()).toISOString();
     const t0 = this.verifyDeps.now();
@@ -3307,7 +3331,7 @@ export class RunManager {
       return result;
     };
 
-    if (this.verifyDeps.env.ONNI_DRY_RUN === '1') return unavailable('dry-run', 'ONNI_DRY_RUN=1 — no check is executed');
+    if (this.verifyDeps.env().ONNI_DRY_RUN === '1') return unavailable('dry-run', 'ONNI_DRY_RUN=1 — no check is executed');
     const worktree = target.worktreePath;
     if (!worktree || !existsSync(worktree)) {
       return unavailable('no-worktree', "the worker's worktree is gone — it was reclaimed; nothing to run in");
@@ -3315,7 +3339,7 @@ export class RunManager {
     if (resolved.commands.length === 0) {
       return unavailable('no-commands', 'no required checks are configured and none could be discovered: expected package.json scripts test/build/lint/typecheck/check or a Cargo.toml');
     }
-    const bash = this.verifyDeps.resolveBash({ env: this.verifyDeps.env });
+    const bash = this.verifyDeps.resolveBash({ env: this.verifyDeps.env() });
     if (!bash) return unavailable('no-bash', BASH_MISSING_MESSAGE);
 
     const warnings: string[] = [];
@@ -3327,12 +3351,13 @@ export class RunManager {
       warnings.push('this worker changed package.json or Cargo.toml — verify runs its scripts, so a green result is only as honest as that change');
     }
 
-    const env = buildVerifyEnv(this.verifyDeps.env);
+    const env = buildVerifyEnv(this.verifyDeps.env());
     const raws: RawCommandRun[] = [];
     let counted = false;
     let firstAttempt = true;
+    const workerDeadline = t0 + (compareBaseline ? VERIFY_TOTAL_TIMEOUT_MS / 2 : VERIFY_TOTAL_TIMEOUT_MS);
     for (const command of resolved.commands) {
-      const remaining = VERIFY_TOTAL_TIMEOUT_MS - (this.verifyDeps.now() - t0);
+      const remaining = workerDeadline - this.verifyDeps.now();
       if (controller.signal.aborted || remaining <= 0) {
         raws.push({ command, outcome: 'skipped', exitCode: null, durationMs: 0, timedOut: false, output: '' });
         continue;
@@ -3376,6 +3401,9 @@ export class RunManager {
       const outcome: RawCommandRun['outcome'] = run.timedOut ? 'timed-out' : run.aborted ? 'skipped' : run.exitCode === 0 ? 'passed' : 'failed';
       raws.push({ command, outcome, exitCode: run.exitCode, durationMs: run.durationMs, timedOut: run.timedOut, output: run.output });
     }
+    const baseline = compareBaseline
+      ? await this.runVerifyBaseline(target, raws.filter((raw) => raw.outcome === 'failed' || raw.outcome === 'timed-out'), env, bash, controller, t0, warnings, redact)
+      : undefined;
     const results = assembleCommandResults(raws, redact);
     const result: DispatchVerifyResult = {
       state: verifyStateOf(results),
@@ -3384,6 +3412,7 @@ export class RunManager {
       startedAt,
       durationMs: Math.max(0, this.verifyDeps.now() - t0),
       results,
+      ...(baseline ? { baseline } : {}),
       runsUsed: used + (counted ? 1 : 0),
       runsMax: VERIFY_MAX_RUNS_PER_WORKER,
       warnings: capWarnings(warnings.map(redact)),
@@ -3406,6 +3435,191 @@ export class RunManager {
     }
     this.recordVerify(caller, target, result);
     return result;
+  }
+
+  /** Re-run only failed worker checks at its read-only fork point; every path exits through link-first cleanup. */
+  private async runVerifyBaseline(
+    target: RunRecord,
+    failedCommands: RawCommandRun[],
+    env: NodeJS.ProcessEnv,
+    bash: { path: string; pathDirs: string[] },
+    controller: AbortController,
+    startedAt: number,
+    warnings: string[],
+    redact: (text: string) => string,
+  ): Promise<DispatchVerifyBaseline> {
+    const empty = (cleanup: DispatchVerifyBaseline['cleanup'] = 'removed'): DispatchVerifyBaseline => ({
+      method: VERIFY_BASELINE_METHOD,
+      state: 'compared',
+      verdict: 'no-new-failures',
+      results: [],
+      newCount: 0,
+      preExistingCount: 0,
+      inconclusiveCount: 0,
+      cleanup,
+    });
+    if (failedCommands.length === 0) return empty();
+
+    const worktree = target.worktreePath!;
+    const baseRemaining = Math.max(1, startedAt + VERIFY_TOTAL_TIMEOUT_MS - this.verifyDeps.now());
+    const baseSha = await resolveReadOnlyDiffBase(worktree, target.baseBranch ?? 'HEAD', {
+      ...(target.branch ? { taskBranch: target.branch } : {}),
+      ...(target.startedAt ? { runStartedAt: target.startedAt } : {}),
+      signal: controller.signal,
+      timeoutMs: Math.min(3_000, baseRemaining),
+    });
+    if (!baseSha || !/^[0-9a-f]{40,64}$/i.test(baseSha)) {
+      return {
+        method: VERIFY_BASELINE_METHOD,
+        state: 'unavailable',
+        reason: 'no reliable diff base for this worker',
+        results: [],
+        newCount: 0,
+        preExistingCount: 0,
+        inconclusiveCount: 0,
+        cleanup: 'removed',
+      };
+    }
+    const diskRefusal = diskFloorRefusal('verify baseline', this.repoRoot);
+    if (diskRefusal) {
+      return {
+        method: VERIFY_BASELINE_METHOD,
+        state: 'unavailable',
+        reason: redact(`low disk: ${diskRefusal}`).slice(0, 300),
+        baseRef: baseSha.slice(0, 12),
+        results: [],
+        newCount: 0,
+        preExistingCount: 0,
+        inconclusiveCount: 0,
+        cleanup: 'removed',
+      };
+    }
+
+    const baselineRuns = new Map<string, { exitCode: number | null; timedOut: boolean; aborted: boolean; spawnError?: string; output: string }>();
+    let nodeModulesLinked = false;
+    const remaining = Math.max(1, startedAt + VERIFY_TOTAL_TIMEOUT_MS - this.verifyDeps.now());
+    const baselineController = new AbortController();
+    const forwardAbort = () => baselineController.abort();
+    controller.signal.addEventListener('abort', forwardAbort, { once: true });
+    const deadlineTimer = setTimeout(forwardAbort, remaining);
+    const temp = await withBaselineWorktree(
+      this.repoRoot,
+      target.id,
+      baseSha,
+      async (baselinePath, signal) => {
+        const workerModules = join(worktree, 'node_modules');
+        const baselineModules = join(baselinePath, 'node_modules');
+        try {
+          if ((await statPath(workerModules)).isDirectory()) {
+            try {
+              await lstatPath(baselineModules);
+            } catch (error) {
+              if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+              await symlinkPath(workerModules, baselineModules, process.platform === 'win32' ? 'junction' : 'dir');
+              nodeModulesLinked = true;
+              warnings.push("baseline shares the worker's node_modules");
+            }
+          }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            warnings.push('could not link the worker node_modules into the baseline worktree');
+          }
+        }
+
+        const deadline = startedAt + VERIFY_TOTAL_TIMEOUT_MS;
+        for (const workerRun of failedCommands) {
+          const commandRemaining = deadline - this.verifyDeps.now();
+          if (signal.aborted || controller.signal.aborted || commandRemaining <= 0) {
+            baselineRuns.set(workerRun.command, { exitCode: null, timedOut: true, aborted: signal.aborted || controller.signal.aborted, output: '' });
+            continue;
+          }
+          const run = await this.verifyDeps.runCommand({
+            bashPath: bash.path,
+            pathDirs: bash.pathDirs,
+            command: workerRun.command,
+            cwd: baselinePath,
+            env,
+            timeoutMs: Math.min(VERIFY_COMMAND_TIMEOUT_MS, commandRemaining),
+            signal,
+          });
+          baselineRuns.set(workerRun.command, {
+            exitCode: run.exitCode,
+            timedOut: run.timedOut,
+            aborted: run.aborted,
+            ...(run.spawnError ? { spawnError: run.spawnError } : {}),
+            output: run.output,
+          });
+        }
+      },
+      { signal: baselineController.signal, timeoutMs: Math.min(this.verifyDeps.baselineTimeoutMs, remaining) },
+    ).finally(() => {
+      clearTimeout(deadlineTimer);
+      controller.signal.removeEventListener('abort', forwardAbort);
+    });
+
+    if (temp.cleanup === 'left-behind') {
+      this.baselineTrees.add(temp.worktreePath);
+      warnings.push(`baseline cleanup left a temp worktree at ${temp.worktreePath}`);
+      if (this.disposed) this.retryBaselineCleanup(temp.worktreePath);
+    } else {
+      this.baselineTrees.delete(temp.worktreePath);
+    }
+    if (temp.state === 'unavailable' || temp.state === 'failed') {
+      return {
+        method: VERIFY_BASELINE_METHOD,
+        state: 'unavailable',
+        reason: redact(temp.reason ?? 'baseline worktree could not be used').slice(0, 300),
+        baseRef: baseSha.slice(0, 12),
+        results: [],
+        newCount: 0,
+        preExistingCount: 0,
+        inconclusiveCount: 0,
+        cleanup: temp.cleanup,
+      };
+    }
+
+    const results = failedCommands.map((workerRun) => {
+      const baselineRun = baselineRuns.get(workerRun.command) ?? {
+        exitCode: null,
+        timedOut: temp.state === 'timeout',
+        aborted: temp.state === 'timeout',
+        output: '',
+      };
+      const classified = classifyBaselineFailure(
+        { exitCode: workerRun.exitCode, timedOut: workerRun.timedOut, output: workerRun.output },
+        baselineRun,
+        { workerPath: worktree, baselinePath: temp.worktreePath, nodeModulesLinked },
+      );
+      return {
+        command: redact(workerRun.command).slice(0, 300),
+        classification: classified.classification,
+        workerExitCode: workerRun.exitCode,
+        baselineExitCode: baselineRun.exitCode,
+        newSignatures: classified.newSignatures.map((signature) => redact(signature).slice(0, 200)),
+        newSignaturesOmitted: classified.newSignaturesOmitted,
+      };
+    });
+    if (temp.state === 'timeout') warnings.push('baseline comparison timed out; unfinished commands are inconclusive');
+    const newCount = results.filter(({ classification }) => classification === 'new-failure' || classification === 'new-signatures').length;
+    const preExistingCount = results.filter(({ classification }) => classification === 'pre-existing').length;
+    const inconclusiveCount = results.filter(({ classification }) => classification === 'inconclusive').length;
+    return {
+      method: VERIFY_BASELINE_METHOD,
+      state: 'compared',
+      baseRef: baseSha.slice(0, 12),
+      verdict: baselineVerdict(results),
+      results,
+      newCount,
+      preExistingCount,
+      inconclusiveCount,
+      cleanup: temp.cleanup,
+    };
+  }
+
+  private retryBaselineCleanup(path: string): void {
+    void removeDetachedWorktree(this.repoRoot, path).then((result) => {
+      if (result.cleanup === 'removed') this.baselineTrees.delete(path);
+    }).catch(() => undefined);
   }
 
   /** Ledger line (numbers only), a note on the manager and on the worker, and the report-file section. */

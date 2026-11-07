@@ -277,9 +277,9 @@ describe('the dispatch routes', () => {
 
   it('passes the verify body through validated and maps the manager’s denial status unchanged', async () => {
     verify = { state: 'passed' };
-    const ok = await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'abcd1234', only: ['npm test'] }));
+    const ok = await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'abcd1234', only: ['npm test'], baseline: true }));
     expect(ok.status).toBe(200);
-    expect(calls[0]).toEqual({ kind: 'verify', runId: 'root', body: { target: 'abcd1234', only: ['npm test'] } });
+    expect(calls[0]).toEqual({ kind: 'verify', runId: 'root', body: { target: 'abcd1234', only: ['npm test'], baseline: true } });
     for (const status of [400, 403, 404, 409]) {
       verify = { denied: 'no', status };
       expect((await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'abcd1234' }))).status).toBe(status);

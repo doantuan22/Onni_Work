@@ -564,7 +564,7 @@ ra từ nội dung mới. Gán `--part` không nguyên tử với việc tạo t
 
 ## Phụ lục I — Đợt A1: `onni task verify` (2026-11-06)
 
-Manager nhận báo cáo của worker như một **lời khai** (dòng `checks (worker-reported, not verified)`). `onni task verify <worker id> [--only "<lệnh>"]…` cho onni tự chạy các check của repo trong worktree của worker đã **settle** và trả kết quả của chính onni. Spec: `.ai/specs/2026-11-06-manager-worker-wave-a.md` §5. Phần `--baseline` (A1b) chưa làm.
+Manager nhận báo cáo của worker như một **lời khai** (dòng `checks (worker-reported, not verified)`). `onni task verify <worker id> [--only "<lệnh>"]…` cho onni tự chạy các check của repo trong worktree của worker đã **settle** và trả kết quả của chính onni. Spec: `.ai/specs/2026-11-06-manager-worker-wave-a.md` §5. Phần `--baseline` (A1b) được mô tả ở Appendix J.
 
 **Route.** `POST /runs/:id/verify` (`:id` là manager gọi — cùng quy ước với `merge`/`peek`; worker nằm trong body `target`). Nằm trong chuỗi `dispatchRoutes`, có `.use('/runs/:id/verify', requireDispatch)` nên `ONNI_DISPATCH=0` → 409. Body `{ target, only? }` (`.strict()`): **không có trường `command`**, `only` chỉ chọn trong danh sách server đã tự phân giải, nên route không phải endpoint chạy lệnh tuỳ ý. Schema ở `packages/contract/src/dispatch.ts` (`dispatchVerifyInputSchema`, `dispatchVerifyResultSchema`, hằng số `VERIFY_*`), có test parity hai chiều.
 
@@ -599,3 +599,13 @@ manager biết để chọn đúng, không muốn giới hạn worker.
 Route `GET /runs/:id/conflicts` thuộc nhóm dispatch nên `ONNI_DISPATCH=0` sẽ tắt route này. Query `target` không bắt buộc, dùng để giới hạn các cặp trùng và lượt thử merge cho một worker. Chỉ root manager được gọi; target phải thuộc cùng cây. Việc quét worker dùng các helper git status/diff chỉ đọc, với tổng ngân sách 20 giây cho mỗi lần gọi. Kết quả giới hạn số worker, cặp, danh sách tệp và lượt thử merge. Trường `dispatch.scope` tùy chọn lưu scope mới; run cũ lấy dòng `- Scope:` cuối cùng trong envelope.
 
 Thử merge chỉ dùng các commit trên đầu branch. Thay đổi chưa commit xuất hiện trong danh sách tệp trùng nhưng không ảnh hưởng kết quả thử. `git merge-tree --write-tree` không cập nhật ref, index hay tệp worktree; git không hỗ trợ hoặc branch bị thiếu sẽ trả trạng thái unavailable rõ ràng. Báo cáo chỉ để tham khảo và không bao giờ chặn merge. Xem `.ai/specs/2026-11-06-manager-worker-wave-a.md` §6.
+
+## Appendix K — A1b: `onni task verify --baseline`
+
+The optional `baseline: true` request compares failed or timed-out worker checks with the same commands at the worker's read-only diff base. `resolveReadOnlyDiffBase` supplies the commit; a detached worktree lives under `.ai/onni/tmp/verify-baseline/`. The worker checks and baseline checks each have at most 140 seconds of the 280-second call ceiling. The baseline reuses the worker's verify environment and runner, and runs only commands that failed in the worker tree.
+
+When the worker has a top-level `node_modules`, the baseline worktree gets a directory link to it and the response warns that dependencies are shared. `withBaselineWorktree` always removes that link first. If it cannot prove the link is gone, cleanup leaves the baseline directory in place rather than recursively crossing the link; the response reports `cleanup: left-behind` and the path.
+
+`dispatchVerifyResult.baseline` is per-call advice and is not persisted in `dispatch.verify.last`. It carries `method: heuristic`, the short base ref, worker and baseline exit codes, normalized failing-test-looking lines, counts, and cleanup status. A worker-only failure is `new-failure`; extra worker failure lines are `new-signatures`; matching lines are `pre-existing`; a bare exit, timeout, or missing-module failure without a dependency link is `inconclusive`. The verdict is never green when any command is inconclusive. The CLI prints `HEURISTIC`, explains that a flaky or renamed test may be misclassified, and exits 0/3/4 for no-new-failures/new-failures/inconclusive (unavailable also exits 4).
+
+At startup, `sweepVerifyBaselines` removes only baseline temp directories older than one hour; `pruneOrphans` remains scoped to task worktrees. A baseline tree left behind by an unsafe link removal is also retried best-effort when its `RunManager` is disposed.

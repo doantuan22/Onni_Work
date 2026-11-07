@@ -1298,6 +1298,38 @@ export async function removeDetachedWorktree(
     : { cleanup: 'removed' };
 }
 
+/** spec 2026-11-06 §7.2: remove crash leftovers older than an hour, without sweeping task worktrees. */
+export async function sweepVerifyBaselines(
+  repoRoot: string,
+  opts: { now?: number; maxAgeMs?: number } = {},
+): Promise<{ removed: string[]; leftBehind: string[] }> {
+  const root = resolve(repoRoot, BASELINE_WORKTREES_DIR);
+  const cutoff = (opts.now ?? Date.now()) - (opts.maxAgeMs ?? 60 * 60 * 1_000);
+  let entries: Dirent[];
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch {
+    return { removed: [], leftBehind: [] };
+  }
+
+  const removed: string[] = [];
+  const leftBehind: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const path = join(root, entry.name);
+    let oldEnough = false;
+    try {
+      oldEnough = (await lstat(path)).mtimeMs < cutoff;
+    } catch {
+      continue;
+    }
+    if (!oldEnough) continue;
+    const outcome = await removeDetachedWorktree(repoRoot, path);
+    (outcome.cleanup === 'removed' ? removed : leftBehind).push(path);
+  }
+  return { removed, leftBehind };
+}
+
 /** spec 2026-11-06 §7.2: cleanup runs in `finally` after success, callback errors, aborts, or timeouts. */
 export async function withBaselineWorktree<T>(
   repoRoot: string,

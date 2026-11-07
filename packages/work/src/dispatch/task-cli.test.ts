@@ -244,6 +244,30 @@ describe('onni task', () => {
     expect(unavailable.out[0]).toContain('UNAVAILABLE');
   });
 
+  it('verify --baseline sends the opt-in, labels the heuristic and uses its verdict for the exit code', async () => {
+    const body = {
+      state: 'failed', source: 'required-checks', startedAt: 'now', durationMs: 100,
+      results: [{ command: 'npm test', outcome: 'failed', exitCode: 1, durationMs: 10, timedOut: false, tail: ['FAIL new test'], tailTruncated: false }],
+      runsUsed: 1, runsMax: 3, warnings: [],
+      baseline: {
+        method: 'heuristic', state: 'compared', baseRef: '123456789abc', verdict: 'new-failures',
+        results: [{ command: 'npm test', classification: 'new-signatures', workerExitCode: 1, baselineExitCode: 1, newSignatures: ['FAIL new test'], newSignaturesOmitted: 0 }],
+        newCount: 1, preExistingCount: 0, inconclusiveCount: 0, cleanup: 'removed',
+      },
+    };
+    const fresh = harness({ status: 200, body });
+    expect(await runTaskCommand(['verify', 'abcd1234', '--baseline'], env, fresh.io)).toBe(3);
+    expect(JSON.parse(String(fresh.calls[0]?.init?.body))).toEqual({ target: 'abcd1234', baseline: true });
+    expect(fresh.out[0]).toContain('baseline (HEURISTIC, at 123456789abc)');
+    expect(fresh.out[0]).toContain('NEW npm test: FAIL new test');
+    expect(fresh.out[0]).toContain('a flaky or renamed test can be misclassified');
+
+    const cleanAgainstBase = harness({ status: 200, body: { ...body, baseline: { ...body.baseline, verdict: 'no-new-failures' } } });
+    expect(await runTaskCommand(['verify', 'abcd1234', '--baseline'], env, cleanAgainstBase.io)).toBe(0);
+    const unclear = harness({ status: 200, body: { ...body, baseline: { ...body.baseline, verdict: 'inconclusive' } } });
+    expect(await runTaskCommand(['verify', 'abcd1234', '--baseline'], env, unclear.io)).toBe(4);
+  });
+
   it('verify needs one worker id, prints a refusal with its prefix and the version sentence on 404', async () => {
     const none = harness({ status: 200, body: {} });
     expect(await runTaskCommand(['verify'], env, none.io)).toBe(1);

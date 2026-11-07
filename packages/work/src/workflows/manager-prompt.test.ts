@@ -138,6 +138,8 @@ describe('managerPrompt', () => {
 
   it('tells the manager to verify before merging instead of rerunning the checks itself', () => {
     expect(prompt).toContain('onni task verify <id>');
+    expect(prompt).toContain('--baseline');
+    expect(prompt).toContain("checks already fail on the base branch");
     expect(prompt).toContain('Verify BEFORE you merge');
     expect(prompt).not.toContain('rerun the checks yourself before merging');
   });

@@ -83,8 +83,8 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
   {
     name: 'verify',
     role: 'manager',
-    usage: 'onni task verify <worker id> [--only "<command>"]…   run the repository\'s checks in a SETTLED worker\'s worktree and get onni\'s own pass/fail',
-    brief: 'onni task verify <worker id> [--only "<command>" …]   onni runs the repo\'s checks inside a settled worker\'s worktree (not yours): its result replaces the worker\'s claimed checks. 3 runs per worker; may take up to ~5 min',
+    usage: 'onni task verify <worker id> [--only "<command>"]… [--baseline]   run checks in a SETTLED worker\'s worktree; --baseline compares failures to the base (heuristic)',
+    brief: 'onni task verify <worker id> [--only "<command>" …] [--baseline]   run checks in a settled worker\'s tree; --baseline reports only failures that are NEW compared with the base (heuristic). 3 runs; may take ~5 min',
     oneLine: "have onni run the repository's checks in a settled worker's worktree",
   },
   {

@@ -7,6 +7,7 @@ import {
   dispatchPeekSchema,
   dispatchReportSchema,
   dispatchSchema,
+  dispatchVerifyInputSchema,
   dispatchVerifyResultSchema,
   managerAskInputSchema,
   managerAskResponseSchema,
@@ -17,7 +18,7 @@ import {
   treePlanPutSchema,
   treePlanSchema,
 } from '@onni/contract';
-import type { dispatchBudgetSchema, dispatchInputSchema, dispatchVerifyInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
+import type { dispatchBudgetSchema, dispatchInputSchema, dispatchResponseSchema, mergeInputSchema, mergeResultSchema } from '@onni/contract';
 import type { AppType } from './app-type.ts';
 
 /**
@@ -183,12 +184,27 @@ describe('a verify answer is bounded at both levels (wave A1)', () => {
     runsUsed: 1, runsMax: 3, warnings: [], ...patch,
   });
 
+  const baseline = (patch: Record<string, unknown> = {}) => ({
+    method: 'heuristic', state: 'compared', verdict: 'inconclusive',
+    results: [{ command: 'npm test', classification: 'inconclusive', workerExitCode: 1, baselineExitCode: null, newSignatures: [], newSignaturesOmitted: 0 }],
+    newCount: 0, preExistingCount: 0, inconclusiveCount: 1, cleanup: 'removed', ...patch,
+  });
+
   it('accepts a normal answer and rejects every overflow', () => {
     expect(dispatchVerifyResultSchema.safeParse(answer()).success).toBe(true);
     expect(dispatchVerifyResultSchema.safeParse(answer({ results: Array.from({ length: 11 }, () => result()) })).success).toBe(false);
     expect(dispatchVerifyResultSchema.safeParse(answer({ results: [result({ tail: Array.from({ length: 41 }, () => 'l') })] })).success).toBe(false);
     expect(dispatchVerifyResultSchema.safeParse(answer({ results: [result({ tail: ['x'.repeat(201)] })] })).success).toBe(false);
     expect(dispatchVerifyResultSchema.safeParse(answer({ warnings: Array.from({ length: 6 }, () => 'w') })).success).toBe(false);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ baseline: baseline() })).success).toBe(true);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ baseline: baseline({ results: Array.from({ length: 11 }, () => baseline().results[0]) }) })).success).toBe(false);
+    expect(dispatchVerifyResultSchema.safeParse(answer({ baseline: baseline({ results: [baseline().results[0], { ...baseline().results[0], newSignatures: Array.from({ length: 11 }, () => 'failure') }] }) })).success).toBe(false);
+  });
+
+  it('accepts additive input and baseline fields while rejecting unknown methods', () => {
+    expect(dispatchVerifyInputSchema.safeParse({ target: 'abcd1234', baseline: true }).success).toBe(true);
+    expect(dispatchVerifyResultSchema.safeParse(answer()).success).toBe(true); // pre-A1b result
+    expect(dispatchVerifyResultSchema.safeParse(answer({ baseline: baseline({ method: 'guess' }) })).success).toBe(false);
   });
 
   it('rejects unknown state, reasonCode and outcome, and requires runsMax', () => {
