@@ -1,6 +1,6 @@
 import type { ExtractSchema } from 'hono/types';
 import { describe, expect, it } from 'vitest';
-import { dispatchManagerCancelInputSchema, dispatchManagerMessageInputSchema, setWorkspaceUiStateInputSchema } from '@onni/contract';
+import { dispatchManagerCancelInputSchema, dispatchManagerMessageInputSchema, dispatchManagerRedirectInputSchema, setWorkspaceUiStateInputSchema } from '@onni/contract';
 import type { z } from 'zod';
 import type { AppType } from './app-type.ts';
 
@@ -48,6 +48,7 @@ describe('every mutating route carries a typed body into AppType', () => {
     Assert<HasTypedBody<'/api/v1/runs/:id/report', '$post'>>,
     Assert<HasTypedBody<'/api/v1/runs/:id/worker-message', '$post'>>,
     Assert<HasTypedBody<'/api/v1/runs/:id/worker-cancel', '$post'>>,
+    Assert<HasTypedBody<'/api/v1/runs/:id/worker-redirect', '$post'>>,
     Assert<HasTypedBody<'/api/v1/projects', '$post'>>,
     Assert<HasTypedBody<'/api/v1/projects/checkout', '$post'>>,
     Assert<HasTypedBody<'/api/v1/projects/:projectId', '$patch'>>,
@@ -92,6 +93,9 @@ describe('every mutating route carries a typed body into AppType', () => {
   >;
   type _ManagerCancelInputCheck = Assert<
     Mutual<z.input<typeof dispatchManagerCancelInputSchema>, Schema['/api/v1/runs/:id/worker-cancel']['$post']['input']['json']>
+  >;
+  type _ManagerRedirectInputCheck = Assert<
+    Mutual<z.input<typeof dispatchManagerRedirectInputSchema>, Schema['/api/v1/runs/:id/worker-redirect']['$post']['input']['json']>
   >;
 
   /** Same idea for the routes that validate a path param or the query string. */

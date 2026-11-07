@@ -41,13 +41,14 @@ describe('managerPrompt', () => {
     expect(prompt).toContain('do not end the turn with ONNI:DONE while any worker you dispatched has not reported');
     expect(prompt).toContain('server refuses any other backend or model with a 409');
   });
-  it('includes manager message and cancel commands within the dedicated command budget', () => {
+  it('includes manager message, cancel and redirect commands within the dedicated command budget', () => {
     const commands = managerCommandsBlock();
     expect(commands.length).toBeLessThanOrEqual(MANAGER_COMMANDS_MAX_CHARS);
     expect(commands).toContain('onni task message <worker> "<text>"');
     expect(commands).toContain('does not answer its Guard/ask');
     expect(commands).toContain('onni task cancel <worker> [--reason "..."]');
     expect(commands).toContain('blocked report preserves partial work for review');
+    expect(commands).toContain('onni task redirect <worker> "<instruction>"');
     expect(prompt).toContain(commands);
   });
   it('spells out the integration procedure', () => {

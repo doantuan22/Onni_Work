@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { dispatchManagerRedirectFailureSchema } from '@onni/contract';
 import { RunStore } from '../runs/store.ts';
 import type { RunManager } from '../workflows/run.ts';
 import { createApp } from './server.ts';
@@ -18,7 +19,7 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'verify' | 'conflicts' | 'memory' | 'ask' | 'plan' | 'message' | 'cancel'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'verify' | 'conflicts' | 'memory' | 'ask' | 'plan' | 'message' | 'cancel' | 'redirect'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
@@ -32,6 +33,7 @@ describe('the dispatch routes', () => {
   let ask: unknown = { requestId: 'q-1' };
   let message: unknown = { deliveryId: 'd-1', targetId: 'worker-1', state: 'queued', capability: 'steer' };
   let cancel: unknown = { targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked' };
+  let redirect: unknown = { cancelledRunId: 'worker-1', replacement: { id: 'worker-2', branch: 'onni/worker2' }, repointedDependents: 2, retryAccounting: 'excluded' };
   let serverEnv: NodeJS.ProcessEnv;
   let userCancelCalls: string[];
 
@@ -50,6 +52,7 @@ describe('the dispatch routes', () => {
     ask = { requestId: 'q-1' };
     message = { deliveryId: 'd-1', targetId: 'worker-1', state: 'queued', capability: 'steer' };
     cancel = { targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked' };
+    redirect = { cancelledRunId: 'worker-1', replacement: { id: 'worker-2', branch: 'onni/worker2' }, repointedDependents: 2, retryAccounting: 'excluded' };
     userCancelCalls = [];
     conflicts = { workers: [], workersOmitted: 0, overlaps: [], overlapsOmitted: 0, trialMerges: [], trialMergesSkipped: 0, trialState: 'ran', checkedAt: 'now' };
     serverEnv = { ONNI_DISPATCH: '1' };
@@ -97,6 +100,10 @@ describe('the dispatch routes', () => {
       cancelFor: (runId: string, body: unknown) => {
         calls.push({ kind: 'cancel', runId, body });
         return cancel;
+      },
+      redirectFor: async (runId: string, body: unknown) => {
+        calls.push({ kind: 'redirect', runId, body });
+        return redirect;
       },
       cancel: (runId: string) => {
         userCancelCalls.push(runId);
@@ -364,10 +371,41 @@ describe('the dispatch routes', () => {
     expect(calls).toEqual([]);
   });
 
+  it('returns manager redirect success and the distinct post-cancel refusal shape', async () => {
+    const body = { target: 'worker-1', instruction: 'Keep the parser streaming' };
+    const success = await apiRequest(app, '/api/v1/runs/root/worker-redirect', json(body));
+    expect(success.status).toBe(200);
+    expect(await success.json()).toEqual(redirect);
+    expect(calls[0]).toEqual({ kind: 'redirect', runId: 'root', body });
+
+    redirect = { error: 'worker cap reached after cancellation', cancelledRunId: 'worker-1', retryAccounting: 'excluded' };
+    const refused = await apiRequest(app, '/api/v1/runs/root/worker-redirect', json(body));
+    expect(refused.status).toBe(409);
+    const failure = await refused.json();
+    expect(failure).toEqual(redirect);
+    expect(dispatchManagerRedirectFailureSchema.safeParse(failure).success).toBe(true);
+
+    redirect = { denied: 'worker is settled', status: 409 };
+    const denied = await apiRequest(app, '/api/v1/runs/root/worker-redirect', json(body));
+    expect(denied.status).toBe(409);
+    expect(await denied.json()).toEqual({ error: 'worker is settled' });
+  });
+
+  it('validates redirect bodies before calling the manager', async () => {
+    calls = [];
+    for (const invalid of [
+      { target: 'worker-1' },
+      { target: 'worker-1', instruction: '   ' },
+      { target: 'worker-1', instruction: 'x'.repeat(1_001) },
+      { target: 'worker-1', instruction: 'x', extra: true },
+    ]) expect((await apiRequest(app, '/api/v1/runs/root/worker-redirect', json(invalid))).status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     serverEnv.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', env: serverEnv, providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/conflicts', '/api/v1/runs/p/worker-message', '/api/v1/runs/p/worker-cancel', '/api/v1/runs/p/ask']) {
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/conflicts', '/api/v1/runs/p/worker-message', '/api/v1/runs/p/worker-cancel', '/api/v1/runs/p/worker-redirect', '/api/v1/runs/p/ask']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r', question: 'q' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);

@@ -106,7 +106,7 @@ import {
 import type { ClearProjectDataResult, MergeResult } from '@onni/contract';
 import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
-import { dispatchInputSchema, dispatchIntentSchema, dispatchManagerCancelInputSchema, dispatchManagerMessageInputSchema, dispatchReportSchema, dispatchVerifyInputSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema, treePlanPatchSchema, treePlanPutSchema } from '@onni/contract';
+import { dispatchInputSchema, dispatchIntentSchema, dispatchManagerCancelInputSchema, dispatchManagerMessageInputSchema, dispatchManagerRedirectInputSchema, dispatchReportSchema, dispatchVerifyInputSchema, managerAskInputSchema, managerMemoryAddSchema, managerMemoryPutSchema, mergeInputSchema, PEEK_TAIL_MAX_LINES, rosterSchema, runLimitsRequestSchema, treePlanPatchSchema, treePlanPutSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -4556,6 +4556,7 @@ export function createApp(deps: ServerDeps) {
     .use('/runs/:id/conflicts', requireDispatch)
     .use('/runs/:id/worker-message', requireDispatch)
     .use('/runs/:id/worker-cancel', requireDispatch)
+    .use('/runs/:id/worker-redirect', requireDispatch)
     .use('/runs/:id/ask', requireDispatch)
     .use('/runs/:id/plan', requireDispatch)
     .use('/runs/:id/plan/parts/:partId', requireDispatch)
@@ -4581,6 +4582,20 @@ export function createApp(deps: ServerDeps) {
       const outcome = manager.cancelFor(c.req.param('id'), c.req.valid('json'));
       if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
       return c.json(outcome);
+    })
+    .post('/runs/:id/worker-redirect', jsonZodValidator(dispatchManagerRedirectInputSchema), async (c) => {
+      const { manager } = c.get('project');
+      const outcome = await manager.redirectFor(c.req.param('id'), c.req.valid('json'));
+      if ('denied' in outcome) {
+        switch (outcome.status) {
+          case 400: return c.json({ error: outcome.denied }, 400);
+          case 403: return c.json({ error: outcome.denied }, 403);
+          case 404: return c.json({ error: outcome.denied }, 404);
+          case 409: return c.json({ error: outcome.denied }, 409);
+        }
+      }
+      if ('error' in outcome) return c.json(outcome, 409);
+      return c.json(outcome, 200);
     })
 
     /** The manager's merge tool. The permission is checked in `mergeFromAgent`; a denial is 409
