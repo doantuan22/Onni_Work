@@ -66,6 +66,11 @@ import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { jsonZodValidator, multipartZodValidator, paramZodValidator, queryZodValidator } from './validators.ts';
+import { createModelsRoutes } from './routes/models.ts';
+import { createFsBrowseRoutes } from './routes/fs-browse.ts';
+import { createWorkspaceSecretsRoutes } from './routes/workspace-secrets.ts';
+import { createPreviewRoutes } from './routes/preview.ts';
+import { createHealthRoutes } from './routes/health.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -77,7 +82,6 @@ import {
   type PickVariantResponse,
   type RunIndexEntry,
   type RunsIndexResponse,
-  designProxyRequestSchema,
   type WorkspaceConfigResponse,
   workspaceBrandingLogoResponseSchema,
   githubListQuerySchema,
@@ -99,7 +103,6 @@ import {
   MAX_ATTACHMENTS_TOTAL_BASE64,
   stagedUploadSchema,
   uploadIdParamSchema,
-  modelDiscoveryRunnerSchema,
   openProjectInSchema,
   updateProjectInputSchema,
 } from '@onni/contract';
@@ -1994,13 +1997,7 @@ export function createApp(deps: ServerDeps) {
     return healthCache.payload;
   };
 
-  // ---- chained family: health (workspace-level) ----------------------------
-  // Written as ONE chained expression rather than a loose `app.get(...)`
-  // statement because Hono accumulates its route types through the chain: a
-  // statement's return value is discarded, so `typeof app` would record nothing
-  // and `hc<AppType>` would have no endpoint to offer. `createApp` mounts this
-  // under both `/api` (the frozen legacy spelling) and `/api/v1`.
-  const healthRoutes = new Hono().get('/health', async (c) => c.json(await readHealth()));
+  const healthRoutes = createHealthRoutes({ readHealth });
 
   // The push twin of the poll it replaced (#369): while at least one cockpit
   // holds the `health` topic the server re-reads the snapshot on the old 5 s
@@ -2078,15 +2075,7 @@ export function createApp(deps: ServerDeps) {
   // cold, which is exactly the state every reader already handles.
   if (deps.socketHub) void warmAgentKnowledge();
 
-  // ---- chained family: host model catalog (workspace-level) ----
-  const modelsRoutes = new Hono<ProjectApiEnv>()
-    // `modelDiscoveryRunnerSchema` is the contract's own list of the runners with an
-    // authoritative host-local catalog (#794, #784), so the client compiles against exactly what
-    // this validates. A runner absent from it has no discovery path and this 400s.
-    .get('/models', queryZodValidator(z.object({ runner: z.union([z.string(), z.array(z.string()).transform((v) => v[0] as string)]).pipe(modelDiscoveryRunnerSchema) }), { message: 'runner must be claude, codex, opencode, cursor, pi, junie, or antigravity' }), async (c) => {
-      const query = { data: c.req.valid('query') };
-      return c.json(await modelCatalog.get(query.data.runner));
-    });
+  const modelsRoutes = createModelsRoutes({ modelCatalog });
 
   /**
    * Resolve `profileId` (absent = the discovered default) into a concrete account for `provider`.
@@ -3354,15 +3343,7 @@ export function createApp(deps: ServerDeps) {
   // this server can never be mirrored.
   const designProxies = deps.designProxies ?? new DesignProxies();
   deps.onDispose?.(() => designProxies.closeAll());
-  const previewRoutes = new Hono().post('/preview/design-proxy', jsonZodValidator(designProxyRequestSchema), async (c) => {
-    if (!capabilities().designMode) {
-      return c.json({ error: 'Design Mode is not available on this cockpit' }, 409);
-    }
-    const host = c.req.header('host');
-    const opened = await designProxies.open({ ...c.req.valid('json'), forbidden: host ? [`http://${host}`] : [] });
-    if (!opened.ok) return c.json({ error: opened.reason }, 400);
-    return c.json({ origin: opened.origin });
-  });
+  const previewRoutes = createPreviewRoutes({ capabilities, designProxies });
 
   // ---- GUI clone (multi-project spec, step 4.3) ----------------------------
   // "Add project → Clone from GitHub": clone into the checkout root, then
@@ -3655,29 +3636,14 @@ export function createApp(deps: ServerDeps) {
   // Partial updates only — absent keys stay untouched. Bounds mirror the
   // workspace schema (src/workspace/config.ts, step 1.2) exactly, so a value
   // this route accepts can never be degraded away by the next load's `.catch`.
-  // ---- chained family: filesystem browse (workspace-level) ----
-  const fsBrowseRoutes = new Hono<ProjectApiEnv>()
-    .get(
-      '/fs/browse',
-      queryZodValidator(z.object({ path: queryValue, showHidden: queryValue })),
-      async (c) => {
-        if (capabilities().singleProject) {
-          return c.json(singleProjectRefusal('folder browsing'), 409);
-        }
-        const query = c.req.valid('query');
-        const root = resolveBrowseRoot(await workspaceBrowseRoot());
-        const result = await browseDirectory({
-          root,
-          path: query.path,
-          showHidden: query.showHidden === '1',
-          // The user's own machine: any folder, `root` is only the starting point. A hosted
-          // cockpit keeps the containment (registration already follows the same split).
-          unrestricted: capabilities().localHandoff,
-        });
-        if (!result.ok) return c.json({ error: result.error }, result.status);
-        return c.json(result.body);
-      },
-    );
+  const fsBrowseRoutes = createFsBrowseRoutes({
+    browseDirectory,
+    capabilities,
+    queryValue,
+    resolveBrowseRoot,
+    singleProjectRefusal,
+    workspaceBrowseRoot,
+  });
 
   // ---- chained family: workflows (project-scoped) --------------------------
   // One chained expression, mounted by `createApp` into BOTH the legacy `api`
@@ -6640,21 +6606,7 @@ export function createApp(deps: ServerDeps) {
       return c.json({ runId: run.id }, 201);
     });
 
-  // ---- chained family: workspace secrets (workspace-level) ------------------
-  // The user's own secrets, shared by every project — an LLM key for onni's own features, a
-  // token every project's checks need. Single-mount like every workspace family.
-  const workspaceSecretsRoutes = new Hono()
-    .get('/workspace/secrets', async (c) => c.json(await secretsList({ kind: 'workspace' }), 200))
-    .put('/workspace/secrets/:name', paramZodValidator(secretParamsSchema), jsonZodValidator(secretValueInputSchema), async (c) => {
-      const failed = await putSecret({ kind: 'workspace' }, c.req.valid('param').name, c.req.valid('json'));
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    })
-    .delete('/workspace/secrets/:name', paramZodValidator(secretParamsSchema), async (c) => {
-      const failed = await deleteSecret({ kind: 'workspace' }, c.req.valid('param').name);
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    });
+  const workspaceSecretsRoutes = createWorkspaceSecretsRoutes({ secretsList, putSecret, deleteSecret });
 
   const trackerRoutes = new Hono<ProjectApiEnv>()
     .get('/tracker/automation-options', queryZodValidator(trackerAutomationOptionsQuerySchema), async c => {
