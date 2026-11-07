@@ -12,6 +12,7 @@ import { RunManager, type StartRunInput } from './run.ts';
 import { BASH_MISSING_MESSAGE } from '../core/bash-path.ts';
 import { childSettleReport, childTaskEnvelope } from '../dispatch/engine.ts';
 import { writeReport } from '../dispatch/tree-fs.ts';
+import { PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import type { WorkflowDef } from './types.ts';
 
 const run = promisify(execFile);
@@ -44,8 +45,9 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
 
   beforeEach(async () => {
     repoRoot = mkdtempSync(join(tmpdir(), 'onni-dispatch-'));
-    for (const key of ['ONNI_DRY_RUN', 'ONNI_DISPATCH', 'ONNI_WEBHOOKS', 'ONNI_CODEX_BIN']) savedEnv[key] = process.env[key];
+    for (const key of ['ONNI_DRY_RUN', 'ONNI_DISPATCH', 'ONNI_WEBHOOKS', 'ONNI_CODEX_BIN', 'ONNI_API_URL']) savedEnv[key] = process.env[key];
     delete process.env.ONNI_WEBHOOKS;
+    delete process.env.ONNI_API_URL;
     process.env.ONNI_DRY_RUN = '1';
     process.env.ONNI_DISPATCH = '1';
     await run('git', ['init', '-q', '-b', 'main'], { cwd: repoRoot });
@@ -1456,5 +1458,78 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       expect(store.getRun(record.id)?.dispatch).toBeUndefined();
       expect(existsSync(join(repoRoot, '.ai/onni/dispatch'))).toBe(false);
     }, 40_000);
+  });
+
+  describe('manager scorecard and ledger evidence', () => {
+    const scorecardRoster = rosterSchema.parse({
+      manager: { runner: 'claude' },
+      workers: [{ runner: 'codex', model: 'gpt-5', role: 'private-role-text', tier: 'heavy', kinds: ['implement', 'test'], maxConcurrent: 2 }],
+    });
+
+    it('adds a bounded history block without task titles or prompts after enough settled samples', async () => {
+      process.env.ONNI_API_URL = 'http://127.0.0.1:4321/api/v1';
+      const finishedAt = new Date().toISOString();
+      for (let index = 0; index < 3; index += 1) {
+        const historical = store.createRun({
+          title: `scorecard-private-title-${index}`,
+          workflow: '(planned)',
+          task: `scorecard-private-prompt-${index}`,
+          steps: [],
+        });
+        store.updateRun(historical.id, {
+          status: 'done',
+          runner: 'codex',
+          startedAt: finishedAt,
+          finishedAt,
+          tokensUsed: 300,
+          dispatch: { rootRunId: 'historical-tree', parentRunId: 'historical-tree', workerKey: 'codex:gpt-5', kind: 'implement' },
+        });
+      }
+
+      const managerRun = start('mock:monitoring scorecard manager', undefined, { roster: scorecardRoster });
+      const activeRuns = manager as unknown as { active: Map<string, { dispatchPrompt?: string }> };
+      await waitFor(managerRun.id, () => activeRuns.active.get(managerRun.id)?.dispatchPrompt !== undefined);
+      const prompt = activeRuns.active.get(managerRun.id)?.dispatchPrompt ?? '';
+      const scorecardBlock = prompt.slice(prompt.indexOf('## Worker scorecard'));
+      expect(prompt).toContain('## Worker scorecard (settled work, last 30 days)');
+      expect(prompt).toContain('codex:gpt-5 | impl 100%/3');
+      expect(prompt.length).toBeLessThanOrEqual(PROMPT_MAX_CHARS);
+      expect(scorecardBlock).not.toContain('scorecard-private-title');
+      expect(scorecardBlock).not.toContain('scorecard-private-prompt');
+      expect(scorecardBlock).not.toContain('private-role-text');
+    }, 60_000);
+
+    it('omits the scorecard block when the roster has no settled history', async () => {
+      process.env.ONNI_API_URL = 'http://127.0.0.1:4321/api/v1';
+      const noHistoryRun = start('mock:monitoring manager without worker history', undefined, { roster: scorecardRoster });
+      const activeRuns = manager as unknown as { active: Map<string, { dispatchPrompt?: string }> };
+      await waitFor(noHistoryRun.id, () => activeRuns.active.get(noHistoryRun.id)?.dispatchPrompt !== undefined);
+      const noHistoryPrompt = activeRuns.active.get(noHistoryRun.id)?.dispatchPrompt ?? '';
+      expect(noHistoryPrompt).not.toContain('## Worker scorecard');
+    }, 60_000);
+
+    it('records the selected worker and one privacy-safe roster snapshot on first dispatch', async () => {
+      const root = start('mock:monitoring manager ledger root', undefined, { roster: scorecardRoster });
+      await waitFor(root.id, (record) => record?.activity === 'monitoring');
+      const first = dispatchOk(root.id, order('mock:monitoring first order', { backend: 'codex', model: 'gpt-5', kind: 'implement' }));
+      expect(first.id).toBeTruthy();
+
+      const lines = readFileSync(join(treeDirOf(root.id), 'ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line) as Record<string, unknown>);
+      expect(lines.filter((entry) => entry.type === 'roster')).toHaveLength(1);
+      expect(lines[0]).toMatchObject({
+        type: 'roster',
+        workers: [{ key: 'codex:gpt-5', tier: 'heavy', kinds: ['implement', 'test'], concurrency: 2 }],
+      });
+      expect(lines[0]).not.toHaveProperty('role');
+      expect(lines[0]).not.toHaveProperty('path');
+      expect(lines[1]).toMatchObject({
+        type: 'dispatch',
+        runId: first.id,
+        workerKey: 'codex:gpt-5',
+        workerTier: 'heavy',
+        workerKinds: ['implement', 'test'],
+        kind: 'implement',
+      });
+    }, 60_000);
   });
 });

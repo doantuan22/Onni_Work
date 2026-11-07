@@ -145,6 +145,8 @@ import { requireRootManager, requireSameTree, resolveRunRef, treeRootOf } from '
 import { assembleCommandResults, buildVerifyEnv, capWarnings, resolveVerifyCommands, verifyStateOf, verifySummary, type RawCommandRun } from '../dispatch/verify.ts';
 import { baselineVerdict, classifyBaselineFailure, VERIFY_BASELINE_METHOD } from '../dispatch/baseline.ts';
 import { runVerifyCommand } from '../dispatch/verify-exec.ts';
+import { buildWorkerScorecard, formatWorkerScorecard } from '../dispatch/scorecard.ts';
+import { MANAGER_SCORECARD_PROMPT_MAX_CHARS, PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import { diskFloorRefusal } from '../disk-space.ts';
 import {
   appendLedger,
@@ -2925,13 +2927,28 @@ export class RunManager {
     const runs = this.store.listRuns();
     const roster = dispatch ? runs.find((r) => r.id === dispatch.rootRunId)?.roster : undefined;
     if (roster && dispatch) {
-      state.dispatchPrompt = dispatch.parentRunId
-        ? workerPrompt(dispatch.kind)
-        : managerPrompt(roster, this.remainingForManager(runs, dispatch.rootRunId), {
-            complexityPolicy: this.semaphore.safety().managerComplexityPolicy !== false,
-            fullAccess: runs.find((r) => r.id === dispatch.rootRunId)?.managerFullAccess === true,
-            context,
-          });
+      if (dispatch.parentRunId) {
+        state.dispatchPrompt = workerPrompt(dispatch.kind);
+      } else {
+        const scorecard = buildWorkerScorecard(runs);
+        const hasHistory = roster.workers.some((worker) => {
+          const scores = scorecard.byWorker.get(rosterWorkerKey(worker));
+          return scores !== undefined && Object.values(scores).some((score) => score !== undefined && score.settledRuns >= 3);
+        });
+        const formattedScorecard = hasHistory ? formatWorkerScorecard(roster.workers, scorecard) : '';
+        const scorecardBlock = formattedScorecard
+          ? `\n\n## Worker scorecard (settled work, last 30 days)\n${formattedScorecard}`
+          : '';
+        const managerBrief = managerPrompt(roster, this.remainingForManager(runs, dispatch.rootRunId), {
+          complexityPolicy: this.semaphore.safety().managerComplexityPolicy !== false,
+          fullAccess: runs.find((r) => r.id === dispatch.rootRunId)?.managerFullAccess === true,
+          context,
+        });
+        state.dispatchPrompt = scorecardBlock.length <= MANAGER_SCORECARD_PROMPT_MAX_CHARS
+          && managerBrief.length + scorecardBlock.length <= PROMPT_MAX_CHARS
+          ? `${managerBrief}${scorecardBlock}`
+          : managerBrief;
+      }
       return;
     }
     // The intent block belongs to the ROOT the user started; a child reads its order instead.
@@ -5204,6 +5221,8 @@ export class RunManager {
 
     // The parent becomes a root on its first dispatch; a dispatched parent keeps its tree.
     const rootRunId = parent.dispatch?.rootRunId ?? parent.id;
+    const startsRootTree = parent.id === rootRunId
+      && !runs.some((run) => run.id !== rootRunId && run.dispatch?.rootRunId === rootRunId);
     if (!parent.dispatch) {
       this.store.updateRun(parentId, { dispatch: { rootRunId } });
     }
@@ -5329,12 +5348,27 @@ export class RunManager {
       // written state, never required — a tree directory that cannot be written is a tree with no
       // file channel, not a refused dispatch
     }
+    if (startsRootTree && roster) {
+      appendLedger(this.dataDir, rootRunId, {
+        type: 'roster',
+        workers: roster.workers.map((entry) => ({
+          key: rosterWorkerKey(entry),
+          ...(entry.tier ? { tier: entry.tier } : {}),
+          ...(entry.kinds?.length ? { kinds: entry.kinds } : {}),
+          concurrency: entry.maxConcurrent,
+        })),
+      });
+    }
+    const selectedWorker = worker && 'ok' in worker ? worker.worker : undefined;
     appendLedger(this.dataDir, rootRunId, {
       type: 'dispatch',
       runId: record.id,
       parentRunId: parentId,
       kind: input.kind ?? 'implement',
       title,
+      ...(selectedWorker ? { workerKey: rosterWorkerKey(selectedWorker) } : {}),
+      ...(selectedWorker?.tier ? { workerTier: selectedWorker.tier } : {}),
+      ...(selectedWorker?.kinds?.length ? { workerKinds: selectedWorker.kinds } : {}),
       ...(budget.budgetUsd !== undefined ? { budgetUsd: budget.budgetUsd } : {}),
     });
     const child = this.store.getRun(record.id) ?? record;

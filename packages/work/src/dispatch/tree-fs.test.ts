@@ -116,6 +116,20 @@ describe('the tree directory', () => {
     expect(existsSync(join(dataDir, 'dispatch', MISSION, 'brief.md'))).toBe(false); // nothing is required
   });
 
+  it('keeps worker evidence additive for older dispatch lines and writes roster snapshots', () => {
+    appendLedger(dataDir, MISSION, { type: 'dispatch', runId: CHILD, kind: 'implement' });
+    appendLedger(dataDir, MISSION, {
+      type: 'roster',
+      workers: [{ key: 'codex:gpt-5', tier: 'heavy', kinds: ['implement', 'test'], concurrency: 2 }],
+    });
+    const lines = readFileSync(join(dataDir, 'dispatch', MISSION, 'ledger.jsonl'), 'utf8').trim().split('\n');
+    expect(JSON.parse(lines[0]!)).toMatchObject({ type: 'dispatch', runId: CHILD, kind: 'implement' });
+    expect(JSON.parse(lines[1]!)).toMatchObject({
+      type: 'roster',
+      workers: [{ key: 'codex:gpt-5', tier: 'heavy', kinds: ['implement', 'test'], concurrency: 2 }],
+    });
+  });
+
   it('spells the task-order lines a unit needs to find its files', () => {
     const lines = treeEnvelopeLines(taskPaths(dataDir, MISSION, CHILD));
     expect(lines.some((line) => line.includes('brief.md') && /read it FIRST/.test(line))).toBe(true);
