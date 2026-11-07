@@ -22,7 +22,30 @@
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { treePlanSchema, type TreePlan, type TreePlanPart } from '@onni/contract';
+import type { WorkerKind, WorkerTier } from '@onni/contract';
 import { readStateFile, revisionOf, withPathLock, writeAtomic } from './state-file.ts';
+
+/** A privacy-safe worker row in the tree's first roster ledger snapshot. */
+export interface LedgerRosterWorker {
+  key: string;
+  tier?: WorkerTier;
+  kinds?: WorkerKind[];
+  concurrency: number;
+}
+
+/** Ledger event fields are additive so older events and tree files remain valid. */
+export interface LedgerEntry {
+  type: string;
+  /** The admitted worker's roster entry; absent on pre-scorecard and non-dispatch events. */
+  workerKey?: string;
+  workerTier?: WorkerTier;
+  workerKinds?: WorkerKind[];
+  /** Present on the single roster event written when a roster tree first starts. */
+  workers?: LedgerRosterWorker[];
+  /** The dispatch order kind, retained as `kind` for existing ledger readers. */
+  kind?: string;
+  [field: string]: unknown;
+}
 
 /** The first eight characters of a run id — the same handle `onni/<id8>` branches use, so a unit
  *  can address a sibling from the branch name in a report. */
@@ -186,7 +209,7 @@ ${body}
 
 /** `ledger.jsonl` — one appended line per engine event. Best-effort: a ledger write must never
  *  fail a turn end, and a missing ledger is a tree with no history, not a broken one. */
-export function appendLedger(dataDir: string, rootRunId: string, entry: Record<string, unknown>): void {
+export function appendLedger(dataDir: string, rootRunId: string, entry: LedgerEntry): void {
   try {
     const dir = treeDir(dataDir, rootRunId);
     mkdirSync(dir, { recursive: true });

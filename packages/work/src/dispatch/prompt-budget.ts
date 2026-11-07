@@ -19,6 +19,8 @@ export const MANAGER_COMMANDS_MAX_CHARS = 2_100;
 export const MANAGER_MEMORY_PROMPT_MAX_CHARS = MANAGER_MEMORY_MAX_BYTES + 100;
 /** The tree plan's block. */
 export const MANAGER_PLAN_PROMPT_MAX_CHARS = 1_800;
+/** The worker history block: four formatter-capped lines and its heading. */
+export const MANAGER_SCORECARD_PROMPT_MAX_CHARS = 800;
 /** Slack for the blocks that grow with live data (budget line, warnings). */
 export const MANAGER_PROMPT_RESERVE_CHARS = 1_000;
 
@@ -28,4 +30,5 @@ export const PROMPT_MAX_CHARS =
   MANAGER_COMMANDS_MAX_CHARS +
   MANAGER_MEMORY_PROMPT_MAX_CHARS +
   MANAGER_PLAN_PROMPT_MAX_CHARS +
+  MANAGER_SCORECARD_PROMPT_MAX_CHARS +
   MANAGER_PROMPT_RESERVE_CHARS;
