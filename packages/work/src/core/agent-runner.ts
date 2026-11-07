@@ -268,6 +268,11 @@ export interface AgentSession {
   readonly pid?: number;
   /** Write a user message into the live session. False when it is closed. */
   sendMessage(content: ContentBlock[]): boolean;
+  /** Internal receipt seam for manager deliveries when a backend has a correlated protocol response. */
+  sendMessageWithReceipt?(
+    content: ContentBlock[],
+    onReceipt: (receipt: { state: 'acknowledged' | 'rejected'; reasonCode?: 'async-rejected' }) => void,
+  ): boolean;
   /** Graceful close: end input, then a SIGTERM→SIGKILL watchdog. */
   end(): void;
   /** Hard stop (used by cancel). */

@@ -221,6 +221,58 @@ describe('onni task', () => {
     expect(one.out[0]).toContain('recent:\n  | recent line');
   });
 
+  it('message posts one text to the project-scoped manager route and explains its receipt', async () => {
+    const h = harness({ status: 200, body: { deliveryId: 'delivery-1234', targetId: 'worker/with space', state: 'acknowledged', capability: 'steer' } });
+    expect(await runTaskCommand(['message', 'worker/with space', 'finish the parser'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/message');
+    expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ target: 'worker/with space', text: 'finish the parser' });
+    expect(h.out[0]).toContain('acknowledged (steer)');
+    expect(h.out[0]).toContain('not proof the worker read or understood it');
+  });
+
+  it('message rejects malformed local arguments and returns non-zero for rejected or expired receipts', async () => {
+    const h = harness({ status: 200, body: { deliveryId: 'd-1', targetId: 'worker', state: 'rejected', capability: 'unsupported', reasonCode: 'backend-unsupported' } });
+    for (const args of [['message'], ['message', 'worker'], ['message', 'worker', 'one', 'two'], ['message', 'worker', '--bogus']]) {
+      expect(await runTaskCommand(args, env, h.io)).toBe(1);
+    }
+    expect(h.calls).toHaveLength(0);
+    expect(await runTaskCommand(['message', 'worker', 'change direction'], env, h.io)).toBe(3);
+    expect(h.calls).toHaveLength(1);
+    expect(h.err.at(-1)).toContain('backend-unsupported');
+    expect(h.err.at(-1)).toContain('not proof the worker read or understood it');
+
+    const expired = harness({ status: 200, body: { deliveryId: 'd-2', targetId: 'worker', state: 'expired', capability: 'ordered-queue', reasonCode: 'target-settled' } });
+    expect(await runTaskCommand(['message', 'worker', 'continue'], env, expired.io)).toBe(3);
+    expect(expired.err[0]).toContain('expired');
+  });
+
+  it('cancel posts the target and optional reason, and prints the blocked manager report', async () => {
+    const h = harness({ status: 200, body: { targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked', reason: 'scope withdrawn' } });
+    expect(await runTaskCommand(['cancel', 'worker-1', '--reason', 'scope withdrawn'], env, h.io)).toBe(0);
+    expect(h.calls[0]?.url).toBe('http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/cancel');
+    expect(JSON.parse(String(h.calls[0]?.init?.body))).toEqual({ target: 'worker-1', reason: 'scope withdrawn' });
+    expect(h.out[0]).toContain('manager report status blocked');
+    expect(h.out[0]).toContain('scope withdrawn');
+
+    const noReason = harness({ status: 200, body: { targetId: 'worker-1', status: 'cancelled', reportStatus: 'blocked' } });
+    expect(await runTaskCommand(['cancel', 'worker-1'], env, noReason.io)).toBe(0);
+    expect(JSON.parse(String(noReason.calls[0]?.init?.body))).toEqual({ target: 'worker-1' });
+  });
+
+  it('cancel validates its target and reason locally, and preserves refusal and version-mismatch output', async () => {
+    const h = harness({ status: 200, body: {} });
+    for (const args of [['cancel'], ['cancel', 'worker', 'extra'], ['cancel', 'worker', '--nope'], ['cancel', 'worker', '--reason', '   ']]) {
+      expect(await runTaskCommand(args, env, h.io)).toBe(1);
+    }
+    expect(h.calls).toHaveLength(0);
+    const refused = harness({ status: 409, body: { error: 'worker is settled' } });
+    expect(await runTaskCommand(['cancel', 'worker'], env, refused.io)).toBe(1);
+    expect(refused.err[0]).toContain('cancel refused — worker is settled');
+    const old = harness({ status: 404, body: { error: 'not found' } });
+    expect(await runTaskCommand(['cancel', 'worker'], env, old.io)).toBe(1);
+    expect(old.err[0]).toContain('server does not support this command yet');
+  });
+
   it('verify posts the target and --only, prints the verdict and maps the exit code', async () => {
     const result = (state: string) => ({
       state, source: 'required-checks', headCommit: 'abc1234', startedAt: 'now', durationMs: 2000,

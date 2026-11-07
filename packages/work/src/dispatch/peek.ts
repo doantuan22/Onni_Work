@@ -115,6 +115,10 @@ function formatEntry(entry: DispatchPeekEntry): string {
   if (facts.length > 0) lines.push(`  ${facts.join(' · ')}`);
   if (entry.currentStep) lines.push(`  step: ${entry.currentStep.name} (${entry.currentStep.status})`);
   if (entry.branch) lines.push(`  branch ${entry.branch}${entry.baseBranch ? ` from ${entry.baseBranch}` : ''}`);
+  if (entry.lastManagerDelivery) {
+    const delivery = entry.lastManagerDelivery;
+    lines.push(`  manager delivery: ${delivery.state} (${delivery.capability})${delivery.reasonCode ? ` — ${delivery.reasonCode}` : ''} [${delivery.deliveryId.slice(0, 8)}]`);
+  }
   lines.push(`  ${filesLine(entry)}`);
   if (entry.tail.length > 0) {
     lines.push('  recent:');

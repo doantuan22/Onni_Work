@@ -78,6 +78,11 @@ export const MANAGER_ASK_OPTION_LABEL_MAX_CHARS = 120;
 export const MANAGER_ASK_OPTION_DESCRIPTION_MAX_CHARS = 500;
 export const MANAGER_ASK_OPTIONS_MAX = 10;
 export const MANAGER_ASK_TIMEOUT_MINUTES_MAX = 1_440;
+export const MANAGER_MESSAGE_MAX_CHARS = 2_000;
+export const MANAGER_CANCEL_REASON_MAX_CHARS = 500;
+export const MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS = 1_000;
+export const MANAGER_DELIVERIES_MAX_OUTSTANDING = 5;
+export const MANAGER_DELIVERIES_MAX_RETAINED = 20;
 export const PLAN_MAX_PARTS = 50;
 export const PLAN_PROMPT_MAX_PARTS = 15;
 /** `onni task verify` (wave A1): bounds on what a manager can make onni run and read back. */
@@ -93,6 +98,33 @@ export const VERIFY_WARNINGS_MAX = 5;
 export const CONFLICTS_MAX_PAIRS = 20;
 export const CONFLICTS_FILES_MAX = REPORT_FILES_MAX;
 export const CONFLICTS_TRIAL_MAX = 8;
+
+export const dispatchManagerDeliveryStateSchema = z.enum([
+  'queued',
+  'delivered',
+  'acknowledged',
+  'rejected',
+  'expired',
+]);
+export type DispatchManagerDeliveryState = z.infer<typeof dispatchManagerDeliveryStateSchema>;
+export const dispatchManagerCapabilitySchema = z.enum(['steer', 'ordered-queue', 'unsupported']);
+export type DispatchManagerCapability = z.infer<typeof dispatchManagerCapabilitySchema>;
+export const dispatchManagerDeliveryReasonCodeSchema = z.enum([
+  'backend-unsupported',
+  'runner-rejected',
+  'async-rejected',
+  'target-settled',
+  'process-restarted',
+]);
+export type DispatchManagerDeliveryReasonCode = z.infer<typeof dispatchManagerDeliveryReasonCodeSchema>;
+export const MANAGER_DELIVERY_STRING_MAX_CHARS = 120;
+export const dispatchManagerDeliverySummarySchema = z.strictObject({
+  deliveryId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  state: dispatchManagerDeliveryStateSchema,
+  capability: dispatchManagerCapabilitySchema,
+  reasonCode: dispatchManagerDeliveryReasonCodeSchema.optional(),
+});
+export type DispatchManagerDeliverySummary = z.infer<typeof dispatchManagerDeliverySummarySchema>;
 
 export const VERIFY_BASELINE_VERDICTS = ['no-new-failures', 'new-failures', 'inconclusive'] as const;
 
@@ -138,6 +170,7 @@ export const dispatchPeekEntrySchema = z.object({
   filesOmitted: z.number().int().nonnegative(),
   filesState: z.enum(['ok', 'timeout', 'unavailable']),
   quietMinutes: z.number().int().nonnegative().nullable(),
+  lastManagerDelivery: dispatchManagerDeliverySummarySchema.optional(),
   tail: z.array(z.string().max(PEEK_TAIL_MAX_CHARS_PER_LINE)).max(PEEK_TAIL_MAX_LINES),
   tailTruncated: z.boolean(),
 });
@@ -428,6 +461,116 @@ export const dispatchPendingReportSchema = z.object({
 });
 export type DispatchPendingReport = z.infer<typeof dispatchPendingReportSchema>;
 
+export const dispatchManagerDeliveryRecordSchema = z.strictObject({
+  deliveryId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  state: dispatchManagerDeliveryStateSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  capability: dispatchManagerCapabilitySchema,
+  reasonCode: dispatchManagerDeliveryReasonCodeSchema.optional(),
+});
+export type DispatchManagerDeliveryRecord = z.infer<typeof dispatchManagerDeliveryRecordSchema>;
+
+export const dispatchManagerCancellationSchema = z.strictObject({
+  byRunId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  requestedAt: z.string().datetime(),
+  reason: z.string().trim().min(1).max(MANAGER_CANCEL_REASON_MAX_CHARS).optional(),
+});
+export type DispatchManagerCancellation = z.infer<typeof dispatchManagerCancellationSchema>;
+
+/** Canonical, normalized order as admitted by dispatch; future controls must not reconstruct it from prose. */
+export const dispatchOrderSnapshotSchema = z.strictObject({
+  objective: z.string().min(1).max(4_000),
+  redirectInstruction: z.string().trim().min(1).max(MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS).optional(),
+  title: z.string().min(1).max(120),
+  kind: dispatchKindSchema,
+  scope: z.string().max(1_000).optional(),
+  allowedTools: z.array(z.string().max(80)).max(16).optional(),
+  maxCost: z.number().positive().optional(),
+  successCriteria: z.string().max(1_000).optional(),
+  requiredEvidence: z.string().max(1_000).optional(),
+  retryLimit: z.number().int().min(0).max(3),
+  backend: runnerSchema,
+  model: z.string().max(200).optional(),
+  workerKey: z.string().max(MANAGER_DELIVERY_STRING_MAX_CHARS).optional(),
+  after: z.array(z.string().max(MANAGER_DELIVERY_STRING_MAX_CHARS)).max(8),
+  reviewOf: z.array(z.string().max(MANAGER_DELIVERY_STRING_MAX_CHARS)).max(8).optional(),
+  partId: z.string().trim().min(1).max(40).optional(),
+});
+export type DispatchOrderSnapshot = z.infer<typeof dispatchOrderSnapshotSchema>;
+
+export const dispatchRedirectOperationSchema = z.strictObject({
+  operationId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  managerRunId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  state: z.enum(['cancelling', 'dispatching', 'repointing', 'complete', 'failed']),
+  instruction: z.string().trim().min(1).max(MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS).optional(),
+  requestedAt: z.string().datetime(),
+  replacementRunId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS).optional(),
+  refusal: z.string().trim().min(1).max(MANAGER_CANCEL_REASON_MAX_CHARS).optional(),
+}).superRefine((operation, ctx) => {
+  const active = ['cancelling', 'dispatching', 'repointing'].includes(operation.state);
+  if (active && operation.instruction === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['instruction'], message: 'active redirect operations require an instruction' });
+  }
+  if (!active && operation.instruction !== undefined) {
+    ctx.addIssue({ code: 'custom', path: ['instruction'], message: 'terminal redirect operations must clear the instruction' });
+  }
+});
+export type DispatchRedirectOperation = z.infer<typeof dispatchRedirectOperationSchema>;
+
+export const dispatchManagerMessageInputSchema = z.strictObject({
+  target: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(MANAGER_MESSAGE_MAX_CHARS),
+});
+export type DispatchManagerMessageInput = z.infer<typeof dispatchManagerMessageInputSchema>;
+
+export const dispatchManagerCancelInputSchema = z.strictObject({
+  target: z.string().trim().min(1).max(200),
+  reason: z.string().trim().min(1).max(MANAGER_CANCEL_REASON_MAX_CHARS).optional(),
+});
+export type DispatchManagerCancelInput = z.infer<typeof dispatchManagerCancelInputSchema>;
+
+export const dispatchManagerRedirectInputSchema = z.strictObject({
+  target: z.string().trim().min(1).max(200),
+  instruction: z.string().trim().min(1).max(MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS),
+});
+export type DispatchManagerRedirectInput = z.infer<typeof dispatchManagerRedirectInputSchema>;
+
+export const dispatchManagerMessageResultSchema = z.strictObject({
+  deliveryId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  targetId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  state: dispatchManagerDeliveryStateSchema,
+  capability: dispatchManagerCapabilitySchema,
+  reasonCode: dispatchManagerDeliveryReasonCodeSchema.optional(),
+});
+export type DispatchManagerMessageResult = z.infer<typeof dispatchManagerMessageResultSchema>;
+
+export const dispatchManagerCancelResultSchema = z.strictObject({
+  targetId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  status: z.literal('cancelled'),
+  reportStatus: z.literal('blocked'),
+  reason: z.string().trim().min(1).max(MANAGER_CANCEL_REASON_MAX_CHARS).optional(),
+});
+export type DispatchManagerCancelResult = z.infer<typeof dispatchManagerCancelResultSchema>;
+
+export const dispatchManagerRedirectResultSchema = z.strictObject({
+  cancelledRunId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  replacement: z.strictObject({
+    id: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+    branch: z.string().max(200).optional(),
+  }),
+  repointedDependents: z.number().int().nonnegative(),
+  retryAccounting: z.literal('excluded'),
+});
+export type DispatchManagerRedirectResult = z.infer<typeof dispatchManagerRedirectResultSchema>;
+
+export const dispatchManagerRedirectFailureSchema = z.strictObject({
+  error: z.string().min(1).max(500),
+  cancelledRunId: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS),
+  retryAccounting: z.literal('excluded'),
+});
+export type DispatchManagerRedirectFailure = z.infer<typeof dispatchManagerRedirectFailureSchema>;
+
 /** The engine's own ceiling on children in flight per task; a user's `inFlight` may only lower it. */
 export const DISPATCH_MAX_IN_FLIGHT = 4;
 /** The most subtasks a user may ask a root for through the composer. */
@@ -479,6 +622,16 @@ export const dispatchSchema = z.object({
   report: dispatchReportSchema.optional(),
   /** Reports from settled children waiting for this task's next session. */
   pendingReports: z.array(dispatchPendingReportSchema).optional(),
+  /** Normalized order captured when this child was admitted; optional for pre-wave-B records. */
+  order: dispatchOrderSnapshotSchema.optional(),
+  /** Bounded latest manager delivery receipts; message bodies remain only in existing queues/events. */
+  managerDeliveries: z.array(dispatchManagerDeliveryRecordSchema).max(MANAGER_DELIVERIES_MAX_RETAINED).optional(),
+  /** Manager cancellation provenance; the reason is redacted before persistence. */
+  managerCancellation: dispatchManagerCancellationSchema.optional(),
+  /** Optional redirect transaction provenance, reserved for the later redirect engine part. */
+  redirectOperation: dispatchRedirectOperationSchema.optional(),
+  redirectedFrom: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS).optional(),
+  redirectedTo: z.string().min(1).max(MANAGER_DELIVERY_STRING_MAX_CHARS).optional(),
   /** ISO-8601 watermark: inbox files newer than this are "new" for the next digest or wake. */
   inboxSeenAt: z.string().optional(),
   /** The question this run is parked on (the Guard), cleared when an answer is delivered. */
