@@ -69,6 +69,7 @@ import {
   MANAGER_DELIVERIES_MAX_OUTSTANDING,
   MANAGER_DELIVERIES_MAX_RETAINED,
   MANAGER_MESSAGE_MAX_CHARS,
+  MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS,
 } from '@onni/contract';
 import type { AgentEvent, AgentRunResult, ContentBlock } from '../core/agent-runner.ts';
 import { discoverSkills, type Skill } from '../skills.ts';
@@ -126,6 +127,10 @@ import type {
   DispatchManagerDeliveryState,
   DispatchManagerMessageInput,
   DispatchManagerMessageResult,
+  DispatchManagerRedirectFailure,
+  DispatchManagerRedirectInput,
+  DispatchManagerRedirectResult,
+  DispatchOrderSnapshot,
   DispatchReport,
   DispatchVerifyBaseline,
   RunDispatch,
@@ -991,6 +996,13 @@ export interface StartRunInput {
   managerFullAccess?: boolean;
 }
 
+/** Internal-only provenance passed from `redirectFor` into the ordinary dispatcher. */
+type RedirectDispatchOrigin = {
+  sourceRunId: string;
+  canonicalOrder: DispatchOrderSnapshot;
+  instruction: string;
+};
+
 /**
  * The effective "extra" system prompt for a run (spec §protocol v2, R2 2.3):
  * the per-run override (`POST /api/runs` `systemPrompt`) REPLACES the
@@ -1351,6 +1363,8 @@ export class RunManager {
   // registering in `active`, so parallel-slot counting is never racy.
   private readonly queue: string[] = [];
   private readonly starting = new Set<string>();
+  /** Sources whose durable redirect transaction temporarily holds their queued dependents. */
+  private readonly redirecting = new Set<string>();
   // Runs cancelled inside that window: there is no `ActiveRun` to flag yet, so the starter checks
   // here once it has one to build (`abandonCancelledStart`).
   private readonly cancelledStarting = new Set<string>();
@@ -2141,12 +2155,16 @@ export class RunManager {
         this.blockOrphanedDependents();
         const startable = (id: string): boolean => {
           const queued = this.store.getRun(id);
+          // A cancelled redirect source temporarily looks like an orphan. Keep its dependents
+          // parked until the durable operation either points them at the replacement or fails.
+          if (queued && (queued.dispatch?.after ?? []).some((afterId) => this.redirecting.has(afterId))) return false;
           if (queued && anyHold && accountHeldFor(queued, holds, defaultRunner ?? 'claude')) return false;
           // A roster entry's `maxConcurrent`: a worker over its entry's cap keeps its place in
           // the queue while the others start, and wakes on the next slot release.
           if (queued && this.workerEntryFull(queued)) return false;
           // `--after`: wait queued, holding no slot, until the siblings it depends on have finished.
           if (queued && this.dependencyState(queued) !== 'ready') return false;
+          if (queued) this.refreshQueuedDependencyEnvelope(queued);
           // "Start now" goes over `maxParallel` on purpose, but a non-git root still runs one at a time.
           if (this.startNowRequested.has(id)) return repo !== null || this.busySlots() < 1;
           return capacity();
@@ -2320,6 +2338,9 @@ export class RunManager {
    */
   async recover(): Promise<void> {
     await this.lifecycle.reconcile();
+    // Repair durable manager redirects before ordinary recovery can settle their sources or pump
+    // a dependent whose predecessor is cancelled.
+    await this.recoverRedirectOperations();
     // Plan v2 §9: a manager question outlives the process. Rebuild its deadline from the record,
     // retire one that already passed, and never let either decision wait for the live-run sweep.
     this.recoverSoftAsks();
@@ -3282,7 +3303,11 @@ export class RunManager {
       return { denied: 'worker is waiting for a workflow answer; a manager message cannot answer it', status: 409 };
     }
 
-    const text = this.store.redactRunText(target.id, input.text).trim();
+    const rawText = input.text.trim();
+    if (!rawText || rawText.length > MANAGER_MESSAGE_MAX_CHARS) {
+      return { denied: `message text must be 1-${MANAGER_MESSAGE_MAX_CHARS} characters`, status: 400 };
+    }
+    const text = this.store.redactRunText(target.id, rawText).trim();
     if (!text || text.length > MANAGER_MESSAGE_MAX_CHARS) {
       return { denied: `message text must be 1-${MANAGER_MESSAGE_MAX_CHARS} characters after redaction`, status: 400 };
     }
@@ -3386,7 +3411,11 @@ export class RunManager {
     if (!['queued', 'running', 'waiting'].includes(target.status)) {
       return { denied: `worker ${target.id.slice(0, 8)} is settled (${target.status})`, status: 409 };
     }
-    const reason = input.reason === undefined ? undefined : this.store.redactRunText(target.id, input.reason).trim();
+    const rawReason = input.reason?.trim();
+    if (rawReason !== undefined && (!rawReason || rawReason.length > MANAGER_CANCEL_REASON_MAX_CHARS)) {
+      return { denied: `cancel reason must be 1-${MANAGER_CANCEL_REASON_MAX_CHARS} characters`, status: 400 };
+    }
+    const reason = rawReason === undefined ? undefined : this.store.redactRunText(target.id, rawReason).trim();
     if (reason !== undefined && (!reason || reason.length > MANAGER_CANCEL_REASON_MAX_CHARS)) {
       return { denied: `cancel reason must be 1-${MANAGER_CANCEL_REASON_MAX_CHARS} characters after redaction`, status: 400 };
     }
@@ -3416,6 +3445,305 @@ export class RunManager {
       reportStatus: 'blocked' as const,
       ...(reason ? { reason } : {}),
     };
+  }
+
+  /** Redirect one live direct worker by cancelling it and re-admitting its saved order. */
+  async redirectFor(
+    callerId: string,
+    input: DispatchManagerRedirectInput,
+  ): Promise<DispatchManagerRedirectResult | DispatchManagerRedirectFailure | { denied: string; status: 400 | 403 | 404 | 409 }> {
+    if (!this.dispatchEnabled()) return { denied: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0)', status: 409 };
+    const caller = this.store.getRun(callerId);
+    const access = requireRootManager(caller, 'redirect a worker');
+    if (!access.ok) return { denied: access.denied, status: access.status };
+    if (!caller) return { denied: `no such run: ${callerId}`, status: 404 };
+
+    const target = resolveRunRef(this.store.listRuns(), input.target);
+    if (target === 'none') return { denied: `no such run: ${input.target}`, status: 404 };
+    if (target === 'ambiguous') return { denied: `ambiguous id "${input.target}" — give more characters`, status: 409 };
+    const sameTree = requireSameTree(caller, target);
+    if (!sameTree.ok) return { denied: sameTree.denied, status: sameTree.status };
+    if (target.id === caller.id || target.dispatch?.rootRunId !== caller.id) {
+      return { denied: 'redirect target must be a worker of this task', status: 409 };
+    }
+    if (!['queued', 'running', 'waiting'].includes(target.status)) {
+      return { denied: `worker ${target.id.slice(0, 8)} is settled (${target.status})`, status: 409 };
+    }
+    if (target.status === 'waiting' && (target.dispatch?.pendingAsk !== undefined || target.askParked === true)) {
+      return { denied: 'worker is waiting for the user to answer its Guard/ask; a manager redirect cannot answer it', status: 409 };
+    }
+    const priorOperation = target.dispatch.redirectOperation;
+    if (priorOperation && ['cancelling', 'dispatching', 'repointing'].includes(priorOperation.state)) {
+      return { denied: 'worker already has a redirect in progress', status: 409 };
+    }
+    const canonicalOrder = target.dispatch.order;
+    if (!canonicalOrder) return { denied: 'worker has no saved dispatch order; redirect requires its original order snapshot', status: 409 };
+    const rawInstruction = input.instruction.trim();
+    if (!rawInstruction || rawInstruction.length > MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS) {
+      return { denied: `redirect instruction must be 1-${MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS} characters`, status: 400 };
+    }
+    const instruction = this.store.redactRunText(target.id, rawInstruction).trim();
+    if (!instruction || instruction.length > MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS) {
+      return { denied: `redirect instruction must be 1-${MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS} characters after redaction`, status: 400 };
+    }
+    const redirectInput = this.redirectDispatchInput(canonicalOrder, instruction);
+    if (redirectInput.objective.length > 4_000) {
+      return { denied: 'canonical objective plus redirect instruction exceeds the 4,000 character order limit', status: 400 };
+    }
+    const redirectOrigin: RedirectDispatchOrigin = { sourceRunId: target.id, canonicalOrder, instruction };
+    // Exercise the same admission gates before the cancellation becomes irreversible. Dispatch
+    // repeats them after cancellation, when in-flight and budget accounting reflect the new state.
+    const preflight = this.dispatch(caller.id, redirectInput, { redirectOrigin, preflightOnly: true });
+    if ('refused' in preflight) return { denied: preflight.refused, status: 409 };
+
+    const requestedAt = new Date().toISOString();
+    const operationId = randomUUID();
+    this.updateDispatch(target.id, (dispatch) => ({
+      ...dispatch,
+      redirectOperation: { operationId, managerRunId: caller.id, state: 'cancelling', instruction, requestedAt },
+      managerCancellation: {
+        byRunId: caller.id,
+        requestedAt,
+        reason: 'redirected by manager',
+      },
+    }));
+    this.redirecting.add(target.id);
+    const title = this.store.redactRunText(target.id, target.title).replace(/\s+/g, ' ').slice(0, 120);
+    this.store.appendEvent(target.id, {
+      type: 'lifecycle',
+      message: `cancelled by manager ${caller.id.slice(0, 8)} — redirected by manager`,
+    });
+    this.store.appendEvent(caller.id, {
+      type: 'note',
+      stepId: this.active.get(caller.id)?.currentStepId,
+      message: `redirecting worker "${title}" (${target.id.slice(0, 8)}) — ${instruction.slice(0, 240)}`,
+    });
+    appendLedger(this.dataDir, target.dispatch.rootRunId, {
+      type: 'redirect',
+      runId: caller.id,
+      sourceRunId: target.id,
+      state: 'cancelling',
+      instruction,
+    });
+
+    const cancelled = await this.cancelRedirectSource(target.id);
+    if (!cancelled) {
+      const refusal = `worker ${target.id.slice(0, 8)} could not be cancelled`;
+      this.failRedirectOperation(target.id, refusal);
+      return { denied: refusal, status: 409 };
+    }
+    this.updateDispatch(target.id, (dispatch) => ({
+      ...dispatch,
+      redirectOperation: {
+        ...dispatch.redirectOperation!,
+        state: 'dispatching',
+      },
+    }));
+
+    let outcome: { id: string; branch?: string } | { refused: string };
+    try {
+      outcome = this.dispatch(caller.id, redirectInput, { redirectOrigin });
+    } catch (error) {
+      const refusal = error instanceof Error ? error.message : String(error);
+      return this.redirectFailure(target.id, refusal);
+    }
+    if ('refused' in outcome) return this.redirectFailure(target.id, outcome.refused);
+    return this.finishRedirectOperation(target.id, outcome.id);
+  }
+
+  private redirectDispatchInput(order: DispatchOrderSnapshot, instruction: string): DispatchInput {
+    return {
+      title: order.title,
+      objective: `${order.objective}\n\nManager redirect instruction:\n${instruction}`,
+      kind: order.kind,
+      ...(order.reviewOf !== undefined ? { review_of: order.reviewOf } : {}),
+      ...(order.scope !== undefined ? { scope: order.scope } : {}),
+      ...(order.allowedTools !== undefined ? { allowed_tools: order.allowedTools } : {}),
+      ...(order.maxCost !== undefined ? { max_cost: order.maxCost } : {}),
+      ...(order.successCriteria !== undefined ? { success_criteria: order.successCriteria } : {}),
+      ...(order.requiredEvidence !== undefined ? { required_evidence: order.requiredEvidence } : {}),
+      retry_limit: order.retryLimit,
+      after: order.after,
+      backend: order.backend,
+      ...(order.model !== undefined ? { model: order.model } : {}),
+      ...(order.partId !== undefined ? { partId: order.partId } : {}),
+    };
+  }
+
+  private async cancelRedirectSource(runId: string): Promise<boolean> {
+    const current = this.store.getRun(runId);
+    if (!current) return false;
+    if (current.status === 'cancelled') return true;
+    const wasActive = this.isActive(runId);
+    // A restart loses the in-memory queue and active maps. Adopt the durable live record into the
+    // shared cancel path so its lifecycle hooks, report and delivery expiry still run.
+    if (!wasActive && !this.starting.has(runId) && !this.queue.includes(runId)) this.queue.push(runId);
+    if (!this.cancel(runId)) return this.store.getRun(runId)?.status === 'cancelled';
+    if (wasActive || this.starting.has(runId)) await this.waitInactive(runId, 10_000);
+    return this.store.getRun(runId)?.status === 'cancelled';
+  }
+
+  private redirectFailure(sourceRunId: string, refusal: string): DispatchManagerRedirectFailure {
+    const safe = this.failRedirectOperation(sourceRunId, refusal);
+    return {
+      error: `cancelled, replacement refused: ${safe}`.slice(0, 500),
+      cancelledRunId: sourceRunId,
+      retryAccounting: 'excluded',
+    };
+  }
+
+  /** Persist the failed terminal state before releasing queued dependents to the normal blocker. */
+  private failRedirectOperation(sourceRunId: string, refusal: string): string {
+    const source = this.store.getRun(sourceRunId);
+    const safe = this.store.redactRunText(sourceRunId, refusal).trim().slice(0, MANAGER_CANCEL_REASON_MAX_CHARS) || 'replacement admission failed';
+    const managerRunId = source?.dispatch?.redirectOperation?.managerRunId ?? source?.dispatch?.parentRunId;
+    const rootRunId = source?.dispatch?.rootRunId;
+    if (source?.dispatch?.redirectOperation && rootRunId) {
+      this.updateDispatch(sourceRunId, (dispatch) => ({
+        ...dispatch,
+        redirectOperation: (() => {
+          const { instruction: _instruction, ...operation } = dispatch.redirectOperation!;
+          return { ...operation, state: 'failed' as const, refusal: safe };
+        })(),
+      }));
+      this.store.appendEvent(sourceRunId, { type: 'note', message: `redirect failed — ${safe}` });
+      if (managerRunId) this.store.appendEvent(managerRunId, { type: 'note', message: `redirect failed for worker ${sourceRunId.slice(0, 8)} — ${safe}` });
+      appendLedger(this.dataDir, rootRunId, {
+        type: 'redirect-failed',
+        runId: managerRunId ?? rootRunId,
+        sourceRunId,
+        refusal: safe,
+      });
+    }
+    this.redirecting.delete(sourceRunId);
+    this.blockOrphanedDependents();
+    void this.pump();
+    return safe;
+  }
+
+  /** Complete the durable graph transaction; safe to rerun after a crash at any earlier write. */
+  private finishRedirectOperation(sourceRunId: string, replacementRunId: string): DispatchManagerRedirectResult {
+    const source = this.store.getRun(sourceRunId);
+    const replacement = this.store.getRun(replacementRunId);
+    const operation = source?.dispatch?.redirectOperation;
+    if (!source?.dispatch || !operation || !replacement?.dispatch) {
+      throw new Error('redirect records disappeared before graph repair completed');
+    }
+    this.redirecting.add(sourceRunId);
+    this.updateDispatch(sourceRunId, (dispatch) => ({
+      ...dispatch,
+      redirectedTo: replacementRunId,
+      redirectOperation: { ...operation, state: 'repointing', replacementRunId },
+    }));
+    this.updateDispatch(replacementRunId, (dispatch) => ({ ...dispatch, redirectedFrom: sourceRunId }));
+    const repointedDependents = this.repointQueuedDependents(source, replacement);
+    this.updateDispatch(sourceRunId, (dispatch) => ({
+      ...dispatch,
+      redirectOperation: (() => {
+        const { instruction: _instruction, ...operation } = dispatch.redirectOperation!;
+        return { ...operation, state: 'complete' as const, replacementRunId };
+      })(),
+    }));
+    appendLedger(this.dataDir, source.dispatch.rootRunId, {
+      type: 'redirect-complete',
+      runId: operation.managerRunId,
+      sourceRunId,
+      replacementRunId,
+      repointedDependents,
+    });
+    this.store.appendEvent(operation.managerRunId, {
+      type: 'note',
+      message: `redirected worker ${sourceRunId.slice(0, 8)} to ${replacementRunId.slice(0, 8)}; repointed ${repointedDependents} queued dependents`,
+    });
+    this.redirecting.delete(sourceRunId);
+    void this.pump();
+    const savedReplacement = this.store.getRun(replacementRunId)!;
+    return {
+      cancelledRunId: sourceRunId,
+      replacement: { id: replacementRunId, ...(savedReplacement.branch ? { branch: savedReplacement.branch } : {}) },
+      repointedDependents,
+      retryAccounting: 'excluded',
+    };
+  }
+
+  private repointQueuedDependents(source: RunRecord, replacement: RunRecord): number {
+    const parentRunId = source.dispatch?.parentRunId;
+    if (!parentRunId || !source.dispatch) return 0;
+    let repointed = 0;
+    for (const candidate of this.store.listRuns()) {
+      const dispatch = candidate.dispatch;
+      if (candidate.status !== 'queued' || dispatch?.parentRunId !== parentRunId || !dispatch.after?.includes(source.id)) continue;
+      // A replacement takes the source's graph position as the new fork point; the other edges
+      // keep their original order after it so dependents inherit the replacement's branch.
+      const after = [replacement.id, ...dispatch.after.filter((id) => id !== source.id && id !== replacement.id)];
+      this.updateDispatch(candidate.id, (current) => ({
+        ...current,
+        after,
+        ...(current.order ? { order: { ...current.order, after } } : {}),
+      }));
+      const refreshed = this.store.getRun(candidate.id);
+      if (refreshed) this.refreshQueuedDependencyEnvelope(refreshed);
+      repointed += 1;
+    }
+    return repointed;
+  }
+
+  private async recoverRedirectOperations(): Promise<void> {
+    const operations = this.store.listRuns().filter((run) =>
+      run.dispatch?.redirectOperation
+      && ['cancelling', 'dispatching', 'repointing'].includes(run.dispatch.redirectOperation.state),
+    );
+    for (const source of operations) this.redirecting.add(source.id);
+    for (const snapshot of operations) {
+      const source = this.store.getRun(snapshot.id);
+      const operation = source?.dispatch?.redirectOperation;
+      if (!source?.dispatch || !operation) continue;
+      const linked = this.store.listRuns().find((run) =>
+        run.dispatch?.rootRunId === source.dispatch?.rootRunId
+        && (run.dispatch?.redirectedFrom === source.id || run.id === operation.replacementRunId),
+      );
+      if (linked) {
+        this.finishRedirectOperation(source.id, linked.id);
+        continue;
+      }
+      const order = source.dispatch.order;
+      const instruction = operation.instruction;
+      if (!order || !instruction) {
+        this.failRedirectOperation(source.id, 'redirect could not recover its saved order or instruction');
+        continue;
+      }
+      if (source.status !== 'cancelled') {
+        const now = new Date().toISOString();
+        if (!source.dispatch.managerCancellation) {
+          this.updateDispatch(source.id, (dispatch) => ({
+            ...dispatch,
+            managerCancellation: { byRunId: operation.managerRunId, requestedAt: operation.requestedAt ?? now, reason: 'redirected by manager' },
+          }));
+        }
+        if (!await this.cancelRedirectSource(source.id)) {
+          this.failRedirectOperation(source.id, `worker ${source.id.slice(0, 8)} could not be cancelled during redirect recovery`);
+          continue;
+        }
+      }
+      this.updateDispatch(source.id, (dispatch) => ({
+        ...dispatch,
+        redirectOperation: { ...dispatch.redirectOperation!, state: 'dispatching' },
+      }));
+      const origin: RedirectDispatchOrigin = { sourceRunId: source.id, canonicalOrder: order, instruction };
+      let outcome: { id: string; branch?: string } | { refused: string };
+      try {
+        outcome = this.dispatch(operation.managerRunId, this.redirectDispatchInput(order, instruction), { redirectOrigin: origin });
+      } catch (error) {
+        const refusal = error instanceof Error ? error.message : String(error);
+        this.failRedirectOperation(source.id, refusal);
+        continue;
+      }
+      if ('refused' in outcome) {
+        this.failRedirectOperation(source.id, outcome.refused);
+        continue;
+      }
+      this.finishRedirectOperation(source.id, outcome.id);
+    }
   }
 
   private managerDeliveryFor(runId: string, deliveryId: string): DispatchManagerDeliveryRecord | undefined {
@@ -4622,6 +4950,7 @@ export class RunManager {
   private blockOrphanedDependents(): void {
     for (const id of [...this.queue]) {
       const run = this.store.getRun(id);
+      if (run && (run.dispatch?.after ?? []).some((afterId) => this.redirecting.has(afterId))) continue;
       if (!run || this.dependencyState(run) !== 'blocked') continue;
       const failed = (run.dispatch?.after ?? [])
         .map((depId) => this.store.getRun(depId))
@@ -4630,6 +4959,41 @@ export class RunManager {
         error: `blocked: the order it was waiting for ("${failed?.title ?? 'a removed order'}") ${failed?.status ?? 'is gone'}, so it never started`,
       });
       this.cancelOne(id);
+    }
+  }
+
+  /** Refresh the human-readable dependency line and fork point before a queued child starts. */
+  private refreshQueuedDependencyEnvelope(run: RunRecord): void {
+    const dispatch = run.dispatch;
+    if (run.status !== 'queued' || !dispatch?.after?.length) return;
+    const afterRuns = dispatch.after.map((id) => this.store.getRun(id));
+    const line = `- Starts after: ${dispatch.after.map((id, index) => {
+      const dependency = afterRuns[index];
+      return `${dependency?.title ?? id} (${id.slice(0, 8)}${dependency?.branch ? `, branch ${dependency.branch}` : ''})`;
+    }).join(', ')} — onni holds you queued until they have finished successfully`;
+    const taskLines = run.task.split('\n');
+    const startsAfter = taskLines.findIndex((candidate) => candidate.startsWith('- Starts after: '));
+    if (startsAfter >= 0) taskLines[startsAfter] = line;
+    else {
+      const orderedBy = taskLines.findIndex((candidate) => candidate.startsWith('- Ordered by: '));
+      taskLines.splice(orderedBy >= 0 ? orderedBy : taskLines.length, 0, line);
+    }
+    const task = taskLines.join('\n');
+    const parentBranch = this.store.getRun(dispatch.parentRunId ?? '')?.branch;
+    const baseBranch = afterRuns[0]?.branch ?? parentBranch;
+    if (task === run.task && baseBranch === run.baseBranch) return;
+    this.store.updateRun(run.id, { task, baseBranch });
+    const job = this.pendingJobs.get(run.id);
+    if (job) job.input.task = task;
+    try {
+      writeOrder(this.dataDir, dispatch.rootRunId, run.id, {
+        title: run.title,
+        kind: dispatch.order?.kind ?? dispatch.kind ?? 'implement',
+        parentRunId: dispatch.parentRunId ?? dispatch.rootRunId,
+        text: task,
+      });
+    } catch {
+      // Queued run state remains authoritative if the optional tree file channel is unavailable.
     }
   }
 
@@ -4714,7 +5078,14 @@ export class RunManager {
     input: DispatchInput,
     /** Internal only (graph nodes — never the route): run the child as this workflow instead of
      *  the single synthetic step an agent's order gets. */
-    opts: { workflow?: WorkflowDef; antigravityLevel?: AgentPermissionLevel } = {},
+    opts: {
+      workflow?: WorkflowDef;
+      antigravityLevel?: AgentPermissionLevel;
+      /** Internal redirect provenance and its canonical order; never accepted from an agent. */
+      redirectOrigin?: RedirectDispatchOrigin;
+      /** Run every admission check without creating a child or mutating the task tree. */
+      preflightOnly?: boolean;
+    } = {},
   ): { id: string; branch?: string } | { refused: string } {
     if (!this.dispatchEnabled()) return { refused: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0) — the operator turned it off. Do not substitute sub-agents or do the delegated work yourself: stop and report that dispatch is disabled.' };
     const parent = this.store.getRun(parentId);
@@ -4747,7 +5118,9 @@ export class RunManager {
     // only tighten the engine's own caps, and the child defaults they name fill an order's gaps.
     const intent = runs.find((r) => r.id === (parent.dispatch?.rootRunId ?? parent.id))?.dispatch?.intent;
     const inFlightCap = Math.min(MAX_CHILDREN_IN_FLIGHT, intent?.inFlight ?? MAX_CHILDREN_IN_FLIGHT);
-    const inFlight = inFlightChildren(runs, parentId).length;
+    const inFlight = inFlightChildren(runs, parentId)
+      .filter((run) => run.id !== opts.redirectOrigin?.sourceRunId)
+      .length;
     if (inFlight + 1 > inFlightCap) {
       const refused = `${inFlight} child run${inFlight === 1 ? '' : 's'} already in flight; the cap is ${inFlightCap} per task${intent?.inFlight !== undefined && intent.inFlight < MAX_CHILDREN_IN_FLIGHT ? ' (set by the user)' : ''}. Wait for reports, then dispatch again.`;
       note(`dispatch refused — ${refused}`, 'danger');
@@ -4778,7 +5151,12 @@ export class RunManager {
     // again after it failed or was cancelled. An order may only lower the workspace ceiling.
     const orderTitle = input.title ?? input.objective.split('\n')[0]?.slice(0, 120) ?? 'dispatched task';
     const retryLimit = Math.min(input.retry_limit ?? safety.dispatchRetryLimit, safety.dispatchRetryLimit);
-    const failedTries = childrenOf(runs, parentId).filter((r) => r.title === orderTitle && (r.status === 'failed' || r.status === 'cancelled')).length;
+    const failedTries = childrenOf(runs, parentId).filter((r) =>
+      r.id !== opts.redirectOrigin?.sourceRunId
+      && r.dispatch?.redirectOperation === undefined
+      && r.title === orderTitle
+      && (r.status === 'failed' || r.status === 'cancelled'),
+    ).length;
     if (failedTries > retryLimit) {
       const refused = `"${orderTitle}" already failed ${failedTries} time${failedTries === 1 ? '' : 's'}; its retry limit is ${retryLimit}. Report the failure instead of dispatching it again.`;
       note(`dispatch refused — ${refused}`, 'danger');
@@ -4790,7 +5168,11 @@ export class RunManager {
     // Only an order the agent NAMED (--title) and only from an agent: graph nodes legitimately fan out
     // identical, untitled children.
     const duplicate = input.title !== undefined && !opts.workflow
-      ? childrenOf(runs, parentId).find((r) => r.title === orderTitle && IN_FLIGHT_STATUSES.includes(r.status))
+      ? childrenOf(runs, parentId).find((r) =>
+          r.id !== opts.redirectOrigin?.sourceRunId
+          && r.title === orderTitle
+          && IN_FLIGHT_STATUSES.includes(r.status),
+        )
       : undefined;
     if (duplicate) {
       const refused = `"${orderTitle}" is already ${duplicate.status === 'queued' ? 'queued' : 'running'} as ${duplicate.id.slice(0, 8)}. Wait for its report instead of dispatching it again.`;
@@ -4826,7 +5208,10 @@ export class RunManager {
       this.store.updateRun(parentId, { dispatch: { rootRunId } });
     }
 
-    const budget = this.carveChildBudget(this.store.getRun(parentId) ?? parent, runs, input.max_cost ?? intent?.budgetUsd);
+    const budgetRuns = opts.preflightOnly && opts.redirectOrigin
+      ? runs.map((run) => run.id === opts.redirectOrigin!.sourceRunId ? { ...run, status: 'cancelled' as const } : run)
+      : runs;
+    const budget = this.carveChildBudget(this.store.getRun(parentId) ?? parent, budgetRuns, input.max_cost ?? intent?.budgetUsd);
     if ('refused' in budget) {
       note(`dispatch refused — ${budget.refused}`, 'danger');
       return { refused: budget.refused };
@@ -4858,12 +5243,15 @@ export class RunManager {
     // reason, and the worker's own report is what settles it. Graph nodes pass no level, so a
     // workflow child never warns.
     if (
+      !opts.preflightOnly
+      &&
       opts.antigravityLevel === 'files-only'
       && childRunner === 'antigravity'
       && VERIFICATION_ASK_RE.test([input.objective, input.success_criteria, input.required_evidence].filter(Boolean).join('\n'))
     ) {
       note('warning — this worker cannot run shell commands (files-only); the order asks for verification it cannot perform. Give it to another worker or raise its permission level.');
     }
+    if (opts.preflightOnly) return { id: '' };
     const record = this.startRun(opts.workflow ?? workflow, {
       // The tree directory lines are composed against the id the run is ABOUT to get: `startRun`
       // mints it, so the envelope is finished below once it exists.
@@ -4891,8 +5279,10 @@ export class RunManager {
         ...(input.scope ? { scope: input.scope } : {}),
         ...(afterIds.length ? { after: afterIds } : {}),
         ...(budget.budgetUsd !== undefined ? { budgetUsd: budget.budgetUsd } : {}),
+        ...(opts.redirectOrigin ? { redirectedFrom: opts.redirectOrigin.sourceRunId } : {}),
         order: {
-          objective: input.objective,
+          objective: opts.redirectOrigin?.canonicalOrder.objective ?? input.objective,
+          ...(opts.redirectOrigin ? { redirectInstruction: opts.redirectOrigin.instruction } : {}),
           title,
           kind: input.kind ?? 'implement',
           ...(input.scope !== undefined ? { scope: input.scope } : {}),

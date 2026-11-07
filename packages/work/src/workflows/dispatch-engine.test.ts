@@ -5,12 +5,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MANAGER_MEMORY_MAX_BYTES, PENDING_ASK_MAX_QUESTIONS, PEEK_MAX_ENTRIES, rosterSchema, type DispatchInput, type RunDispatch } from '@onni/contract';
+import { MANAGER_MEMORY_MAX_BYTES, PENDING_ASK_MAX_QUESTIONS, PEEK_MAX_ENTRIES, rosterSchema, type DispatchInput, type DispatchOrderSnapshot, type RunDispatch } from '@onni/contract';
 import { runRecordSchema, RunStore, type RunRecord } from '../runs/store.ts';
 import { WorkspaceSemaphore, type WorkspaceResourceLimits } from '../workspace/semaphore.ts';
-import { RunManager } from './run.ts';
+import { RunManager, type StartRunInput } from './run.ts';
 import { BASH_MISSING_MESSAGE } from '../core/bash-path.ts';
-import { childSettleReport } from '../dispatch/engine.ts';
+import { childSettleReport, childTaskEnvelope } from '../dispatch/engine.ts';
 import { writeReport } from '../dispatch/tree-fs.ts';
 import type { WorkflowDef } from './types.ts';
 
@@ -374,6 +374,130 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
       manager.dispatch(parent.id, order('mock:done pytest', { backend: 'antigravity' }));
       expect(warned()).toHaveLength(0);
     }, 40_000);
+  });
+
+  // ---- manager redirect (wave B4) -----------------------------------------------------------
+
+  describe('manager redirect', () => {
+    it('holds multiple dependents through replacement admission, then starts them from its branch', async () => {
+      reboot({ maxParallel: 2, maxMonitoringSessions: 0 });
+      const parent = await parkedRoot();
+      store.updateRun(parent.id, {
+        roster: {
+          manager: { runner: 'claude' },
+          workers: [{ runner: 'claude', role: 'worker', maxConcurrent: 2 }],
+        },
+      });
+      await run('git', ['branch', 'redirect-pred-a'], { cwd: repoRoot });
+      await run('git', ['branch', 'redirect-pred-b'], { cwd: repoRoot });
+      const predecessorA = store.createRun({ title: 'predecessor A', workflow: '(planned)', task: 'done', steps: [] });
+      const predecessorB = store.createRun({ title: 'predecessor B', workflow: '(planned)', task: 'done', steps: [] });
+      store.updateRun(predecessorA.id, { status: 'done', branch: 'redirect-pred-a', dispatch: childOf(parent.id) });
+      store.updateRun(predecessorB.id, { status: 'done', branch: 'redirect-pred-b', dispatch: childOf(parent.id) });
+      const canonicalOrder: DispatchOrderSnapshot = {
+        objective: 'mock:done implement the parser',
+        title: 'parser worker',
+        kind: 'implement',
+        retryLimit: 1,
+        backend: 'claude',
+        after: [predecessorA.id, predecessorB.id],
+      };
+      const source = store.createRun({ title: 'parser worker', workflow: '(planned)', task: canonicalOrder.objective, runner: 'claude', steps: [] });
+      store.updateRun(source.id, {
+        dispatch: { ...childOf(parent.id), after: canonicalOrder.after, order: canonicalOrder },
+      });
+      const seam = manager as unknown as {
+        queue: string[];
+        pendingJobs: Map<string, { workflow: WorkflowDef; input: StartRunInput }>;
+      };
+      const dependent = (title: string, after: string[]): RunRecord => {
+        const input: DispatchInput = { title, objective: `mock:done ${title}`, after };
+        const afterText = after.map((id) => {
+          const run = store.getRun(id);
+          return `${run?.title ?? id} (${id.slice(0, 8)}${run?.branch ? `, branch ${run.branch}` : ''})`;
+        });
+        const task = childTaskEnvelope({ ...input, after: afterText }, { id: parent.id, branch: parent.branch });
+        const record = store.createRun({ title, workflow: '(planned)', task, runner: 'claude', steps: [] });
+        const dispatch = { ...childOf(parent.id), after };
+        store.updateRun(record.id, { dispatch });
+        seam.queue.push(record.id);
+        seam.pendingJobs.set(record.id, { workflow: SINGLE_STEP, input: { task, runner: 'claude', autonomous: true, dispatch } });
+        return record;
+      };
+      const dependentA = dependent('dependent A', [predecessorA.id, source.id]);
+      const dependentB = dependent('dependent B', [source.id, predecessorB.id]);
+
+      const result = await manager.redirectFor(parent.id, { target: source.id, instruction: 'Keep the parser streaming' });
+
+      expect(result).toMatchObject({ cancelledRunId: source.id, repointedDependents: 2, retryAccounting: 'excluded' });
+      if ('denied' in result || 'error' in result) throw new Error(`redirect failed: ${'denied' in result ? result.denied : result.error}`);
+      const replacementId = result.replacement.id;
+      started.push(replacementId);
+      await waitFor(replacementId, settled, 40_000);
+      await waitFor(dependentA.id, settled, 40_000);
+      await waitFor(dependentB.id, settled, 40_000);
+      const replacement = store.getRun(replacementId)!;
+      expect(store.getRun(source.id)?.status).toBe('cancelled');
+      expect(store.getRun(source.id)?.dispatch?.redirectedTo).toBe(replacementId);
+      expect(store.getRun(replacementId)?.dispatch?.redirectedFrom).toBe(source.id);
+      expect(store.getRun(dependentA.id)?.status).toBe('done');
+      expect(store.getRun(dependentB.id)?.status).toBe('done');
+      expect(store.getRun(dependentA.id)?.dispatch?.after).toEqual([replacementId, predecessorA.id]);
+      expect(store.getRun(dependentB.id)?.dispatch?.after).toEqual([replacementId, predecessorB.id]);
+      expect(store.getRun(dependentA.id)?.baseBranch).toBe(replacement.branch);
+      expect(store.getRun(dependentB.id)?.baseBranch).toBe(replacement.branch);
+      expect(store.getRun(dependentA.id)?.task).toContain(`parser worker (${replacementId.slice(0, 8)}, branch ${replacement.branch})`);
+      expect(store.getRun(dependentB.id)?.task).toContain(`parser worker (${replacementId.slice(0, 8)}, branch ${replacement.branch})`);
+      expect(readFileSync(join(treeDirOf(parent.id), 'ledger.jsonl'), 'utf8')).toContain(`"replacementRunId":"${replacementId}"`);
+    }, 60_000);
+
+    it('resumes a persisted dispatching transaction after restart without a second source retry', async () => {
+      const parent = store.createRun({ title: 'manager', task: 'manage', workflow: 'quick-task', runner: 'claude', steps: [] });
+      store.updateRun(parent.id, { status: 'queued', branch: 'main', dispatch: rootOf(parent.id) });
+      const canonicalOrder: DispatchOrderSnapshot = {
+        objective: 'mock:done implement the restarted parser',
+        title: 'restart parser',
+        kind: 'implement',
+        retryLimit: 0,
+        backend: 'claude',
+        after: [],
+      };
+      const source = store.createRun({ title: canonicalOrder.title, workflow: '(planned)', task: canonicalOrder.objective, runner: 'claude', steps: [] });
+      store.updateRun(source.id, {
+        dispatch: {
+          ...childOf(parent.id),
+          order: canonicalOrder,
+          redirectOperation: {
+            operationId: 'restart-redirect-op',
+            managerRunId: parent.id,
+            state: 'dispatching',
+            instruction: 'Keep the parser streaming',
+            requestedAt: new Date().toISOString(),
+          },
+          managerCancellation: { byRunId: parent.id, requestedAt: new Date().toISOString(), reason: 'redirected by manager' },
+        },
+      });
+      manager.dispose();
+      manager = boot({ maxParallel: 1, maxMonitoringSessions: 0 });
+
+      await (manager as unknown as { recoverRedirectOperations(): Promise<void> }).recoverRedirectOperations();
+
+      const replacement = store.listRuns().find((run) => run.dispatch?.redirectedFrom === source.id);
+      expect(replacement).toBeTruthy();
+      started.push(replacement!.id);
+      expect(store.getRun(source.id)?.status).toBe('cancelled');
+      expect(store.getRun(source.id)?.dispatch?.redirectOperation).toMatchObject({
+        state: 'complete',
+        replacementRunId: replacement!.id,
+      });
+      expect(store.getRun(replacement!.id)?.dispatch?.order).toMatchObject({
+        objective: canonicalOrder.objective,
+        redirectInstruction: 'Keep the parser streaming',
+        retryLimit: 0,
+      });
+      await waitFor(replacement!.id, settled, 40_000);
+      expect(store.getRun(replacement!.id)?.status).toBe('done');
+    }, 60_000);
   });
 
   // ---- reports and the settle→parent wake ----------------------------------------------------

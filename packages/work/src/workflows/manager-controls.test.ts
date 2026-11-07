@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Runner } from '@onni/contract';
+import type { DispatchOrderSnapshot, Runner } from '@onni/contract';
 import { RunStore, type RunRecord } from '../runs/store.ts';
 import { childSettleReport } from '../dispatch/engine.ts';
 import type { WorkflowDef } from './types.ts';
@@ -32,8 +32,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function queuedWorker(runner: Runner = 'codex', extraDispatch: Record<string, unknown> = {}) {
-  const run = store.createRun({ title: `worker ${runner}`, task: 'do work', workflow: 'quick-task', runner, steps: [] });
+function queuedWorker(runner: Runner = 'codex', extraDispatch: Record<string, unknown> = {}, title = `worker ${runner}`) {
+  const run = store.createRun({ title, task: 'do work', workflow: 'quick-task', runner, steps: [] });
   store.updateRun(run.id, {
     dispatch: { rootRunId: managerRunId, parentRunId: managerRunId, ...extraDispatch } as NonNullable<RunRecord['dispatch']>,
   });
@@ -112,5 +112,175 @@ describe('manager message and cancellation controls', () => {
     expect(settle.text).toContain('partial/unverified');
     expect(settle.text).toContain('uncommitted edits may remain');
     expect(settle.report.evidence).toContain('parser added');
+  });
+
+  it('redirects a saved order and repoints every queued dependent without losing other edges', async () => {
+    const predecessorA = queuedWorker('codex', {}, 'predecessor A');
+    const predecessorB = queuedWorker('codex', {}, 'predecessor B');
+    for (const [run, branch] of [[predecessorA, 'onni/pred-a'], [predecessorB, 'onni/pred-b']] as const) {
+      store.updateRun(run.id, { status: 'done', branch });
+    }
+    const afterIds = [predecessorA.id, predecessorB.id];
+    const canonicalOrder: DispatchOrderSnapshot = {
+      objective: 'Implement the parser',
+      title: 'parser worker',
+      kind: 'implement',
+      scope: 'src/parser.ts',
+      allowedTools: ['Read', 'Edit'],
+      maxCost: 4,
+      successCriteria: 'parser handles unicode',
+      requiredEvidence: 'npm test output',
+      retryLimit: 2,
+      backend: 'codex',
+      model: 'gpt-test',
+      after: afterIds,
+    };
+    const source = queuedWorker('codex', { order: canonicalOrder, after: afterIds }, 'parser worker');
+    const dependentA = queuedWorker('codex', {
+      after: [predecessorA.id, source.id],
+      order: { ...canonicalOrder, title: 'dependent A', objective: 'Use the parser', after: [predecessorA.id, source.id] },
+    }, 'dependent A');
+    const dependentB = queuedWorker('codex', {
+      after: [source.id, predecessorB.id],
+      order: { ...canonicalOrder, title: 'dependent B', objective: 'Audit parser integration', after: [source.id, predecessorB.id] },
+    }, 'dependent B');
+    vi.spyOn(manager as unknown as { pump: () => Promise<void> }, 'pump').mockResolvedValue();
+    const originalDispatch = manager.dispatch.bind(manager);
+    const dispatch = vi.spyOn(manager, 'dispatch');
+    let replacementId = '';
+    dispatch.mockImplementation((parentId, input, options) => {
+      if (options?.preflightOnly) return originalDispatch(parentId, input, options);
+      expect(store.getRun(source.id)?.status).toBe('cancelled');
+      expect(input.objective).toBe('Implement the parser\n\nManager redirect instruction:\nFocus on streaming input');
+      expect(options?.redirectOrigin?.sourceRunId).toBe(source.id);
+      const replacement = store.createRun({ title: input.title!, task: input.objective, workflow: '(planned)', runner: 'codex', steps: [] });
+      replacementId = replacement.id;
+      store.updateRun(replacement.id, {
+        branch: 'onni/replacement',
+        dispatch: {
+          rootRunId: managerRunId,
+          parentRunId: managerRunId,
+          redirectedFrom: source.id,
+          order: {
+            ...canonicalOrder,
+            redirectInstruction: 'Focus on streaming input',
+          },
+        },
+      });
+      return { id: replacement.id, branch: 'onni/replacement' };
+    });
+
+    const result = await manager.redirectFor(managerRunId, { target: source.id, instruction: 'Focus on streaming input' });
+    await vi.waitFor(() => expect(store.getRun(managerRunId)?.dispatch?.pendingReports?.some((entry) => entry.fromRunId === source.id)).toBe(true));
+
+    expect(result).toEqual({
+      cancelledRunId: source.id,
+      replacement: { id: replacementId, branch: 'onni/replacement' },
+      repointedDependents: 2,
+      retryAccounting: 'excluded',
+    });
+    expect(store.getRun(source.id)?.dispatch?.redirectOperation).toMatchObject({
+      managerRunId,
+      state: 'complete',
+      replacementRunId: replacementId,
+    });
+    expect(store.getRun(source.id)?.dispatch?.redirectOperation).not.toHaveProperty('instruction');
+    expect(store.getRun(replacementId)?.dispatch?.order).toMatchObject({
+      objective: canonicalOrder.objective,
+      redirectInstruction: 'Focus on streaming input',
+      title: canonicalOrder.title,
+      scope: canonicalOrder.scope,
+      allowedTools: canonicalOrder.allowedTools,
+      maxCost: canonicalOrder.maxCost,
+      successCriteria: canonicalOrder.successCriteria,
+      requiredEvidence: canonicalOrder.requiredEvidence,
+      retryLimit: canonicalOrder.retryLimit,
+      backend: canonicalOrder.backend,
+      model: canonicalOrder.model,
+      after: afterIds,
+    });
+    expect(store.getRun(dependentA.id)?.dispatch?.after).toEqual([replacementId, predecessorA.id]);
+    expect(store.getRun(dependentB.id)?.dispatch?.after).toEqual([replacementId, predecessorB.id]);
+    expect(store.getRun(dependentA.id)?.task).toContain(`parser worker (${replacementId.slice(0, 8)}, branch onni/replacement)`);
+    expect(store.getRun(dependentB.id)?.task).toContain(`parser worker (${replacementId.slice(0, 8)}, branch onni/replacement)`);
+    expect(store.getRun(dependentA.id)?.baseBranch).toBe('onni/replacement');
+    expect(store.getRun(dependentB.id)?.baseBranch).toBe('onni/replacement');
+    expect(dispatch).toHaveBeenCalled();
+  });
+
+  it('keeps source retry accounting neutral and blocks dependents when replacement admission fails', async () => {
+    const canonicalOrder: DispatchOrderSnapshot = {
+      objective: 'Implement the parser',
+      title: 'parser worker',
+      kind: 'implement',
+      retryLimit: 0,
+      backend: 'codex',
+      after: [],
+    };
+    const source = queuedWorker('codex', { order: canonicalOrder }, 'parser worker');
+    const dependent = queuedWorker('codex', { after: [source.id] }, 'dependent');
+    vi.spyOn(manager as unknown as { pump: () => Promise<void> }, 'pump').mockResolvedValue();
+    const originalDispatch = manager.dispatch.bind(manager);
+    const dispatch = vi.spyOn(manager, 'dispatch');
+    dispatch.mockImplementation((parentId, input, options) => {
+      if (options?.preflightOnly) return originalDispatch(parentId, input, options);
+      expect(store.getRun(source.id)?.status).toBe('cancelled');
+      return { refused: 'no remaining budget' };
+    });
+
+    const result = await manager.redirectFor(managerRunId, { target: source.id, instruction: 'Use a smaller parser' });
+    await vi.waitFor(() => expect(store.getRun(managerRunId)?.dispatch?.pendingReports?.filter((entry) => [source.id, dependent.id].includes(entry.fromRunId)).length).toBe(2));
+
+    expect(result).toMatchObject({
+      error: 'cancelled, replacement refused: no remaining budget',
+      cancelledRunId: source.id,
+      retryAccounting: 'excluded',
+    });
+    expect(store.getRun(source.id)?.dispatch?.redirectOperation).toMatchObject({
+      state: 'failed',
+      refusal: 'no remaining budget',
+    });
+    expect(store.getRun(source.id)?.dispatch?.redirectOperation).not.toHaveProperty('instruction');
+    expect(store.getRun(dependent.id)?.status).toBe('cancelled');
+  });
+
+  it('recovers a redirect persisted mid-cancel after a manager restart', async () => {
+    const order: DispatchOrderSnapshot = {
+      objective: 'Implement the parser',
+      title: 'parser worker',
+      kind: 'implement',
+      retryLimit: 1,
+      backend: 'codex',
+      after: [],
+    };
+    const source = queuedWorker('codex', {
+      order,
+      redirectOperation: {
+        operationId: 'redirect-op',
+        managerRunId,
+        state: 'dispatching',
+        instruction: 'Use a smaller parser',
+        requestedAt: new Date().toISOString(),
+      },
+      managerCancellation: { byRunId: managerRunId, requestedAt: new Date().toISOString(), reason: 'redirected by manager' },
+    }, 'parser worker');
+    manager.dispose();
+    manager = new RunManager(store, root, { env: () => ({}) });
+    vi.spyOn(manager as unknown as { pump: () => Promise<void> }, 'pump').mockResolvedValue();
+    const dispatch = vi.spyOn(manager, 'dispatch').mockImplementation((_parentId, input, options) => {
+      expect(options?.redirectOrigin?.sourceRunId).toBe(source.id);
+      const replacement = store.createRun({ title: input.title!, task: input.objective, workflow: '(planned)', runner: 'codex', steps: [] });
+      store.updateRun(replacement.id, {
+        dispatch: { rootRunId: managerRunId, parentRunId: managerRunId, redirectedFrom: source.id, order: order },
+      });
+      return { id: replacement.id };
+    });
+
+    await (manager as unknown as { recoverRedirectOperations(): Promise<void> }).recoverRedirectOperations();
+    await vi.waitFor(() => expect(store.getRun(managerRunId)?.dispatch?.pendingReports?.some((entry) => entry.fromRunId === source.id)).toBe(true));
+
+    expect(store.getRun(source.id)?.status).toBe('cancelled');
+    expect(store.getRun(source.id)?.dispatch?.redirectOperation).toMatchObject({ state: 'complete', replacementRunId: expect.any(String) });
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 });
