@@ -291,7 +291,6 @@ import { ProjectContextError, ProjectContexts, type ProjectContext } from './pro
 import { fetchRepo, pullRepo, pushRepo, repoSyncStatus, syncRepo, type SyncActionResult } from './repo-sync.ts';
 import type { RepoSync } from '@onni/contract';
 import { reviewGateEnabled } from '../runs/review-gate.ts';
-import { readUiState, uiStatePath } from '../ui-state.ts';
 import { agentHomePaths, onniHomeDir, expandTilde, isAbsolutePath } from '../paths.ts';
 import { renameWithRetry } from '../fs-rename.ts';
 import { agentAccountsEnabled, isLoopbackHostHeader, normalizeHostname, resolveCapabilities } from './capabilities.ts';
@@ -302,6 +301,10 @@ import { parseRemote, resolveForge, type ForgeAvailability } from './forge/index
 import { isGithubHost } from '../github-hosts.ts';
 import { fetchGithub, fetchGithubChecks, fetchGithubComments, fetchGithubPrDiff, fetchGithubRefStatus, forgetRefStatus, readCachedRefStatuses, refNumberFromUrl, searchGithubItems, GithubPrNotFoundError, GH_CHECKS_MAX, GH_SEARCH_MAX, GH_REF_STATUS_MAX } from './github.ts';
 import { ensureLaunchKey } from './launch-key.ts';
+import { launchKeyRoutes } from './routes/launch-key.ts';
+import { skillsRoutes } from './routes/skills.ts';
+import { uiStateRoutes } from './routes/ui-state.ts';
+import { secretsRoutes } from './routes/secrets.ts';
 import { openInTerminal } from './open-in-terminal.ts';
 import {
   agentCliRunner,
@@ -3676,67 +3679,6 @@ export function createApp(deps: ServerDeps) {
       },
     );
 
-  // ---- chained family: launch-key (project-scoped) ----
-  const launchKeyRoutes = new Hono<ProjectApiEnv>()
-    .get('/launch-key', (c) => c.json({ key: c.get('project').launchKey }));
-
-  // ---- chained family: skills (project-scoped) ----
-  const skillsRoutes = new Hono<ProjectApiEnv>()
-    .get('/skills', queryZodValidator(waitQuery), async (c) => {
-      const repoRoot = c.get('project').root;
-      // The default read stays fast and starts the team load in the background.
-      // The cockpit follows it with `wait=1`, off the render path, so a cold
-      // cache converges without polling or a manual reload (spec 005 / #555).
-      if (c.req.valid('query').wait === '1') await waitForTeamSkills(repoRoot);
-      return c.json(await discoverSkills(repoRoot));
-    })
-
-    // Every skill a *default* skills repo offers, regardless of enabled state, so the Skills
-    // catalog can list and preview disabled entries. OnniCode ships no default source, so this
-    // answers [] unless a fork configures one; it also empties once a repo sets its own
-    // `skillsRepos` (nothing is gated then). `wait=1` lets the page wait out a cold team-skill
-    // cache, same as `GET /skills` (spec 005).
-    .get('/skills/importable', queryZodValidator(waitQuery), async (c) => {
-      const repoRoot = c.get('project').root;
-      const gated = await gatedSkillsRepos(repoRoot);
-      if (gated.size === 0) return c.json([]);
-      if (c.req.valid('query').wait === '1') await waitForTeamSkills(repoRoot);
-      const importable = getTeamSkillsCached(repoRoot).filter((skill) => skill.team && gated.has(skill.team.repo));
-      return c.json(importable);
-    })
-
-    // Refresh team skills (spec 005): clone/fetch the configured skills repos,
-    // then return the merged catalog. Degrades quietly — offline just means the
-    // team entries stay as they were (or absent).
-    .post('/skills/refresh', async (c) => {
-      const { root: repoRoot } = c.get('project');
-      await refreshTeamSkills(repoRoot);
-      return c.json(await discoverSkills(repoRoot));
-    });
-
-  // ---- chained family: GUI prefs / ui-state (project-scoped) ----
-  const uiStateRoutes = new Hono<ProjectApiEnv>()
-    .get('/ui-state', async (c) => c.json(await readUiState(c.get('project').root)))
-
-    // On `use`, not inline on the route — see the workspace ui-state PUT above.
-    .use('/ui-state', bodyLimit({ maxSize: UI_STATE_BODY_LIMIT }))
-
-    .put('/ui-state', jsonZodValidator(uiStateBody), async (c) => {
-      const { root: repoRoot, dataDir } = c.get('project');
-      // `.passthrough()` keeps unknown prefs (BACKWARD_COMPATIBILITY §3), but a
-      // single request may not stuff an unbounded key set (#429) — the shared
-      // schema+cap half of both ui-state routes lives in `uiStateBody`.
-      const parsed = { data: c.req.valid('json') };
-      const merged = { ...(await readUiState(repoRoot)), ...parsed.data };
-      try {
-        await mkdir(dataDir, { recursive: true });
-        await writeFile(uiStatePath(repoRoot), `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
-      } catch (err) {
-        return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
-      }
-      return c.json(merged);
-    });
-
   // ---- chained family: workflows (project-scoped) --------------------------
   // One chained expression, mounted by `createApp` into BOTH the legacy `api`
   // table and the versioned `v1` one — see `healthRoutes` for why the chain
@@ -6648,26 +6590,6 @@ export function createApp(deps: ServerDeps) {
     }
     return removed ? null : { status: 404 as const, error: 'no secret with that name' };
   };
-  const secretsRoutes = new Hono<ProjectApiEnv>()
-    .get('/secrets', async (c) => {
-      const project = c.get('project');
-      return c.json(await secretsList({ kind: 'project', projectId: project.id, root: project.root }), 200);
-    })
-    .put('/secrets/:name', paramZodValidator(secretParamsSchema), jsonZodValidator(secretValueInputSchema), async (c) => {
-      const project = c.get('project');
-      if (project.id === 'default') return c.json(unregisteredSecrets, 409);
-      const failed = await putSecret({ kind: 'project', projectId: project.id, root: project.root }, c.req.valid('param').name, c.req.valid('json'));
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    })
-    .delete('/secrets/:name', paramZodValidator(secretParamsSchema), async (c) => {
-      const project = c.get('project');
-      if (project.id === 'default') return c.json(unregisteredSecrets, 409);
-      const failed = await deleteSecret({ kind: 'project', projectId: project.id, root: project.root }, c.req.valid('param').name);
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    });
-
   // ---- chained family: one-click e2e setup ----------------------------------
   // Spec 2026-10-10-e2e-one-click-setup. `GET /e2e` says what the project has; `POST /e2e/setup`
   // stores the model key (when given) as a `checks` secret and starts the setup as an ordinary
@@ -7844,9 +7766,16 @@ export function createApp(deps: ServerDeps) {
 
   const v1 = new Hono<ProjectApiEnv>()
     .use('*', resolveProjectScope)
-    .route('/', launchKeyRoutes)
-    .route('/', skillsRoutes)
-    .route('/', uiStateRoutes)
+    .route('/', launchKeyRoutes())
+    .route('/', skillsRoutes({
+      waitQuery,
+      discoverSkills,
+      gatedSkillsRepos,
+      getTeamSkillsCached,
+      refreshTeamSkills,
+      waitForTeamSkills,
+    }))
+    .route('/', uiStateRoutes({ uiStateBody, maxBodySize: UI_STATE_BODY_LIMIT }))
     .route('/', workflowsRoutes)
     .route('/', planRoutes)
     .route('/', automationsRoutes)
@@ -7864,7 +7793,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', sseRoutes)
     .route('/', githubRoutes)
     .route('/', trackerRoutes)
-    .route('/', secretsRoutes)
+    .route('/', secretsRoutes({ secretsList, putSecret, deleteSecret, unregisteredSecrets }))
     .route('/', e2eRoutes)
     .route('/', repoRoutes)
     .route('/', configRoutes)
