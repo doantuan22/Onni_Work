@@ -68,6 +68,7 @@ import { streamSSE } from 'hono/streaming';
 import { jsonZodValidator, multipartZodValidator, paramZodValidator, queryZodValidator } from './validators.ts';
 import { createModelsRoutes } from './routes/models.ts';
 import { createFsBrowseRoutes } from './routes/fs-browse.ts';
+import { createWorkspaceSecretsRoutes } from './routes/workspace-secrets.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -6696,21 +6697,7 @@ export function createApp(deps: ServerDeps) {
       return c.json({ runId: run.id }, 201);
     });
 
-  // ---- chained family: workspace secrets (workspace-level) ------------------
-  // The user's own secrets, shared by every project — an LLM key for onni's own features, a
-  // token every project's checks need. Single-mount like every workspace family.
-  const workspaceSecretsRoutes = new Hono()
-    .get('/workspace/secrets', async (c) => c.json(await secretsList({ kind: 'workspace' }), 200))
-    .put('/workspace/secrets/:name', paramZodValidator(secretParamsSchema), jsonZodValidator(secretValueInputSchema), async (c) => {
-      const failed = await putSecret({ kind: 'workspace' }, c.req.valid('param').name, c.req.valid('json'));
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    })
-    .delete('/workspace/secrets/:name', paramZodValidator(secretParamsSchema), async (c) => {
-      const failed = await deleteSecret({ kind: 'workspace' }, c.req.valid('param').name);
-      if (failed) return c.json({ error: failed.error }, failed.status);
-      return c.body(null, 204);
-    });
+  const workspaceSecretsRoutes = createWorkspaceSecretsRoutes({ secretsList, putSecret, deleteSecret });
 
   const trackerRoutes = new Hono<ProjectApiEnv>()
     .get('/tracker/automation-options', queryZodValidator(trackerAutomationOptionsQuerySchema), async c => {
