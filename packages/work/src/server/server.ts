@@ -63,6 +63,7 @@ import { Hono, type Context } from 'hono';
 import { groupsRoutes } from './routes/groups.ts';
 import { openTargetsRoutes } from './routes/open-targets.ts';
 import { todosRoutes } from './routes/todos.ts';
+import { worktreesRoutes } from './routes/worktrees.ts';
 import type { Next } from 'hono';
 import { serve, type ServerType } from '@hono/node-server';
 import { bodyLimit } from 'hono/body-limit';
@@ -213,8 +214,8 @@ import {
 import { checkoutGitStatus } from '../workflows/landing.ts';
 import { deleteUpload, readUpload, writeUpload } from '../uploads.ts';
 import { diskHealth } from './disk-health.ts';
-import { branchesCheckedOutElsewhere, removeWorktree, worktreeDiff, worktreeSizeBytes } from '../git-worktree.ts';
-import { isReclaimable, protectedByLiveTree, reclaimWorktrees } from '../runs/retention.ts';
+import { branchesCheckedOutElsewhere, removeWorktree, worktreeDiff } from '../git-worktree.ts';
+import { protectedByLiveTree } from '../runs/retention.ts';
 import { worktreeLifecycleRoutes, lifecycleError } from './worktree-lifecycle.ts';
 import { readLifecycleConfigOrDefault, readLifecycleConfigRaw, lifecycleConfigFromRaw, withLifecycleConfigLock, applyLifecycleConfigUpdate, isLifecycleConfigTracked, LifecycleConfigError, TRACKED_CONFIG_ERROR } from '../worktree-lifecycle/config.ts';
 import { atomicLifecycleWrite, LifecycleStoreError } from '../worktree-lifecycle/store.ts';
@@ -237,7 +238,7 @@ import {
   readWorktreePath,
   repoIndexContains,
 } from './git-changes.ts';
-import { gatedSkillsRepos, loadConfig, resolveWorktreeRetention, type OnniConfig } from '../config.ts';
+import { gatedSkillsRepos, loadConfig, type OnniConfig } from '../config.ts';
 import { findConfigFile } from '../agent-config/catalog.ts';
 import { readConfigFile, statConfigPath, writeConfigFile } from '../agent-config/files.ts';
 import { type AgentModelDefaults, readAgentModelDefaults } from '../agent-config/models.ts';
@@ -6021,43 +6022,6 @@ export function createApp(deps: ServerDeps) {
     return [...new Set(numbers.filter((n): n is number => typeof n === 'number'))];
   };
 
-  // ---- chained family: worktrees (project-scoped) ----
-  const worktreesRoutes = new Hono<ProjectApiEnv>()
-    .get('/worktrees', async (c) => {
-      const { root: repoRoot, store } = c.get('project');
-      // The keep-limit the panel reports is the one the enforcer will actually
-      // apply — inherited from the workspace default when this repo sets none.
-      const keep = await resolveWorktreeRetention(repoRoot);
-      const runs = store.listRuns().filter((r) => r.worktreePath && existsSync(r.worktreePath));
-      const worktrees = await Promise.all(
-        runs.map(async (r) => ({
-          runId: r.id,
-          title: r.title ?? r.id,
-          status: r.status,
-          branch: r.branch ?? null,
-          // POSIX `du` — degrades to null (Windows / du missing / error); never blocks.
-          sizeBytes: await worktreeSizeBytes(r.worktreePath as string),
-          finishedAt: r.finishedAt ?? null,
-          reclaimable: isReclaimable(r),
-        })),
-      );
-      // Total is null when any size degraded, so the panel never shows a wrong sum.
-      const totalBytes = worktrees.some((w) => w.sizeBytes === null)
-        ? null
-        : worktrees.reduce((sum, w) => sum + (w.sizeBytes ?? 0), 0);
-      return c.json({ worktrees, totalBytes, keep });
-    })
-
-    .post('/worktrees/reclaim', jsonZodValidator(() => reclaimBodySchema, { absent: ({}), message: 'invalid body' }), async (c) => {
-      const { root: repoRoot, store } = c.get('project');
-      // The body is validated (an empty or `{}` one is accepted) but carries nothing this
-      // handler reads; retention is best-effort, so 200 always.
-      const reclaimed = await reclaimWorktrees(repoRoot, store, await resolveWorktreeRetention(repoRoot), { lifecycle: c.get('project').manager.lifecycle });
-      return c.json({ reclaimed });
-    });
-
-  const reclaimBodySchema = z.object({}).passthrough();
-
   // ---- chained family: SSE streams (project-scoped) ----
   const sseRoutes = new Hono<ProjectApiEnv>()
     .get(
@@ -7592,7 +7556,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', layoutRoutes)
     .route('/', groupsRoutes({ pickSchema, stopTaskProcesses, legacyWorktreeMutation }))
     .route('/', openTargetsRoutes({ capabilities, detectOpenTargets, agentCliRunner, openApp }))
-    .route('/', worktreesRoutes)
+    .route('/', worktreesRoutes())
     .route('/', worktreeLifecycleRoutes({ stopTaskProcesses }))
     .route('/', todosRoutes({ capabilities, providerActionError }))
     .route('/', sseRoutes)
