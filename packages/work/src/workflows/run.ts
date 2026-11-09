@@ -26,7 +26,36 @@ import {
   setDeferred as lifecycleSetDeferred,
   waitInactive as lifecycleWaitInactive,
 } from './run/lifecycle.ts';
-import type { LifecycleActiveRun, LifecycleContext } from './run/internal-types.ts';
+import type { LifecycleActiveRun, LifecycleContext, SchedulingContext } from './run/internal-types.ts';
+import {
+  scheduleAutoResumeIfLimited as schedulingScheduleAutoResumeIfLimited,
+  failedBackend as schedulingFailedBackend,
+  scheduleTransientRetry as schedulingScheduleTransientRetry,
+  armUsageLimitResume as schedulingArmUsageLimitResume,
+  armAutoResume as schedulingArmAutoResume,
+  fireAutoResume as schedulingFireAutoResume,
+  interruptedWorkflowStep as schedulingInterruptedWorkflowStep,
+  queuedUsageLimitResume as schedulingQueuedUsageLimitResume,
+  workflowInput as schedulingWorkflowInput,
+  reconcileAutoResumes as schedulingReconcileAutoResumes,
+  requeueWhileHeld as schedulingRequeueWhileHeld,
+  rescueStalledQueue as schedulingRescueStalledQueue,
+  refreshQueueReasons as schedulingRefreshQueueReasons,
+  applyQueueReasons as schedulingApplyQueueReasons,
+  accountHolds as schedulingAccountHolds,
+  cancelAutoResume as schedulingCancelAutoResume,
+  clearAutoResume as schedulingClearAutoResume,
+  enforceRetention as schedulingEnforceRetention,
+  parkRepoRoot as schedulingParkRepoRoot,
+  claimFreeRepoRoot as schedulingClaimFreeRepoRoot,
+  chainRepoRoot as schedulingChainRepoRoot,
+  resumeRepoRoot as schedulingResumeRepoRoot,
+  acquireRepoRoot as schedulingAcquireRepoRoot,
+  startNow as schedulingStartNow,
+  sweepLimits as schedulingSweepLimits,
+  stopForLimit as schedulingStopForLimit,
+  raiseAfterLimit as schedulingRaiseAfterLimit,
+} from './run/scheduling.ts';
 import {
   cancelFor as controlCancelFor,
   cancelRedirectSource as controlCancelRedirectSource,
@@ -2762,6 +2791,60 @@ export class RunManager {
     }
   }
 
+  private schedulingContext(): SchedulingContext {
+    const manager = this;
+    return {
+      store: this.store,
+      repoRoot: this.repoRoot,
+      lifecycle: this.lifecycle,
+      active: this.active,
+      starting: this.starting,
+      queue: this.queue,
+      pendingJobs: this.pendingJobs,
+      pendingContinuations: this.pendingContinuations,
+      autoResumeTimers: this.autoResumeTimers,
+      waiting: this.waiting,
+      forceNextPump: {
+        get value() { return manager.forceNextPump; },
+        set value(value: boolean) { manager.forceNextPump = value; },
+      },
+      forceStarted: this.forceStarted,
+      startNowRequested: this.startNowRequested,
+      semaphore: this.semaphore,
+      repoRootTail: {
+        get value() { return manager.repoRootTail; },
+        set value(value: Promise<void>) { manager.repoRootTail = value; },
+      },
+      repoRootBusy: {
+        get value() { return manager.repoRootBusy; },
+        set value(value: number) { manager.repoRootBusy = value; },
+      },
+      lastLimitTick: {
+        get value() { return manager.lastLimitTick; },
+        set value(value: number) { manager.lastLimitTick = value; },
+      },
+      queueReasonRevision: {
+        get value() { return manager.queueReasonRevision; },
+        set value(value: number) { manager.queueReasonRevision = value; },
+      },
+      policy: {
+        accountHeldFor, runAccountKey, resumeInFlight, autoResumeReasonFor, autoResumeCap, formatWakeInstant,
+        autoResumeGraceMs: AUTO_RESUME_GRACE_MS, maxAutoResumes: MAX_AUTO_RESUMES,
+        autoResumeMissedWindowMs: AUTO_RESUME_MISSED_WINDOW_MS,
+        autoResumePrompt: AUTO_RESUME_PROMPT, transientRetryPrompt: TRANSIENT_RETRY_PROMPT,
+      },
+      pump: () => this.pump(),
+      dropActive: (runId) => this.dropActive(runId),
+      continueRun: (runId, options, defer) => this.continueRun(runId, options, defer),
+      hydrateQueuedInput: (runId, input) => this.hydrateQueuedInput(runId, input),
+      cancel: (runId) => this.cancel(runId),
+      releaseSlot: () => this.releaseSlot(),
+      busySlots: () => this.busySlots(),
+      reviveQueuedRun: (run, reason) => this.reviveQueuedRun(run, reason),
+      dispatchOf: (runId) => this.dispatchOf(runId),
+    };
+  }
+
   // ---- usage-limit auto-resume (spec 2026-08-03-auto-resume-after-usage-limit) --------------
 
   /**
@@ -2773,27 +2856,12 @@ export class RunManager {
    * transcript, because a run that stops resuming itself needs to explain why.
    */
   private scheduleAutoResumeIfLimited(runId: string): void {
-    if (this.autoResumeTimers.has(runId)) return; // already promised
-    const run = this.store.getRun(runId);
-    if (!run || run.status !== 'failed') return;
-    const failure = classifyAgentFailure(run.error);
-    // The cause, on the record, so the cockpit (the morning digest) can say "needs a sign-in" without re-reading prose.
-    if (failure !== 'other' && run.failureClass !== failure) this.store.updateRun(runId, { failureClass: failure });
-    if (failure === 'transient') {
-      this.scheduleTransientRetry(run);
-      return;
-    }
-    this.armUsageLimitResume(run);
-    // Account and conversation state is the user's to fix: say how, instead of a bare failure.
-    const hint = failure === 'disk_full'
-      ? diskFullAgentErrorText(run.error ?? '', run.worktreePath ?? this.repoRoot) ?? undefined
-      : accountStateHint(failure, this.failedBackend(run), { resetKnown: parseUsageLimit(run.error) !== null });
-    if (hint) this.store.appendEvent(runId, { type: 'lifecycle', message: hint });
+    return schedulingScheduleAutoResumeIfLimited(this.schedulingContext(), runId);
   }
 
   /** The backend whose session failed — a per-step runner or a Continue override, else the run's. */
   private failedBackend(run: RunRecord): string | undefined {
-    return [...run.steps].reverse().find((step) => step.status === 'failed' && step.backend)?.backend ?? run.runner;
+    return schedulingFailedBackend(run);
   }
 
   /**
@@ -2802,58 +2870,16 @@ export class RunManager {
    * `MAX_TRANSIENT_RETRIES` times per streak, through the usage-limit resume's timer and exits.
    */
   private scheduleTransientRetry(run: RunRecord): void {
-    // Same refusals as a usage-limit resume: an archived task, the switch off, no session.
-    if (run.archived || !this.semaphore.autoResumeOnUsageLimit() || !run.steps.some((step) => step.sessionId)) {
-      return;
-    }
-    const attempts = run.autoResumeAttempts ?? 0;
-    if (attempts >= MAX_TRANSIENT_RETRIES) {
-      this.store.appendEvent(run.id, {
-        type: 'note',
-        message: `the provider is still failing after ${MAX_TRANSIENT_RETRIES} automatic retries — continue this task manually`,
-      });
-      return;
-    }
-    const wakeAt = new Date(Date.now() + transientRetryDelayMs(attempts + 1, run.error));
-    this.armAutoResume(run.id, wakeAt.getTime(), 'transient');
-    this.store.appendEvent(run.id, {
-      type: 'lifecycle',
-      message: `temporary provider failure — retrying automatically at ${formatWakeInstant(wakeAt)} (${attempts + 1}/${MAX_TRANSIENT_RETRIES})`,
-    });
+    return schedulingScheduleTransientRetry(this.schedulingContext(), run);
   }
 
   private armUsageLimitResume(run: RunRecord): void {
-    const runId = run.id;
-    // Archiving IS resigning from a task. Reviving one because a window happened to reopen would
-    // be the feature working against the clearest signal the user can give it.
-    if (run.archived) return;
-    const limit = parseUsageLimit(run.error);
-    if (!limit) return;
-    if (!this.semaphore.autoResumeOnUsageLimit()) return;
-    // No session to resume = nothing this feature can do; `continueRun` would refuse anyway.
-    if (!run.steps.some((step) => step.sessionId)) return;
-    const attempts = run.autoResumeAttempts ?? 0;
-    if (attempts >= MAX_AUTO_RESUMES) {
-      this.store.appendEvent(runId, {
-        type: 'note',
-        message: `automatic resume cap reached (${MAX_AUTO_RESUMES}) — continue this task manually`,
-      });
-      return;
-    }
-    const wakeAt = new Date(limit.resetAt.getTime() + AUTO_RESUME_GRACE_MS);
-    this.armAutoResume(runId, wakeAt.getTime(), 'usage_limit');
-    this.store.appendEvent(runId, {
-      type: 'lifecycle',
-      message: `usage limit reached — resuming automatically at ${formatWakeInstant(wakeAt)}`,
-    });
+    return schedulingArmUsageLimitResume(this.schedulingContext(), run);
   }
 
   /** Publish the deadline on the record (the cockpit's only source) and arm the timer for it. */
   private armAutoResume(runId: string, deadline: number, reason: AutoResumeReason): void {
-    this.store.updateRun(runId, { autoResumeAt: new Date(deadline).toISOString(), autoResumeReason: reason });
-    const timer = setTimeout(() => this.fireAutoResume(runId), Math.max(0, deadline - Date.now()));
-    timer.unref?.();
-    this.autoResumeTimers.set(runId, timer);
+    return schedulingArmAutoResume(this.schedulingContext(), runId, deadline, reason);
   }
 
   /**
@@ -2862,74 +2888,12 @@ export class RunManager {
    * ordinary scheduler so it obeys both concurrency caps like any other work.
    */
   private fireAutoResume(runId: string): void {
-    this.autoResumeTimers.delete(runId);
-    const run = this.store.getRun(runId);
-    if (!run || run.status !== 'failed' || !run.autoResumeAt) return;
-    // Belt and braces against the one gap `reconcileAutoResumes` cannot close: the setting going
-    // off in the window between the last pump and this tick.
-    if (!this.semaphore.autoResumeOnUsageLimit()) {
-      this.clearAutoResume(runId);
-      return;
-    }
-    const attempts = (run.autoResumeAttempts ?? 0) + 1;
-    const reason = run.autoResumeReason ?? 'usage_limit';
-    // #1300: a workflow interruption must return to its executor after the resumed session.
-    // The saved workflow and failed step/session already supply the recovery checkpoint,
-    // including when the queued run is reconstructed after a restart.
-    const workflowStep = this.interruptedWorkflowStep(run);
-    let resumed: { ok: boolean; error?: string };
-    if (workflowStep && run.workflowDef) {
-      this.clearAutoResume(runId);
-      this.pendingJobs.set(runId, {
-        workflow: run.workflowDef,
-        input: { ...this.workflowInput(run), usageLimitResume: true },
-      });
-      this.queue.push(runId);
-      this.store.updateRun(runId, {
-        status: 'queued', error: undefined, finishedAt: undefined, currentStepId: undefined,
-      });
-      resumed = { ok: true };
-    } else {
-      // Legacy records without a recoverable definition and standalone continuations retain
-      // their existing session recovery. Manual Continue also keeps its existing semantics.
-      resumed = this.continueRun(runId, { text: reason === 'transient' ? TRANSIENT_RETRY_PROMPT : AUTO_RESUME_PROMPT }, true);
-    }
-    if (!resumed.ok) {
-      // Refusals happen before `continueRun` retires anything, so the deadline is still on the
-      // record — and a deadline in the past is a promise the cockpit keeps displaying and the
-      // engine will never keep. Retire it here instead, and say why.
-      this.clearAutoResume(runId);
-      this.store.appendEvent(runId, {
-        type: 'note',
-        message: `automatic resume could not start — ${resumed.error ?? 'unknown'}`,
-      });
-      return;
-    }
-    // `clearAutoResume` above retired the reason with the deadline; the resume in flight keeps it,
-    // so `accountHolds` knows a transient retry holds no account.
-    this.store.updateRun(runId, { autoResumeAttempts: attempts, autoResumeReason: reason });
-    this.store.appendEvent(runId, {
-      type: 'lifecycle',
-      message: reason === 'transient'
-        ? `retrying after a temporary provider failure (${attempts}/${MAX_TRANSIENT_RETRIES})`
-        : `usage limit reset — resuming automatically (${attempts}/${MAX_AUTO_RESUMES})`,
-    });
-    // A deferred continuation only ENQUEUES itself; the queue moves when something pumps it, and
-    // `recover()` — the other deferring caller — pumps once after its whole bulk sweep. A timer
-    // firing on its own has no such follow-up, so without this the resumed run sits at `queued`
-    // until some unrelated run happens to finish. This is the pump for it.
-    void this.pump();
+    return schedulingFireAutoResume(this.schedulingContext(), runId);
   }
 
   /** Recover the failed workflow agent from the existing durable step/session checkpoint. */
   private interruptedWorkflowStep(run: RunRecord): StepState | undefined {
-    // Later steps can retain old session ids when a check loops back to an earlier agent.
-    // Only the failed agent is the interruption; a pending retry is not a newer session.
-    const step = [...run.steps].reverse().find((candidate) => candidate.kind === 'agent' && candidate.status === 'failed');
-    if (!step?.sessionId || !autoResumeReasonFor(step.error)) return undefined;
-    return run.workflowDef?.steps.some((definition) => definition.id === step.id && stepKind(definition) === 'agent')
-      ? { ...step }
-      : undefined;
+    return schedulingInterruptedWorkflowStep(this.schedulingContext(), run);
   }
 
   /**
@@ -2938,28 +2902,12 @@ export class RunManager {
    * cursor) keeps that cursor — a failed agent behind a wired `failed` port must not hijack it.
    */
   private queuedUsageLimitResume(run: RunRecord): boolean {
-    const step = this.interruptedWorkflowStep(run);
-    const cursor = run.graphState?.cursor;
-    return step !== undefined && (cursor === undefined || cursor === step.id);
+    return schedulingQueuedUsageLimitResume(this.schedulingContext(), run);
   }
 
   /** Rebuild executable input from the durable record, for auto-resume and queued recovery. */
   private workflowInput(run: RunRecord): StartRunInput {
-    return this.hydrateQueuedInput(run.id, {
-      task: run.task,
-      model: run.model,
-      runner: run.runner,
-      agentProfile: run.agentProfile,
-      // No `systemPrompt`: the record keeps only the COMPOSED prompt, never the bare override, so
-      // feeding it back would re-compose it; a usage-limit resume reuses it verbatim in `execute`.
-      generateFollowups: followupsEnabled() ? run.generateFollowups : false,
-      // Both lifecycle entry points must restore autonomy, dispatch, isolation and read-only
-      // (#489, spec 2026-09-10-dispatch A11, #1597), as well as the task's account.
-      autonomous: run.autonomous,
-      dispatch: run.dispatch,
-      worktree: run.worktree,
-      ...(run.readOnly ? { readOnly: true } : {}),
-    });
+    return schedulingWorkflowInput(this.schedulingContext(), run);
   }
 
   /**
@@ -2976,57 +2924,7 @@ export class RunManager {
    * Cheap: an in-memory scan, and arming is skipped for every run already held.
    */
   private reconcileAutoResumes(): void {
-    if (!this.semaphore.autoResumeOnUsageLimit()) {
-      // Sweep the RECORDS, not the timer map. A record promising a resume that no timer is
-      // holding is the exact population this method exists for, and it is also the one the
-      // setting can be switched off in front of: onni restarted while it was off, the config
-      // was hand-edited, or the project context was disposed mid-wait. Retiring only the armed
-      // timers leaves such a record with a live `autoResumeAt`, which `accountHolds()` reads as
-      // a deadline hold — so nothing new starts on that account, `rescueStalledQueue` treats the
-      // phantom appointment as a legitimate reason to sit still, and the cockpit shows a
-      // `scheduled` row for a resume that will never come. `clearAutoResume` covers the armed
-      // ones too, so this one loop is the whole cancellation.
-      const pending = new Set([
-        ...this.autoResumeTimers.keys(),
-        ...this.store.listRuns().filter((run) => run.autoResumeAt !== undefined).map((run) => run.id),
-      ]);
-      for (const runId of pending) {
-        this.clearAutoResume(runId);
-        this.store.appendEvent(runId, {
-          type: 'note',
-          message: 'automatic resume cancelled — auto-resume is switched off',
-        });
-      }
-      return;
-    }
-    for (const run of this.store.listRuns()) {
-      if (run.status !== 'failed' || !run.autoResumeAt) continue;
-      if (this.autoResumeTimers.has(run.id)) continue;
-      const deadline = Date.parse(run.autoResumeAt);
-      // A deadline that is unreadable, belongs to a run that has spent its cap, or belongs to a
-      // task the user has archived is retired rather than re-armed: it can only mislead. One
-      // that has just passed arms at zero — the window is open, which is the point.
-      if (
-        run.archived
-        || !Number.isFinite(deadline)
-        || (run.autoResumeAttempts ?? 0) >= autoResumeCap(run.autoResumeReason)
-      ) {
-        this.store.updateRun(run.id, { autoResumeAt: undefined });
-        continue;
-      }
-      // …and one missed by more than a day is retired loudly: reviving a task from another era
-      // is a surprise, not a service, and this is what keeps a sweep from resurrecting every
-      // limit-stopped task a user has long since walked away from.
-      if (Date.now() - deadline > AUTO_RESUME_MISSED_WINDOW_MS) {
-        this.store.updateRun(run.id, { autoResumeAt: undefined });
-        this.store.appendEvent(run.id, {
-          type: 'note',
-          message: 'automatic resume expired — its window reopened over a day ago; continue this task manually',
-        });
-        continue;
-      }
-      this.armAutoResume(run.id, deadline, run.autoResumeReason ?? 'usage_limit');
-    }
+    return schedulingReconcileAutoResumes(this.schedulingContext());
   }
 
   /**
@@ -3049,30 +2947,7 @@ export class RunManager {
     runner: RunnerId,
     state?: ActiveRun,
   ): boolean {
-    const run = this.store.getRun(runId);
-    if (!run || run.status === 'cancelled' || state?.cancelled) return false;
-    // The watchdog sent this one through. Checked, never consumed: the spawn path asks this
-    // question TWICE — here at the top of `execute`, and again after the exclusive repo-root
-    // lease is granted — so a one-shot flag would clear at the first gate and let the second one
-    // hand an in-place run straight back, re-wedging the queue the rescue had just freed.
-    // `dropActive` retires the entry on every terminal path, so the set still cleans itself up.
-    if (this.forceStarted.has(runId)) return false;
-    if (!accountHeldFor({ ...run, runner }, this.semaphore.accountHolds(), runner)) return false;
-    state?.releaseRepoRoot?.();
-    if (state) state.releaseRepoRoot = undefined;
-    this.pendingJobs.set(runId, { workflow, input });
-    this.queue.push(runId);
-    this.store.updateRun(runId, {
-      status: 'queued',
-      startedAt: input.usageLimitResume ? run.startedAt : undefined,
-      currentStepId: undefined,
-    });
-    this.store.appendEvent(runId, {
-      type: 'note',
-      message: 'held in the queue — this agent account is waiting out a usage limit',
-    });
-    this.dropActive(runId);
-    return true;
+    return schedulingRequeueWhileHeld(this.schedulingContext(), runId, workflow, input, runner, state);
   }
 
   /**
@@ -3096,39 +2971,7 @@ export class RunManager {
    * Public so a test can drive the wedge directly instead of waiting out the interval.
    */
   async rescueStalledQueue(now = Date.now()): Promise<void> {
-    // First, the worst shape: a record that says `queued` while the engine holds no job, no
-    // continuation and no queue entry for it. `pump()` cannot see such a run — it iterates the
-    // queue, and this one is not in it — so nothing will ever start it. Re-adopt it through the
-    // same path boot recovery uses.
-    for (const run of this.store.listRuns()) {
-      if (run.status !== 'queued') continue;
-      if (this.active.has(run.id) || this.starting.has(run.id)) continue;
-      if (this.pendingJobs.has(run.id) || this.pendingContinuations.has(run.id)) continue;
-      if (this.queue.includes(run.id)) continue;
-      console.warn(`[onni] queue watchdog: re-adopting queued run ${run.id} the engine had lost`);
-      await this.reviveQueuedRun(run, 'queue watchdog');
-    }
-    if (this.queue.length === 0) return;
-    if (this.busySlots() > 0 || this.starting.size > 0) return;
-    if (this.semaphore.busy() > 0) return;
-    // A future deadline is a real reason to sit still: that timer will fire and pump.
-    for (const run of this.store.listRuns()) {
-      if (run.status !== 'failed' || !run.autoResumeAt) continue;
-      const deadline = Date.parse(run.autoResumeAt);
-      if (Number.isFinite(deadline) && deadline > now) return;
-    }
-    if (this.semaphore.accountHolds().inFlight.size === 0) {
-      // Not the hold, then — some other wakeup went missing. An ordinary pump is the whole fix,
-      // and it is idempotent, so this stays quiet.
-      void this.pump();
-      return;
-    }
-    console.warn(
-      '[onni] queue watchdog: work is queued, nothing is running, and the usage-limit hold has no'
-      + ' deadline behind it — starting the next task anyway',
-    );
-    this.forceNextPump = true;
-    void this.pump();
+    return schedulingRescueStalledQueue(this.schedulingContext(), now);
   }
 
   /**
@@ -3160,49 +3003,15 @@ export class RunManager {
 
   private queueReasonRevision = 0;
   private refreshQueueReasons(): void {
-    const revision = ++this.queueReasonRevision;
-    const holds = this.semaphore.accountHolds();
-    if ((holds.deadline.size > 0 || holds.inFlight.size > 0)
-      && this.store.listRuns().some((run) => run.status === 'queued' && !run.runner)) {
-      // Match admission's effective account without persisting a runner override (#1340).
-      void loadConfig(this.repoRoot).then((config) => {
-        if (revision === this.queueReasonRevision) this.applyQueueReasons(config.defaultRunner);
-      });
-      return;
-    }
-    this.applyQueueReasons('claude');
+    return schedulingRefreshQueueReasons(this.schedulingContext());
   }
 
   private applyQueueReasons(defaultRunner: RunnerId): void {
-    const holds = this.semaphore.accountHolds();
-    for (const run of this.store.listRuns()) {
-      const key = runAccountKey(run, defaultRunner);
-      const until = holds.deadlines?.get(key);
-      const reason: RunRecord['queueWaitReason'] = run.status !== 'queued' ? undefined
-        : until !== undefined ? { kind: 'usage-reset', until: new Date(until).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
-        : holds.inFlight.has(key) && !resumeInFlight(run) ? { kind: 'account-resume' } : undefined;
-      if (JSON.stringify(reason) !== JSON.stringify(run.queueWaitReason)) this.store.updateRun(run.id, { queueWaitReason: reason });
-    }
+    return schedulingApplyQueueReasons(this.schedulingContext(), defaultRunner);
   }
 
   accountHolds(now = Date.now()): AccountHolds {
-    const deadlines = new Map<string, number>();
-    const deadline = new Set<string>();
-    const inFlight = new Set<string>();
-    for (const run of this.store.listRuns()) {
-      // A holding run always carries the runner it actually ran on, so the fallback is unused
-      // here — it is spelled out rather than `!` so a future record shape degrades, not throws.
-      const key = () => runAccountKey(run, run.runner ?? 'claude');
-      // A transient retry says nothing about the account's window, so it holds nothing.
-      if (run.autoResumeReason === 'transient') continue;
-      if (run.status === 'failed' && run.autoResumeAt) {
-        const at = Date.parse(run.autoResumeAt);
-        if (Number.isFinite(at) && at > now) { deadline.add(key()); deadlines.set(key(), Math.min(at, deadlines.get(key()) ?? Infinity)); }
-      } else if (resumeInFlight(run)) {
-        inFlight.add(key());
-      }
-    }
-    return { deadline, inFlight, deadlines };
+    return schedulingAccountHolds(this.schedulingContext(), now);
   }
 
 
@@ -3215,33 +3024,13 @@ export class RunManager {
    * which is the route's 404.
    */
   cancelAutoResume(runId: string): boolean {
-    const run = this.store.getRun(runId);
-    if (!run) return false;
-    const pending = run.autoResumeAt !== undefined || this.autoResumeTimers.has(runId);
-    this.clearAutoResume(runId);
-    if (pending) {
-      this.store.appendEvent(runId, {
-        type: 'note',
-        message: 'automatic resume cancelled for this task',
-      });
-      // This run may have been the last thing holding its account's queue — nothing else will
-      // notice, since the hold is derived and its release is not an event.
-      void this.pump();
-    }
-    return true;
+    return schedulingCancelAutoResume(this.schedulingContext(), runId);
   }
 
   /** Retire a pending resume — timer, deadline and counter. The counter goes too because every
    *  caller is a fresh epoch: a human Continue, or a resume that re-stamps its own count. */
   private clearAutoResume(runId: string): void {
-    const timer = this.autoResumeTimers.get(runId);
-    if (timer) clearTimeout(timer);
-    this.autoResumeTimers.delete(runId);
-    const run = this.store.getRun(runId);
-    if (!run) return;
-    if (run.autoResumeAt !== undefined || run.autoResumeAttempts !== undefined || run.autoResumeReason !== undefined) {
-      this.store.updateRun(runId, { autoResumeAt: undefined, autoResumeAttempts: undefined, autoResumeReason: undefined });
-    }
+    return schedulingClearAutoResume(this.schedulingContext(), runId);
   }
 
   /** Reclaim finished worktrees beyond the keep-limit (#483) — directory only,
@@ -3250,12 +3039,7 @@ export class RunManager {
   /** The latest terminal retention pass — tests await it before pinning refs it may sweep. */
   private retentionPass: Promise<void> = Promise.resolve();
   private async enforceRetention(): Promise<void> {
-    try {
-      const keep = await resolveWorktreeRetention(this.repoRoot);
-      await reclaimWorktrees(this.repoRoot, this.store, keep, {lifecycle: this.lifecycle});
-    } catch {
-      // retention is best-effort; swallow so terminal transitions never break.
-    }
+    return schedulingEnforceRetention(this.schedulingContext());
   }
 
   /** Last live-refresh namer inputs per run — unchanged inputs skip the call. */
@@ -3295,16 +3079,7 @@ export class RunManager {
    * `resumeRepoRoot` tells the resuming agent the tree may have moved.
    */
   private parkRepoRoot(runId: string, state: ActiveRun): void {
-    if (!this.dispatchOf(runId)) return;
-    if (state.cwd !== this.repoRoot || !state.releaseRepoRoot) return;
-    state.releaseRepoRoot();
-    state.releaseRepoRoot = undefined;
-    state.repoRootParked = true;
-    this.store.appendEvent(runId, {
-      type: 'note',
-      stepId: state.currentStepId,
-      message: 'parked — released the repository working tree so other in-place tasks can run; it is taken back before this task resumes',
-    });
+    return schedulingParkRepoRoot(this.schedulingContext(), runId, state);
   }
 
   /**
@@ -3313,29 +3088,13 @@ export class RunManager {
    * synchronously — the #347 guarantee that a parked run's resume never queues behind anything.
    */
   private claimFreeRepoRoot(state: ActiveRun): boolean {
-    if (this.repoRootBusy > 0 || state.cancelled) return false;
-    state.releaseRepoRoot = this.chainRepoRoot().release;
-    state.repoRootParked = false;
-    return true;
+    return schedulingClaimFreeRepoRoot(this.schedulingContext(), state);
   }
 
   /** Chain one more lease onto the tail. `previous` settles when every earlier lease is released;
    *  `release` hands the tree on (idempotent — a lease dropped mid-wait releases exactly once). */
   private chainRepoRoot(): { previous: Promise<void>; release: () => void } {
-    const previous = this.repoRootTail;
-    let resolve: () => void = () => undefined;
-    this.repoRootTail = new Promise<void>((r) => {
-      resolve = r;
-    });
-    this.repoRootBusy += 1;
-    let released = false;
-    const release = () => {
-      if (released) return;
-      released = true;
-      this.repoRootBusy -= 1;
-      resolve();
-    };
-    return { previous, release };
+    return schedulingChainRepoRoot(this.schedulingContext());
   }
 
   /**
@@ -3348,51 +3107,11 @@ export class RunManager {
    * by clobbering the other task's work.
    */
   private async resumeRepoRoot(runId: string, state: ActiveRun): Promise<boolean> {
-    this.store.appendEvent(runId, {
-      type: 'note',
-      stepId: state.currentStepId,
-      message: 'resuming — waiting for exclusive access to the repository working tree',
-    });
-    try {
-      const acquired = await this.acquireRepoRoot(runId, state);
-      if (acquired) state.repoRootParked = false;
-      return acquired;
-    } finally {
-      state.repoRootResume = undefined;
-    }
+    return schedulingResumeRepoRoot(this.schedulingContext(), runId, state);
   }
 
   private async acquireRepoRoot(runId: string, state: ActiveRun): Promise<boolean> {
-    // `cancel()` can land between the run going `running` and reaching here,
-    // while `interrupt` is still the default no-op — never enter the chain.
-    if (state.cancelled) return false;
-    const { previous, release } = this.chainRepoRoot();
-    // Until `previous` resolves this run does not own the tree yet, so a drop
-    // during the wait must not hand the tree to the next waiter — chain our
-    // release behind `previous` instead of resolving the tail early.
-    state.releaseRepoRoot = () => {
-      void previous.then(release);
-    };
-    let abort: () => void = () => undefined;
-    const cancelled = new Promise<void>((resolve) => {
-      abort = resolve;
-    });
-    const parked = state.interrupt;
-    state.interrupt = () => {
-      parked();
-      abort();
-    };
-    this.waiting.add(runId);
-    this.releaseSlot();
-    try {
-      await Promise.race([previous, cancelled]);
-    } finally {
-      state.interrupt = parked;
-      this.waiting.delete(runId);
-    }
-    if (state.cancelled) return false;
-    state.releaseRepoRoot = release;
-    return true;
+    return schedulingAcquireRepoRoot(this.schedulingContext(), runId, state);
   }
 
   /**
@@ -3402,18 +3121,7 @@ export class RunManager {
    * cap later, when nobody is looking.
    */
   async startNow(runId: string): Promise<'started' | 'not-queued' | 'held'> {
-    if (!this.queue.includes(runId)) return 'not-queued';
-    const holds = this.semaphore.accountHolds();
-    const run = this.store.getRun(runId);
-    if (run && (holds.deadline.size > 0 || holds.inFlight.size > 0)) {
-      const { defaultRunner } = await loadConfig(this.repoRoot);
-      if (accountHeldFor(run, holds, defaultRunner ?? 'claude')) return 'held';
-    }
-    // The config read above awaited — the run may have started or been cancelled meanwhile.
-    if (!this.queue.includes(runId)) return 'not-queued';
-    this.startNowRequested.add(runId);
-    void this.pump();
-    return 'started';
+    return schedulingStartNow(this.schedulingContext(), runId);
   }
 
   /**
@@ -3423,47 +3131,16 @@ export class RunManager {
    * worktree and session stay, so Continue can pick the task up once the user raises the ceiling.
    */
   sweepLimits(now: number = Date.now()): void {
-    const elapsed = Math.max(0, Math.min(now - this.lastLimitTick, 5 * 60_000));
-    this.lastLimitTick = now;
-    if (elapsed > 0) {
-      for (const run of this.store.listRuns()) {
-        if (run.status === 'running') {
-          this.store.updateRun(run.id, { limitUsage: { wallMs: (run.limitUsage?.wallMs ?? 0) + elapsed } });
-        }
-      }
-    }
-    const runs = this.store.listRuns();
-    for (const run of runs) {
-      if (isTerminalStatus(run.status)) continue;
-      const hit = evaluateLimits(run, runs);
-      if (hit) this.stopForLimit(run.id, hit);
-    }
+    return schedulingSweepLimits(this.schedulingContext(), now);
   }
 
   private stopForLimit(runId: string, hit: LimitHit): void {
-    const run = this.store.getRun(runId);
-    if (!run || isTerminalStatus(run.status)) return;
-    const targetId = hit.scope === 'tree' ? (run.dispatch?.rootRunId ?? runId) : runId;
-    const message = `stopped — ${describeHit(hit)}. The worktree and session are kept; Continue to raise the ceiling.`;
-    for (const member of subtreeOf(this.store.listRuns(), targetId)) {
-      if (isTerminalStatus(member.status)) continue;
-      this.store.updateRun(member.id, { limitHit: hit, error: describeHit(hit) });
-      this.store.appendEvent(member.id, { type: 'lifecycle', message, tone: 'danger' });
-    }
-    this.cancel(targetId);
+    return schedulingStopForLimit(this.schedulingContext(), runId, hit);
   }
 
   /** "Continue anyway" after a ceiling: extend the ceiling that was hit on this run and its root. */
   private raiseAfterLimit(run: RunRecord): void {
-    const hit = run.limitHit;
-    if (!hit) return;
-    this.store.updateRun(run.id, { limits: raiseLimits(run.limits, hit), limitHit: undefined, error: undefined });
-    const rootId = run.dispatch?.rootRunId;
-    const root = rootId && rootId !== run.id ? this.store.getRun(rootId) : undefined;
-    if (root && hit.scope === 'tree') {
-      this.store.updateRun(root.id, { limits: raiseLimits(root.limits, hit), limitHit: undefined, error: undefined });
-    }
-    this.store.appendEvent(run.id, { type: 'lifecycle', message: `ceiling raised after: ${describeHit(hit)}` });
+    return schedulingRaiseAfterLimit(this.schedulingContext(), run);
   }
 
   /**
