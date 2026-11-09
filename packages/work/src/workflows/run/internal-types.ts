@@ -170,3 +170,54 @@ export interface VerifyContext {
   updateDispatch(runId: string, patch: (dispatch: RunDispatch) => RunDispatch): void;
   isDisposed(): boolean;
 }
+
+/** The turn facts the manager state helpers share with both turn-end handlers. */
+export interface DispatchTurnResult {
+  hasDispatch: boolean;
+  /** This turn created children through `dispatch()` — the run parks as a monitor for them. */
+  dispatched: boolean;
+  overBudget: boolean;
+  /** The run's own inbox was delivered into the still-open session, so it is working again. */
+  rePrompted: boolean;
+}
+
+/** The small live-run surface used by manager memory, asks, complexity and inbox delivery. */
+export interface ManagerStateActive {
+  cancelled: boolean;
+  autonomous?: boolean;
+  currentStepId?: string;
+  dispatchedThisTurn?: boolean;
+  complexityWarned?: boolean;
+  autoContinues?: number;
+  session?: {
+    open: boolean;
+    sendMessage(content: ContentBlock[]): boolean;
+  };
+}
+
+export interface ManagerStateTurnContext {
+  state: ManagerStateActive;
+  stepId: string;
+  done: boolean;
+}
+
+/** The narrow RunManager state and callbacks used by `run/manager-state.ts`. */
+export interface ManagerStateContext {
+  store: RunStore;
+  dataDir: string;
+  repoRoot: string;
+  active: ReadonlyMap<string, ManagerStateActive>;
+  /** Kept on RunManager and passed by reference so timer ownership stays with its lifecycle. */
+  softAskTimers: Map<string, NodeJS.Timeout>;
+  maxAutoContinues: number;
+
+  dispatchEnabled(): boolean;
+  dispatchOf(runId: string): RunDispatch | undefined;
+  updateDispatch(runId: string, patch: (dispatch: RunDispatch) => RunDispatch): void;
+  makeUiSink(runId: string, stepId: string): import('../../runs/ui-event-sink.ts').UiEventSink;
+  emitAskRequested(sink: import('../../runs/ui-event-sink.ts').UiEventSink, ask: import('../../core/ask.ts').AskRequest): string;
+  turnEndMarkerText(text: string): string;
+  enforceDispatchBudget(runId: string, note: (message: string, tone?: 'danger') => void): boolean;
+  deliverMessage(runId: string, content: import('./preparation.ts').PastedContent[], userAuthored: boolean): boolean;
+  managerComplexityPolicyEnabled(): boolean;
+}
