@@ -5,16 +5,10 @@ import { listServerInstances } from '../server-install/state.ts';
 import { resolveDeferredReset, deferredHoldUntil } from '../automations/deferred-reset.ts';
 import { deferredStartOptions, previewDeferredStart, digest, validateDeferredBinding } from '../automations/deferred-start.ts';
 import { deferredOptionsInputSchema, deferredPreviewInputSchema, deferredCreateInputSchema, deferredMutationQuerySchema } from '@onni/contract';
-import {
-  trackerWatchInputSchema, trackerWatchParamsSchema, trackerWatchQuerySchema,
-  trackerCandidatesQuerySchema, trackerListQuerySchema, trackerSearchQuerySchema, trackerItemQuerySchema, trackerReadScope,
-  trackerCredentialsSchema, trackerItemParamsSchema, trackerAssociationInputSchema, type TrackerChangedEvent,
-  secretParamsSchema, secretValueInputSchema, type SecretsList, type SecretValueInput,
-} from '@onni/contract';
+import { secretParamsSchema, secretValueInputSchema, type SecretsList, type SecretValueInput, type TrackerChangedEvent } from '@onni/contract';
 import { SecretStore, SecretsError, type SecretScopeRef } from '../workspace/secrets.ts';
 import { createTrackerService } from './tracker/index.ts';
 import { TrackerWatches } from './tracker/watch.ts';
-import { readTrackerAssociation, writeTrackerAssociation, clearTrackerAssociation } from '../tracker-association.ts';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
   detectedUrlsSchema, discoveredCommandsSchema,
@@ -51,7 +45,7 @@ import {
   isScheduleAutomation,
   type AutomationDefinition,
 } from '../automations/types.ts';
-import { trackerTriggerSchema, trackerAutomationOptionsSchema, trackerAutomationOptionsQuerySchema, automationScheduleSchema, localTimeZone, nextOccurrence, scheduleLabel, type AutomationSchedule } from '@onni/contract';
+import { trackerTriggerSchema, automationScheduleSchema, localTimeZone, nextOccurrence, scheduleLabel, type AutomationSchedule } from '@onni/contract';
 import type { IncomingMessage } from 'node:http';
 import { access, constants as fsConstants, lstat, mkdir, readFile, realpath, stat, unlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -83,6 +77,9 @@ import { createConfigRoutes } from './routes/config.ts';
 import { createAgentConfigRoutes } from './routes/agent-config.ts';
 import { createSseRoutes } from './routes/sse.ts';
 import { createWorkspaceEventsRoutes } from './routes/workspace-events.ts';
+import { createRepoRoutes } from './routes/repo.ts';
+import { createGithubRoutes } from './routes/github.ts';
+import { createTrackerRoutes } from './routes/tracker.ts';
 import { z } from 'zod';
 import {
   PROMPT_TEMPLATE_TEXT_MAX,
@@ -95,7 +92,6 @@ import {
   type RunsIndexResponse,
   type WorkspaceConfigResponse,
   workspaceBrandingLogoResponseSchema,
-  githubListQuerySchema,
 } from '@onni/contract';
 // A contract VALUE, like `workspaceUiStateSchema` in workspace/migrations.ts — the request
 // schema this route validates with is the same one the client compiles against.
@@ -170,7 +166,6 @@ import { byLastActivityDesc, compareIsoDesc, lastActivityAt, readRunIndexFromDis
 import {
   runHistoryQuerySchema,
   runIdParamSchema,
-  repoFileQuerySchema,
 } from '@onni/contract';
 import { toPastedContent, type PastedContent, type RunManager } from '../workflows/run.ts';
 import {
@@ -189,7 +184,7 @@ import { branchesCheckedOutElsewhere, removeWorktree, worktreeDiff } from '../gi
 import { protectedByLiveTree } from '../runs/retention.ts';
 import { worktreeLifecycleRoutes, lifecycleError } from './worktree-lifecycle.ts';
 import { readLifecycleConfigOrDefault } from '../worktree-lifecycle/config.ts';
-import { getBranches, getCommit, getDiff, getLog, getRepoInfo, getStatus } from './git.ts';
+import { getRepoInfo } from './git.ts';
 import {
   collectChanges,
   collectCommitChanges,
@@ -257,8 +252,6 @@ import { checkoutRepo, type CloneRunner } from './checkout.ts';
 import { createProjectInputSchema } from '@onni/contract';
 import { createProject, listGithubOwners, type CommandRunner } from './create-project.ts';
 import { ProjectContextError, ProjectContexts, type ProjectContext } from './project-context.ts';
-import { fetchRepo, pullRepo, pushRepo, repoSyncStatus, syncRepo, type SyncActionResult } from './repo-sync.ts';
-import type { RepoSync } from '@onni/contract';
 import { reviewGateEnabled } from '../runs/review-gate.ts';
 import { agentHomePaths, onniHomeDir, expandTilde, isAbsolutePath } from '../paths.ts';
 import { renameWithRetry } from '../fs-rename.ts';
@@ -268,7 +261,7 @@ import { applyKeepAlive } from './keep-alive.ts';
 import { browseDirectory, isInsideBrowseRoot, isLexicallyInsideBrowseRoot, resolveBrowseRoot } from './fs-browse.ts';
 import { parseRemote, resolveForge, type ForgeAvailability } from './forge/index.ts';
 import { isGithubHost } from '../github-hosts.ts';
-import { fetchGithub, fetchGithubChecks, fetchGithubComments, fetchGithubPrDiff, fetchGithubRefStatus, forgetRefStatus, readCachedRefStatuses, refNumberFromUrl, searchGithubItems, GithubPrNotFoundError, GH_CHECKS_MAX, GH_SEARCH_MAX, GH_REF_STATUS_MAX } from './github.ts';
+import { forgetRefStatus, readCachedRefStatuses, refNumberFromUrl } from './github.ts';
 import { ensureLaunchKey } from './launch-key.ts';
 import { launchKeyRoutes } from './routes/launch-key.ts';
 import { skillsRoutes } from './routes/skills.ts';
@@ -1231,10 +1224,6 @@ function negotiate<O extends string>(accept: string | undefined, offers: readonl
   }
   return best?.offer ?? null;
 }
-
-/** What `GET /repo/commit/:sha` offers, DEFAULT FIRST: the legacy `text/plain` blob is what a
- *  request with no opinion has always received (§2), so it also wins an Accept tie. */
-const COMMIT_FORMATS = ['text/plain', 'application/json'] as const;
 
 /** What `GET /runs/:id/files` offers, DEFAULT FIRST. `image/*` rather than a concrete type: which
  *  image type the bytes are is only known once the path resolves, and the raw branch refuses
@@ -5575,27 +5564,6 @@ export function createApp(deps: ServerDeps) {
     streamSSENoBuffer,
     workspaceEvents,
   });
-  // ---- chained family: GitHub (project-scoped) ----
-  // These sit ABOVE the routes rather than with the family's other schemas below it, because a
-  // validator argument is evaluated when the route is REGISTERED — a schema declared further down
-  // would be in its temporal dead zone. (The schemas below are all read inside a handler, or
-  // passed as a thunk, which defers them past that point.)
-  const mergeNumberParams = z.object({ number: z.coerce.number().int().positive() });
-  /** A ref-status list: `null` means malformed (the caller answers 400), `[]` means "not asked
-   *  for". Absent and empty are the same request — neither names a number. */
-  const parseRefNumbers = (raw: string | undefined): number[] | null => {
-    const parts = (raw ?? '').split(',').map((p) => p.trim()).filter(Boolean);
-    if (parts.length > GH_REF_STATUS_MAX) return null;
-    const numbers: number[] = [];
-    for (const part of parts) {
-      const n = Number(part);
-      if (!Number.isInteger(n) || n <= 0 || String(n) !== part) return null;
-      numbers.push(n);
-    }
-    return numbers;
-  };
-  const prChangesParams = z.object({ number: z.coerce.number().int().positive().safe() });
-  const prChangesQuery = z.object({ refresh: queryValue.refine((v) => v === undefined || v === '1') });
   // Serialize validation and persistence per project: a slow Connect cannot resurrect a
   // connection after a subsequent Disconnect. Reads remain independent and demand-driven.
   const trackerMutations = new Map<string, Promise<unknown>>();
@@ -5671,538 +5639,12 @@ export function createApp(deps: ServerDeps) {
   });
   const workspaceSecretsRoutes = createWorkspaceSecretsRoutes({ secretsList, putSecret, deleteSecret });
 
-  const trackerRoutes = new Hono<ProjectApiEnv>()
-    .get('/tracker/automation-options', queryZodValidator(trackerAutomationOptionsQuerySchema), async c => {
-      const project = c.get('project');
-      const driver = await trackers.driver(project.root, project.dataDir);
-      if ('available' in driver) return c.json(trackerAutomationOptionsSchema.parse(driver));
-      if (!driver.automationOptions) return c.json(trackerAutomationOptionsSchema.parse({ available: false, code: 'unavailable', reason: 'Automation events are not available for this tracker' }));
-      try {
-        const options = await driver.automationOptions(c.req.valid('query'));
-        return c.json(trackerAutomationOptionsSchema.parse({ available: true, association: driver.association, ...options }));
-      } catch {
-        return c.json(trackerAutomationOptionsSchema.parse({ available: false, code: 'unavailable', reason: 'Could not load tracker automation options. Try again.' }));
-      }
-    })
-    .post('/tracker/watch', jsonZodValidator(trackerWatchInputSchema), async c => {
-      try { return c.json(await trackerWatches.open(c.get('project'), c.req.valid('json')), 200); }
-      catch { return c.json({ error: 'Could not observe this tracker. Reload the view or close unused tracker views.' }, 409); }
-    })
-    .get('/tracker/watch/:watchId', paramZodValidator(trackerWatchParamsSchema), queryZodValidator(trackerWatchQuerySchema), async c => {
-      const { after } = c.req.valid('query');
-      const project = c.get('project');
-      const { watchId } = c.req.valid('param');
-      const result = after === undefined
-        ? await trackerWatches.read(project, watchId)
-        : await trackerWatches.wait(project, watchId, after, c.req.raw.signal);
-      if (!result) return c.json({ error: 'Tracker observation expired. Reopen the view.' }, 404);
-      c.header('Cache-Control', 'no-store');
-      return c.json(result, 200);
-    })
-    .post('/tracker/watch/:watchId', paramZodValidator(trackerWatchParamsSchema), async c => {
-      const result = await trackerWatches.refresh(c.get('project'), c.req.valid('param').watchId);
-      if (!result) return c.json({ error: 'Tracker observation expired. Reopen the view.' }, 404);
-      return c.json(result, 200);
-    })
-    .get('/tracker/connection', async c => c.json(await trackers.connection(c.get('project').root)))
-    .put('/tracker/connection', jsonZodValidator(trackerCredentialsSchema, { message: 'Invalid tracker credentials. Check the required fields.' }), async c => {
-      const project = c.get('project');
-      return mutateTracker(project.dataDir, async () => {
-        const result = await trackers.saveConnection(project.root, c.req.valid('json'));
-        if (!result) return c.json({ error: 'Could not save project credentials. Check local storage permissions. Demo mode cannot save credentials.' }, 409);
-        await trackerChanged(project);
-        return c.json(result, 200);
-      });
-    })
-    .delete('/tracker/connection', async c => {
-      const project = c.get('project');
-      return mutateTracker(project.dataDir, async () => {
-        if (!await trackers.removeConnection(project.root)) return c.json({ error: 'Could not remove project credentials.' }, 409);
-        await trackerChanged(project);
-        return c.json({ cleared: true as const }, 200);
-      });
-    })
-    .get('/tracker/candidates', queryZodValidator(trackerCandidatesQuerySchema), async c => {
-      const result = await trackers.candidates(c.get('project').root, c.req.valid('query'));
-      if (!result.available && result.code === 'invalid_cursor') return c.json({ error: result.reason }, 400);
-      return c.json(result, 200);
-    })
-    .get('/tracker/association', async (c) =>
-      c.json({ association: await readTrackerAssociation(c.get('project').dataDir) }))
-    .put('/tracker/association', jsonZodValidator(trackerAssociationInputSchema), async (c) => {
-      const project = c.get('project');
-      return mutateTracker(project.dataDir, async () => {
-        const result = await trackers.resolve(project.root, c.req.valid('json'));
-        if (!result.available) {
-          if (result.code === 'not_found') return c.json({ error: result.reason }, 404);
-          return c.json({ error: result.reason }, 409);
-        }
-        if (!await writeTrackerAssociation(project.dataDir, result.association)) {
-          return c.json({ error: 'Could not save the tracker connection. Previous connection was preserved.' }, 409);
-        }
-        await trackerChanged(project);
-        return c.json({ association: result.association }, 200);
-      });
-    })
-    .delete('/tracker/association', async (c) => {
-      const project = c.get('project');
-      return mutateTracker(project.dataDir, async () => {
-        if (!await clearTrackerAssociation(project.dataDir)) {
-          return c.json({ error: 'Could not disconnect the tracker. Try again.' }, 409);
-        }
-        await trackerChanged(project);
-        return c.json({ cleared: true as const }, 200);
-      });
-    })
-    .get('/tracker', queryZodValidator(trackerListQuerySchema), async (c) => {
-      const driver = await trackers.driver(c.get('project').root, c.get('project').dataDir);
-      if ('available' in driver) return c.json(driver, 200);
-      const { expectedScope } = c.req.valid('query');
-      if (expectedScope !== undefined && expectedScope !== trackerReadScope(driver.association)) {
-        return c.json({ available: false as const, code: 'source_changed' as const, reason: 'This tracker connection or scope changed. Reload the tracker view.' }, 200);
-      }
-      const result = await driver.listIssues(c.req.valid('query'));
-      if (!result.available && result.code === 'invalid_cursor') return c.json({ error: result.reason }, 400);
-      return c.json(result, 200);
-    })
-    .get('/tracker/search', queryZodValidator(trackerSearchQuerySchema), async (c) => {
-      const driver = await trackers.driver(c.get('project').root, c.get('project').dataDir);
-      if ('available' in driver) return c.json(driver, 200);
-      const { expectedScope } = c.req.valid('query');
-      if (expectedScope !== undefined && expectedScope !== trackerReadScope(driver.association)) {
-        return c.json({ available: false as const, code: 'source_changed' as const, reason: 'This tracker connection or scope changed. Reload the tracker view.' }, 200);
-      }
-      const result = await driver.searchItems(c.req.valid('query'));
-      if (!result.available && result.code === 'invalid_cursor') return c.json({ error: result.reason }, 400);
-      return c.json(result, 200);
-    })
-    .get('/tracker/:id', paramZodValidator(trackerItemParamsSchema), queryZodValidator(trackerItemQuerySchema), async (c) => {
-      const driver = await trackers.driver(c.get('project').root, c.get('project').dataDir);
-      if ('available' in driver) return c.json(driver, 200);
-      const { expectedScope } = c.req.valid('query');
-      if (expectedScope !== undefined && expectedScope !== trackerReadScope(driver.association)) {
-        return c.json({ available: false as const, code: 'source_changed' as const, reason: 'This tracker connection or scope changed. Reload the tracker view.' }, 200);
-      }
-      const result = await driver.getItem(c.req.valid('param').id);
-      if (!result.available && result.code === 'not_found') return c.json({ error: result.reason }, 404);
-      return c.json(result, 200);
-    });
 
-  const githubRoutes = new Hono<ProjectApiEnv>()
-    .get(
-      '/github',
-      // `limit` stays a bare string: the handler's `Number.parseInt`/`Number.isFinite` fallback to
-      // 30 already accepts `?limit=banana`, and a numeric schema would 400 it instead.
-      queryZodValidator(githubListQuerySchema),
-      async (c) => {
-        const { root: repoRoot } = c.get('project');
-        const query = c.req.valid('query');
-        const limit = Number.parseInt(query.limit ?? '', 10);
-        return c.json(await fetchGithub(repoRoot, query.refresh === '1', Number.isFinite(limit) ? limit : 50, {
-          issuesCursor: query.issuesCursor,
-          prsCursor: query.prsCursor,
-        }));
-      },
-    )
 
-    .get('/github/comments/:kind/:number', queryZodValidator(refreshQuery), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const parsed = commentsParams.safeParse({
-        kind: c.req.param('kind'),
-        number: c.req.param('number'),
-      });
-      if (!parsed.success) return c.json({ error: 'invalid kind or number' }, 400);
-      return c.json(
-        await fetchGithubComments(repoRoot, parsed.data.kind, parsed.data.number, c.req.valid('query').refresh === '1'),
-      );
-    })
-
-    // Lazy checks glyphs for on-screen PR rows (#664). Additive sibling of /api/github — the list
-    // call dropped `statusCheckRollup` (the dominant cost), so the glyph is hydrated here per
-    // visible row. `prs` is a comma-separated list of positive integers, capped at GH_CHECKS_MAX;
-    // anything malformed is a 400. Same in-payload availability degrade as the list (never a 5xx).
-    // `prs` is the one genuinely REQUIRED query key on this server, so it is the one validated
-    // strictly — `.min(1)` because `?prs=` answered `missing prs query` before it answered
-    // `invalid prs query`, and both spellings must keep their own words.
-    .get('/github/checks', queryZodValidator(z.object({ prs: z.string().min(1) }), { message: 'missing prs query' }), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const raw = c.req.valid('query').prs;
-      const parts = raw.split(',').map((p) => p.trim()).filter(Boolean);
-      if (parts.length === 0 || parts.length > GH_CHECKS_MAX) return c.json({ error: 'invalid prs query' }, 400);
-      const numbers: number[] = [];
-      for (const part of parts) {
-        const n = Number(part);
-        if (!Number.isInteger(n) || n <= 0 || String(n) !== part) return c.json({ error: 'invalid prs query' }, 400);
-        numbers.push(n);
-      }
-      return c.json(await fetchGithubChecks(repoRoot, numbers));
-    })
-
-    // Search across ALL states (#730). Additive sibling of `/github`, which lists the OPEN set
-    // only (`gh issue/pr list` defaults to `--state open`) — so the tab's in-memory filter can
-    // never match a closed or merged item, and this is the path it falls back to. Same in-payload
-    // availability degrade as the list (never a 5xx); malformed params are a 400. Deliberately
-    // uncached: it is typed-into, not polled, and the driver's own cap bounds the work.
-    .get(
-      '/github/search',
-      queryZodValidator(
-        z.object({
-          kind: z.enum(['issue', 'pr']),
-          q: z.string().trim().min(1).max(256),
-          limit: z.coerce.number().int().positive().max(GH_SEARCH_MAX).optional(),
-        }),
-        { message: 'invalid search query' },
-      ),
-      async (c) => {
-        const { root: repoRoot } = c.get('project');
-        const { kind, q, limit } = c.req.valid('query');
-        return c.json(await searchGithubItems(repoRoot, kind, q, limit));
-      },
-    )
-
-    // Batched status for the PR/issue chips a task table paints. Additive sibling of
-    // /github/checks and shaped like it: comma-separated positive integers, capped at
-    // GH_REF_STATUS_MAX per kind, malformed input is a 400, and an unreachable forge degrades in
-    // the payload. Unlike /github/checks BOTH keys are optional — a table may hold only issues —
-    // but at least one must name something, or the request asks for nothing.
-    .get(
-      '/github/ref-status',
-      queryZodValidator(z.object({ prs: z.string().optional(), issues: z.string().optional() })),
-      async (c) => {
-        const { root: repoRoot } = c.get('project');
-        const { prs, issues } = c.req.valid('query');
-        const parsedPrs = parseRefNumbers(prs);
-        const parsedIssues = parseRefNumbers(issues);
-        if (parsedPrs === null || parsedIssues === null) return c.json({ error: 'invalid ref-status query' }, 400);
-        if (parsedPrs.length === 0 && parsedIssues.length === 0) {
-          return c.json({ error: 'missing prs or issues query' }, 400);
-        }
-        return c.json(await fetchGithubRefStatus(repoRoot, { prs: parsedPrs, issues: parsedIssues }));
-      },
-    )
-
-    .get(
-      '/github/prs/:number/merge-state',
-      paramZodValidator(mergeNumberParams, { message: 'invalid pull request number' }),
-      queryZodValidator(refreshQuery),
-      async (c) => {
-        const { root: repoRoot } = c.get('project');
-        const parsed = { data: c.req.valid('param') };
-        const forge = resolveForge(await getRepoInfo(repoRoot));
-        if (!forge?.prMergeState) return c.json({ available: false, reason: 'GitHub merge state is unavailable' });
-        return c.json(await forge.prMergeState(parsed.data.number, { refresh: c.req.valid('query').refresh === '1' }));
-      },
-    )
-
-    .post(
-      '/github/prs/:number/merge',
-      paramZodValidator(mergeNumberParams, { message: 'invalid pull request number' }),
-      jsonZodValidator(() => mergeBodySchema, { message: 'invalid merge request' }),
-      async (c) => {
-        const { root: repoRoot } = c.get('project');
-        const parsedNumber = { data: c.req.valid('param') };
-        const body = { data: c.req.valid('json') };
-        const forge = resolveForge(await getRepoInfo(repoRoot));
-        if (!forge?.mergePR) return c.json({ error: 'GitHub merge is unavailable' }, 409);
-        const result = await forge.mergePR(parsedNumber.data.number, body.data);
-        if (result.merged) {
-          // We just changed this pull request, so what the ref-status cache holds about it is now
-          // known-stale — and its TTL would keep every chip showing the PRE-merge status for up to
-          // a minute after the user watched this server merge it. Forget it; the next reader asks
-          // the forge, gets `merged`, and then stops polling it at all.
-          forgetRefStatus(repoRoot, parsedNumber.data.number);
-          return c.json(result);
-        }
-        return c.json(
-          {
-            error: result.error,
-            ...(result.code ? { code: result.code } : {}),
-            ...(result.current ? { current: result.current } : {}),
-          },
-          result.status,
-        );
-      },
-    )
-
-    .get(
-      '/github/prs/:number/changes',
-      // Split out of one `safeParse` over both inputs, because a path param and the query string
-      // are separate validation targets to Hono and only a split makes each visible to the route
-      // type. Both keep the single 400 sentence the combined parse answered. `refresh` stays
-      // STRICT here (`?refresh=true` is a 400 today, unlike everywhere else on this server).
-      paramZodValidator(prChangesParams, { message: 'invalid pull request number or refresh flag' }),
-      queryZodValidator(prChangesQuery, { message: 'invalid pull request number or refresh flag' }),
-      async (c) => {
-        const { root: repoRoot } = c.get('project');
-        const parsed = { data: c.req.valid('param') };
-        try {
-          return c.json(
-            await fetchGithubPrDiff(repoRoot, parsed.data.number, c.req.valid('query').refresh === '1'),
-          );
-        } catch (err) {
-          if (err instanceof GithubPrNotFoundError) return c.json({ error: err.message }, 404);
-          throw err;
-        }
-      },
-    );
-
-  // The full comment thread for one issue/PR (#499). Additive sibling of /api/github — lazy
-  // (fetched only while a detail view is open), zod-validated params, 400 on garbage, and the
-  // same in-payload availability degrade (gh missing / offline / 404 all render as a hint).
-  const commentsParams = z.object({
-    kind: z.enum(['issue', 'pr']),
-    number: z.coerce.number().int().positive(),
-  });
-  const mergeBodySchema = z.object({
-    method: z.enum(['merge', 'squash', 'rebase']),
-    expectedHeadSha: z.string().regex(/^[0-9a-f]{40}$/),
-    overrideRules: z.boolean().optional().default(false),
-  }).strict();
-
-  // Task branches are never a base: hide the named ones (no `onni/` prefix) by record. An in-place
-  // run's branch is the user's own checkout, so it stays listed.
-  const taskOwnedBranches = (store: ProjectContext['store']): Set<string> =>
-    new Set(store.listRuns().flatMap((r) => (r.branch && r.worktree !== false ? [r.branch] : [])));
-  const runRepoSyncAction = async (
-    project: ProjectContext,
-    action: (root: string) => Promise<SyncActionResult>,
-  ): Promise<{ error: string } | { message: string; sync: RepoSync }> => {
-    const info = await getRepoInfo(project.root);
-    if (!info) return { error: 'not a git repository' };
-    // A pull moves HEAD and the working files: never under an in-place run's agent.
-    if (action === pullRepo || action === syncRepo) {
-      const live = project.store
-        .listRuns()
-        .some((r) => r.worktree === false && (r.status === 'running' || r.status === 'waiting'));
-      if (live) return { error: 'an in-place task is running in this checkout — wait for it to finish' };
-    }
-    const result = await action(info.root);
-    if (!result.ok) return { error: result.error };
-    return { message: result.message, sync: await repoSyncStatus(info.root, taskOwnedBranches(project.store)) };
-  };
-
-  // ---- chained family: repo / git (project-scoped) ----
-  const repoRoutes = new Hono<ProjectApiEnv>()
-    .get('/repo', async (c) => {
-      const { root: repoRoot, store } = c.get('project');
-      const info = await getRepoInfo(repoRoot);
-      if (!info)
-        return c.json({
-          info: null,
-          status: [],
-          log: [],
-          branches: [],
-          checkedOutElsewhere: {},
-          baseBranch: null,
-        });
-      const taskBranches = taskOwnedBranches(store);
-      const [status, log, branches, held, config] = await Promise.all([
-        getStatus(info.root),
-        getLog(info.root),
-        getBranches(info.root, taskBranches),
-        branchesCheckedOutElsewhere(info.root),
-        loadConfig(repoRoot),
-      ]);
-      return c.json({
-        info,
-        status,
-        log,
-        branches,
-        checkedOutElsewhere: Object.fromEntries(branches.flatMap((b) => (held.has(b) ? [[b, held.get(b)!]] : []))),
-        baseBranch: config.baseBranch ?? null,
-      });
-    })
-
-    .get('/repo/diff', async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const info = await getRepoInfo(repoRoot);
-      if (!info) return c.text('not a git repository');
-      return c.text(await getDiff(info.root));
-    })
-
-    // One commit's message + stat + patch — the Repo view expands it inline.
-    // `?structured=1` is the ADDITIVE sibling (R5 Step 1.7): the new repo view's commit-diff
-    // shape `{sha, subject, author, when, files, stat}` with 409 + reason on failure. The
-    // legacy text answer below is a protected surface (BACKWARD_COMPATIBILITY.md §2) — its
-    // shape, including the in-band failure sentences, stays exactly as it was.
-    //
-    // `Accept: application/json` reaches the same structured answer without the flag, and
-    // `Accept: text/plain` asks for the blob; the flag still wins whenever it is present, and a
-    // request with no opinion still gets the blob. See `negotiate`.
-    .get('/repo/commit/:sha', queryZodValidator(z.object({ structured: queryValue })), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      c.header('vary', 'Accept');
-      const { structured } = c.req.valid('query');
-      const wantsJson =
-        structured !== undefined
-          ? structured === '1'
-          : negotiate(c.req.header('accept'), COMMIT_FORMATS) === 'application/json';
-      const info = await getRepoInfo(repoRoot);
-      if (wantsJson) {
-        if (!info) return c.json({ error: 'not a git repository' }, 409);
-        const result = await collectCommitChanges(info.root, c.req.param('sha'));
-        if (!result.ok) return c.json({ error: result.error }, 409);
-        return c.json(result.commit);
-      }
-      if (!info) return c.text('not a git repository');
-      try {
-        return c.text(await getCommit(info.root, c.req.param('sha')));
-      } catch (err) {
-        return c.text(`(git show failed: ${err instanceof Error ? err.message : String(err)})`);
-      }
-    })
-
-    // Structured sibling of the text-blob /api/repo/diff above (protected
-    // surface, untouched): the same {files, stat} shape the session /changes
-    // route serves, here for the MAIN working tree's uncommitted changes vs
-    // HEAD (redesign R5 Step 1.3 — §"Git/session API additions").
-    .get('/repo/changes', async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const info = await getRepoInfo(repoRoot);
-      if (!info) return c.json({ error: 'not a git repository' }, 409);
-      // The user's REAL working tree — never stage into their index (a GET must not write).
-      const result = await collectChanges(info.root, 'HEAD', {
-        intentToAdd: false,
-      });
-      if (!result.ok) return c.json({ error: result.error }, 409);
-      return c.json(result.changes);
-    })
-
-    // The repository's whole path index in ONE bounded response (spec
-    // `.ai/specs/2026-10-05-repo-file-browser.md`, #1279) — the Git tab's Files sub-tab builds its
-    // tree from this and filters it client-side, which is why there is no search endpoint.
-    // `git ls-files` is the source, so `.gitignore`d build output and `node_modules` never appear,
-    // and the set it returns is the membership guard the content route below enforces.
-    .get('/repo/tree', async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const info = await getRepoInfo(repoRoot);
-      // Same status AND the same words as /repo/changes: the Files tab reads this 409 as "the
-      // whole Git view has nothing to show", exactly as the Changes tab does.
-      if (!info) return c.json({ error: 'not a git repository' }, 409);
-      const result = await listRepoPaths(info.root);
-      if (!result.ok) return c.json({ error: result.error }, 409);
-      return c.json({ paths: result.paths, truncated: result.truncated });
-    })
-
-    // One repository file, for the Files sub-tab's viewer — the `/runs/:id/files` handler's shape
-    // with the run lookup replaced by `getRepoInfo`, plus ONE extra guard that the run route does
-    // not need and this one cannot do without.
-    //
-    // This serves the user's REAL checkout, not an isolated worktree. `readWorktreePath` stops
-    // traversal, `.git` and symlinks — it knows nothing about `.gitignore`, so on its own
-    // `?path=.env` would be served verbatim, and AGENTS.md § Zero config's promise that a
-    // repository `.env` is never read would be one fetch away from any cockpit client. The index
-    // membership check below is that control: only a path `git ls-files` returned is readable, so
-    // the reachable set is exactly what is committed or deliberately left untracked-and-unignored.
-    // A TRACKED `.env` stays readable, by design — it is in the index and in the remote already.
-    //
-    // The index is re-derived per request rather than cached: a cache would serve a file the user
-    // has since ignored, and `ls-files` is one bounded subprocess.
-    .get('/repo/files', queryZodValidator(repoFileQuerySchema), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const query = c.req.valid('query');
-      c.header('vary', 'Accept');
-      const wantsRaw =
-        query.raw !== undefined
-          ? query.raw === '1'
-          : negotiate(c.req.header('accept'), FILE_FORMATS) === 'image/*';
-      const info = await getRepoInfo(repoRoot);
-      if (!info) return c.json({ error: 'not a git repository' }, 409);
-      const index = await repoIndexContains(info.root, query.path);
-      if (!index.ok) return c.json({ error: index.error }, 409);
-      if (!index.indexed) {
-        // Deliberately ONE message for "ignored", "untracked and ignored" and "does not exist" —
-        // a distinct wording for the ignored case would disclose that an ignored file is present
-        // on disk, which is the very thing this guard exists to keep quiet about.
-        return c.json({ error: `path is not in the repository index: ${query.path}` }, 409);
-      }
-      const result = await readWorktreePath(info.root, query.path);
-      if (result.kind === 'invalid' || result.kind === 'missing') {
-        return c.json({ error: result.error }, 409);
-      }
-      if (result.kind === 'dir') {
-        // Reachable despite every indexed path being a file: a submodule is one `ls-files` entry
-        // that resolves to a directory. Refused in the resolver's own grammar rather than
-        // inventing a submodule view.
-        return c.json({ error: `not a regular file: ${result.path}` }, 409);
-      }
-      if (wantsRaw) {
-        const mime = imageMimeType(result.path);
-        if (mime === null || result.tooLarge) {
-          // `?raw=1` asked for bytes, so it hears why it cannot have them; a mere `Accept`
-          // preference falls through to the JSON answer. Same split as `/runs/:id/files`.
-          if (query.raw !== undefined) {
-            const error =
-              mime === null
-                ? `raw serving is limited to images: ${result.path}`
-                : `file too large to serve raw (${result.size} bytes): ${result.path}`;
-            return c.json({ error }, 409);
-          }
-        } else {
-          const bytes = await readFile(join(info.root, result.path));
-          return c.body(new Uint8Array(bytes).buffer as ArrayBuffer, 200, {
-            'content-type': mime,
-            'x-content-type-options': 'nosniff',
-            'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
-          });
-        }
-      }
-      return c.json({
-        // `as const` or Hono's inference widens the literal to `string` and the consumer's
-        // discriminated narrowing collapses to `never` — the same trap `/runs/:id/files` documents.
-        type: 'file' as const,
-        path: result.path,
-        size: result.size,
-        binary: result.binary,
-        tooLarge: result.tooLarge,
-        ...(result.content !== undefined ? { content: result.content } : {}),
-      });
-    })
-
-    .post('/repo/branch', jsonZodValidator(() => repoBranchSchema), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const info = await getRepoInfo(repoRoot);
-      if (!info) return c.json({ error: 'not a git repository' }, 409);
-      const parsed = { data: c.req.valid('json') };
-      const result = await createOrSwitchBranch(info.root, parsed.data.name, parsed.data.from);
-      if (!result.ok) return c.json({ error: result.error }, 409);
-      return c.json({ branch: result.branch, created: result.created });
-    })
-
-    // Source-Control sync (spec 2026-10-19-repo-git-sync): offline status, explicit network.
-    .get('/repo/sync', async (c) => {
-      const { root: repoRoot, store } = c.get('project');
-      const info = await getRepoInfo(repoRoot);
-      if (!info) return c.json({ error: 'not a git repository' }, 409);
-      return c.json(await repoSyncStatus(info.root, taskOwnedBranches(store)));
-    })
-    .post('/repo/fetch', async (c) => {
-      const r = await runRepoSyncAction(c.get('project'), fetchRepo);
-      return 'error' in r ? c.json({ error: r.error }, 409) : c.json({ message: r.message, sync: r.sync });
-    })
-    .post('/repo/pull', async (c) => {
-      const r = await runRepoSyncAction(c.get('project'), pullRepo);
-      return 'error' in r ? c.json({ error: r.error }, 409) : c.json({ message: r.message, sync: r.sync });
-    })
-    .post('/repo/push', async (c) => {
-      const r = await runRepoSyncAction(c.get('project'), pushRepo);
-      return 'error' in r ? c.json({ error: r.error }, 409) : c.json({ message: r.message, sync: r.sync });
-    })
-    .post('/repo/sync', async (c) => {
-      const r = await runRepoSyncAction(c.get('project'), syncRepo);
-      return 'error' in r ? c.json({ error: r.error }, 409) : c.json({ message: r.message, sync: r.sync });
-    });
 
   const configRoutes = createConfigRoutes();
   const agentConfigRoutes = createAgentConfigRoutes({ capabilities });
 
-  // Repo view branch actions: switch to an existing branch, or create one
-  // (from `from` or HEAD) and switch. Predictable git failures — invalid
-  // name, unknown `from`, dirty-tree checkout conflict — are 409 + reason.
-  const repoBranchSchema = z.object({
-    name: z.string().trim().min(1).max(200),
-    from: z.string().trim().min(1).max(200).optional(),
-  });
   // ---- assemble the chained families --------------------------------------
   // Every chained family is registered ONCE and mounted into the versioned table. There is no
   // second, unversioned spelling: `/api/*` was removed once the whole API was reachable under
@@ -6531,11 +5973,11 @@ export function createApp(deps: ServerDeps) {
     .route('/', worktreeLifecycleRoutes({ stopTaskProcesses }))
     .route('/', todosRoutes({ capabilities, providerActionError }))
     .route('/', sseRoutes)
-    .route('/', githubRoutes)
-    .route('/', trackerRoutes)
+    .route('/', createGithubRoutes({ queryValue, refreshQuery }))
+    .route('/', createTrackerRoutes({ trackers, trackerWatches, mutateTracker, trackerChanged }))
     .route('/', secretsRoutes({ secretsList, putSecret, deleteSecret, unregisteredSecrets }))
     .route('/', e2eRoutes)
-    .route('/', repoRoutes)
+    .route('/', createRepoRoutes({ queryValue, negotiate, fileFormats: FILE_FORMATS }))
     .route('/', configRoutes)
     .route('/', agentConfigRoutes)
     .route('/', terminalRoutes)
