@@ -69,6 +69,7 @@ import { HTTPException } from 'hono/http-exception';
 import { streamSSE } from 'hono/streaming';
 import { jsonZodValidator, multipartZodValidator, paramZodValidator, queryZodValidator } from './validators.ts';
 import { createModelsRoutes } from './routes/models.ts';
+import { hostedProfileRefusal, providerParamSchema, providersRoutes as createProvidersRoutes } from './routes/providers.ts';
 import { createFsBrowseRoutes } from './routes/fs-browse.ts';
 import { createWorkspaceSecretsRoutes } from './routes/workspace-secrets.ts';
 import { createPreviewRoutes } from './routes/preview.ts';
@@ -457,14 +458,6 @@ type ProjectApiEnv = { Variables: { project: ProjectContext } };
  *  contract explicit.) */
 const projectIdSchema = z.union([z.literal('default'), z.string().regex(PROJECT_ID_RE)]);
 
-const providerConnectSchema = z.object({
-  provider: z.enum(PROVIDER_IDS),
-  /** Which agent account to sign in (spec 2026-07-29-agent-profiles). Absent = the discovered
-   *  default, which is what every pre-profiles client sends. Without this, "Connect" on a second
-   *  Claude account would open a login for the FIRST one and report success. */
-  profileId: z.string().max(64).optional(),
-}).strict();
-
 /** Agent-account bodies (spec 2026-07-29-agent-profiles). Bounds mirror `agentProfileSchema` in
  *  src/workspace/config.ts exactly, so a value these accept can never be degraded away by the
  *  next load's `.catch`. The id is allocated server-side and is never a request field. */
@@ -497,11 +490,6 @@ const selectAgentProfileSchema = z.object({
   profileId: z.string().max(64).nullable(),
 }).strict();
 
-/** The hosted-mode refusal, worded like the agent-config one it mirrors. */
-const hostedProfileRefusal = {
-  error: 'agent accounts are disabled in hosted mode; set ONNI_REMOTE_AGENT_ACCOUNTS=1 only behind an authenticated perimeter',
-};
-
 const hostedProfileOpenRefusal = {
   error: 'opening account files is disabled in hosted mode; open them directly on the machine hosting onni',
 };
@@ -522,11 +510,6 @@ function allocateAgentProfileId(source: string, taken: Iterable<string>): string
 /** In-flight `POST /runs/:id/pr` publishes, keyed by data dir + run id. */
 const prPublishes = new Map<string, Promise<{ outcome: DraftPrOutcome; branch: string }>>();
 
-const providerParamSchema = z.enum(PROVIDER_IDS);
-const providerEnabledSchema = z.object({ enabled: z.boolean() }).strict();
-const providerRetrySchema = z.object({
-  authFailureId: z.string().min(1).max(128),
-}).strict();
 
 const automationEditableSchema = z
   .object({
@@ -2131,161 +2114,19 @@ export function createApp(deps: ServerDeps) {
     loginWatches.set(key, cancel);
   };
 
-  const providersRoutes = new Hono<ProjectApiEnv>()
-    .get(
-      '/providers/status',
-      queryZodValidator(z.object({ refresh: queryValue.refine((v) => v === undefined || v === '1') }), { message: 'refresh must be 1 when provided' }),
-      async (c) => {
-        const query = { data: c.req.valid('query') };
-        return c.json(await providerStatus({ refresh: query.data.refresh === '1' }));
-      },
-    )
-
-    .put(
-      '/providers/:provider/enabled',
-      paramZodValidator(z.object({ provider: providerParamSchema }), { message: 'provider and enabled boolean are required' }),
-      jsonZodValidator(providerEnabledSchema, { message: 'provider and enabled boolean are required' }),
-      async (c) => {
-        const provider = { data: c.req.valid('param').provider };
-        const body = { data: c.req.valid('json') };
-        let workspace: WorkspaceConfig;
-        try {
-          workspace = await workspaceConfig.mergeWrite((config) => {
-            const disabled = new Set(config.disabledProviders);
-            if (body.data.enabled) disabled.delete(provider.data);
-            else disabled.add(provider.data);
-            config.disabledProviders = PROVIDER_IDS.filter((id) => disabled.has(id));
-          });
-        } catch {
-          return c.json({ error: 'Provider preference could not be saved.' }, 500);
-        }
-        const result = applyProviderEnablement(
-          await providerAuth.status(),
-          workspace.disabledProviders,
-        );
-        const row = result.providers.find(({ provider: id }) => id === provider.data);
-        if (row) workspaceEvents.emit('provider-status', row);
-        return c.json(result);
-      },
-    )
-
-    .post(
-      '/providers/:provider/retry',
-      paramZodValidator(z.object({ provider: providerParamSchema }), { message: 'provider and current authFailureId are required' }),
-      jsonZodValidator(providerRetrySchema, { message: 'provider and current authFailureId are required' }),
-      async (c) => {
-        const provider = { data: c.req.valid('param').provider };
-        const body = { data: c.req.valid('json') };
-        if (!providerAuth.clearRuntimeAuthFailure(provider.data, body.data.authFailureId)) {
-          return c.json({ error: 'Authentication incident changed. Refresh and try again.' }, 409);
-        }
-        const result = await providerStatus({ refresh: true });
-        const row = result.providers.find(({ provider: id }) => id === provider.data);
-        if (row) workspaceEvents.emit('provider-status', row);
-        return c.json(result);
-      },
-    )
-
-    .post('/providers/connect', jsonZodValidator(providerConnectSchema, { message: 'provider must be claude, codex, opencode, cursor, pi, or copilot' }), async (c) => {
-      const body = { data: c.req.valid('json') };
-
-      const provider = body.data.provider as ProviderId;
-      // A NAMED account is refused in hosted mode unless the operator opted in. This happens
-      // before resolution, exactly like every sibling route in the agent-profiles family; checking
-      // later would already have read `~/.onni/agent-accounts.json`, built a command carrying the
-      // account's absolute path (which both the success body and the hosted 409 echo), and — for a
-      // stored account — spawned a probe. It would also answer `unknown account: <id>` for a wrong
-      // id, which is an enumeration oracle for the very ids the hosted listing withholds. The
-      // bare-provider spelling keeps its existing behaviour: it names no host path and is how the
-      // Providers card has always worked.
-      if (body.data.profileId !== undefined
-        && body.data.profileId !== DEFAULT_AGENT_ACCOUNT_ID
-        && !agentAccountsEnabled(process.env, bindHost)) {
-        return c.json(hostedProfileRefusal, 409);
-      }
-      // Resolve the account BEFORE anything else: both the command and the status probe below
-      // must describe the same one, or the pane reports on the personal login while the terminal
-      // signs into the work login.
-      const resolved = await resolveWorkspaceProfile(provider, body.data.profileId);
-      if ('error' in resolved) return c.json({ error: resolved.error }, 400);
-      const { profile } = resolved;
-      const command = providerAuth.loginCommand(provider, profile.isDefault ? null : profile.path);
-      // Fail closed: a config dir that cannot be embedded safely in this platform's shell has no
-      // safe degradation. Running the bare command would sign the user into a DIFFERENT account
-      // than the one they clicked, and nothing in the terminal would say so.
-      if (command === null) {
-        return c.json({ error: `This account's folder cannot be used in a terminal command: ${profile.configDir}` }, 409);
-      }
-      // BOTH branches must mean "is this account signed in NOW". The default branch refreshes; the
-      // account branch has to evict first, because `profileStatus` serves the per-account cache and
-      // a connected answer there stands for CONNECTED_TTL_MS. Without this, Connect after a
-      // `claude /logout` answers "already connected", opens nothing, and the user is stuck — and it
-      // would contradict this module's own invariant that opening a login is one of the things
-      // onni CAN observe and therefore invalidates explicitly rather than waiting out a window.
-      if (!profile.isDefault) providerAuth.forgetProfileStatus(provider, profile.id);
-      const row = profile.isDefault
-        ? (await providerAuth.status({ refresh: true })).providers.find(
-          (candidate) => candidate.provider === provider,
-        )
-        : await providerAuth.profileStatus(provider, { id: profile.id, configDir: profile.path });
-      if (!row) {
-        return c.json({ error: 'Authentication could not be verified. Try again.' }, 500);
-      }
-
-      if (row.status === 'connected') {
-        return c.json({ opened: false, connected: true, command });
-      }
-      if (row.status === 'not-installed') {
-        return c.json({ error: row.hint ?? providerAuth.installHint(provider), command }, 409);
-      }
-      // `unknown` (inconclusive output, timeout, unexpected exit) falls through to the login like
-      // `disconnected`: the CLI is installed, and its own login is the one surface that can say
-      // what is wrong. Refusing here left Connect a dead end that "Try again" re-probed into.
-      if (!capabilities().localHandoff) {
-        return c.json({ error: 'Run this command on the machine hosting onni.', command }, 409);
-      }
-      let opened = false;
-      try {
-        // No `env` argument: `loginCommand` already rendered the account's config dir INTO the
-        // command, because this string is also the copy-paste fallback the pane shows. Passing
-        // it again here would set the variable twice.
-        opened = await openTerminal(bootRoot, command);
-      } catch {
-        // Terminal handoff is best-effort; the exact command remains the safe fallback.
-      }
-      if (!opened) {
-        return c.json({ error: 'No terminal emulator could be opened. Run this command manually.', command }, 409);
-      }
-      watchOpenedLogin(provider, { id: profile.id, isDefault: profile.isDefault, path: profile.isDefault ? null : profile.path });
-      return c.json({ opened: true, command });
-    })
-
-    // Offered next to an "X or newer is required" agent error: hands the CLI's own self-update to
-    // a terminal, like Connect hands it the login.
-    .post(
-      '/providers/:provider/update',
-      paramZodValidator(z.object({ provider: providerParamSchema }), { message: 'unknown provider' }),
-      async (c) => {
-        const provider = c.req.valid('param').provider as ProviderId;
-        const command = providerAuth.updateCommand(provider);
-        if (command === null) {
-          return c.json({ error: 'This agent has no update command of its own. Update it the way you installed it.' }, 409);
-        }
-        if (!capabilities().localHandoff) {
-          return c.json({ error: 'Run this command on the machine hosting onni.', command }, 409);
-        }
-        let opened = false;
-        try {
-          opened = await openTerminal(bootRoot, command);
-        } catch {
-          // Best-effort, as for Connect: the command is the fallback.
-        }
-        if (!opened) {
-          return c.json({ error: 'No terminal emulator could be opened. Run this command manually.', command }, 409);
-        }
-        return c.json({ opened: true as const, command });
-      },
-    );
+  const providersRoutes = createProvidersRoutes({
+    providerAuth,
+    providerStatus,
+    workspaceConfig,
+    workspaceEvents,
+    agentAccountsEnabled,
+    bindHost,
+    capabilities,
+    openTerminal,
+    bootRoot,
+    resolveWorkspaceProfile,
+    watchOpenedLogin,
+  });
 
   // ---- chained family: agent profiles / accounts (workspace-level) ----------
   // Extra config dirs for a SECOND login of the same agent CLI (spec
