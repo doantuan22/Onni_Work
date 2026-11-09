@@ -16,10 +16,14 @@ import type {
 import type { QueuedMessage, RunRecord, RunStore } from '../../runs/store.ts';
 import type { AccountHolds, WorkspaceSemaphore } from '../../workspace/semaphore.ts';
 import type { SecretStore } from '../../workspace/secrets.ts';
+import type { WorkflowGraph } from '../graph.ts';
 import type { WorkflowDef } from '../types.ts';
 import type { StartRunInput } from '../run.ts';
 import type { PersistedAttachment, PastedContent } from './preparation.ts';
 import type { WorktreeLifecycleCoordinator } from '../../worktree-lifecycle/coordinator.ts';
+import type { OnniConfig } from '../../config.ts';
+import type { StepState } from '../../runs/store.ts';
+import type { ManagerSessionContext } from '../manager-worker.ts';
 
 export interface PendingContinuation {
   stepId: string;
@@ -557,4 +561,98 @@ export interface SchedulingActiveRun {
   repoRootResume?: Promise<boolean>;
   currentStepId?: string;
   interrupt: () => void;
+}
+
+/** The owner fields used when an execution task creates, starts, and settles a run. */
+export interface ExecuteActiveRun {
+  ownerToken: symbol;
+  cancelled: boolean;
+  interrupt: () => void;
+  cwd: string;
+  releaseWorktree?: () => void;
+  autosaveExcludedPaths: Map<string, string>;
+  checkInProgress: boolean;
+  autosaveCheckpointBlocked: boolean;
+  autonomous?: boolean;
+  autoContinues?: number;
+  autoLand?: {
+    checks: string[];
+    baseBranch?: string;
+    baseLabel: string;
+    attempts: number;
+    inFlight?: Promise<import('../landing.ts').LandResult>;
+  };
+  readOnly?: boolean;
+  skills?: import('../../skills.ts').Skill[];
+  askPark?: 'waiting' | 'abandoned';
+  monitorHandoff?: boolean;
+  turnSettled?: boolean;
+  waitExpired?: boolean;
+}
+
+export interface ExecuteGraphOptions {
+  input: StartRunInput;
+  skills: import('../../skills.ts').Skill[];
+  emit: (event: { type: string; stepId?: string; [k: string]: unknown }) => void;
+  taskBackend: RunnerId;
+  extraSystemPrompt: string | undefined;
+  startImages: ContentBlock[] | undefined;
+  startAttachments: PersistedAttachment[];
+  resume?: RunRecord['graphState'];
+  usageLimitResume?: StepState;
+}
+
+/** State and typed RunManager seams used while creating and starting one workflow run. */
+export interface ExecuteContext {
+  store: RunStore;
+  repoRoot: string;
+  dataDir: string;
+  active: Pick<Map<string, ExecuteActiveRun>, 'get' | 'set'>;
+  starting: Pick<Set<string>, 'delete'>;
+  pendingBranchNames: Pick<Map<string, Promise<string | undefined>>, 'delete'>;
+  checkArtifactSnapshots: Pick<Map<string, Map<string, string>>, 'get' | 'set'>;
+  autosaveCheckpointBlockedRuns: Pick<Set<string>, 'has'>;
+  lifecycle: Pick<WorktreeLifecycleCoordinator, 'acquireAgentLease' | 'prepare'>;
+  repositoryRootLockDisabledNote: string;
+
+  configuredModelProvider(backend: RunnerId, repoRoot: string): Promise<string | undefined>;
+  currentCheckExclusions(dir: string, owned: Map<string, string>): Promise<string[]>;
+  repositoryRootLockDisabled(): boolean;
+  interruptedWorkflowStep(run: RunRecord): StepState | undefined;
+  requeueWhileHeld(
+    runId: string,
+    workflow: WorkflowDef,
+    input: StartRunInput,
+    runner: RunnerId,
+    state?: ExecuteActiveRun,
+  ): boolean;
+  landingPolicy(
+    run: RunRecord | undefined,
+    config: OnniConfig,
+    note?: (message: string) => void,
+  ): Promise<ExecuteActiveRun['autoLand']>;
+  awaitGeneratedBranch(
+    runId: string,
+    branchNaming: string | undefined,
+    note: (message: string) => void,
+  ): Promise<string | undefined>;
+  acquireRepoRoot(runId: string, state: ExecuteActiveRun): Promise<boolean>;
+  parkLifecycle(runId: string, state: ExecuteActiveRun, operationId?: string): void;
+  armAutosave(runId: string, state: ExecuteActiveRun): void;
+  loadManagerSessionContext(runId: string, state: ExecuteActiveRun): Promise<ManagerSessionContext>;
+  prepareDispatchSession(runId: string, state: ExecuteActiveRun, context: ManagerSessionContext): void;
+  prepareAutomationsSession(state: ExecuteActiveRun): void;
+  executeGraph(
+    runId: string,
+    state: ExecuteActiveRun,
+    workflow: WorkflowDef,
+    graph: WorkflowGraph,
+    options: ExecuteGraphOptions,
+  ): Promise<string | null>;
+  clearAutosaveTimer(state: ExecuteActiveRun): void;
+  settleUnansweredPark(runId: string, finishedAt: string, monitorHandoff: boolean): void;
+  inactivityFailureMessage(runId?: string, state?: ExecuteActiveRun): string;
+  settleSuccess(runId: string, state: ExecuteActiveRun): Promise<boolean>;
+  clearIdleTimer(state: ExecuteActiveRun): void;
+  dropActive(runId: string, state: ExecuteActiveRun): void;
 }
