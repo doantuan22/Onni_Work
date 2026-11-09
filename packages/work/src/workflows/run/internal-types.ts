@@ -1002,3 +1002,85 @@ export interface MonitoringContext {
   armIdleTimer(runId: string, state: MonitoringActiveRun): void;
   deliverMessage(runId: string, content: PastedContent[], userAuthored: boolean): boolean;
 }
+
+/** Live-session fields and manager callbacks used by one agent workflow step. */
+export interface AgentStepActiveRun extends ContinuationActiveRun {
+  currentStepId?: string;
+  lastOverriddenAsk?: string;
+  usageInvocation?: {
+    stepId: string;
+    epoch: number;
+    observed: boolean;
+    startedTurns: Set<string>;
+    recordedTurns: Set<string>;
+  };
+}
+
+/** Narrow façade passed to the agent-step, usage, and naming functions. */
+export interface AgentStepContext {
+  store: RunStore;
+  repoRoot: string;
+  dataDir: string;
+  active: ReadonlyMap<string, AgentStepActiveRun>;
+  waiting: Set<string>;
+  pendingBranchNames: Map<string, Promise<string | undefined>>;
+  branchNameWaitMs: number;
+  maxCompactionContinues: number;
+  autoResumePrompt: string;
+  transientRetryPrompt: string;
+
+  configuredModelProvider(backend: RunnerId, cwd: string): Promise<string | undefined>;
+  appendTurnText(current: string, next: string): string;
+  stripDoneMarker(text: string): string;
+  stripMonitoringMarker(text: string): string;
+  endsWithDoneMarker(turnText: string): boolean;
+  endsWithMonitoringMarker(turnText: string): boolean;
+  resolveAskTurn(turnText: string, enabled: boolean): {
+    ask: import('../../core/ask.ts').AskRequest | null;
+    notes: Array<{ message: string; tone?: 'danger' }>;
+  };
+  markerlessTurn(turnText: string): boolean;
+  autoResumeReasonFor(error: string | undefined): RunRecord['autoResumeReason'];
+  deferredBindingActive(run: Pick<RunRecord, 'id' | 'deferredBinding' | 'steps'>, runs: readonly RunRecord[]): boolean;
+
+  provisionTaskSkills(state: AgentStepActiveRun, wantedSkills: { stepSkill?: string; slash?: string }): Promise<string[]>;
+  flushPendingReports(runId: string): string | undefined;
+  flushInbox(runId: string): string | undefined;
+  prepareAttachmentLibrary(): string | undefined;
+  attachmentLibraryHint(attachments: PersistedAttachment[], grantedDir?: string): string | undefined;
+  attachmentsDir(runId: string): string;
+  persistAttachment(runId: string, mediaType: string, data: string): PersistedAttachment | null;
+  recordNoteMeta(runId: string, event: Extract<AgentEvent, { type: 'note' }>): void;
+  agentEnvForStep(
+    runId: string,
+    backend: RunnerId,
+    options?: { generateFollowups?: boolean; recordedProfileId?: string },
+  ): Promise<{ env: Record<string, string>; profileId: string; onUsageWindows?: (observation: UsageWindowsObservation) => void }>;
+  privateMcpForLaunch(backend: RunnerId, onEvent: (event: AgentEvent) => void): Promise<PrivateMcpServer[] | undefined>;
+  agentPermissionSpec(runId: string, backend: string, onEvent: (event: AgentEvent) => void): Promise<{ permissionLevel?: AgentPermissionLevel }>;
+  markQueuedManagerDeliveriesDelivered(runId: string): void;
+  flushDeferred(runId: string): void;
+  handleDispatchTurn(runId: string, turnText: string, turn: { state: AgentStepActiveRun; stepId: string; done: boolean }): DispatchTurnResult;
+  recordTurnEnd(runId: string, turnText: string, owner?: AgentStepActiveRun): Promise<void>;
+  landOnDone(runId: string, state: AgentStepActiveRun, stepId: string | undefined, close: () => void): boolean;
+  tryAutonomousNudge(runId: string, state: AgentStepActiveRun, stepId: string, ask: import('../../core/ask.ts').AskRequest | null, turn: DispatchTurnResult): boolean;
+  tryCompactionContinue(runId: string, state: AgentStepActiveRun, stepId: string, options: { markerless: boolean; dispatchTurn: DispatchTurnResult }): boolean;
+  recordAsk(runId: string, sink: UiEventSink, ask: import('../../core/ask.ts').AskRequest): WebhookAttentionRequest;
+  recordAttention(requestId: string, questions: readonly { question: string; options?: readonly { label: string; description?: string }[] }[]): WebhookAttentionRequest;
+  enterMonitoring(runId: string, spawnParked: boolean): void;
+  leaveMonitoring(runId: string): void;
+  releaseSlot(): void;
+  parkRepoRoot(runId: string, state: AgentStepActiveRun): void;
+  armIdleTimer(runId: string, state: AgentStepActiveRun): void;
+  clearIdleTimer(state: AgentStepActiveRun): void;
+  armMonitoringWakeTimer(runId: string, state: AgentStepActiveRun): void;
+  clearMonitoringWakeTimer(state: AgentStepActiveRun, runId?: string): void;
+  recordUsagePeaks(runId: string, state: AgentStepActiveRun): void;
+  sessionCostUsd(runId: string, sessionId: string): number;
+
+  makeUiSink(runId: string, stepId: string): UiEventSink;
+  handleRunnerUiEvent(runId: string, state: AgentStepActiveRun, sink: UiEventSink, event: UiEvent): void;
+  beginUsageInvocation(runId: string, state: AgentStepActiveRun, stepId: string): void;
+  recordUsageUiEvent(runId: string, state: AgentStepActiveRun, event: UiEvent): void;
+  persistUsageCheckpoint(runId: string, stepId: string, patch: Partial<Omit<StepState, 'id'>>): void;
+}

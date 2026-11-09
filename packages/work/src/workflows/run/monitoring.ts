@@ -30,7 +30,7 @@ export const MAX_AUTO_CONTINUES = 40;
  * burns its budget in a loop. Reset to zero by any turn that ends for another reason — that is
  * the evidence the session recovered — and by a user message, which buys a fresh budget.
  */
-const MAX_COMPACTION_CONTINUES = 3;
+export const MAX_COMPACTION_CONTINUES = 3;
 /**
  * The follow-up onni sends when a turn ended on nothing but the backend compacting its own
  * context (#955). Not a user message: it never enters the transcript as one, and it is written
