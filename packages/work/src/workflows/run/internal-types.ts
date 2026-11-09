@@ -286,3 +286,95 @@ export interface ManagerStateContext {
   deliverMessage(runId: string, content: import('./preparation.ts').PastedContent[], userAuthored: boolean): boolean;
   managerComplexityPolicyEnabled(): boolean;
 }
+
+/** Continue options retained on an active owner until its teardown releases the run. */
+export interface LifecycleContinueOptions {
+  text?: string;
+  images?: PastedContent[];
+  runner?: RunnerId;
+  model?: string;
+  agentProfile?: string;
+  raiseLimits?: boolean;
+  replyTo?: string;
+}
+
+/** The portion of an active owner touched by recovery, cancellation, and terminal cleanup. */
+export interface LifecycleActiveRun {
+  ownerToken: symbol;
+  cancelled: boolean;
+  releaseWorktree?: () => void;
+  releaseRepoRoot?: () => void;
+  interrupt: () => void;
+  session?: {
+    result: Promise<unknown>;
+    hardStop?: () => unknown;
+  };
+  sessionEverOpened?: boolean;
+  cancellationTimer?: NodeJS.Timeout;
+  finishRequested?: boolean;
+  finishedAtWait?: boolean;
+  acceptReviewOnDrop?: boolean;
+  continueOnDrop?: { opts: LifecycleContinueOptions; deferForCapacity: boolean };
+}
+
+/** The worktree barrier methods used by recovery and cancellation. */
+export interface LifecycleBarrier {
+  reconcile(): Promise<void>;
+  isBlocked(runId: string): boolean;
+}
+
+/** State and typed seams used by run recovery, cleanup, cancellation, and activity queries. */
+export interface LifecycleContext {
+  store: RunStore;
+  dataDir: string;
+  active: Pick<Map<string, LifecycleActiveRun>, 'get' | 'has' | 'delete'>;
+  queue: string[];
+  starting: Set<string>;
+  cancelledStarting: Set<string>;
+  waiting: Set<string>;
+  monitoring: Set<string>;
+  unitParents: Set<string>;
+  pendingJobs: Pick<Map<string, { workflow: WorkflowDef; input: StartRunInput }>, 'delete'>;
+  pendingBranchNames: Pick<Map<string, Promise<string | undefined>>, 'delete'>;
+  pendingContinuations: Pick<Map<string, PendingContinuation>, 'delete'>;
+  startNowRequested: Pick<Set<string>, 'delete'>;
+  deferredMessages: Map<string, PastedContent[][]>;
+  deferredManagerDeliveryIds: Map<string, Array<string | undefined>>;
+  continuationManagerDeliveryIds: Map<string, string[]>;
+  autoResumeTimers: ReadonlyMap<string, NodeJS.Timeout>;
+  memoryPausing: Pick<Set<string>, 'has' | 'delete'>;
+  lastNamerKey: Pick<Map<string, string>, 'delete'>;
+  forceStarted: Pick<Set<string>, 'delete'>;
+  lifecycle: LifecycleBarrier;
+
+  abortVerification(runId: string): void;
+  recoverRedirectOperations(): Promise<void>;
+  recoverSoftAsks(): void;
+  expireLostManagerDeliveriesAfterRestart(): void;
+  reconcileAutoResumes(): void;
+  reviveQueuedRun(run: RunRecord, reason: string): Promise<void>;
+  settleSuccess(runId: string): Promise<boolean>;
+  continueRun(runId: string, options: LifecycleContinueOptions, deferForCapacity?: boolean): { ok: boolean; error?: string };
+  reportSettledChildToParent(runId: string): Promise<void>;
+  pump(): Promise<void>;
+  clearSoftAsk(runId: string): void;
+  expireUnacceptedManagerDeliveries(runId: string, reason: 'target-settled'): void;
+  scheduleAutoResumeIfLimited(runId: string): void;
+  cancelAutoResume(runId: string): boolean;
+  leaveMonitoring(runId: string): void;
+  clearMonitoringWakeTimer(state: LifecycleActiveRun, runId?: string): void;
+  clearIdleTimer(state: LifecycleActiveRun): void;
+  releaseSlot(): void;
+  finishReview(runId: string): Promise<void>;
+  startRetentionPass(): void;
+  cancelDescendants(runId: string, seen: Set<string>): void;
+  cancel(runId: string): boolean;
+  isQueued(runId: string): boolean;
+  enqueueMessage(runId: string, content: PastedContent[], managerDeliveryId?: string): QueuedMessage | null;
+  recordManagerDeliveryTransition(
+    runId: string,
+    deliveryId: string,
+    state: 'expired',
+    reason: 'target-settled',
+  ): void;
+}
