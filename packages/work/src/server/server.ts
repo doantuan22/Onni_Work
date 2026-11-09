@@ -10,10 +10,8 @@ import {
   trackerCandidatesQuerySchema, trackerListQuerySchema, trackerSearchQuerySchema, trackerItemQuerySchema, trackerReadScope,
   trackerCredentialsSchema, trackerItemParamsSchema, trackerAssociationInputSchema, type TrackerChangedEvent,
   secretParamsSchema, secretValueInputSchema, type SecretsList, type SecretValueInput,
-  e2eSetupInputSchema, type E2eStatus,
 } from '@onni/contract';
 import { SecretStore, SecretsError, type SecretScopeRef } from '../workspace/secrets.ts';
-import { E2E_SETUP_TASK, e2eCredentialsAmong, e2eSetupWorkflow, latestE2eSetupRun, readE2eStatus, setupInFlight } from '../e2e-setup.ts';
 import { createTrackerService } from './tracker/index.ts';
 import { TrackerWatches } from './tracker/watch.ts';
 import { readTrackerAssociation, writeTrackerAssociation, clearTrackerAssociation } from '../tracker-association.ts';
@@ -23,8 +21,8 @@ import {
   startAppSetSchema, startAppStateSchema, terminalCreateSchema, terminalInputSchema, terminalOutputQuerySchema, terminalOutputSchema,
   terminalProjectSessionParamsSchema, terminalResizeSchema, terminalSessionParamsSchema, terminalSessionSchema, terminalStateSchema,
 } from '@onni/contract';
-import { runsListQuerySchema, workspaceLayoutsResponseSchema, workspaceLayoutsSchema } from '@onni/contract';
-import { deleteRunLayouts, readRunLayouts, writeRunLayouts } from '../runs/layouts.ts';
+import { runsListQuerySchema } from '@onni/contract';
+import { deleteRunLayouts } from '../runs/layouts.ts';
 import { discoverCommands, installCommand } from './terminal/commands.ts';
 import { effectiveStartApp, readStartApp, writeStartApp } from '../start-app.ts';
 import { DetectedUrls } from './terminal/detected-urls.ts';
@@ -75,6 +73,9 @@ import { createFsBrowseRoutes } from './routes/fs-browse.ts';
 import { createWorkspaceSecretsRoutes } from './routes/workspace-secrets.ts';
 import { createPreviewRoutes } from './routes/preview.ts';
 import { createHealthRoutes } from './routes/health.ts';
+import { createDraftsRoutes } from './routes/drafts.ts';
+import { createLayoutsRoutes } from './routes/layouts.ts';
+import { createE2eRoutes } from './routes/e2e.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { z } from 'zod';
 import {
@@ -184,25 +185,10 @@ import { byLastActivityDesc, compareIsoDesc, lastActivityAt, readRunIndexFromDis
 import { isV2WireEventType } from '../runs/ui-event-sink.ts';
 import { onRunDeleted, onRunEvent } from './sse-subscriptions.ts';
 import {
-  countRunDraftImages,
-  deleteRunDraftImage,
-  deleteRunDraftSurface,
-  readRunDraftImage,
-  readRunDrafts,
-  writeRunDraftImage,
-  writeRunDraftSurface,
-} from '../runs/drafts.ts';
-import {
-  draftImageInputSchema,
-  draftImageParamSchema,
-  draftSurfaceParamSchema,
-  DRAFT_MAX_IMAGES,
   runEventsQuerySchema,
   runHistoryQuerySchema,
   runIdParamSchema,
-  setRunDraftInputSchema,
   repoFileQuerySchema,
-  type DeleteDraftResponse,
 } from '@onni/contract';
 import { toPastedContent, type PastedContent, type RunManager } from '../workflows/run.ts';
 import {
@@ -5732,154 +5718,8 @@ export function createApp(deps: ServerDeps) {
       return c.json({ deleted, skipped } satisfies ClearProjectDataResult);
     });
 
-  // ---- chained family: in-task drafts (project-scoped) ----------------------
-  /**
-   * Unsent composer text and attachments, per run and per surface (#939, spec
-   * `.ai/specs/2026-08-30-thread-composer-draft-persistence.md`).
-   *
-   * Its own family and its own files (`.ai/onni/drafts/`) rather than a key in `ui-state.json`:
-   * that PUT is capped at 128 KiB, merges shallowly, and is read whole on every cockpit load —
-   * none of which survives a 20 MB attachment draft. `runs/drafts.ts` owns the files; this owns
-   * the status codes. Every route 404s on an unknown run, so a draft can never outlive its task
-   * through this surface.
-   *
-   * The `:surface` param is validated as MIDDLEWARE (`draftSurfaceParamSchema`), not interpolated:
-   * it reaches the filesystem as a path segment.
-   */
-  /**
-   * A task's saved workspace layouts (spec `.ai/specs/2026-10-07-task-workspace.md` §5.3:
-   * "Persist named layouts per task ON THE ONNI HOST THAT OWNS THE TASK").
-   *
-   * Its own family and its own files (`.ai/onni/layouts/`), for the same reason drafts got
-   * theirs: this is per-run state whose lifetime is the run's, so deleting a task is one `rm`
-   * rather than a key to find in a shared bag. Both routes 404 on an unknown run, so layouts can
-   * never outlive their task through this surface.
-   *
-   * There is no DELETE: §5.3 removes layouts only when the task itself is permanently deleted,
-   * which the run-delete route does directly. Emptying the workspace is a PUT of an empty list.
-   * The store keeps `null` and `[]` apart because they are different facts on disk; the COCKPIT
-   * opens a fresh `Czat` for both, which is §5.3's rule for a task whose layouts were all
-   * deleted.
-   */
-  const layoutRoutes = new Hono<ProjectApiEnv>()
-    .get('/runs/:id/layouts', paramZodValidator(runIdParamSchema), (c) => {
-      const { dataDir, store } = c.get('project');
-      const run = store.getRun(c.req.param('id'));
-      if (!run) return c.json({ error: 'not found' }, 404);
-      return c.json(workspaceLayoutsResponseSchema.parse({ layouts: readRunLayouts(dataDir, run.id) }));
-    })
-
-    .put(
-      '/runs/:id/layouts',
-      paramZodValidator(runIdParamSchema),
-      jsonZodValidator(workspaceLayoutsSchema),
-      (c) => {
-        const { dataDir, store } = c.get('project');
-        const run = store.getRun(c.req.param('id'));
-        if (!run) return c.json({ error: 'not found' }, 404);
-        const value = c.req.valid('json');
-        if (!writeRunLayouts(dataDir, run.id, value)) {
-          // A read-only home or a full disk. The cockpit keeps working from memory for the rest
-          // of the visit rather than losing the layout the user is looking at.
-          return c.json({ error: 'could not save layouts on this host' }, 409);
-        }
-        return c.json(workspaceLayoutsResponseSchema.parse({ layouts: value }));
-      },
-    );
-
-  const draftRoutes = new Hono<ProjectApiEnv>()
-    .get('/runs/:id/drafts', paramZodValidator(runIdParamSchema), (c) => {
-      const { dataDir, store } = c.get('project');
-      const run = store.getRun(c.req.param('id'));
-      if (!run) return c.json({ error: 'not found' }, 404);
-      return c.json(readRunDrafts(dataDir, run.id));
-    })
-
-    .put(
-      '/runs/:id/drafts/:surface',
-      paramZodValidator(draftSurfaceParamSchema),
-      jsonZodValidator(setRunDraftInputSchema),
-      (c) => {
-        const { dataDir, store } = c.get('project');
-        const { id, surface } = c.req.valid('param');
-        const run = store.getRun(id);
-        if (!run) return c.json({ error: 'not found' }, 404);
-        const body = c.req.valid('json');
-        // An empty write DELETES — the "cleared when emptied" policy is the store's, so a
-        // non-cockpit client obeys it too.
-        const result = writeRunDraftSurface(dataDir, run.id, surface, body);
-        if (!result.ok) return c.json({ error: result.error }, 400);
-        return c.json(result.entry);
-      },
-    )
-
-    .delete('/runs/:id/drafts/:surface', paramZodValidator(draftSurfaceParamSchema), (c) => {
-      const { dataDir, store } = c.get('project');
-      const { id, surface } = c.req.valid('param');
-      const run = store.getRun(id);
-      if (!run) return c.json({ error: 'not found' }, 404);
-      deleteRunDraftSurface(dataDir, run.id, surface);
-      const body: DeleteDraftResponse = { deleted: true };
-      return c.json(body);
-    })
-
-    // Attachments upload when they are ATTACHED, not when the message is sent (the Slack move) —
-    // which is what makes images-in-drafts cheap: the bytes cross the wire once, on paste, and
-    // the draft record only ever references them. Rides the global 32 MiB body limit like
-    // `POST /runs/:id/messages`; `UI_STATE_BODY_LIMIT` is deliberately not in this path.
-    .post(
-      '/runs/:id/drafts/:surface/images',
-      paramZodValidator(draftSurfaceParamSchema),
-      jsonZodValidator(draftImageInputSchema),
-      (c) => {
-        const { dataDir, store } = c.get('project');
-        const { id, surface } = c.req.valid('param');
-        const run = store.getRun(id);
-        if (!run) return c.json({ error: 'not found' }, 404);
-        // The composer screens this before it ever reaches here; the route re-checks so a client
-        // that is not the composer cannot bypass the cap.
-        const held = countRunDraftImages(dataDir, run.id, surface);
-        if (held >= DRAFT_MAX_IMAGES) {
-          return c.json({ error: `at most ${DRAFT_MAX_IMAGES} images per draft` }, 400);
-        }
-        const body = c.req.valid('json');
-        const result = writeRunDraftImage(dataDir, run.id, body);
-        if (!result.ok) return c.json({ error: result.error }, 400);
-        return c.json(result.image);
-      },
-    )
-
-    // `:surface` is validated (it is a path segment) but deliberately NOT used to scope the
-    // lookup on these two: a blob is minted before any draft record names it, so scoping by
-    // surface would 404 the thumbnail the user just pasted and orphan its bytes when they remove
-    // it again. The run id is what scopes an attachment; the surface is here for URL symmetry.
-    .get(
-      '/runs/:id/drafts/:surface/images/:imageId',
-      paramZodValidator(draftImageParamSchema),
-      (c) => {
-        const { dataDir, store } = c.get('project');
-        const { id, imageId } = c.req.valid('param');
-        const run = store.getRun(id);
-        if (!run) return c.json({ error: 'not found' }, 404);
-        const image = readRunDraftImage(dataDir, run.id, imageId);
-        if (!image) return c.json({ error: 'not found' }, 404);
-        return c.json(image);
-      },
-    )
-
-    .delete(
-      '/runs/:id/drafts/:surface/images/:imageId',
-      paramZodValidator(draftImageParamSchema),
-      (c) => {
-        const { dataDir, store } = c.get('project');
-        const { id, imageId } = c.req.valid('param');
-        const run = store.getRun(id);
-        if (!run) return c.json({ error: 'not found' }, 404);
-        deleteRunDraftImage(dataDir, run.id, imageId);
-        const body: DeleteDraftResponse = { deleted: true };
-        return c.json(body);
-      },
-    );
+  const draftRoutes = createDraftsRoutes();
+  const layoutRoutes = createLayoutsRoutes();
 
   // ---- chained family: open-targets (project-scoped) ----
   // Agent screenshots and user attachments — what the run manager persisted out of tool
@@ -6266,44 +6106,14 @@ export function createApp(deps: ServerDeps) {
       return [];
     }
   };
-  const e2eRoutes = new Hono<ProjectApiEnv>()
-    .get('/e2e', async (c) => {
-      const project = c.get('project');
-      const status: E2eStatus = await readE2eStatus(project.root, project.store.listRuns(), await checkSecretNames(project));
-      return c.json(status, 200);
-    })
-    .post('/e2e/setup', jsonZodValidator(e2eSetupInputSchema), async (c) => {
-      const project = c.get('project');
-      const { credential } = c.req.valid('json');
-      const running = latestE2eSetupRun(project.store.listRuns());
-      if (running && setupInFlight(running)) {
-        return c.json({ error: `an e2e setup is already in progress (task ${running.id.slice(0, 8)})` }, 409);
-      }
-      if (!(await getRepoInfo(project.root))) {
-        return c.json({ error: 'e2e setup needs a git repository — it runs in its own worktree and finishes as a branch you merge' }, 409);
-      }
-      if (credential) {
-        if (project.id === 'default') return c.json(unregisteredSecrets, 409);
-        const failed = await putSecret(
-          { kind: 'project', projectId: project.id, root: project.root },
-          credential.name,
-          { value: credential.value, audiences: ['checks'] },
-        );
-        if (failed) return c.json({ error: failed.error }, 409);
-      }
-      const workflow = e2eSetupWorkflow(e2eCredentialsAmong(await checkSecretNames(project)));
-      const blocked = await providerActionError(
-        providersRequiredByWorkflow(workflow, (await loadConfig(project.root)).defaultRunner),
-        { repoRoot: project.root },
-      );
-      if (blocked) return c.json({ error: blocked }, 409);
-      // Not autonomous: an autonomous run skips the review gate (`settleSuccess`) a user may have
-      // turned on, and the setup's whole point is a branch the user reviews before it lands. Its agent step is not the last
-      // step, so it hands on to the checks without parking.
-      const run = project.manager.startRun(workflow, { task: E2E_SETUP_TASK });
-      return c.json({ runId: run.id }, 201);
-    });
-
+  const e2eRoutes = createE2eRoutes({
+    checkSecretNames,
+    putSecret,
+    unregisteredSecrets,
+    hasGitRepo: async (repoRoot) => Boolean(await getRepoInfo(repoRoot)),
+    providerActionErrorForWorkflow: async (workflow, repoRoot) =>
+      providerActionError(providersRequiredByWorkflow(workflow, (await loadConfig(repoRoot)).defaultRunner), { repoRoot }),
+  });
   const workspaceSecretsRoutes = createWorkspaceSecretsRoutes({ secretsList, putSecret, deleteSecret });
 
   const trackerRoutes = new Hono<ProjectApiEnv>()
