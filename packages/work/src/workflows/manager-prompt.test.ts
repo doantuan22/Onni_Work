@@ -273,10 +273,12 @@ describe('workerPrompt', () => {
 
 describe('which prompt each session of a roster tree gets', () => {
   it('both ActiveRun construction sites await the one context loader (H7)', () => {
-    const source = readFileSync(new URL('./run.ts', import.meta.url), 'utf8');
-    const calls = [...source.matchAll(/this\.prepareDispatchSession\(([^;]*)\);/g)].map((match) => match[0]);
+    // The two sites moved out of run.ts with the D1 split (run/execute.ts, run/continuation.ts).
+    const files = ['./run.ts', './run/execute.ts', './run/continuation.ts'];
+    const source = files.map((file) => readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
+    const calls = [...source.matchAll(/(?:this|ctx)\.prepareDispatchSession\(([^;]*)\);/g)].map((match) => match[0]);
     expect(calls).toHaveLength(2);
-    for (const call of calls) expect(call).toContain('await this.loadManagerSessionContext(runId, state)');
+    for (const call of calls) expect(call).toMatch(/await (?:this|ctx)\.loadManagerSessionContext\(runId, state\)/);
   });
 
   let dir: string;
