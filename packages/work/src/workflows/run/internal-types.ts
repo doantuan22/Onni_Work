@@ -19,6 +19,7 @@ import type { SecretStore } from '../../workspace/secrets.ts';
 import type { WorkflowDef } from '../types.ts';
 import type { StartRunInput } from '../run.ts';
 import type { PersistedAttachment, PastedContent } from './preparation.ts';
+import type { WorktreeLifecycleCoordinator } from '../../worktree-lifecycle/coordinator.ts';
 
 export interface PendingContinuation {
   stepId: string;
@@ -486,4 +487,74 @@ export interface MessageContext {
   leaveMonitoring(runId: string): void;
   leadingSlashSkillName(text: string): string | undefined;
   expandRegistrySlashSkill(blocks: ContentBlock[], skills: readonly import('../../skills.ts').Skill[]): ContentBlock[];
+}
+
+/** A manager-owned mutable value exposed through a narrow scheduling context. */
+export interface SchedulingMutableValue<T> {
+  value: T;
+}
+
+export type SchedulingAutoResumeReason = NonNullable<RunRecord['autoResumeReason']>;
+
+/** Run.ts policies kept at the façade because other workflow parts also use them. */
+export interface SchedulingPolicy {
+  accountHeldFor(
+    run: Pick<RunRecord, 'runner' | 'agentProfile' | 'status' | 'autoResumeAttempts'>,
+    holds: AccountHolds,
+    fallbackRunner: RunnerId,
+  ): boolean;
+  runAccountKey(run: Pick<RunRecord, 'runner' | 'agentProfile'>, fallbackRunner: RunnerId): string;
+  resumeInFlight(run: Pick<RunRecord, 'status' | 'autoResumeAttempts'>): boolean;
+  autoResumeReasonFor(error: string | undefined): SchedulingAutoResumeReason | undefined;
+  autoResumeCap(reason: SchedulingAutoResumeReason | undefined): number;
+  formatWakeInstant(at: Date): string;
+  autoResumeGraceMs: number;
+  maxAutoResumes: number;
+  autoResumeMissedWindowMs: number;
+  autoResumePrompt: string;
+  transientRetryPrompt: string;
+}
+
+/** State and callbacks used by retry/resume, queue holds, repository leases, and run limits. */
+export interface SchedulingContext {
+  store: RunStore;
+  repoRoot: string;
+  lifecycle: WorktreeLifecycleCoordinator;
+  active: ReadonlyMap<string, SchedulingActiveRun>;
+  starting: ReadonlySet<string>;
+  queue: string[];
+  pendingJobs: Map<string, { workflow: WorkflowDef; input: StartRunInput }>;
+  pendingContinuations: ReadonlyMap<string, PendingContinuation>;
+  autoResumeTimers: Map<string, NodeJS.Timeout>;
+  waiting: Set<string>;
+  forceNextPump: SchedulingMutableValue<boolean>;
+  forceStarted: ReadonlySet<string>;
+  startNowRequested: Set<string>;
+  semaphore: WorkspaceSemaphore;
+  repoRootTail: SchedulingMutableValue<Promise<void>>;
+  repoRootBusy: SchedulingMutableValue<number>;
+  lastLimitTick: SchedulingMutableValue<number>;
+  queueReasonRevision: SchedulingMutableValue<number>;
+  policy: SchedulingPolicy;
+
+  pump(): Promise<void>;
+  dropActive(runId: string): void;
+  continueRun(runId: string, options: LifecycleContinueOptions, deferForCapacity?: boolean): { ok: boolean; error?: string };
+  hydrateQueuedInput(runId: string, input: StartRunInput): StartRunInput;
+  cancel(runId: string): boolean;
+  releaseSlot(): void;
+  busySlots(): number;
+  reviveQueuedRun(run: RunRecord, reason: string): Promise<void>;
+  dispatchOf(runId: string): RunDispatch | undefined;
+}
+
+/** Active-owner fields touched by repository-lease and held-queue scheduling. */
+export interface SchedulingActiveRun {
+  cancelled: boolean;
+  cwd: string;
+  releaseRepoRoot?: () => void;
+  repoRootParked?: boolean;
+  repoRootResume?: Promise<boolean>;
+  currentStepId?: string;
+  interrupt: () => void;
 }
