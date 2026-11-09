@@ -1,10 +1,12 @@
-import type { ContentBlock, RunnerId } from '../../core/agent-runner.ts';
+import type { AgentSession, ContentBlock, RunnerId } from '../../core/agent-runner.ts';
 import type { resolveBash } from '../../core/bash-path.ts';
 import type { runVerifyCommand } from '../../dispatch/verify-exec.ts';
 import type { PrivateMcpServer } from '../../core/private-mcp.ts';
 import type {
   AgentPermissionLevel,
   DispatchBudget,
+  DispatchManagerDeliveryReasonCode,
+  DispatchManagerDeliveryState,
   DispatchInput,
   DispatchOrderSnapshot,
   RunDispatch,
@@ -414,4 +416,74 @@ export interface DispatchContext {
   deferMessage(runId: string, content: PastedContent[]): boolean;
   continueRun(runId: string, options: { text: string }, deferForCapacity?: boolean): unknown;
   pump(): Promise<void>;
+}
+
+/** The live-run fields read or updated by queued and live message handling. */
+export interface MessageActiveRun {
+  cancelled: boolean;
+  sessionEverOpened?: boolean;
+  session?: Pick<AgentSession, 'open' | 'sendMessage' | 'sendMessageWithReceipt'>;
+  currentStepId?: string;
+  graphAnswer?: (text: string) => void;
+  repoRootParked?: boolean;
+  repoRootResume?: Promise<boolean>;
+  skills?: import('../../skills.ts').Skill[];
+  grantedAttachmentLibrary?: string;
+  monitoringWakeups?: number;
+  idleClosed?: boolean;
+  compactionContinues?: number;
+  askPark?: 'waiting' | 'abandoned';
+}
+
+/** State and callbacks used by queued message hydration and live message delivery. */
+export interface MessageContext {
+  store: RunStore;
+  dataDir: string;
+  active: ReadonlyMap<string, MessageActiveRun>;
+  starting: ReadonlySet<string>;
+  cancelledStarting: ReadonlySet<string>;
+  waiting: Set<string>;
+  pendingJobs: ReadonlyMap<string, { workflow: WorkflowDef; input: StartRunInput }>;
+  pendingContinuations: ReadonlyMap<string, PendingContinuation>;
+  deferredMessages: ReadonlyMap<string, PastedContent[][]>;
+  deferredManagerDeliveryIds: ReadonlyMap<string, Array<string | undefined>>;
+  lifecycle: Pick<LifecycleBarrier, 'isBlocked'>;
+  repoRootResumedNote: string;
+
+  setDeferred(runId: string, pending: PastedContent[][] | undefined, deliveryIds?: Array<string | undefined>): void;
+  persistPastedAttachments(
+    runId: string,
+    content: readonly PastedContent[],
+    imageLibraryWrites?: Array<() => void>,
+  ): PersistedAttachment[];
+  claimFreeRepoRoot(state: MessageActiveRun): boolean;
+  resumeRepoRoot(runId: string, state: MessageActiveRun): Promise<boolean>;
+  recordManagerDeliveryTransition(
+    runId: string,
+    deliveryId: string,
+    state: DispatchManagerDeliveryState,
+    reasonCode?: DispatchManagerDeliveryReasonCode,
+  ): void;
+  enqueueMessage(runId: string, content: PastedContent[], managerDeliveryId?: string): QueuedMessage | null;
+  deferMessage(runId: string, content: PastedContent[], managerDeliveryId?: string): boolean;
+  sendMessage(runId: string, content: PastedContent[], replyTo?: string, managerDeliveryId?: string): boolean;
+  deliverMessage(
+    runId: string,
+    content: PastedContent[],
+    userAuthored: boolean,
+    preparedUserMessage?: PreparedUserMessage,
+    replyTo?: string,
+    managerDeliveryId?: string,
+  ): boolean;
+  softAskFor(runId: string, requestId: string | undefined): RunDispatch['softAsk'];
+  clearPendingAsk(runId: string): void;
+  clearSoftAsk(runId: string): void;
+  attachmentLibraryHint(attachments: PersistedAttachment[], grantedDir?: string): string | undefined;
+  usableAttachmentLibrary(grantedDir: string | undefined): string | undefined;
+  provisionTaskSkills(state: MessageActiveRun, wantedSkills: { stepSkill?: string; slash?: string }): Promise<string[]>;
+  clearIdleTimer(state: MessageActiveRun): void;
+  clearMonitoringWakeTimer(state: MessageActiveRun, runId?: string): void;
+  leaveMonitoring(runId: string): void;
+  leadingSlashSkillName(text: string): string | undefined;
+  expandRegistrySlashSkill(blocks: ContentBlock[], skills: readonly import('../../skills.ts').Skill[]): ContentBlock[];
 }
