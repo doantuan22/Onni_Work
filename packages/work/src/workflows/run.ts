@@ -290,6 +290,16 @@ import {
 } from './run/preparation.ts';
 import type { PersistedAttachment, PastedContent } from './run/preparation.ts';
 import type { PendingContinuation, PersistedAttachments, PreparedUserMessage } from './run/internal-types.ts';
+import type { QueueContext } from './run/internal-types.ts';
+import {
+  busySlots as queueBusySlots,
+  enterMonitoring as queueEnterMonitoring,
+  leaveMonitoring as queueLeaveMonitoring,
+  oldestQueuedAt as queueOldestQueuedAt,
+  pump as pumpQueue,
+  releaseSlot as queueReleaseSlot,
+  reviveQueuedRun as queueReviveQueuedRun,
+} from './run/queue.ts';
 export {
   ATTACHMENT_ONLY_TASK,
   GLOBAL_INSTRUCTIONS_HEADING,
@@ -866,9 +876,6 @@ export const QUEUE_WATCHDOG_MS = 60_000;
 
 /** How often active wall-clock is accumulated and the run limits are checked. */
 export const LIMIT_SWEEP_MS = 15_000;
-/** Shared empty holds for the common "nothing is held" pump — avoids allocating per sweep. */
-const NO_HOLDS: AccountHolds = { deadline: new Set(), inFlight: new Set() };
-
 /**
  * May this run start, given what its account is holding?
  *
@@ -1460,19 +1467,75 @@ export class RunManager {
    * (sendMessage) resumes it immediately even when that momentarily exceeds
    * `maxParallel`, including when other projects saturate the cap.
    */
+  private queueContext(): QueueContext<StartRunInput, WorkflowDef> {
+    const manager = this;
+    return {
+      queue: this.queue,
+      starting: this.starting,
+      active: this.active,
+      pendingJobs: this.pendingJobs,
+      pendingContinuations: this.pendingContinuations,
+      pendingBranchNames: this.pendingBranchNames,
+      monitoring: this.monitoring,
+      unitParents: this.unitParents,
+      waiting: this.waiting,
+      get pumping() { return manager.pumping; },
+      set pumping(value: boolean) { manager.pumping = value; },
+      get pumpAgain() { return manager.pumpAgain; },
+      set pumpAgain(value: boolean) { manager.pumpAgain = value; },
+      semaphore: this.semaphore,
+      store: this.store,
+      repoRoot: this.repoRoot,
+      redirecting: this.redirecting,
+      startNowRequested: this.startNowRequested,
+      get forceNextPump() { return manager.forceNextPump; },
+      set forceNextPump(value: boolean) { manager.forceNextPump = value; },
+      forceStarted: this.forceStarted,
+      accountHolds: () => this.semaphore.accountHolds(),
+      isAccountHeld: accountHeldFor,
+      reconcileMonitoringWakeTimers: () => this.reconcileMonitoringWakeTimers(),
+      reconcileAutoResumes: () => this.reconcileAutoResumes(),
+      blockOrphanedDependents: () => this.blockOrphanedDependents(),
+      workerEntryFull: (run) => this.workerEntryFull(run),
+      dependencyState: (run) => this.dependencyState(run),
+      refreshQueuedDependencyEnvelope: (run) => this.refreshQueuedDependencyEnvelope(run),
+      armMonitoringLivenessTimer: (runId) => {
+        const state = this.active.get(runId);
+        if (state) this.armMonitoringLivenessTimer(runId, state);
+      },
+      clearMonitoringLivenessTimer: (runId) => {
+        const state = this.active.get(runId);
+        if (state) this.clearMonitoringLivenessTimer(state);
+      },
+      hydrateQueuedInput: (runId, input) => this.hydrateQueuedInput(runId, input),
+      hydrateQueuedContinuation: (runId, continuation) => this.hydrateQueuedContinuation(runId, continuation),
+      refreshQueuedWorkflow: (runId, snapshot, catalog) => this.refreshQueuedWorkflow(runId, snapshot, catalog),
+      execute: (runId, workflow, input, ownerToken) => this.execute(runId, workflow, input, ownerToken),
+      runContinuation: (runId, stepId, sessionId, backend, prompt, images, persistedImages, persistedAttachments, ownerToken) =>
+        this.runContinuation(runId, stepId, sessionId, backend, prompt, images, persistedImages, persistedAttachments, ownerToken),
+      failOwnedContinuation: (runId, ownerToken, message) => this.failOwnedContinuation(runId, ownerToken, message),
+      abandonCancelledStart: (runId) => this.abandonCancelledStart(runId),
+      clearIdleTimer: (runId) => {
+        const state = this.active.get(runId);
+        if (state) this.clearIdleTimer(state);
+      },
+      clearAutosaveTimer: (runId) => {
+        const state = this.active.get(runId);
+        if (state) this.clearAutosaveTimer(state);
+      },
+      dropActive: (runId, ownerToken) => {
+        const state = this.active.get(runId);
+        if (state?.ownerToken === ownerToken) this.dropActive(runId, state);
+      },
+      reviveWorkflow: (run) => this.reviveWorkflow(run),
+      workflowInput: (run) => this.workflowInput(run),
+      queuedUsageLimitResume: (run) => this.queuedUsageLimitResume(run),
+      reportSettledChildToParent: (runId) => this.reportSettledChildToParent(runId),
+    };
+  }
+
   private busySlots(): number {
-    const ordinaryWaiting = this.waiting.size - this.monitoring.size;
-    // A task parked on its own dispatch is exempt WITHOUT a cap (spec
-    // 2026-09-10-dispatch A5). `maxMonitoringSessions` bounds how many agents may sit
-    // watching their own downstream work while the host still runs `maxParallel` real tasks —
-    // but a spawned parent's children ARE those tasks, so bounding it makes the tree wait on
-    // itself: three parents parked on their children is `busySlots === maxParallel` with no
-    // exit, in this project and in every other one sharing the semaphore.
-    let spawnParked = 0;
-    for (const runId of this.unitParents) if (this.monitoring.has(runId)) spawnParked += 1;
-    const watchers = this.monitoring.size - spawnParked;
-    const exemptMonitoring = Math.min(watchers, this.semaphore.maxMonitoringSessions());
-    return this.active.size + this.starting.size - ordinaryWaiting - exemptMonitoring - spawnParked;
+    return queueBusySlots(this.queueContext());
   }
 
   /**
@@ -1485,11 +1548,7 @@ export class RunManager {
    * ordinary watcher again, which is why the flag is rewritten on every park, never OR-ed.
    */
   private enterMonitoring(runId: string, spawnParked: boolean): void {
-    this.monitoring.add(runId);
-    if (spawnParked) this.unitParents.add(runId);
-    else this.unitParents.delete(runId);
-    const state = this.active.get(runId);
-    if (state) this.armMonitoringLivenessTimer(runId, state);
+    queueEnterMonitoring(this.queueContext(), runId, spawnParked);
   }
 
   /**
@@ -1501,10 +1560,7 @@ export class RunManager {
    * parked session and the turn it starts ends back here.
    */
   private leaveMonitoring(runId: string): void {
-    this.monitoring.delete(runId);
-    this.unitParents.delete(runId);
-    const state = this.active.get(runId);
-    if (state) this.clearMonitoringLivenessTimer(state);
+    queueLeaveMonitoring(this.queueContext(), runId);
   }
 
   /** Epoch ms of this manager's oldest queued run (the semaphore's fairness
@@ -1512,11 +1568,7 @@ export class RunManager {
    *  `queue` is FIFO — `startRun` pushes and `recover()` re-queues by
    *  `createdAt` — so the head is the oldest. */
   private oldestQueuedAt(): number | null {
-    const head = this.queue[0];
-    if (!head) return null;
-    const createdAt = this.store.getRun(head)?.createdAt;
-    const ms = createdAt ? Date.parse(createdAt) : Number.NaN;
-    return Number.isNaN(ms) ? null : ms;
+    return queueOldestQueuedAt(this.queueContext());
   }
 
   /**
@@ -1529,7 +1581,7 @@ export class RunManager {
    * `pump()` at every slot-freeing transition.
    */
   private releaseSlot(): void {
-    void this.semaphore.release();
+    queueReleaseSlot(this.queueContext());
   }
 
   /**
@@ -1542,145 +1594,7 @@ export class RunManager {
    * root (spec 006 degradation rule), which is always the tighter bound.
    */
   private async pump(): Promise<void> {
-    this.reconcileMonitoringWakeTimers();
-    this.reconcileAutoResumes();
-    // A pump requested while one is in flight can't just be dropped: the
-    // in-flight pass may already have read capacity (it awaits `getRepoInfo`
-    // before the first check), so a slot freed in that window would be lost
-    // until the next unrelated event. Re-run the sweep instead.
-    if (this.pumping) {
-      this.pumpAgain = true;
-      return;
-    }
-    this.pumping = true;
-    try {
-      do {
-        this.pumpAgain = false;
-        const repo = await getRepoInfo(this.repoRoot);
-        const maxParallel = this.semaphore.maxParallel();
-        // Per-project ceiling (spec 2026-07-22-per-project-concurrency): this
-        // project never runs more than its own configured `maxParallel`; absent
-        // an override it equals the workspace cap, so behavior is unchanged.
-        const projectMax = this.semaphore.projectMaxParallel(this.repoRoot);
-        // `waiting` runs don't hold a slot (#347) — see busySlots(). The check
-        // below is the only slot gate: resumes never pass through it. A run
-        // starts only under BOTH the workspace cap and this project's ceiling.
-        const capacity = () =>
-          this.semaphore.busy() < maxParallel &&
-          this.busySlots() < projectMax &&
-          (repo !== null || this.busySlots() < 1);
-        // The usage-limit hold (spec 2026-08-03-auto-resume-after-usage-limit).
-        //
-        // A limit closes an ACCOUNT, not a run — so starting the next queued task walks it into
-        // the same wall. Measured before this gate existed: eight tasks under `maxParallel: 2`
-        // all failed within 517 ms, each spawning a CLI (and, outside worktree-opt-out mode, a
-        // worktree and a branch) only to be marked `scheduled`. The cap was respected at every
-        // instant and was no brake at all, because a doomed run lives ~200 ms.
-        //
-        // So: while any run on an account is waiting out a limit, nothing new starts on THAT
-        // account. Other accounts (a second login, a different backend) keep running — the hold
-        // is keyed, not global. The set is derived from the durable records rather than tracked
-        // separately, which is what makes it survive a restart, expire on its own, and lift the
-        // instant a user cancels a resume.
-        // The watchdog's one-shot override — read and cleared here, so a forced sweep never
-        // leaks into the next ordinary one.
-        const forced = this.forceNextPump;
-        this.forceNextPump = false;
-        const holds = this.queue.length > 0 && !forced ? this.semaphore.accountHolds() : NO_HOLDS;
-        const anyHold = holds.deadline.size > 0 || holds.inFlight.size > 0;
-        // Only pay for the config read when something is actually held: a queued record may name
-        // no runner, and then the account it would use is the configured default.
-        const defaultRunner = anyHold ? (await loadConfig(this.repoRoot)).defaultRunner : undefined;
-        this.blockOrphanedDependents();
-        const startable = (id: string): boolean => {
-          const queued = this.store.getRun(id);
-          // A cancelled redirect source temporarily looks like an orphan. Keep its dependents
-          // parked until the durable operation either points them at the replacement or fails.
-          if (queued && (queued.dispatch?.after ?? []).some((afterId) => this.redirecting.has(afterId))) return false;
-          if (queued && anyHold && accountHeldFor(queued, holds, defaultRunner ?? 'claude')) return false;
-          // A roster entry's `maxConcurrent`: a worker over its entry's cap keeps its place in
-          // the queue while the others start, and wakes on the next slot release.
-          if (queued && this.workerEntryFull(queued)) return false;
-          // `--after`: wait queued, holding no slot, until the siblings it depends on have finished.
-          if (queued && this.dependencyState(queued) !== 'ready') return false;
-          if (queued) this.refreshQueuedDependencyEnvelope(queued);
-          // "Start now" goes over `maxParallel` on purpose, but a non-git root still runs one at a time.
-          if (this.startNowRequested.has(id)) return repo !== null || this.busySlots() < 1;
-          return capacity();
-        };
-        // The catalog as it is NOW (#1078), read once per sweep and only when a fresh run can
-        // actually start — never inside the loop, whose dequeue must stay in one synchronous tick.
-        const catalog = this.queue.some((id) => this.pendingJobs.has(id) && startable(id))
-          ? await loadWorkflows(this.repoRoot).then((loaded) => loaded.workflows, () => undefined)
-          : undefined;
-        while (this.queue.length > 0) {
-          // FIFO among the runs that CAN start; a held one keeps its place in the queue rather
-          // than being dequeued and re-queued (which would churn its position and its record).
-          const next = this.queue.findIndex(startable);
-          if (next === -1) break; // nothing queued can start right now
-          const runId = this.queue.splice(next, 1)[0];
-          if (!runId) break;
-          // Retired here: a run `requeueWhileHeld` sends back waits its turn again, Start now dropped.
-          this.startNowRequested.delete(runId);
-          // A forced sweep has to reach the spawn: the gate inside `execute` asks the same
-          // question and would send this run straight back to the queue.
-          if (forced) this.forceStarted.add(runId);
-          const job = this.pendingJobs.get(runId);
-          const continuation = this.pendingContinuations.get(runId);
-          this.pendingJobs.delete(runId);
-          this.pendingContinuations.delete(runId);
-          if (!job && !continuation) continue;
-          this.starting.add(runId);
-          if (continuation) {
-            const hydrated = this.hydrateQueuedContinuation(runId, continuation);
-            const ownerToken = Symbol('run-owner');
-            void this.runContinuation(
-              runId,
-              hydrated.stepId,
-              hydrated.sessionId,
-              hydrated.backend,
-              hydrated.prompt,
-              hydrated.images,
-              hydrated.persistedImages,
-              hydrated.persistedAttachments,
-              ownerToken,
-            ).catch((err: unknown) => {
-              const message = err instanceof Error ? err.message : String(err);
-              this.failOwnedContinuation(runId, ownerToken, message);
-              // A cancel that landed before the throw still owes the parent its report.
-              if (!this.abandonCancelledStart(runId)) this.starting.delete(runId);
-            });
-            continue;
-          }
-          if (!job) continue;
-          // Rebuild the prompt from the store at the last instant (#472), so an edit
-          // or a stacked message that landed while the run waited is honored. Entered
-          // in the same synchronous tick as the `pendingJobs.delete` above, so no
-          // handler can observe a half-dequeued run.
-          const input = this.hydrateQueuedInput(runId, job.input);
-          // …and the workflow the same way (#1078): a file edited while the run waited is run as
-          // it is now, exactly as a run started now would be.
-          const workflow = catalog ? this.refreshQueuedWorkflow(runId, job.workflow, catalog) : job.workflow;
-          const ownerToken = Symbol('run-owner');
-          void this.execute(runId, workflow, input, ownerToken).catch((err: unknown) => {
-            const message = err instanceof Error ? err.message : String(err);
-            const state = this.active.get(runId);
-            if (!state || state.ownerToken !== ownerToken || state.cancelled) return;
-            this.store.updateRun(runId, {
-              status: 'failed',
-              error: `engine crashed: ${message}`,
-              finishedAt: new Date().toISOString(),
-            });
-            this.clearIdleTimer(state);
-            this.clearAutosaveTimer(state);
-            this.starting.delete(runId);
-            if (state && !state.cancelled) this.dropActive(runId, state);
-          });
-        }
-      } while (this.pumpAgain);
-    } finally {
-      this.pumping = false;
-    }
+    return pumpQueue(this.queueContext());
   }
 
   /**
@@ -1699,66 +1613,7 @@ export class RunManager {
    * left in the queue as a ghost.
    */
   private async reviveQueuedRun(run: RunRecord, reason: string): Promise<void> {
-    const queuedContinuation = [...run.steps]
-      .reverse()
-      .find((step) => step.status === 'pending' && step.id.startsWith('continue-'));
-    const sessionStep = queuedContinuation
-      ? [...run.steps].reverse().find((step) => step.id !== queuedContinuation.id && step.sessionId)
-      : undefined;
-    if (queuedContinuation && sessionStep?.sessionId) {
-      const backend = run.runner ?? 'claude';
-      const sessionBackend = sessionStep.backend ?? backend;
-      // Same rule as `continueRun`: a session created under another account than the run's
-      // chosen one cannot be resumed without silently switching the login back.
-      const sessionAccount = sessionStep.profileId ?? DEFAULT_AGENT_ACCOUNT_ID;
-      const accountMatches = run.agentProfile === undefined || run.agentProfile === sessionAccount;
-      this.pendingContinuations.set(run.id, {
-        stepId: queuedContinuation.id,
-        sessionId: sessionBackend === backend && accountMatches ? sessionStep.sessionId : undefined,
-        backend,
-        prompt: RESTART_CONTINUATION_PROMPT,
-        images: [],
-      });
-      this.queue.push(run.id);
-      this.store.appendEvent(run.id, {
-        type: 'lifecycle',
-        message: `${reason} — interrupted continuation re-queued`,
-      });
-      return;
-    }
-    const workflow = await this.reviveWorkflow(run);
-    if (!workflow) {
-      this.store.updateRun(run.id, {
-        status: 'failed',
-        error: 'interrupted — workflow definition not recoverable after a restart',
-        finishedAt: new Date().toISOString(),
-      });
-      this.store.appendEvent(run.id, {
-        type: 'lifecycle',
-        message: `${reason} — workflow definition not recoverable, task failed`,
-      });
-      // The third terminal transition outside `dropActive` (see `recover`): a queued run failing
-      // here never became active, so its parent hears about it only from this call.
-      await this.reportSettledChildToParent(run.id);
-      return;
-    }
-    // Re-apply the inbox ceiling (#471). `execute()` gates again at spawn time, so the agent is
-    // safe either way — but a run queued while the inbox was on and recovered after it was
-    // switched off would otherwise keep echoing `generateFollowups: true` on a run that
-    // demonstrably produced none. Normalize the record, the way startRun does.
-    const generateFollowups = followupsEnabled() ? run.generateFollowups : false;
-    if (generateFollowups !== run.generateFollowups) {
-      this.store.updateRun(run.id, { generateFollowups });
-    }
-    this.pendingJobs.set(run.id, {
-      workflow,
-      // Folded through the same helper `pump()` uses (#472) so a restart carries the stack.
-      // Idempotent: hydration always composes from `run.task` + the stack, never from an
-      // already-folded `input.task`, so re-hydrating at dequeue yields the same string.
-      input: { ...this.workflowInput(run), ...(this.queuedUsageLimitResume(run) ? { usageLimitResume: true } : {}) },
-    });
-    this.queue.push(run.id);
-    this.store.appendEvent(run.id, { type: 'lifecycle', message: `${reason} — task re-queued` });
+    return queueReviveQueuedRun(this.queueContext(), run, reason);
   }
 
   /**
