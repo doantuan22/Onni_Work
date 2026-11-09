@@ -88,6 +88,7 @@ import { createRepoRoutes } from './routes/repo.ts';
 import { createGithubRoutes } from './routes/github.ts';
 import { createTrackerRoutes } from './routes/tracker.ts';
 import { createDispatchRoutes } from './routes/dispatch.ts';
+import { createMemoryRoutes } from './routes/memory.ts';
 import { z } from 'zod';
 import {
   PROMPT_TEMPLATE_TEXT_MAX,
@@ -122,7 +123,7 @@ import {
 import type { ClearProjectDataResult } from '@onni/contract';
 import { clearProjectDataInputSchema } from '@onni/contract';
 import { agentUsageOverview } from '../workspace/usage-overview.ts';
-import { dispatchIntentSchema, managerMemoryAddSchema, managerMemoryPutSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
+import { dispatchIntentSchema, rosterSchema, runLimitsRequestSchema } from '@onni/contract';
 import { hasTaskOrAttachments, TASK_OR_ATTACHMENTS_ISSUE } from '@onni/contract';
 import { detectEnvironment } from '../core/backend-detect.ts';
 import { resolveCursorAgentBin } from '../core/cursor-bin.ts';
@@ -2629,33 +2630,7 @@ export function createApp(deps: ServerDeps) {
 
   const dispatchRoutes = createDispatchRoutes({ requireDispatch });
 
-  // ---- chained family: project memory (plan v2 §8) ----
-  // `GET/PUT /manager-memory` are the Settings pair and work with dispatch off: they edit a file,
-  // not a tree. `POST /runs/:id/memory` is the manager's own command and sits behind the gate.
-  const memoryRoutes = new Hono<ProjectApiEnv>()
-    .get('/manager-memory', async (c) => {
-      const { manager } = c.get('project');
-      return c.json(await manager.readManagerMemory());
-    })
-
-    /** Refuses rather than truncates: over the cap is 400, a stale revision is 409 with the
-     *  current file so Settings can reload instead of dropping the other window's lesson. */
-    .put('/manager-memory', jsonZodValidator(managerMemoryPutSchema), async (c) => {
-      const { manager } = c.get('project');
-      const outcome = await manager.writeManagerMemory(c.req.valid('json'));
-      if (!outcome.ok) {
-        return c.json({ error: outcome.error, ...(outcome.current ? { current: outcome.current } : {}) }, outcome.status);
-      }
-      return c.json(outcome.memory);
-    })
-
-    .use('/runs/:id/memory', requireDispatch)
-    .post('/runs/:id/memory', jsonZodValidator(managerMemoryAddSchema), async (c) => {
-      const { manager } = c.get('project');
-      const outcome = await manager.addManagerMemory(c.req.param('id'), c.req.valid('json'));
-      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
-      return c.json(outcome);
-    });
+  const memoryRoutes = createMemoryRoutes({ requireDispatch });
 
   // ---- runs ----------------------------------------------------------------
 
