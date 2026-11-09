@@ -10,7 +10,7 @@ import {
   startRun as createRun,
   startVariants as createVariants,
 } from './run/start.ts';
-import type { ManagerControlContext, RedirectDispatchOrigin, StartContext, VerifyContext, VerifyDependencies } from './run/internal-types.ts';
+import type { DispatchTurnResult, ManagerControlContext, ManagerStateContext, RedirectDispatchOrigin, StartContext, VerifyContext, VerifyDependencies } from './run/internal-types.ts';
 import { retryBaselineCleanup as retryVerifyBaselineCleanup, verifyFor as verifyWorkerFor } from './run/verify.ts';
 import {
   cancelFor as controlCancelFor,
@@ -41,9 +41,34 @@ import {
   repointQueuedDependents as controlRepointQueuedDependents,
   updateDispatch as controlUpdateDispatch,
 } from './run/manager-controls.ts';
+
+
+import {
+  ackPendingReport as ackManagerPendingReport,
+  addManagerMemory as addManagerMemoryEntry,
+  askUser as askManagerUser,
+  assignPlanPart as assignManagerPlanPart,
+  checkManagerComplexity as checkManagerTaskComplexity,
+  clearPendingAsk as clearManagerPendingAsk,
+  clearSoftAsk as clearManagerSoftAsk,
+  flushInbox as flushManagerInbox,
+  flushPendingReports as flushManagerPendingReports,
+  handleDispatchTurn as handleManagerDispatchTurn,
+  mergeFromAgent as mergeManagerFromAgent,
+  notifyTreeInboxes as notifyManagerTreeInboxes,
+  patchTreePlanPart as patchManagerTreePlanPart,
+  readManagerMemory as readProjectManagerMemory,
+  readTreePlan as readManagerTreePlan,
+  recordAsk as recordManagerAsk,
+  recordAttention as recordManagerAttention,
+  recoverSoftAsks as recoverManagerSoftAsks,
+  softAskFor as findManagerSoftAsk,
+  writeManagerMemory as writeProjectManagerMemory,
+  writeTreePlan as writeManagerTreePlan,
+} from './run/manager-state.ts';
 export { makeRunTitle };
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS, VERIFY_TOTAL_TIMEOUT_MS, CONFLICTS_FILES_MAX, CONFLICTS_MAX_PAIRS, CONFLICTS_TRIAL_MAX, type DispatchConflicts, type DispatchConflictWorker, type DispatchTrialMerge, type DispatchVerifyInput, type DispatchVerifyResult, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPart, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
+import { DEFAULT_AGENT_PERMISSION_LEVEL, VERIFY_TOTAL_TIMEOUT_MS, CONFLICTS_FILES_MAX, CONFLICTS_MAX_PAIRS, CONFLICTS_TRIAL_MAX, type DispatchConflicts, type DispatchConflictWorker, type DispatchTrialMerge, type DispatchVerifyInput, type DispatchVerifyResult, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
@@ -104,7 +129,6 @@ import { continuePromptRefusal, messageText, queuedStackRefusal } from './queued
 import {
   attachmentExtension,
   isImageAttachmentName,
-  PENDING_ASK_MAX_QUESTIONS,
   storedAttachmentExtension,
   MANAGER_CANCEL_REASON_MAX_CHARS,
   MANAGER_DELIVERIES_MAX_OUTSTANDING,
@@ -177,19 +201,14 @@ import { composeDispatchPrompt } from '../dispatch/prompts.ts';
 import { formatBudgetLine, toDispatchBudget } from '../dispatch/budget-format.ts';
 import { orderPeekCandidates, peekTail, quietMinutesOf } from '../dispatch/peek.ts';
 import { capOverlaps, findOverlaps, outsideScope, parseScope, scopeOf } from '../dispatch/conflicts.ts';
-import { appendManagerMemory, clampMemoryToTail, readManagerMemory, sanitizeMemoryEntry, writeManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
+import { clampMemoryToTail, readManagerMemory, type MemoryWriteResult } from '../dispatch/memory.ts';
 import { requireRootManager, requireSameTree, resolveRunRef, treeRootOf } from '../dispatch/access.ts';
 import { runVerifyCommand } from '../dispatch/verify-exec.ts';
 import { buildWorkerScorecard, formatWorkerScorecard } from '../dispatch/scorecard.ts';
 import { MANAGER_SCORECARD_PROMPT_MAX_CHARS, PROMPT_MAX_CHARS } from '../dispatch/prompt-budget.ts';
 import {
   appendLedger,
-  findPlanCycle,
-  inboxDigest,
-  inboxName,
-  listInbox,
   notesSuggestions,
-  patchPlanPart,
   readPlan,
   seedNotes,
   taskPaths,
@@ -198,7 +217,6 @@ import {
   writeBrief,
   writeInboxMessage,
   writeOrder,
-  writePlan,
   writeReport,
 } from '../dispatch/tree-fs.ts';
 import {
@@ -210,8 +228,6 @@ import {
   handoffSectionExcerpt,
   inFlightChildren,
   isTerminalStatus,
-  pendingReportsBlock,
-  workerStatusBoard,
   IN_FLIGHT_STATUSES,
   remainingBudgetUsd,
   usd,
@@ -233,12 +249,10 @@ import { DEFAULT_AGENT_ACCOUNT_ID } from '../workspace/agent-accounts.ts';
 import { DEFAULT_IDLE_TIMEOUT_MINUTES } from '../workspace/config.ts';
 import { isUnattended } from './unattended.ts';
 import type { MergeInput } from '@onni/contract';
-import { runManagerMerge, type MergeOutcome } from './manager-merge.ts';
+import type { MergeOutcome } from './manager-merge.ts';
 import {
-  managerDoingComplexAlone,
   managerPrompt,
   resolveWorker,
-  SOFT_ASK_EXPIRED_NUDGE,
   workerPrompt,
   workersInFlight,
   type ManagerSessionContext,
@@ -528,16 +542,6 @@ function stripMonitoringMarker(text: string): string {
  * decision and the autonomous nudge both need. `hasDispatch` is false for every ordinary run, and
  * then the others are false too.
  */
-interface DispatchTurnResult {
-  hasDispatch: boolean;
-  /** This turn created children through `dispatch()` — the run parks as a monitor for them. */
-  dispatched: boolean;
-  overBudget: boolean;
-  /** The run's own inbox was delivered into the still-open session, so it is working again and
-   *  the caller must NOT park it (the nudge's own contract). */
-  rePrompted: boolean;
-}
-
 /** Emit the v2 `ask.requested` event for a parsed marker (the cockpit renders
  *  it as an ask card, #473). Returns the minted request id. */
 function emitAskRequested(sink: UiEventSink, ask: AskRequest): string {
@@ -2299,618 +2303,128 @@ export class RunManager {
     retryVerifyBaselineCleanup(this.verifyContext(), path);
   }
 
+  private managerStateContext(): ManagerStateContext {
+    return {
+      store: this.store,
+      dataDir: this.dataDir,
+      repoRoot: this.repoRoot,
+      active: this.active,
+      softAskTimers: this.softAskTimers,
+      maxAutoContinues: MAX_AUTO_CONTINUES,
+      dispatchEnabled: () => this.dispatchEnabled(),
+      dispatchOf: (runId) => this.dispatchOf(runId),
+      updateDispatch: (runId, patch) => this.updateDispatch(runId, patch),
+      makeUiSink: (runId, stepId) => this.makeUiSink(runId, stepId),
+      emitAskRequested,
+      turnEndMarkerText,
+      enforceDispatchBudget: (runId, note) => this.enforceDispatchBudget(runId, note),
+      deliverMessage: (runId, content, userAuthored) => this.deliverMessage(runId, content, userAuthored),
+      managerComplexityPolicyEnabled: () => this.semaphore.safety().managerComplexityPolicy !== false,
+    };
+  }
+
   /** Project memory (plan v2 §8). Reading is project-wide, so Settings works with dispatch off. */
   readManagerMemory(): Promise<ManagerMemoryRead> {
-    return readManagerMemory(this.dataDir);
+    return readProjectManagerMemory(this.dataDir);
   }
 
   writeManagerMemory(input: ManagerMemoryPut): Promise<MemoryWriteResult> {
-    return writeManagerMemory(this.dataDir, input);
+    return writeProjectManagerMemory(this.dataDir, input);
   }
 
-  /**
-   * `onni task memory add` — the root manager appends one lesson. The access check runs first
-   * (404/403), then the whole read-modify-write under the file's path lock; a full memory is a
-   * refusal, never a truncation. The ledger and the transcript note carry the provenance.
-   */
   async addManagerMemory(
     runId: string,
     input: ManagerMemoryAdd,
   ): Promise<ManagerMemoryRead | { denied: string; status: 400 | 403 | 404 | 409 }> {
-    const run = this.store.getRun(runId);
-    const access = requireRootManager(run, 'write project memory');
-    if (!access.ok) return { denied: access.denied, status: access.status };
-    if (!run) return { denied: `no such run: ${runId}`, status: 404 };
-    const outcome = await appendManagerMemory(this.dataDir, input.entry, runId, (text) => this.store.redactRunText(runId, text));
-    if (!outcome.ok) return { denied: outcome.error, status: outcome.status };
-    appendLedger(this.dataDir, runId, {
-      type: 'memory-add',
-      runId,
-      entry: outcome.entry,
-      bytes: outcome.memory.bytes,
-    });
-    this.store.appendEvent(runId, {
-      type: 'note',
-      stepId: this.active.get(runId)?.currentStepId,
-      message: `project memory: added one lesson (${outcome.memory.bytes}/${outcome.memory.maxBytes} bytes)`,
-    });
-    return outcome.memory;
+    return addManagerMemoryEntry(this.managerStateContext(), runId, input);
   }
 
-  /**
-   * The tree plan (plan v2 §10, `#6A`). Root manager only, like every other manager tool. Reads
-   * never throw: a corrupt `plan.json` is an empty plan plus one note, so a session still opens.
-   */
   async readTreePlan(runId: string): Promise<TreePlan | { denied: string; status: 403 | 404 | 409 }> {
-    const run = this.store.getRun(runId);
-    const access = requireRootManager(run, 'read the tree plan');
-    if (!access.ok) return { denied: access.denied, status: access.status };
-    const read = await readPlan(this.dataDir, run!.id);
-    if (read.corrupt) {
-      this.store.appendEvent(runId, {
-        type: 'note',
-        stepId: this.active.get(runId)?.currentStepId,
-        tone: 'danger',
-        message: 'the tree plan could not be read and is being treated as empty — rewrite it with `onni task plan set`',
-      });
-    }
-    return read.plan;
+    return readManagerTreePlan(this.managerStateContext(), runId);
   }
 
-  /** `PUT /runs/:id/plan`: replace every part, refusing a stale revision (409) or a bad part (400/409). */
   async writeTreePlan(runId: string, input: TreePlanPut): Promise<TreePlan | { denied: string; status: 400 | 403 | 404 | 409 }> {
-    const run = this.store.getRun(runId);
-    const access = requireRootManager(run, 'write the tree plan');
-    if (!access.ok) return { denied: access.denied, status: access.status };
-    const normalized = this.normalizePlanParts(run!, input.parts);
-    if ('denied' in normalized) return normalized;
-    const outcome = await writePlan(this.dataDir, run!.id, { parts: normalized.parts, revision: input.revision });
-    if (!outcome.ok) return { denied: outcome.error, status: 409 };
-    appendLedger(this.dataDir, run!.id, {
-      type: 'plan',
-      action: 'put',
-      parts: outcome.plan.parts.length,
-      revision: outcome.plan.revision,
-    });
-    this.store.appendEvent(runId, {
-      type: 'note',
-      stepId: this.active.get(runId)?.currentStepId,
-      message: `tree plan written: ${outcome.plan.parts.length} part${outcome.plan.parts.length === 1 ? '' : 's'}`,
-    });
-    return outcome.plan;
+    return writeManagerTreePlan(this.managerStateContext(), runId, input);
   }
 
-  /** `PATCH /runs/:id/plan/parts/:partId`: one part's status and/or run, read-modify-write under the lock. */
   async patchTreePlanPart(
     runId: string,
     partId: string,
     input: TreePlanPatch,
   ): Promise<TreePlan | { denied: string; status: 400 | 403 | 404 | 409 }> {
-    const run = this.store.getRun(runId);
-    const access = requireRootManager(run, 'update the tree plan');
-    if (!access.ok) return { denied: access.denied, status: access.status };
-    let runRef = input.runId;
-    if (runRef !== undefined && runRef !== '') {
-      const target = this.treeMember(run!, runRef);
-      if (!target) return { denied: `run "${runRef}" is not part of this task tree`, status: 409 };
-      runRef = target.id;
-    }
-    const outcome = await patchPlanPart(this.dataDir, run!.id, partId, {
-      ...(input.status !== undefined ? { status: input.status } : {}),
-      ...(runRef !== undefined ? { runId: runRef } : {}),
-    });
-    if (!outcome.ok) return { denied: outcome.error, status: outcome.status };
-    appendLedger(this.dataDir, run!.id, {
-      type: 'plan',
-      action: 'patch',
-      partId,
-      ...(input.status !== undefined ? { status: input.status } : {}),
-      ...(runRef !== undefined && runRef !== '' ? { runId: runRef } : {}),
-    });
-    this.store.appendEvent(runId, {
-      type: 'note',
-      stepId: this.active.get(runId)?.currentStepId,
-      message: `plan part "${partId}"${input.status !== undefined ? ` → ${input.status}` : ''}${runRef ? ` (${runRef.slice(0, 8)})` : ''}`,
-    });
-    return outcome.plan;
+    return patchManagerTreePlanPart(this.managerStateContext(), runId, partId, input);
   }
 
-  /** A run of this manager's tree, by full id or by a 6+ character prefix. */
-  private treeMember(root: RunRecord, ref: string): RunRecord | undefined {
-    return this.store.listRuns().find((run) => treeRootOf(run) === root.id && (run.id === ref || (ref.length >= 6 && run.id.startsWith(ref))));
+  private assignPlanPart(rootRunId: string, partId: string, childRunId: string): Promise<void> {
+    return assignManagerPlanPart(this.managerStateContext(), rootRunId, partId, childRunId);
   }
 
-  /**
-   * Server-side plan rules that the schema cannot express: `worker` names a roster entry, `runId`
-   * names a run of THIS tree, and `after` has no cycle. Titles are flattened and redacted on the
-   * way in — a worker's output can be pasted into a title by the manager, and the title ends up in
-   * every later brief.
-   */
-  private normalizePlanParts(
-    root: RunRecord,
-    parts: TreePlanPart[],
-  ): { parts: TreePlanPart[] } | { denied: string; status: 400 | 409 } {
-    const workers = root.roster?.workers ?? [];
-    const allowed = workers.map((worker) => rosterWorkerKey(worker)).join(', ') || 'none';
-    const normalized: TreePlanPart[] = [];
-    for (const part of parts) {
-      if (part.worker !== undefined && !workers.some((worker) => rosterWorkerKey(worker) === part.worker || worker.runner === part.worker)) {
-        return { denied: `worker "${part.worker}" is not in this task's roster — allowed workers: ${allowed}`, status: 400 };
-      }
-      let runId = part.runId;
-      if (runId) {
-        const target = this.treeMember(root, runId);
-        if (!target) return { denied: `run "${runId}" is not part of this task tree`, status: 409 };
-        runId = target.id;
-      }
-      const title = sanitizeMemoryEntry(part.title, (text) => this.store.redactRunText(root.id, text));
-      if (!title) return { denied: `plan part "${part.id}" has an empty title after cleaning`, status: 400 };
-      normalized.push({ ...part, title, ...(runId !== undefined ? { runId } : {}) });
-    }
-    const cycle = findPlanCycle(normalized);
-    if (cycle) return { denied: `the plan has a cycle: ${cycle.join(' → ')}`, status: 400 };
-    return { parts: normalized };
+  askUser(runId: string, input: ManagerAskInput): ManagerAskResponse | { denied: string; status: 403 | 404 | 409 } {
+    return askManagerUser(this.managerStateContext(), runId, input);
   }
 
-  /** `--part` on a dispatch: the part becomes `assigned` with the child's id. Ordering is still `after`. */
-  private async assignPlanPart(rootRunId: string, partId: string, childRunId: string): Promise<void> {
-    const outcome = await patchPlanPart(this.dataDir, rootRunId, partId, { status: 'assigned', runId: childRunId });
-    const stepId = this.active.get(rootRunId)?.currentStepId;
-    if (!outcome.ok) {
-      this.store.appendEvent(rootRunId, {
-        type: 'note',
-        stepId,
-        tone: 'danger',
-        message: `dispatched ${childRunId.slice(0, 8)} but the tree plan could not be updated — ${outcome.error}`,
-      });
-      return;
-    }
-    appendLedger(this.dataDir, rootRunId, { type: 'plan', action: 'assign', partId, runId: childRunId });
-    this.store.appendEvent(rootRunId, {
-      type: 'note',
-      stepId,
-      message: `plan part "${partId}" → assigned (${childRunId.slice(0, 8)})`,
-    });
-  }
-
-  /**
-   * `onni task ask` — the root manager asks the human a question WITHOUT parking (plan v2 §9).
-   * Deliberately NOT `dispatch.pendingAsk`: that field makes a dispatched task settle `blocked`,
-   * which is right for the Guard (an end-of-turn decision) and wrong here — this one is meant to
-   * be left open while the manager keeps working. The card rides a normal `ask.requested` event
-   * with `source: 'manager'`; nothing here touches `status` or `attentionRequest`.
-   */
-  askUser(
-    runId: string,
-    input: ManagerAskInput,
-  ): ManagerAskResponse | { denied: string; status: 403 | 404 | 409 } {
-    const run = this.store.getRun(runId);
-    const access = requireRootManager(run, 'ask the user');
-    if (!access.ok) return { denied: access.denied, status: access.status };
-    if (!run?.dispatch) return { denied: 'run is not part of a dispatch tree', status: 409 };
-    if (run.status === 'done' || run.status === 'failed' || run.status === 'cancelled' || run.status === 'review') {
-      return { denied: 'this task is not live — open it with Continue, then ask', status: 409 };
-    }
-    if (run.dispatch.pendingAsk || run.dispatch.softAsk) {
-      return { denied: 'one open question per task — answer the current one first', status: 409 };
-    }
-    const requestId = randomUUID();
-    const askedAt = new Date().toISOString();
-    const expiresAt = input.timeoutMinutes !== undefined
-      ? new Date(Date.now() + input.timeoutMinutes * 60_000).toISOString()
-      : undefined;
-    const options = input.options ?? [];
-    this.makeUiSink(runId, this.active.get(runId)?.currentStepId ?? 'ask').handle({
-      type: 'ask.requested',
-      requestId,
-      questions: [{
-        header: 'Question from the manager',
-        question: input.question,
-        options: options.map((option) => ({
-          label: option.label,
-          ...(option.description !== undefined ? { description: option.description } : {}),
-        })),
-      }],
-      source: 'manager',
-    });
-    this.updateDispatch(runId, (current) => ({
-      ...current,
-      softAsk: {
-        requestId,
-        askedAt,
-        ...(expiresAt !== undefined ? { expiresAt } : {}),
-        question: input.question.slice(0, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS),
-        optionCount: options.length,
-      },
-    }));
-    this.armSoftAskTimer(runId, expiresAt);
-    try {
-      appendLedger(this.dataDir, run.dispatch.rootRunId, {
-        type: 'manager-ask',
-        runId,
-        requestId,
-        question: input.question.slice(0, MANAGER_ASK_RECORD_QUESTION_MAX_CHARS),
-        optionCount: options.length,
-        ...(expiresAt !== undefined ? { expiresAt } : {}),
-      });
-    } catch {
-      // best effort — the record carries the question either way
-    }
-    this.store.appendEvent(runId, {
-      type: 'note',
-      stepId: this.active.get(runId)?.currentStepId,
-      message: expiresAt !== undefined
-        ? `asked you: "${input.question}" — the manager keeps working until you answer or ${expiresAt} passes`
-        : `asked you: "${input.question}" — the manager keeps working until you answer`,
-    });
-    return { requestId };
-  }
-
-  /** The record's OPEN manager question, when `requestId` names it — the only thing an answer clears. */
   private softAskFor(runId: string, requestId: string | undefined): RunDispatch['softAsk'] {
-    if (requestId === undefined) return undefined;
-    const soft = this.store.getRun(runId)?.dispatch?.softAsk;
-    return soft?.requestId === requestId ? soft : undefined;
+    return findManagerSoftAsk(this.managerStateContext(), runId, requestId);
   }
 
-  /** Answer, expiry and cancel all end here: the timer goes with the field, never before it. */
   private clearSoftAsk(runId: string): void {
-    const timer = this.softAskTimers.get(runId);
-    if (timer) clearTimeout(timer);
-    this.softAskTimers.delete(runId);
-    if (!this.store.getRun(runId)?.dispatch?.softAsk) return;
-    this.updateDispatch(runId, ({ softAsk: _answered, ...rest }) => rest);
+    clearManagerSoftAsk(this.managerStateContext(), runId);
   }
 
-  /** Public entry for surfaces that retire a run outright (cancel, delete). */
   forgetSoftAsk(runId: string): void {
-    this.clearSoftAsk(runId);
+    clearManagerSoftAsk(this.managerStateContext(), runId);
   }
 
-  /** One timer per run, re-armed from the record so a restart rebuilds rather than loses it. */
-  private armSoftAskTimer(runId: string, expiresAt: string | undefined): void {
-    const prior = this.softAskTimers.get(runId);
-    if (prior) clearTimeout(prior);
-    this.softAskTimers.delete(runId);
-    if (expiresAt === undefined) return;
-    const delay = Math.max(0, Date.parse(expiresAt) - Date.now());
-    const timer = setTimeout(() => {
-      this.softAskTimers.delete(runId);
-      this.expireSoftAsk(runId);
-    }, delay);
-    timer.unref?.();
-    this.softAskTimers.set(runId, timer);
-  }
-
-  /**
-   * The deadline passed. With a live session the manager is told, by the exact nudge the plan
-   * names, and the question is retired. With no session the question STAYS on the record — that is
-   * what lets the next opening brief say it went unanswered (`loadManagerSessionContext` retires it
-   * then). Same split on boot/recover, where every session is closed by definition.
-   */
-  private expireSoftAsk(runId: string): void {
-    const soft = this.store.getRun(runId)?.dispatch?.softAsk;
-    if (!soft) return;
-    this.store.appendEvent(runId, {
-      type: 'note',
-      message: `no answer to "${soft.question}" by its deadline`,
-    });
-    const state = this.active.get(runId);
-    // A delivery retires the Guard's `pendingAsk`, so nudging here while one is open would answer a
-    // question the user never saw answered. Keep both standing instead: the question stays on the
-    // record and the Guard keeps the floor.
-    if (!state || state.cancelled || !state.session?.open || this.store.getRun(runId)?.dispatch?.pendingAsk) return;
-    this.clearSoftAsk(runId);
-    this.deliverMessage(runId, [{ type: 'text', text: SOFT_ASK_EXPIRED_NUDGE }], false);
-  }
-
-  /** Boot/recover: rebuild every live deadline; retire the ones that already passed. */
   private recoverSoftAsks(): void {
-    for (const run of this.store.listRuns()) {
-      const soft = run.dispatch?.softAsk;
-      if (!soft) continue;
-      if (soft.expiresAt !== undefined && Date.parse(soft.expiresAt) <= Date.now()) this.expireSoftAsk(run.id);
-      else this.armSoftAskTimer(run.id, soft.expiresAt);
-    }
+    recoverManagerSoftAsks(this.managerStateContext());
   }
 
-  /**
-   * The automations twin of `prepareDispatchSession` (spec 2026-09-13-automations-from-prompt):
-   * the short prompt part that lets a task recognise "whenever a PR is opened, do X" as an
-   * automation and create one with `onni automation`. Gated on `automationsReachable` — the flag
-   * AND the transport — so a headless run, or a cockpit with `ONNI_AUTOMATIONS` unset, composes
-   * nothing and behaves exactly as it did before the feature existed.
-   */
   private prepareAutomationsSession(state: ActiveRun): void {
     state.automationsPrompt = automationsReachable() ? AUTOMATIONS_PROMPT : undefined;
   }
 
-  /**
-   * The reports a parent's children left while it had no session. Returned as the block for the
-   * opening prompt, and cleared in the same breath — a flush that did not clear would re-deliver
-   * every report on every later session.
-   */
-  private flushPendingReports(runId: string): string | undefined {
-    const dispatch = this.dispatchOf(runId);
-    const pending = dispatch?.pendingReports;
-    if (!dispatch || !pending?.length) return undefined;
-    const { pendingReports: _flushed, ...rest } = dispatch;
-    this.store.updateRun(runId, { dispatch: rest });
-    const block = pendingReportsBlock(pending);
-    const board = workerStatusBoard(this.store.listRuns(), dispatch.rootRunId);
-    return board && block ? `${block}\n\n${board}` : block;
-  }
-
-  /** Drop the one pending entry a LIVE delivery has just accepted (matched on run AND instant). */
-  private ackPendingReport(runId: string, fromRunId: string, at: string): void {
-    const dispatch = this.store.getRun(runId)?.dispatch;
-    const pending = dispatch?.pendingReports;
-    if (!dispatch || !pending?.length) return;
-    const kept = pending.filter((entry) => entry.fromRunId !== fromRunId || entry.at !== at);
-    if (kept.length === pending.length) return;
-    const { pendingReports: _acked, ...rest } = dispatch;
-    this.store.updateRun(runId, { dispatch: kept.length ? { ...rest, pendingReports: kept } : rest });
-  }
-
-  /**
-   * One finished turn, for BOTH turn-end handlers. The caller keeps the park decision; this
-   * returns the facts it needs: whether this turn dispatched children (park as their monitor),
-   * whether the budget brake fired (park `waiting`), and whether the run's own inbox was handed
-   * back into the session (working again, do not park).
-   */
-  private handleDispatchTurn(
-    runId: string,
-    turnText: string,
-    ctx: { state: ActiveRun; stepId: string; done: boolean },
-  ): DispatchTurnResult {
-    const idle: DispatchTurnResult = { hasDispatch: false, dispatched: false, overBudget: false, rePrompted: false };
-    const dispatch = this.dispatchOf(runId);
-    const dispatched = Boolean(ctx.state.dispatchedThisTurn);
-    ctx.state.dispatchedThisTurn = false;
-    // Before the no-dispatch early return: a manager that never dispatched is exactly the case.
-    // Fire-and-forget: it reads git itself, and the turn must not wait on it.
-    void this.checkManagerComplexity(runId, ctx);
-    if (!dispatch) return idle;
-    if (ctx.done) return { hasDispatch: true, dispatched: false, overBudget: false, rePrompted: false };
-    const note = (message: string, tone?: 'danger') =>
-      this.store.appendEvent(runId, { type: 'note', stepId: ctx.stepId, message, ...(tone ? { tone } : {}) });
-    const overBudget = this.enforceDispatchBudget(runId, note);
-    const rePrompted = !dispatched && !overBudget && this.deliverOwnInbox(runId, ctx.state, ctx.stepId, turnText);
-    // The filesystem channel's SIGNAL: this turn may have written into a sibling's or the root's
-    // inbox. Wake every parked recipient now — the writer's turn end is the one moment onni
-    // knows something may have changed on disk without watching it.
-    this.notifyTreeInboxes(dispatch.rootRunId, runId);
-    return { hasDispatch: true, dispatched, overBudget, rePrompted };
-  }
-
-  /**
-   * `POST /runs/:id/merge` — the manager's merge tool. The permission is checked HERE, on the
-   * server, against the root's snapshotted `managerFullAccess`: a prompt that is ignored changes
-   * nothing. Every attempt — allowed, refused or conflicting — is written to the task's log.
-   */
-  async mergeFromAgent(runId: string, input: MergeInput): Promise<MergeOutcome | { denied: string }> {
-    const run = this.store.getRun(runId);
-    if (!run) return { denied: `no such run: ${runId}` };
-    const note = (message: string, tone?: 'danger') =>
-      this.store.appendEvent(runId, { type: 'note', stepId: this.active.get(runId)?.currentStepId, message, ...(tone ? { tone } : {}) });
-    const access = requireRootManager(run, 'merge');
-    if (!access.ok) return { denied: access.denied };
-    if (run.managerFullAccess !== true) {
-      const denied = 'Manager chưa được cấp quyền merge. Hãy đề nghị người dùng merge thủ công, hoặc bật "Full quyền manager" trong Cài đặt nhiệm vụ.';
-      note(`merge refused — ${denied}`, 'danger');
-      return { denied };
-    }
-    if (!run.worktreePath || !run.branch || !existsSync(run.worktreePath)) return { denied: 'the manager has no worktree to merge in' };
-    let sourceBranch: string | undefined;
-    if (input.into === 'task' && !input.abort) {
-      const ref = input.source ?? '';
-      const members = this.store.listRuns().filter((r) => r.dispatch?.rootRunId === runId && r.id !== runId && r.branch);
-      const hit = members.find((r) => r.id === ref || (ref.length >= 6 && r.id.startsWith(ref)) || r.branch === ref);
-      if (!hit) {
-        const known = members.map((r) => `${r.id.slice(0, 8)} (${r.branch})`).join(', ') || 'none yet';
-        return { denied: `"${ref}" is not a worker of this task. Workers: ${known}` };
-      }
-      sourceBranch = hit.branch;
-    }
-    const saved = await autosaveCommit(run.worktreePath, 'wip before merge');
-    if (saved === 'refused' || saved === 'failed') {
-      // A half-resolved merge from an earlier conflict is fine: runManagerMerge reports it.
-      if (saved === 'failed') return { denied: 'your uncommitted work could not be committed before merging' };
-    }
-    const result = await runManagerMerge({
-      worktree: run.worktreePath,
-      taskBranch: run.branch,
-      baseBranch: run.baseBranch ?? '',
-      repoRoot: this.repoRoot,
-      into: input.into,
-      ...(sourceBranch ? { sourceBranch } : {}),
-      ...(input.abort ? { abort: true } : {}),
-    });
-    const target = input.into === 'base' ? run.baseBranch : run.branch;
-    const detail = `merge (${input.into}) ${input.source ? `${input.source} → ` : ''}${target}: ${result.outcome} — ${result.message}${'before' in result && result.before ? ` [${result.before.slice(0, 8)} → ${result.after?.slice(0, 8) ?? '?'}]` : ''}`;
-    note(detail, result.outcome === 'conflict' || result.outcome === 'refused' ? 'danger' : undefined);
-    appendLedger(this.dataDir, runId, {
-      type: 'merge',
-      runId,
-      into: input.into,
-      source: sourceBranch ?? input.source ?? null,
-      target: target ?? null,
-      outcome: result.outcome,
-      before: 'before' in result ? result.before ?? null : null,
-      after: 'after' in result ? result.after ?? null : null,
-    });
-    if (result.outcome === 'refused') return { denied: result.message };
-    return result;
-  }
-
-  /**
-   * The complexity policy's soft check (manager–worker). A manager that has changed many files or
-   * lines and has dispatched no worker is doing a complex task alone: say so in the log and, when
-   * the session is open and autonomous, remind the manager once. Never blocks — it only warns.
-   * Reads the diff from git itself rather than `run.diffStat`, which `recordTurnEnd` refreshes
-   * asynchronously and so lags this very turn by one. Returns true when a reminder went in.
-   */
-  async checkManagerComplexity(runId: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): Promise<boolean> {
-    if (ctx.done || ctx.state.complexityWarned) return false;
-    if (this.semaphore.safety().managerComplexityPolicy === false) return false;
-    const run = this.store.getRun(runId);
-    if (!run?.roster || run.dispatch?.parentRunId) return false;
-    if (childrenOf(this.store.listRuns(), runId).length > 0) return false;
-    let stat = run.diffStat;
-    if (run.worktreePath && existsSync(run.worktreePath)) {
-      const fresh = await worktreeShortstat(run.worktreePath, run.baseBranch ?? 'HEAD', {
-        taskBranch: run.branch,
-        runStartedAt: run.startedAt,
-      }).catch(() => undefined);
-      if (fresh) stat = fresh;
-    }
-    if (!stat || !managerDoingComplexAlone(stat, 0)) return false;
-    if (ctx.state.complexityWarned) return false;
-    ctx.state.complexityWarned = true;
-    const message = `manager has changed ${stat.files} files (+${stat.adds} -${stat.dels}) and dispatched no worker — by the complexity policy this size of work should be handed to workers, or split with them.`;
-    this.store.appendEvent(runId, { type: 'note', stepId: ctx.stepId, message, tone: 'danger' });
-    if (!ctx.state.autonomous || ctx.state.cancelled || !ctx.state.session?.open) return false;
-    if ((ctx.state.autoContinues ?? 0) >= MAX_AUTO_CONTINUES) return false;
-    const text = `Complexity policy reminder: you have changed ${stat.files} files (+${stat.adds} -${stat.dels}) and dispatched no worker. This is complex work. Hand the remaining independent parts to workers (or split: you take one part, workers the rest) before continuing, and say which parts go where.`;
-    if (!ctx.state.session.sendMessage([{ type: 'text', text }])) return false;
-    ctx.state.autoContinues = (ctx.state.autoContinues ?? 0) + 1;
-    return true;
-  }
-
-  /**
-   * A task's OWN inbox at its own turn end: what its parent or a sibling wrote while it was
-   * working. Delivered into the still-open session so the run is working again, not parking —
-   * a task that never parks still hears its parent within one turn. Not on a turn that asked: a
-   * run parking on the Guard waits for the human, and a message must not stand in for the answer.
-   *
-   * The ask is read through `turnEndMarkerText` (#997), the same normalization `resolveAskTurn`
-   * uses: this guard runs BEFORE the ask is resolved, and a delivery sets `rePrompted` — which
-   * auto-continues the turn and suppresses the ask card entirely. Reading the raw text here
-   * would let a question with a trailing `ONNI:PR=` line be answered by a sibling's message
-   * instead of by the human, which is exactly what this guard exists to prevent.
-   */
-  private deliverOwnInbox(runId: string, state: ActiveRun, stepId: string, turnText: string): boolean {
-    if (!state.autonomous || state.cancelled || !state.session?.open) return false;
-    if (parseAskMarker(turnEndMarkerText(turnText)) !== null) return false;
-    if ((state.autoContinues ?? 0) >= MAX_AUTO_CONTINUES) return false;
-    const digest = this.flushInbox(runId);
-    if (!digest || !state.session.sendMessage([{ type: 'text', text: digest }])) return false;
-    state.autoContinues = (state.autoContinues ?? 0) + 1;
-    this.store.appendEvent(runId, {
-      type: 'note',
-      stepId,
-      message: `tree inbox digest delivered into the session at turn end (${state.autoContinues}/${MAX_AUTO_CONTINUES})`,
-    });
-    return true;
-  }
-
-  /** What arrived in this run's inbox since it last looked, as the opening-prompt block; the
-   *  watermark moves in the same breath. Paths only: the agent reads the files itself. */
   private flushInbox(runId: string): string | undefined {
-    const dispatch = this.dispatchOf(runId);
-    if (!dispatch) return undefined;
-    const recipient = inboxName(runId, dispatch.rootRunId);
-    const items = listInbox(this.dataDir, dispatch.rootRunId, recipient, dispatch.inboxSeenAt);
-    if (items.length === 0) return undefined;
-    this.updateDispatch(runId, (current) => ({ ...current, inboxSeenAt: new Date().toISOString() }));
-    return inboxDigest(items, taskPaths(this.dataDir, dispatch.rootRunId, runId).inbox);
+    return flushManagerInbox(this.managerStateContext(), runId);
   }
 
-  /**
-   * Wake every PARKED task of a tree whose inbox holds files newer than its watermark. Only a run
-   * parked as a monitor is woken live. A run parked `waiting` (on the Guard, on its budget) stays
-   * parked: the digest reaches it when its session next opens, and a notice must never answer a
-   * question on the human's behalf. The writer itself is skipped — its own turn just ended.
-   */
+  private flushPendingReports(runId: string): string | undefined {
+    return flushManagerPendingReports(this.managerStateContext(), runId);
+  }
+
+  private ackPendingReport(runId: string, fromRunId: string, at: string): void {
+    ackManagerPendingReport(this.managerStateContext(), runId, fromRunId, at);
+  }
+
+  private handleDispatchTurn(runId: string, turnText: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): DispatchTurnResult {
+    return handleManagerDispatchTurn(this.managerStateContext(), runId, turnText, ctx);
+  }
+
+  async mergeFromAgent(runId: string, input: MergeInput): Promise<MergeOutcome | { denied: string }> {
+    return mergeManagerFromAgent(this.managerStateContext(), runId, input);
+  }
+
+  async checkManagerComplexity(runId: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): Promise<boolean> {
+    return checkManagerTaskComplexity(this.managerStateContext(), runId, ctx);
+  }
+
   private notifyTreeInboxes(rootRunId: string, writerId: string): void {
-    if (!this.dispatchEnabled()) return;
-    for (const run of this.store.listRuns()) {
-      if (run.id === writerId || run.dispatch?.rootRunId !== rootRunId) continue;
-      if (run.status !== 'running' || run.activity !== 'monitoring') continue;
-      const state = this.active.get(run.id);
-      if (!state?.session?.open) continue;
-      const recipient = inboxName(run.id, rootRunId);
-      const items = listInbox(this.dataDir, rootRunId, recipient, run.dispatch.inboxSeenAt);
-      if (items.length === 0) continue;
-      const digest = inboxDigest(items, taskPaths(this.dataDir, rootRunId, run.id).inbox);
-      if (!digest || !this.deliverMessage(run.id, [{ type: 'text', text: digest }], false)) continue;
-      this.updateDispatch(run.id, (current) => ({ ...current, inboxSeenAt: new Date().toISOString() }));
-      this.store.appendEvent(run.id, {
-        type: 'note',
-        message: `${items.length} new tree inbox message${items.length === 1 ? '' : 's'} — delivered into the session`,
-      });
-      appendLedger(this.dataDir, rootRunId, { type: 'inbox-notice', runId: run.id, files: items.map((item) => item.name) });
-    }
+    notifyManagerTreeInboxes(this.managerStateContext(), rootRunId, writerId);
   }
 
-  /**
-   * Surface a `ONNI:ASK` as the ask card (#473) and, for a dispatched run, persist it as the pending
-   * question: a restart-forced settle reports it `blocked` instead of `done`. Cleared by
-   * `deliverMessage` when an answer reaches the session. A child parked on the Guard is told to its
-   * parent through the inbox — the parent cannot answer for the human, but it can re-plan.
-   *
-   * A card may carry up to `ASK_MAX_QUESTIONS` questions, but the RECORD carries at most
-   * `PENDING_ASK_MAX_QUESTIONS` of their texts plus a count of the rest: that field is read back
-   * by an all-or-nothing index parser, and an over-long list in a newly written `runs.json` would
-   * cost an older onni its entire project index. The inbox message below is a markdown file under
-   * no schema, so the parent still reads every question.
-   */
   private recordAsk(runId: string, sink: UiEventSink, ask: AskRequest): WebhookAttentionRequest {
-    const requestId = emitAskRequested(sink, ask);
-    const attention = this.recordAttention(requestId, ask.questions);
-    const dispatch = this.dispatchOf(runId);
-    if (!dispatch) return attention;
-    const questions = ask.questions.map((question) => question.question.slice(0, 400));
-    const recorded = questions.slice(0, PENDING_ASK_MAX_QUESTIONS);
-    const omittedQuestions = questions.length - recorded.length;
-    this.updateDispatch(runId, (current) => ({
-      ...current,
-      pendingAsk: {
-        requestId,
-        questions: recorded,
-        ...(omittedQuestions > 0 ? { omittedQuestions } : {}),
-        askedAt: attention.askedAt,
-      },
-    }));
-    if (!dispatch.parentRunId) return attention;
-    const run = this.store.getRun(runId);
-    try {
-      writeInboxMessage(this.dataDir, dispatch.rootRunId, inboxName(dispatch.parentRunId, dispatch.rootRunId), {
-        from: runId,
-        subject: `Blocked on a Guard question — ${run?.title ?? runId}`,
-        body: [
-          `Your task "${run?.title ?? runId}" (${runId}) has parked on a question only the human can answer:`,
-          ...questions.map((question) => `- ${question}`),
-          '',
-          "It holds one of your children-in-flight slots until it is answered in the cockpit. You cannot answer on the human's behalf; you can re-plan around it, wait, or raise the decision yourself with ONNI:ASK if your own work depends on it.",
-        ].join('\n'),
-      });
-      appendLedger(this.dataDir, dispatch.rootRunId, { type: 'guard-ask', runId, parentRunId: dispatch.parentRunId, questions });
-      this.notifyTreeInboxes(dispatch.rootRunId, runId);
-    } catch {
-      // best effort
-    }
-    return attention;
+    return recordManagerAsk(this.managerStateContext(), runId, sink, ask);
   }
 
-  /** Snapshot all attention sources; only explicit ONNI:ASK carries dispatch Guard semantics. */
-  private recordAttention(requestId: string, input: readonly { question: string; options?: readonly { label: string; description?: string }[] }[]): WebhookAttentionRequest {
-    const attention: WebhookAttentionRequest = {
-      requestId, askedAt: new Date().toISOString(),
-      questions: input.slice(0, 20).map(q => ({
-        question: q.question.slice(0, 2000),
-        ...(q.options ? { options: q.options.slice(0, 10).map(o => ({ label: o.label.slice(0, 120), ...(o.description ? { description: o.description.slice(0, 500) } : {}) })) } : {}),
-      })),
-    };
-    return attention;
+  private recordAttention(
+    requestId: string,
+    input: readonly { question: string; options?: readonly { label: string; description?: string }[] }[],
+  ): WebhookAttentionRequest {
+    return recordManagerAttention(requestId, input);
   }
 
-  /** The answer arrived (any message delivered into the session): the question is no longer pending. */
   private clearPendingAsk(runId: string): void {
-    if (!this.dispatchOf(runId)?.pendingAsk) return;
-    this.updateDispatch(runId, ({ pendingAsk: _answered, ...rest }) => rest);
+    clearManagerPendingAsk(this.managerStateContext(), runId);
   }
-
   /**
    * The turn-end budget brake: a dispatched run that has spent its ceiling stops running itself.
    * The caller then skips the autonomous nudge, clears the monitoring wake timer and parks
