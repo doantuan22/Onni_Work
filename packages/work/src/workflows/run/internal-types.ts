@@ -1,4 +1,6 @@
 import type { ContentBlock, RunnerId } from '../../core/agent-runner.ts';
+import type { resolveBash } from '../../core/bash-path.ts';
+import type { runVerifyCommand } from '../../dispatch/verify-exec.ts';
 import type { PrivateMcpServer } from '../../core/private-mcp.ts';
 import type { RunDispatch, TrackerAssociation, UsageWindowsObservation } from '@onni/contract';
 import type { RunRecord, RunStore } from '../../runs/store.ts';
@@ -144,4 +146,27 @@ export interface QueueContext<Input, Workflow extends WorkflowDef = WorkflowDef>
   workflowInput(run: RunRecord): Input;
   queuedUsageLimitResume(run: RunRecord): boolean;
   reportSettledChildToParent(runId: string): Promise<void>;
+}
+
+/** Testable command dependencies that RunManager owns for task verification. */
+export interface VerifyDependencies {
+  runCommand: typeof runVerifyCommand;
+  resolveBash: typeof resolveBash;
+  now: () => number;
+  env: () => NodeJS.ProcessEnv;
+  baselineTimeoutMs: number;
+}
+
+/** The verification state and manager-owned seams used by verify/baseline helpers. */
+export interface VerifyContext {
+  store: RunStore;
+  repoRoot: string;
+  dataDir: string;
+  verifying: Map<string, AbortController>;
+  baselineTrees: Set<string>;
+  verifyDeps: VerifyDependencies;
+  isActive(runId: string): boolean;
+  currentStepId(runId: string): string | undefined;
+  updateDispatch(runId: string, patch: (dispatch: RunDispatch) => RunDispatch): void;
+  isDisposed(): boolean;
 }
