@@ -960,3 +960,45 @@ export interface CheckContext {
   dataDir: string;
   checkOutputCap: number;
 }
+
+/** Active-run fields read or updated by nudges, monitoring bounds, and periodic autosave. */
+export interface MonitoringActiveRun {
+  cancelled: boolean;
+  cwd: string;
+  session?: AgentSession;
+  autonomous?: boolean;
+  autoContinues?: number;
+  lastOverriddenAsk?: string;
+  compactionContinues?: number;
+  idleTimer?: NodeJS.Timeout;
+  idleClosed?: boolean;
+  waitExpired?: boolean;
+  monitoringWakeups?: number;
+  monitoringWakeTimer?: NodeJS.Timeout;
+  monitoringWakeIntervalMinutes?: number;
+  monitoringLivenessTimer?: NodeJS.Timeout;
+  monitoringLivenessAtCap?: boolean;
+  autosaveTimer?: NodeJS.Timeout;
+  autosaveExcludedPaths: Map<string, string>;
+  checkInProgress: boolean;
+  autosaveCheckpointBlocked: boolean;
+  currentStepId?: string;
+  askPark?: 'waiting' | 'abandoned';
+  monitorHandoff?: boolean;
+}
+
+/** Manager-owned state and effects used by monitoring and liveness helpers. */
+export interface MonitoringContext {
+  active: ReadonlyMap<string, MonitoringActiveRun>;
+  monitoring: Set<string>;
+  unitParents: Set<string>;
+  store: RunStore;
+  semaphore: WorkspaceSemaphore;
+  dataDir: string;
+  repoRoot: string;
+  releaseSlot(): void;
+  leaveMonitoring(runId: string): void;
+  parkMonitorAsWaiting(runId: string, state: MonitoringActiveRun, message: string): void;
+  armIdleTimer(runId: string, state: MonitoringActiveRun): void;
+  deliverMessage(runId: string, content: PastedContent[], userAuthored: boolean): boolean;
+}
