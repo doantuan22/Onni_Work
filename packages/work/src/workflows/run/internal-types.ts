@@ -1,4 +1,4 @@
-import type { AgentSession, ContentBlock, RunnerId } from '../../core/agent-runner.ts';
+﻿import type { AgentSession, ContentBlock, RunnerId } from '../../core/agent-runner.ts';
 import type { WorkflowStepDef } from '../types.ts';
 import type { ExecutableNode, ForkShape, GraphNode, GraphTransition, WorkflowGraph } from '../graph.ts';
 import type { AgentEvent } from '../../core/agent-runner.ts';
@@ -1083,4 +1083,67 @@ export interface AgentStepContext {
   beginUsageInvocation(runId: string, state: AgentStepActiveRun, stepId: string): void;
   recordUsageUiEvent(runId: string, state: AgentStepActiveRun, event: UiEvent): void;
   persistUsageCheckpoint(runId: string, stepId: string, patch: Partial<Omit<StepState, 'id'>>): void;
+}
+
+/** The owner fields read or updated by run settlement and landing operations. */
+export interface SettlementActiveRun extends ContinuationActiveRun {
+  releaseRepoRoot?: () => void;
+}
+
+/** State and manager-owned effects used by turn-end settlement, landing, and attachment storage. */
+export interface SettlementContext {
+  store: RunStore;
+  repoRoot: string;
+  dataDir: string;
+  active: ReadonlyMap<string, SettlementActiveRun>;
+  waiting: Set<string>;
+  lastNamerKey: Pick<Map<string, string>, 'get' | 'set'>;
+  queuedImageSeq: Pick<Map<string, number>, 'get' | 'set'>;
+  repoRootBusy(): number;
+
+  applyTurnMarkers(runId: string, run: RunRecord, turnText: string): void;
+  agentEnv(runId: string): NodeJS.ProcessEnv;
+  armIdleTimer(runId: string, state: SettlementActiveRun): void;
+  autoNameRun(
+    runId: string,
+    skillName: string | undefined,
+    task: string,
+    liveInput?: { turnText: string; diffStat?: string },
+  ): Promise<string | undefined>;
+  chainRepoRoot(): { previous: Promise<void>; release: () => void };
+  clearIdleTimer(state: SettlementActiveRun): void;
+  clearMonitoringWakeTimer(state: SettlementActiveRun, runId?: string): void;
+  continueRun(runId: string, opts: { text: string }): { ok: boolean };
+  deliverMessage(runId: string, content: PastedContent[], announce: boolean): boolean;
+  fileInAttachmentLibrary(
+    saved: PersistedAttachment | null,
+    name: string | undefined,
+    deferredWrites?: Array<() => void>,
+  ): PersistedAttachment | null;
+  landBeforeSettle(runId: string): Promise<string | 'review' | undefined>;
+  landNow(runId: string, policy: NonNullable<SettlementActiveRun['autoLand']>): Promise<LandResult>;
+  landWithAgent(
+    runId: string,
+    state: SettlementActiveRun,
+    stepId: string | undefined,
+    close: () => void,
+  ): Promise<LandResult> | undefined;
+  landingFence(runId: string): () => boolean;
+  landingPolicy(run: RunRecord | undefined, config: OnniConfig, note?: (message: string) => void): Promise<SettlementActiveRun['autoLand']>;
+  latestRequest(runId: string): string | undefined;
+  isActive(runId: string): boolean;
+  leaveMonitoring(runId: string): void;
+  maybeRefreshTitle(runId: string, turnText: string): Promise<void>;
+  parkForReview(runId: string, state: SettlementActiveRun, stepId: string | undefined): void;
+  persistAttachment(
+    runId: string,
+    mediaType: string,
+    data: string,
+    namePrefix?: string,
+    ext?: string,
+  ): PersistedAttachment | null;
+  reviewGateApplies(runId: string): Promise<boolean>;
+  releaseSlot(): void;
+  reviveWorkflow(run: RunRecord): Promise<WorkflowDef | null | undefined>;
+  usableAttachmentLibrary(grantedDir: string | undefined): string | undefined;
 }
