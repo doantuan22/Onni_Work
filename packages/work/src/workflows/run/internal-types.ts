@@ -1,7 +1,14 @@
 import type { ContentBlock, RunnerId } from '../../core/agent-runner.ts';
 import type { PrivateMcpServer } from '../../core/private-mcp.ts';
-import type { RunDispatch, TrackerAssociation, UsageWindowsObservation } from '@onni/contract';
-import type { RunRecord, RunStore } from '../../runs/store.ts';
+import type {
+  AgentPermissionLevel,
+  DispatchInput,
+  DispatchOrderSnapshot,
+  RunDispatch,
+  TrackerAssociation,
+  UsageWindowsObservation,
+} from '@onni/contract';
+import type { QueuedMessage, RunRecord, RunStore } from '../../runs/store.ts';
 import type { AccountHolds, WorkspaceSemaphore } from '../../workspace/semaphore.ts';
 import type { SecretStore } from '../../workspace/secrets.ts';
 import type { WorkflowDef } from '../types.ts';
@@ -144,4 +151,62 @@ export interface QueueContext<Input, Workflow extends WorkflowDef = WorkflowDef>
   workflowInput(run: RunRecord): Input;
   queuedUsageLimitResume(run: RunRecord): boolean;
   reportSettledChildToParent(runId: string): Promise<void>;
+}
+
+/** Internal provenance passed from a redirect operation into ordinary dispatch admission. */
+export interface RedirectDispatchOrigin {
+  sourceRunId: string;
+  canonicalOrder: DispatchOrderSnapshot;
+  instruction: string;
+}
+
+export interface ManagerControlDispatchOptions {
+  workflow?: WorkflowDef;
+  antigravityLevel?: AgentPermissionLevel;
+  redirectOrigin?: RedirectDispatchOrigin;
+  preflightOnly?: boolean;
+}
+
+export type ManagerControlDispatchResult = { id: string; branch?: string } | { refused: string };
+
+/** The small live-session surface manager controls inspect for state and receipt support. */
+export interface ManagerControlActiveRun {
+  currentStepId?: string;
+  graphAnswer?: unknown;
+  session?: {
+    open: boolean;
+    sendMessageWithReceipt?: unknown;
+  };
+}
+
+/** Session fields used while loading and composing the manager opening prompt. */
+export interface ManagerControlSessionState {
+  currentStepId?: string;
+  dispatchPrompt?: string;
+}
+
+/** Dependencies owned by RunManager that dispatch manager-control operations need. */
+export interface ManagerControlContext {
+  store: RunStore;
+  repoRoot: string;
+  dataDir: string;
+  active: ReadonlyMap<string, ManagerControlActiveRun>;
+  redirecting: Set<string>;
+  queue: string[];
+  starting: ReadonlySet<string>;
+  continuationManagerDeliveryIds: Map<string, string[]>;
+  managerEnv: () => NodeJS.ProcessEnv;
+  semaphore: Pick<WorkspaceSemaphore, 'safety'>;
+  dispatch: (parentId: string, input: DispatchInput, options?: ManagerControlDispatchOptions) => ManagerControlDispatchResult;
+  cancel: (runId: string) => boolean;
+  isActive: (runId: string) => boolean;
+  waitInactive: (runId: string, timeoutMs: number) => Promise<boolean>;
+  sendMessage: (runId: string, content: PastedContent[], replyTo?: string, managerDeliveryId?: string) => boolean;
+  enqueueMessage: (runId: string, content: PastedContent[], managerDeliveryId?: string) => QueuedMessage | null;
+  deferMessage: (runId: string, content: PastedContent[], managerDeliveryId?: string) => boolean;
+  clearSoftAsk: (runId: string) => void;
+  blockOrphanedDependents: () => void;
+  refreshQueuedDependencyEnvelope: (run: RunRecord) => void;
+  pump: () => Promise<void>;
+  updateDispatch: (runId: string, patch: (dispatch: RunDispatch) => RunDispatch) => void;
 }
