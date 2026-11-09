@@ -4,6 +4,7 @@ import type { runVerifyCommand } from '../../dispatch/verify-exec.ts';
 import type { PrivateMcpServer } from '../../core/private-mcp.ts';
 import type {
   AgentPermissionLevel,
+  DispatchBudget,
   DispatchInput,
   DispatchOrderSnapshot,
   RunDispatch,
@@ -377,4 +378,40 @@ export interface LifecycleContext {
     state: 'expired',
     reason: 'target-settled',
   ): void;
+}
+
+/** The live-run fields dispatch needs when it records a child or resolves a graph waiter. */
+export interface DispatchActiveRun {
+  currentStepId?: string;
+  dispatchedThisTurn?: boolean;
+  graphChildWaits?: ReadonlyMap<string, (child: { status: string; summary: string }) => void>;
+}
+
+/** The narrow RunManager state and seams used by worker dispatch and child reports. */
+export interface DispatchContext {
+  store: RunStore;
+  dataDir: string;
+  active: ReadonlyMap<string, DispatchActiveRun>;
+  queue: string[];
+  pendingJobs: ReadonlyMap<string, { input: { task: string } }>;
+  starting: ReadonlySet<string>;
+  redirecting: ReadonlySet<string>;
+  semaphore: Pick<WorkspaceSemaphore, 'safety'>;
+
+  dispatchEnabled(): boolean;
+  dispatchOf(runId: string): RunDispatch | undefined;
+  dispatchBudgetFor(runId: string): DispatchBudget | undefined;
+  updateDispatch(runId: string, patch: (dispatch: RunDispatch) => RunDispatch): void;
+  startRun(workflow: WorkflowDef, input: StartRunInput): RunRecord;
+  cancelOne(runId: string): boolean;
+  deferredBindingActive(run: Pick<RunRecord, 'id' | 'deferredBinding' | 'steps'>, runs: readonly RunRecord[]): boolean;
+  verificationAskMatches(text: string): boolean;
+  assignPlanPart(rootRunId: string, partId: string, childRunId: string): Promise<void>;
+  notifyTreeInboxes(rootRunId: string, writerId: string): void;
+  ackPendingReport(runId: string, fromRunId: string, at: string): void;
+  deliverMessage(runId: string, content: PastedContent[], userAuthored: boolean): boolean;
+  enqueueMessage(runId: string, content: PastedContent[]): QueuedMessage | null;
+  deferMessage(runId: string, content: PastedContent[]): boolean;
+  continueRun(runId: string, options: { text: string }, deferForCapacity?: boolean): unknown;
+  pump(): Promise<void>;
 }
