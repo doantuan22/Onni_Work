@@ -1,5 +1,13 @@
 # Kế hoạch tách `server.ts` theo route family
 
+> **Trạng thái (2026-11-09): đã làm xong cả 37 family.** `server.ts` còn 2.634 dòng (từ 8.479); mỗi
+> family là một factory trong `packages/work/src/server/routes/`, mount ở đúng vị trí cũ trong chuỗi
+> `v1`/`workspaceV1`. Guard theo đường dẫn (`requireDispatch`, `requireAutomations`, body cap) đi
+> cùng family của nó; route `/runs/archive-finished` và `/runs/read-all` vẫn đứng trước `/runs/:id`;
+> nút huỷ của cockpit (`POST /runs/:id/cancel`, family runs) tách riêng với `/worker-cancel` của
+> manager (family dispatch, mount trước). Bản đồ dòng bên dưới là trạng thái TRƯỚC khi tách, giữ
+> lại làm lịch sử.
+
 Kế hoạch này dùng line number hiện tại của `packages/work/src/server/server.ts` trên nhánh `onni/2e572630` (đối chiếu `rg -n` ngày 2026-11-07). Khoảng dòng của mỗi builder chỉ tính từ khai báo `const ...Routes` tới dấu `;` kết thúc chuỗi Hono; phần khởi tạo state và helper dùng chung được ghi riêng. Một route là một lời gọi Hono có method và path literal; `.use()` không tính là route.
 
 Mục tiêu là tách từng family thành module riêng, mỗi lần một thay đổi hành vi không đổi. Giữ nguyên path, validator, middleware, thứ tự đăng ký, response và kiểu trả về suy luận. Đây là một nhánh của D1 trong [`manager-worker-proposals.md`](./manager-worker-proposals.md#d1-tách-runts-10144-dòng-và-serverts-8422-dòng), nơi khuyến nghị tách dần qua các PR nhỏ vì `server.ts` là file nóng.

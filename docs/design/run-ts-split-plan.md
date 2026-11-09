@@ -1,5 +1,24 @@
 # Kế hoạch tách `run.ts` theo từng bước
 
+> **Trạng thái (2026-11-09): đã làm xong cả 17 phần.** `run.ts` còn 3.444 dòng (từ 11.721); code đã
+> chuyển nằm trong `packages/work/src/workflows/run/` (`preparation`, `start`, `queue`, `lifecycle`,
+> `manager-controls`, `verify`, `manager-state`, `dispatch`, `scheduling`, `messages`, `continuation`,
+> `execute`, `graph`, `agent-step`, `settlement`, `monitoring`, `check-steps`, `internal-types`).
+> Bản đồ dòng bên dưới là trạng thái TRƯỚC khi tách, giữ lại làm lịch sử.
+>
+> Ba bài học khi tách, cần giữ cho mọi thay đổi sau:
+> - **Hàm bọc không được khai báo `async` nếu chỉ `return task(...)`.** Mỗi lớp `async` thêm lượt
+>   chờ promise mà phương thức gốc không có, làm `cancelAndWait` chạy trước khi `execute` gỡ run
+>   khỏi danh sách đang chạy (`worktree-lifecycle.test.ts`, sửa ở `64c044c` và `0ef9bed`).
+> - **Context phải đọc giá trị sống của `RunManager`**, không chép hằng số mặc định: context của
+>   agent step từng nhận `BRANCH_NAME_WAIT_MS` thay cho tùy chọn `branchNameWaitMs` (`3b2b732`).
+>   Trường thay đổi được thì truyền qua getter/setter (xem `schedulingContext`).
+> - **Lời gọi trước đây đi qua `this.<method>` phải đi qua callback của context**, vì test theo dõi
+>   (spy) hàm bọc của `RunManager`.
+>
+> Test cấu trúc H7 trong `manager-prompt.test.ts` giờ đọc `run.ts`, `run/execute.ts` và
+> `run/continuation.ts`.
+
 Ngày đối chiếu: 2026-11-07. Kế hoạch này mô tả trạng thái hiện tại của
 `packages/work/src/workflows/run.ts` (11.721 dòng) trên nhánh `onni/7e44ecf4`.
 Đây là bản đồ để thực hiện D1 bằng các PR nhỏ, giữ nguyên hành vi. Số dòng dưới
