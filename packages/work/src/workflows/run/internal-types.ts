@@ -558,3 +558,21 @@ export interface SchedulingActiveRun {
   currentStepId?: string;
   interrupt: () => void;
 }
+
+/** The owner fields a running check step reads or updates while its child process is live. */
+export interface CheckActiveRun {
+  cancelled: boolean;
+  cwd: string;
+  interrupt: () => void;
+}
+
+/** State and manager-owned dependencies used by workflow check steps and their helpers. */
+export interface CheckContext {
+  store: RunStore;
+  active: ReadonlyMap<string, CheckActiveRun>;
+  secrets: SecretStore;
+  projectId: string | undefined;
+  repoRoot: string;
+  dataDir: string;
+  checkOutputCap: number;
+}
