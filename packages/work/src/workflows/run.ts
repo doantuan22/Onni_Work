@@ -2960,7 +2960,8 @@ export class RunManager {
    * (the retry prompt); an agent node whose `done` ends the run is the interactive tail; a
    * mid-graph `ONNI:ASK` park ends the walk and the settlement in `execute` owns the outcome.
    */
-  private async executeGraph(
+  // executeGraphTask owns this async boundary; an async pass-through races cancelAndWait (worktree-lifecycle.test.ts).
+  private executeGraph(
     runId: string,
     state: ActiveRun,
     workflow: WorkflowDef,
@@ -3112,7 +3113,8 @@ export class RunManager {
     };
   }
 
-  private async runAgentStep(
+  // runAgentStepTask owns this boundary too; another async pass-through delays graph settlement (worktree-lifecycle.test.ts).
+  private runAgentStep(
     ...args: Parameters<typeof runAgentStepTask> extends [AgentStepContext, ...infer Rest] ? Rest : never
   ): ReturnType<typeof runAgentStepTask> {
     return runAgentStepTask(this.agentStepContext(), ...args);
