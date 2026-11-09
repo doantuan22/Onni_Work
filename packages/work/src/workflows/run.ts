@@ -3058,7 +3058,7 @@ export class RunManager {
       active: this.active,
       waiting: this.waiting,
       pendingBranchNames: this.pendingBranchNames,
-      branchNameWaitMs: BRANCH_NAME_WAIT_MS,
+      branchNameWaitMs: this.branchNameWaitMs,
       maxCompactionContinues: MAX_COMPACTION_CONTINUES,
       autoResumePrompt: AUTO_RESUME_PROMPT,
       transientRetryPrompt: TRANSIENT_RETRY_PROMPT,
