@@ -1,6 +1,23 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';\r\nimport { join } from 'node:path';\r\nimport { Hono } from 'hono';\r\nimport { z } from 'zod';\r\nimport { setConfigInputSchema } from '@onni/contract';\r\nimport { AGENT_MODELS_LOCKED_ERROR, agentModelsLocked } from '../../core/agent-model-policy.ts';\r\nimport { readAgentModelDefaults } from '../../agent-config/models.ts';\r\nimport type { AgentModelDefaults } from '../../agent-config/models.ts';\r\nimport { loadConfig, type OnniConfig } from '../../config.ts';\r\nimport { atomicLifecycleWrite, LifecycleStoreError } from '../../worktree-lifecycle/store.ts';\r\nimport { applyLifecycleConfigUpdate, isLifecycleConfigTracked, lifecycleConfigFromRaw, LifecycleConfigError, readLifecycleConfigOrDefault, readLifecycleConfigRaw, TRACKED_CONFIG_ERROR, withLifecycleConfigLock } from '../../worktree-lifecycle/config.ts';\r\nimport { validateLifecycleCommand } from '../../worktree-lifecycle/templates.ts';\r\nimport { lifecycleError } from '../worktree-lifecycle.ts';\r\nimport type { ProjectContext } from '../project-context.ts';\r\nimport { jsonZodValidator } from '../validators.ts';\r\n\r\ntype ProjectApiEnv = { Variables: { project: ProjectContext } };
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { setConfigInputSchema } from '@onni/contract';
+import { AGENT_MODELS_LOCKED_ERROR, agentModelsLocked } from '../../core/agent-model-policy.ts';
+import { readAgentModelDefaults } from '../../agent-config/models.ts';
+import type { AgentModelDefaults } from '../../agent-config/models.ts';
+import { loadConfig, type OnniConfig } from '../../config.ts';
+import { atomicLifecycleWrite, LifecycleStoreError } from '../../worktree-lifecycle/store.ts';
+import { applyLifecycleConfigUpdate, isLifecycleConfigTracked, lifecycleConfigFromRaw, LifecycleConfigError, readLifecycleConfigOrDefault, readLifecycleConfigRaw, TRACKED_CONFIG_ERROR, withLifecycleConfigLock } from '../../worktree-lifecycle/config.ts';
+import { validateLifecycleCommand } from '../../worktree-lifecycle/templates.ts';
+import { lifecycleError } from '../worktree-lifecycle.ts';
+import type { ProjectContext } from '../project-context.ts';
+import { jsonZodValidator } from '../validators.ts';
+
+type ProjectApiEnv = { Variables: { project: ProjectContext } };
 export function createConfigRoutes() {
-\r\n  // An explicit "auto" default becomes `''` on the wire (#906): the empty id IS
+
+  // An explicit "auto" default becomes `''` on the wire (#906): the empty id IS
   // auto in every model picker, so an older cockpit reading this answer shows
   // auto too rather than tripping over an unknown sentinel. Only `true` counts —
   // `false` is the absence of an opinion, not an opinion.

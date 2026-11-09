@@ -1,4 +1,17 @@
-import { mkdir, unlink, writeFile } from 'node:fs/promises';\r\nimport { join, resolve, sep } from 'node:path';\r\nimport { Hono } from 'hono';\r\nimport { parse as parseYaml, stringify as stringifyYaml } from 'yaml';\r\nimport { z } from 'zod';\r\nimport type { ProjectContext } from '../project-context.ts';\r\nimport { graphIssues, graphToSteps, NODE_CATALOG, workflowGraphFileSchema, workflowGraphSchema } from '../../workflows/graph.ts';\r\nimport { WORKFLOWS_DIR, loadWorkflows } from '../../workflows/load.ts';\r\nimport { normalizeWorkflowDoc, skillStackOf, skillsToSteps, stepsIssue, workflowFileSchema, workflowStepSchema } from '../../workflows/types.ts';\r\nimport { slugify } from '../../planner.ts';\r\nimport { jsonZodValidator } from '../validators.ts';\r\n\r\ntype ProjectApiEnv = { Variables: { project: ProjectContext } };\r\nconst saveWorkflowSchema = z
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { join, resolve, sep } from 'node:path';
+import { Hono } from 'hono';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { z } from 'zod';
+import type { ProjectContext } from '../project-context.ts';
+import { graphIssues, graphToSteps, NODE_CATALOG, workflowGraphFileSchema, workflowGraphSchema } from '../../workflows/graph.ts';
+import { WORKFLOWS_DIR, loadWorkflows } from '../../workflows/load.ts';
+import { normalizeWorkflowDoc, skillStackOf, skillsToSteps, stepsIssue, workflowFileSchema, workflowStepSchema } from '../../workflows/types.ts';
+import { slugify } from '../../planner.ts';
+import { jsonZodValidator } from '../validators.ts';
+
+type ProjectApiEnv = { Variables: { project: ProjectContext } };
+const saveWorkflowSchema = z
   .object({
     name: z.string().trim().min(1).max(80),
     // Written into a YAML file on disk (#429) — a workflow description is a

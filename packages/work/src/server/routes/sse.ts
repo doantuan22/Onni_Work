@@ -1,4 +1,26 @@
-import { join } from 'node:path';\r\nimport { Hono } from 'hono';\r\nimport { streamSSE } from 'hono/streaming';\r\nimport { runEventsQuerySchema, runIdParamSchema } from '@onni/contract';\r\nimport type { RunEvent } from '../../runs/store.ts';\r\nimport { onUsage } from '../../core/process-usage.ts';\r\nimport { isV2WireEventType } from '../../runs/ui-event-sink.ts';\r\nimport { HistoryCursorError, readEventsAfterLiveCursor, streamRunEvents, validateLiveCursor } from '../../runs/event-history.ts';\r\nimport { onTodosChanged, readTodos, type TodoItem } from '../../todos.ts';\r\nimport { onRunFrames } from '../run-frames.ts';\r\nimport { onRunDeleted, onRunEvent } from '../sse-subscriptions.ts';\r\nimport type { ProjectContext } from '../project-context.ts';\r\nimport { paramZodValidator, queryZodValidator } from '../validators.ts';\r\n\r\ntype ProjectApiEnv = { Variables: { project: ProjectContext } };\r\n\r\nexport function createSseRoutes(deps: {\r\n  capabilities: () => { followups: boolean };\r\n  streamSSENoBuffer: typeof streamSSE;\r\n}) {\r\n  const { capabilities, streamSSENoBuffer } = deps;\r\n  const sseRoutes = new Hono<ProjectApiEnv>()\r\n    .get(
+import { join } from 'node:path';
+import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
+import { runEventsQuerySchema, runIdParamSchema } from '@onni/contract';
+import type { RunEvent } from '../../runs/store.ts';
+import { onUsage } from '../../core/process-usage.ts';
+import { isV2WireEventType } from '../../runs/ui-event-sink.ts';
+import { HistoryCursorError, readEventsAfterLiveCursor, streamRunEvents, validateLiveCursor } from '../../runs/event-history.ts';
+import { onTodosChanged, readTodos, type TodoItem } from '../../todos.ts';
+import { onRunFrames } from '../run-frames.ts';
+import { onRunDeleted, onRunEvent } from '../sse-subscriptions.ts';
+import type { ProjectContext } from '../project-context.ts';
+import { paramZodValidator, queryZodValidator } from '../validators.ts';
+
+type ProjectApiEnv = { Variables: { project: ProjectContext } };
+
+export function createSseRoutes(deps: {
+  capabilities: () => { followups: boolean };
+  streamSSENoBuffer: typeof streamSSE;
+}) {
+  const { capabilities, streamSSENoBuffer } = deps;
+  const sseRoutes = new Hono<ProjectApiEnv>()
+    .get(
       '/runs/:id/events',
       paramZodValidator(runIdParamSchema),
       queryZodValidator(runEventsQuerySchema),

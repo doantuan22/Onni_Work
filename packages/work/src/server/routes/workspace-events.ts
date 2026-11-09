@@ -1,4 +1,27 @@
-import { Hono } from 'hono';\r\nimport type { WorktreeLifecycleInvalidation } from '@onni/contract';\r\nimport type { RunStore } from '../../runs/store.ts';\r\nimport { onUsage, currentTimedUsage } from '../../core/process-usage.ts';\r\nimport { onTodosChanged, readTodos, type TodoItem } from '../../todos.ts';\r\nimport { onRunFrames } from '../run-frames.ts';\r\nimport { onRunDeleted } from '../sse-subscriptions.ts';\r\nimport type { ProjectContext, ProjectContexts } from '../project-context.ts';\r\nimport type { WorkspaceEventName } from '../server.ts';\r\nimport { streamSSE } from 'hono/streaming';\r\n\r\ntype ProjectApiEnv = { Variables: { project: ProjectContext } };\r\n\r\nexport function createWorkspaceEventsRoutes(deps: {\r\n  bootContext: ProjectContext;\r\n  capabilities: () => { followups: boolean };\r\n  contexts: Pick<ProjectContexts, 'ids' | 'peek' | 'onContextBuilt'>;\r\n  resolveBootProject: () => Promise<string>;\r\n  streamSSENoBuffer: typeof streamSSE;\r\n  workspaceEvents: { on(listener: (event: WorkspaceEventName, data: unknown) => void): () => void };\r\n}) {\r\n  const { bootContext, capabilities, contexts, resolveBootProject, streamSSENoBuffer, workspaceEvents } = deps;\r\n  const workspaceEventsRoutes = new Hono<ProjectApiEnv>()\r\n    .get('/workspace/events', (c) => {
+import { Hono } from 'hono';
+import type { WorktreeLifecycleInvalidation } from '@onni/contract';
+import type { RunStore } from '../../runs/store.ts';
+import { onUsage, currentTimedUsage } from '../../core/process-usage.ts';
+import { onTodosChanged, readTodos, type TodoItem } from '../../todos.ts';
+import { onRunFrames } from '../run-frames.ts';
+import { onRunDeleted } from '../sse-subscriptions.ts';
+import type { ProjectContext, ProjectContexts } from '../project-context.ts';
+import type { WorkspaceEventName } from '../server.ts';
+import { streamSSE } from 'hono/streaming';
+
+type ProjectApiEnv = { Variables: { project: ProjectContext } };
+
+export function createWorkspaceEventsRoutes(deps: {
+  bootContext: ProjectContext;
+  capabilities: () => { followups: boolean };
+  contexts: Pick<ProjectContexts, 'ids' | 'peek' | 'onContextBuilt'>;
+  resolveBootProject: () => Promise<string>;
+  streamSSENoBuffer: typeof streamSSE;
+  workspaceEvents: { on(listener: (event: WorkspaceEventName, data: unknown) => void): () => void };
+}) {
+  const { bootContext, capabilities, contexts, resolveBootProject, streamSSENoBuffer, workspaceEvents } = deps;
+  const workspaceEventsRoutes = new Hono<ProjectApiEnv>()
+    .get('/workspace/events', (c) => {
       return streamSSENoBuffer(c, async (stream) => {
         // One detach bundle per attached project — the id guard makes a double
         // attach (connect-time snapshot vs. the built hook) impossible.

@@ -75,7 +75,12 @@ import { createFsBrowseRoutes } from './routes/fs-browse.ts';
 import { createWorkspaceSecretsRoutes } from './routes/workspace-secrets.ts';
 import { createPreviewRoutes } from './routes/preview.ts';
 import { createHealthRoutes } from './routes/health.ts';
-import { createWorkflowsRoutes } from './routes/workflows.ts';\r\nimport { createPlanRoutes } from './routes/plan.ts';\r\nimport { createConfigRoutes } from './routes/config.ts';\r\nimport { createAgentConfigRoutes } from './routes/agent-config.ts';\r\nimport { createSseRoutes } from './routes/sse.ts';\r\nimport { createWorkspaceEventsRoutes } from './routes/workspace-events.ts';
+import { createWorkflowsRoutes } from './routes/workflows.ts';
+import { createPlanRoutes } from './routes/plan.ts';
+import { createConfigRoutes } from './routes/config.ts';
+import { createAgentConfigRoutes } from './routes/agent-config.ts';
+import { createSseRoutes } from './routes/sse.ts';
+import { createWorkspaceEventsRoutes } from './routes/workspace-events.ts';
 import { z } from 'zod';
 import {
   PROMPT_TEMPLATE_TEXT_MAX,
@@ -5720,7 +5725,16 @@ export function createApp(deps: ServerDeps) {
   };
 
   // ---- chained family: SSE streams (project-scoped) ----
-  const sseRoutes = createSseRoutes({ capabilities, streamSSENoBuffer });\r\n  const workspaceEventsRoutes = createWorkspaceEventsRoutes({\r\n    bootContext,\r\n    capabilities,\r\n    contexts,\r\n    resolveBootProject,\r\n    streamSSENoBuffer,\r\n    workspaceEvents,\r\n  });\r\n  // ---- chained family: GitHub (project-scoped) ----
+  const sseRoutes = createSseRoutes({ capabilities, streamSSENoBuffer });
+  const workspaceEventsRoutes = createWorkspaceEventsRoutes({
+    bootContext,
+    capabilities,
+    contexts,
+    resolveBootProject,
+    streamSSENoBuffer,
+    workspaceEvents,
+  });
+  // ---- chained family: GitHub (project-scoped) ----
   // These sit ABOVE the routes rather than with the family's other schemas below it, because a
   // validator argument is evaluated when the route is REGISTERED — a schema declared further down
   // would be in its temporal dead zone. (The schemas below are all read inside a handler, or

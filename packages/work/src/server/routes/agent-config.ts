@@ -1,4 +1,20 @@
-import { Hono } from 'hono';\r\nimport { z } from 'zod';\r\nimport { listAgentConfig } from '../../agent-config/service.ts';\r\nimport { findConfigFile } from '../../agent-config/catalog.ts';\r\nimport { readConfigFile, writeConfigFile } from '../../agent-config/files.ts';\r\nimport type { ProjectContext } from '../project-context.ts';\r\nimport { jsonZodValidator } from '../validators.ts';\r\n\r\ntype ProjectApiEnv = { Variables: { project: ProjectContext } };\r\n\r\nexport function createAgentConfigRoutes(deps: {\r\n  capabilities: () => { localHandoff: boolean };\r\n}) {\r\n  const { capabilities } = deps;\r\n\r\n  // Set/clear the agents' config knobs (Settings → Agents; the Repo tab's\r\n  // base-branch picker). Merges into the RAW config.json so user keys
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { listAgentConfig } from '../../agent-config/service.ts';
+import { findConfigFile } from '../../agent-config/catalog.ts';
+import { readConfigFile, writeConfigFile } from '../../agent-config/files.ts';
+import type { ProjectContext } from '../project-context.ts';
+import { jsonZodValidator } from '../validators.ts';
+
+type ProjectApiEnv = { Variables: { project: ProjectContext } };
+
+export function createAgentConfigRoutes(deps: {
+  capabilities: () => { localHandoff: boolean };
+}) {
+  const { capabilities } = deps;
+
+  // Set/clear the agents' config knobs (Settings → Agents; the Repo tab's
+  // base-branch picker). Merges into the RAW config.json so user keys
   // (skillsRepos…) survive and schema defaults are never materialized into
   // the file. All fields optional + additive: `null` (and `''` for the
   // R6 keys) clears a knob back to its default.
