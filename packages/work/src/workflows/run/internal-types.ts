@@ -1,4 +1,10 @@
 import type { AgentSession, ContentBlock, RunnerId } from '../../core/agent-runner.ts';
+import type { AgentEvent } from '../../core/agent-runner.ts';
+import type { UiEvent } from '../../core/ui-events.ts';
+import type { UiEventSink } from '../../runs/ui-event-sink.ts';
+import type { ManagerSessionContext } from '../manager-worker.ts';
+import type { LandResult } from '../landing.ts';
+import type { Skill } from '../../skills.ts';
 import type { resolveBash } from '../../core/bash-path.ts';
 import type { runVerifyCommand } from '../../dispatch/verify-exec.ts';
 import type { PrivateMcpServer } from '../../core/private-mcp.ts';
@@ -12,6 +18,7 @@ import type {
   RunDispatch,
   TrackerAssociation,
   UsageWindowsObservation,
+  WebhookAttentionRequest,
 } from '@onni/contract';
 import type { QueuedMessage, RunRecord, RunStore } from '../../runs/store.ts';
 import type { AccountHolds, WorkspaceSemaphore } from '../../workspace/semaphore.ts';
@@ -557,4 +564,168 @@ export interface SchedulingActiveRun {
   repoRootResume?: Promise<boolean>;
   currentStepId?: string;
   interrupt: () => void;
+}
+
+/** Options accepted by the user-facing Continue operation. */
+export interface ContinuationOptions {
+  text?: string;
+  images?: PastedContent[];
+  runner?: RunnerId;
+  model?: string;
+  agentProfile?: string;
+  raiseLimits?: boolean;
+  replyTo?: string;
+}
+
+/** Active-run fields used by continuation and finish flows. */
+export interface ContinuationActiveRun {
+  ownerToken: symbol;
+  cancelled: boolean;
+  interrupt: () => void;
+  cwd: string;
+  autosaveExcludedPaths: Map<string, string>;
+  checkInProgress: boolean;
+  autosaveCheckpointBlocked: boolean;
+  session?: AgentSession;
+  currentStepId?: string;
+  graphFinish?: () => void;
+  idleTimer?: NodeJS.Timeout;
+  idleClosed?: boolean;
+  waitExpired?: boolean;
+  finishRequested?: boolean;
+  finishedAtWait?: boolean;
+  acceptReviewOnDrop?: boolean;
+  turnSettled?: boolean;
+  continueOnDrop?: { opts: ContinuationOptions; deferForCapacity: boolean };
+  monitoringWakeTimer?: NodeJS.Timeout;
+  monitoringWakeIntervalMinutes?: number;
+  monitoringWakeups?: number;
+  monitoringLivenessTimer?: NodeJS.Timeout;
+  monitoringLivenessAtCap?: boolean;
+  autosaveTimer?: NodeJS.Timeout;
+  cancellationTimer?: NodeJS.Timeout;
+  sessionEverOpened?: boolean;
+  autonomous?: boolean;
+  autoContinues?: number;
+  compactionContinues?: number;
+  askPark?: 'waiting' | 'abandoned';
+  monitorHandoff?: boolean;
+  skills?: Skill[];
+  grantedAttachmentLibrary?: string;
+  dispatchPrompt?: string;
+  automationsPrompt?: string;
+  releaseWorktree?: () => void;
+  autoLand?: { checks: string[]; baseBranch?: string; baseLabel: string; attempts: number; inFlight?: Promise<LandResult> };
+  readOnly?: boolean;
+  repoRootParked?: boolean;
+  repoRootResume?: Promise<boolean>;
+}
+
+/** Helpers shared with the adjacent turn-end handler stay on the RunManager façade. */
+export interface ContinuationHelpers {
+  configuredModelProvider(backend: RunnerId, cwd: string): Promise<string | undefined>;
+  endsWithMonitoringMarker(turnText: string): boolean;
+  endsWithDoneMarker(turnText: string): boolean;
+  appendTurnText(current: string, next: string): string;
+  stripDoneMarker(text: string): string;
+  stripMonitoringMarker(text: string): string;
+  resolveAskTurn(turnText: string, enabled: boolean): {
+    ask: import('../../core/ask.ts').AskRequest | null;
+    notes: Array<{ message: string; tone?: 'danger' }>;
+  };
+  markerlessTurn(turnText: string): boolean;
+  repositoryRootLockDisabled(): boolean;
+  repositoryRootLockDisabledNote: string;
+  continuableStatuses: readonly string[];
+  maxAutoContinues: number;
+  leadingSlashSkillName(text: string): string | undefined;
+  expandRegistrySlashSkillText(text: string, skills: readonly Skill[]): string;
+  currentCheckExclusions(dir: string, owned: Map<string, string>): Promise<string[]>;
+}
+
+/** Dependencies for finish, continue, and resumed-session execution. */
+export interface ContinuationContext {
+  store: RunStore;
+  repoRoot: string;
+  dataDir: string;
+  lifecycle: WorktreeLifecycleCoordinator;
+  active: Map<string, ContinuationActiveRun>;
+  starting: Set<string>;
+  queue: string[];
+  pendingContinuations: Map<string, PendingContinuation>;
+  checkArtifactSnapshots: Map<string, Map<string, string>>;
+  autosaveCheckpointBlockedRuns: Set<string>;
+  waiting: Set<string>;
+  helpers: ContinuationHelpers;
+
+  abandonCancelledStart(runId: string): boolean;
+  acquireRepoRoot(runId: string, state: ContinuationActiveRun): Promise<boolean>;
+  agentEnvForStep(
+    runId: string,
+    backend: RunnerId,
+    options?: { generateFollowups?: boolean; recordedProfileId?: string },
+  ): Promise<{ env: Record<string, string>; profileId: string; onUsageWindows?: (observation: UsageWindowsObservation) => void }>;
+  agentPermissionSpec(runId: string, backend: string, onEvent: (event: AgentEvent) => void): Promise<{ permissionLevel?: AgentPermissionLevel }>;
+  armAutosave(runId: string, state: ContinuationActiveRun): void;
+  armIdleTimer(runId: string, state: ContinuationActiveRun): void;
+  armMonitoringWakeTimer(runId: string, state: ContinuationActiveRun): void;
+  attachmentLibraryHint(attachments: PersistedAttachment[], grantedDir?: string): string | undefined;
+  attachmentsDir(runId: string): string;
+  beginUsageInvocation(runId: string, state: ContinuationActiveRun, stepId: string): void;
+  clearAutoResume(runId: string): void;
+  clearAutosaveTimer(state: ContinuationActiveRun): void;
+  clearIdleTimer(state: ContinuationActiveRun): void;
+  clearMonitoringWakeTimer(state: ContinuationActiveRun, runId?: string): void;
+  clearSoftAsk(runId: string): void;
+  dropActive(runId: string, expectedState?: ContinuationActiveRun): void;
+  enterMonitoring(runId: string, spawnParked: boolean): void;
+  failOwnedContinuation(runId: string, ownerToken: symbol, message: string): void;
+  finishReview(runId: string): Promise<void>;
+  flushDeferred(runId: string): void;
+  flushInbox(runId: string): string | undefined;
+  flushPendingReports(runId: string): string | undefined;
+  handleDispatchTurn(runId: string, turnText: string, ctx: { state: ContinuationActiveRun; stepId: string; done: boolean }): DispatchTurnResult;
+  handleRunnerUiEvent(runId: string, state: ContinuationActiveRun, sink: UiEventSink, event: UiEvent): void;
+  idleClosedFails(runId: string, state: ContinuationActiveRun): Promise<boolean>;
+  inactivityFailureMessage(runId?: string, state?: ContinuationActiveRun): string;
+  isActive(runId: string): boolean;
+  landingPolicy(run: RunRecord | undefined, config: import('../../config.ts').OnniConfig): Promise<ContinuationActiveRun['autoLand']>;
+  landOnDone(runId: string, state: ContinuationActiveRun, stepId: string | undefined, close: () => void): boolean;
+  landWithAgent(runId: string, state: ContinuationActiveRun, stepId: string | undefined, close: () => void): Promise<LandResult> | undefined;
+  leaveMonitoring(runId: string): void;
+  loadManagerSessionContext(runId: string, state: ContinuationActiveRun): Promise<ManagerSessionContext>;
+  makeUiSink(runId: string, stepId: string): UiEventSink;
+  markQueuedManagerDeliveriesDelivered(runId: string): void;
+  parkLifecycle(runId: string, state: ContinuationActiveRun, operationId?: string): void;
+  parkRepoRoot(runId: string, state: ContinuationActiveRun): void;
+  persistAttachment(runId: string, mediaType: string, data: string, namePrefix?: string, ext?: string): PersistedAttachment | null;
+  persistPastedAttachments(runId: string, content: readonly PastedContent[]): PersistedAttachment[];
+  prepareAttachmentLibrary(): string | undefined;
+  prepareAutomationsSession(state: ContinuationActiveRun): void;
+  prepareDispatchSession(runId: string, state: ContinuationActiveRun, context?: ManagerSessionContext): void;
+  privateMcpForLaunch(backend: RunnerId, onEvent: (event: AgentEvent) => void): Promise<PrivateMcpServer[] | undefined>;
+  provisionTaskSkills(state: ContinuationActiveRun, wantedSkills: { stepSkill?: string; slash?: string }): Promise<string[]>;
+  raiseAfterLimit(run: RunRecord): void;
+  recordAsk(runId: string, sink: UiEventSink, ask: import('../../core/ask.ts').AskRequest): WebhookAttentionRequest;
+  recordNoteMeta(runId: string, event: Extract<AgentEvent, { type: 'note' }>): void;
+  recordTurnEnd(runId: string, turnText: string, owner?: ContinuationActiveRun): Promise<void>;
+  recordUsagePeaks(runId: string, owner: ContinuationActiveRun): void;
+  releaseSlot(): void;
+  runContinuation(
+    runId: string,
+    stepId: string,
+    sessionId: string | undefined,
+    backend: RunnerId,
+    prompt: string,
+    images?: PastedContent[],
+    persistedImages?: ContentBlock[],
+    persistedAttachments?: PersistedAttachment[],
+    ownerToken?: symbol,
+  ): Promise<void>;
+  sessionCostUsd(runId: string, sessionId: string): number;
+  settleSuccess(runId: string, owner?: ContinuationActiveRun): Promise<boolean>;
+  settleUnansweredPark(runId: string, finishedAt: string, monitorHandoff: boolean): void;
+  softAskFor(runId: string, requestId: string | undefined): RunDispatch['softAsk'];
+  tryAutonomousNudge(runId: string, state: ContinuationActiveRun, stepId: string, ask: import('../../core/ask.ts').AskRequest | null, dispatchTurn: DispatchTurnResult): boolean;
+  tryCompactionContinue(runId: string, state: ContinuationActiveRun, stepId: string, opts: { markerless: boolean; dispatchTurn: DispatchTurnResult }): boolean;
 }
