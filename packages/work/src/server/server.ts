@@ -33,7 +33,6 @@ import { TrackerPoller } from '../automations/tracker-poller.ts';
 import { ProjectAutomationScheduler, ProjectTrackerAutomationScheduler, WorkspaceAutomationScheduler, type ProjectAutomationHandle } from '../automations/scheduler.ts';
 import { ScheduleRunner } from '../automations/schedule-runner.ts';
 import { automationStats } from '../automations/stats.ts';
-import { automationTemplatesOf } from '../automations/templates.ts';
 import { AutomationLaunchOutcome, launchAutomationRun, launchScheduledRun, launchTrackerAutomationRun, rebaselineIdleAutomations, reconcileAutomationReceipts, validateAutomationPrompt } from '../automations/task-template.ts';
 import {
   automationEventSchema,
@@ -80,6 +79,7 @@ import { createWorkspaceEventsRoutes } from './routes/workspace-events.ts';
 import { createRepoRoutes } from './routes/repo.ts';
 import { createGithubRoutes } from './routes/github.ts';
 import { createTrackerRoutes } from './routes/tracker.ts';
+import { createAutomationChecksRoutes, type ManualCheck } from './routes/automation-checks.ts';
 import { z } from 'zod';
 import {
   PROMPT_TEMPLATE_TEXT_MAX,
@@ -3556,17 +3556,6 @@ export function createApp(deps: ServerDeps) {
    * (`contract-parity.automations.test.ts`), and a schema that annotated the handler it is
    * compared with would be true by construction.
    */
-  type ManualCheck = {
-    id: string;
-    automationId: string;
-    mode: 'preview' | 'execute';
-    status: 'queued' | 'running' | 'complete' | 'error';
-    createdAt: string;
-    completedAt?: string;
-    matches?: number;
-    truncated?: boolean;
-    error?: string;
-  };
   const manualChecks = new Map<string, ManualCheck>();
 
   /**
@@ -4163,26 +4152,7 @@ export function createApp(deps: ServerDeps) {
       }
     });
 
-  // ---- chained family: manual automation checks (workspace-level) ----
-  // Workspace-level because the handler reads no project: a check lives in the server-memory map
-  // above, keyed by an unguessable id that the project-scoped POST hands back. Mounting it under
-  // `/api/v1/p/:projectId` too would be a second spelling of a lookup that consults no project.
-  const automationChecksRoutes = new Hono()
-    .use('/automation-checks/*', requireAutomations)
-    .use('/workspace/automation-templates', requireAutomations)
-    // The editor's "From your other projects" palette (spec 2026-09-14 Q7): every OTHER
-    // registered project's definitions, read-only, from their own stores. Workspace-level
-    // because it reads the registry, not the calling project.
-    .get('/workspace/automation-templates', queryZodValidator(z.object({ exclude: z.string().optional() })), async (c) => {
-      const exclude = c.req.valid('query').exclude;
-      // The registry, not the calling project; an unreadable workspace answers an empty palette.
-      const projects = await listProjects().catch(() => []);
-      return c.json({ templates: automationTemplatesOf(projects, exclude) });
-    })
-    .get('/automation-checks/:checkId', (c) => {
-      const check = manualChecks.get(c.req.param('checkId'));
-      return check ? c.json(check) : c.json({ error: 'not found' }, 404);
-    });
+
 
   /**
    * The dispatch gate (spec `.ai/specs/2026-09-10-dispatch.md`) — the automations gate, one flag
@@ -6204,7 +6174,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', workspaceConfigRoutes)
     .route('/', workspaceSecretsRoutes)
     .route('/', fsBrowseRoutes)
-    .route('/', automationChecksRoutes)
+    .route('/', createAutomationChecksRoutes({ requireAutomations, listProjects, manualChecks }))
     .route('/', runsIndexRoutes)
     .route('/', dashboardRoutes(dashboard, () => ({ tokens: capabilities().tokenUsageMetrics, cost: capabilities().costMetrics }), () => capabilities().automations))
     .route('/', workspaceEventsRoutes)
