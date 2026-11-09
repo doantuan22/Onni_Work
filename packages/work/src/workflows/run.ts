@@ -1642,7 +1642,8 @@ export class RunManager {
    * are ignored. A non-git directory degrades to 1 sequential run in the repo
    * root (spec 006 degradation rule), which is always the tighter bound.
    */
-  private async pump(): Promise<void> {
+  // Moved tasks own their async boundaries; async pass-throughs add adoption ticks (64c044c).
+  private pump(): Promise<void> {
     return pumpQueue(this.queueContext());
   }
 
@@ -1661,7 +1662,7 @@ export class RunManager {
    * workflow is revived from the record. A run that can be neither is failed loudly rather than
    * left in the queue as a ghost.
    */
-  private async reviveQueuedRun(run: RunRecord, reason: string): Promise<void> {
+  private reviveQueuedRun(run: RunRecord, reason: string): Promise<void> {
     return queueReviveQueuedRun(this.queueContext(), run, reason);
   }
 
@@ -1731,7 +1732,7 @@ export class RunManager {
    *    session via the Continue path, pointing the agent at its handoff file.
    * Call once, before the server starts taking requests.
    */
-  async recover(): Promise<void> {
+  recover(): Promise<void> {
     return lifecycleRecover(this.lifecycleContext());
   }
 
@@ -1883,14 +1884,14 @@ export class RunManager {
     return controlDispatchBudgetFor(this.managerControlContext(), runId);
   }
 
-  async peekFor(
+  peekFor(
     callerId: string,
     query: { target?: string; all?: boolean; tail?: number },
   ): Promise<DispatchPeek | { denied: string; status: 403 | 404 | 409 }> {
     return controlPeekFor(this.managerControlContext(), callerId, query);
   }
 
-  async conflictsFor(
+  conflictsFor(
     callerId: string,
     query: { target?: string } = {},
   ): Promise<DispatchConflicts | { denied: string; status: 403 | 404 | 409 }> {
@@ -1911,7 +1912,7 @@ export class RunManager {
     return controlCancelFor(this.managerControlContext(), callerId, input);
   }
 
-  async redirectFor(
+  redirectFor(
     callerId: string,
     input: DispatchManagerRedirectInput,
   ): Promise<DispatchManagerRedirectResult | DispatchManagerRedirectFailure | { denied: string; status: 400 | 403 | 404 | 409 }> {
@@ -2006,7 +2007,7 @@ export class RunManager {
    * refusal about WHO or WHICH STATE is a 4xx; "cannot run here" is a 200 `unavailable` value.
    * This is a barrier, not a sandbox: it runs repo-defined scripts from a tree the worker wrote.
    */
-  async verifyFor(
+  verifyFor(
     callerId: string,
     input: DispatchVerifyInput,
   ): Promise<DispatchVerifyResult | { denied: string; status: 400 | 403 | 404 | 409 }> {
@@ -2046,22 +2047,22 @@ export class RunManager {
     return writeProjectManagerMemory(this.dataDir, input);
   }
 
-  async addManagerMemory(
+  addManagerMemory(
     runId: string,
     input: ManagerMemoryAdd,
   ): Promise<ManagerMemoryRead | { denied: string; status: 400 | 403 | 404 | 409 }> {
     return addManagerMemoryEntry(this.managerStateContext(), runId, input);
   }
 
-  async readTreePlan(runId: string): Promise<TreePlan | { denied: string; status: 403 | 404 | 409 }> {
+  readTreePlan(runId: string): Promise<TreePlan | { denied: string; status: 403 | 404 | 409 }> {
     return readManagerTreePlan(this.managerStateContext(), runId);
   }
 
-  async writeTreePlan(runId: string, input: TreePlanPut): Promise<TreePlan | { denied: string; status: 400 | 403 | 404 | 409 }> {
+  writeTreePlan(runId: string, input: TreePlanPut): Promise<TreePlan | { denied: string; status: 400 | 403 | 404 | 409 }> {
     return writeManagerTreePlan(this.managerStateContext(), runId, input);
   }
 
-  async patchTreePlanPart(
+  patchTreePlanPart(
     runId: string,
     partId: string,
     input: TreePlanPatch,
@@ -2113,11 +2114,11 @@ export class RunManager {
     return handleManagerDispatchTurn(this.managerStateContext(), runId, turnText, ctx);
   }
 
-  async mergeFromAgent(runId: string, input: MergeInput): Promise<MergeOutcome | { denied: string }> {
+  mergeFromAgent(runId: string, input: MergeInput): Promise<MergeOutcome | { denied: string }> {
     return mergeManagerFromAgent(this.managerStateContext(), runId, input);
   }
 
-  async checkManagerComplexity(runId: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): Promise<boolean> {
+  checkManagerComplexity(runId: string, ctx: { state: ActiveRun; stepId: string; done: boolean }): Promise<boolean> {
     return checkManagerTaskComplexity(this.managerStateContext(), runId, ctx);
   }
 
@@ -2178,7 +2179,7 @@ export class RunManager {
     return dispatchWorkerEntryFull(this.dispatchContext(), queued);
   }
 
-  async dispatchFromAgent(parentId: string, input: DispatchInput): Promise<{ id: string; branch?: string } | { refused: string }> {
+  dispatchFromAgent(parentId: string, input: DispatchInput): Promise<{ id: string; branch?: string } | { refused: string }> {
     return dispatchFromAgentTask(this.dispatchContext(), parentId, input);
   }
 
@@ -2392,7 +2393,7 @@ export class RunManager {
    *
    * Public so a test can drive the wedge directly instead of waiting out the interval.
    */
-  async rescueStalledQueue(now = Date.now()): Promise<void> {
+  rescueStalledQueue(now = Date.now()): Promise<void> {
     return schedulingRescueStalledQueue(this.schedulingContext(), now);
   }
 
@@ -2460,7 +2461,7 @@ export class RunManager {
    *  lifecycle. `review`/live runs are excluded by the selector. */
   /** The latest terminal retention pass — tests await it before pinning refs it may sweep. */
   private retentionPass: Promise<void> = Promise.resolve();
-  private async enforceRetention(): Promise<void> {
+  private enforceRetention(): Promise<void> {
     return schedulingEnforceRetention(this.schedulingContext());
   }
 
@@ -2528,11 +2529,11 @@ export class RunManager {
    * `deliverMessage` ahead of the message the run woke for) — rather than left for it to discover
    * by clobbering the other task's work.
    */
-  private async resumeRepoRoot(runId: string, state: ActiveRun): Promise<boolean> {
+  private resumeRepoRoot(runId: string, state: ActiveRun): Promise<boolean> {
     return schedulingResumeRepoRoot(this.schedulingContext(), runId, state);
   }
 
-  private async acquireRepoRoot(runId: string, state: ActiveRun): Promise<boolean> {
+  private acquireRepoRoot(runId: string, state: ActiveRun): Promise<boolean> {
     return schedulingAcquireRepoRoot(this.schedulingContext(), runId, state);
   }
 
@@ -2542,7 +2543,7 @@ export class RunManager {
    * into a closed window only fails it), so a held run is refused rather than marked to jump the
    * cap later, when nobody is looking.
    */
-  async startNow(runId: string): Promise<'started' | 'not-queued' | 'held'> {
+  startNow(runId: string): Promise<'started' | 'not-queued' | 'held'> {
     return schedulingStartNow(this.schedulingContext(), runId);
   }
 
@@ -2589,11 +2590,11 @@ export class RunManager {
     return lifecycleHasScheduledAutoResume(this.lifecycleContext(), runId);
   }
 
-  async cancelAndWait(runId: string): Promise<boolean> {
+  cancelAndWait(runId: string): Promise<boolean> {
     return lifecycleCancelAndWait(this.lifecycleContext(), runId);
   }
 
-  private async waitInactive(runId: string, timeoutMs: number): Promise<boolean> {
+  private waitInactive(runId: string, timeoutMs: number): Promise<boolean> {
     return lifecycleWaitInactive(this.lifecycleContext(), runId, timeoutMs);
   }
 
@@ -2854,7 +2855,7 @@ export class RunManager {
     return continueContinuation(this.continuationContext(), runId, opts, deferForCapacity);
   }
 
-  private async runContinuation(
+  private runContinuation(
     runId: string,
     stepId: string,
     sessionId: string | undefined,
@@ -2910,7 +2911,7 @@ export class RunManager {
     };
   }
 
-  private async execute(runId: string, workflow: WorkflowDef, input: StartRunInput, ownerToken?: symbol): Promise<void> {
+  private execute(runId: string, workflow: WorkflowDef, input: StartRunInput, ownerToken?: symbol): Promise<void> {
     return runExecute(this.executeContext(), runId, workflow, input, ownerToken);
   }
   private graphContext(): GraphContext {
@@ -3041,7 +3042,7 @@ export class RunManager {
     return graphResumeGraphSession(this.graphContext(), ...args);
   }
 
-  private async provisionTaskSkills(
+  private provisionTaskSkills(
     state: ActiveRun,
     wantedSkills: { stepSkill?: string; slash?: string },
   ): Promise<string[]> {
@@ -3132,7 +3133,7 @@ export class RunManager {
     beginAgentStepUsageInvocation(this.agentStepContext(), runId, state, stepId);
   }
 
-  private async autoNameRun(
+  private autoNameRun(
     runId: string,
     skillName: string | undefined,
     task: string,
@@ -3141,7 +3142,7 @@ export class RunManager {
     return autoNameRunTask(this.agentStepContext(), runId, skillName, task, live);
   }
 
-  private async awaitGeneratedBranch(
+  private awaitGeneratedBranch(
     runId: string,
     branchNaming: string | undefined,
     note: (message: string) => void,
@@ -3187,7 +3188,7 @@ export class RunManager {
     };
   }
 
-  async recordTurnEnd(runId: string, turnText: string, owner?: ActiveRun): Promise<void> {
+  recordTurnEnd(runId: string, turnText: string, owner?: ActiveRun): Promise<void> {
     return recordSettlementTurnEnd(this.settlementContext(), runId, turnText, owner);
   }
 
@@ -3195,7 +3196,7 @@ export class RunManager {
     return applySettlementTurnMarkers(this.settlementContext(), runId, run, turnText);
   }
 
-  private async maybeRefreshTitle(runId: string, turnText: string): Promise<void> {
+  private maybeRefreshTitle(runId: string, turnText: string): Promise<void> {
     return refreshSettlementTitle(this.settlementContext(), runId, turnText);
   }
 
@@ -3207,11 +3208,11 @@ export class RunManager {
     return settleRunUnansweredPark(this.settlementContext(), runId, finishedAt, monitorHandoff);
   }
 
-  private async settleSuccess(runId: string, owner?: ActiveRun): Promise<boolean> {
+  private settleSuccess(runId: string, owner?: ActiveRun): Promise<boolean> {
     return settleRunSuccess(this.settlementContext(), runId, owner);
   }
 
-  private async landingPolicy(
+  private landingPolicy(
     run: RunRecord | undefined,
     config: OnniConfig,
     note?: (message: string) => void,
@@ -3227,7 +3228,7 @@ export class RunManager {
     return settlementLandingFence(this.settlementContext(), runId);
   }
 
-  private async landNow(runId: string, policy: NonNullable<ActiveRun['autoLand']>): Promise<LandResult> {
+  private landNow(runId: string, policy: NonNullable<ActiveRun['autoLand']>): Promise<LandResult> {
     return landSettlementNow(this.settlementContext(), runId, policy);
   }
 
@@ -3248,23 +3249,23 @@ export class RunManager {
     return landSettlementWithAgent(this.settlementContext(), runId, state, stepId, close);
   }
 
-  async land(runId: string): Promise<import('./run/settlement.ts').LandAnswer> {
+  land(runId: string): Promise<import('./run/settlement.ts').LandAnswer> {
     return landSettlement(this.settlementContext(), runId);
   }
 
-  private async finishReview(runId: string): Promise<void> {
+  private finishReview(runId: string): Promise<void> {
     return finishSettlementReview(this.settlementContext(), runId);
   }
 
-  private async landBeforeSettle(runId: string): Promise<string | 'review' | undefined> {
+  private landBeforeSettle(runId: string): Promise<string | 'review' | undefined> {
     return landSettlementBeforeSettle(this.settlementContext(), runId);
   }
 
-  private async reviewGateApplies(runId: string): Promise<boolean> {
+  private reviewGateApplies(runId: string): Promise<boolean> {
     return settlementReviewGateApplies(this.settlementContext(), runId);
   }
 
-  private async idleClosedFails(runId: string, state: ActiveRun): Promise<boolean> {
+  private idleClosedFails(runId: string, state: ActiveRun): Promise<boolean> {
     return settlementIdleClosedFails(this.settlementContext(), runId, state);
   }
 
@@ -3408,7 +3409,7 @@ export class RunManager {
   }
 
   /** Delete PR head refs no live worktree needs, after lifecycle removal. */
-  async sweepPrHeadRefs(): Promise<void> {
+  sweepPrHeadRefs(): Promise<void> {
     return sweepPrHeadRefsTask(this.checkStepsContext());
   }
 
