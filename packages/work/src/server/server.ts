@@ -10,18 +10,10 @@ import { SecretStore, SecretsError, type SecretScopeRef } from '../workspace/sec
 import { createTrackerService } from './tracker/index.ts';
 import { TrackerWatches } from './tracker/watch.ts';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import {
-  terminalCreateSchema, terminalInputSchema, terminalOutputQuerySchema, terminalOutputSchema,
-  terminalProjectSessionParamsSchema, terminalResizeSchema, terminalSessionSchema, terminalStateSchema,
-} from '@onni/contract';
 import { runsListQuerySchema } from '@onni/contract';
 import { deleteRunLayouts } from '../runs/layouts.ts';
 import { DetectedUrls } from './terminal/detected-urls.ts';
-import { processSnapshot } from './terminal/foreground.ts';
-import { loadPty } from './terminal/pty-module.ts';
-import { AGENT_COMMAND } from './terminal/agent-commands.ts';
-import { discoverShells } from './terminal/shells.ts';
-import { projectTerminalOwner, TerminalSessions, type TerminalSessionInfo } from './terminal/sessions.ts';
+import { TerminalSessions } from './terminal/sessions.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { AutomationStore } from '../automations/store.ts';
 import { AutomationCoordinator } from '../automations/coordinator.ts';
@@ -53,6 +45,7 @@ import { openTargetsRoutes } from './routes/open-targets.ts';
 import { todosRoutes } from './routes/todos.ts';
 import { worktreesRoutes } from './routes/worktrees.ts';
 import { createTerminalRouteHelpers, terminalRoutes as createTerminalRoutes } from './routes/terminal.ts';
+import { projectTerminalRoutes as createProjectTerminalRoutes } from './routes/project-terminal.ts';
 import type { Next } from 'hono';
 import { serve, type ServerType } from '@hono/node-server';
 import { bodyLimit } from 'hono/body-limit';
@@ -3424,95 +3417,7 @@ export function createApp(deps: ServerDeps) {
     capabilities, terminalSessions, detectedUrls, workingDirectoryOf, helpers: terminalHelpers,
   });
 
-  /**
-   * The project terminal: the same shells as a task's, owned by the PROJECT and opened in its
-   * root — a plain terminal inside the cockpit for running agent CLIs by hand. Nothing here is a
-   * run: no worktree, no record, and none of an unattended run's fences (push guard, deny rules,
-   * limits). Same policy gate and same cursor-based output as the task terminal.
-   */
-  const projectTerminalFor = (owner: string, sessionId: string): TerminalSessionInfo | null => {
-    const session = terminalSessions.get(sessionId);
-    return session && session.runId === owner ? session : null;
-  };
-  const projectTerminalRoutes = new Hono<ProjectApiEnv>()
-    .get('/terminal', async (c) => {
-      const owner = projectTerminalOwner(c.get('project').id);
-      const refusal = terminalHelpers.terminalPolicyRefusal(capabilities());
-      if (refusal) return c.json(terminalStateSchema.parse({ available: false, reason: refusal, sessions: [] }));
-      const binding = await loadPty();
-      terminalSessions.observe(await processSnapshot());
-      return c.json(terminalStateSchema.parse({
-        available: binding.available,
-        ...(binding.available ? {} : { reason: binding.reason }),
-        sessions: terminalSessions.listFor(owner).map(terminalHelpers.withTopic),
-        ...(binding.available ? { shells: discoverShells() } : {}),
-      }));
-    })
-    .post('/terminal', jsonZodValidator(terminalCreateSchema), async (c) => {
-      const project = c.get('project');
-      const refusal = terminalHelpers.terminalPolicyRefusal(capabilities());
-      if (refusal) return c.json({ error: refusal }, 409);
-      const { agent, ...body } = c.req.valid('json');
-      const created = await terminalSessions.create({
-        runId: projectTerminalOwner(project.id),
-        cwd: project.root,
-        // A fixed tab name for an agent tab, so the process table does not rename it to the shell.
-        ...(agent ? { agent, label: agent } : {}),
-        ...body,
-      });
-      if (!created.ok) return c.json({ error: created.reason }, 409);
-      terminalHelpers.registerTerminalTopic(created.session.id);
-      // Typed into the shell rather than spawned in place of it: when the agent exits the tab keeps a prompt.
-      if (agent) terminalSessions.write(created.session.id, `${AGENT_COMMAND[agent]}\r`);
-      return c.json(terminalSessionSchema.parse(terminalHelpers.withTopic(created.session)), 201);
-    })
-    .get(
-      '/terminal/:sessionId/output',
-      paramZodValidator(terminalProjectSessionParamsSchema),
-      queryZodValidator(terminalOutputQuerySchema),
-      async (c) => {
-        const session = projectTerminalFor(projectTerminalOwner(c.get('project').id), c.req.valid('param').sessionId);
-        if (!session) return c.json({ error: 'terminal session not found' }, 404);
-        const refusal = terminalHelpers.terminalPolicyRefusal(capabilities());
-        if (refusal) return c.json({ error: refusal }, 409);
-        const read = terminalSessions.read(session.id, c.req.valid('query').cursor ?? 0);
-        if (!read) return c.json({ error: 'terminal session not found' }, 404);
-        c.header('Cache-Control', 'no-store');
-        return c.json(terminalOutputSchema.parse(read));
-      },
-    )
-    .post(
-      '/terminal/:sessionId/input',
-      paramZodValidator(terminalProjectSessionParamsSchema),
-      jsonZodValidator(terminalInputSchema),
-      async (c) => {
-        const session = projectTerminalFor(projectTerminalOwner(c.get('project').id), c.req.valid('param').sessionId);
-        if (!session) return c.json({ error: 'terminal session not found' }, 404);
-        const refusal = terminalHelpers.terminalPolicyRefusal(capabilities());
-        if (refusal) return c.json({ error: refusal }, 409);
-        return c.json({ delivered: terminalSessions.write(session.id, c.req.valid('json').data) });
-      },
-    )
-    .post(
-      '/terminal/:sessionId/resize',
-      paramZodValidator(terminalProjectSessionParamsSchema),
-      jsonZodValidator(terminalResizeSchema),
-      async (c) => {
-        const session = projectTerminalFor(projectTerminalOwner(c.get('project').id), c.req.valid('param').sessionId);
-        if (!session) return c.json({ error: 'terminal session not found' }, 404);
-        const refusal = terminalHelpers.terminalPolicyRefusal(capabilities());
-        if (refusal) return c.json({ error: refusal }, 409);
-        const { cols, rows } = c.req.valid('json');
-        return c.json({ resized: terminalSessions.resize(session.id, cols, rows) });
-      },
-    )
-    // Not policy-gated, for the reason the task terminal's delete is not.
-    .delete('/terminal/:sessionId', paramZodValidator(terminalProjectSessionParamsSchema), async (c) => {
-      const session = projectTerminalFor(projectTerminalOwner(c.get('project').id), c.req.valid('param').sessionId);
-      if (!session) return c.json({ error: 'terminal session not found' }, 404);
-      terminalSessions.kill(session.id);
-      return c.json({ stopped: true });
-    });
+  const projectTerminalRoutes = createProjectTerminalRoutes({ capabilities, terminalSessions, helpers: terminalHelpers });
 
   const v1 = new Hono<ProjectApiEnv>()
     .use('*', resolveProjectScope)
