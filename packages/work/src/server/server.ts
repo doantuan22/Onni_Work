@@ -77,6 +77,12 @@ import { createDraftsRoutes } from './routes/drafts.ts';
 import { createLayoutsRoutes } from './routes/layouts.ts';
 import { createE2eRoutes } from './routes/e2e.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import { createWorkflowsRoutes } from './routes/workflows.ts';
+import { createPlanRoutes } from './routes/plan.ts';
+import { createConfigRoutes } from './routes/config.ts';
+import { createAgentConfigRoutes } from './routes/agent-config.ts';
+import { createSseRoutes } from './routes/sse.ts';
+import { createWorkspaceEventsRoutes } from './routes/workspace-events.ts';
 import { z } from 'zod';
 import {
   PROMPT_TEMPLATE_TEXT_MAX,
@@ -144,48 +150,24 @@ import {
 import { applyProviderEnablement } from '../core/provider-availability.ts';
 import { LOGIN_WATCH_OFFSETS_MS, watchLogin } from './provider-auth-runtime.ts';
 import { RunnerModelCatalog } from '../core/runner-model-catalog.ts';
-import { currentUsage, currentTimedUsage, onUsage } from '../core/process-usage.ts';
+import { currentUsage } from '../core/process-usage.ts';
 import { DashboardReader } from '../workspace/dashboard.ts';
 import { dashboardRoutes } from './dashboard.ts';
-import { WORKFLOWS_DIR, loadWorkflows } from '../workflows/load.ts';
-import {
-  NODE_CATALOG,
-  graphIssues,
-  graphToSteps,
-  workflowGraphFileSchema,
-  workflowGraphSchema,
-} from '../workflows/graph.ts';
-import {
-  QUICK_TASK_WORKFLOW,
-  normalizeWorkflowDoc,
-  skillStackOf,
-  skillsToSteps,
-  stepsIssue,
-  workflowFileSchema,
-  workflowStepSchema,
-  type WorkflowDef,
-} from '../workflows/types.ts';
-import { planChain, slugify } from '../planner.ts';
+import { loadWorkflows } from '../workflows/load.ts';
+import { stepsIssue, workflowStepSchema, type WorkflowDef } from '../workflows/types.ts';
 import { discoverSkills } from '../skills.ts';
 import { DesignProxies } from './preview/design-proxy.ts';
 import { getTeamSkillsCached, isSafeRef, refreshTeamSkills, safeRemoteFor, waitForTeamSkills } from '../skills-remote.ts';
 import { readHandoff } from '../handoff.ts';
-import { markStarted, onTodosChanged, readTodos, type TodoItem } from '../todos.ts';
+import { markStarted } from '../todos.ts';
 import type { RunEvent, RunRecord, RunStatus, RunStore } from '../runs/store.ts';
-import { onRunFrames } from './run-frames.ts';
 import {
   HistoryCursorError,
   deriveRunContextEvents,
-  readEventsAfterLiveCursor,
   readRunHistoryPage,
-  streamRunEvents,
-  validateLiveCursor,
 } from '../runs/event-history.ts';
 import { byLastActivityDesc, compareIsoDesc, lastActivityAt, readRunIndexFromDisk } from '../runs/run-index.ts';
-import { isV2WireEventType } from '../runs/ui-event-sink.ts';
-import { onRunDeleted, onRunEvent } from './sse-subscriptions.ts';
 import {
-  runEventsQuerySchema,
   runHistoryQuerySchema,
   runIdParamSchema,
   repoFileQuerySchema,
@@ -206,10 +188,7 @@ import { diskHealth } from './disk-health.ts';
 import { branchesCheckedOutElsewhere, removeWorktree, worktreeDiff } from '../git-worktree.ts';
 import { protectedByLiveTree } from '../runs/retention.ts';
 import { worktreeLifecycleRoutes, lifecycleError } from './worktree-lifecycle.ts';
-import { readLifecycleConfigOrDefault, readLifecycleConfigRaw, lifecycleConfigFromRaw, withLifecycleConfigLock, applyLifecycleConfigUpdate, isLifecycleConfigTracked, LifecycleConfigError, TRACKED_CONFIG_ERROR } from '../worktree-lifecycle/config.ts';
-import { atomicLifecycleWrite, LifecycleStoreError } from '../worktree-lifecycle/store.ts';
-import { validateLifecycleCommand } from '../worktree-lifecycle/templates.ts';
-import { setConfigInputSchema, type WorktreeLifecycleInvalidation } from '@onni/contract';
+import { readLifecycleConfigOrDefault } from '../worktree-lifecycle/config.ts';
 import { getBranches, getCommit, getDiff, getLog, getRepoInfo, getStatus } from './git.ts';
 import {
   collectChanges,
@@ -228,10 +207,7 @@ import {
   repoIndexContains,
 } from './git-changes.ts';
 import { gatedSkillsRepos, loadConfig, type OnniConfig } from '../config.ts';
-import { findConfigFile } from '../agent-config/catalog.ts';
-import { readConfigFile, statConfigPath, writeConfigFile } from '../agent-config/files.ts';
-import { type AgentModelDefaults, readAgentModelDefaults } from '../agent-config/models.ts';
-import { listAgentConfig } from '../agent-config/service.ts';
+import { statConfigPath } from '../agent-config/files.ts';
 import { listConfigFiles, type AgentHomePaths } from '../agent-config/catalog.ts';
 import { readAccountIdentity } from '../agent-config/account-identity.ts';
 import {
@@ -836,40 +812,6 @@ const startRunSchema = z
 
 const pickSchema = z.object({
   runId: z.string().min(1),
-});
-
-const planSchema = z.object({
-  // Same bound as `startRunSchema.task` — this flows into `planChain` (#429).
-  task: z.string().trim().min(1).max(100_000, 'must be at most 100000 characters'),
-});
-
-// A saved workflow carries full `steps` OR the builder's `skills` stack
-// (spec 012). `overwrite: true` is the builder's Save on an existing file —
-// the GUI asks first; a plain POST still refuses to clobber.
-const saveWorkflowSchema = z
-  .object({
-    name: z.string().trim().min(1).max(80),
-    // Written into a YAML file on disk (#429) — a workflow description is a
-    // short blurb, so a 2k cap is generous without allowing a file-bloat write.
-    description: z.string().max(2_000, 'must be at most 2000 characters').optional(),
-    steps: z.array(workflowStepSchema).min(1).max(8).optional(),
-    skills: z.array(z.string().trim().min(1)).min(1).max(8).optional(),
-    overwrite: z.boolean().optional(),
-  })
-  .refine((b) => Boolean(b.steps) !== Boolean(b.skills), {
-    message: 'provide either "steps" or "skills", not both',
-  });
-
-const validateGraphSchema = z.object({ graph: workflowGraphSchema });
-const saveGraphSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  description: z.string().max(2_000, 'must be at most 2000 characters').optional(),
-  graph: workflowGraphSchema,
-  overwrite: z.boolean().optional(),
-});
-
-const parseWorkflowSchema = z.object({
-  yaml: z.string().min(1).max(100_000),
 });
 
 // Small GUI preferences persisted in `.ai/onni/ui-state.json` (files, not a
@@ -3609,158 +3551,11 @@ export function createApp(deps: ServerDeps) {
   });
 
   // ---- chained family: workflows (project-scoped) --------------------------
-  // One chained expression, mounted by `createApp` into BOTH the legacy `api`
-  // table and the versioned `v1` one — see `healthRoutes` for why the chain
-  // shape (not the statement shape) is what carries the types.
-  const workflowsRoutes = new Hono<ProjectApiEnv>()
-    .get('/workflows', async (c) => c.json(await loadWorkflows(c.get('project').root)))
-
-    // Save an approved plan as a reusable chain (spec 008): YAML in
-    // `.ai/onni/workflows/<slug>.yaml` — from then on it's in the dropdown
-    // like any other workflow.
-    .post('/workflows', jsonZodValidator(saveWorkflowSchema), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const parsed = { data: c.req.valid('json') };
-      const steps = parsed.data.steps ?? skillsToSteps(parsed.data.skills ?? []);
-      const issue = stepsIssue(steps);
-      if (issue) return c.json({ error: issue }, 400);
-      const slug = slugify(parsed.data.name) || 'chain';
-      const dir = join(repoRoot, WORKFLOWS_DIR);
-      const path = join(dir, `${slug}.yaml`);
-      // Pure skill stacks are written in the portable compact form (spec 012) —
-      // `name` + `skills:` — so the file imports cleanly in any repo.
-      const stack = skillStackOf(steps);
-      const doc = {
-        name: parsed.data.name,
-        ...(parsed.data.description ? { description: parsed.data.description } : {}),
-        ...(stack ? { skills: stack } : { steps }),
-      };
-      try {
-        await mkdir(dir, { recursive: true });
-        // `wx` = fail if the file exists — no silent overwrite of a chain.
-        await writeFile(path, stringifyYaml(doc), {
-          encoding: 'utf8',
-          flag: parsed.data.overwrite ? 'w' : 'wx',
-        });
-      } catch (err) {
-        if (err instanceof Error && 'code' in err && err.code === 'EEXIST') {
-          return c.json({ error: `workflow file already exists: ${path}`, exists: true }, 409);
-        }
-        const message = err instanceof Error ? err.message : String(err);
-        return c.json({ error: message }, 500);
-      }
-      return c.json({ path, name: parsed.data.name }, 201);
-    })
-
-    // Delete a saved workflow (spec 012 follow-up): file workflows only —
-    // built-ins have no file and always come back.
-    .delete('/workflows/:name', async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const name = c.req.param('name');
-      const { workflows } = await loadWorkflows(repoRoot);
-      const wf = workflows.find((w) => w.name === name);
-      if (!wf) return c.json({ error: `unknown workflow: ${name}` }, 404);
-      if (wf.source !== 'file' || !wf.path) {
-        return c.json({ error: 'built-in workflows cannot be deleted' }, 400);
-      }
-      const dir = resolve(repoRoot, WORKFLOWS_DIR);
-      const target = resolve(wf.path);
-      if (!target.startsWith(dir + sep)) {
-        return c.json({ error: 'refusing to delete a file outside the workflows dir' }, 400);
-      }
-      try {
-        await unlink(target);
-      } catch (err) {
-        return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
-      }
-      return c.json({ ok: true, path: target });
-    })
-
-    // Graph workflows (spec 2026-09-30-workflow-node-editor): the palette's node catalog, a
-    // structural validator the editor calls as you edit, and the `version: 2` save.
-    .get('/workflows/nodes', (c) => c.json({ nodes: NODE_CATALOG }))
-    .post('/workflows/validate', jsonZodValidator(validateGraphSchema), (c) =>
-      c.json({ issues: graphIssues(c.req.valid('json').graph) }),
-    )
-    .post('/workflows/graph', jsonZodValidator(saveGraphSchema), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const body = c.req.valid('json');
-      const issues = graphIssues(body.graph);
-      if (issues.length) return c.json({ error: issues.join('; ') }, 400);
-      const slug = slugify(body.name) || 'workflow';
-      const dir = join(repoRoot, WORKFLOWS_DIR);
-      const path = join(dir, `${slug}.yaml`);
-      const { nodes, edges, layout } = body.graph;
-      const doc = {
-        version: 2,
-        name: body.name,
-        ...(body.description ? { description: body.description } : {}),
-        nodes,
-        edges,
-        ...(layout ? { layout } : {}),
-      };
-      try {
-        await mkdir(dir, { recursive: true });
-        await writeFile(path, stringifyYaml(doc), { encoding: 'utf8', flag: body.overwrite ? 'w' : 'wx' });
-      } catch (err) {
-        if (err instanceof Error && 'code' in err && err.code === 'EEXIST') {
-          return c.json({ error: `workflow file already exists: ${path}`, exists: true }, 409);
-        }
-        return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
-      }
-      return c.json({ path, name: body.name }, 201);
-    })
-
-    // Import support for the builder (spec 012): parse + validate a pasted
-    // workflow YAML (either form) and hand back the normalized definition. The
-    // server owns YAML parsing — the GUI stays dependency-free.
-    .post('/workflows/parse', jsonZodValidator(parseWorkflowSchema), async (c) => {
-      const parsed = { data: c.req.valid('json') };
-      let raw: unknown;
-      try {
-        raw = parseYaml(parsed.data.yaml);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return c.json({ error: `not valid YAML: ${message}` }, 400);
-      }
-      const rawVersion = raw && typeof raw === 'object' ? (raw as { version?: unknown }).version : undefined;
-      // Accept a quoted `version: "2"` as the same intent as the numeric literal — a hand-edited
-      // YAML easily picks up the quotes, and without this it falls through to the v1 parser below
-      // with a confusing "missing steps" error instead of a graph validation message.
-      if (raw && typeof raw === 'object' && (rawVersion === 2 || rawVersion === '2')) {
-        const graphDoc = workflowGraphFileSchema.safeParse({ ...(raw as object), version: 2 });
-        if (!graphDoc.success) {
-          return c.json({ error: graphDoc.error.issues.map((i) => i.message).join('; ') }, 400);
-        }
-        const problems = graphIssues(graphDoc.data);
-        if (problems.length) return c.json({ error: problems.join('; ') }, 400);
-        const { name, description, nodes, edges, layout } = graphDoc.data;
-        return c.json({
-          name,
-          ...(description ? { description } : {}),
-          steps: graphToSteps(graphDoc.data),
-          graph: { nodes, edges, ...(layout ? { layout } : {}) },
-        });
-      }
-      const doc = workflowFileSchema.safeParse(raw);
-      if (!doc.success) {
-        return c.json({ error: doc.error.issues.map((i) => i.message).join('; ') }, 400);
-      }
-      const normalized = normalizeWorkflowDoc(doc.data);
-      const issue = stepsIssue(normalized.steps);
-      if (issue) return c.json({ error: issue }, 400);
-      return c.json(normalized);
-    });
+  // The factory returns one chain so Hono carries these routes into the typed client.
+  const workflowsRoutes = createWorkflowsRoutes();
 
   // ---- chained family: plan (project-scoped) ----
-  const planRoutes = new Hono<ProjectApiEnv>()
-    .post('/plan', jsonZodValidator(planSchema), async (c) => {
-      const { root: repoRoot } = c.get('project');
-      const parsed = { data: c.req.valid('json') };
-      const blocked = await providerActionError([(await loadConfig(repoRoot)).defaultRunner], { repoRoot });
-      if (blocked) return c.json({ error: blocked }, 409);
-      return c.json(await planChain(repoRoot, parsed.data.task));
-    });
+  const planRoutes = createPlanRoutes({ providerActionError });
 
   // ---- GitHub automations --------------------------------------------------
 
@@ -5771,255 +5566,15 @@ export function createApp(deps: ServerDeps) {
   };
 
   // ---- chained family: SSE streams (project-scoped) ----
-  const sseRoutes = new Hono<ProjectApiEnv>()
-    .get(
-      '/runs/:id/events',
-      paramZodValidator(runIdParamSchema),
-      queryZodValidator(runEventsQuerySchema),
-      async (c) => {
-      const { store, dataDir } = c.get('project');
-      const { id } = c.req.valid('param');
-      if (!store.getRun(id)) return c.json({ error: 'not found' }, 404);
-      const query = c.req.valid('query');
-      const eventsPath = join(dataDir, 'runs', `${id}.ndjson`);
-      if (query.cursor) {
-        try {
-          await validateLiveCursor(eventsPath, query.cursor);
-        } catch (error) {
-          if (error instanceof HistoryCursorError) return c.json({ error: error.message }, error.status);
-          throw error;
-        }
-      }
-      const lastEventId = Number.parseInt(c.req.header('Last-Event-ID') ?? '', 10);
-      const requestedAfter = Math.max(
-        query.afterSeq ?? 0,
-        Number.isSafeInteger(lastEventId) && lastEventId >= 0 ? lastEventId : 0,
-      );
-      return streamSSENoBuffer(c, async (stream) => {
-        let replaying = true;
-        let maxSeq = requestedAfter;
-        const buffered: RunEvent[] = [];
-        // One endpoint, two SSE event names: v1 lines stay `run-event` (the name
-        // the legacy UI listened to — its default branch JSON-dumped unknown
-        // types into the transcript, which is why v2 never rode that name; the
-        // split outlives the R7 retirement as wire shape); protocol-v2 lines
-        // (dotted types, persisted snapshots AND ephemeral coalesced deltas)
-        // ride `ui-event`, which only v2-aware clients subscribe to.
-        // EventSource ignores names it has no listener for.
-        const writeEvent = (event: RunEvent) =>
-          stream.writeSSE({
-            id: String(event.seq),
-            event: isV2WireEventType(event.type) ? 'ui-event' : 'run-event',
-            data: JSON.stringify(event),
-          });
-        const onEvent = (event: RunEvent) => {
-          if (replaying) buffered.push(event);
-          else void writeEvent(event);
-        };
-        const offEvent = onRunEvent(store, id, onEvent);
-        const offRun = onRunFrames(store, (run, frames) => {
-          if (run.id !== id) return;
-          void stream.writeSSE({ event: 'run', data: frames.record() });
-        });
-        stream.onAbort(() => {
-          offEvent();
-          offRun();
-        });
-
-        const replay = query.cursor
-          ? await readEventsAfterLiveCursor(eventsPath, query.cursor)
-          : { events: streamRunEvents(eventsPath), boundarySeq: 0 };
-        maxSeq = Math.max(maxSeq, replay.boundarySeq);
-        for await (const event of replay.events) {
-          if (stream.aborted) break;
-          if (event.seq <= maxSeq) continue;
-          await writeEvent(event);
-          maxSeq = event.seq;
-        }
-        replaying = false;
-        for (const event of buffered) {
-          if (event.seq > maxSeq) await writeEvent(event);
-        }
-        const run = store.getRun(id);
-        if (run) await stream.writeSSE({ event: 'run', data: JSON.stringify(run) });
-
-        while (!stream.aborted) {
-          await stream.writeSSE({ event: 'ping', data: '' });
-          await stream.sleep(15_000);
-        }
-      });
-    },
-    )
-
-    // Global SSE: run-summary updates for the list view + inbox changes.
-    // Scoped `/p/:projectId/events` carries that project's stream in today's
-    // shape; the legacy unprefixed alias stays bound to the boot project ONLY
-    // (spec "Legacy aliases" — widening it would be a silent behavioral break;
-    // the all-project stream arrives as `/api/workspace/events` in step 2.8).
-    .get('/events', (c) => {
-      const { dataDir, store } = c.get('project');
-      return streamSSENoBuffer(c, async (stream) => {
-        const onDeleted = (id: string) =>
-          void stream.writeSSE({
-            event: 'run-deleted',
-            data: JSON.stringify({ id }),
-          });
-        const sendTodos = async () => {
-          const items: TodoItem[] = await readTodos(dataDir).catch(() => []);
-          await stream.writeSSE({ event: 'todos', data: JSON.stringify(items) });
-        };
-        // Opt-in inbox (#471): subscribing is what creates this project's
-        // watcher (step 2.3), so with the capability off we never subscribe —
-        // no watcher, no fd. Scoped to this stream's dataDir: another
-        // project's todos.json writes never reach this connection.
-        const offTodos = capabilities().followups ? onTodosChanged(dataDir, () => void sendTodos()) : () => undefined;
-        // Live resource telemetry (#348): the sampler ticks ~every 2 s only
-        // while some run has a registered process; each tick is relayed as one
-        // `usage` message (runId → {cpuPct, rssBytes, procCount}). Never
-        // persisted — the NDJSON transcripts stay usage-free. The sampler is
-        // module-global, so a snapshot carries EVERY project's runs — split it
-        // by ownership and relay only this project's rows, never a stamped
-        // whole (multi-project spec, step 2.4: filtered, not stamped).
-        const offUsage = onUsage((usage) => {
-          const owned: typeof usage = {};
-          for (const [runId, sample] of Object.entries(usage)) {
-            if (store.getRun(runId)) owned[runId] = sample;
-          }
-          void stream.writeSSE({ event: 'usage', data: JSON.stringify(owned) });
-        });
-        const offRun = onRunFrames(store, (_run, frames) => void stream.writeSSE({ event: 'run', data: frames.record() }));
-        const offDeleted = onRunDeleted(store, onDeleted);
-        stream.onAbort(() => {
-          offRun();
-          offDeleted();
-          offTodos();
-          offUsage();
-        });
-        while (!stream.aborted) {
-          await stream.writeSSE({ event: 'ping', data: '' });
-          await stream.sleep(15_000);
-        }
-      });
-    });
-
-  // ---- chained family: workspace SSE stream (workspace-level) ----
-  const workspaceEventsRoutes = new Hono<ProjectApiEnv>()
-    .get('/workspace/events', (c) => {
-      return streamSSENoBuffer(c, async (stream) => {
-        // One detach bundle per attached project — the id guard makes a double
-        // attach (connect-time snapshot vs. the built hook) impossible.
-        const attached = new Map<string, { store: RunStore; detach: () => void }>();
-        const attach = (project: string, ctx: Pick<ProjectContext, 'store' | 'dataDir' | 'manager'>): void => {
-          if (attached.has(project)) return;
-          const { store, dataDir } = ctx;
-          const onDeleted = (id: string) =>
-            void stream.writeSSE({
-              event: 'run-deleted',
-              data: JSON.stringify({ id, project }),
-            });
-          const sendTodos = async () => {
-            const items: TodoItem[] = await readTodos(dataDir).catch(() => []);
-            await stream.writeSSE({
-              event: 'todos',
-              data: JSON.stringify({ project, items }),
-            });
-          };
-          // Same opt-in gate as the per-project stream (#471): no capability, no
-          // watcher — and each subscription is scoped to its own dataDir (2.3).
-          const offTodos = capabilities().followups ? onTodosChanged(dataDir, () => void sendTodos()) : () => undefined;
-          const offRun = onRunFrames(store, (_run, frames) =>
-            void stream.writeSSE({ event: 'run', data: frames.workspace(project) }),
-          );
-          const offLifecycle = ctx.manager.lifecycle?.onChange(event => {
-            const payload: WorktreeLifecycleInvalidation = { ...event, projectId: project };
-            void stream.writeSSE({ event: 'worktree-lifecycle', data: JSON.stringify(payload) });
-          });
-          const offDeleted = onRunDeleted(store, onDeleted);
-          attached.set(project, {
-            store,
-            detach: () => {
-              offRun();
-              offDeleted();
-              offTodos();
-              offLifecycle?.();
-            },
-          });
-        };
-
-        // The boot context never lives in the lazy map — seed it under its
-        // registry id (`resolveBootProject`, NOT `bootContext.id`, which may be
-        // the reserved alias when registration was suppressed).
-        attach(await resolveBootProject(), bootContext);
-        // NB: snapshot + hook subscription happen in one sync block, so no
-        // context can slip between them.
-        for (const id of contexts.ids()) {
-          const ctx = contexts.peek(id);
-          if (ctx) attach(ctx.id, ctx);
-        }
-        const offBuilt = contexts.onContextBuilt((ctx) => attach(ctx.id, ctx));
-
-        // `usage` is FILTERED per project, never a stamped whole (spec "SSE
-        // streams"): the module-global sampler's snapshot is split by each
-        // attached project's owned runIds, one event per project that has live
-        // rows. No event for a row-less project — the workspace stream carries
-        // no empty-record clears (that is the per-project streams' contract).
-        const offUsage = onUsage((usage) => {
-          const rows = Object.entries(usage);
-          for (const [project, { store }] of attached) {
-            const owned: typeof usage = {};
-            for (const [runId, sample] of rows) {
-              if (store.getRun(runId)) owned[runId] = sample;
-            }
-            if (Object.keys(owned).length > 0) {
-              void stream.writeSSE({
-                event: 'usage',
-                data: JSON.stringify({
-                  project, usage: owned, sentAt: new Date().toISOString(),
-                  samples: Object.keys(owned).flatMap((runId) => {
-                    const run = store.getRun(runId);
-                    const timed = currentTimedUsage(runId);
-                    return timed && run?.status === 'running' && !run.archived
-                      ? [{ projectId: project, runId, ...timed }] : [];
-                  }),
-                }),
-              });
-            }
-          }
-        });
-
-        // Workspace-level events (project-added / project-removed /
-        // checkout-progress plus host-wide unstamped provider-status) — relayed
-        // verbatim under their own names. A removal also drops the project's
-        // attach entry: the id guard in `attach` would otherwise pin the
-        // DISPOSED context forever, so a project removed and re-added on the
-        // same slug would rebuild a fresh context whose events never reach this
-        // already-open stream.
-        const offWorkspace = workspaceEvents.on((event, data) => {
-          if (event === 'project-removed') {
-            const removed = (data as { id?: string }).id;
-            if (removed !== undefined && attached.has(removed)) {
-              attached.get(removed)?.detach();
-              attached.delete(removed);
-            }
-          }
-          void stream.writeSSE({ event, data: JSON.stringify(data) });
-        });
-
-        stream.onAbort(() => {
-          offBuilt();
-          offUsage();
-          offWorkspace();
-          for (const { detach } of attached.values()) detach();
-          attached.clear();
-        });
-
-        while (!stream.aborted) {
-          await stream.writeSSE({ event: 'ping', data: '' });
-          await stream.sleep(15_000);
-        }
-      });
-    });
-
+  const sseRoutes = createSseRoutes({ capabilities, streamSSENoBuffer });
+  const workspaceEventsRoutes = createWorkspaceEventsRoutes({
+    bootContext,
+    capabilities,
+    contexts,
+    resolveBootProject,
+    streamSSENoBuffer,
+    workspaceEvents,
+  });
   // ---- chained family: GitHub (project-scoped) ----
   // These sit ABOVE the routes rather than with the family's other schemas below it, because a
   // validator argument is evaluated when the route is REGISTERED — a schema declared further down
@@ -6638,283 +6193,8 @@ export function createApp(deps: ServerDeps) {
       return 'error' in r ? c.json({ error: r.error }, 409) : c.json({ message: r.message, sync: r.sync });
     });
 
-  // An explicit "auto" default becomes `''` on the wire (#906): the empty id IS
-  // auto in every model picker, so an older cockpit reading this answer shows
-  // auto too rather than tripping over an unknown sentinel. Only `true` counts —
-  // `false` is the absence of an opinion, not an opinion.
-  // Typed rather than left to `Object.fromEntries`' index signature: `configAnswer`'s return type
-  // is asserted `Exact` against `configResponseSchema` (contract-parity.workspace.test.ts), and an
-  // index signature leaking into the spread would widen `defaultModels` past the contract.
-  const autoModelOverrides = (auto: OnniConfig['defaultModelsAuto']): AgentModelDefaults =>
-    Object.fromEntries(
-      Object.entries(auto ?? {})
-        .filter(([, isAuto]) => isAuto === true)
-        .map(([runner]) => [runner, '']),
-    );
-
-  // The Settings → Agents knobs in one read (R6 Step 1.5) — an ADDITIVE
-  // sibling of PUT /api/config below; /api/health keeps its protected shape.
-  const configAnswer = async (repoRoot: string, config: OnniConfig) => {
-    const lifecycle = await readLifecycleConfigOrDefault(repoRoot, { trust: false });
-    const nativeModels = await readAgentModelDefaults(repoRoot);
-    const modelsLocked = agentModelsLocked(repoRoot);
-    return {
-      baseBranch: config.baseBranch ?? null,
-      defaultRunner: config.defaultRunner,
-      systemPrompt: config.systemPrompt ?? null,
-      branchNaming: config.branchNaming ?? null,
-      // Native defaults seed each runner independently. A Onni preset remains
-      // selectable unless the operator opts into the fixed-model policy.
-      // An explicit auto override (#906) answers `''` for that runner — the one
-      // way to say "ignore the agent's own configured default" without editing
-      // the vendor's settings file. It layers over the native seed and under a
-      // repo preset, so setting a preset later simply wins.
-      defaultModels: modelsLocked
-        ? nativeModels
-        : {
-            ...nativeModels,
-            ...autoModelOverrides(config.defaultModelsAuto),
-            ...(config.defaultModels ?? {}),
-          },
-      modelsLocked,
-      maxParallel: config.maxParallel,
-      memoryLimitMb: config.memoryLimitMb ?? null,
-      // Count-based worktree retention (#483): keep the last N finished worktrees
-      // on disk. 0 = unlimited. Always materialized (schema default 10).
-      worktreeRetention: config.worktreeRetention,
-      ...(lifecycle.configured ? { worktreeLifecycle: lifecycle.config, worktreeLifecycleRevision: lifecycle.revision! } : {}),
-      // Live title updates (task auto-naming spec): tri-state — null means "no
-      // config key, the ONNI_TITLE_UPDATES env default (ON) decides".
-      liveTitleUpdates: config.liveTitleUpdates ?? null,
-      // Optional review gate (#489): tri-state — null means "no config key, the
-      // ONNI_REVIEW_GATE env default (OFF) decides".
-      reviewGate: config.reviewGate ?? null,
-      profile: config.profile ?? null,
-      taskWorkspace: config.taskWorkspace ?? null,
-      landing: config.landing ?? null,
-      landingBlocked:
-        config.landing === 'auto' && (await isLifecycleConfigTracked(repoRoot).catch(() => true))
-          ? 'auto-land is not honored: .ai/onni/config.json is tracked by git, and only local configuration can grant it'
-          : null,
-      requiredChecks: config.requiredChecks ?? [],
-      defaultSkill: config.defaultSkill ?? null,
-      askSkill: config.askSkill ?? null,
-      teamSkills: config.skillsRepos.length > 0,
-    };
-  };
-  // ---- chained family: per-repo config (project-scoped) ----
-  const configRoutes = new Hono<ProjectApiEnv>()
-    .get('/config', async (c) => {
-      const repoRoot = c.get('project').root;
-      try { return c.json(await configAnswer(repoRoot, await loadConfig(repoRoot))); }
-      catch (error) { return lifecycleError(c, error); }
-    })
-
-    .put('/config', jsonZodValidator(setConfigInputSchema), async (c) => {
-      const { root: repoRoot, dataDir } = c.get('project');
-      const parsed = { data: c.req.valid('json') };
-      // The auto override is a model choice too (#906), so the fixed-model
-      // policy refuses it on exactly the same terms as a preset.
-      if (
-        agentModelsLocked(repoRoot) &&
-        (parsed.data.defaultModels !== undefined || parsed.data.defaultModelsAuto !== undefined)
-      ) {
-        return c.json({ error: AGENT_MODELS_LOCKED_ERROR }, 409);
-      }
-      try {
-        const configPath = join(dataDir, 'config.json');
-        const save = async (locked: boolean) => {
-          let raw: Record<string, unknown> = {};
-          try { raw = await readLifecycleConfigRaw(repoRoot); }
-          catch (error) {
-            // Malformed or unreadable — start fresh, as before scripts existed. Unlocked (symlinked
-            // data dir) reads the file the way the old route did.
-            if (locked && !(error instanceof LifecycleConfigError)) throw error;
-            if (!locked) {
-              try {
-                const existing: unknown = JSON.parse(await readFile(configPath, 'utf8'));
-                if (existing && typeof existing === 'object' && !Array.isArray(existing)) raw = existing as Record<string, unknown>;
-              } catch { /* missing or malformed — start fresh */ }
-            }
-          }
-          lifecycleConfigFromRaw(raw); // An unrelated save cannot silently repair or reset unsupported hooks.
-          if (parsed.data.worktreeLifecycle !== undefined) {
-            if (parsed.data.worktreeLifecycleRevision === undefined) throw new Error('Reload settings before saving worktree scripts: revision is required');
-            if (parsed.data.worktreeLifecycle !== null) {
-              for (const entry of [...parsed.data.worktreeLifecycle.afterCreate, ...parsed.data.worktreeLifecycle.beforeRemove]) validateLifecycleCommand(entry.command);
-              const scripts = parsed.data.worktreeLifecycle.afterCreate.length + parsed.data.worktreeLifecycle.beforeRemove.length;
-              if (scripts > 0 && await isLifecycleConfigTracked(repoRoot)) throw new LifecycleConfigError(TRACKED_CONFIG_ERROR);
-            }
-            raw = applyLifecycleConfigUpdate(raw, parsed.data.worktreeLifecycle, parsed.data.worktreeLifecycleRevision);
-          }
-          if (parsed.data.baseBranch !== undefined) {
-            if (parsed.data.baseBranch === null) delete raw.baseBranch;
-            else raw.baseBranch = parsed.data.baseBranch;
-          }
-          if (parsed.data.defaultRunner !== undefined) raw.defaultRunner = parsed.data.defaultRunner;
-          if (parsed.data.systemPrompt !== undefined) {
-            // '' and null both clear: an emptied textarea means "no extra prompt".
-            if (parsed.data.systemPrompt === null || parsed.data.systemPrompt === '') {
-              delete raw.systemPrompt;
-            } else {
-              raw.systemPrompt = parsed.data.systemPrompt;
-            }
-          }
-          if (parsed.data.branchNaming !== undefined) {
-            // Same clearing rule as systemPrompt: an emptied textarea means `onni/<id8>` again.
-            if (parsed.data.branchNaming === null || parsed.data.branchNaming === '') {
-              delete raw.branchNaming;
-            } else {
-              raw.branchNaming = parsed.data.branchNaming;
-            }
-          }
-          if (parsed.data.maxParallel !== undefined) raw.maxParallel = parsed.data.maxParallel;
-          if (parsed.data.worktreeRetention !== undefined) {
-            // null clears back to the default (10); a number (including 0 = unlimited)
-            // is stored as-is.
-            if (parsed.data.worktreeRetention === null) delete raw.worktreeRetention;
-            else raw.worktreeRetention = parsed.data.worktreeRetention;
-          }
-          if (parsed.data.liveTitleUpdates !== undefined) {
-            if (parsed.data.liveTitleUpdates === null) delete raw.liveTitleUpdates;
-            else raw.liveTitleUpdates = parsed.data.liveTitleUpdates;
-          }
-          if (parsed.data.reviewGate !== undefined) {
-            if (parsed.data.reviewGate === null) delete raw.reviewGate;
-            else raw.reviewGate = parsed.data.reviewGate;
-          }
-          // Trunk-based keys (spec 2026-10-20-trunk-based-projects): null or '' clears.
-          for (const key of ['profile', 'taskWorkspace', 'landing', 'defaultSkill', 'askSkill'] as const) {
-            const value = parsed.data[key];
-            if (value === undefined) continue;
-            if (value === null || value === '') delete raw[key];
-            else raw[key] = value;
-          }
-          if (parsed.data.requiredChecks !== undefined) {
-            if (!parsed.data.requiredChecks?.length) delete raw.requiredChecks;
-            else raw.requiredChecks = parsed.data.requiredChecks;
-          }
-          if (parsed.data.teamSkills === false) raw.skillsRepos = [];
-          else if (parsed.data.teamSkills === true && Array.isArray(raw.skillsRepos) && raw.skillsRepos.length === 0) {
-            delete raw.skillsRepos;
-          }
-          if (parsed.data.memoryLimitMb !== undefined) {
-            // null or 0 both mean "no ceiling" — drop the key back to the default.
-            if (parsed.data.memoryLimitMb === null || parsed.data.memoryLimitMb === 0) {
-              delete raw.memoryLimitMb;
-            } else {
-              raw.memoryLimitMb = parsed.data.memoryLimitMb;
-            }
-          }
-          if (parsed.data.defaultModels !== undefined) {
-            // Per-runner merge, so setting codex's preset never clobbers claude's.
-            const current =
-              raw.defaultModels && typeof raw.defaultModels === 'object'
-                ? { ...(raw.defaultModels as Record<string, unknown>) }
-                : {};
-            for (const [runner, model] of Object.entries(parsed.data.defaultModels)) {
-              if (model === undefined) continue;
-              if (model === null || model === '') delete current[runner];
-              else current[runner] = model;
-            }
-            if (Object.keys(current).length === 0) delete raw.defaultModels;
-            else raw.defaultModels = current;
-          }
-          if (parsed.data.defaultModelsAuto !== undefined) {
-            // Same per-runner merge as the presets above, and the same "store only a
-            // real opinion" rule: `false`/`null` deletes rather than persisting a
-            // key that means nothing (#906).
-            const current =
-              raw.defaultModelsAuto && typeof raw.defaultModelsAuto === 'object'
-                ? { ...(raw.defaultModelsAuto as Record<string, unknown>) }
-                : {};
-            for (const [runner, isAuto] of Object.entries(parsed.data.defaultModelsAuto)) {
-              if (isAuto === undefined) continue;
-              if (isAuto) current[runner] = true;
-              else delete current[runner];
-            }
-            if (Object.keys(current).length === 0) delete raw.defaultModelsAuto;
-            else raw.defaultModelsAuto = current;
-          }
-          if (locked) await atomicLifecycleWrite(configPath, raw);
-          else {
-            await mkdir(dataDir, { recursive: true });
-            await writeFile(configPath, `${JSON.stringify(raw, null, 2)}\n`, 'utf8');
-          }
-        };
-        // All config writers share this short lock with the transition's final revision check.
-        try { await withLifecycleConfigLock(repoRoot, () => save(true)); }
-        catch (error) {
-          // The lifecycle store refuses a symlinked data dir; settings without scripts still save.
-          if (!(error instanceof LifecycleStoreError) || parsed.data.worktreeLifecycle !== undefined) throw error;
-          await save(false);
-        }
-        return c.json(await configAnswer(repoRoot, await loadConfig(repoRoot)));
-      } catch (error) { return lifecycleError(c, error); }
-    });
-
-  // Set/clear the agents' config knobs (Settings → Agents; the Repo tab's
-  // base-branch picker). Merges into the RAW config.json so user keys
-  // (skillsRepos…) survive and schema defaults are never materialized into
-  // the file. All fields optional + additive: `null` (and `''` for the
-  // R6 keys) clears a knob back to its default.
-  const setAgentConfigSchema = z.object({
-    content: z.string().max(2_000_000),
-    version: z.string().nullable(),
-  });
-
-  // ---- chained family: agent-config (project-scoped) -----------------------
-  // Agent config is project-scoped (spec #404, adapted to the multi-project
-  // route seam from #521): handlers resolve the selected repo through the
-  // same ProjectContext as every other mirrored route. Chained (not statements)
-  // so `AppType` carries it — see `healthRoutes`.
-  const agentConfigRoutes = new Hono<ProjectApiEnv>()
-    .get('/agent-config', async (c) => {
-      const editable = capabilities().localHandoff;
-      return c.json(await listAgentConfig(c.get('project').root, process.env, editable));
-    })
-
-    .get('/agent-config/:id', async (c) => {
-      const id = c.req.param('id');
-      const def = findConfigFile(id);
-      if (!def) return c.json({ error: 'unknown config file' }, 404);
-      if (def.tracked === 'outside-repo' && !capabilities().localHandoff) {
-        return c.json(
-          {
-            error: 'this file lives in your home directory and is not served in hosted mode (ONNI_REMOTE)',
-          },
-          409,
-        );
-      }
-      const read = await readConfigFile(id, c.get('project').root);
-      if (read === null) return c.json({ error: 'unknown config file' }, 404);
-      if ('error' in read) return c.json({ error: read.error }, 500);
-      return c.json(read);
-    })
-
-    .put('/agent-config/:id', jsonZodValidator(setAgentConfigSchema), async (c) => {
-      // Config files may define hooks and MCP commands, so writes remain a
-      // local-machine capability and are re-gated on every request.
-      if (!capabilities().localHandoff) {
-        return c.json(
-          {
-            error:
-              'editing agent config is disabled in hosted mode (ONNI_REMOTE) — edit it from the machine that owns the checkout',
-          },
-          409,
-        );
-      }
-      const parsed = { data: c.req.valid('json') };
-      const out = await writeConfigFile(
-        c.req.param('id'),
-        parsed.data.content,
-        parsed.data.version,
-        c.get('project').root,
-      );
-      if (out === null) return c.json({ error: 'unknown config file' }, 404);
-      if (!out.ok) return c.json({ error: out.error }, out.status);
-      return c.json(out.read);
-    });
+  const configRoutes = createConfigRoutes();
+  const agentConfigRoutes = createAgentConfigRoutes({ capabilities });
 
   // Repo view branch actions: switch to an existing branch, or create one
   // (from `from` or HEAD) and switch. Predictable git failures — invalid
