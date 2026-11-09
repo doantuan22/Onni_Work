@@ -1,4 +1,6 @@
 import type { AgentSession, ContentBlock, RunnerId } from '../../core/agent-runner.ts';
+import type { WorkflowStepDef } from '../types.ts';
+import type { ExecutableNode, ForkShape, GraphNode, GraphTransition, WorkflowGraph } from '../graph.ts';
 import type { AgentEvent } from '../../core/agent-runner.ts';
 import type { UiEvent } from '../../core/ui-events.ts';
 import type { UiEventSink } from '../../runs/ui-event-sink.ts';
@@ -22,7 +24,6 @@ import type {
 import type { QueuedMessage, RunRecord, RunStore } from '../../runs/store.ts';
 import type { AccountHolds, WorkspaceSemaphore } from '../../workspace/semaphore.ts';
 import type { SecretStore } from '../../workspace/secrets.ts';
-import type { WorkflowGraph } from '../graph.ts';
 import type { WorkflowDef } from '../types.ts';
 import type { StartRunInput } from '../run.ts';
 import type { PersistedAttachment, PastedContent } from './preparation.ts';
@@ -825,4 +826,119 @@ export interface ContinuationContext {
   softAskFor(runId: string, requestId: string | undefined): RunDispatch['softAsk'];
   tryAutonomousNudge(runId: string, state: ContinuationActiveRun, stepId: string, ask: import('../../core/ask.ts').AskRequest | null, dispatchTurn: DispatchTurnResult): boolean;
   tryCompactionContinue(runId: string, state: ContinuationActiveRun, stepId: string, opts: { markerless: boolean; dispatchTurn: DispatchTurnResult }): boolean;
+}
+
+/** The live-run fields read or updated by the workflow graph engine. */
+export interface GraphActiveRun {
+  cancelled: boolean;
+  cwd: string;
+  interrupt: () => void;
+  askPark?: 'waiting' | 'abandoned';
+  graphAnswer?: (text: string) => void;
+  graphFinish?: () => void;
+  graphChildWaits?: Map<string, (child: { status: string; summary: string }) => void>;
+  repoRootParked?: boolean;
+  repoRootResume?: Promise<boolean>;
+  skills?: Skill[];
+  autosaveExcludedPaths: Map<string, string>;
+  checkInProgress: boolean;
+  autosaveCheckpointBlocked: boolean;
+}
+
+/** The graph walk's state, manager-owned callbacks, and narrowly scoped effects. */
+export interface GraphContext {
+  store: RunStore;
+  repoRoot: string;
+  dataDir: string;
+  active: ReadonlyMap<string, GraphActiveRun>;
+  waiting: Set<string>;
+  autosaveCheckpointBlockedRuns: Set<string>;
+  resumableBackends: ReadonlySet<RunnerId>;
+  applyTemplate(template: string, task: string): string;
+  cardReply(text: string, header: string): string;
+  autoResumeReasonFor(error: string | undefined): SchedulingAutoResumeReason | undefined;
+  currentCheckExclusions(dir: string, owned: Map<string, string>): Promise<string[]>;
+  captureCheckArtifacts(dir: string, owned: Map<string, string>): Promise<void>;
+
+  runAgentStep(
+    runId: string,
+    state: GraphActiveRun,
+    step: WorkflowStepDef,
+    input: StartRunInput,
+    skills: Skill[],
+    checkFailure: string | null,
+    interactive: boolean,
+    emit: (event: { type: string; stepId?: string; [k: string]: unknown }) => void,
+    images: ContentBlock[] | undefined,
+    taskBackend: RunnerId,
+    extraSystemPrompt: string | undefined,
+    chainNote: string | undefined,
+    attachments?: PersistedAttachment[],
+    graphHooks?: { resumeSessionId?: string; lastTurn?: { text: string }; usageLimitResume?: StepState },
+  ): Promise<string | null>;
+  runCheckStep(
+    runId: string,
+    state: GraphActiveRun,
+    step: WorkflowStepDef,
+    emit: (event: { type: string; stepId?: string; [k: string]: unknown }) => void,
+  ): Promise<{ ok: boolean; output: string; exitCode: number }>;
+  finishStep(
+    runId: string,
+    stepId: string,
+    status: 'done' | 'failed',
+    error: string | undefined,
+    emit: (event: { type: string; stepId?: string; [k: string]: unknown }) => void,
+  ): void;
+  idleClosedFails(runId: string, state: GraphActiveRun): Promise<boolean>;
+  inactivityFailureMessage(runId?: string, state?: GraphActiveRun): string;
+  dispatch(
+    parentId: string,
+    input: DispatchInput,
+    opts?: {
+      workflow?: WorkflowDef;
+      antigravityLevel?: AgentPermissionLevel;
+      redirectOrigin?: RedirectDispatchOrigin;
+      preflightOnly?: boolean;
+    },
+  ): { id: string; branch?: string } | { refused: string };
+  cancel(runId: string): boolean;
+  releaseSlot(): void;
+  parkRepoRoot(runId: string, state: GraphActiveRun): void;
+  claimFreeRepoRoot(state: GraphActiveRun): boolean;
+  resumeRepoRoot(runId: string, state: GraphActiveRun): Promise<boolean>;
+  makeUiSink(runId: string, stepId: string): UiEventSink;
+  recordAttention(
+    requestId: string,
+    input: readonly { question: string; options?: readonly { label: string; description?: string }[] }[],
+  ): WebhookAttentionRequest;
+  runFork(
+    graph: WorkflowGraph,
+    runId: string,
+    state: GraphActiveRun,
+    fork: Extract<GraphNode, { type: 'fork' }>,
+    shape: ForkShape,
+    outputs: Map<string, Record<string, string | number>>,
+    task: string,
+    emit: (event: { type: string; stepId?: string; [k: string]: unknown }) => void,
+    onOutputs: () => void,
+    resuming: boolean,
+  ): Promise<{ port: 'done' | 'failed'; join: string; transitions: GraphTransition[] } | 'finished'>;
+  runSystemNode(
+    runId: string,
+    state: GraphActiveRun,
+    node: Exclude<ExecutableNode, { type: 'agent' | 'check' | 'fork' | 'join' }>,
+    outputs: Map<string, Record<string, string | number>>,
+    task: string,
+    emit: (event: { type: string; stepId?: string; [k: string]: unknown }) => void,
+    onOutputs?: () => void,
+    resuming?: boolean,
+  ): Promise<string | 'finished'>;
+  awaitChildren(
+    runId: string,
+    state: GraphActiveRun,
+    nodeId: string,
+    childIds: string[],
+    mode: 'all' | 'any',
+  ): Promise<Map<string, { status: string; summary: string }> | 'finished'>;
+  findWorkflow(name: string): Promise<WorkflowDef | undefined>;
 }
