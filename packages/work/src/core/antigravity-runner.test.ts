@@ -64,6 +64,9 @@ describe('AntigravityRunner (mock agy)', () => {
   it('empty answer + a denied command → the run fails and says what was denied', async () => {
     const { events, error } = await runTurn('mock:denied');
     expect(error).toContain('npm test');
+    expect(error).toContain('effective permission level "Files only"');
+    expect(error).toContain('manager should hand this part to a codex worker');
+    expect(error).not.toContain('Settings');
     expect(events.some((e) => e.type === 'error')).toBe(true);
     expect(events.at(-1)?.type).not.toBe('done');
   }, 20_000);
