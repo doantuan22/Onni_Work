@@ -49,4 +49,4 @@ I fetched the public product pages and documentation linked below. â€œVerifiedâ€
 
 The leading products converge on a persistent task/session navigator, an agent-centered conversation, optional composable review/terminal/preview panes, contextual diff comments, explicit busy/attention cues, and shortcut/prompt queues for parallel work. The most direct Onni fit is to compose around its existing `TaskWorkspaceRoute`, `WorkspaceColumns`, `TaskComposer`, task palette, and run/dispatch records. The design must keep worktree ownership, local-first defaults, manager/worker hierarchy, supported approval contracts, and human-controlled review/merge visible.
 
-Output: `.ai/specs/agentic-workspace/survey-D-references.md`.
+Output: `agentic-workspace/survey-D-references.md`.

@@ -112,7 +112,7 @@ AskCard handles structured questions; TaskComposer handles reply input; AgentsDo
 
 ## Short report
 
-Verified the current data model is one run per thread, with turns/items derived from append-only run events. Per-run SSE provides replay/backfill; WS topics carry live summaries or cursors. Existing cross-project run index, finished-task unread, and per-run layouts help, while transcript search and pane state across distinct runs are absent. Deliverable: .ai/specs/agentic-workspace/survey-C-backend.md.
+Verified the current data model is one run per thread, with turns/items derived from append-only run events. Per-run SSE provides replay/backfill; WS topics carry live summaries or cursors. Existing cross-project run index, finished-task unread, and per-run layouts help, while transcript search and pane state across distinct runs are absent. Deliverable: agentic-workspace/survey-C-backend.md.
 
 
 

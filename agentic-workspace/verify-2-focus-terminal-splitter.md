@@ -19,7 +19,7 @@ a likely consequence rather than an observed runtime failure.
 
 - The design itself identifies this as new host state: the current task workspace’s panes are views
   of one run, while the target adds a per-project ordered thread list and `active: paneId`
-  (`.ai/specs/agentic-workspace/design.md:31-36, 73-88`). Its stated context-follow-active-thread rule is
+  (`agentic-workspace/design.md:31-36, 73-88`). Its stated context-follow-active-thread rule is
   therefore a proposal, not current `WorkspaceColumns` behavior.
 - `WorkspaceColumns` has a local `narrowIndex` only for viewports below 1024px
   (`packages/web/src/routes/task-workspace/workspace-columns.tsx:76-93`). On that layout, a Radix
@@ -122,7 +122,7 @@ unmarked wide column wrappers.
 - The drawer is mounted after the task-workspace stage and receives `run.id`, the route’s run, not
   an active thread ID (`packages/web/src/routes/task-workspace/task-workspace.tsx:823-837`). Current
   code has one run per workspace; the design’s active-thread context is a new multi-run host
-  (`.ai/specs/agentic-workspace/design.md:31-36, 64-88`). Therefore the two-up active-thread drawer
+  (`agentic-workspace/design.md:31-36, 64-88`). Therefore the two-up active-thread drawer
   placement is not an existing behavior.
 - The terminal header displays host, project directory name, and `active.cwd` (the worktree path)
   (`packages/web/src/routes/task-workspace/terminal-drawer.tsx:86-94, 320-338`). It does not display
