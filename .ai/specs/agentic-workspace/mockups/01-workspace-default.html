@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Workspace default · Onni mockup</title>
+  <link rel="stylesheet" href="assets/mockup.css">
+  <script defer src="assets/mockup.js"></script>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" hidden aria-hidden="true">
+    <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/><path d="M19 5v14"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 7v8a4 4 0 0 0 4 4h6M18 7v6a4 4 0 0 1-4 4"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-4.5 1.4-4.5-2.5-6-3m12 6v-3.2a2.8 2.8 0 0 0-.8-2.2c2.7-.3 5.5-1.3 5.5-6.1a4.8 4.8 0 0 0-1.3-3.3 4.4 4.4 0 0 0-.1-3.3s-1-.3-3.3 1.3a11.5 11.5 0 0 0-6 0C6.7 3.6 5.7 4 5.7 4a4.4 4.4 0 0 0-.1 3.3 4.8 4.8 0 0 0-1.3 3.3c0 4.8 2.8 5.8 5.5 6.1A2.8 2.8 0 0 0 9 19v3"/></symbol>
+    <symbol id="i-tracker" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M7.5 12h9M12 7.5v9"/></symbol>
+    <symbol id="i-automation" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="8" cy="18" r="1.5"/></symbol>
+    <symbol id="i-skills" viewBox="0 0 24 24"><path d="M3.5 5.5c3.2-.9 6-.2 8.5 1.7v12c-2.5-1.9-5.3-2.6-8.5-1.7zM20.5 5.5c-3.2-.9-6-.2-8.5 1.7v12c2.5-1.9 5.3-2.6 8.5-1.7z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a1.7 1.7 0 1 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1A1.7 1.7 0 0 0 4.2 12H4a1.7 1.7 0 1 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2v-.2a1.7 1.7 0 1 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a1.7 1.7 0 1 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9z"/></symbol>
+    <symbol id="i-changes" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14M4 8h6M14 16h6"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v5h5M8 13h8M8 17h8"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m5 7 5 5-5 5M12 18h7"/></symbol>
+    <symbol id="i-preview" viewBox="0 0 24 24"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-tree" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/><path d="M12 7v5M6 17v-2a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v2"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m8 12.5 7.8-7.8a3.2 3.2 0 0 1 4.5 4.5l-9.2 9.2a5 5 0 0 1-7.1-7.1l8.5-8.5"/></symbol>
+    <symbol id="i-at" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M15.5 15.5c-2.4 1.4-6.5 1.2-6.5-3a3 3 0 0 1 6 0v1.2a1.8 1.8 0 0 0 3.3 1"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m21 3-7.5 18-3.8-7.7L2 9.5zM21 3 9.7 13.3"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5h6l2 2h9v10a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></symbol>
+  </svg>
+
+  <div class="workspace-app">
+    <header class="topbar">
+      <div class="topbar-left">
+        <a class="topbar-brand" href="index.html" aria-label="Onni mockup home">
+          <span class="brand-mark" aria-hidden="true">o</span><span class="brand-name">onni</span>
+        </a>
+        <span class="topbar-divider" aria-hidden="true"></span>
+        <div class="project-crumb"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-folder"/></svg><strong>OnniCode</strong><span>/</span><span>Workspace</span></div>
+      </div>
+      <div class="topbar-right">
+        <span class="local-mark"><svg class="icon" aria-hidden="true"><use href="#i-git"/></svg> Local workspace</span>
+        <button class="theme-button" type="button" data-action="theme"><span aria-hidden="true">◐</span><span data-theme-label>Light theme</span></button>
+        <button class="annotation-button" type="button" data-action="annotations" aria-pressed="false">Show annotations</button>
+      </div>
+    </header>
+
+    <div class="workspace-body">
+      <aside class="navigator" aria-label="Project and task navigator">
+        <div class="nav-top">
+          <span class="nav-top-label">Navigator <span class="annotation-badge">§3 · project/session groups</span></span>
+          <div class="nav-top-actions">
+            <button class="btn btn-icon" type="button" data-action="collapse-navigator" aria-expanded="true" aria-label="Collapse navigator to icon rail" title="Collapse navigator">
+              <svg class="icon" aria-hidden="true"><use href="#i-collapse"/></svg>
+            </button>
+            <button class="btn btn-icon collapse-extra" type="button" aria-label="Create task" title="Create task"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          </div>
+        </div>
+        <button class="project-select" type="button" aria-label="Current project: OnniCode">
+          <span class="project-avatar" aria-hidden="true">O</span>
+          <span class="project-info"><strong>OnniCode</strong><small>D:\Projects\onni</small></span>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron"/></svg>
+        </button>
+        <div class="nav-scroll">
+          <section class="nav-section" aria-labelledby="needs-you-heading">
+            <div class="nav-section-heading" id="needs-you-heading"><span>Needs you</span><span class="nav-heading-count">2</span><span class="annotation-badge">§3 · attention groups</span></div>
+            <button class="nav-session" type="button">
+              <span class="status-dot status-dot-needs" aria-label="Waiting for your answer"></span>
+              <span class="nav-session-content">
+                <span class="nav-session-title"><span>Choose retry behavior</span><span class="unread-mark" aria-label="Unread update"></span></span>
+                <span class="nav-session-meta"><span class="chip chip-info">Ask</span><span class="chip">Claude</span><span>4m ago</span></span>
+              </span>
+            </button>
+            <button class="nav-session" type="button">
+              <span class="status-dot status-dot-needs" aria-label="Review is waiting"></span>
+              <span class="nav-session-content">
+                <span class="nav-session-title"><span>Review login redirect change</span><span class="unread-mark" aria-label="Unread update"></span></span>
+                <span class="nav-session-meta"><span class="chip chip-violet">Review</span><span class="chip">Codex</span><span>18m ago</span></span>
+              </span>
+            </button>
+          </section>
+
+          <section class="nav-section" aria-labelledby="running-heading">
+            <div class="nav-section-heading" id="running-heading"><span>Running</span><span class="nav-heading-count">2</span><span class="annotation-badge">§4 · manager → worker</span></div>
+            <button class="nav-session is-active" type="button" data-nav-target="panel-main">
+              <span class="status-dot status-dot-running" aria-label="Running"></span>
+              <span class="nav-session-content">
+                <span class="nav-session-title"><span>Reduce flaky test retries</span><span class="unread-mark" aria-label="Unread update"></span></span>
+                <span class="nav-session-meta"><span class="chip chip-primary">Manager · Codex</span><span>2m ago</span></span>
+              </span>
+            </button>
+            <div class="nav-nest" aria-label="Dispatched worker run">
+              <button class="nav-session" type="button">
+                <span class="status-dot status-dot-running" aria-label="Worker run is running"></span>
+                <span class="nav-session-content">
+                  <span class="nav-session-title"><span>Verify npm timeout handling</span></span>
+                  <span class="nav-session-meta"><span class="nav-run-kind">Worker run</span><span class="chip">Claude</span><span>1m</span></span>
+                </span>
+              </button>
+            </div>
+            <div class="nav-nest" aria-label="Runner subagents, separate from dispatched worker runs">
+              <div class="nav-section-heading"><span>Runner subagents</span><span class="nav-heading-count">1</span></div>
+              <div class="nav-session" role="group" aria-label="Runner subagent: inspect retry call sites">
+                <span class="status-dot status-dot-done" aria-label="Finished"></span>
+                <span class="nav-session-content">
+                  <span class="nav-session-title"><span>Inspect retry call sites</span></span>
+                  <span class="nav-session-meta"><span class="nav-run-kind">Runner subagent</span><span class="chip">Codex tools</span><span>done</span></span>
+                </span>
+              </div>
+            </div>
+            <button class="nav-session" type="button" data-nav-target="panel-auth">
+              <span class="status-dot status-dot-running" aria-label="Running"></span>
+              <span class="nav-session-content">
+                <span class="nav-session-title"><span>Review retry boundary tests</span></span>
+                <span class="nav-session-meta"><span class="chip">Codex</span><span>11m ago</span></span>
+              </span>
+            </button>
+          </section>
+
+          <section class="nav-section" aria-labelledby="recent-heading">
+            <div class="nav-section-heading" id="recent-heading"><span>Recent</span><span class="nav-heading-count">3</span></div>
+            <button class="nav-session" type="button"><span class="status-dot status-dot-done" aria-label="Done"></span><span class="nav-session-content"><span class="nav-session-title"><span>Add export retry notes</span></span><span class="nav-session-meta"><span class="chip">Claude</span><span>Yesterday</span></span></span></button>
+            <button class="nav-session" type="button"><span class="status-dot status-dot-done" aria-label="Done"></span><span class="nav-session-content"><span class="nav-session-title"><span>Document local setup</span></span><span class="nav-session-meta"><span class="chip">Codex</span><span>Mon</span></span></span></button>
+          </section>
+
+          <section class="nav-section" aria-labelledby="archived-heading">
+            <div class="nav-section-heading" id="archived-heading"><span>Archived</span><span class="nav-heading-count">12</span></div>
+            <button class="nav-session" type="button"><span class="status-dot status-dot-done" aria-label="Archived and complete"></span><span class="nav-session-content"><span class="nav-session-title"><span>Initial CLI scaffolding</span></span><span class="nav-session-meta"><span class="chip">Codex</span><span>Oct 28</span></span></span></button>
+          </section>
+          <section class="nav-section">
+            <div class="nav-section-heading"><span>Other projects</span><span class="nav-heading-count">1</span></div>
+            <button class="nav-session" type="button"><span class="project-avatar" aria-hidden="true">D</span><span class="nav-session-content"><span class="nav-session-title"><span>Onni docs</span></span><span class="nav-session-meta"><span>3 sessions · separate workspace</span></span></span></button>
+          </section>
+        </div>
+        <nav class="nav-tools" aria-label="Project tools">
+          <button class="nav-tool" type="button" aria-label="Git"><svg class="icon" aria-hidden="true"><use href="#i-git"/></svg><span>Git</span></button>
+          <button class="nav-tool" type="button" aria-label="GitHub"><svg class="icon" aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span></button>
+          <button class="nav-tool" type="button" aria-label="Tracker"><svg class="icon" aria-hidden="true"><use href="#i-tracker"/></svg><span>Tracker</span></button>
+          <button class="nav-tool" type="button" aria-label="Automations"><svg class="icon" aria-hidden="true"><use href="#i-automation"/></svg><span>Automations</span></button>
+          <button class="nav-tool" type="button" aria-label="Skills"><svg class="icon" aria-hidden="true"><use href="#i-skills"/></svg><span>Skills</span></button>
+          <button class="nav-tool" type="button" aria-label="Settings"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button>
+        </nav>
+        <div class="nav-footer"><span>On this device · no account</span><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg></div>
+      </aside>
+
+      <div class="splitter nav-splitter" role="separator" aria-orientation="vertical" aria-label="Resize navigator width" aria-valuemin="72" aria-valuemax="420" aria-valuenow="264" aria-valuetext="Navigator width 264 pixels" tabindex="0" data-splitter="navigator"></div>
+
+      <main class="main-shell">
+        <section class="conversation-area" aria-label="Conversation workspace">
+          <div class="thread-tabbar" role="tablist" aria-label="Open conversation tabs" data-pane-tabs>
+            <button class="thread-tab" id="tab-main" type="button" role="tab" aria-selected="true" aria-controls="panel-main" data-title="Reduce flaky test retries" data-branch="onni/ab12cd34" data-path="D:\Projects\onni\.ai\onni\worktrees\ab12cd34" data-status="Running">
+              <span class="status-dot status-dot-running" aria-hidden="true"></span><span class="tab-title">Reduce flaky test retries</span><span class="tab-close" aria-hidden="true">×</span>
+            </button>
+            <button class="thread-tab" id="tab-auth" type="button" role="tab" aria-selected="false" aria-controls="panel-auth" data-title="Review retry boundary tests" data-branch="onni/74c8dd10" data-path="D:\Projects\onni\.ai\onni\worktrees\74c8dd10" data-status="Running">
+              <span class="status-dot status-dot-running" aria-hidden="true"></span><span class="tab-title">Review retry boundary tests</span><span class="tab-close" aria-hidden="true">×</span>
+            </button>
+            <button class="thread-tab tab-draft" id="tab-draft" type="button" role="tab" aria-selected="false" aria-controls="panel-draft" data-title="New task draft" data-draft="true">
+              <svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg><span class="tab-title">New task</span><span class="tab-dot" aria-label="Draft"></span>
+            </button>
+            <span class="annotation-badge">§3, §11 · active tab by click</span>
+          </div>
+
+          <section class="conversation-pane" id="panel-main" role="tabpanel" aria-labelledby="tab-main" tabindex="0" data-pane-panel>
+            <header class="pane-toolbar">
+              <div class="pane-title-group">
+                <span class="status-dot status-dot-running" aria-hidden="true"></span>
+                <span class="pane-title" data-active-task-title>Reduce flaky test retries</span>
+                <span class="chip chip-primary">Manager run</span>
+                <span class="pane-subtitle">onni/ab12cd34</span>
+              </div>
+              <div class="pane-toolbar-actions">
+                <span class="run-state"><span class="status-dot status-dot-running"></span><span data-active-thread-status>Running</span> · 02:18</span>
+                <button class="btn btn-icon toolbar-optional" type="button" aria-label="Search this transcript" title="Search transcript"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></button>
+                <button class="btn btn-icon" type="button" aria-label="More task actions" title="More actions">···</button>
+              </div>
+            </header>
+            <div class="transcript" aria-label="Conversation transcript">
+              <div class="transcript-inner">
+                <article class="turn">
+                  <div class="turn-head"><span class="avatar avatar-user">You</span><strong>You</strong><span class="turn-time">10:42 AM</span></div>
+                  <div class="message-bubble message-user">
+                    <p>Find the flaky retry behavior in the test runner. Tighten the timeout handling, keep retries bounded, and add a focused regression test.</p>
+                    <p>Please leave the existing retry defaults alone unless the test proves they are the source.</p>
+                  </div>
+                </article>
+
+                <article class="turn">
+                  <div class="turn-head"><span class="avatar">C</span><strong>Codex</strong><span class="chip">GPT-5.1 · local run</span><span class="turn-time">10:42 AM</span></div>
+                  <div class="message-bubble">
+                    <p>I traced the retry path through the worker wrapper and the npm test launcher. The issue is that a timed-out child process can leave the retry loop waiting on a stale completion signal.</p>
+                    <p>I’ll inspect the timeout cleanup and ask a worker to verify the Windows shell edge case. The worker run stays separate from this manager conversation.</p>
+                  </div>
+
+                  <details class="tool-card" open>
+                    <summary><span class="tool-card-title">Read + search</span><span>Grouped inspection</span><span class="tool-card-meta">4 reads · 2 searches · 1.4s</span></summary>
+                    <div class="tool-card-body">
+                      <div class="tool-group-items">
+                        <div class="tool-group-row"><span class="tool-kind">read</span><code>packages/work/src/workflows/run.ts</code><span class="chip">4.2 KB</span></div>
+                        <div class="tool-group-row"><span class="tool-kind">read</span><code>packages/work/src/workflows/retry-policy.ts</code><span class="chip">1.1 KB</span></div>
+                        <div class="tool-group-row"><span class="tool-kind">search</span><code>rg "retry|timeout" packages/work/src</code><span class="chip">12 matches</span></div>
+                      </div>
+                    </div>
+                  </details>
+
+                  <div class="tool-card edit-card">
+                    <div class="edit-card-head"><span class="status-dot status-dot-done" aria-hidden="true"></span><strong>Edit retry-policy.ts</strong><span class="chip chip-primary">Applied in worktree</span><span class="mono">+4 −2</span></div>
+                    <div class="edit-card-body">
+                      <div class="mini-diff" aria-label="Mini diff showing a bounded timeout retry">
+                        <div class="mini-diff-line"><span class="line-mark"></span><span>const result = await runChild(command, options);</span></div>
+                        <div class="mini-diff-line del"><span class="line-mark">−</span><span>if (timedOut) await waitForExit(child);</span></div>
+                        <div class="mini-diff-line add"><span class="line-mark">+</span><span>if (timedOut) await stopAndCollect(child, timeoutMs);</span></div>
+                        <div class="mini-diff-line add"><span class="line-mark">+</span><span>return retryWithinLimit(result, retryLimit);</span></div>
+                      </div>
+                      <div class="edit-card-foot"><span>packages/work/src/workflows/retry-policy.ts</span><span>Open diff in Changes →</span></div>
+                    </div>
+                  </div>
+
+                  <div class="message-bubble">
+                    <p>The timeout path now waits for a bounded stop-and-collect result before deciding whether to retry. I added a test for the child process that exits just after the timeout.</p>
+                  </div>
+
+                  <section class="ask-card" aria-labelledby="ask-title">
+                    <div class="ask-card-head"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-info"/></svg><span id="ask-title">Question for you</span><span class="chip chip-info">Waiting on your choice</span></div>
+                    <p class="ask-card-question">When a child exits during the timeout grace period, should this run count as a retry?</p>
+                    <div class="ask-options">
+                      <button class="ask-option" type="button">Count it as completed</button>
+                      <button class="ask-option" type="button">Retry once within the existing limit</button>
+                      <button class="ask-option" type="button">Keep current behavior</button>
+                    </div>
+                  </section>
+                </article>
+              </div>
+            </div>
+            <div class="queued-indicator" role="status">
+              <span class="status-dot status-dot-needs" aria-hidden="true"></span><strong>1 queued message</strong><span>“Please include the race case in the test name.”</span>
+              <div class="queue-actions"><button class="btn" type="button">Steer</button><button class="btn btn-danger" type="button">Cancel</button></div>
+            </div>
+            <div class="composer-dock">
+              <div class="composer-wrap">
+                <form class="composer" aria-label="Message composer">
+                  <label class="sr-only" for="main-composer">Message Codex</label>
+                  <textarea id="main-composer" placeholder="Message Codex… Use @ for files or / for a skill.">Also include the race case in the test name.</textarea>
+                  <div class="composer-attachments"><span class="attachment-chip"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-file"/></svg>retry-policy.ts</span><span class="attachment-chip">+1 reference</span></div>
+                  <div class="composer-controls">
+                    <div class="composer-pickers">
+                      <button class="btn" type="button"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-paperclip"/></svg><span class="sr-only">Attach</span></button>
+                      <button class="btn" type="button"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-at"/></svg><span>@ Files</span></button>
+                      <button class="btn picker-extra" type="button"><span>/ Skills</span></button>
+                      <button class="btn btn-outline picker-extra" type="button">Codex <span aria-hidden="true">⌄</span></button>
+                      <button class="btn picker-extra" type="button">Default model <span aria-hidden="true">⌄</span></button>
+                    </div>
+                    <div class="composer-actions">
+                      <button class="btn btn-icon btn-danger" type="button" aria-label="Stop current run" title="Stop run"><svg class="icon" aria-hidden="true"><use href="#i-stop"/></svg></button>
+                      <button class="btn btn-primary" type="button"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-send"/></svg> Queue message</button>
+                    </div>
+                  </div>
+                </form>
+                <div class="composer-footnote">Running task · Queue a follow-up, or steer the active turn</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="conversation-pane" id="panel-auth" role="tabpanel" aria-labelledby="tab-auth" tabindex="0" data-pane-panel hidden>
+            <header class="pane-toolbar">
+              <div class="pane-title-group"><span class="status-dot status-dot-running"></span><span class="pane-title" data-active-task-title>Review retry boundary tests</span><span class="chip">Codex run</span><span class="pane-subtitle">onni/74c8dd10</span></div>
+              <div class="pane-toolbar-actions"><span class="run-state"><span class="status-dot status-dot-running"></span><span data-active-thread-status>Running</span> · 07:36</span><button class="btn btn-icon" type="button" aria-label="More task actions">···</button></div>
+            </header>
+            <div class="transcript"><div class="transcript-inner">
+              <article class="turn"><div class="turn-head"><span class="avatar avatar-user">You</span><strong>You</strong><span class="turn-time">9:58 AM</span></div><div class="message-bubble message-user"><p>Review the new retry boundary cases and make sure the grace-period test cannot exceed the existing retry limit.</p></div></article>
+              <article class="turn"><div class="turn-head"><span class="avatar">C</span><strong>Codex</strong><span class="turn-time">9:58 AM</span></div><div class="message-bubble"><p>I’m checking the timeout and retry-limit assertions against the manager run’s change. This review stays on its own branch and conversation.</p></div><details class="tool-card"><summary><span class="tool-card-title">Read retry tests</span><span class="tool-card-meta">3 files · 0.8s</span></summary><div class="tool-card-body"><div class="tool-group-row"><span class="tool-kind">read</span><code>packages/work/src/workflows/retry-policy.test.ts</code></div></div></details></article>
+            </div></div>
+            <div class="composer-dock"><div class="composer-wrap"><form class="composer" aria-label="Message composer"><label class="sr-only" for="auth-composer">Message Codex</label><textarea id="auth-composer" placeholder="Message Codex…"></textarea><div class="composer-controls"><div class="composer-pickers"><button class="btn" type="button">＋ Attach</button><button class="btn" type="button">@ Files</button><button class="btn picker-extra" type="button">/ Skills</button><button class="btn btn-outline" type="button">Codex</button></div><div class="composer-actions"><button class="btn btn-primary" type="button"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-send"/></svg> Send</button></div></div></form></div></div>
+          </section>
+
+          <section class="conversation-pane" id="panel-draft" role="tabpanel" aria-labelledby="tab-draft" tabindex="0" data-pane-panel hidden>
+            <header class="pane-toolbar">
+              <div class="pane-title-group"><span class="chip chip-violet">Draft pane</span><span class="pane-title" data-active-task-title>New task draft</span></div>
+              <div class="pane-toolbar-actions"><span class="run-state"><span class="status-dot status-dot-needs"></span><span data-active-thread-status>Draft</span></span></div>
+            </header>
+            <div class="draft-surface">
+              <div class="draft-card">
+                <h2>Start a task in OnniCode</h2>
+                <p>This draft belongs to the current project. Attachments are not saved when the app closes. The worktree and branch are created after launch.</p>
+                <div class="draft-preview" contenteditable="true" role="textbox" aria-label="New task prompt" aria-multiline="true">Describe the change you want to make…</div>
+                <div class="draft-options"><button class="btn btn-outline" type="button">＋ Attach files</button><button class="btn" type="button">@ Files</button><button class="btn" type="button">/ Skills</button><button class="btn btn-outline" type="button">Codex · Default model</button><button class="btn btn-primary" type="button">Start task</button></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <div class="splitter context-splitter" role="separator" aria-orientation="vertical" aria-label="Resize context area width" aria-valuemin="300" aria-valuemax="520" aria-valuenow="386" aria-valuetext="Context area width 386 pixels" tabindex="0" data-splitter="context"></div>
+
+        <aside class="context-shell" aria-label="Context for Reduce flaky test retries" data-owner-pane="panel-main">
+          <header class="context-toolbar">
+            <div class="context-heading">Context <span class="context-bound-label" data-context-owner>for Reduce flaky test retries</span><span class="annotation-badge">§3, §11 · active pane binding</span></div>
+            <button class="btn btn-icon" type="button" aria-label="Context actions">···</button>
+          </header>
+          <div class="context-tabs" role="tablist" aria-label="Context views" data-context-tabs>
+            <button class="context-tab" id="context-tab-changes" type="button" role="tab" aria-selected="true" aria-controls="ctx-changes">Changes</button>
+            <button class="context-tab" id="context-tab-files" type="button" role="tab" aria-selected="false" aria-controls="ctx-files">Files</button>
+            <button class="context-tab" id="context-tab-terminal" type="button" role="tab" aria-selected="false" aria-controls="ctx-terminal">Terminal</button>
+            <button class="context-tab" id="context-tab-preview" type="button" role="tab" aria-selected="false" aria-controls="ctx-preview">Preview</button>
+            <button class="context-tab" id="context-tab-tree" type="button" role="tab" aria-selected="false" aria-controls="ctx-tree">Tree</button>
+            <button class="context-tab" id="context-tab-inspector" type="button" role="tab" aria-selected="false" aria-controls="ctx-inspector">Info</button>
+          </div>
+
+          <section class="context-view changes-view" id="ctx-changes" role="tabpanel" aria-labelledby="context-tab-changes" tabindex="0" data-context-view>
+            <div class="changes-summary"><strong>Changes</strong><span class="chip chip-primary">2 files</span><span class="chip">+18</span><span class="chip chip-danger">−6</span><span class="annotation-badge">§4 · review with line comments</span></div>
+            <div class="change-tree"><span><strong>▾</strong> packages / work / src / workflows</span><span class="change-tree-meta">Working tree</span></div>
+            <div class="diff-file">
+              <div class="diff-file-header"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-file"/></svg><span>retry-policy.ts</span><span class="diff-count">+4 −2</span></div>
+              <div class="diff" aria-label="Diff for retry-policy.ts">
+                <div class="diff-line"><span class="line-no">40</span><span class="line-no">40</span><span class="line-mark"> </span><code>const child = spawn(command, args, options);</code><span></span></div>
+                <div class="diff-line del"><span class="line-no">41</span><span class="line-no"></span><span class="line-mark">−</span><code>if (timedOut) await waitForExit(child);</code><span></span></div>
+                <div class="diff-line add"><span class="line-no"></span><span class="line-no">41</span><span class="line-mark">+</span><code>if (timedOut) await stopAndCollect(child, timeoutMs);</code><button class="diff-comment" type="button" aria-label="Comment on retry-policy.ts line 41" data-comment="packages/work/src/workflows/retry-policy.ts:41"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg></button></div>
+                <div class="diff-line add"><span class="line-no"></span><span class="line-no">42</span><span class="line-mark">+</span><code>return retryWithinLimit(result, retryLimit);</code><button class="diff-comment" type="button" aria-label="Comment on retry-policy.ts line 42" data-comment="packages/work/src/workflows/retry-policy.ts:42"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg></button></div>
+                <div class="diff-line"><span class="line-no">43</span><span class="line-no">44</span><span class="line-mark"> </span><code>return result;</code><span></span></div>
+              </div>
+            </div>
+            <div class="diff-file">
+              <div class="diff-file-header"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-file"/></svg><span>retry-policy.test.ts</span><span class="diff-count">+14</span></div>
+              <div class="diff"><div class="diff-line add"><span class="line-no"></span><span class="line-no">88</span><span class="line-mark">+</span><code>it("collects a child that exits during the grace period", async () =&gt; {</code><button class="diff-comment" type="button" aria-label="Comment on retry-policy.test.ts line 88" data-comment="packages/work/src/workflows/retry-policy.test.ts:88"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg></button></div><div class="diff-line"><span class="line-no">89</span><span class="line-no">89</span><span class="line-mark"> </span><code>  const result = await runWithRetry(child, options);</code><span></span></div></div>
+            </div>
+            <div class="context-empty"><strong>Line comments go to this run’s composer.</strong> Select the plus next to a changed line to add a file and line reference to the active conversation.</div>
+          </section>
+
+          <section class="context-view" id="ctx-files" role="tabpanel" aria-labelledby="context-tab-files" tabindex="0" data-context-view hidden>
+            <div class="changes-summary"><strong>Files</strong><span class="chip">Worktree view</span></div>
+            <div class="files-list">
+              <div class="file-row"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-folder"/></svg><strong>packages</strong></div>
+              <div class="file-row"><span class="file-indent"></span><svg class="icon icon-sm" aria-hidden="true"><use href="#i-folder"/></svg>work</div>
+              <div class="file-row"><span class="file-indent"></span><span class="file-indent"></span><svg class="icon icon-sm" aria-hidden="true"><use href="#i-folder"/></svg>src</div>
+              <div class="file-row is-selected"><span class="file-indent"></span><span class="file-indent"></span><span class="file-indent"></span><svg class="icon icon-sm" aria-hidden="true"><use href="#i-file"/></svg>retry-policy.ts</div>
+              <div class="file-row"><span class="file-indent"></span><span class="file-indent"></span><span class="file-indent"></span><svg class="icon icon-sm" aria-hidden="true"><use href="#i-file"/></svg>retry-policy.test.ts</div>
+              <div class="file-row"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-folder"/></svg>docs</div>
+              <div class="file-row"><span class="file-indent"></span><svg class="icon icon-sm" aria-hidden="true"><use href="#i-file"/></svg>retry-notes.md</div>
+            </div>
+          </section>
+
+          <section class="context-view terminal-view" id="ctx-terminal" role="tabpanel" aria-labelledby="context-tab-terminal" tabindex="0" data-context-view hidden>
+            <div class="terminal-header"><span><svg class="icon icon-sm" style="display:inline-block;vertical-align:middle" aria-hidden="true"><use href="#i-terminal"/></svg> Terminal · agent shell</span><span class="chip">Windows · PowerShell</span></div>
+            <div class="terminal-header"><span>Branch <strong class="mono">onni/ab12cd34</strong></span><span class="mono">D:\Projects\onni\.ai\onni\worktrees\ab12cd34</span></div>
+            <pre class="terminal"><span class="term-prompt">PS D:\Projects\onni\.ai\onni\worktrees\ab12cd34&gt;</span> npm test -- packages/work/src/workflows/retry-policy.test.ts
+
+ RUN  v3.2.4
+ ✓ retry-policy.test.ts (8 tests) 41ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Duration  0.62s
+
+<span class="term-success">Process exited with code 0</span></pre>
+          </section>
+
+          <section class="context-view" id="ctx-preview" role="tabpanel" aria-labelledby="context-tab-preview" tabindex="0" data-context-view hidden>
+            <div class="changes-summary"><strong>Preview</strong><span class="chip">Local view</span></div>
+            <div class="context-empty"><strong>No preview server attached.</strong>This task is focused on retry handling. A run can open a local preview when its worktree has a web app available.</div>
+          </section>
+
+          <section class="context-view" id="ctx-tree" role="tabpanel" aria-labelledby="context-tab-tree" tabindex="0" data-context-view hidden>
+            <div class="changes-summary"><strong>Task tree</strong><span class="chip">Manager · Reduce flaky test retries</span></div>
+            <div class="files-list">
+              <div class="file-row"><span class="status-dot status-dot-running"></span><strong>Manager run · Codex</strong></div>
+              <div class="file-row"><span class="file-indent"></span><span class="status-dot status-dot-running"></span><span>Dispatched worker run · Claude</span><span class="chip">branch onni/worker-51c9</span></div>
+              <div class="file-row"><span class="file-indent"></span><span class="status-dot status-dot-done"></span><span>Runner subagent · inspect call sites</span><span class="chip chip-violet">tool session</span></div>
+            </div>
+            <div class="context-empty"><strong>Different kinds of work stay distinct.</strong>Worker runs are child tasks with their own branch and report. Runner subagents are scoped tool sessions inside this run.</div>
+          </section>
+
+          <section class="context-view" id="ctx-inspector" role="tabpanel" aria-labelledby="context-tab-inspector" tabindex="0" data-context-view hidden>
+            <div class="changes-summary"><strong>Run details</strong><span class="chip chip-primary">Running</span></div>
+            <div class="files-list">
+              <div class="file-row"><span>Backend</span><strong>Codex</strong></div>
+              <div class="file-row"><span>Model</span><strong>Default</strong></div>
+              <div class="file-row"><span>Workflow</span><strong>Feature</strong></div>
+              <div class="file-row"><span>Limits</span><strong>Standard · 60 min</strong></div>
+              <div class="file-row"><span>Branch</span><strong class="mono">onni/ab12cd34</strong></div>
+              <div class="file-row"><span>Pull request</span><span>Not created</span></div>
+            </div>
+          </section>
+        </aside>
+
+      </main>
+    </div>
+
+    <footer class="status-bar" aria-label="Active run status">
+      <span class="status-item"><svg class="icon" aria-hidden="true"><use href="#i-git"/></svg><span class="status-branch" data-status-branch>onni/ab12cd34</span></span>
+      <span class="status-item"><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><span class="status-path" data-status-path title="D:\Projects\onni\.ai\onni\worktrees\ab12cd34">D:\Projects\onni\.ai\onni\worktrees\ab12cd34</span></span>
+      <span class="status-item status-item-usage"><span>Usage</span><span class="status-meter" aria-label="Resource usage 34 percent"><span></span></span><span>19 / 60 min</span></span>
+      <span class="status-item status-item-limits"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><span>Standard limits</span></span>
+      <span class="status-item"><span>Tokens</span><strong>8.4k</strong><span>·</span><span>$0.03</span></span>
+      <span class="annotation-badge">§4 · explicit review and PR actions</span>
+      <span class="status-spacer"></span>
+      <div class="status-actions" data-run-actions>
+        <button class="btn btn-outline" type="button">Review</button>
+        <button class="btn btn-primary" type="button">Create PR</button>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
