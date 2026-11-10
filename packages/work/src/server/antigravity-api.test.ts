@@ -27,10 +27,14 @@ describe('antigravity through the API (dry-run)', () => {
   const started: string[] = [];
 
   beforeEach(() => {
-    for (const key of ['ONNI_DRY_RUN', 'ONNI_DISPATCH', 'ONNI_REMOTE', 'ONNI_WEBHOOKS', 'ONNI_HOME', 'ONNI_ANTIGRAVITY_BIN']) saved[key] = process.env[key];
+    for (const key of [
+      'ONNI_DRY_RUN', 'ONNI_DISPATCH', 'ONNI_REMOTE', 'ONNI_WEBHOOKS', 'ONNI_HOME', 'ONNI_ANTIGRAVITY_BIN',
+      'ONNI_ANTIGRAVITY_UNATTENDED_BYPASS',
+    ]) saved[key] = process.env[key];
     delete process.env.ONNI_REMOTE;
     delete process.env.ONNI_WEBHOOKS;
     delete process.env.ONNI_ANTIGRAVITY_BIN;
+    delete process.env.ONNI_ANTIGRAVITY_UNATTENDED_BYPASS;
     process.env.ONNI_DRY_RUN = '1';
     process.env.ONNI_DISPATCH = '1';
     home = mkdtempSync(join(tmpdir(), 'onni-agy-home-'));

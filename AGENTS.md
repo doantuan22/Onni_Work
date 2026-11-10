@@ -156,7 +156,8 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
 
 - **Antigravity fails closed.** `agy` cannot ask for approval headless, so a run starts on `files-only`
   (no commands); `allow-rules` and `bypass` are Settings → Agent permissions choices, `bypass` needs
-  `confirmBypass: true` and is **never** applied to an unattended run (`effectiveAntigravityLevel`). A turn
+  `confirmBypass: true` and is never applied to an unattended run unless `ONNI_ANTIGRAVITY_UNATTENDED_BYPASS=1`
+  (`effectiveAntigravityLevel`; off by default). The unattended Git pre-push fence still applies. A turn
   that was blocked and answered nothing **fails** — `agy` itself reports it as success. It is a
   worker only (`RUNNER_CAPABILITIES.canManage`, enforced by `rosterSchema`); turning that on is more than a
   flag flip (the manager's commands carry free arguments a whole-line grant cannot hold). It reports tokens, never USD. Do not

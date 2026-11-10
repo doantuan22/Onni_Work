@@ -531,6 +531,7 @@ Useful environment variables:
 | `ONNI_COPILOT_BIN=/path/to/copilot` | Override which GitHub Copilot CLI binary is used. |
 | `ONNI_CLINE_BIN=/path/to/cline` | Override which Cline CLI binary is used. |
 | `ONNI_ANTIGRAVITY_BIN=/path/to/agy` | Override which Antigravity CLI (`agy`) binary is used. Unset: `agy` on PATH, then the installer's directory (`%LOCALAPPDATA%\agy\bin` on Windows, `~/.local/bin` elsewhere). |
+| `ONNI_ANTIGRAVITY_UNATTENDED_BYPASS=1` | Keep the configured, explicitly confirmed Antigravity `bypass` level for unattended autonomous and dispatched runs. Off by default; only the exact value `1` enables it. The unattended Git pre-push fence still applies. |
 | `CLAUDE_CONFIG_DIR`, `CODEX_HOME` | The agents' **own** variables, honoured where the vendor documents one. Setting one moves that agent's **default account** — the config folder OnniCode discovers. A *second* login of the same CLI is deliberately not an environment setting, since one process-wide value cannot differ per project: add it under **Settings → Agent accounts** and pick it per project. |
 | `ONNI_BROWSE_ROOT=~/` | Where **Add project → Open local folder…** starts. A local cockpit can browse anywhere from there; on a hosted cockpit it is the ceiling; a saved workspace value overrides the environment default and must name an existing folder. |
 | `ONNI_PROJECTS_DIR=~/onni/projects` | Default destination for **Clone from GitHub**. Saved workspace settings override it, and missing directories are created recursively. |

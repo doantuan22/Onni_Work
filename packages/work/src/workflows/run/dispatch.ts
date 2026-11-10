@@ -139,7 +139,7 @@ export async function dispatchFromAgent(context: DispatchContext, parentId: stri
     }
   }
   // Fresh config each call (plan v2 §6.3): a permission change made mid-task reaches the next order.
-  // A child always runs unattended, so the level is the effective one, never raw `bypass`.
+  // A child always runs unattended, so use the same opt-in-aware effective level as its launch.
   const config = await loadWorkspaceConfig().catch(() => null);
   const configured = config?.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
   const outcome = dispatch(context, parentId, input, { antigravityLevel: effectiveAntigravityLevel(configured, true).level });
