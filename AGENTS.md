@@ -126,8 +126,9 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   The fence is a barrier, not a sandbox — do not describe it as one. Dispatch depth and `retry_limit` stay on in "Unlimited"; the subtasks-per-tree
   counter has its own owner-approved off switch (`safety.dispatchUnlimitedSubtasks`, Settings → Resources → Advanced).
 - **A roster is a fence, not a sandbox.** A tree started with a `roster` may dispatch only to the
-  listed workers (`dispatch()` is the single check, 409 with the allowed list); workers stay at depth 1,
-  keep `ONNI_API_URL` for `onni task report` and get the report-only prompt. Do not describe the roster as
+  listed workers (`dispatch()` is the single check, 409 with the allowed list); workers stay at depth 1
+  and get the report-only prompt. Workers keep `ONNI_API_URL` for `onni task report`, except agy workers,
+  whose final text and run status produce an automatic parent report. Do not describe the roster as
   a security boundary: raw HTTP can still create a top-level run on any backend. The route path commits
   the manager's WIP before a fork and refuses (409) when it cannot; a worker's worktree is not reclaimed
   while its tree's root is live (`protectedByLiveTree`).
@@ -154,17 +155,23 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
 - **Degradation is a value, not a throw.** Git helpers, GitHub integration and `gh` failures
   return `{ available: false, reason }` or a one-line error.
 
-- **Antigravity fails closed.** `agy` cannot ask for approval headless, so a run starts on `files-only`
-  (no commands); `allow-rules` and `bypass` are Settings → Agent permissions choices, `bypass` needs
+- **Antigravity fails closed.** `agy` cannot ask for approval headless, so ordinary runs start on `files-only`
+  (no commands). A dispatched child defaults to `allow-rules`; its stored `files-only` value means
+  "not chosen" even if that value was explicitly selected, so it cannot opt a dispatched child out.
+  Other configured levels win, and watched/top-level runs keep the configured level untouched. `bypass` needs
   `confirmBypass: true` and is never applied to an unattended run unless `ONNI_ANTIGRAVITY_UNATTENDED_BYPASS=1`
   (`effectiveAntigravityLevel`; off by default). The unattended Git pre-push fence still applies. A turn
   that was blocked and answered nothing **fails** — `agy` itself reports it as success. It is a
   worker only (`RUNNER_CAPABILITIES.canManage`, enforced by `rosterSchema`); turning that on is more than a
   flag flip (the manager's commands carry free arguments a whole-line grant cannot hold). It reports tokens, never USD. Do not
   add `--add-dir` or `agy-acp-bridge`.
+  Onni autosaves and commits a finished worker's worktree at turn end; an agy worker must not commit or push.
+  A dispatched agy worker must not look up environment variables or submit a CLI report: it finishes with
+  a plain text summary, and Onni builds the manager report from the run (`childSettleReport`).
   An agy `command(<line>)` grant matches the **whole command line** (measured, 10 real prompts): it is never a
-  prefix and never a pattern, so a step's `bashAllowlist` entry becomes one exact line for this backend, and the
-  `allow-rules` level is **experimental**. Those rules gate shell commands only — agy's own file and web tools
+  prefix and never a pattern, so a step's `bashAllowlist` entry becomes one exact line for this backend. A
+  dispatched child gets the fixed worker commands plus discovered repository verification commands.
+  The `allow-rules` level is **experimental**. Those rules gate shell commands only — agy's own file and web tools
   are not limited by them. stdin is closed at spawn so a login is never waited for; a "not signed in" turn is
   an `auth` failure (`RunRecord.failureClass`). Windows runs agy's commands in PowerShell: `$env:ONNI_BIN`,
   not `$ONNI_BIN`.

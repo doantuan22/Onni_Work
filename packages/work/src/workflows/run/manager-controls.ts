@@ -1,5 +1,4 @@
 import {
-  DEFAULT_AGENT_PERMISSION_LEVEL,
   CONFLICTS_FILES_MAX,
   CONFLICTS_MAX_PAIRS,
   CONFLICTS_TRIAL_MAX,
@@ -127,8 +126,9 @@ export async function loadManagerSessionContext(ctx: ManagerControlContext, runI
     // session; the dispatch-time decision is fresher if the owner changes settings mid-session.
     const config = await loadWorkspaceConfig().catch(() => null);
     if (config) {
-      const configured = config.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
-      context.antigravityLevel = effectiveAntigravityLevel(configured, true).level;
+      const savedLevel = config.agentPermissions.antigravity;
+      // This context describes dispatched children; their stored files-only value means "not chosen".
+      context.antigravityLevel = effectiveAntigravityLevel(savedLevel, true, true).level;
     }
     // #9: only the roster ROOT reads memory — the brief it lands in exists nowhere else. A file
     // hand-edited past its cap is read from its newest lines; the note says what happened rather
@@ -192,13 +192,13 @@ export async function loadManagerSessionContext(ctx: ManagerControlContext, runI
 export function prepareDispatchSession(ctx: ManagerControlContext, runId: string, state: ManagerControlSessionState, context: ManagerSessionContext = {}): void {
     if (!dispatchReachable(ctx)) return;
     const dispatch = ctx.store.getRun(runId)?.dispatch;
-    // Manager–worker tree: the root gets the manager brief, a worker the report-only one — the
-    // worker keeps ONNI_API_URL so `onni task report` works, but is never taught to dispatch.
+    // Manager–worker tree: the root gets the manager brief, a worker the report-only one. Agy's
+    // plain final text is converted into a parent report at settle; other workers may use the CLI.
     const runs = ctx.store.listRuns();
     const roster = dispatch ? runs.find((r) => r.id === dispatch.rootRunId)?.roster : undefined;
     if (roster && dispatch) {
       if (dispatch.parentRunId) {
-        state.dispatchPrompt = workerPrompt(dispatch.kind);
+        state.dispatchPrompt = workerPrompt(dispatch.kind, ctx.store.getRun(runId)?.runner);
       } else {
         const scorecard = buildWorkerScorecard(runs);
         const hasHistory = roster.workers.some((worker) => {

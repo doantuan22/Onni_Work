@@ -310,6 +310,27 @@ Processes. Put a time limit on anything that could hang. Stop a process you star
 
 The Guard. Before anything irreversible or outside your scope — pushing, merging into the base branch, deleting a branch, spending beyond your budget — end the turn with ONNI:ASK and stop.`;
 
-export function workerPrompt(kind: string | undefined): string {
-  return kind === 'review' ? `${WORKER_PROMPT}\n\n${REVIEW_PROMPT}` : WORKER_PROMPT;
+function antigravityWorkerPrompt(review = false): string {
+  const commitInstruction = /; COMMIT your work before you finish[^.]*\. You cannot dispatch/;
+  const reportSection = `When your assignment is settled, report before finishing (always through the cockpit's own binary, node "$ONNI_BIN"):\n\n${workerCommandsBlock()}`;
+  const workInstruction = review
+    ? '; do not edit the reviewed files or run git commit or git push. Onni settles the manager report from your run. You cannot dispatch'
+    : '; edit files; do not run git commit or git push. Onni autosaves this worktree at turn end. You cannot dispatch';
+  const finishInstruction = review
+    ? 'When your review is settled, do not run commands to look up environment variables or submit a report. Finish with a plain final text summary that includes your verdict and findings. Onni builds the manager report from the run.'
+    : 'When settled, do not run commands to look up environment variables or to submit a report. Edit files, then finish with a plain final text summary of the outcome and current state. Onni autosaves your worktree and settles the manager report from your run.';
+  return WORKER_PROMPT
+    .replace(commitInstruction, workInstruction)
+    .replace(reportSection, finishInstruction);
+}
+
+export function workerPrompt(kind: string | undefined, runner?: string): string {
+  const prompt = runner === 'antigravity' ? antigravityWorkerPrompt(kind === 'review') : WORKER_PROMPT;
+  if (kind !== 'review') return prompt;
+  const reviewPrompt = runner === 'antigravity'
+    ? REVIEW_PROMPT
+      .replace('Then report with --verdict:', 'Finish your plain text summary with a verdict:')
+      .replace('The verdict is required.', 'The verdict is required in that summary.')
+    : REVIEW_PROMPT;
+  return `${prompt}\n\n${reviewPrompt}`;
 }

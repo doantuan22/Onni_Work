@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { access, realpath } from 'node:fs/promises';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, type AgentPermissionLevel, type UsageWindowsObservation } from '@onni/contract';
+import { type AgentPermissionLevel, type UsageWindowsObservation } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../../core/antigravity-permissions.ts';
 import { probeCodexIdentity } from '../../core/codex-usage-probe.ts';
 import type { AgentEvent, RunnerId } from '../../core/agent-runner.ts';
@@ -129,8 +129,15 @@ export async function agentPermissionSpec(ctx: StartContext,
 ): Promise<{ permissionLevel?: AgentPermissionLevel }> {
   if (backend !== 'antigravity') return {};
   const config = await loadWorkspaceConfig().catch(() => null);
-  const configured = config?.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
-  const { level, downgradedBecause } = effectiveAntigravityLevel(configured, isUnattended(ctx.store.getRun(runId)));
+  const run = ctx.store.getRun(runId);
+  const savedLevel = config?.agentPermissions.antigravity;
+  const dispatchedChild = Boolean(run?.dispatch?.parentRunId);
+  // effectiveAntigravityLevel treats stored files-only as unchosen only for dispatched children.
+  const { level, downgradedBecause } = effectiveAntigravityLevel(
+    savedLevel,
+    isUnattended(run),
+    dispatchedChild,
+  );
   if (downgradedBecause) onEvent({ type: 'note', message: `antigravity: ${downgradedBecause}` });
   return { permissionLevel: level };
 }
