@@ -86,8 +86,10 @@ describe('antigravity golden replays (live captures)', () => {
       item: { status: 'declined', toolKind: 'execute', title: 'Ran echo shelltest' },
     });
     const error = agent.find((e) => e.type === 'error') as { message: string } | undefined;
-    expect(error?.message).toContain('run_command `echo shelltest`');
-    expect(error?.message).toContain('"Files only"');
+    expect(error?.message).toContain('Blocked command: `echo shelltest`');
+    expect(error?.message).toContain('effective permission level "Files only"');
+    expect(error?.message).toContain('manager should hand this part to a codex worker');
+    expect(error?.message).not.toContain('Settings');
     expect(ui.at(-1)).toMatchObject({ type: 'turn.completed', stopReason: 'error' });
   });
 
@@ -99,8 +101,11 @@ describe('antigravity golden replays (live captures)', () => {
   it('one command allowed and one denied, with an empty answer, still fails and names only the denied one', () => {
     const { agent } = replay('allow-rule-partial-denied', 'allow-rules');
     const message = (agent.find((e) => e.type === 'error') as { message: string }).message;
-    expect(message).toContain('node -e');
+    expect(message).toContain('Blocked command: `node -e "console.log(2)"`');
+    expect(message).toContain('effective permission level "Allow-rules"');
+    expect(message).toContain('manager should hand this part to a codex worker');
     expect(message).not.toContain('node --version');
+    expect(message).not.toContain('Settings');
   });
 });
 
@@ -117,7 +122,9 @@ describe('evaluateAntigravityResult — the three cases of ADR 0007 decision 2',
     expect(outcome).toMatchObject({ kind: 'fail' });
     const message = (outcome as { message: string }).message;
     expect(message).toContain('run_command `npm test`; write_file `/etc/x`');
-    expect(message).toContain('Settings → Agents');
+    expect(message).toContain('effective permission level "Files only"');
+    expect(message).toContain('manager should hand this part to a codex worker');
+    expect(message).not.toContain('Settings');
   });
 
   it('a response + denied actions → continue, one warning per denied action', () => {
@@ -160,7 +167,7 @@ describe('evaluateAntigravityResult — the three cases of ADR 0007 decision 2',
 
   it('through the fold: empty + denied fails, and empty + nothing denied fails (synthetic)', () => {
     expect(replay('denied-empty-response.synthetic').agent.find((e) => e.type === 'error')).toMatchObject({
-      message: expect.stringContaining('run_command `npm test`'),
+      message: expect.stringContaining('Blocked command: `npm test`'),
     });
     expect(replay('empty-response-no-denied.synthetic').agent.find((e) => e.type === 'error')).toMatchObject({
       message: expect.stringContaining('empty response'),

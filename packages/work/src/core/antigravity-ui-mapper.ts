@@ -28,8 +28,6 @@ import type {
   UiToolItem,
 } from './ui-events.ts';
 
-import { permissionDenialHelp } from './antigravity-errors.ts';
-
 /** The permission levels' labels as Settings shows them (for messages the user reads). */
 const LEVEL_LABEL: Record<string, string> = {
   'files-only': 'Files only',
@@ -61,6 +59,8 @@ export interface AntigravityState {
   readonly tools: ReadonlyMap<number, UiToolItem>;
   /** What each permission-denied tool tried, in order (the result frame only names the action). */
   readonly denied: readonly string[];
+  /** Exact command lines denied by `run_command`; agy only names the action in its result frame. */
+  readonly deniedCommands: readonly string[];
   /** Sum of the step usages seen in this process. */
   readonly usage: Counts;
 }
@@ -83,6 +83,7 @@ export function createAntigravityState(opts: { model?: string; level?: string } 
     texts: new Map(),
     tools: new Map(),
     denied: [],
+    deniedCommands: [],
     usage: NO_COUNTS,
   };
 }
@@ -96,6 +97,8 @@ export interface AntigravityResultInput {
   deniedActions: readonly string[];
   /** What each denied tool tried, when the stream showed it. */
   deniedDetails: readonly string[];
+  /** Exact `run_command` lines denied by Onni's effective permission level. */
+  deniedCommands?: readonly string[];
   level: string;
 }
 
@@ -124,10 +127,16 @@ export function evaluateAntigravityResult(input: AntigravityResultInput): Antigr
     return { kind: 'fail', message: `antigravity ended the turn with status ${input.status || 'unknown'}${tail}` };
   }
   if (response === '' && denied.length > 0) {
+    const blockedCommands = [...new Set(input.deniedCommands ?? [])];
+    const deniedText = [...new Set(denied)].join('; ');
+    const commandText = blockedCommands.length === 1
+      ? `Blocked command: \`${blockedCommands[0]}\`.`
+      : blockedCommands.length > 1
+        ? `Blocked commands: ${blockedCommands.map((command) => `\`${command}\``).join('; ')}.`
+        : `Denied: ${deniedText}.`;
     return {
       kind: 'fail',
-      message:
-        `antigravity was blocked and produced no answer — ${permissionDenialHelp(input.level)} Denied: ${[...new Set(denied)].join('; ')}.`,
+      message: `antigravity was blocked and produced no answer. ${commandText} effective permission level "${label}". Next: reassign this part to a codex worker. For a dispatched worker, its manager should hand this part to a codex worker instead of retrying it on agy.`,
     };
   }
   if (response === '') {
@@ -346,13 +355,19 @@ function foldTool(
   const error = isRecord(info.error) ? info.error : {};
   const text = str(error.message) ?? 'the tool failed';
   const declined = isPermissionDenial(text);
+  const commandLine = name.toLowerCase() === 'run_command' ? firstString(params, ['CommandLine', 'Command']) : undefined;
   const firstLine = text.split('\n')[0]!.trim();
   ui.push({ type: 'item.completed', item: { ...item, status: declined ? 'declined' : 'failed', error: shorten(firstLine, 300) } });
   agent.push({ type: 'tool-result', toolCallId: id, result: shorten(firstLine, 300), isError: true });
   return {
     agent,
     ui,
-    state: { ...state, tools, denied: declined ? [...state.denied, describeTool(name, params)] : state.denied },
+    state: {
+      ...state,
+      tools,
+      denied: declined ? [...state.denied, describeTool(name, params)] : state.denied,
+      deniedCommands: declined && commandLine ? [...state.deniedCommands, commandLine] : state.deniedCommands,
+    },
   };
 }
 
@@ -379,6 +394,7 @@ function foldResult(result: Record<string, unknown>, state: AntigravityState): A
     response: typeof result.response === 'string' ? result.response : '',
     deniedActions,
     deniedDetails: state.denied,
+    deniedCommands: state.deniedCommands,
     level: state.level,
   });
   if (outcome.kind === 'warn') {
@@ -399,7 +415,7 @@ function foldResult(result: Record<string, unknown>, state: AntigravityState): A
   return {
     agent,
     ui,
-    state: { ...state, currentTurnId: null, tools: new Map(), texts: new Map(), denied: [] },
+    state: { ...state, currentTurnId: null, tools: new Map(), texts: new Map(), denied: [], deniedCommands: [] },
   };
 }
 
