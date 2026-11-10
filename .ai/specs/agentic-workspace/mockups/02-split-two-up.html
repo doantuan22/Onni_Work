@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Split two-up · Onni workspace mockup</title>
+  <link rel="stylesheet" href="assets/mockup.css">
+  <link rel="stylesheet" href="assets/02.css">
+  <script defer src="assets/mockup.js"></script>
+  <script defer src="assets/02.js"></script>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" hidden aria-hidden="true">
+    <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M15 6 9 12l6 6"/><path d="M19 5v14"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-git" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 7v8a4 4 0 0 0 4 4h6M18 7v6a4 4 0 0 1-4 4"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5h6l2 2h9v10a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v5h5M8 13h8M8 17h8"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m21 3-7.5 18-3.8-7.7L2 9.5zM21 3 9.7 13.3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  </svg>
+
+  <div class="workspace-app split-demo">
+    <header class="topbar">
+      <div class="topbar-left">
+        <a class="topbar-brand" href="index.html" aria-label="Onni mockup home"><span class="brand-mark" aria-hidden="true">o</span><span class="brand-name">onni</span></a>
+        <span class="topbar-divider" aria-hidden="true"></span>
+        <div class="project-crumb"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-folder"/></svg><strong>OnniCode</strong><span>/</span><span>Split workspace</span></div>
+      </div>
+      <div class="topbar-right">
+        <span class="local-mark"><svg class="icon" aria-hidden="true"><use href="#i-git"/></svg> Local workspace</span>
+        <button class="theme-button" type="button" data-action="theme"><span aria-hidden="true">◐</span><span data-theme-label>Light theme</span></button>
+        <button class="annotation-button" type="button" data-action="annotations" aria-pressed="false">Show annotations</button>
+      </div>
+    </header>
+
+    <div class="workspace-body">
+      <aside class="navigator" aria-label="Project and task navigator">
+        <div class="nav-top"><span class="nav-top-label">Navigator <span class="annotation-badge">§3 · project/session groups</span></span><div class="nav-top-actions"><button class="btn btn-icon" type="button" data-action="collapse-navigator" aria-expanded="true" aria-label="Collapse navigator to icon rail" title="Collapse navigator"><svg class="icon" aria-hidden="true"><use href="#i-collapse"/></svg></button></div></div>
+        <button class="project-select" type="button" aria-label="Current project: OnniCode"><span class="project-avatar" aria-hidden="true">O</span><span class="project-info"><strong>OnniCode</strong><small>D:\Projects\onni</small></span></button>
+        <div class="nav-scroll">
+          <section class="nav-section" aria-labelledby="nav-running">
+            <div class="nav-section-heading" id="nav-running"><span>Running</span><span class="nav-heading-count">2 runs</span><span class="annotation-badge">§4 · manager → worker</span></div>
+            <button class="nav-session is-active" type="button" data-pane-target="pane-manager"><span class="status-dot status-dot-running" aria-label="Running"></span><span class="nav-session-content"><span class="nav-session-title"><span>Stabilize npm retry flow</span></span><span class="nav-session-meta"><span class="chip chip-primary">Manager · Codex</span><span>3m ago</span></span></span></button>
+            <div class="nav-nest"><div class="nav-session"><span class="status-dot status-dot-running" aria-label="Worker is running"></span><span class="nav-session-content"><span class="nav-session-title"><span>Verify child process cleanup</span></span><span class="nav-session-meta"><span class="nav-run-kind">Worker run</span><span>72%</span></span></span></div></div>
+            <button class="nav-session" type="button" data-pane-target="pane-standalone"><span class="status-dot status-dot-needs" aria-label="Waiting for review"></span><span class="nav-session-content"><span class="nav-session-title"><span>Document cache invalidation</span></span><span class="nav-session-meta"><span class="chip">Standalone · Claude</span><span>Waiting for review</span></span></span></button>
+          </section>
+          <section class="nav-section" aria-label="Runner subagents">
+            <div class="nav-section-heading"><span>Runner subagents</span><span class="nav-heading-count">1</span></div>
+            <div class="nav-session" role="group" aria-label="Runner subagent: inspect timeout call sites"><span class="status-dot status-dot-done" aria-label="Complete"></span><span class="nav-session-content"><span class="nav-session-title"><span>Inspect timeout call sites</span></span><span class="nav-session-meta"><span class="nav-run-kind">Tool session</span><span>done</span></span></span></div>
+          </section>
+        </div>
+        <nav class="nav-tools" aria-label="Project tools"><button class="nav-tool" type="button" aria-label="Git"><svg class="icon" aria-hidden="true"><use href="#i-git"/></svg><span>Git</span></button><button class="nav-tool" type="button" aria-label="New task"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>New task</span></button></nav>
+        <div class="nav-footer"><span>On this device · no account</span></div>
+      </aside>
+
+      <div class="splitter nav-splitter" role="separator" aria-orientation="vertical" aria-label="Resize navigator width" aria-valuemin="72" aria-valuemax="420" aria-valuenow="236" aria-valuetext="Navigator width 236 pixels" tabindex="0" data-splitter="navigator"></div>
+
+      <main class="main-shell">
+        <section class="conversation-area" aria-label="Two visible conversation panes">
+          <div class="thread-tabbar split-tabbar" role="tablist" aria-label="Visible conversation panes" aria-orientation="horizontal" data-two-pane-tabs>
+            <button class="thread-tab" id="tab-manager" type="button" role="tab" aria-selected="true" aria-controls="pane-manager" data-pane-tab data-title="Stabilize npm retry flow" data-status="Running" data-branch="onni/ab12cd34" data-path="D:\Projects\onni\.ai\onni\worktrees\ab12cd34">
+              <span class="status-dot status-dot-running" aria-hidden="true"></span><span class="tab-title">Stabilize npm retry flow</span><span class="chip chip-violet">Manager</span>
+            </button>
+            <button class="thread-tab" id="tab-standalone" type="button" role="tab" aria-selected="false" aria-controls="pane-standalone" data-pane-tab data-title="Document cache invalidation" data-status="Review" data-branch="onni/5d91e240" data-path="D:\Projects\onni\.ai\onni\worktrees\5d91e240">
+              <span class="status-dot status-dot-needs" aria-hidden="true"></span><span class="tab-title">Document cache invalidation</span>
+            </button>
+            <span class="visible-pane-note"><strong>2 / 2</strong> visible · maximum 2 panes <span class="annotation-badge">§8.2 · bounded split</span></span>
+          </div>
+
+          <div class="split-workspace" data-split-workspace>
+            <section class="conversation-pane split-pane is-active" id="pane-manager" role="tabpanel" aria-labelledby="tab-manager" tabindex="0" data-two-pane data-title="Stabilize npm retry flow" data-status="Running" data-branch="onni/ab12cd34" data-path="D:\Projects\onni\.ai\onni\worktrees\ab12cd34" data-summary="Manager run · 2 workers · 1 completed">
+              <header class="pane-toolbar"><div class="pane-title-group"><span class="chip chip-violet">Manager</span><span class="pane-title">Stabilize npm retry flow</span></div><div class="pane-toolbar-actions"><span class="run-state"><span class="status-dot status-dot-running"></span>Running</span></div></header>
+              <div class="transcript split-transcript">
+                <div class="transcript-inner">
+                  <article class="turn"><div class="turn-head"><span class="avatar avatar-user">Y</span><strong>You</strong><span class="turn-time">10:12</span></div><div class="message-bubble message-user"><p>Trace the retry timeout path and make sure child processes are collected cleanly. Have a worker verify the tests.</p></div></article>
+                  <article class="turn"><div class="turn-head"><span class="avatar">C</span><strong>Codex · manager</strong><span class="turn-time">10:13</span></div><div class="message-bubble"><p>I’m checking the retry boundary, then I’ll combine the implementation and test report. Worker runs have their own branches and reports.</p></div></article>
+                  <details class="tool-card" open><summary><span class="tool-card-title">Manager dispatch</span><span class="tool-card-meta">2 child runs</span></summary><div class="tool-card-body"><div class="tool-group-items"><div class="tool-group-row"><span class="tool-kind">dispatch</span><code>Inspect child process timeout and cleanup behavior</code></div><div class="tool-group-row"><span class="tool-kind">dispatch</span><code>Verify retry tests cover the grace period</code></div></div></div></details>
+                  <section class="worker-summary" aria-labelledby="worker-progress-title">
+                    <div class="worker-summary-head"><div><span class="eyebrow">Worker progress</span><h2 id="worker-progress-title">Child run summaries</h2></div><span class="chip chip-primary">2 dispatched</span><span class="annotation-badge">§4 · summaries link to child runs</span></div>
+                    <article class="worker-row">
+                      <div class="worker-row-main"><span class="status-dot status-dot-running" aria-hidden="true"></span><div class="worker-copy"><strong>Verify child process cleanup</strong><p>Checks timeout expiry, graceful stop, and collected exit status.</p><div class="worker-meta"><span class="chip">Claude</span><span class="mono">onni/worker-51c9</span><span>72% · running</span></div></div></div>
+                      <div class="worker-progress-track" aria-label="Progress 72 percent"><span style="width:72%"></span></div>
+                      <div class="worker-actions"><button class="btn btn-outline btn-small" type="button" data-open-worker="tab" data-worker-title="Verify child process cleanup">Open as tab</button><button class="btn btn-outline btn-small" type="button" data-open-worker="split" data-worker-title="Verify child process cleanup">Open as split</button></div>
+                    </article>
+                    <article class="worker-row">
+                      <div class="worker-row-main"><span class="status-dot status-dot-done" aria-hidden="true"></span><div class="worker-copy"><strong>Verify retry boundary tests</strong><p>Report: the zero-retry case and grace-period exit are covered.</p><div class="worker-meta"><span class="chip chip-violet">Done</span><span class="mono">onni/worker-8a30</span><span>3 files changed</span></div></div></div>
+                      <div class="worker-actions"><button class="btn btn-outline btn-small" type="button" data-open-worker="tab" data-worker-title="Verify retry boundary tests">Open as tab</button><button class="btn btn-outline btn-small" type="button" data-open-worker="split" data-worker-title="Verify retry boundary tests">Open as split</button></div>
+                    </article>
+                    <p class="worker-footnote">These are persistent child runs. Runner subagents remain tool sessions inside a run.</p>
+                  </section>
+                  <article class="turn"><div class="turn-head"><span class="avatar">C</span><strong>Codex · manager</strong><span class="turn-time">now</span></div><div class="message-bubble"><p>The test worker has reported back. I’m waiting for the cleanup worker before I compare both changes.</p></div></article>
+                </div>
+              </div>
+              <form class="composer-dock split-composer" data-composer-form>
+                <div class="composer-wrap"><div class="composer"><label class="sr-only" for="manager-draft">Draft for Stabilize npm retry flow</label><textarea id="manager-draft" aria-label="Draft for Stabilize npm retry flow">After the worker finishes, compare the cleanup behavior with the test report and call out any mismatch.</textarea><div class="composer-controls"><div class="composer-pickers"><button class="btn" type="button">＋ Attach</button><button class="btn" type="button">@ Files</button><button class="btn btn-outline" type="button">Codex</button></div><div class="composer-actions"><button class="btn btn-primary" type="submit"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-send"/></svg> Send</button></div></div></div><div class="composer-footnote">Draft stays with this pane when you activate another run.</div></div>
+              </form>
+            </section>
+
+            <div class="splitter pane-splitter" role="separator" aria-orientation="vertical" aria-label="Resize conversation panes" aria-valuemin="34" aria-valuemax="66" aria-valuenow="50" aria-valuetext="50 percent width for the manager pane" tabindex="0" data-pane-splitter></div>
+
+            <section class="conversation-pane split-pane" id="pane-standalone" role="tabpanel" aria-labelledby="tab-standalone" tabindex="0" data-two-pane data-title="Document cache invalidation" data-status="Review" data-branch="onni/5d91e240" data-path="D:\Projects\onni\.ai\onni\worktrees\5d91e240" data-summary="Standalone run · review waiting">
+              <header class="pane-toolbar"><div class="pane-title-group"><span class="chip">Standalone</span><span class="pane-title">Document cache invalidation</span></div><div class="pane-toolbar-actions"><span class="run-state"><span class="status-dot status-dot-needs"></span>Review</span></div></header>
+              <div class="transcript split-transcript">
+                <div class="transcript-inner">
+                  <article class="turn"><div class="turn-head"><span class="avatar avatar-user">Y</span><strong>You</strong><span class="turn-time">09:48</span></div><div class="message-bubble message-user"><p>Document how local cache invalidation works when a workspace config changes.</p></div></article>
+                  <article class="turn"><div class="turn-head"><span class="avatar">C</span><strong>Claude</strong><span class="turn-time">09:49</span></div><div class="message-bubble"><p>I traced the config merge path and wrote a short note with the observable invalidation rules.</p></div></article>
+                  <details class="tool-card" open><summary><span class="tool-card-title">Read and edit files</span><span class="tool-card-meta">4 operations</span></summary><div class="tool-card-body"><div class="tool-group-items"><div class="tool-group-row"><span class="tool-kind">read</span><code>packages/work/src/workspace/config.ts</code></div><div class="tool-group-row"><span class="tool-kind">edit</span><code>docs/local-cache.md</code></div><div class="tool-group-row"><span class="tool-kind">check</span><code>git diff --check</code></div></div></div></details>
+                  <article class="turn"><div class="turn-head"><span class="avatar">C</span><strong>Claude</strong><span class="turn-time">09:56</span></div><div class="message-bubble"><p>The note is ready for review. The branch and worktree are separate from the manager run.</p><ul><li>1 file changed</li><li>Review gate is waiting for your decision</li><li>No pull request has been created</li></ul></div></article>
+                  <div class="review-inline"><span class="status-dot status-dot-needs" aria-hidden="true"></span><span><strong>Review waiting</strong><small>Finish or create a PR from the active run’s Context actions.</small></span><span class="annotation-badge">§4 · explicit user action</span></div>
+                </div>
+              </div>
+              <form class="composer-dock split-composer" data-composer-form>
+                <div class="composer-wrap"><div class="composer"><label class="sr-only" for="standalone-draft">Draft for Document cache invalidation</label><textarea id="standalone-draft" aria-label="Draft for Document cache invalidation">Please clarify whether the cache key changes when the project root moves.</textarea><div class="composer-controls"><div class="composer-pickers"><button class="btn" type="button">＋ Attach</button><button class="btn" type="button">@ Files</button><button class="btn btn-outline" type="button">Claude</button></div><div class="composer-actions"><button class="btn btn-primary" type="submit"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-send"/></svg> Send</button></div></div></div><div class="composer-footnote">Draft stays with this pane when you activate another run.</div></div>
+              </form>
+            </section>
+          </div>
+        </section>
+
+        <div class="splitter context-splitter" role="separator" aria-orientation="vertical" aria-label="Resize context area width" aria-valuemin="300" aria-valuemax="520" aria-valuenow="420" aria-valuetext="Context area width 420 pixels" tabindex="0" data-splitter="context"></div>
+
+        <aside class="context-shell" aria-label="Context for Stabilize npm retry flow" data-owner-pane="pane-manager">
+          <header class="context-toolbar"><div class="context-heading">Context <span class="context-bound-label" data-context-owner>for Stabilize npm retry flow</span><span class="annotation-badge">§3, §11.1 · follows selected run</span></div><span class="chip chip-primary" data-context-run-state>Running</span></header>
+          <div class="context-tabs" role="tablist" aria-label="Context views" data-context-tabs>
+            <button class="context-tab" id="ctx-tab-changes" type="button" role="tab" aria-selected="true" aria-controls="ctx-changes">Changes</button>
+            <button class="context-tab" id="ctx-tab-files" type="button" role="tab" aria-selected="false" aria-controls="ctx-files">Files</button>
+            <button class="context-tab" id="ctx-tab-terminal" type="button" role="tab" aria-selected="false" aria-controls="ctx-terminal">Terminal</button>
+            <button class="context-tab" id="ctx-tab-preview" type="button" role="tab" aria-selected="false" aria-controls="ctx-preview">Preview</button>
+            <button class="context-tab" id="ctx-tab-tree" type="button" role="tab" aria-selected="false" aria-controls="ctx-tree">Task tree</button>
+            <button class="context-tab" id="ctx-tab-inspector" type="button" role="tab" aria-selected="false" aria-controls="ctx-inspector">Inspector</button>
+          </div>
+          <section class="context-view changes-view" id="ctx-changes" role="tabpanel" aria-labelledby="ctx-tab-changes" tabindex="0" data-context-view>
+            <div class="changes-summary"><strong>Changes</strong><span class="chip chip-primary" data-context-summary>Manager run · 2 workers · 1 completed</span><span class="annotation-badge">§4 · line comments return to owning run</span></div>
+            <div class="change-tree"><span><strong>▾</strong> packages / work / src / workflows</span><span class="change-tree-meta">Working tree</span></div>
+            <div class="diff-file"><div class="diff-file-header"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-file"/></svg><span data-context-file>retry-policy.ts</span><span class="diff-count">+5 −2</span></div><div class="diff" aria-label="Run changes"><div class="diff-line"><span class="line-no">40</span><span class="line-no">40</span><span class="line-mark"> </span><code>const child = spawn(command, args, options);</code><span></span></div><div class="diff-line del"><span class="line-no">41</span><span class="line-no"></span><span class="line-mark">−</span><code>if (timedOut) await waitForExit(child);</code><span></span></div><div class="diff-line add"><span class="line-no"></span><span class="line-no">41</span><span class="line-mark">+</span><code>if (timedOut) await stopAndCollect(child, timeoutMs);</code><button class="diff-comment" type="button" aria-label="Comment on retry-policy.ts line 41" data-comment="packages/work/src/workflows/retry-policy.ts:41"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg></button></div><div class="diff-line add"><span class="line-no"></span><span class="line-no">42</span><span class="line-mark">+</span><code>return retryWithinLimit(result, retryLimit);</code><button class="diff-comment" type="button" aria-label="Comment on retry-policy.ts line 42" data-comment="packages/work/src/workflows/retry-policy.ts:42"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-plus"/></svg></button></div></div></div>
+            <div class="context-empty"><strong>Review and discuss changes in the active run.</strong>Line comments are routed to the pane that owns this run.</div>
+            <div class="review-gate"><span class="eyebrow">Review gate</span><strong data-review-run>Stabilize npm retry flow</strong><small data-review-state>Manager run is still in progress. Actions remain explicit.</small><div class="review-gate-actions"><button class="btn btn-outline" type="button" data-review-action="finish">Finish</button><button class="btn btn-primary" type="button" data-review-action="pr">Create PR</button></div><span class="review-note">No automatic merge. Review and landing stay under your control.</span></div>
+          </section>
+          <section class="context-view" id="ctx-files" role="tabpanel" aria-labelledby="ctx-tab-files" tabindex="0" data-context-view hidden><div class="changes-summary"><strong>Files</strong><span class="chip">Read-only</span></div><div class="files-list"><div class="file-row"><strong>packages</strong></div><div class="file-row"><span class="file-indent"></span>work</div><div class="file-row"><span class="file-indent"></span><span class="file-indent"></span>src</div><div class="file-row is-selected"><span class="file-indent"></span><span class="file-indent"></span><span class="file-indent"></span>retry-policy.ts</div><div class="file-row"><span class="file-indent"></span><span class="file-indent"></span><span class="file-indent"></span>retry-policy.test.ts</div><div class="file-row"><strong>docs</strong></div><div class="file-row"><span class="file-indent"></span>retry-notes.md</div></div></section>
+          <section class="context-view terminal-view" id="ctx-terminal" role="tabpanel" aria-labelledby="ctx-tab-terminal" tabindex="0" data-context-view hidden><div class="terminal-header"><span>Agent shell · PowerShell</span><span class="chip">Local host</span></div><div class="terminal-header"><span>Branch <strong class="mono" data-context-branch>onni/ab12cd34</strong></span></div><pre class="terminal"><span class="term-prompt">PS D:\Projects\onni\.ai\onni\worktrees\ab12cd34&gt;</span> git status --short<br> M packages/work/src/workflows/retry-policy.ts<br><span class="term-success">Working tree clean after review</span></pre></section>
+          <section class="context-view" id="ctx-preview" role="tabpanel" aria-labelledby="ctx-tab-preview" tabindex="0" data-context-view hidden><div class="changes-summary"><strong>Preview / Browser</strong><span class="chip">Local preview</span></div><div class="context-empty"><strong>No preview server attached.</strong>Preview content is local to this project and run.</div></section>
+          <section class="context-view" id="ctx-tree" role="tabpanel" aria-labelledby="ctx-tab-tree" tabindex="0" data-context-view hidden><div class="changes-summary"><strong>Task tree</strong><span class="chip">Manager → worker runs</span></div><div class="files-list"><div class="file-row"><span class="status-dot status-dot-running"></span><strong>Manager · Stabilize npm retry flow</strong></div><div class="file-row"><span class="file-indent"></span><span class="status-dot status-dot-running"></span>Verify child process cleanup</div><div class="file-row"><span class="file-indent"></span><span class="status-dot status-dot-done"></span>Verify retry boundary tests</div></div><div class="context-empty"><strong>Runner subagents are separate.</strong>They are tool sessions in the parent transcript, not persistent child runs.</div></section>
+          <section class="context-view" id="ctx-inspector" role="tabpanel" aria-labelledby="ctx-tab-inspector" tabindex="0" data-context-view hidden><div class="changes-summary"><strong>Run inspector</strong><span class="chip chip-primary" data-inspector-status>Running</span></div><div class="files-list"><div class="file-row"><span>Runner</span><strong data-inspector-runner>Codex</strong></div><div class="file-row"><span>Model</span><strong>Default</strong></div><div class="file-row"><span>Limits</span><strong>Standard · 60 min</strong></div><div class="file-row"><span>Pull request</span><span data-inspector-ref>Not created</span></div><div class="file-row"><span>Issue</span><span>—</span></div></div></section>
+        </aside>
+      </main>
+    </div>
+
+    <footer class="status-bar" aria-label="Active run status">
+      <span class="status-item"><svg class="icon" aria-hidden="true"><use href="#i-git"/></svg><span class="status-branch" data-status-branch>onni/ab12cd34</span></span>
+      <span class="status-item"><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg><span class="status-path" data-status-path title="D:\Projects\onni\.ai\onni\worktrees\ab12cd34">D:\Projects\onni\.ai\onni\worktrees\ab12cd34</span></span>
+      <span class="status-item"><span>Run</span><strong data-status-run>Running</strong></span>
+      <span class="status-item"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><span>Standard limits</span></span>
+      <span class="status-spacer"></span>
+      <div class="status-actions" data-run-actions><button class="btn btn-outline" type="button" data-review-action="finish">Finish</button><button class="btn btn-primary" type="button" data-review-action="pr">Create PR</button></div>
+    </footer>
+  </div>
+  <div class="toast" role="status" aria-live="polite" hidden data-toast></div>
+</body>
+</html>
