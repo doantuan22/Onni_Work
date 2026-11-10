@@ -1,91 +1,397 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark light">
-  <title>Agentic workspace mockups · Onni</title>
-  <link rel="stylesheet" href="assets/mockup.css">
-  <script defer src="assets/mockup.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onni — agentic workspace (mockup v2)</title>
+<!--
+  MOCKUP ONLY. Static, no network, no build. Nothing here touches the real cockpit code.
+  v2 design principles (simplify vs v1, which lives in ./v1):
+   1. Three zones only: Navigator | Conversation(s) | Context drawer (closed by default).
+   2. One header line per pane. Branch/cost/limits live there, not in a separate status bar.
+   3. Tools (Changes/Files/Terminal/Tree/Info) are ONE tab row in the Context drawer.
+   4. Everything optional is hidden until asked: workers collapsed, options collapsed, tool output collapsed.
+   5. Active pane changes on click only (never hover/wheel). Merge / PR are explicit buttons.
+  Try: click tabs, "Split", "Changes", the needs-you task, "+ New task", the theme and collapse buttons,
+  drag the dividers (or focus one and use arrow keys / Home / End). Alt+1..9 switches tabs, Alt+\ toggles Context.
+-->
+<style>
+:root{color-scheme:dark;--bg:#0d0d0d;--fg:#fff;--card:#171717;--side:#131313;--muted:#222;--mfg:#a3a3a3;--bd:#262626;--pri:#a8f372;--prifg:#0d0d0d;--ring:#a8f372;
+--danger:#ef4444;--ok:#10b981;--warn:#fbbf24;--info:#93c5fd;--violet:#8f86e8;--addbg:rgba(16,185,129,.12);--delbg:rgba(239,68,68,.12);
+--nav:248px;--ctx:420px;--r:10px;--sans:Inter,system-ui,"Segoe UI",sans-serif;--mono:ui-monospace,"JetBrains Mono",Menlo,monospace}
+.light{color-scheme:light;--bg:#fff;--fg:#171717;--card:#fff;--side:#fafafa;--muted:#f4f4f4;--mfg:#5c5c5c;--bd:#e8e8e8;--pri:#171717;--prifg:#fff;--ring:#171717;
+--info:#1d4ed8;--violet:#6d5fd6;--warn:#b45309;--addbg:rgba(16,185,129,.1);--delbg:rgba(239,68,68,.08)}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.app{display:grid;grid-template-columns:var(--nav) 1fr;height:100vh;overflow:hidden}
+.app.rail{--nav:56px}
+/* ---------- navigator ---------- */
+.nav{background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-width:0;position:relative}
+.nav-top{display:flex;align-items:center;gap:8px;padding:12px 12px 8px}
+.brand{font-weight:700;letter-spacing:.02em}.proj{flex:1;min-width:0;text-align:left;color:var(--mfg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 8px;border-radius:8px}
+.proj:hover,.ibtn:hover{background:var(--muted)}
+.ibtn{width:30px;height:30px;border-radius:8px;display:inline-grid;place-items:center;color:var(--mfg)}
+.ibtn[aria-pressed=true],.ibtn.on{background:var(--muted);color:var(--fg)}
+.newbtn{margin:4px 12px 8px;display:flex;align-items:center;gap:8px;background:var(--pri);color:var(--prifg);border-radius:var(--r);padding:8px 12px;font-weight:600}
+.search{margin:0 12px 6px;background:var(--muted);border:1px solid transparent;border-radius:var(--r);padding:6px 10px;color:var(--fg);width:calc(100% - 24px);font:inherit}
+.list{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 8px 12px}
+.grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mfg);padding:12px 8px 4px;display:flex;justify-content:space-between}
+.grp b{color:var(--warn)}
+.row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 8px;border-radius:8px;min-width:0}
+.row:hover{background:var(--muted)}.row[aria-current=true]{background:var(--muted);box-shadow:inset 2px 0 var(--pri)}
+.row .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .m{color:var(--mfg);font-size:12px}
+.child{margin-left:18px;border-left:1px solid var(--bd);padding-left:6px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--mfg)}
+.dot.run{background:var(--info);box-shadow:0 0 0 3px rgba(147,197,253,.2)}.dot.need{background:var(--warn)}.dot.ok{background:var(--ok)}.dot.err{background:var(--danger)}
+.nav-foot{display:flex;gap:2px;padding:8px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.rail .proj,.rail .newbtn span,.rail .search,.rail .grp,.rail .row .t,.rail .row .m,.rail .child,.rail .brand{display:none}
+.rail .newbtn{margin:4px 10px;padding:8px;justify-content:center}.rail .row{justify-content:center}
+.rail .nav-top{flex-direction:column}
+/* ---------- main ---------- */
+.main{display:grid;grid-template-columns:1fr auto;min-width:0;min-height:0}
+.work{display:flex;flex-direction:column;min-width:0;min-height:0}
+.tabs{display:flex;align-items:flex-end;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--bd);overflow:auto}
+.tab{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px 8px 0 0;color:var(--mfg);max-width:200px;white-space:nowrap}
+.tab span.t{overflow:hidden;text-overflow:ellipsis}.tab:hover{background:var(--muted)}
+.tab[aria-selected=true]{color:var(--fg);background:var(--muted)}
+.tab.shown:not([aria-selected=true]){color:var(--fg);box-shadow:inset 0 -2px var(--bd)}
+.tabs .sp{flex:1}.tabs .ibtn{margin-bottom:4px}
+.panes{flex:1;display:flex;min-height:0}
+.pane{flex:1 1 0;min-width:280px;display:flex;flex-direction:column;min-height:0;position:relative;cursor:default}
+.pane.active{box-shadow:inset 0 2px var(--pri)}.pane:not(.active) .scroll,.pane:not(.active) .composer{opacity:.72}
+.phead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 16px;min-height:48px}
+.phead h1{font-size:14px;margin:0;font-weight:600;flex:1 1 180px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{font:12px var(--mono);color:var(--mfg);background:var(--muted);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.pill{font-size:12px;border-radius:999px;padding:1px 9px;border:1px solid var(--bd);color:var(--mfg);display:inline-flex;gap:6px;align-items:center}
+.tools{display:flex;gap:2px}
+.tbtn{display:inline-flex;gap:6px;align-items:center;padding:4px 9px;border-radius:8px;color:var(--mfg)}
+.tbtn:hover{background:var(--muted)}.tbtn[aria-pressed=true]{background:var(--muted);color:var(--fg)}
+.scroll{flex:1;overflow:auto;padding:8px 16px 16px}
+.col{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.u{align-self:flex-end;background:var(--muted);border-radius:14px 14px 4px 14px;padding:8px 12px;max-width:85%}
+.a p{margin:0 0 8px}
+.fold{display:flex;gap:8px;align-items:center;color:var(--mfg);font-size:13px;cursor:pointer;width:max-content;max-width:100%}
+.fold:hover{color:var(--fg)}
+.tool{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.tool>button{width:100%;display:flex;gap:10px;align-items:center;padding:7px 10px;text-align:left}
+.tool .f{font-family:var(--mono);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.add{color:var(--ok)}.del{color:var(--danger)}
+.tool .body{display:none;border-top:1px solid var(--bd);font:12px/1.6 var(--mono)}.tool.open .body{display:block}
+.dl{padding:0 10px;white-space:pre;overflow:auto}.dl.a{background:var(--addbg)}.dl.d{background:var(--delbg)}
+.ask{border:1px solid var(--warn);border-radius:var(--r);padding:12px;background:color-mix(in srgb,var(--warn) 7%,transparent)}
+.ask h3{margin:0 0 4px;font-size:13px;color:var(--warn)}.opts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{border:1px solid var(--bd);border-radius:8px;padding:5px 12px}.btn:hover{background:var(--muted)}
+.btn.p{background:var(--pri);color:var(--prifg);border-color:transparent;font-weight:600}
+.composer{margin:0 16px 12px;border:1px solid var(--bd);border-radius:14px;background:var(--card);padding:8px 10px}
+.composer .col{max-width:720px;margin:auto;gap:6px}
+.composer textarea{width:100%;resize:none;background:none;border:0;color:var(--fg);font:inherit;outline:0;min-height:44px}
+.crow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--mfg);font-size:12px}.crow .sp{flex:1}.crow span{white-space:nowrap}
+.queue{font-size:12px;color:var(--info)}
+.send{margin-left:auto;background:var(--pri);color:var(--prifg);border-radius:8px;padding:4px 12px;font-weight:600}
+/* ---------- context ---------- */
+.ctx{width:var(--ctx);border-left:1px solid var(--bd);display:none;flex-direction:column;min-width:0;background:var(--side);position:relative}
+.ctx.open{display:flex}
+.chead{display:flex;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid var(--bd)}
+.ctab{padding:4px 9px;border-radius:8px;color:var(--mfg)}.ctab[aria-selected=true]{background:var(--muted);color:var(--fg)}
+.cfor{font-size:12px;color:var(--mfg);padding:6px 12px;border-bottom:1px solid var(--bd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cfor b{color:var(--fg)}
+.cbody{flex:1;overflow:auto;padding:12px}
+.files{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
+.files button{display:flex;justify-content:space-between;gap:8px;padding:4px 8px;border-radius:6px;font:12.5px var(--mono);text-align:left}
+.files button:hover,.files button[aria-current=true]{background:var(--muted)}
+.diff{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;font:12px/1.6 var(--mono)}
+.diff .dl{display:block}.cmt{margin:6px 10px;border:1px solid var(--bd);border-radius:8px;padding:8px;font:13px var(--sans);background:var(--card)}
+.term{background:#0a0a0a;color:#d4d4d4;border-radius:var(--r);padding:10px;font:12px/1.6 var(--mono);min-height:240px}
+.term i{color:var(--pri);font-style:normal}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;margin:0}.kv dt{color:var(--mfg)}.kv dd{margin:0;overflow-wrap:anywhere}
+.review{display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)}
+.note{font-size:12px;color:var(--mfg);margin-top:6px}
+h4{margin:14px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mfg)}
+/* ---------- draft ---------- */
+.draft{max-width:640px;margin:8vh auto 0;padding:0 16px;display:flex;flex-direction:column;gap:12px}
+.draft h2{margin:0;font-size:22px}.draft textarea{width:100%;min-height:120px;border:1px solid var(--bd);border-radius:14px;background:var(--card);color:var(--fg);padding:12px;font:inherit;resize:vertical}
+details{border:1px solid var(--bd);border-radius:var(--r);padding:8px 12px}summary{cursor:pointer;color:var(--mfg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.grid2 label{display:flex;flex-direction:column;font-size:12px;color:var(--mfg);gap:3px}
+select,input[type=text]{background:var(--muted);color:var(--fg);border:1px solid var(--bd);border-radius:8px;padding:5px 8px;font:inherit}
+/* ---------- splitters / toast ---------- */
+.split{position:absolute;top:0;bottom:0;width:7px;cursor:col-resize;z-index:5;background:transparent}
+.split::after{content:"";position:absolute;left:3px;top:0;bottom:0;width:1px;background:transparent}
+.split:hover::after,.split:focus-visible::after,.split.drag::after{background:var(--pri);width:2px;left:2.5px}
+.nav .split{right:-4px}.ctx .split{left:-4px}
+.pdiv{width:7px;margin:0 -3px;cursor:col-resize;position:relative;z-index:5;flex:none}
+.pdiv::after{content:"";position:absolute;left:3px;top:0;bottom:0;width:1px;background:var(--bd)}
+.pdiv:hover::after,.pdiv:focus-visible::after{background:var(--pri);width:2px;left:2.5px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+.toast.on{opacity:1}
+.scrim{display:none}
+@media (max-width:900px){
+ .app{grid-template-columns:minmax(0,1fr)}.nav{position:fixed;inset:0 20% 0 0;z-index:30;transform:translateX(-105%);transition:transform .2s;width:auto}
+ .app.navopen .nav{transform:none}.app.navopen .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}
+ .main{grid-template-columns:minmax(0,1fr)}.pane{min-width:0}.ctx.open{position:fixed;inset:0;width:auto;z-index:40}
+ .pane+.pane,.pdiv,#splitBtn,.split{display:none!important}.rail{--nav:0}.app.rail .nav{width:auto}
+ .only-m{display:inline-grid!important}
+}
+.only-m{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
 </head>
-<body class="hub-body">
-  <div class="hub-page">
-    <header class="hub-topbar">
-      <div class="hub-top-left">
-        <span class="brand-mark" aria-hidden="true">o</span>
-        <span class="brand-name">onni</span>
-        <span class="hub-tag">Agentic workspace · design set</span>
-      </div>
-      <div class="hub-top-right">
-        <button class="theme-button" type="button" data-action="theme"><span aria-hidden="true">◐</span><span data-theme-label>Light theme</span></button>
-        <button class="annotation-button" type="button" data-action="annotations" aria-pressed="false">Show annotations</button>
-      </div>
-    </header>
-
-    <main class="hub-main">
-      <div class="hub-eyebrow">Workspace mockups <span class="annotation-badge">Design set · overview</span></div>
-      <div class="hub-title-row">
-        <div>
-          <h1>A calmer cockpit for work with agents.</h1>
-          <p class="hub-intro">A local-first workspace organized around projects, task conversations, and the context you need to review each run. Start with the default desktop view; the remaining screens are mapped out below.</p>
-        </div>
-        <div class="hub-hero-actions">
-          <a class="btn btn-primary" href="01-workspace-default.html">Open workspace <span aria-hidden="true">→</span></a>
-        </div>
-      </div>
-
-      <div class="hub-note">
-        <span class="icon" aria-hidden="true">⌂</span>
-        <div><strong>Everything stays on this machine.</strong> These pages are static HTML, CSS, and vanilla JavaScript. They need no account, server, external font, or network connection.</div>
-      </div>
-
-      <div class="hub-section-head">
-        <h2>Screen map <span class="annotation-badge">§3 · target anatomy</span></h2>
-        <span>01 built · 05 planned</span>
-      </div>
-      <section class="screen-grid" aria-label="Planned workspace screens">
-        <a class="screen-card" href="01-workspace-default.html">
-          <div class="screen-card-top"><span class="screen-number">01</span><span class="screen-status screen-status-ready">Ready</span></div>
-          <h3>Workspace default</h3>
-          <p>Navigator, one active conversation, composer, Changes context, and a persistent run status bar.</p>
-          <div class="screen-card-bottom"><span>01-workspace-default.html</span><span aria-hidden="true">↗</span></div>
-        </a>
-        <a class="screen-card" href="02-split-two-up.html" aria-label="02 Split two-up">
-          <div class="screen-card-top"><span class="screen-number">02</span><span class="screen-status screen-status-ready">Ready</span></div>
-          <h3>Split two-up</h3>
-          <p>Two visible run conversations with separate drafts and a two-run context handoff.</p>
-          <div class="screen-card-bottom"><span>02-split-two-up.html</span></div>
-        </a>
-        <a class="screen-card" href="03-context-panes.html" aria-label="03 Context panes">
-          <div class="screen-card-top"><span class="screen-number">03</span><span class="screen-status screen-status-ready">Ready</span></div>
-          <h3>Context panes</h3>
-          <p>Changes, files, terminal, task tree, and inspector views bound to the selected conversation.</p>
-          <div class="screen-card-bottom"><span>03-context-panes.html</span></div>
-        </a>
-        <a class="screen-card" href="04-new-task-draft.html" aria-label="04 New task draft">
-          <div class="screen-card-top"><span class="screen-number">04</span><span class="screen-status screen-status-ready">Ready</span></div>
-          <h3>New task draft</h3>
-          <p>A draft composer tab that becomes a run after launch; unsaved attachments stay session-only.</p>
-          <div class="screen-card-bottom"><span>04-new-task-draft.html</span></div>
-        </a>
-        <a class="screen-card" href="05-navigator-states.html" aria-label="05 Navigator states">
-          <div class="screen-card-top"><span class="screen-number">05</span><span class="screen-status screen-status-ready">Ready</span></div>
-          <h3>Navigator states</h3>
-          <p>Attention groups, nested manager and worker runs, unread markers, and the collapsed icon rail.</p>
-          <div class="screen-card-bottom"><span>05-navigator-states.html</span></div>
-        </a>
-        <a class="screen-card" href="06-mobile.html" aria-label="06 Mobile">
-          <div class="screen-card-top"><span class="screen-number">06</span><span class="screen-status screen-status-ready">Ready</span></div>
-          <h3>Mobile</h3>
-          <p>Single conversation at a time, with the navigator in a drawer and context views in sheets.</p>
-          <div class="screen-card-bottom"><span>06-mobile.html</span></div>
-        </a>
-      </section>
-      <footer class="hub-footer">
-        <span>Design proposal · .ai/specs/agentic-workspace/design.md</span>
-        <span>Static mockups · no network required</span>
-      </footer>
-    </main>
+<body>
+<div class="app" id="app">
+  <aside class="nav" aria-label="Navigator">
+    <div class="nav-top">
+      <span class="brand">onni</span>
+      <button class="proj" title="Switch project">acme-web ▾</button>
+      <button class="ibtn" id="railBtn" aria-label="Collapse navigator" title="Collapse navigator">«</button>
+    </div>
+    <button class="newbtn" id="newBtn"><b aria-hidden="true">＋</b><span>New task</span></button>
+    <input class="search" placeholder="Search tasks…" aria-label="Search tasks">
+    <div class="list" id="list"></div>
+    <div class="nav-foot" aria-label="Project tools">
+      <button class="ibtn" title="Git" aria-label="Git">⎇</button>
+      <button class="ibtn" title="GitHub" aria-label="GitHub">◎</button>
+      <button class="ibtn" title="Automations" aria-label="Automations">⏱</button>
+      <button class="ibtn" title="Skills" aria-label="Skills">✦</button>
+      <button class="ibtn" title="Settings" aria-label="Settings">⚙</button>
+      <button class="ibtn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </div>
+    <div class="split" id="navSplit" role="separator" aria-orientation="vertical" aria-label="Resize navigator" tabindex="0" aria-valuemin="200" aria-valuemax="380" aria-valuenow="248"></div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <div class="main">
+    <section class="work">
+      <div class="tabs" role="tablist" aria-label="Open tasks" id="tabs"></div>
+      <div class="panes" id="panes"></div>
+    </section>
+    <aside class="ctx" id="ctx" aria-label="Context">
+      <div class="split" id="ctxSplit" role="separator" aria-orientation="vertical" aria-label="Resize context" tabindex="0" aria-valuemin="320" aria-valuemax="720" aria-valuenow="420"></div>
+      <div class="chead" role="tablist" aria-label="Context views" id="ctabs"></div>
+      <div class="cfor" id="cfor"></div>
+      <div class="cbody" id="cbody"></div>
+    </aside>
   </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+function el(h){var t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+/* ---------- fake data ---------- */
+var T={
+ a:{id:'a',title:'Add rate limiting to /api/login',st:'need',branch:'onni/ab12cd34',group:'Needs you',meta:'waiting for you',tok:'18.4k tok · $0.42',runner:'claude · sonnet',files:[['src/routes/login.ts','+14 −2'],['src/lib/rate-limit.ts','+38 −0'],['test/login.test.ts','+21 −0']]},
+ b:{id:'b',title:'Migrate settings page to new tokens',st:'run',branch:'onni/5f09e7c1',group:'Running',meta:'manager · 2 workers',tok:'41.0k tok · $1.18',runner:'claude · opus (manager)',files:[['src/settings/page.tsx','+52 −40'],['src/styles/tokens.css','+9 −9']],kids:['w1','w2']},
+ w1:{id:'w1',title:'Update colour tokens',st:'ok',branch:'onni/c0a1d2e3',group:'Running',meta:'worker · done',tok:'6.2k tok',runner:'codex',files:[['src/styles/tokens.css','+9 −9']],parent:'b'},
+ w2:{id:'w2',title:'Settings form layout',st:'run',branch:'onni/77be90aa',group:'Running',meta:'worker · running',tok:'9.8k tok',runner:'codex',files:[['src/settings/page.tsx','+52 −40']],parent:'b'},
+ c:{id:'c',title:'Fix flaky refresh-token test',st:'ok',branch:'onni/e21b4c70',group:'Recent',meta:'2h ago',tok:'12.9k tok · $0.31',runner:'claude · sonnet',files:[['test/refresh.test.ts','+6 −4']]},
+ d:{id:'d',title:'Bump vite to 7',st:'err',branch:'onni/3d8f1b55',group:'Recent',meta:'failed · yesterday',tok:'4.1k tok',runner:'claude · haiku',files:[]}
+};
+var order=['a','b','c','d'];
+var st={tabs:['a','b'],panes:['a'],active:'a',ctxOpen:false,ctxView:'changes',drafts:0,scheduled:[]};
+
+/* ---------- toast ---------- */
+var tt;function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('on')},2200)}
+
+/* ---------- navigator ---------- */
+function dot(s){return '<span class="dot '+s+'" title="'+({run:'running',need:'needs you',ok:'done',err:'failed'}[s])+'"></span>'}
+function row(id,child){var t=T[id];return '<button class="row'+(child?' child':'')+'" data-open="'+id+'" aria-current="'+(st.tabs.indexOf(id)>-1&&st.active===id)+'">'+dot(t.st)+'<span class="t">'+esc(t.title)+'</span><span class="m">'+esc(t.group==='Recent'?t.meta.split(' ')[0]:'')+'</span></button>'}
+function renderNav(){
+ var h='';['Needs you','Running','Recent'].forEach(function(g){
+  var ids=order.filter(function(i){return T[i].group===g});if(!ids.length)return;
+  h+='<div class="grp"><span>'+g+'</span>'+(g==='Needs you'?'<b>'+ids.length+'</b>':'')+'</div>';
+  ids.forEach(function(i){h+=row(i);(T[i].kids||[]).forEach(function(k){h+=row(k,true)})});
+ });
+ if(st.scheduled.length){h+='<div class="grp"><span>Scheduled</span></div>';st.scheduled.forEach(function(s){h+='<div class="row"><span class="dot"></span><span class="t">'+esc(s)+'</span><span class="m">tonight</span></div>'})}
+ $('#list').innerHTML=h;
+}
+
+/* ---------- tabs ---------- */
+function title(id){return id[0]==='d'&&id.indexOf('raft')>0?'New task':T[id].title}
+function renderTabs(){
+ var h='';st.tabs.forEach(function(id){
+  var sel=st.active===id,shown=st.panes.indexOf(id)>-1;
+  var isDraft=id.indexOf('draft')===0;
+  h+='<button class="tab'+(shown?' shown':'')+'" role="tab" aria-selected="'+sel+'" data-tab="'+id+'">'+(isDraft?'<b aria-hidden="true">＋</b>':dot(T[id].st))+'<span class="t">'+esc(isDraft?'New task':T[id].title)+'</span><span class="ibtn" data-close="'+id+'" role="button" aria-label="Close tab" style="width:20px;height:20px">×</span></button>';
+ });
+ h+='<span class="sp"></span><button class="ibtn" id="splitBtn" aria-pressed="'+(st.panes.length===2)+'" title="Split view (max 2 conversations)">◫</button>';
+ $('#tabs').innerHTML=h;
+}
+
+/* ---------- transcript ---------- */
+function toolHtml(file,delta,lines){return '<div class="tool"><button aria-expanded="false"><span aria-hidden="true">✎</span><span class="f">'+file+'</span><span class="add">'+delta[0]+'</span><span class="del">'+delta[1]+'</span></button><div class="body">'+lines+'</div></div>'}
+function transcript(id){
+ var t=T[id];
+ if(id==='a')return '<div class="u">Add rate limiting to the login endpoint — 5 attempts per minute per IP.</div><div class="a"><p>I\'ll add a small in-memory limiter and wire it into the login route.</p></div><button class="fold" data-fold>▸ Explored 6 files, ran 2 searches</button><div class="a"><p>Limiter added and the route is guarded. One decision before I write tests:</p></div>'+
+  toolHtml('src/routes/login.ts',['+14','−2'],'<div class="dl d">-  router.post(\'/login\', handler)</div><div class="dl a">+  router.post(\'/login\', rateLimit({ max: 5, windowMs: 60_000 }), handler)</div>')+
+  '<div class="ask"><h3>Needs your answer</h3>Where should limiter state live?<div class="opts"><button class="btn p" data-ans>In memory (simple, resets on restart)</button><button class="btn" data-ans>SQLite file in .ai/state</button><button class="btn" data-ans>Skip tests for now</button></div></div>';
+ if(id==='b')return '<div class="u">Migrate the settings page to the new colour tokens and tidy the form layout. Split it into workers.</div><div class="a"><p>Plan: one worker for tokens, one for the form layout. I review both before anything is merged.</p></div>'+
+  '<div class="tool"><button aria-expanded="false"><span aria-hidden="true">⑂</span><span class="f">Worker · Update colour tokens</span><span class="pill"><span class="dot ok"></span>done</span></button><div class="body"><div class="dl">branch onni/c0a1d2e3 · 1 file · report ready</div></div></div>'+
+  '<div class="tool"><button aria-expanded="false"><span aria-hidden="true">⑂</span><span class="f">Worker · Settings form layout</span><span class="pill"><span class="dot run"></span>running</span></button><div class="body"><div class="dl">branch onni/77be90aa · editing src/settings/page.tsx</div></div></div>'+
+  '<div class="note">Open a worker from the Navigator to read its own conversation. Merging stays your decision.</div>';
+ return '<div class="u">'+esc(t.title)+'</div><div class="a"><p>'+(t.st==='err'?'The upgrade failed: peer dependency conflict with the test plugin. No changes were kept.':'Done. The change is in the worktree on <span class="chip">'+t.branch+'</span>; review it in Changes.')+'</p></div>';
+}
+function paneHtml(id,idx){
+ if(id.indexOf('draft')===0)return '<div class="scroll"><div class="draft"><h2>What should the agent do?</h2><textarea id="dprompt" placeholder="Describe the task…  (@ files · / skills)"></textarea>'+
+  '<div class="crow"><span class="chip">claude · sonnet ▾</span><span class="chip">new worktree ▾</span><span class="sp"></span><span class="note">Attachments are not saved in drafts</span></div>'+
+  '<details><summary>Options — branch, autonomy, limits, workers</summary><div class="grid2"><label>Branch<input type="text" value="auto (onni/…)"></label><label>Autonomy<select><option>Ask before risky steps</option><option>Autonomous (fenced)</option></select></label><label>Run limits<select><option>Default caps</option><option>Unlimited</option></select></label><label>Manager / workers<select><option>Off</option><option>Dispatch to workers</option></select></label></div></details>'+
+  '<div class="opts"><button class="btn p" data-start>Start task</button><button class="btn" data-sched>Schedule…</button></div></div></div>';
+ var t=T[id];
+ var head='<div class="phead">'+dot(t.st)+'<h1>'+esc(t.title)+'</h1><span class="chip" title="Worktree .ai/onni/worktrees/'+t.branch.slice(5)+'">'+t.branch+'</span><div class="tools">'+
+  '<button class="tbtn" data-ctx="changes" aria-pressed="false">Changes <span class="add">'+(t.files.length?'+'+t.files.length:'')+'</span></button>'+
+  '<button class="tbtn" data-ctx="terminal" aria-pressed="false">Terminal</button>'+
+  '<button class="tbtn" data-ctx="more" aria-pressed="false" aria-label="More views" title="Files, Tree, Info">⋯</button></div></div>';
+ return head+'<div class="scroll"><div class="col">'+transcript(id)+'</div></div>'+
+  '<div class="composer"><div class="col">'+(id==='b'?'<div class="queue">1 message queued — delivered after the manager finishes this step</div>':'')+
+  '<textarea rows="2" placeholder="'+(t.st==='run'?'Message queued while the agent works… or Steer':'Reply, or @ a file, / a skill')+'" aria-label="Message"></textarea>'+
+  '<div class="crow"><button class="ibtn" aria-label="Attach">＋</button><span>'+esc(t.runner)+'</span><span class="sp"></span><span>'+esc(t.tok)+'</span><span>·</span><span title="Run limits">limits 31%</span>'+(t.st==='run'?'<button class="btn">Stop</button>':'')+'<button class="send">'+(t.st==='run'?'Queue':'Send')+'</button></div></div></div>';
+}
+function renderPanes(){
+ var h='';
+ st.panes.forEach(function(id,i){
+  if(i)h+='<div class="pdiv" role="separator" aria-orientation="vertical" aria-label="Resize conversations" tabindex="0" aria-valuemin="25" aria-valuemax="75" aria-valuenow="50" id="pdiv"></div>';
+  h+='<div class="pane'+(st.active===id?' active':'')+'" data-pane="'+id+'" role="group" aria-label="'+esc(id.indexOf('draft')===0?'New task':T[id].title)+'" aria-current="'+(st.active===id)+'" style="flex-basis:'+(st.panes.length===2?(i?'50%':'50%'):'100%')+'">'+paneHtml(id,i)+'</div>';
+ });
+ $('#panes').innerHTML=h;
+ syncCtxButtons();
+}
+function syncCtxButtons(){
+ document.querySelectorAll('[data-ctx]').forEach(function(b){
+  var inActive=b.closest('.pane')&&b.closest('.pane').dataset.pane===st.active;
+  var on=inActive&&st.ctxOpen&&((b.dataset.ctx==='more'&&['files','tree','info'].indexOf(st.ctxView)>-1)||b.dataset.ctx===st.ctxView);
+  b.setAttribute('aria-pressed',on);
+ });
+}
+
+/* ---------- context drawer ---------- */
+var VIEWS=[['changes','Changes'],['files','Files'],['terminal','Terminal'],['tree','Tree'],['info','Info']];
+function renderCtx(){
+ var c=$('#ctx');c.classList.toggle('open',st.ctxOpen&&st.active.indexOf('draft')!==0);
+ if(!c.classList.contains('open'))return;
+ var t=T[st.active];
+ $('#ctabs').innerHTML=VIEWS.map(function(v){return '<button class="ctab" role="tab" aria-selected="'+(v[0]===st.ctxView)+'" data-view="'+v[0]+'">'+v[1]+'</button>'}).join('')+'<span style="flex:1"></span><button class="ibtn" data-closectx aria-label="Close context">×</button><button class="ibtn only-m" data-closectx aria-label="Back">←</button>';
+ $('#cfor').innerHTML='For <b>'+esc(t.title)+'</b> · <span class="chip">'+t.branch+'</span>';
+ var h='',v=st.ctxView;
+ if(v==='changes'){
+  if(!t.files.length)h='<p class="note">No changes were kept for this task.</p>';
+  else{
+   h='<div class="files">'+t.files.map(function(f,i){return '<button data-file aria-current="'+(i===0)+'"><span>'+f[0]+'</span><span class="add">'+f[1]+'</span></button>'}).join('')+'</div>'+
+   '<div class="diff"><div class="dl">@@ '+esc(t.files[0][0])+'</div><div class="dl d">-  const ok = check(user, pass)</div><div class="dl a">+  if (!limiter.take(req.ip)) return res.status(429).end()</div><div class="dl a">+  const ok = check(user, pass)</div>'+
+   '<div class="cmt">💬 Should 429 include Retry-After?<br><button class="btn" data-sendcmt style="margin-top:6px">Send comment to agent</button></div></div>'+
+   '<div class="review"><button class="btn" data-act="Marked finished — nothing merged">Finish</button><button class="btn p" data-act="Draft PR opened via gh (not merged)">Create draft PR</button></div><div class="note">Nothing merges automatically. Merging a PR is always a separate click.</div>';
+  }
+ }else if(v==='files')h='<div class="files">'+['src/','  routes/login.ts','  lib/rate-limit.ts','test/login.test.ts','package.json'].map(function(f){return '<button><span>'+esc(f)+'</span></button>'}).join('')+'</div><div class="diff"><div class="dl">export function rateLimit(opts) {</div><div class="dl">  const hits = new Map()</div><div class="dl">  …</div></div><p class="note">Read-only worktree browser.</p>';
+ else if(v==='terminal')h='<div class="note" style="margin:0 0 8px"><span class="chip">localhost</span> <span class="chip">acme-web</span> <span class="chip">'+t.branch+'</span><br>.ai/onni/worktrees/'+t.branch.slice(5)+'</div><div class="term"><i>$</i> npm test -- login<br>✓ login rejects bad password<br>✓ login allows 5 attempts<br>✗ login blocks 6th attempt<br><i>$</i> <span style="opacity:.6">▌</span></div><p class="note">One terminal per task. Opening it here replaces any bottom drawer.</p>';
+ else if(v==='tree'){
+  var kids=(t.kids||[]).map(function(k){return '<button class="row" data-open="'+k+'">'+dot(T[k].st)+'<span class="t">'+esc(T[k].title)+'</span><span class="m">'+esc(T[k].branch)+'</span></button>'}).join('');
+  h='<h4>Dispatched tasks</h4>'+(kids||'<p class="note">This task did not dispatch workers.</p>')+'<h4>Runner subagents</h4><div class="row"><span class="dot ok"></span><span class="t">explore-codebase</span><span class="m">18 tool calls</span></div><p class="note">Subagents run inside this task; dispatched tasks are separate branches.</p>';
+ }else h='<dl class="kv"><dt>Status</dt><dd>'+({run:'Running',need:'Waiting for you',ok:'Done',err:'Failed'}[t.st])+'</dd><dt>Branch</dt><dd>'+t.branch+'</dd><dt>Worktree</dt><dd>.ai/onni/worktrees/'+t.branch.slice(5)+'</dd><dt>Runner</dt><dd>'+esc(t.runner)+'</dd><dt>Usage</dt><dd>'+esc(t.tok)+'</dd><dt>Limits</dt><dd>time 12m / 60m · cost 31%</dd><dt>PR</dt><dd>—</dd></dl>';
+ $('#cbody').innerHTML=h;
+}
+
+/* ---------- actions ---------- */
+function render(){renderNav();renderTabs();renderPanes();renderCtx()}
+function openTab(id){
+ if(st.tabs.indexOf(id)<0)st.tabs.push(id);
+ var i=st.panes.indexOf(st.active);if(i<0)i=0;
+ if(st.panes.indexOf(id)<0)st.panes[i]=id;
+ st.active=id;render();
+}
+function setActive(id){if(st.active!==id){st.active=id;render()}}
+function closeTab(id){
+ var n=st.tabs.indexOf(id);st.tabs.splice(n,1);
+ st.panes=st.panes.filter(function(p){return p!==id});
+ if(!st.tabs.length){st.tabs=['a'];}
+ if(!st.panes.length)st.panes=[st.tabs[Math.max(0,n-1)]];
+ if(st.panes.indexOf(st.active)<0)st.active=st.panes[0];
+ render();
+}
+function showCtx(v){
+ if(st.ctxOpen&&st.ctxView===v){st.ctxOpen=false}else{st.ctxOpen=true;st.ctxView=v}
+ renderCtx();syncCtxButtons();
+}
+function split(){
+ if(st.panes.length===2){st.panes=[st.active];toast('Back to one conversation');}
+ else{
+  var other=st.tabs.filter(function(t){return t!==st.active})[0]||'c';
+  if(st.tabs.indexOf(other)<0)st.tabs.push(other);
+  st.panes=[st.active,other];toast('Max 2 conversations visible. Click a pane to make it active.');
+ }
+ render();
+}
+
+document.addEventListener('click',function(e){
+ var x=e.target.closest('[data-close]');if(x){e.stopPropagation();return closeTab(x.dataset.close)}
+ var o=e.target.closest('[data-open]');if(o)return openTab(o.dataset.open);
+ var t=e.target.closest('[data-tab]');if(t)return openTab(t.dataset.tab);
+ if(e.target.closest('#splitBtn'))return split();
+ var c=e.target.closest('[data-ctx]');
+ if(c){var p=c.closest('.pane').dataset.pane;if(st.active!==p){st.active=p;renderNav();renderTabs();document.querySelectorAll('.pane').forEach(function(n){n.classList.toggle('active',n.dataset.pane===p)})}
+  return showCtx(c.dataset.ctx==='more'?'info':c.dataset.ctx)}
+ var v=e.target.closest('[data-view]');if(v){st.ctxView=v.dataset.view;renderCtx();return syncCtxButtons()}
+ if(e.target.closest('[data-closectx]')){st.ctxOpen=false;renderCtx();return syncCtxButtons()}
+ var tb=e.target.closest('.tool>button');if(tb){var tl=tb.parentNode;tl.classList.toggle('open');tb.setAttribute('aria-expanded',tl.classList.contains('open'));return}
+ var f=e.target.closest('[data-fold]');if(f){f.textContent=f.textContent.indexOf('▸')===0?'▾ read src/routes/login.ts · read src/lib/… · grep "login" · 3 more':'▸ Explored 6 files, ran 2 searches';return}
+ var a=e.target.closest('[data-ans]');if(a){a.closest('.ask').innerHTML='<h3>Answered</h3>'+esc(a.textContent)+' — the agent continues.';var tt2=T.a;tt2.st='run';tt2.group='Running';tt2.meta='running';renderNav();renderTabs();return}
+ var ac=e.target.closest('[data-act]');if(ac)return toast(ac.dataset.act);
+ if(e.target.closest('[data-sendcmt]'))return toast('Comment sent to the composer of “'+T[st.active].title+'”');
+ if(e.target.closest('#railBtn')){var r=$('#app').classList.toggle('rail');$('#railBtn').textContent=r?'»':'«';return}
+ if(e.target.closest('#themeBtn'))return document.documentElement.classList.toggle('light');
+ if(e.target.closest('#newBtn')){
+  if(window.innerWidth<=900)$('#app').classList.remove('navopen');
+  var ex=st.tabs.filter(function(i){return i.indexOf('draft')===0})[0];
+  if(ex){return openTab(ex)}
+  T.draft1={id:'draft1',title:'New task',st:'ok',branch:'',files:[],runner:'',tok:''};openTab('draft1');st.ctxOpen=false;renderCtx();return}
+ var s=e.target.closest('[data-start]');
+ if(s){var pr=($('#dprompt').value||'Add dark mode toggle to the header').trim();
+  var nid='n'+Date.now()%1e5;T[nid]={id:nid,title:pr.slice(0,48),st:'run',branch:'onni/9a'+Math.floor(Math.random()*9e5+1e5).toString(16).slice(0,6),group:'Running',meta:'just started',tok:'0.4k tok',runner:'claude · sonnet',files:[]};
+  order.unshift(nid);var i=st.tabs.indexOf('draft1');st.tabs[i]=nid;st.panes=st.panes.map(function(p){return p==='draft1'?nid:p});st.active=nid;delete T.draft1;render();toast('Started in place — same tab, now /tasks/'+nid);return}
+ if(e.target.closest('[data-sched]')){st.scheduled.push($('#dprompt').value||'Nightly dependency audit');closeTab('draft1');delete T.draft1;toast('Scheduled — no run yet, no worktree created');return}
+ if(e.target.closest('#scrim'))$('#app').classList.remove('navopen');
+});
+/* active pane: pointerdown only (never hover / wheel) */
+document.addEventListener('pointerdown',function(e){var p=e.target.closest('.pane');if(p&&p.dataset.pane!==st.active){st.active=p.dataset.pane;renderNav();renderTabs();document.querySelectorAll('.pane').forEach(function(n){n.classList.toggle('active',n.dataset.pane===st.active);n.setAttribute('aria-current',n.dataset.pane===st.active)});renderCtx();syncCtxButtons();toast('Context now follows: '+title(st.active))}});
+document.addEventListener('keydown',function(e){
+ if(e.altKey&&/^[1-9]$/.test(e.key)){var id=st.tabs[+e.key-1];if(id){e.preventDefault();openTab(id)}}
+ if(e.altKey&&e.key==='\\'){e.preventDefault();showCtx(st.ctxView)}
+});
+
+/* ---------- splitters (pointer + keyboard) ---------- */
+function bindSplit(node,get,set,min,max,dir){
+ function apply(v){v=Math.max(min,Math.min(max,v));set(v);node.setAttribute('aria-valuenow',Math.round(v))}
+ node.addEventListener('pointerdown',function(e){e.preventDefault();node.setPointerCapture(e.pointerId);node.classList.add('drag');var x0=e.clientX,v0=get();
+  function mv(ev){apply(v0+dir*(ev.clientX-x0))}function up(){node.classList.remove('drag');node.removeEventListener('pointermove',mv);node.removeEventListener('pointerup',up)}
+  node.addEventListener('pointermove',mv);node.addEventListener('pointerup',up)});
+ node.addEventListener('keydown',function(e){var s=e.shiftKey?48:16;
+  if(e.key==='ArrowLeft'){apply(get()-dir*s);e.preventDefault()}else if(e.key==='ArrowRight'){apply(get()+dir*s);e.preventDefault()}
+  else if(e.key==='Home'){apply(min);e.preventDefault()}else if(e.key==='End'){apply(max);e.preventDefault()}});
+ node.addEventListener('dblclick',function(){apply(+node.dataset.def)})
+}
+var root=document.documentElement;
+$('#navSplit').dataset.def=248;$('#ctxSplit').dataset.def=420;
+bindSplit($('#navSplit'),function(){return parseInt(getComputedStyle(root).getPropertyValue('--nav'))||248},function(v){root.style.setProperty('--nav',v+'px')},200,380,1);
+bindSplit($('#ctxSplit'),function(){return parseInt(getComputedStyle(root).getPropertyValue('--ctx'))||420},function(v){root.style.setProperty('--ctx',v+'px')},320,720,-1);
+/* pane divider: re-bound after each render (percent based, own handlers) */
+var obs=new MutationObserver(function(){var d=$('#pdiv');if(!d||d.dataset.b)return;d.dataset.b=1;
+ var ps=document.querySelectorAll('.pane'),w=50;
+ function setW(v){w=Math.max(25,Math.min(75,v));ps[0].style.flexBasis=w+'%';ps[1].style.flexBasis=(100-w)+'%';d.setAttribute('aria-valuenow',Math.round(w))}
+ d.addEventListener('pointerdown',function(e){e.preventDefault();d.setPointerCapture(e.pointerId);var x0=e.clientX,w0=w,tot=$('#panes').clientWidth;
+  function mv(ev){setW(w0+((ev.clientX-x0)/tot)*100)}function up(){d.removeEventListener('pointermove',mv);d.removeEventListener('pointerup',up)}
+  d.addEventListener('pointermove',mv);d.addEventListener('pointerup',up)});
+ d.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')setW(w-5);else if(e.key==='ArrowRight')setW(w+5);else if(e.key==='Home')setW(25);else if(e.key==='End')setW(75);else return;e.preventDefault()});
+ d.addEventListener('dblclick',function(){setW(50)})});
+obs.observe($('#panes'),{childList:true});
+
+/* mobile: navigator opens from a button injected into the tab strip */
+var mb=el('<button class="ibtn only-m" id="menuBtn" aria-label="Open navigator">☰</button>');
+mb.addEventListener('click',function(){$('#app').classList.add('navopen')});
+$('.work').insertBefore(mb,$('#tabs'));
+render();
+})();
+</script>
 </body>
 </html>
