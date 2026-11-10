@@ -102,11 +102,12 @@ export interface EffectiveLevel {
 
 /**
  * `bypass` is for a task a person is watching. An unattended run (autonomous or dispatched — every
- * manager–worker child) never inherits it: it falls back to `allow-rules`, so a Settings choice
- * made for interactive use cannot silently widen a tree nobody is watching (ADR 0005, 0007).
+ * manager–worker child) falls back to `allow-rules` unless the owner explicitly opts in through
+ * `ONNI_ANTIGRAVITY_UNATTENDED_BYPASS=1`. Read the flag here so a changed process environment
+ * applies to the next permission decision (ADR 0005, 0007).
  */
 export function effectiveAntigravityLevel(configured: AgentPermissionLevel, unattended: boolean): EffectiveLevel {
-  if (configured === 'bypass' && unattended) {
+  if (configured === 'bypass' && unattended && process.env.ONNI_ANTIGRAVITY_UNATTENDED_BYPASS !== '1') {
     return {
       level: 'allow-rules',
       downgradedBecause: 'unattended runs never skip permission checks — using the allow-rules level instead of "Skip all confirmations"',

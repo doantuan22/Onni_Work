@@ -63,11 +63,44 @@ describe('antigravity permission levels', () => {
   });
 });
 
-describe('effectiveAntigravityLevel — bypass is never inherited by an unattended run', () => {
-  it('lowers bypass to allow-rules for an unattended run, with a reason', () => {
-    const result = effectiveAntigravityLevel('bypass', true);
-    expect(result.level).toBe('allow-rules');
-    expect(result.downgradedBecause).toMatch(/unattended/);
+describe('effectiveAntigravityLevel — unattended bypass opt-in', () => {
+  function withUnattendedBypassFlag<T>(value: string | undefined, run: () => T): T {
+    const key = 'ONNI_ANTIGRAVITY_UNATTENDED_BYPASS';
+    const previous = process.env[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+    try {
+      return run();
+    } finally {
+      if (previous === undefined) delete process.env[key];
+      else process.env[key] = previous;
+    }
+  }
+
+  it('lowers bypass to allow-rules for an unattended run by default, with a reason', () => {
+    withUnattendedBypassFlag(undefined, () => {
+      const result = effectiveAntigravityLevel('bypass', true);
+      expect(result.level).toBe('allow-rules');
+      expect(result.downgradedBecause).toMatch(/unattended/);
+    });
+  });
+
+  it('keeps bypass for unattended runs only when the opt-in flag is set to 1', () => {
+    withUnattendedBypassFlag('1', () => {
+      expect(effectiveAntigravityLevel('bypass', true)).toEqual({ level: 'bypass' });
+      expect(effectiveAntigravityLevel('allow-rules', true)).toEqual({ level: 'allow-rules' });
+      expect(effectiveAntigravityLevel('files-only', true)).toEqual({ level: 'files-only' });
+    });
+  });
+
+  it('reads the opt-in at call time and requires its exact value', () => {
+    withUnattendedBypassFlag('0', () => {
+      expect(effectiveAntigravityLevel('bypass', true).level).toBe('allow-rules');
+      process.env.ONNI_ANTIGRAVITY_UNATTENDED_BYPASS = '1';
+      expect(effectiveAntigravityLevel('bypass', true)).toEqual({ level: 'bypass' });
+      process.env.ONNI_ANTIGRAVITY_UNATTENDED_BYPASS = 'true';
+      expect(effectiveAntigravityLevel('bypass', true).level).toBe('allow-rules');
+    });
   });
 
   it('keeps bypass for a watched task, and leaves every other level alone', () => {

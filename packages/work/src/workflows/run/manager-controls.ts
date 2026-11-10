@@ -122,9 +122,9 @@ export function updateDispatch(ctx: ManagerControlContext, runId: string, patch:
    */
 export async function loadManagerSessionContext(ctx: ManagerControlContext, runId: string, state: ManagerControlSessionState): Promise<ManagerSessionContext> {
     const context: ManagerSessionContext = {};
-    // #3: the level an Antigravity WORKER actually gets — always unattended, so `bypass` is
-    // lowered here, exactly as `agentPermissionSpec` will do when the child spawns. Read once per
-    // session; the dispatch-time warning is the fresher source of truth if the user changes it.
+    // #3: the level an Antigravity WORKER actually gets — always unattended, so the same opt-in-aware
+    // downgrade as `agentPermissionSpec` is applied here and when the child spawns. Read once per
+    // session; the dispatch-time decision is fresher if the owner changes settings mid-session.
     const config = await loadWorkspaceConfig().catch(() => null);
     if (config) {
       const configured = config.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;

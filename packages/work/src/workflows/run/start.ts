@@ -119,8 +119,8 @@ export function agentEnv(ctx: StartContext, runId: string, generateFollowups = t
 /**
  * Antigravity's permission level for this run (ADR 0007): the Settings choice, with `bypass`
  * lowered for an unattended run — autonomous or dispatched, which includes every manager–worker
- * child — so a choice made for a watched task can never widen a tree nobody watches. Other
- * backends have no level and get nothing.
+ * child — unless the owner opted in with `ONNI_ANTIGRAVITY_UNATTENDED_BYPASS=1`. Other backends
+ * have no level and get nothing. The helper's downgrade reason is also the run note.
  */
 export async function agentPermissionSpec(ctx: StartContext,
   runId: string,

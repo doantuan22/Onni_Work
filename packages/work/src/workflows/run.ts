@@ -235,7 +235,6 @@ import {
 export { makeRunTitle };
 import { WorktreeLifecycleCoordinator } from '../worktree-lifecycle/coordinator.ts';
 import { DEFAULT_AGENT_PERMISSION_LEVEL, VERIFY_TOTAL_TIMEOUT_MS, CONFLICTS_FILES_MAX, CONFLICTS_MAX_PAIRS, CONFLICTS_TRIAL_MAX, type DispatchConflicts, type DispatchConflictWorker, type DispatchTrialMerge, type DispatchVerifyInput, type DispatchVerifyResult, MANAGER_MEMORY_MAX_BYTES, PEEK_ALL_MAX_CHARS_TOTAL, PEEK_FILES_MAX, PEEK_MAX_ENTRIES, PEEK_TAIL_MAX_CHARS_PER_LINE, PEEK_TAIL_MAX_LINES, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchPeek, type DispatchPeekEntry, type ManagerAskInput, type ManagerAskResponse, type ManagerMemoryAdd, type ManagerMemoryPut, type ManagerMemoryRead, type TreePlan, type TreePlanPatch, type TreePlanPut, type WebhookAttentionRequest, type TrackerAssociation, type UsageWindowsObservation } from '@onni/contract';
-import { effectiveAntigravityLevel } from '../core/antigravity-permissions.ts';
 import { saveUsageWindows } from '../workspace/usage-windows.ts';
 import { probeCodexIdentity, probeCodexUsageWindows } from '../core/codex-usage-probe.ts';
 import { TrackerAgentBindingError } from '../server/tracker/agent-credentials.ts';
