@@ -279,7 +279,7 @@ The owner supplied three target screens, all captured at 2880×1800 (16:10, 2× 
 px**). Measurements below are converted to CSS px from those images (displayed width 2000 → ×0.72).
 Files: [ref-1 review](reference/ref-1-review-layout.png), [ref-2 workbench](reference/ref-2-workbench-layout.png),
 [ref-3 settings](reference/ref-3-settings-layout.png). Where this section and §3–§6 disagree,
-**§12 wins** (it is the owner's target); the conflicts are listed in 12.5.
+**§12 wins** (it is the owner's target); the conflicts are listed in 12.5 and the confirmed decisions in 12.7.
 
 ### 12.1 Screen 1 — "Review layout" (Navigator + Chat + Context/Changes)
 
@@ -363,7 +363,7 @@ settings page has the same grouping *(verified in the live desktop app)* — thi
   lifted fill; no shadows).
 - **Accent = violet** (logo tile, active tab underline, Commit button, links, count badges);
   status colors: amber = running, green = done/added, red = failed/deleted/danger, white = primary
-  neutral button (New task, Stop). *Today's cockpit accent is lime* — see decision D1.
+  neutral button (New task, Stop). *Today's cockpit accent is lime* — see decision D1 (confirmed: violet).
 - Radii ≈ 10–12 px on cards/inputs, full-round on pills/badges; ~48 px header strips; 12–13 px mono
   for code, ~14 px UI text; generous vertical rhythm (rows ≈ 28–32 px).
 - Icons: thin outline set, consistent 18–20 px; hover/selected = filled rounded rectangle.
@@ -417,22 +417,26 @@ settings page has the same grouping *(verified in the live desktop app)* — thi
 | Terminal over Preview | `TerminalDrawer` (`fill`), browser view | **Vertical stack container** |
 | Settings | existing settings routes | Re-skin + layout tokens |
 
-### 12.7 Decisions to confirm (recommendation first)
+### 12.7 Decisions (confirmed 2026-11-10 — owner delegated "choose the optimal option")
 
-- **D1 — Accent colour:** references use violet; the shipped cockpit uses lime. Recommend adopting
-  violet through the existing token layer only (`--primary`), keeping lime as a dark-theme
-  alternative if desired; `design-guardian` forbids raw colours so this must go through tokens.
-- **D2 — Thread tab strip:** recommend removing it in 1-up (12.5 #2).
-- **D3 — Editor scope:** recommend read-only in v1; editing needs a save/error lifecycle and
-  conflict handling with the running agent's worktree writes.
-- **D4 — Workbench preset:** ship as a named preset in the Layout menu, not as the default.
-- **D5 — Rail trigger:** automatic at ≥4 zones / narrow width, manual override persists.
+| # | Decision | Why this is the optimal option |
+| --- | --- | --- |
+| D1 | **Accent = violet, as the single accent, set only through the token layer** (`--primary`, `--ring`, active-tab/underline and link tokens) in both themes. No setting, no env var, no lime/violet switch. The brand gradient and status colours (amber/green/red) are untouched. | The owner's target screens are violet. A switch would add a knob for a taste question (AGENTS.md: never trade a working default for a knob) and double the visual-test matrix. Going through tokens keeps `design-guardian` green (it only bans raw colours / `dark:`) and makes the change one reviewable diff. Audit every place that hard-wires lime (brand, focus rings, charts) and check contrast ≥ 4.5:1 for text-on-violet and violet-on-near-black in light and dark. |
+| D2 | **No thread tab strip in 1-up.** The Navigator "Open / Archived" list is the open-thread set; a labelled tab strip appears only while 2-up split is on. | Matches the reference screens, removes a second navigation layer ("double navigation", §8 #4), and costs no state change: `threads[]` stays in `WorkspaceState`. |
+| D3 | **Editor pane is read-only in v1** (tabs, breadcrumb, line numbers, syntax highlight; reuse `FilePreview`). Editing/saving is out of scope until a separate spec defines save errors and conflicts with the agent writing to the same worktree. | Files is read-only today and `CodeEditor` has no worktree save lifecycle (survey B). A human edit racing a running agent is a data-loss risk; "nothing merges itself" extends to "nothing silently overwrites". Read-only already delivers the Workbench look. |
+| D4 | **Default = Review layout; Workbench = a named preset** in the existing Layout menu (user-saved layouts keep working). | Review fits 1440 px and narrow windows; Workbench needs ≥4 zones and a 379 px Chat that stresses tool rows. Presets reuse the saved-layouts model, so no new persistence. |
+| D5 | **Rail = automatic + sticky manual override.** Auto-collapse the Navigator to the 55 px rail when the active layout has ≥4 content zones or the window is < 1360 px; a manual toggle always wins and is remembered per project in localStorage, stored separately from `onni-sidebar-width`. Expanding on hover is **not** used. | Gives the Workbench room without surprising users who chose a width; separate storage avoids fighting the existing width preference; no hover-expand avoids layout thrash and focus bugs (cf. §11.1). |
+| D6 | **Vertical stack = max 2 views per column, Terminal-over-Preview only in v1**, default ratio 58/42, `role="separator"` horizontal with Up/Down/Home/End (§11.6). | Keeps the layout model additive (optional field, old layouts still parse) and delivers the reference without a general tiling engine. |
+| D7 | **Header strip = one layout token (48 px)** used by every zone; Settings top bar 55 px stays equal to the rail width. | Removes per-component padding drift; trivial to enforce in review. |
+
+Consequence for §8: decisions 1–5 stand; D2 refines #4 (Navigator replaces the sidebar, tabs only
+for split).
 
 ### 12.8 Phase impact
 
 Phase 1 (primitives) adds the 48 px header token, rail mode and the vertical split primitive.
 Phase 2 (host) seeds the Review layout and adds Layout-menu presets. Phase 3 (Context) adds
-`files-tree` / `editor` pane kinds and the Terminal-over-Preview stack. Settings re-skin is
+`files-tree` / read-only `editor` pane kinds (D3) and the Terminal-over-Preview stack (D6). The violet token swap (D1) ships first, alone, with a contrast audit. Settings re-skin is
 independent and can ship at any phase (pure presentation). Contract additions (§7) are unaffected.
 
 ### 12.9 Test and risk notes
