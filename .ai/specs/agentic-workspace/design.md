@@ -76,7 +76,7 @@ Changes/Terminal etc. is one click or shortcut; the arrangement is remembered. T
 WorkspaceState (per project, restored on load)
   navigator: { collapsed, width }
   threads:   ordered PaneRef[]        // open conversation tabs
-  PaneRef:   { paneId, projectId, runId }
+  PaneRef:   RunPaneRef{paneId,projectId,runId} | DraftPaneRef{paneId,projectId,draftId}  // see 11.3
   active:    paneId
   split:     none | 2-up (paneId pair)
   context:   { open, width, view }     // applies to the active thread, view ∈ existing ViewId
@@ -106,8 +106,7 @@ sheets — decided separately from desktop, as survey A warns.
 - **Approvals**: ship `ask.requested` cards inline now (works). Interactive permission approvals
   are **gated on a product decision** (§8): `permission.*` events are reserved and not honored
   across all runners; do not draw an "always allow" control until they are.
-- **Keyboard**: keep the Task Palette and shell Mod-shortcuts; add pane-scoped Mod+1..9 (switch
-  tab), Mod+\ (toggle context), Mod+J (terminal), Mod+B (navigator). Shortcuts yield to text
+- **Keyboard**: keep the Task Palette and shell Mod-shortcuts; add pane-scoped pane switch / toggle context / terminal / navigator (chords chosen centrally; Mod+1..9 collides, see 11.1). Shortcuts yield to text
   inputs, terminal and dialogs (existing guards). Active pane must be visually and ARIA-clear.
 - **Empty/loading/error**: failed load ≠ "no changes"; empty navigator offers New Task / Add
   Project; skeletons per pane.
@@ -144,13 +143,21 @@ counts (runs-index is capped and non-paged); (2) transcript search endpoint; (3)
 activate `permission.requested/resolved` with a typed answer route. Phase 1 can ship with none of
 these by using the existing index + client-side state.
 
-## 8. Decisions needed from the owner
+## 8. Owner decisions (answered 2026-11-10)
 
-1. Scope of "workspace": per project (recommended) vs global across projects.
-2. Max simultaneous conversation panes: 2 (recommended) vs N.
-3. Interactive permission approvals in scope? (large cross-runner work; defer recommended)
-4. Replace the sidebar outright (recommended: Navigator with icon-rail) vs keep it plus a tab bar.
-5. Persist workspace state server-side or localStorage only for v1 (localStorage recommended).
+1. **Workspace scope: per project.** Routing, query keys, `@`/`/` suggestions and Git/worktree state
+   are all project-scoped; mixing projects in one workspace would swap the Context area's repo
+   under the user. The Navigator still lists all projects; switching restores that project's
+   `WorkspaceState`.
+2. **Visible conversation panes: max 2** (unlimited open tabs). Four vertical columns is the width
+   limit for tool cards/diffs, and it caps run streams (§11.2).
+3. **Interactive permission approvals: deferred.** `permission.*` is reserved and unhandled; ship
+   `ask.requested` / `DeniedActionsHint` only. Optional Phase 6.
+4. **Replace the sidebar with the Navigator** (icon-rail collapse). Project-level tool pages
+   (Git, GitHub, Tracker, Automations, Skills, Settings) become icon buttons that stay reachable
+   when collapsed. Avoids double navigation.
+5. **State: localStorage per `projectId` for v1**, plus the existing `/runs/:id/layouts` for the
+   Context area. Deleting it yields the default layout (zero-config).
 
 ## 9. Phasing (each phase ships independently, default path unchanged until the last)
 
@@ -173,3 +180,92 @@ these by using the existing index + client-side state.
   (survey A §tests). `design-guardian` token rules constrain styling.
 - Don't conflate runner subagents with dispatched child runs in counts or navigation.
 - Windows dev box: `npm test` is noisy locally; CI is the authority (AGENTS.md).
+
+## 11. Technical issues verified against code (2026-11-10)
+
+Evidence: [verify-1](verify-1-network-newtask-url.md), [verify-2](verify-2-focus-terminal-splitter.md).
+All six proposed treatments came back **PARTLY** confirmed: the direction is right, the details
+below are corrected.
+
+### 11.1 Active pane and focus — a new host mechanism
+- Activate only on pane `pointerdown`, tab-header click, or an explicit pane shortcut; never on
+  hover or wheel. Add `ActivePaneContext` above `WorkspaceColumns` (none exists; wide columns have
+  no active or `aria-*` state today). Expose real tab/tabpanel semantics with `aria-selected` plus
+  a visible token-based active treatment (not `aria-current` on unmarked wrappers).
+- The Context area and status bar follow the active pane. Line comments bind to the **owning
+  thread id**, not "whatever is active", so a late click cannot misroute them.
+- **Shortcut collisions (verified):** `Mod+1..9` is already task-palette `tab:1..9` and browser
+  tab switching; bare `1..9`, backslash, `/` and backtick are task-workspace keys; `Mod+J`
+  (Downloads), `Mod+B` (Firefox Bookmarks) and `Mod+N` (new window / Onni new task) are contested;
+  Settings → Keyboard lets users rebind into the same space. Therefore: reserve every new chord
+  centrally in `lib/keybindings.ts` (registry + `chordProblem`); pick pane-switch chords that avoid
+  `Mod+1..9` (e.g. `Alt+1..9` or `Mod+Alt+Arrow`, final choice at implementation after checking
+  browser and desktop shell); migrate or scope the existing `tab:N` commands.
+- Yield rules reuse `isEditableTarget` + the xterm guard + `shortcutsBlocked()`
+  (dialog / menu / listbox).
+
+### 11.2 Connection budget — corrected numbers
+- Today: 1 root workspace SSE + 1 optional project-webhook SSE + **1 EventSource per mounted Chat
+  column** (no dedup). One shared local WebSocket (health / host / tracker / terminal topics);
+  **no run topic exists**, so the WS bus cannot carry transcripts until a publisher and trust
+  policy are built. The existing "2-up" layouts are two views of ONE run, not two runs.
+- Target of 2 runs ⇒ 3 SSE (4 with webhooks). Rules: only visible panes open run SSE; hidden tabs
+  close it and rely on the root SSE for status dots and unread; hard cap of 2 visible
+  conversations; two columns of the same run share one stream.
+- HTTP/1.1 starvation applies to the local direct server (Hono `serve`, ~6 per origin); a proxy
+  with HTTP/2 (VPS install) is exempt, so scope the claim. Long term: run topics on the WS bus
+  (ref-counted) or a multiplexed run-event transport (contract §7).
+
+### 11.3 New Task as a draft pane — feasible, needs extraction
+- Use a union, not a nullable `runId`: `DraftPaneRef {paneId, projectId, draftId}` beside
+  `RunPaneRef`. Do not make saved `WorkspaceLayout` columns nullable.
+- Blockers: `NewTaskRoute` is route-bound (params, search params, bookmarklet capture, launch-key
+  auto-start); draft state is **one per project** (localStorage key + module cache + in-memory
+  attachment map); `ManagerWorkerPill` and panel state are component-local. Extract a pane-owned
+  composer surface taking `draftId`, `onStarted`, `onScheduled`; v1 allows **one draft pane per
+  project**. Attachments are intentionally not persisted, so say so in the UI.
+- Promotion: on `POST /runs` success set the same pane to `RunPaneRef{runId}` (variants → first
+  run, as today), then push the run URL. **Scheduled** tasks create no run: close the draft and
+  show a toast / navigator entry instead of promoting.
+- The Context area is closed while a draft pane is active.
+
+### 11.4 URL ↔ workspace state — new behavior, not current
+- Verified: today the path identifies the run; the view suffix only seeds a deep-link layout on
+  load; later view and layout changes are state-only (URL unchanged); `POP` restores the prior
+  layout.
+- Target: path = active run + context view. Switching run = **push**; switching context subview =
+  **replace**. Extra tabs and the split live in workspace state (a URL cannot hold them).
+- Loop prevention: the route-derived (runId, view) is the single input; compare it to the
+  effective selection before applying; local actions go through one navigation helper; keep the
+  existing effect that deliberately omits `layouts.state.active`. An unknown runId in the URL
+  appends a tab and activates it. Test Back/Forward, deep link, async layout load and run switch
+  for convergence.
+
+### 11.5 Terminal placement — per-run ownership
+- Sessions are keyed by `runId` + `sessionId` (several sessions per run = drawer tabs); open state
+  and height persist per run (`onni-task-terminal:<runId>`). The current "exclusive" guard only
+  hides the drawer when a terminal column exists; layout state does not forbid duplicate terminal
+  columns, and two mounted views of one session fight over PTY size.
+- Design: exactly one terminal surface **per run** (enforce in layout-state, including duplicate
+  columns); one drawer anchored under Conversation+Context and bound to the **active** run;
+  different runs keep independent sessions. The header shows host, project, **branch** and
+  worktree path. Branch is not available today and must come from run/worktree data, not be
+  parsed from `cwd`.
+
+### 11.6 Shared Splitter — interaction only, with a wider adapter than proposed
+- Verified: the four handles share `role="separator"`, focusability and pointer capture, but differ
+  in units (px ×3, % ×1 with pair-relative bounds), keys (Shift steps, Home/End direction), reset,
+  optional `aria-valuenow` (tree width `null`), focus-on-down and commit timing. Only the sidebar
+  and tree handles have ARIA tests; column and drawer handles have none.
+- Design: a headless interaction hook with an adapter for unit, pointer→value mapping, dynamic
+  bounds, key map + large step, optional ARIA value, reset and change/commit timing. Each region
+  keeps its wrapper DOM, labels, `data-slot`, classes and persistence. Existing tests stay green
+  only if wrapper DOM and behavior are unchanged; add ARIA/keyboard tests for the column and
+  drawer handles first. `design-guardian` only bans raw colors and `dark:`; it has no geometry
+  rules.
+
+### 11.7 Phase impact
+Phase 1 adds the central chord registry, the `ActivePaneContext` contract and the Splitter hook
+(characterization tests before refactor). Phase 2 includes the URL sync policy and the draft pane.
+Phase 3 enforces one terminal per run. Phase 4 adds SSE dedupe and visible-only streams. Phase 5
+may add run topics on the WS bus.
