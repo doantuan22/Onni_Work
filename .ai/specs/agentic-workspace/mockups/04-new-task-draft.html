@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>New task draft · Onni mockup</title>
+  <link rel="stylesheet" href="assets/mockup.css">
+  <link rel="stylesheet" href="assets/04-new-task-draft.css">
+  <script defer src="assets/mockup.js"></script>
+  <script defer src="assets/04-new-task-draft.js"></script>
+</head>
+<body>
+  <div class="workspace-app draft-workspace">
+    <header class="topbar">
+      <div class="topbar-left">
+        <a class="topbar-brand" href="index.html" aria-label="Onni mockup home"><span class="brand-mark" aria-hidden="true">o</span><span class="brand-name">onni</span></a>
+        <span class="topbar-divider" aria-hidden="true"></span>
+        <div class="project-crumb"><span class="project-avatar" aria-hidden="true">O</span><strong>OnniCode</strong><span>/</span><span data-route-label>Workspace</span></div>
+      </div>
+      <div class="topbar-right">
+        <span class="local-mark">Local workspace</span>
+        <button class="theme-button" type="button" data-action="theme"><span aria-hidden="true">◐</span><span data-theme-label>Light theme</span></button>
+        <button class="annotation-button" type="button" data-action="annotations" aria-pressed="false">Show annotations</button>
+      </div>
+    </header>
+
+    <div class="workspace-body draft-body">
+      <aside class="navigator" aria-label="Project and task navigator">
+        <div class="nav-top"><span class="nav-top-label">Navigator <span class="annotation-badge">§3 · project/session groups</span></span><button class="btn btn-icon" type="button" aria-label="Collapse navigator" title="Collapse navigator">‹</button></div>
+        <div class="project-select"><span class="project-avatar" aria-hidden="true">O</span><span class="project-info"><strong>OnniCode</strong><small>D:\Projects\onni</small></span></div>
+        <div class="nav-scroll">
+          <label class="draft-search"><span class="sr-only">Search tasks</span><input type="search" placeholder="⌕  Search tasks"></label>
+          <section class="nav-section"><div class="nav-section-heading"><span>Needs you</span><span class="nav-heading-count">1</span></div><button class="nav-session" type="button"><span class="status-dot status-dot-needs" aria-label="Waiting for your answer"></span><span class="nav-session-content"><span class="nav-session-title"><span>Choose retry behavior</span></span><span class="nav-session-meta"><span class="chip chip-info">Ask</span><span>4m ago</span></span></span></button></section>
+          <section class="nav-section"><div class="nav-section-heading"><span>Running</span><span class="nav-heading-count">1</span></div><button class="nav-session" type="button" data-existing-task><span class="status-dot status-dot-running" aria-label="Running"></span><span class="nav-session-content"><span class="nav-session-title"><span>Review retry boundary tests</span></span><span class="nav-session-meta"><span class="chip">Codex</span><span>11m ago</span></span></span></button><div class="nav-session nav-scheduled-entry" data-scheduled-entry hidden><span aria-hidden="true">◷</span><span class="nav-session-content"><span class="nav-session-title"><span data-scheduled-title>Scheduled task</span></span><span class="nav-session-meta"><span class="chip chip-info">Scheduled</span><span data-scheduled-time>Tomorrow · 09:00</span></span></span></div></section>
+          <section class="nav-section"><div class="nav-section-heading"><span>Recent</span><span class="nav-heading-count">2</span></div><div class="nav-session"><span class="status-dot status-dot-done" aria-label="Done"></span><span class="nav-session-content"><span class="nav-session-title"><span>Document local setup</span></span><span class="nav-session-meta"><span>Yesterday</span></span></span></div></section>
+          <section class="nav-section"><div class="nav-section-heading"><span>Archived</span><span class="nav-heading-count">12</span></div><div class="nav-session"><span class="status-dot status-dot-done" aria-label="Archived and complete"></span><span class="nav-session-content"><span class="nav-session-title"><span>Initial CLI scaffolding</span></span></span></div></section>
+        </div>
+        <div class="nav-footer"><span>On this device · no account</span></div>
+      </aside>
+
+      <main class="main-shell draft-main">
+        <section class="conversation-area" aria-label="Conversation workspace">
+          <div class="thread-tabbar" role="tablist" aria-label="Open conversation tabs" data-pane-tabs>
+            <button class="thread-tab" id="tab-existing" type="button" role="tab" aria-selected="false" aria-controls="panel-existing" data-title="Review retry boundary tests" data-branch="onni/74c8dd10" data-status="Running"><span class="status-dot status-dot-running" aria-hidden="true"></span><span class="tab-title">Review retry boundary tests</span></button>
+            <button class="thread-tab tab-draft" id="tab-draft" type="button" role="tab" aria-selected="true" aria-controls="panel-draft" data-title="New task draft" data-draft="true"><span aria-hidden="true">＋</span><span class="tab-title" data-tab-title>New task</span><span class="tab-dot" aria-label="Draft"></span></button>
+            <span class="annotation-badge">§3, §11.3 · one draft pane per project</span>
+          </div>
+
+          <section class="conversation-pane draft-pane" id="panel-draft" role="tabpanel" aria-labelledby="tab-draft" tabindex="0" data-pane-panel>
+            <header class="pane-toolbar"><div class="pane-title-group"><span class="chip chip-violet">Draft pane</span><span class="pane-title" data-active-task-title>New task</span><span class="annotation-badge">§11.3 · Context closed for drafts</span></div><div class="pane-toolbar-actions"><span class="run-state"><span class="status-dot status-dot-needs"></span><span data-active-thread-status>Draft</span></span></div></header>
+            <div class="draft-surface draft-scroll">
+              <form class="draft-form" id="draft-form">
+                <div class="draft-heading"><div><div class="eyebrow">New task · OnniCode</div><h1>What should the agent work on?</h1><p>One draft pane per project. Your worktree is created when the task starts.</p></div><span class="annotation-badge">§3 · draft pane</span></div>
+                <label class="field-label" for="task-prompt">Task prompt</label>
+                <textarea class="draft-prompt" id="task-prompt" placeholder="Describe the task, expected behavior, and any constraints…" required>Inspect how the project handles stale task sessions. Find one safe improvement, add a focused regression test, and summarize the affected files.</textarea>
+                <div class="draft-attachment-note"><span aria-hidden="true">ⓘ</span><span><strong>Attachments are not saved in drafts.</strong> Add them again if you leave and return later.</span><button class="btn btn-outline" type="button" data-attach>Add files</button></div>
+
+                <section class="settings-block" aria-labelledby="runner-heading"><div class="block-heading"><div><h2 id="runner-heading">Agent</h2><p>Choose the local runner and account for this task.</p></div><span class="annotation-badge">§4 · existing composer pickers</span></div>
+                  <div class="settings-grid three-col">
+                    <label class="control-label">Backend<select id="backend"><option>Codex</option><option>Claude Code</option><option>OpenCode</option><option>Cursor</option><option>Pi</option><option>Junie</option></select></label>
+                    <label class="control-label">Model<select id="model"><option>GPT-5.1 · Default</option><option>GPT-5.1 Codex</option><option>Auto</option></select></label>
+                    <label class="control-label">Account<select id="account"><option>Codex · signed in locally</option><option>No account</option></select></label>
+                  </div>
+                </section>
+
+                <section class="settings-block" aria-labelledby="where-heading"><div class="block-heading"><div><h2 id="where-heading">Worktree &amp; branch</h2><p>Every task gets a visible isolated branch.</p></div><span class="annotation-badge">§4 · explicit branch/worktree</span></div>
+                  <div class="settings-grid where-grid"><label class="control-label">Workspace<select id="worktree"><option>Create a new worktree</option><option>Use current checkout</option></select></label><label class="control-label">Branch name<input id="branch-name" value="onni/stale-session-cleanup" autocomplete="off"></label></div>
+                  <div class="branch-preview"><span class="status-dot status-dot-done" aria-hidden="true"></span><span>Will create <code>onni/stale-session-cleanup</code></span><span class="mono">.ai/onni/worktrees/&lt;run-id&gt;</span></div>
+                </section>
+
+                <section class="settings-block" aria-labelledby="mode-heading"><div class="block-heading"><div><h2 id="mode-heading">Run mode</h2><p>Unattended work stays bounded and never lands changes automatically.</p></div><span class="annotation-badge">§4 · explicit review actions</span></div>
+                  <fieldset class="choice-row"><legend class="sr-only">Autonomy</legend><label class="choice-card"><input type="radio" name="autonomy" value="guided" checked><span><strong>Guided</strong><small>Ask when blocked</small></span></label><label class="choice-card"><input type="radio" name="autonomy" value="autonomous"><span><strong>Autonomous</strong><small>Work within limits</small></span></label></fieldset>
+                  <div class="settings-grid two-col limits-grid"><label class="control-label">Run limits<select id="limits"><option>Standard · 30 min · 8,000 tokens</option><option>Conservative · 15 min · 4,000 tokens</option><option>Unlimited · choose in Settings</option></select></label><label class="switch-line"><input id="dispatch-toggle" type="checkbox"><span class="switch-glyph" aria-hidden="true"></span><span><strong>Allow manager → worker dispatch</strong><small>Workers run as separate tasks and branches.</small></span></label></div>
+                  <div class="roster-editor" id="roster-editor" hidden><div class="roster-head"><div><strong>Worker roster</strong><small>Choose the agents this manager may dispatch.</small></div><button class="btn btn-outline" type="button" data-add-worker>＋ Add worker</button></div><div class="roster-list" data-roster-list><div class="roster-row"><span class="worker-avatar">C</span><label class="control-label">Worker 1<select><option>Claude Code</option><option>Codex</option><option>OpenCode</option></select></label><label class="control-label">Assignment<input value="Verify the regression test on Windows"></label><button class="btn btn-icon remove-worker" type="button" aria-label="Remove worker">×</button></div></div><p class="roster-footnote">Manager and worker runs have separate transcripts and worktrees. Runner subagents remain inside one run.</p></div>
+                </section>
+
+                <section class="schedule-block" aria-labelledby="schedule-heading"><div class="block-heading"><div><h2 id="schedule-heading">Schedule instead</h2><p>Creates a scheduled task; it does not start a run now.</p></div><span class="annotation-badge">§11.3 · scheduled outcome has no run</span></div><div class="settings-grid where-grid"><label class="control-label">Date<input id="schedule-date" type="date" value="2026-11-11"></label><label class="control-label">Time<input id="schedule-time" type="time" value="09:00"></label></div></section>
+
+                <div class="draft-actions"><span class="draft-safe-note"><span aria-hidden="true">⌂</span> Local-first · changes stay in the worktree until you choose an action.</span><div><button class="btn btn-outline" type="button" data-schedule>Schedule</button><button class="btn btn-primary" type="submit">Start task <span aria-hidden="true">→</span></button></div></div>
+              </form>
+            </div>
+          </section>
+
+          <section class="conversation-pane promoted-pane" id="panel-promoted" role="tabpanel" aria-labelledby="tab-draft" tabindex="0" data-pane-panel hidden>
+            <header class="pane-toolbar"><div class="pane-title-group"><span class="status-dot status-dot-running"></span><span class="pane-title" data-promoted-title>Inspect stale task sessions</span><span class="chip chip-primary">Codex · local run</span><span class="pane-subtitle" data-promoted-url>/tasks/e5c8a120</span></div><div class="pane-toolbar-actions"><span class="run-state"><span class="status-dot status-dot-running"></span>Running · 00:04</span></div></header>
+            <div class="transcript"><div class="transcript-inner"><article class="turn"><div class="turn-head"><span class="avatar avatar-user">You</span><strong>You</strong><span class="turn-time">Just now</span></div><div class="message-bubble message-user"><p data-promoted-prompt>Inspect how the project handles stale task sessions. Find one safe improvement, add a focused regression test, and summarize the affected files.</p></div></article><article class="turn"><div class="turn-head"><span class="avatar">C</span><strong>Codex</strong><span class="chip">GPT-5.1 · local run</span><span class="turn-time">Just now</span></div><div class="message-bubble"><p data-streaming-text>I'll trace the task lifecycle and find where stale sessions are detected.</p><span class="typing-caret" aria-hidden="true"></span></div><details class="tool-card" open><summary><span class="tool-card-title">Inspect task lifecycle</span><span>Local worktree</span><span class="tool-card-meta">2 files · 0.5s</span></summary><div class="tool-card-body"><div class="tool-group-items"><div class="tool-group-row"><span class="tool-kind">read</span><code>packages/work/src/runs/store.ts</code><span class="chip">4.2 KB</span></div><div class="tool-group-row"><span class="tool-kind">search</span><code>rg "stale|heartbeat" packages/work/src</code><span class="chip">8 matches</span></div></div></div></details></article></div></div>
+            <div class="composer-dock"><div class="composer-wrap"><form class="composer" aria-label="Message composer"><label class="sr-only" for="promoted-composer">Message Codex</label><textarea id="promoted-composer" placeholder="Message Codex…"></textarea><div class="composer-controls"><div class="composer-pickers"><button class="btn" type="button">＋ Attach</button><button class="btn" type="button">@ Files</button><button class="btn btn-outline">Codex · GPT-5.1</button></div><div class="composer-actions"><button class="btn btn-primary" type="button">Send</button></div></div></form><div class="composer-footnote">Running task · branch and worktree are shown below</div></div></div>
+          </section>
+
+          <section class="conversation-pane idle-pane" id="panel-existing" role="tabpanel" aria-labelledby="tab-existing" tabindex="0" data-pane-panel hidden><header class="pane-toolbar"><div class="pane-title-group"><span class="status-dot status-dot-running"></span><span class="pane-title">Review retry boundary tests</span><span class="pane-subtitle">onni/74c8dd10</span></div><span class="chip">Running</span></header><div class="context-empty"><strong>Review retry boundary tests</strong>Choose this tab to return to its conversation.</div></section>
+        </section>
+      </main>
+    </div>
+    <footer class="status-bar draft-status"><div class="status-item status-branch"><span aria-hidden="true">⑂</span><span data-status-branch>Branch on launch · onni/stale-session-cleanup</span></div><div class="status-item status-path" data-status-path>Worktree created when task starts</div><div class="status-item status-local"><span class="status-dot status-dot-done"></span>Local · no upload</div><div class="status-actions" data-draft-actions><span class="draft-status-hint">Context closed for this draft</span></div></footer>
+  </div>
+  <div class="toast" role="status" aria-live="polite" data-toast hidden></div>
+</body>
+</html>
