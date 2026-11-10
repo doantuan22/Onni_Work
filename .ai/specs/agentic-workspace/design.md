@@ -37,6 +37,9 @@ pane model), **navigator**, **attention model**, and a few contract additions.
 
 ## 3. Target anatomy
 
+> Superseded in part by the owner's reference screens: see **§12** (default Review layout, no
+> always-visible thread tab strip, auto-collapsing icon rail, Workbench preset).
+
 ```
 ┌──────────────┬───────────────────────────────┬──────────────────────┐
 │ NAVIGATOR    │ CONVERSATION PANE(S)          │ CONTEXT PANES        │
@@ -269,3 +272,177 @@ Phase 1 adds the central chord registry, the `ActivePaneContext` contract and th
 (characterization tests before refactor). Phase 2 includes the URL sync policy and the draft pane.
 Phase 3 enforces one terminal per run. Phase 4 adds SSE dedupe and visible-only streams. Phase 5
 may add run topics on the WS bus.
+
+## 12. Owner reference layouts (2026-11-10) — analysis and design impact
+
+The owner supplied three target screens, all captured at 2880×1800 (16:10, 2× DPR ⇒ **1440×900 CSS
+px**). Measurements below are converted to CSS px from those images (displayed width 2000 → ×0.72).
+Files: [ref-1 review](reference/ref-1-review-layout.png), [ref-2 workbench](reference/ref-2-workbench-layout.png),
+[ref-3 settings](reference/ref-3-settings-layout.png). Where this section and §3–§6 disagree,
+**§12 wins** (it is the owner's target); the conflicts are listed in 12.5.
+
+### 12.1 Screen 1 — "Review layout" (Navigator + Chat + Context/Changes)
+
+Three vertical zones, hairline (1px) dividers, no outer card chrome:
+
+| Zone | Width (CSS px / %) | Contents |
+| --- | --- | --- |
+| Navigator | ~263 px (18%) — equals today's 264px default | Brand tile "O" + wordmark; **project switcher card** (folder icon, name, branch badge `dev`, chevron); full-width **New task** button with `C` key hint; nav list (Dashboard, Tasks + count badge, Git, Automations, Terminal, Skill, Workflow, Settings); segmented **Open 16 / Archived**; groups **IN PROGRESS** and **RECENT** (status dot + title + age); footer: CPU/RAM meter, `Ctrl+K` search |
+| Conversation | ~656 px (45%) | Task header → run summary → progress → transcript → composer |
+| Context | ~521 px (36%) | Tab bar → action bar → file list → diff |
+
+**Conversation header (2 rows + progress).** Row 1: title, status pill (amber dot + "Running"),
+cost, **Create PR** button (branch icon). Row 2: workflow chip, branch chip, `+978 −0`, subtask
+summary ("15 subtasks · 2 failed · 11 done · 2 cancelled"). Row 3: step progress ("Continue ·
+step 7 of 7" + amber bar). All three already exist in `RunHeader` / step progress *(verified in
+the live app)*; the change is placement and density, not content.
+
+**Transcript.** Centered column; user message = right-aligned rounded bubble with time; assistant
+prose; tool calls = **single-line bordered rows** (icon, bold verb `Ran/Write/Read`, mono target,
+right-aligned ✓ or spinner); attachments = card with thumbnail, filename, `W × H`; live status
+line ("Processing… 51s · last activity 10:04"). Matches `UiToolItem`/`ToolCard` collapsed state.
+
+**Composer.** One rounded card pinned to the bottom of the Conversation zone: textarea, attach
+icon, dictation, **backend chip** (`claude`), **model chip** (`Sonnet 5.5`), round **Stop** button
+(white square) while running. No separate status bar anywhere.
+
+**Context zone.** Tab bar = **the existing `ViewId`s** — Changes (with count badge, active =
+accent underline), Commit, Files, Terminal, Preview, Notes — plus a **Layout** menu button at the
+right end (today's saved-layouts menu). Action bar: "6 new files +978 −0" with **Revert** and
+**Commit** (accent-filled). File list: icon, bold name, muted directory path, right-aligned `+N`,
+selected row highlighted. Below it a diff header (`path · new file`) and a line-numbered diff with
+green added-line background.
+
+**Key structural change vs today:** today `Chat`, `Changes`, `Files`… are *sibling tabs of one
+column* in `TaskWorkspaceRoute`; here **Chat is permanent on the left and every other view lives as
+a tab in the right Context column**. Both stay one `WorkspaceLayout` (≤3 columns) — this is a
+default arrangement of the existing layout model, not a new one (see 12.5 #1).
+
+### 12.2 Screen 2 — "Workbench layout" (rail + Chat + Files + Editor + Terminal/Preview)
+
+Five zones, all separated by 1px lines, **every column has the same ~48 px header strip** so the
+baselines align across the whole window:
+
+| Zone | Width (CSS px) | Contents |
+| --- | --- | --- |
+| **Icon rail** | ~55 px | Brand tile; icon-only nav (Dashboard, Tasks **active = filled rounded square**, Git, Automations, Terminal, Skill, Workflow); bottom: CPU % and a "sliders" (settings) icon |
+| Chat | ~379 px | Header: status dot + title + cost. **Transcript is bottom-anchored** (empty space above short threads, content hugs the composer). Compact tool rows; composer with backend/model chips and Stop |
+| Files | ~176 px | Header "Files"; collapsible tree (`packages › desktop › src › workspace`), selected file highlighted |
+| Editor | ~388 px | **File tabs with ×** (`Workspace.tsx`, `PaneGrid.tsx`, `design.md`), breadcrumb path, syntax-highlighted code with line numbers (read/edit) |
+| Right stack | ~441 px, **split vertically** (~58% / 42%) | **Terminal** (header "Terminal · worktree · branch chip", `+ New`) over **Preview** (header "Preview", `localhost:5173` chip, page thumbnail) |
+
+What this tells us:
+1. **The Navigator collapses to a 55 px icon rail automatically when the window is dense** (here
+   ≥4 content zones). Task switching then happens via Cmd/Ctrl+K and the Tasks icon, not a list.
+2. **Panes are heterogeneous and typed**: Chat, Files tree, Editor, Terminal, Preview. The Files tree
+   and Editor are *separate* panes (tree ≠ editor), unlike today's single Files view.
+3. **A column can be split vertically** (Terminal over Preview). Today `WorkspaceColumns` is
+   horizontal-only.
+4. Terminal header carries the **worktree label and branch** — satisfies the §11.5 requirement.
+5. At 1440 px the Chat pane is *narrow by design* (379 px); tool rows must stay single-line and
+   truncate with ellipsis (no wrapping of mono targets).
+
+### 12.3 Screen 3 — Settings
+
+| Zone | Size | Contents |
+| --- | --- | --- |
+| Settings sidebar | ~263 px | Brand + **← Back**; section **GENERAL SETTINGS** (Appearance, Notifications, Keyboard, Resources, Manager–Worker, Agent permissions, Skill, Guides, Secrets, Agent accounts, Projects) then section **THIS PROJECT · <name>** (General active, Issue tracker, Secrets, Webhooks, Integrations, Agent, Manager memory, Worktree); footer "Stored in ~/.onni" |
+| Top bar | 55 px high, full width of content | `Project name` (bold) + "Project settings" (muted) |
+| Content | **one centered column ≈ 680 px**, ~48 px top padding | Stacked sections: bold title → muted one-line description → bordered card (key/value rows, select, link) |
+| Danger zone | last section | Red-tinted card, red heading, outlined red button (`Delete all tasks…`) |
+
+Notable: settings replaces the Navigator in place (same 263 px slot, same brand header) and uses
+the **same header-strip height** as the workspace; no right-hand panes. Accent (violet) is used
+for links; destructive actions are isolated in a tinted card at the bottom. The currently shipped
+settings page has the same grouping *(verified in the live desktop app)* — this is a re-skin
+(flat cards, tighter copy, danger zone as one card, "Stored in ~/.onni" footer), not new IA.
+
+### 12.4 Visual language read from the screens
+
+- Near-black canvas, 1px low-contrast dividers, **flat surfaces** (cards = 1px border + slightly
+  lifted fill; no shadows).
+- **Accent = violet** (logo tile, active tab underline, Commit button, links, count badges);
+  status colors: amber = running, green = done/added, red = failed/deleted/danger, white = primary
+  neutral button (New task, Stop). *Today's cockpit accent is lime* — see decision D1.
+- Radii ≈ 10–12 px on cards/inputs, full-round on pills/badges; ~48 px header strips; 12–13 px mono
+  for code, ~14 px UI text; generous vertical rhythm (rows ≈ 28–32 px).
+- Icons: thin outline set, consistent 18–20 px; hover/selected = filled rounded rectangle.
+
+### 12.5 What changes in the design (deltas vs §3–§11)
+
+1. **Default arrangement = Review layout.** Seed the per-task layout as [Chat | Changes] (Context
+   zone = the first non-Chat view), not "one full-width view per tab". Same `WorkspaceLayout`
+   model (≤3 columns, saved layouts, `/runs/:id/layouts`); new default + a **Layout** menu entry
+   for "Review" and "Workbench" presets. **Open question for the implementer:** keep the existing
+   horizontal tab-switching for narrow windows (<1024 px) — unchanged.
+2. **Drop the separate thread tab strip.** The reference shows no tab row above the Conversation;
+   the sidebar's **Open / Archived** list *is* the open-thread set. Revised model: `threads[]` stays
+   in `WorkspaceState`, but its UI is the Navigator's "Open" list (and Mod+K); a tab strip appears
+   **only when 2-up split is on** (to label the two panes). This supersedes the always-visible tab
+   strip in §3.
+3. **Auto-collapse the Navigator to the 55 px rail** when the layout has ≥4 content zones or the
+   window is narrower than a threshold (suggest <1360 px with Workbench); manual toggle always
+   wins and is remembered. Replaces "collapse is optional only".
+4. **New pane kinds** for the Workbench preset: `files-tree` and `editor` (split from today's
+   Files view) and a **vertical split container** (Terminal over Preview). These are *layout-model*
+   additions: `ViewId` gains `editor` (and `files` becomes tree-only when an editor pane exists);
+   column entries may hold a vertical stack of two views with its own height ratio. Persisted as
+   optional fields so old layouts still parse (AGENTS.md: new fields optional).
+5. **Editor is a real gap, not reuse**: survey B verified Files is a read-only browser and
+   `CodeEditor` is a generic textarea overlay with no worktree save lifecycle. v1 of the Editor pane
+   = **read-only viewer with tabs + syntax highlight** (reuse `FilePreview`); editing/saving is a
+   separate, later decision (D3).
+6. **Uniform 48 px header strip** in every pane/zone (Navigator brand row, Chat header, Context tab
+   bar, Terminal/Preview headers, Settings top bar) — a layout token, not per-component padding.
+7. **Bottom-anchored transcript** for short threads; keep scroll-to-latest behaviour.
+8. **Composer is the single input surface** per Conversation zone, with backend + model chips and a
+   Stop button; no extra status bar (cost/limits stay in the header row, tokens in the composer
+   footer per the v2 design). Commit/Revert live in the Changes action bar; **Create PR** stays an
+   explicit header button; nothing merges automatically.
+9. **Settings keeps the shell but swaps the Navigator** for the settings sidebar (263 px), 55 px top
+   bar, centered 680 px content column, danger zone last. Reuse the existing settings routes and
+   `chromeless` rule; only layout tokens change.
+
+### 12.6 Mapping to existing components (reuse)
+
+| Reference element | Existing seam *(from surveys A–C)* | Work needed |
+| --- | --- | --- |
+| Navigator list, groups, Open/Archived, project switcher | `AppShellContainer`, `ProjectGroups`, `TaskQuickList`, sidebar-frame | Restyle; attention grouping; add rail mode |
+| Header rows 1–3 | `RunHeader`, step progress, subtask summary | Re-flow; move Create PR into row 1 |
+| Tool rows, bubbles, attachment card, status line | `SessionTranscript`, `ToolCard`, `UiToolItem` | Single-line collapsed style |
+| Composer + chips + Stop | `TaskComposer`, pickers | Restyle |
+| Context tab bar + Layout menu | `WorkspaceColumns` header + saved-layouts menu | Default seed; presets |
+| Changes list + diff + Revert/Commit | `ChangesView`, `<Diff>`, task-git actions | Re-skin; unify review gate (§5) |
+| Files tree / Editor | `FilesView`, `FilePreview`, `CodeEditor` | **Split pane kinds; tabs** (12.5 #4–5) |
+| Terminal over Preview | `TerminalDrawer` (`fill`), browser view | **Vertical stack container** |
+| Settings | existing settings routes | Re-skin + layout tokens |
+
+### 12.7 Decisions to confirm (recommendation first)
+
+- **D1 — Accent colour:** references use violet; the shipped cockpit uses lime. Recommend adopting
+  violet through the existing token layer only (`--primary`), keeping lime as a dark-theme
+  alternative if desired; `design-guardian` forbids raw colours so this must go through tokens.
+- **D2 — Thread tab strip:** recommend removing it in 1-up (12.5 #2).
+- **D3 — Editor scope:** recommend read-only in v1; editing needs a save/error lifecycle and
+  conflict handling with the running agent's worktree writes.
+- **D4 — Workbench preset:** ship as a named preset in the Layout menu, not as the default.
+- **D5 — Rail trigger:** automatic at ≥4 zones / narrow width, manual override persists.
+
+### 12.8 Phase impact
+
+Phase 1 (primitives) adds the 48 px header token, rail mode and the vertical split primitive.
+Phase 2 (host) seeds the Review layout and adds Layout-menu presets. Phase 3 (Context) adds
+`files-tree` / `editor` pane kinds and the Terminal-over-Preview stack. Settings re-skin is
+independent and can ship at any phase (pure presentation). Contract additions (§7) are unaffected.
+
+### 12.9 Test and risk notes
+
+- `layout-state.test.ts`, `workspace-columns` tests, saved-layout round-trips and `/runs/:id/layouts`
+  schema (≤3 columns, `ViewId` vocabulary) are the main constraints for 12.5 #4: extend, never
+  rename; old layouts must still parse.
+- Auto-collapse must not fight the manual sidebar width preference (`onni-sidebar-width`); store
+  rail state separately.
+- Narrow Chat (379 px) stresses tool rows, composer chips and diff comments: add wrapping/overflow
+  tests before shipping the Workbench preset.
+- Vertical split needs the same `role="separator"` + keyboard contract as §11.6 (orientation
+  horizontal, Up/Down, Home/End).
