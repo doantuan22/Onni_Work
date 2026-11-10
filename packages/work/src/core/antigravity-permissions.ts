@@ -16,12 +16,8 @@ import type { AgentPermissionLevel } from '@onni/contract';
 export { discoverVerifyCommands } from './verify-commands.ts';
 
 /**
- * The exact lines a worker (or a solo task) may run: read-only git plus staging all. Deliberately
- * absent: `git commit` (its message differs every time, and Onni's own autosave commits the worktree
- * at the end of a turn), `git push`, anything that reaches the network, `rm`, `git reset`/`clean`,
- * `git merge` and `onni task create/report` — the last two are the manager's, and the manager is not
- * offered for this backend (`canManage`). Each line below was run or follows from lines that were:
- * `git status`, `git add -A` and `node --version` were observed; the rest use the same mechanism.
+ * A narrow worker set: read-only git and staging all. Commit, push, network, destructive commands,
+ * and manager-only commands remain absent; Onni commits worker worktrees.
  */
 export const ANTIGRAVITY_WORKER_COMMANDS: readonly string[] = [
   'git status',
@@ -101,17 +97,25 @@ export interface EffectiveLevel {
 }
 
 /**
- * `bypass` is for a task a person is watching. An unattended run (autonomous or dispatched — every
- * manager–worker child) falls back to `allow-rules` unless the owner explicitly opts in through
- * `ONNI_ANTIGRAVITY_UNATTENDED_BYPASS=1`. Read the flag here so a changed process environment
- * applies to the next permission decision (ADR 0005, 0007).
+ * `bypass` is for a task a person is watching. An unattended run (autonomous or dispatched) falls
+ * back to `allow-rules` unless the owner opts in through `ONNI_ANTIGRAVITY_UNATTENDED_BYPASS=1`.
+ * An unconfigured dispatched child also defaults to allow-rules. A dispatched child treats stored
+ * `files-only` as unchosen even if selected; watched and top-level runs keep that setting untouched.
+ * Read the flag here so environment changes apply at the next decision.
  */
-export function effectiveAntigravityLevel(configured: AgentPermissionLevel, unattended: boolean): EffectiveLevel {
-  if (configured === 'bypass' && unattended && process.env.ONNI_ANTIGRAVITY_UNATTENDED_BYPASS !== '1') {
+export function effectiveAntigravityLevel(
+  configured: AgentPermissionLevel | undefined,
+  unattended: boolean,
+  dispatchedChild = false,
+): EffectiveLevel {
+  const level = dispatchedChild && configured === 'files-only'
+    ? 'allow-rules'
+    : configured ?? (dispatchedChild ? 'allow-rules' : 'files-only');
+  if (level === 'bypass' && unattended && process.env.ONNI_ANTIGRAVITY_UNATTENDED_BYPASS !== '1') {
     return {
       level: 'allow-rules',
       downgradedBecause: 'unattended runs never skip permission checks — using the allow-rules level instead of "Skip all confirmations"',
     };
   }
-  return { level: configured };
+  return { level };
 }

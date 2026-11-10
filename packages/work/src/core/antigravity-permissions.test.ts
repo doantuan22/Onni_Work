@@ -11,6 +11,10 @@ import {
   discoverVerifyCommands,
   effectiveAntigravityLevel,
 } from './antigravity-permissions.ts';
+import { workerPrompt } from '../workflows/manager-worker.ts';
+import { finalAssistantText } from '../workflows/run/dispatch.ts';
+import { childSettleReport } from '../dispatch/engine.ts';
+import type { RunRecord } from '../runs/store.ts';
 
 describe('antigravity permission levels', () => {
   it('files-only is the empty set: no flag, no settings', () => {
@@ -23,6 +27,44 @@ describe('antigravity permission levels', () => {
     expect(allow).toEqual(ANTIGRAVITY_WORKER_COMMANDS.map((c) => `command(${c})`));
     expect(allow).toContain('command(git status)');
     expect(allow).toContain('command(git add -A)'); // observed to run (spike appendix C)
+  });
+
+  it('does not grant a report command and tells agy to finish with plain text', () => {
+    expect(ANTIGRAVITY_WORKER_COMMANDS.some((line) => line.includes('task report'))).toBe(false);
+    const prompt = workerPrompt(undefined, 'antigravity');
+    expect(prompt).toContain('do not run git commit or git push');
+    expect(prompt).toContain('do not run commands to look up environment variables or to submit a report');
+    expect(prompt).toContain('finish with a plain final text summary');
+    expect(prompt).not.toContain('onni task report');
+    expect(prompt).not.toContain('ONNI_BIN');
+    expect(prompt).not.toContain('Get-ChildItem env:ONNI');
+    expect(prompt).not.toContain('COMMIT your work before you finish');
+    const reviewPrompt = workerPrompt('review', 'antigravity');
+    expect(reviewPrompt).toContain('do not edit the reviewed files');
+    expect(reviewPrompt).toContain('Finish your plain text summary with a verdict');
+    expect(reviewPrompt).not.toContain('onni task report');
+    expect(reviewPrompt).not.toContain('--verdict');
+  });
+
+  it('uses the last completed assistant summary for an automatic child report', () => {
+    const summary = finalAssistantText([
+      { seq: 1, ts: 't1', type: 'item.completed', item: { kind: 'message', role: 'assistant', text: 'First turn.' } },
+      { seq: 2, ts: 't2', type: 'item.completed', item: { kind: 'tool', name: 'run_command' } },
+      { seq: 3, ts: 't3', type: 'item.completed', item: { kind: 'message', role: 'assistant', text: 'Finished the work; the status is clear.' } },
+    ]);
+    expect(summary).toBe('Finished the work; the status is clear.');
+    expect(finalAssistantText([{ seq: 4, ts: 't4', type: 'tool-result' }])).toBeUndefined();
+
+    const { report, text } = childSettleReport({
+      id: 'agy-child',
+      title: 'Agy worker',
+      status: 'done',
+      runner: 'antigravity',
+      dispatch: { rootRunId: 'root', parentRunId: 'root' },
+    } as RunRecord, { resumeNotes: summary });
+    expect(report.status).toBe('done');
+    expect(report.result).toBe(summary);
+    expect(text).toContain(summary);
   });
 
   it('every default grant is one plain line: no chain, redirect, pipe, substitution, glob or newline', () => {
@@ -107,6 +149,14 @@ describe('effectiveAntigravityLevel — unattended bypass opt-in', () => {
     expect(effectiveAntigravityLevel('bypass', false)).toEqual({ level: 'bypass' });
     expect(effectiveAntigravityLevel('allow-rules', true)).toEqual({ level: 'allow-rules' });
     expect(effectiveAntigravityLevel('files-only', true)).toEqual({ level: 'files-only' });
+  });
+
+  it('defaults only an unconfigured dispatched child to allow-rules', () => {
+    expect(effectiveAntigravityLevel(undefined, true, true).level).toBe('allow-rules');
+    expect(effectiveAntigravityLevel('files-only', true, true).level).toBe('allow-rules');
+    expect(effectiveAntigravityLevel('files-only', true, false).level).toBe('files-only');
+    expect(effectiveAntigravityLevel('allow-rules', true, true).level).toBe('allow-rules');
+    expect(effectiveAntigravityLevel(undefined, true, false).level).toBe('files-only');
   });
 });
 

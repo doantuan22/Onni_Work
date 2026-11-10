@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { DEFAULT_AGENT_PERMISSION_LEVEL, REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchInput, type DispatchReport } from '@onni/contract';
+import { REPORT_FILES_MAX, rosterWorkerKey, type AgentPermissionLevel, type DispatchInput, type DispatchReport } from '@onni/contract';
 import { effectiveAntigravityLevel } from '../../core/antigravity-permissions.ts';
 import { autosaveCommit, worktreeChangedFilesReadOnly, worktreeHeadShort } from '../../git-worktree.ts';
 import { composeDispatchPrompt } from '../../dispatch/prompts.ts';
@@ -13,9 +13,22 @@ import { readHandoff } from '../../handoff.ts';
 import { loadWorkspaceConfig } from '../../workspace/config.ts';
 import type { RunnerId } from '../../core/agent-runner.ts';
 import type { WorkflowDef } from '../types.ts';
-import type { RunRecord } from '../../runs/store.ts';
+import type { RunEvent, RunRecord } from '../../runs/store.ts';
 import type { DispatchContext, RedirectDispatchOrigin } from './internal-types.ts';
 import type { PastedContent } from './preparation.ts';
+
+/** Last completed assistant text, used to build an automatic manager report when an agy child skips CLI reporting. */
+export function finalAssistantText(events: readonly RunEvent[]): string | undefined {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index]!;
+    if (event.type !== 'item.completed' || !event.item || typeof event.item !== 'object') continue;
+    const item = event.item as { kind?: unknown; role?: unknown; text?: unknown };
+    if (item.kind !== 'message' || item.role !== 'assistant' || typeof item.text !== 'string') continue;
+    const text = item.text.trim();
+    if (text) return text;
+  }
+  return undefined;
+}
 
 /**
  * Where a queued run stands on its `--after` siblings: `ready` (none, or all finished well),
@@ -141,8 +154,9 @@ export async function dispatchFromAgent(context: DispatchContext, parentId: stri
   // Fresh config each call (plan v2 §6.3): a permission change made mid-task reaches the next order.
   // A child always runs unattended, so use the same opt-in-aware effective level as its launch.
   const config = await loadWorkspaceConfig().catch(() => null);
-  const configured = config?.agentPermissions.antigravity ?? DEFAULT_AGENT_PERMISSION_LEVEL;
-  const outcome = dispatch(context, parentId, input, { antigravityLevel: effectiveAntigravityLevel(configured, true).level });
+  const savedLevel = config?.agentPermissions.antigravity;
+  // Here the level is for the child: its stored files-only default means "not chosen".
+  const outcome = dispatch(context, parentId, input, { antigravityLevel: effectiveAntigravityLevel(savedLevel, true, true).level });
   if (!('refused' in outcome) && parent && input.partId !== undefined) {
     await context.assignPlanPart(parent.id, input.partId, outcome.id);
   }
@@ -517,7 +531,10 @@ export async function reportSettledChildToParent(context: DispatchContext, runId
     const parent = context.store.getRun(parentId);
     if (!parent?.dispatch) return;
 
-    const resumeNotes = handoffSectionExcerpt(readHandoff(context.dataDir, runId), '## Resume notes');
+    const resumeNotes = child.runner === 'antigravity' && !child.dispatch?.report
+      ? finalAssistantText(context.store.readEventsTail(runId, 100))
+        ?? handoffSectionExcerpt(readHandoff(context.dataDir, runId), '## Resume notes')
+      : handoffSectionExcerpt(readHandoff(context.dataDir, runId), '## Resume notes');
     const checks = child.dispatch?.report?.checks.map((check) => ({
       ...check,
       command: context.store.redactRunText(child.id, check.command),
