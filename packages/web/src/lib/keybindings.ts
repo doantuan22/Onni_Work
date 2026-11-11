@@ -106,6 +106,14 @@ export function tabHint(chord: string | undefined, apple = isApplePlatform()): s
   return plain ? plain[1] : formatChord(chord, apple)
 }
 
+/** Workspace-host chords are reserved before the host wires handlers, so Settings cannot claim them. */
+export const WORKSPACE_RESERVED_CHORDS: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`workspace:switch-pane:${index + 1}`, `Alt+${index + 1}`])),
+  'workspace:toggle-navigator': 'Mod+Alt+Left',
+  'workspace:toggle-context': 'Mod+Alt+Right',
+  'workspace:toggle-terminal': 'Mod+Alt+Down',
+}
+
 /** Taken by the browser, the OS or the cockpit itself — never offered for a command. */
 const RESERVED = new Set([
   'Mod+K', // ⌘K palette
@@ -129,6 +137,7 @@ const RESERVED = new Set([
   'Mod+Shift+T',
   'Mod+Shift+N',
   'Mod+Shift+W',
+  ...Object.values(WORKSPACE_RESERVED_CHORDS),
 ])
 
 /** Why a keydown `chordFromEvent` dropped as AltGr cannot be bound — the recorder's message for it. */
