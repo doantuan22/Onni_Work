@@ -3,7 +3,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { ApiRun } from '@onni/api-client'
+import type { Roster } from '@onni/api-client'
 import { createQueryClient } from '@/api/query-client'
+import { queryKeys, workspaceQueryKeys } from '@/api/queries'
 import type { SubagentSummary } from '@/routes/task-thread/subagent-dock'
 
 import { TaskTreePane } from './task-tree-pane'
@@ -53,10 +55,15 @@ function makeRun(id: string, overrides: Partial<ApiRun> = {}): ApiRun {
 }
 
 function renderTree(props: Partial<React.ComponentProps<typeof TaskTreePane>> = {}) {
+  const client = createQueryClient()
+  client.setQueryData(workspaceQueryKeys.providerStatus, { providers: [
+    { provider: 'claude', status: 'connected' },
+    { provider: 'codex', status: 'connected' },
+  ] })
   const onOpenRun = vi.fn()
   const onOpenSubagent = vi.fn()
   const view = render(
-    <QueryClientProvider client={createQueryClient()}>
+    <QueryClientProvider client={client}>
       <TaskTreePane
         runId="manager-1"
         onOpenRun={onOpenRun}
@@ -65,10 +72,54 @@ function renderTree(props: Partial<React.ComponentProps<typeof TaskTreePane>> = 
       />
     </QueryClientProvider>,
   )
-  return { ...view, onOpenRun, onOpenSubagent }
+  return { ...view, client, onOpenRun, onOpenSubagent }
+}
+
+const LIVE_ROSTER: Roster = {
+  manager: { runner: 'claude', model: 'opus' },
+  workers: [{ runner: 'codex', model: 'gpt-5', role: 'tests', maxConcurrent: 1 }],
 }
 
 describe('TaskTreePane', () => {
+  it('lets users edit workers on a running manager task and refreshes its roster', async () => {
+    const updated: Roster = { ...LIVE_ROSTER, workers: [{ ...LIVE_ROSTER.workers[0]!, role: 'docs' }] }
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes('/providers/status')) return new Response(JSON.stringify({ providers: [] }), { status: 200 })
+      if (url.includes('/runs/manager-1/roster')) {
+        expect(init?.method).toBe('PUT')
+        expect(JSON.parse(String(init?.body))).toEqual({ roster: updated })
+        return new Response(JSON.stringify({ roster: updated }), { status: 200 })
+      }
+      if (url.includes('/runs')) return new Response(JSON.stringify([makeRun('manager-1', { roster: updated })]), { status: 200 })
+      return new Response(JSON.stringify({}), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const manager = makeRun('manager-1', { roster: LIVE_ROSTER })
+    const { client } = renderTree({ runs: [manager], subagents: [] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit workers' }))
+    expect(screen.getByLabelText('Manager backend')).toHaveProperty('disabled', true)
+    fireEvent.change(screen.getByLabelText('Worker 1 role'), { target: { value: 'docs' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save workers' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/runs/manager-1/roster'), expect.objectContaining({ method: 'PUT' })))
+    await waitFor(() => expect(client.getQueryData<ApiRun[]>(queryKeys.runs.list())?.[0]?.roster).toEqual(updated))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('shows server conflict messages when a roster update is refused', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes('/providers/status')) return new Response(JSON.stringify({ providers: [] }), { status: 200 })
+      if (String(input).includes('/runs/manager-1/roster')) return new Response(JSON.stringify({ error: 'task is settled' }), { status: 409, headers: { 'content-type': 'application/json' } })
+      return new Response(JSON.stringify([]), { status: 200 })
+    }))
+    renderTree({ runs: [makeRun('manager-1', { roster: LIVE_ROSTER })], subagents: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit workers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save workers' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('task is settled')
+  })
+
   it('shows the empty prompt when no dispatched tasks or runner subagents exist', () => {
     stubFetch([])
     renderTree({ runs: [makeRun('manager-1')] })

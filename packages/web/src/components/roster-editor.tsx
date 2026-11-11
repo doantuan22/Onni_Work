@@ -64,11 +64,14 @@ export function RosterEditor({
   onChange,
   connected,
   disabled,
+  managerLocked,
 }: {
   draft: RosterDraft
   onChange: (next: RosterDraft) => void
   connected: readonly Runner[]
   disabled?: boolean
+  /** Keep the manager fixed when editing the roster of an already running task. */
+  managerLocked?: boolean
 }) {
   const workerOnly = connected.filter((runner) => !managerCapable(connected).includes(runner))
   const { t } = useI18n()
@@ -84,9 +87,10 @@ export function RosterEditor({
       <fieldset className="flex flex-col gap-2">
         <legend className="text-[13px] font-semibold">{t('Manager')}</legend>
         <div className="grid grid-cols-2 gap-2">
-          <BackendSelect label={t('Manager backend')} value={draft.managerRunner} connected={managerCapable(connected)} disabled={disabled} onChange={(managerRunner) => onChange({ ...draft, managerRunner })} />
-          <ModelPickerField runner={draft.managerRunner} value={draft.managerModel} onChange={(managerModel) => onChange({ ...draft, managerModel })} ariaLabel={t('Manager model')} disabled={disabled} />
+          <BackendSelect label={t('Manager backend')} value={draft.managerRunner} connected={managerCapable(connected)} disabled={disabled || managerLocked} onChange={(managerRunner) => onChange({ ...draft, managerRunner })} />
+          <ModelPickerField runner={draft.managerRunner} value={draft.managerModel} onChange={(managerModel) => onChange({ ...draft, managerModel })} ariaLabel={t('Manager model')} disabled={disabled || managerLocked} />
         </div>
+        {managerLocked ? <p className="text-xs text-soft-foreground">{t('The manager is fixed for a running task.')}</p> : null}
         {workerOnly.map((runner) => (
           <p key={runner} data-slot="roster-worker-only" data-backend={runner} className="text-xs text-soft-foreground">
             {t('{runner} is offered as a worker only: {reason}.', { runner, reason: RUNNER_CAPABILITIES[runner].manageReason ?? '' })}
