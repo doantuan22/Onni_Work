@@ -371,7 +371,7 @@ export async function searchTranscripts(
         }
       }
     } finally {
-      await iterator.return?.();
+      await iterator.return?.(undefined);
     }
 
     if (hasMoreInRun) {
