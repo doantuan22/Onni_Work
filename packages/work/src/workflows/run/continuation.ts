@@ -780,7 +780,7 @@ export async function runContinuation(ctx: ContinuationContext,
       ? `${context}\n\n---\n\n## New user instruction\n${openingPrompt}`
       : openingPrompt;
     state.grantedAttachmentLibrary = ctx.prepareAttachmentLibrary();
-    const permissionSpec = await ctx.agentPermissionSpec(runId, continueBackend, onEvent);
+    const permissionSpec = await ctx.agentPermissionSpec(runId, continueBackend, onEvent, toolsStep?.bashAllowlist);
     const launch = (launchSessionId: string, resume: boolean, context: string | undefined): AgentSession => {
       const contextualOpeningPrompt = withContext(context);
       const started = runner.startSession(

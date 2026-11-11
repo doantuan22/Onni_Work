@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { access, realpath } from 'node:fs/promises';
 import { type AgentPermissionLevel, type UsageWindowsObservation } from '@onni/contract';
-import { effectiveAntigravityLevel } from '../../core/antigravity-permissions.ts';
+import { discoverTaskTestCommands, effectiveAntigravityLevel } from '../../core/antigravity-permissions.ts';
 import { probeCodexIdentity } from '../../core/codex-usage-probe.ts';
 import type { AgentEvent, RunnerId } from '../../core/agent-runner.ts';
 import { loadPrivateMcp, PRIVATE_MCP_FILE, skippedServersNote, supportsPrivateMcp, type PrivateMcpServer } from '../../core/private-mcp.ts';
@@ -126,7 +126,8 @@ export async function agentPermissionSpec(ctx: StartContext,
   runId: string,
   backend: string,
   onEvent: (event: AgentEvent) => void,
-): Promise<{ permissionLevel?: AgentPermissionLevel }> {
+  bashAllowlist?: readonly string[],
+): Promise<{ permissionLevel?: AgentPermissionLevel; bashAllowlist?: string[] }> {
   if (backend !== 'antigravity') return {};
   const config = await loadWorkspaceConfig().catch(() => null);
   const run = ctx.store.getRun(runId);
@@ -139,6 +140,11 @@ export async function agentPermissionSpec(ctx: StartContext,
     dispatchedChild,
   );
   if (downgradedBecause) onEvent({ type: 'note', message: `antigravity: ${downgradedBecause}` });
+  if (dispatchedChild && level === 'allow-rules') {
+    const taskCommands = discoverTaskTestCommands(run?.worktreePath ?? ctx.repoRoot, run?.task ?? '');
+    const commands = [...new Set([...(bashAllowlist ?? []), ...taskCommands])];
+    return { permissionLevel: level, ...(commands.length ? { bashAllowlist: commands } : {}) };
+  }
   return { permissionLevel: level };
 }
 

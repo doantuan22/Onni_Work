@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import {
   antigravitySettings,
   commandGrants,
   discoverVerifyCommands,
+  discoverTaskTestCommands,
   effectiveAntigravityLevel,
 } from './antigravity-permissions.ts';
 import { workerPrompt } from '../workflows/manager-worker.ts';
@@ -22,11 +23,14 @@ describe('antigravity permission levels', () => {
     expect(antigravitySettings('files-only')).toBeUndefined();
   });
 
-  it('allow-rules grants exact read-only git lines, as command(<line>)', () => {
+  it('allow-rules grants exact read-only git inspection lines, as command(<line>)', () => {
     const allow = (JSON.parse(antigravitySettings('allow-rules')!) as { permissions: { allow: string[] } }).permissions.allow;
     expect(allow).toEqual(ANTIGRAVITY_WORKER_COMMANDS.map((c) => `command(${c})`));
     expect(allow).toContain('command(git status)');
-    expect(allow).toContain('command(git add -A)'); // observed to run (spike appendix C)
+    expect(allow).toContain('command(git show)');
+    expect(allow).toContain('command(git ls-files)');
+    expect(allow).toContain('command(git rev-parse --show-toplevel)');
+    expect(allow).not.toContain('command(git add -A)');
   });
 
   it('does not grant a report command and tells agy to finish with plain text', () => {
@@ -71,7 +75,7 @@ describe('antigravity permission levels', () => {
     for (const line of ANTIGRAVITY_WORKER_COMMANDS) expect(line).not.toMatch(/[;&|<>`$()\n\r*]/);
   });
 
-  it('never grants push, network, delete, or a commit — by default or through a step allowlist', () => {
+  it('never grants staging, push, network, delete, or a commit — by default or through a step allowlist', () => {
     const settings = antigravitySettings('allow-rules', {
       bashAllowlist: ['git push', 'git push --force', 'curl', 'curl https://x', 'wget', 'gh pr merge', 'rm', 'rm -rf', 'sudo', 'npm publish', 'npm test'],
     })!;
@@ -81,13 +85,15 @@ describe('antigravity permission levels', () => {
       expect(joined).not.toContain(forbidden);
     }
     expect(allow).toContain('command(npm test)');
-    expect(ANTIGRAVITY_WORKER_COMMANDS.join(' ')).not.toMatch(/push|merge|reset|clean|commit|\brm\b|curl/);
+    expect(ANTIGRAVITY_WORKER_COMMANDS.join(' ')).not.toMatch(/add|push|merge|reset|clean|commit|\brm\b|curl/);
   });
 
   it('a step entry becomes ONE exact line: it allows that command and nothing longer', () => {
     expect(commandGrants(['npm test'])).toEqual(['command(npm test)']);
     // The grant is the whole line, so `npm test -- --watch` is a different command and stays denied (measured).
     expect(commandGrants(['npm test'])[0]).not.toContain('*');
+    expect(commandGrants(['npm test -- packages/work/src/core/antigravity-permissions.test.ts']))
+      .toEqual(['command(npm test -- packages/work/src/core/antigravity-permissions.test.ts)']);
   });
 
   it('drops anything with shell syntax, since it could never be an exact grant for one command', () => {
@@ -170,6 +176,31 @@ describe('discoverVerifyCommands', () => {
       expect(antigravitySettings('allow-rules', { bashAllowlist: discoverVerifyCommands(dir) })).toContain('command(npm run build)');
       // Never at files-only: that level passes no command grants at all.
       expect(antigravitySettings('files-only', { bashAllowlist: discoverVerifyCommands(dir) })).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('discoverTaskTestCommands', () => {
+  it('grants exact test-file invocations named by the order and beside named source files', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agy-task-tests-'));
+    try {
+      const source = join(dir, 'packages', 'work', 'src', 'core');
+      mkdirSync(source, { recursive: true });
+      writeFileSync(join(source, 'permissions.ts'), '');
+      writeFileSync(join(source, 'permissions.test.ts'), '');
+      writeFileSync(join(source, 'other.test.ts'), '');
+      const task = 'Change packages/work/src/core/permissions.ts and verify packages/work/src/core/other.test.ts.';
+      expect(discoverTaskTestCommands(dir, task)).toEqual([
+        'npm test -- packages/work/src/core/permissions.test.ts',
+        'npm test -- packages/work/src/core/other.test.ts',
+      ]);
+      expect(commandGrants(discoverTaskTestCommands(dir, task))).toEqual([
+        'command(npm test -- packages/work/src/core/permissions.test.ts)',
+        'command(npm test -- packages/work/src/core/other.test.ts)',
+      ]);
+      expect(discoverTaskTestCommands(dir, 'Ignore ../outside.test.ts')).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

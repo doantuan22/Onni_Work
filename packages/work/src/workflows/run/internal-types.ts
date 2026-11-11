@@ -763,7 +763,7 @@ export interface ContinuationContext {
     backend: RunnerId,
     options?: { generateFollowups?: boolean; recordedProfileId?: string },
   ): Promise<{ env: Record<string, string>; profileId: string; onUsageWindows?: (observation: UsageWindowsObservation) => void }>;
-  agentPermissionSpec(runId: string, backend: string, onEvent: (event: AgentEvent) => void): Promise<{ permissionLevel?: AgentPermissionLevel }>;
+  agentPermissionSpec(runId: string, backend: string, onEvent: (event: AgentEvent) => void, bashAllowlist?: readonly string[]): Promise<{ permissionLevel?: AgentPermissionLevel; bashAllowlist?: string[] }>;
   armAutosave(runId: string, state: ContinuationActiveRun): void;
   armIdleTimer(runId: string, state: ContinuationActiveRun): void;
   armMonitoringWakeTimer(runId: string, state: ContinuationActiveRun): void;
@@ -1057,7 +1057,7 @@ export interface AgentStepContext {
     options?: { generateFollowups?: boolean; recordedProfileId?: string },
   ): Promise<{ env: Record<string, string>; profileId: string; onUsageWindows?: (observation: UsageWindowsObservation) => void }>;
   privateMcpForLaunch(backend: RunnerId, onEvent: (event: AgentEvent) => void): Promise<PrivateMcpServer[] | undefined>;
-  agentPermissionSpec(runId: string, backend: string, onEvent: (event: AgentEvent) => void): Promise<{ permissionLevel?: AgentPermissionLevel }>;
+  agentPermissionSpec(runId: string, backend: string, onEvent: (event: AgentEvent) => void, bashAllowlist?: readonly string[]): Promise<{ permissionLevel?: AgentPermissionLevel; bashAllowlist?: string[] }>;
   markQueuedManagerDeliveriesDelivered(runId: string): void;
   flushDeferred(runId: string): void;
   handleDispatchTurn(runId: string, turnText: string, turn: { state: AgentStepActiveRun; stepId: string; done: boolean }): DispatchTurnResult;
