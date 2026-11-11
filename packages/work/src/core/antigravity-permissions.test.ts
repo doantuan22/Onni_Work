@@ -22,11 +22,14 @@ describe('antigravity permission levels', () => {
     expect(antigravitySettings('files-only')).toBeUndefined();
   });
 
-  it('allow-rules grants exact read-only git lines, as command(<line>)', () => {
+  it('allow-rules grants exact read-only git inspection lines, as command(<line>)', () => {
     const allow = (JSON.parse(antigravitySettings('allow-rules')!) as { permissions: { allow: string[] } }).permissions.allow;
     expect(allow).toEqual(ANTIGRAVITY_WORKER_COMMANDS.map((c) => `command(${c})`));
     expect(allow).toContain('command(git status)');
-    expect(allow).toContain('command(git add -A)'); // observed to run (spike appendix C)
+    expect(allow).toContain('command(git show)');
+    expect(allow).toContain('command(git ls-files)');
+    expect(allow).toContain('command(git rev-parse --show-toplevel)');
+    expect(allow).not.toContain('command(git add -A)');
   });
 
   it('does not grant a report command and tells agy to finish with plain text', () => {
@@ -71,7 +74,7 @@ describe('antigravity permission levels', () => {
     for (const line of ANTIGRAVITY_WORKER_COMMANDS) expect(line).not.toMatch(/[;&|<>`$()\n\r*]/);
   });
 
-  it('never grants push, network, delete, or a commit — by default or through a step allowlist', () => {
+  it('never grants staging, push, network, delete, or a commit — by default or through a step allowlist', () => {
     const settings = antigravitySettings('allow-rules', {
       bashAllowlist: ['git push', 'git push --force', 'curl', 'curl https://x', 'wget', 'gh pr merge', 'rm', 'rm -rf', 'sudo', 'npm publish', 'npm test'],
     })!;
@@ -81,13 +84,15 @@ describe('antigravity permission levels', () => {
       expect(joined).not.toContain(forbidden);
     }
     expect(allow).toContain('command(npm test)');
-    expect(ANTIGRAVITY_WORKER_COMMANDS.join(' ')).not.toMatch(/push|merge|reset|clean|commit|\brm\b|curl/);
+    expect(ANTIGRAVITY_WORKER_COMMANDS.join(' ')).not.toMatch(/add|push|merge|reset|clean|commit|\brm\b|curl/);
   });
 
   it('a step entry becomes ONE exact line: it allows that command and nothing longer', () => {
     expect(commandGrants(['npm test'])).toEqual(['command(npm test)']);
     // The grant is the whole line, so `npm test -- --watch` is a different command and stays denied (measured).
     expect(commandGrants(['npm test'])[0]).not.toContain('*');
+    expect(commandGrants(['npm test -- packages/work/src/core/antigravity-permissions.test.ts']))
+      .toEqual(['command(npm test -- packages/work/src/core/antigravity-permissions.test.ts)']);
   });
 
   it('drops anything with shell syntax, since it could never be an exact grant for one command', () => {

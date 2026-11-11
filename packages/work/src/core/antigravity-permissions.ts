@@ -16,8 +16,8 @@ import type { AgentPermissionLevel } from '@onni/contract';
 export { discoverVerifyCommands } from './verify-commands.ts';
 
 /**
- * A narrow worker set: read-only git and staging all. Commit, push, network, destructive commands,
- * and manager-only commands remain absent; Onni commits worker worktrees.
+ * A narrow worker set: read-only git inspection only. Staging, commit, push, network, destructive
+ * commands, and manager-only commands remain absent; Onni commits worker worktrees.
  */
 export const ANTIGRAVITY_WORKER_COMMANDS: readonly string[] = [
   'git status',
@@ -25,7 +25,9 @@ export const ANTIGRAVITY_WORKER_COMMANDS: readonly string[] = [
   'git diff',
   'git diff --stat',
   'git log --oneline',
-  'git add -A',
+  'git show',
+  'git ls-files',
+  'git rev-parse --show-toplevel',
 ];
 
 /** Lines that must never be granted through the step's own `bashAllowlist`, whatever else is in it. */

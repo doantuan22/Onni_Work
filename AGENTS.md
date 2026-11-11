@@ -167,7 +167,9 @@ on Linux and Windows. `npm test` and `npm run test:unit` must stay server-free a
   add `--add-dir` or `agy-acp-bridge`.
   Onni autosaves and commits a finished worker's worktree at turn end; an agy worker must not commit or push.
   A dispatched agy worker must not look up environment variables or submit a CLI report: it finishes with
-  a plain text summary, and Onni builds the manager report from the run (`childSettleReport`).
+  a plain text summary, and Onni builds the manager report from the run (`childSettleReport`). Its default
+  allow-rules grant read-only git inspection and discovered repository verification commands; staging,
+  commit, push, network and destructive commands remain denied.
   An agy `command(<line>)` grant matches the **whole command line** (measured, 10 real prompts): it is never a
   prefix and never a pattern, so a step's `bashAllowlist` entry becomes one exact line for this backend. A
   dispatched child gets the fixed worker commands plus discovered repository verification commands.
