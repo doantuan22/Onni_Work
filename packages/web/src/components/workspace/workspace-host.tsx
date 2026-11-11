@@ -15,6 +15,7 @@ import {
   type RunPaneRef,
 } from '@/lib/workspace-state'
 import { clearStartedDraft } from '@/routes/new-task-draft'
+import { startedRunPath } from '@/routes/new-task-form'
 import { NewTaskSurface } from '@/routes/new-task-surface'
 import type { ViewId } from '@/routes/task-workspace/layout-state'
 
@@ -121,9 +122,15 @@ function WorkspaceHostPane({
             toast(t('Task scheduled.'))
           }}
           onStarted={(created) => {
-            update((current) => promoteDraft(current, pane.paneId, created.id))
+            const runPath = startedRunPath(created)
+            const firstRun = 'runs' in created ? created.runs[0] : created
+            if (firstRun === undefined) {
+              void navigate(runPath)
+              return
+            }
+            update((current) => promoteDraft(current, pane.paneId, firstRun.id))
             clearStartedDraft(scopeProjectId, pane.draftId)
-            void navigate(`/tasks/${encodeURIComponent(created.id)}`)
+            void navigate(runPath)
           }}
         />
       )}
