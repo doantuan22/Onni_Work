@@ -37,7 +37,7 @@ const HEALTH: HealthResponse = {
 
 let seq = 0
 
-function run(over: Partial<RunRecord> = {}): RunRecord {
+function run(over: Partial<RunRecord & { lastViewedSeq?: number; lastSeq?: number }> = {}): RunRecord {
   seq += 1
   return {
     id: `r${seq}`,
@@ -1020,6 +1020,28 @@ describe('dispatched subtasks in the quick-list', () => {
     expect(rowEl.querySelector('[data-slot="task-row-title"]')?.className).toContain('font-semibold')
     // Only the leading status dot remains.
     expect(rowEl.querySelectorAll('[data-slot="status-dot"]')).toHaveLength(1)
+  })
+
+  it('marks an active thread as unread when lastViewedSeq < lastSeq and not currently active', () => {
+    renderList({
+      runs: [run({ id: 'live', status: 'running', lastViewedSeq: 2, lastSeq: 5 })],
+      currentRunId: 'other-run',
+    })
+    const rowEl = row('live') as HTMLElement
+    const marker = rowEl.querySelector('[data-slot="unread-marker"]') as HTMLElement
+    expect(marker).not.toBeNull()
+    expect(rowEl.querySelector('[data-slot="task-row-title"]')?.className).toContain('font-semibold')
+  })
+
+  it('does not mark an active thread as unread when it is the currently visible run', () => {
+    renderList({
+      runs: [run({ id: 'live', status: 'running', lastViewedSeq: 2, lastSeq: 5 })],
+      currentRunId: 'live',
+    })
+    const rowEl = row('live') as HTMLElement
+    const marker = rowEl.querySelector('[data-slot="unread-marker"]')
+    expect(marker).toBeNull()
+    expect(rowEl.querySelector('[data-slot="task-row-title"]')?.className).not.toContain('font-semibold')
   })
 
   // A child filed in another bucket than its parent is a TOP-LEVEL row: no indent to pay for and

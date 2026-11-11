@@ -637,11 +637,11 @@ const RunRow = React.memo(function RunRow({
   // Only when the two numbers are the same number — see `refPrefixMatches`. A run opened on issue
   // #788 that shipped as PR #790 keeps its prefix, because the chip is no longer saying it.
   const displayTitle = refPrefixMatches(title, reference?.number) ? splitRefPrefix(title).rest : title
-  // Read/unread (#unread-done-items): an unread done item is promoted (bright +
-  // semibold); a read one dims so the history steps back. Both are orthogonal to the leading
-  // status dot, which keeps saying done/failed. (No trailing dot — see `UnreadMarker`.)
-  const unread = isUnread(run)
-  const readDone = isReadDoneItem(run)
+  // Read/unread (#unread-done-items, Phase 5 active threads): an unread item is promoted
+  // (bright + semibold); a read done one dims so the history steps back. Both are orthogonal
+  // to the leading status dot, which keeps saying done/failed. (No trailing dot — see `UnreadMarker`.)
+  const unread = isUnread(run, isActive)
+  const readDone = isReadDoneItem(run, isActive)
   // A variant row spends its width on what distinguishes the variants (runner and spend) rather
   // than on an age they all share — they started together. Per the mockup.
   const age = variant

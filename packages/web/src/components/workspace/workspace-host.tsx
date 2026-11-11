@@ -30,6 +30,7 @@ import type { ViewId } from '@/routes/task-workspace/layout-state'
 import { ActivePaneProvider, useActivePane } from './active-pane-context'
 import { ContextSheet } from './context-sheet'
 import { SplitTabStrip } from './split-tab-strip'
+import { useMarkViewed } from './use-mark-viewed'
 import { useWorkspaceShortcuts } from './use-workspace-shortcuts'
 
 const SIDE_BY_SIDE_MIN_WIDTH = 1024
@@ -94,6 +95,7 @@ function WorkspaceHostPane({
   const isDesktop = useIsDesktop(SIDE_BY_SIDE_MIN_WIDTH)
 
   useWorkspaceShortcuts({ projectId })
+  useMarkViewed({ projectId, state, target })
 
   const [scrollAnchors, setScrollAnchors] = useState<Record<string, number>>({})
 
