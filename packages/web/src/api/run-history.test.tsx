@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetSharedRunStreamsForTests } from './run-stream-share'
 
 import type { ApiRun, RunHistoryContext, RunHistoryPage, RunRecord } from '@onni/api-client'
 import { getRunHistory, getRunHistoryContext } from './client'
@@ -75,6 +76,11 @@ beforeEach(() => {
   vi.clearAllMocks()
   // jsdom deliberately has no native EventSource; the stream hook degrades to no live frames.
   Reflect.deleteProperty(globalThis, 'EventSource')
+})
+
+afterEach(() => {
+  cleanup()
+  resetSharedRunStreamsForTests()
 })
 
 describe('useRunHistory', () => {
@@ -633,6 +639,58 @@ describe('useRunHistory', () => {
     expect(unhandled).not.toHaveBeenCalled()
 
     process.off('unhandledRejection', unhandled)
+    vi.unstubAllGlobals()
+  })
+
+  it('two consumers of the same run share ONE EventSource', async () => {
+    FakeEventSource.instances = []
+    vi.stubGlobal('EventSource', FakeEventSource)
+    mockHistory.mockResolvedValue(page(100))
+    mockContext.mockResolvedValue(context())
+    const { wrapper } = harness()
+
+    const hook1 = renderHook(() => useRunHistory('run-1'), { wrapper })
+    const hook2 = renderHook(() => useRunHistory('run-1'), { wrapper })
+
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+
+    FakeEventSource.instances[0]!.emit(
+      'ui-event',
+      JSON.stringify({ seq: 101, ts: '2026-07-30T00:00:00.000Z', type: 'note', message: 'shared-live' }),
+    )
+
+    await waitFor(() => {
+      expect(hook1.result.current.visibleEvents.at(-1)?.seq).toBe(101)
+      expect(hook2.result.current.visibleEvents.at(-1)?.seq).toBe(101)
+    })
+    vi.unstubAllGlobals()
+  })
+
+  it('unmount of one keeps stream, enabled=false closes when last, reopen resumes', async () => {
+    FakeEventSource.instances = []
+    vi.stubGlobal('EventSource', FakeEventSource)
+    mockHistory.mockResolvedValue(page(100))
+    mockContext.mockResolvedValue(context())
+    const { wrapper } = harness()
+
+    const hook1 = renderHook(() => useRunHistory('run-1'), { wrapper })
+    const hook2 = renderHook(
+      ({ enabled }: { enabled: boolean }) => useRunHistory('run-1', { enabled }),
+      { wrapper, initialProps: { enabled: true } },
+    )
+
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    const source = FakeEventSource.instances[0]!
+
+    hook1.unmount()
+    expect(source.readyState).toBe(0)
+
+    hook2.rerender({ enabled: false })
+    expect(source.readyState).toBe(2)
+
+    hook2.rerender({ enabled: true })
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2))
+    expect(FakeEventSource.instances[1]!.readyState).toBe(0)
     vi.unstubAllGlobals()
   })
 })

@@ -134,12 +134,20 @@ export interface RunHistoryState {
   retainedPages: number
 }
 
+export interface RunHistoryOptions {
+  enabled?: boolean
+}
+
 /**
  * Bounded transcript hydration: newest page and compact current-state context load in parallel,
  * then one cursor-resumed SSE carries live frames. Any optimized-path failure switches once to
  * the protected full-replay hook so a missing optimization never makes a session unreadable.
  */
-export function useRunHistory(runId: string | undefined): RunHistoryState {
+export function useRunHistory(
+  runId: string | undefined,
+  options: RunHistoryOptions = {},
+): RunHistoryState {
+  const { enabled = true } = options
   const scope = queryScope()
   const queryClient = useQueryClient()
   const historyKey = ['run-history', scope, runId] as const
@@ -148,7 +156,7 @@ export function useRunHistory(runId: string | undefined): RunHistoryState {
 
   const history = useInfiniteQuery({
     queryKey: historyKey,
-    enabled: runId !== undefined,
+    enabled: runId !== undefined && enabled,
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam, signal }) => getRunHistory(runId!, pageParam, { signal }),
     getPreviousPageParam: (firstPage) => firstPage.olderCursor,
@@ -158,7 +166,7 @@ export function useRunHistory(runId: string | undefined): RunHistoryState {
   })
   const context = useQuery({
     queryKey: contextKey,
-    enabled: runId !== undefined,
+    enabled: runId !== undefined && enabled,
     queryFn: ({ signal }) => getRunHistoryContext(runId!, { signal }),
     retry: 1,
   })
@@ -290,8 +298,9 @@ export function useRunHistory(runId: string | undefined): RunHistoryState {
     compactAt: COMPACT_LIVE_AT_EVENTS,
     onCompact: compactLive,
     onRun,
-  } : { onRun })
-  const fallbackFrames = useRunEvents(fallback ? runId : undefined, { onRun })
+    enabled,
+  } : { onRun, enabled })
+  const fallbackFrames = useRunEvents(fallback ? runId : undefined, { onRun, enabled })
   const liveEvents = useThrottledValue(liveFrames, LIVE_FRAME_MS, runId)
   const fallbackEvents = useThrottledValue(fallbackFrames, LIVE_FRAME_MS, runId)
   const fallbackTailRef = useRef<{ runId: string | undefined; scope: string; events: RunEvent[] }>({
@@ -395,11 +404,11 @@ export function useRunHistory(runId: string | undefined): RunHistoryState {
   return {
     visibleEvents,
     currentEvents,
-    isPending: !fallback && history.isPending,
-    contextPending: !fallback && context.isPending,
+    isPending: !fallback && enabled && history.isPending,
+    contextPending: !fallback && enabled && context.isPending,
     fallback,
-    hasOlder: !fallback && Boolean(history.hasPreviousPage),
-    isFetchingOlder: history.isFetchingPreviousPage,
+    hasOlder: !fallback && enabled && Boolean(history.hasPreviousPage),
+    isFetchingOlder: enabled && history.isFetchingPreviousPage,
     olderError: history.isFetchPreviousPageError
       ? history.error instanceof Error ? history.error.message : 'Could not load earlier items'
       : undefined,
