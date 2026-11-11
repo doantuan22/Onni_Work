@@ -11,7 +11,7 @@ describe('readSavedLayouts', () => {
       { name: 'Future', columns: [{ view: 'hologram', width: 100 }] },
       { name: 'No columns' },
       { name: '', columns: review.columns },
-      { name: 'Too wide', columns: Array.from({ length: 4 }, () => ({ view: 'files', width: 25 })) },
+      { name: 'Too wide', columns: Array.from({ length: 5 }, () => ({ view: 'files', width: 20 })) },
       'not a layout',
       null,
     ]

@@ -100,15 +100,16 @@ describe('openInBrowser', () => {
     const { result } = await layouts({
       layouts: [
         {
-          name: 'Trzy',
+          name: 'Cztery',
           columns: [
-            { view: 'session', width: 34 },
-            { view: 'changes', width: 33 },
-            { view: 'files', width: 33 },
+            { view: 'session', width: 25 },
+            { view: 'changes', width: 25 },
+            { view: 'files', width: 25 },
+            { view: 'terminal', width: 25 },
           ],
         },
       ],
-      active: 'Trzy',
+      active: 'Cztery',
     })
 
     let answer: boolean | undefined
@@ -117,7 +118,7 @@ describe('openInBrowser', () => {
     })
 
     expect(answer).toBe(false)
-    expect(result.current.layout!.columns).toHaveLength(3)
+    expect(result.current.layout!.columns).toHaveLength(4)
   })
 
   it('still answers truthfully with a save already pending', async () => {
