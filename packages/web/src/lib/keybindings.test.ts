@@ -11,6 +11,7 @@ import {
   tabHint,
   resetBinding,
   sanitizeOverrides,
+  WORKSPACE_RESERVED_CHORDS,
   type ChordEvent,
 } from './keybindings'
 
@@ -79,6 +80,17 @@ describe('chords', () => {
   it('refuses Ctrl+Alt off a Mac, where it is AltGr', () => {
     expect(chordProblem('Mod+Alt+P', false)).toBeDefined()
     expect(chordProblem('Mod+Alt+P', true)).toBeUndefined()
+  })
+
+  it('reserves workspace pane and area chords without changing tab:N defaults', () => {
+    expect(WORKSPACE_RESERVED_CHORDS['workspace:switch-pane:1']).toBe('Alt+1')
+    expect(WORKSPACE_RESERVED_CHORDS['workspace:switch-pane:9']).toBe('Alt+9')
+    expect(WORKSPACE_RESERVED_CHORDS['workspace:toggle-navigator']).toBe('Mod+Alt+Left')
+    expect(WORKSPACE_RESERVED_CHORDS['workspace:toggle-context']).toBe('Mod+Alt+Right')
+    expect(WORKSPACE_RESERVED_CHORDS['workspace:toggle-terminal']).toBe('Mod+Alt+Down')
+    expect(chordProblem('Alt+1')).toBeDefined()
+    expect(chordProblem('Mod+Alt+Left', true)).toBeDefined()
+    expect(effectiveBindings().get('tab:1')).toBe('Mod+1')
   })
 })
 
