@@ -19,8 +19,40 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { z } from 'zod';
+
+export const SAFE_RUN_ID_RE = /^[A-Za-z0-9._-]{1,128}$/;
+
+export function isSafeRunId(id: string): boolean {
+  return typeof id === 'string' && SAFE_RUN_ID_RE.test(id) && id !== '.' && !id.includes('..');
+}
+
+export const safeRunIdSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(SAFE_RUN_ID_RE)
+  .refine((id) => id !== '.' && !id.includes('..'), {
+    message: 'Invalid run id',
+  });
+
+export function isPathInsideDir(filePath: string, parentDir: string): boolean {
+  const resolvedParent = resolve(parentDir);
+  const resolvedFile = resolve(filePath);
+  if (!resolvedFile.startsWith(`${resolvedParent}${sep}`)) return false;
+  const rel = relative(resolvedParent, resolvedFile);
+  return Boolean(rel) && rel !== '.' && !rel.startsWith('..') && !isAbsolute(rel);
+}
+
+export function resolveRunEventsPath(dataDir: string, runId: string): string | null {
+  if (!isSafeRunId(runId)) return null;
+  const runsDir = resolve(dataDir, 'runs');
+  const filePath = resolve(runsDir, `${runId}.ndjson`);
+  if (!isPathInsideDir(filePath, runsDir)) return null;
+  if (relative(runsDir, filePath) !== `${runId}.ndjson`) return null;
+  return filePath;
+}
 import { StreamRedaction } from './stream-redaction.ts';
 import { renameSyncWithRetry } from '../fs-rename.ts';
 import { collectSecretValues, redactDeep, redactSecrets } from '../core/secret-redaction.ts';
@@ -149,7 +181,7 @@ export type RunPrRef = z.infer<typeof prRefSchema>;
 /** Exported for `./run-index.ts`, the read-only reader of the same file. Nothing else should
  *  parse `runs.json` — see `reconcileLoadedRun` for why a second parser is a correctness risk. */
 export const runRecordSchema = z.object({
-  id: z.string(),
+  id: safeRunIdSchema,
   title: z.string(),
   /** Display title (#389): the auto-derived summary of the first agent turn,
    *  or the user's inline edit (`PATCH /api/runs/:id` sets it together with
@@ -1326,6 +1358,7 @@ export class RunStore extends EventEmitter {
   }
 
   getRun(id: string): RunRecord | undefined {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return undefined;
     return this.runs.get(id);
   }
 
@@ -1345,8 +1378,12 @@ export class RunStore extends EventEmitter {
     variant?: string;
     steps: Array<Pick<StepState, 'id' | 'name' | 'kind'>>;
   }): RunRecord {
+    const id = input.id ?? randomUUID();
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) {
+      throw new Error(`invalid run id: ${id}`);
+    }
     const run: RunRecord = {
-      id: input.id ?? randomUUID(),
+      id,
       // Scrubbed on the way in, exactly as `updateRun` scrubs it on the way
       // through (#456 review) — a token pasted into the prompt otherwise sat
       // verbatim in `runs.json` from creation. `task` is deliberately NOT
@@ -1387,6 +1424,7 @@ export class RunStore extends EventEmitter {
   }
 
   updateRun(id: string, patch: Partial<Omit<RunRecord, 'id' | 'steps'>>): RunRecord | undefined {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return undefined;
     const run = this.runs.get(id);
     if (!run) return undefined;
     if (Object.prototype.hasOwnProperty.call(patch, 'issueNumber')) {
@@ -1536,6 +1574,7 @@ export class RunStore extends EventEmitter {
   }
 
   setArchived(id: string, archived: boolean): RunRecord | undefined {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return undefined;
     const run = this.runs.get(id);
     if (!run) return undefined;
     run.archived = archived;
@@ -1557,6 +1596,7 @@ export class RunStore extends EventEmitter {
    *  Unconditional by design, like `setUnread`: pinning is legal for every status, and WHICH
    *  runs are worth offering the action on is UI policy (`runActionFlags` in the cockpit). */
   setPinned(id: string, pinned: boolean): RunRecord | undefined {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return undefined;
     const run = this.runs.get(id);
     if (!run) return undefined;
     if (pinned) {
@@ -1596,6 +1636,7 @@ export class RunStore extends EventEmitter {
    *  updated record rides the existing `run` SSE with no new event. Idempotent by
    *  design: opening an already-read thread just re-stamps a later `seenAt`. */
   setRead(id: string): RunRecord | undefined {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return undefined;
     const run = this.runs.get(id);
     if (!run) return undefined;
     run.seenAt = new Date().toISOString();
@@ -1620,6 +1661,7 @@ export class RunStore extends EventEmitter {
    *  the marker. WHETHER the action means anything for a given run is UI policy, and lives
    *  in the cockpit's `runActionFlags` — the same split the rest of the store keeps. */
   setUnread(id: string): RunRecord | undefined {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return undefined;
     const run = this.runs.get(id);
     if (!run) return undefined;
     delete run.seenAt;
@@ -1631,6 +1673,7 @@ export class RunStore extends EventEmitter {
   /** Record the highest event sequence viewed by the user (#viewed). Monotonically
    *  non-decreasing: a lower sequence number is ignored. */
   markViewed(id: string, seq: number): RunRecord | undefined {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return undefined;
     const run = this.runs.get(id);
     if (!run) return undefined;
     if (run.lastViewedSeq === undefined || seq > run.lastViewedSeq) {
@@ -1990,8 +2033,10 @@ export class RunStore extends EventEmitter {
   }
 
   readEvents(runId: string): RunEvent[] {
+    const filePath = resolveRunEventsPath(this.dataDir, runId);
+    if (!filePath) return [];
     try {
-      const raw = readFileSync(this.eventsPath(runId), 'utf8');
+      const raw = readFileSync(filePath, 'utf8');
       return raw
         .split('\n')
         .filter(Boolean)
@@ -2015,15 +2060,19 @@ export class RunStore extends EventEmitter {
    * that is outside the answer, never a reason to read the rest.
    */
   readEventsTail(runId: string, count: number): RunEvent[] {
-    return readEventsTailFromPath(this.eventsPath(runId), count);
+    const filePath = resolveRunEventsPath(this.dataDir, runId);
+    if (!filePath) return [];
+    return readEventsTailFromPath(filePath, count, resolve(this.dataDir, 'runs'));
   }
 
   /** Derive preview cheaply from the last assistant text snippet (<=280 chars) in the run store. */
   getRunPreview(runId: string): string | undefined {
+    if (!resolveRunEventsPath(this.dataDir, runId)) return undefined;
     return extractAssistantPreview(this.readEventsTail(runId, 50));
   }
 
   deleteRun(id: string): boolean {
+    if (!isSafeRunId(id) || !resolveRunEventsPath(this.dataDir, id)) return false;
     const existed = this.forget(id);
     if (existed) {
       try {
@@ -2137,18 +2186,28 @@ export class RunStore extends EventEmitter {
   }
 
   private eventsPath(runId: string): string {
-    return join(this.dataDir, 'runs', `${runId}.ndjson`);
+    const resolved = resolveRunEventsPath(this.dataDir, runId);
+    if (!resolved) throw new Error(`invalid run id: ${runId}`);
+    return resolved;
   }
 
   /** Same location `handoffPath()` in handoff.ts produces — inlined to keep
    *  the store free of upward imports. */
   private handoffPath(runId: string): string {
-    return join(this.dataDir, 'runs', `${runId}.handoff.md`);
+    if (!isSafeRunId(runId)) throw new Error(`invalid run id: ${runId}`);
+    const runsDir = resolve(this.dataDir, 'runs');
+    const target = resolve(runsDir, `${runId}.handoff.md`);
+    if (!isPathInsideDir(target, runsDir)) throw new Error(`invalid run id: ${runId}`);
+    return target;
   }
 
   /** Agent screenshots persisted by the run manager (see persistImage). */
   private imagesDir(runId: string): string {
-    return join(this.dataDir, 'runs', `${runId}-images`);
+    if (!isSafeRunId(runId)) throw new Error(`invalid run id: ${runId}`);
+    const runsDir = resolve(this.dataDir, 'runs');
+    const target = resolve(runsDir, `${runId}-images`);
+    if (!isPathInsideDir(target, runsDir)) throw new Error(`invalid run id: ${runId}`);
+    return target;
   }
 
   private touch(run: RunRecord): void {
@@ -2308,8 +2367,16 @@ export function extractAssistantPreview(events: readonly RunEvent[]): string | u
 /**
  * Read the last `count` events from an NDJSON event file on disk.
  */
-export function readEventsTailFromPath(filePath: string, count: number): RunEvent[] {
+export function readEventsTailFromPath(filePath: string, count: number, runsDir?: string): RunEvent[] {
   if (count <= 0) return [];
+  if (filePath.split(/[\\/]+/).includes('..')) return [];
+  const fileName = basename(filePath);
+  if (!fileName.endsWith('.ndjson')) return [];
+  const runId = fileName.slice(0, -'.ndjson'.length);
+  if (!isSafeRunId(runId)) return [];
+  if (runsDir !== undefined ? !isPathInsideDir(filePath, runsDir) : basename(dirname(resolve(filePath))) !== 'runs') {
+    return [];
+  }
   let fd: number | undefined;
   try {
     fd = openSync(filePath, 'r');
@@ -2351,6 +2418,6 @@ export function readEventsTailFromPath(filePath: string, count: number): RunEven
 /**
  * Read the preview snippet directly from an NDJSON events file on disk without opening a store.
  */
-export function readRunPreviewFromDisk(eventsPath: string): string | undefined {
-  return extractAssistantPreview(readEventsTailFromPath(eventsPath, 50));
+export function readRunPreviewFromDisk(eventsPath: string, runsDir?: string): string | undefined {
+  return extractAssistantPreview(readEventsTailFromPath(eventsPath, 50, runsDir));
 }

@@ -285,6 +285,34 @@ describe('workspace threads route and viewed read receipts', () => {
       expect(body.items.find((it) => it.runId === runSoftAsk.id)!.awaitingAsk).toBe(true);
       expect(body.items.find((it) => it.runId === runNormal.id)!.awaitingAsk).toBe(false);
     });
+
+    it('refuses path traversal via RunRecord.id from a cold project runs.json (QA7-A01)', async () => {
+      await registerProject(otherRoot);
+      mkdirSync(join(otherRoot, '.ai/onni/runs'), { recursive: true });
+
+      // Write an event-like file outside `.ai/onni/runs/`
+      writeFileSync(
+        join(otherRoot, '.ai/onni/secret.ndjson'),
+        JSON.stringify({
+          type: 'item.completed',
+          item: { kind: 'message', role: 'assistant', text: 'LEAKED_OUTSIDE_RUNS_PREVIEW' },
+        }) + '\n',
+        'utf8',
+      );
+
+      seedColdProject(otherRoot, [
+        storedRun({
+          id: '../secret',
+          title: 'Malicious Traversal Run',
+        }),
+      ]);
+
+      const app = makeApp();
+      const res = await apiRequest(app, '/api/v1/workspace/threads');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as ThreadsPage;
+      expect(body.items).toEqual([]);
+    });
   });
 
   describe('Unread logic (computeThreadUnread)', () => {

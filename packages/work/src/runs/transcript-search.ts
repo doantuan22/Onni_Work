@@ -1,4 +1,5 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
+import { basename } from 'node:path';
 import { createInterface } from 'node:readline';
 import { z } from 'zod';
 import {
@@ -10,6 +11,7 @@ import {
   type TranscriptSearchPage,
   type TranscriptSearchQuery,
 } from '@onni/contract';
+import { isPathInsideDir, isSafeRunId } from './store.ts';
 
 export const DEFAULT_SEARCH_PAGE_LIMIT = 20;
 export const MAX_RUNS_SCANNED_PER_PAGE = 25;
@@ -197,7 +199,14 @@ function parseLine(line: string): RunHistoryEvent | null {
 export async function* streamRunEventsBounded(
   filePath: string,
   maxBytes: number,
+  runsDir?: string,
 ): AsyncGenerator<RunHistoryEvent> {
+  if (filePath.split(/[\\/]+/).includes('..')) return;
+  const fileName = basename(filePath);
+  if (!fileName.endsWith('.ndjson')) return;
+  const runId = fileName.slice(0, -'.ndjson'.length);
+  if (!isSafeRunId(runId)) return;
+  if (runsDir !== undefined && !isPathInsideDir(filePath, runsDir)) return;
   if (!existsSync(filePath)) return;
   try {
     if (statSync(filePath).isDirectory()) return;
@@ -230,6 +239,7 @@ export interface CandidateRun {
   projectId: string;
   runId: string;
   filePath: string;
+  runsDir?: string;
   lastActivityAt?: string;
 }
 
@@ -295,6 +305,13 @@ export async function searchTranscripts(
     }
 
     const run = candidateRuns[rIdx]!;
+    if (
+      !isSafeRunId(run.runId) ||
+      run.filePath.split(/[\\/]+/).includes('..') ||
+      (run.runsDir !== undefined && !isPathInsideDir(run.filePath, run.runsDir))
+    ) {
+      continue;
+    }
     runsScannedCount++;
 
     const runMinSeq = rIdx === startIndex ? minSeq : undefined;
@@ -303,7 +320,11 @@ export async function searchTranscripts(
 
     let currentTurnId: string | undefined = undefined;
 
-    const iterator = streamRunEventsBounded(run.filePath, maxBytesPerRun)[Symbol.asyncIterator]();
+    const iterator = streamRunEventsBounded(
+      run.filePath,
+      maxBytesPerRun,
+      run.runsDir,
+    )[Symbol.asyncIterator]();
     try {
       while (true) {
         const next = await iterator.next();

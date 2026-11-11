@@ -245,4 +245,56 @@ describe('workspace transcript search API', () => {
     expect(page2.items[0]?.seq).toBe(2);
     expect(page2.nextCursor).toBeUndefined();
   });
+
+  it('refuses path traversal via RunRecord.id from a cold project runs.json (QA7-A01)', async () => {
+    const app = makeApp();
+    await registerProject(otherRoot);
+    mkdirSync(join(otherRoot, '.ai/onni/runs'), { recursive: true });
+
+    // Place a sensitive event-shaped file outside `.ai/onni/runs/`
+    const outsideEvent =
+      JSON.stringify({
+        type: 'text',
+        text: 'OUTSIDE_RUNS_SECRET_TOKEN_QA7_A01',
+        seq: 1,
+        ts: '2026-11-11T10:00:00Z',
+      }) + '\n';
+    writeFileSync(join(otherRoot, '.ai/onni/secret.ndjson'), outsideEvent, 'utf8');
+    writeFileSync(join(otherRoot, 'root-secret.ndjson'), outsideEvent, 'utf8');
+
+    // Seed cold project's runs.json with traversal ids
+    writeFileSync(
+      join(otherRoot, '.ai/onni/runs.json'),
+      JSON.stringify([
+        {
+          id: '../secret',
+          title: 'Traversal 1',
+          workflow: 'quick-task',
+          task: 'evil',
+          status: 'done',
+          createdAt: '2026-11-11T10:30:00Z',
+          tokensUsed: 0,
+          archived: false,
+          steps: [],
+        },
+        {
+          id: '../../../root-secret',
+          title: 'Traversal 2',
+          workflow: 'quick-task',
+          task: 'evil',
+          status: 'done',
+          createdAt: '2026-11-11T10:31:00Z',
+          tokensUsed: 0,
+          archived: false,
+          steps: [],
+        },
+      ]),
+      'utf8',
+    );
+
+    const res = await apiRequest(app, '/api/v1/workspace/search?q=OUTSIDE_RUNS_SECRET_TOKEN_QA7_A01');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TranscriptSearchPage;
+    expect(body.items).toEqual([]);
+  });
 });

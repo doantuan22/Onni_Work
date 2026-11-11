@@ -16,7 +16,9 @@ import {
   readRunIndexFromDisk,
 } from '../../runs/run-index.ts';
 import {
+  isSafeRunId,
   readRunPreviewFromDisk,
+  resolveRunEventsPath,
   type RunRecord,
 } from '../../runs/store.ts';
 import type { ProjectListEntry, ProjectListSelector } from '../../workspace/projects.ts';
@@ -163,9 +165,12 @@ export function createWorkspaceThreadsRoutes(deps: WorkspaceThreadsRouteDeps) {
       for (const project of projects) {
         if (project.status === 'missing') continue;
         const owned = project.id === bootId ? bootContext : contexts.peek(project.id);
+        const dataDir = owned ? owned.dataDir : join(project.root, '.ai/onni');
         const allRuns = (
-          owned ? owned.store.listRuns() : readRunIndexFromDisk(join(project.root, '.ai/onni'))
-        ).sort(byLastActivityDesc);
+          owned ? owned.store.listRuns() : readRunIndexFromDisk(dataDir)
+        )
+          .filter((run) => isSafeRunId(run.id) && resolveRunEventsPath(dataDir, run.id) !== null)
+          .sort(byLastActivityDesc);
 
         if (allRuns.length > RUNS_INDEX_PER_PROJECT) {
           truncatedProjects.push(project.id);
@@ -222,9 +227,13 @@ export function createWorkspaceThreadsRoutes(deps: WorkspaceThreadsRouteDeps) {
       const hasMore = eligible.length > limit;
 
       const items: ThreadSummary[] = paged.map((item) => {
+        const dataDir = item.owned ? item.owned.dataDir : join(item.project.root, '.ai/onni');
+        const eventsPath = resolveRunEventsPath(dataDir, item.run.id);
         const preview = item.owned
           ? item.owned.store.getRunPreview(item.run.id)
-          : readRunPreviewFromDisk(join(item.project.root, '.ai/onni/runs', `${item.run.id}.ndjson`));
+          : eventsPath
+            ? readRunPreviewFromDisk(eventsPath, join(dataDir, 'runs'))
+            : undefined;
 
         const unread = computeThreadUnread(item.run);
         const parentRunId = item.run.dispatch?.parentRunId;
