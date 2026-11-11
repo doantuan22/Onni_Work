@@ -117,6 +117,30 @@ describe('resolveComposerRunMode with dispatch (spec 2026-09-10-dispatch)', () =
 })
 
 describe('the new-task draft store', () => {
+  it('keeps saved drafts isolated by draft ID', () => {
+    writeDraft({ ...EMPTY_DRAFT, text: 'first pane' }, 'shop', 'first')
+    writeDraft({ ...EMPTY_DRAFT, text: 'second pane' }, 'shop', 'second')
+
+    expect(readDraft('shop', 'first').text).toBe('first pane')
+    expect(readDraft('shop', 'second').text).toBe('second pane')
+  })
+
+  it('clears only the started draft ID', () => {
+    writeDraft({ ...EMPTY_DRAFT, text: 'first pane' }, 'shop', 'first')
+    writeDraft({ ...EMPTY_DRAFT, text: 'second pane' }, 'shop', 'second')
+
+    clearStartedDraft('shop', 'first')
+
+    expect(readDraft('shop', 'first').text).toBe('')
+    expect(readDraft('shop', 'second').text).toBe('second pane')
+  })
+
+  it('reads legacy storage through the default draft ID', () => {
+    localStorage.setItem('onni-new-task-draft', JSON.stringify({ ...EMPTY_DRAFT, text: 'legacy draft' }))
+
+    expect(readDraft().text).toBe('legacy draft')
+  })
+
   it('starts empty with the never-chosen sentinels', () => {
     expect(readDraft()).toEqual({
       text: '',
@@ -259,6 +283,14 @@ describe('the new-task draft store', () => {
  * pasted. That is a move, and the rules below are what keep it one.
  */
 describe('the new-task attachment store', () => {
+  it('keeps attachments isolated by draft ID', () => {
+    writeAttachments([shot('first.png')], 'shop', 'first')
+    writeAttachments([shot('second.png')], 'shop', 'second')
+
+    expect(readAttachments('shop', 'first').map((a) => a.name)).toEqual(['first.png'])
+    expect(readAttachments('shop', 'second').map((a) => a.name)).toEqual(['second.png'])
+  })
+
   it('keeps attachments per project and hands out copies, not the stored array', () => {
     writeAttachments([shot('a.png')], null)
     writeAttachments([shot('b.png'), shot('c.png')], 'shop')

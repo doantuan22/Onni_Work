@@ -20,8 +20,8 @@ import { RUNNERS, type TaskSource } from './new-task-form'
  * fresher `lastTask` from the server. Images are deliberately NOT persisted (multi-MB base64
  * would blow the ~5 MB localStorage quota); everything the pickers hold is.
  *
- * Every entry point takes the project the draft belongs to (multi-project spec, step 3.4) —
- * see `storageKey` below for what scopes what.
+ * Every entry point takes the project and optional pane-owned draft ID the draft belongs to
+ * (multi-project spec, step 3.4) — see `storageKey` below for what scopes what.
  */
 export interface NewTaskDraft {
   text: string
@@ -202,6 +202,7 @@ const EMPTY: NewTaskDraft = {
 }
 
 const STORAGE_KEY = 'onni-new-task-draft'
+const DEFAULT_DRAFT_ID = 'default'
 
 /**
  * The per-project storage key (multi-project spec, "New task": `onni-new-task-draft:<projectId>`).
@@ -209,13 +210,14 @@ const STORAGE_KEY = 'onni-new-task-draft'
  * Drafts are project state — a half-typed task for the shop frontend must not surface in the
  * onni composer when the project pill swaps scope — so each project gets its own key.
  *
- * `null` (the argument's default) keeps the BARE legacy key. That is the same "unscoped means
- * byte-identical" invariant the rest of step 3.1 keeps (`apiPath`, `queryScope`): the boot
- * project mounts unscoped, so its draft stays exactly where it has always been and a task typed
- * before this upgrade is still there after it. Only non-boot projects pay the suffix.
+ * The stable default draft ID keeps the existing key byte-for-byte. That is the same "unscoped
+ * means byte-identical" invariant the rest of step 3.1 keeps (`apiPath`, `queryScope`): the
+ * boot project mounts unscoped, so its draft stays exactly where it has always been and a task
+ * typed before this upgrade is still there after it. Only additional draft panes pay a suffix.
  */
-function storageKey(projectId: string | null): string {
-  return projectId === null ? STORAGE_KEY : `${STORAGE_KEY}:${projectId}`
+function storageKey(projectId: string | null, draftId = DEFAULT_DRAFT_ID): string {
+  const legacyKey = projectId === null ? STORAGE_KEY : `${STORAGE_KEY}:${projectId}`
+  return draftId === DEFAULT_DRAFT_ID ? legacyKey : `${legacyKey}:draft:${encodeURIComponent(draftId)}`
 }
 
 /** Coerce arbitrary parsed JSON back into a NewTaskDraft, defaulting anything malformed — the
@@ -307,12 +309,12 @@ function isSource(raw: unknown): raw is TaskSource {
 }
 
 // In-memory cache mirrors storage so reads stay synchronous and cheap; storage is the source of
-// truth across reloads. Keyed by storage key, so one open cockpit holds every project's draft
+// truth across reloads. Keyed by storage key, so one open cockpit holds every project/draft pane
 // independently — swapping the pill back and forth never round-trips through a stale singleton.
 const cache = new Map<string, NewTaskDraft>()
 
-export function readDraft(projectId: string | null = null): NewTaskDraft {
-  const key = storageKey(projectId)
+export function readDraft(projectId: string | null = null, draftId = DEFAULT_DRAFT_ID): NewTaskDraft {
+  const key = storageKey(projectId, draftId)
   const cached = cache.get(key)
   if (cached) return { ...cached }
   let draft: NewTaskDraft
@@ -326,8 +328,12 @@ export function readDraft(projectId: string | null = null): NewTaskDraft {
   return { ...draft }
 }
 
-export function writeDraft(next: NewTaskDraft, projectId: string | null = null): void {
-  const key = storageKey(projectId)
+export function writeDraft(
+  next: NewTaskDraft,
+  projectId: string | null = null,
+  draftId = DEFAULT_DRAFT_ID,
+): void {
+  const key = storageKey(projectId, draftId)
   cache.set(key, { ...next })
   try {
     localStorage.setItem(key, JSON.stringify(next))
@@ -343,10 +349,10 @@ export function writeDraft(next: NewTaskDraft, projectId: string | null = null):
  *  decision about the task that just started, and carrying it into the next one is how a skill
  *  picked once ended up silently running every task after it. A fresh `/new` starts with no
  *  skill; picking one again is one click. */
-export function clearStartedDraft(projectId: string | null = null): void {
+export function clearStartedDraft(projectId: string | null = null, draftId = DEFAULT_DRAFT_ID): void {
   // A branch name is per-task — two tasks cannot both create it — while the toggle stays sticky.
-  const { branchName: _spent, readOnly: _asked, ...kept } = readDraft(projectId)
-  writeDraft({ ...kept, text: '', source: null }, projectId)
+  const { branchName: _spent, readOnly: _asked, ...kept } = readDraft(projectId, draftId)
+  writeDraft({ ...kept, text: '', source: null }, projectId, draftId)
 }
 
 /**
@@ -361,20 +367,24 @@ export function clearStartedDraft(projectId: string | null = null): void {
  * storage cost, and — like every other module store here — starts empty on a real page load,
  * which is exactly the promise `/new` attachments have always made.
  *
- * Keyed by the same `storageKey` the draft uses, so the boot project's bare key and the suffixed
- * key of every other project cannot drift apart.
+ * Keyed by the same `storageKey` the draft uses, so draft panes in one project cannot drift
+ * apart.
  */
 const attachments = new Map<string, PendingAttachment[]>()
 
-export function readAttachments(projectId: string | null = null): PendingAttachment[] {
-  return [...(attachments.get(storageKey(projectId)) ?? [])]
+export function readAttachments(
+  projectId: string | null = null,
+  draftId = DEFAULT_DRAFT_ID,
+): PendingAttachment[] {
+  return [...(attachments.get(storageKey(projectId, draftId)) ?? [])]
 }
 
 export function writeAttachments(
   next: readonly PendingAttachment[],
   projectId: string | null = null,
+  draftId = DEFAULT_DRAFT_ID,
 ): void {
-  const key = storageKey(projectId)
+  const key = storageKey(projectId, draftId)
   if (next.length === 0) attachments.delete(key)
   else attachments.set(key, [...next])
 }
@@ -401,24 +411,25 @@ export function writeAttachments(
 export function handOffComposition(
   from: string | null,
   to: string | null,
+  draftId = DEFAULT_DRAFT_ID,
 ): { moved: boolean; reason?: 'same-project' | 'nothing-to-move' | 'destination-busy' } {
   if (from === to) return { moved: false, reason: 'same-project' }
-  const departing = readDraft(from)
-  const carried = readAttachments(from)
+  const departing = readDraft(from, draftId)
+  const carried = readAttachments(from, draftId)
   if (departing.text === '' && carried.length === 0) {
     return { moved: false, reason: 'nothing-to-move' }
   }
-  const arriving = readDraft(to)
+  const arriving = readDraft(to, draftId)
   // Attachments are unsent work too. A destination with only a pasted image must win just like
   // one with typed text; otherwise the write below replaces its attachment array and silently
   // destroys the image when the project pill navigates away.
-  if (arriving.text !== '' || readAttachments(to).length > 0) {
+  if (arriving.text !== '' || readAttachments(to, draftId).length > 0) {
     return { moved: false, reason: 'destination-busy' }
   }
-  writeDraft({ ...arriving, text: departing.text }, to)
-  writeDraft({ ...departing, text: '' }, from)
-  writeAttachments(carried, to)
-  writeAttachments([], from)
+  writeDraft({ ...arriving, text: departing.text }, to, draftId)
+  writeDraft({ ...departing, text: '' }, from, draftId)
+  writeAttachments(carried, to, draftId)
+  writeAttachments([], from, draftId)
   return { moved: true }
 }
 
