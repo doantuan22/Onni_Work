@@ -3,6 +3,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState, type Rea
 import { UNSAFE_RouteContext } from 'react-router'
 
 import { useProjectScope } from '@/api/project-scope-context'
+import { useHealth } from '@/api/queries'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
@@ -31,12 +32,14 @@ import { navigateWorkspacePane } from '@/routes/task-workspace/url-sync'
 
 import { ActivePaneProvider, useActivePane } from './active-pane-context'
 import { ContextSheet } from './context-sheet'
-import { SplitTabStrip } from './split-tab-strip'
+import { splitTabId, SplitTabStrip } from './split-tab-strip'
 import { useMarkViewed } from './use-mark-viewed'
 import { useWorkspaceShortcuts } from './use-workspace-shortcuts'
 
 const SIDE_BY_SIDE_MIN_WIDTH = 1024
-const HOST_CONTEXT_VIEWS = VIEW_IDS.filter((view) => view !== 'session')
+function hostContextViews(terminalAllowed: boolean): ViewId[] {
+  return VIEW_IDS.filter((view) => view !== 'session' && (view !== 'terminal' || terminalAllowed))
+}
 
 export type WorkspaceHostTarget =
   | { kind: 'run'; runId: string; view?: ViewId }
@@ -128,12 +131,15 @@ function WorkspaceHostPane({
   const navigate = useNavigate()
   const { t } = useI18n()
   const isDesktop = useIsDesktop(SIDE_BY_SIDE_MIN_WIDTH)
+  const terminalAllowed = useHealth().data?.capabilities?.terminal === true
+  const contextViews = useMemo(() => hostContextViews(terminalAllowed), [terminalAllowed])
 
   useWorkspaceShortcuts({ projectId })
   useMarkViewed({ projectId, state, target })
 
   const [scrollAnchors, setScrollAnchors] = useState<Record<string, number>>({})
   const pendingUrlPaneRef = useRef<string | null>(null)
+  const mobileTabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const updateScrollAnchor = useCallback((paneId: string, scrollTop: number) => {
     setScrollAnchors((prev) => {
@@ -257,10 +263,13 @@ function WorkspaceHostPane({
   const renderPane = (pane: PaneRef) => {
     const isActive = activePane.activePaneId === pane.paneId
     const paneView = isActive && target.kind === 'run' ? target.view : undefined
+    const isSplitPane = state.split !== 'none'
+      && (state.split.a === pane.paneId || state.split.b === pane.paneId)
 
     return (
       <section
         key={pane.paneId}
+        id={pane.paneId}
         ref={(el) => {
           if (el) {
             const saved = scrollAnchors[pane.paneId]
@@ -277,6 +286,7 @@ function WorkspaceHostPane({
         data-scroll-anchor={scrollAnchors[pane.paneId] ?? 0}
         data-slot="workspace-pane"
         role="tabpanel"
+        {...(isSplitPane ? { 'aria-labelledby': splitTabId(pane.paneId) } : {})}
         onPointerDown={() => activate(pane.paneId)}
         onScroll={(e) => updateScrollAnchor(pane.paneId, e.currentTarget.scrollTop)}
       >
@@ -353,7 +363,10 @@ function WorkspaceHostPane({
             <button
               type="button"
               role="tab"
+              id={splitTabId(paneA.paneId)}
+              aria-controls={paneA.paneId}
               aria-selected={state.active === paneA.paneId}
+              tabIndex={state.active === paneA.paneId ? 0 : -1}
               data-active={state.active === paneA.paneId ? 'true' : undefined}
               data-pane-id={paneA.paneId}
               className={cn(
@@ -363,13 +376,32 @@ function WorkspaceHostPane({
                   : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
               )}
               onClick={() => activate(paneA.paneId)}
+              ref={(element) => { mobileTabRefs.current[0] = element }}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowRight') {
+                  event.preventDefault()
+                  activate(paneB.paneId)
+                  mobileTabRefs.current[1]?.focus()
+                } else if (event.key === 'ArrowLeft' || event.key === 'End') {
+                  event.preventDefault()
+                  activate(paneB.paneId)
+                  mobileTabRefs.current[1]?.focus()
+                } else if (event.key === 'Home') {
+                  event.preventDefault()
+                  activate(paneA.paneId)
+                  mobileTabRefs.current[0]?.focus()
+                }
+              }}
             >
               <span className="max-w-[120px] truncate">{paneTitle(paneA, t('New task'))}</span>
             </button>
             <button
               type="button"
               role="tab"
+              id={splitTabId(paneB.paneId)}
+              aria-controls={paneB.paneId}
               aria-selected={state.active === paneB.paneId}
+              tabIndex={state.active === paneB.paneId ? 0 : -1}
               data-active={state.active === paneB.paneId ? 'true' : undefined}
               data-pane-id={paneB.paneId}
               className={cn(
@@ -379,6 +411,22 @@ function WorkspaceHostPane({
                   : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
               )}
               onClick={() => activate(paneB.paneId)}
+              ref={(element) => { mobileTabRefs.current[1] = element }}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowRight' || event.key === 'Home') {
+                  event.preventDefault()
+                  activate(paneA.paneId)
+                  mobileTabRefs.current[0]?.focus()
+                } else if (event.key === 'ArrowLeft') {
+                  event.preventDefault()
+                  activate(paneA.paneId)
+                  mobileTabRefs.current[0]?.focus()
+                } else if (event.key === 'End') {
+                  event.preventDefault()
+                  activate(paneB.paneId)
+                  mobileTabRefs.current[1]?.focus()
+                }
+              }}
             >
               <span className="max-w-[120px] truncate">{paneTitle(paneB, t('New task'))}</span>
             </button>
@@ -405,6 +453,12 @@ function WorkspaceHostPane({
           </div>
         </div>
         {renderPane(activePaneRef)}
+        <div
+          id={activePaneRef.paneId === paneA.paneId ? paneB.paneId : paneA.paneId}
+          role="tabpanel"
+          aria-labelledby={splitTabId(activePaneRef.paneId === paneA.paneId ? paneB.paneId : paneA.paneId)}
+          hidden
+        />
         {activePaneRef?.kind === 'run' ? (
           <ContextSheet
             open={Boolean(state.context.open)}
@@ -417,7 +471,7 @@ function WorkspaceHostPane({
             projectId={projectId}
             runId={activePaneRef.runId}
             title={activePaneRef.title ?? activePaneRef.runId}
-            views={HOST_CONTEXT_VIEWS}
+            views={contextViews}
             activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
             onViewChange={(view) =>
               update((current) => ({
@@ -493,7 +547,7 @@ function WorkspaceHostPane({
           projectId={projectId}
           runId={pane.runId}
           title={pane.title ?? pane.runId}
-          views={HOST_CONTEXT_VIEWS}
+          views={contextViews}
           activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
           onViewChange={(view) =>
             update((current) => ({

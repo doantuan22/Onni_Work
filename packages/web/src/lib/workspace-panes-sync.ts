@@ -25,8 +25,23 @@ export interface WorkspacePanesSyncOptions {
  * conforms to workspacePanesSchema before persistence to the server.
  */
 export function toWorkspacePanesPayload(state: WorkspaceState): WorkspacePanes {
-  const threads: WorkspacePaneThread[] = state.threads
-    .slice(0, MAX_WORKSPACE_PANES_THREADS)
+  const retainedIds = new Set<string>()
+  if (state.active && state.threads.some((thread) => thread.paneId === state.active)) {
+    retainedIds.add(state.active)
+  }
+  if (state.split !== 'none') {
+    for (const paneId of [state.split.a, state.split.b]) {
+      if (state.threads.some((thread) => thread.paneId === paneId)) retainedIds.add(paneId)
+    }
+  }
+
+  const orderedThreads = [
+    ...state.threads.filter((thread) => retainedIds.has(thread.paneId)),
+    ...state.threads.filter((thread) => !retainedIds.has(thread.paneId)),
+  ]
+  const retainedThreads = orderedThreads.slice(0, MAX_WORKSPACE_PANES_THREADS)
+  const retainedThreadIds = new Set(retainedThreads.map((thread) => thread.paneId))
+  const threads: WorkspacePaneThread[] = retainedThreads
     .map((thread) => {
       if (thread.kind === 'draft') {
         return {
@@ -46,10 +61,14 @@ export function toWorkspacePanesPayload(state: WorkspaceState): WorkspacePanes {
 
   const payload: WorkspacePanes = {
     threads,
-    split: state.split === 'none' ? 'none' : { a: state.split.a, b: state.split.b },
+    split: state.split !== 'none'
+      && retainedThreadIds.has(state.split.a)
+      && retainedThreadIds.has(state.split.b)
+      ? { a: state.split.a, b: state.split.b }
+      : 'none',
   }
 
-  if (typeof state.active === 'string' && state.active !== '') {
+  if (typeof state.active === 'string' && state.active !== '' && retainedThreadIds.has(state.active)) {
     payload.active = state.active
   }
 
