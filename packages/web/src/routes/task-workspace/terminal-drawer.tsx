@@ -1,5 +1,5 @@
 import { Loader2Icon, PanelRightIcon, PlusIcon, SquareIcon, TerminalIcon, XIcon } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { createRunTerminal, getRunTerminal, stopRunTerminal, writeRunTerminal } from '@/api/client'
 import { useHealth } from '@/api/queries'
@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { useSplitter } from '@/components/splitter/use-splitter'
 import { IconTooltip } from '@/components/ui/icon-tooltip'
 import {
   DropdownMenu,
@@ -504,51 +505,18 @@ function DrawerResizeHandle({
   height: number
   onHeightChange: (height: number) => void
 }) {
-  const origin = useRef<{ y: number; height: number } | null>(null)
   const { t } = useI18n()
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return
-    origin.current = { y: event.clientY, height }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    // Without this the drag selects the text of whatever it passes over…
-    event.preventDefault()
-    // …and preventing the default also suppresses the focus the press would have given this
-    // `tabIndex=0` element, leaving a mouse user unable to fine-tune with the arrows right after.
-    event.currentTarget.focus()
-  }
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const start = origin.current
-    if (!start) return
-    onHeightChange(clampDrawerHeight(start.height - (event.clientY - start.y)))
-  }
-
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!origin.current) return
-    origin.current = null
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const step = event.shiftKey ? DRAWER_HEIGHT_STEP_LARGE : DRAWER_HEIGHT_STEP
-    const next =
-      event.key === 'ArrowUp'
-        ? height + step
-        : event.key === 'ArrowDown'
-          ? height - step
-          : event.key === 'Home'
-            ? MAX_DRAWER_HEIGHT
-            : event.key === 'End'
-              ? MIN_DRAWER_HEIGHT
-              : null
-    if (next === null) return
-    // Only for the keys we handled: Tab, Escape and the rest stay the browser's.
-    event.preventDefault()
-    onHeightChange(clampDrawerHeight(next))
-  }
+  const splitter = useSplitter({
+    unit: 'px',
+    axis: 'horizontal',
+    getRange: () => ({ value: height, min: MIN_DRAWER_HEIGHT, max: MAX_DRAWER_HEIGHT }),
+    step: DRAWER_HEIGHT_STEP,
+    largeStep: DRAWER_HEIGHT_STEP_LARGE,
+    pointerToValue: (start, delta) => clampDrawerHeight(start - delta),
+    keys: { ArrowUp: 1, ArrowDown: -1, Home: 'max', End: 'min' },
+    onChange: (next) => { if (next !== null) onHeightChange(next) },
+  })
 
   return (
     <div
@@ -560,11 +528,11 @@ function DrawerResizeHandle({
       aria-valuemin={MIN_DRAWER_HEIGHT}
       aria-valuemax={MAX_DRAWER_HEIGHT}
       tabIndex={0}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      onKeyDown={onKeyDown}
+      onPointerDown={splitter.onPointerDown}
+      onPointerMove={splitter.onPointerMove}
+      onPointerUp={splitter.onPointerUp}
+      onPointerCancel={splitter.onPointerCancel}
+      onKeyDown={splitter.onKeyDown}
       title={t('Drag to resize — arrow keys adjust precisely')}
       // A 5px grab strip straddling the top border, invisible until reached for. `touch-none` is
       // load-bearing: without it a touch drag is claimed by the browser's panning.

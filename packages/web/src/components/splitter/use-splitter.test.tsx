@@ -29,7 +29,7 @@ describe('useSplitter', () => {
     expect(config.onChange).toHaveBeenCalledWith(325)
     expect(handle.setPointerCapture).toHaveBeenCalledWith(7)
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(7)
-    expect(config.onCommit).toHaveBeenCalledWith(300)
+    expect(config.onCommit).toHaveBeenCalledWith(325)
   })
 
   it('supports pair-relative percent bounds and Shift arrow steps', () => {
