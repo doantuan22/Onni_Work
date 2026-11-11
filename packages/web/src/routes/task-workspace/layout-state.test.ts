@@ -6,7 +6,7 @@ import {
   activeLayout,
   closeColumn,
   closeLayout,
-  defaultState,
+  defaultState as freshDefaultState,
   dropView,
   applySavedLayout,
   keepAs,
@@ -49,30 +49,31 @@ afterEach(() => {
 const widths = (state: WorkspaceState) => activeLayout(state)?.columns.map((column) => column.width)
 const views = (state: WorkspaceState) => activeLayout(state)?.columns.map((column) => column.view)
 const names = (state: WorkspaceState) => state.layouts.map((layout) => layout.name)
+/** Old persisted shape used to exercise transitions that are independent of the fresh-task seed. */
+const defaultState = (): WorkspaceState => ({
+  layouts: VIEW_IDS.filter((view) => view !== 'terminal').map((view) => ({ name: viewLabel(view), columns: [{ view, width: 100 }] })),
+  active: 'Chat',
+})
+const chatState = () => selectLayout(defaultState(), 'Chat')
 /** The six cards a task is born with, in order: one per view. */
 const BORN = ['Chat', 'Changes', 'Commits', 'Files', 'Preview', 'Graph']
 
 describe('defaultState', () => {
-  it('opens a fresh task on Chat, with one full-width card per view behind it', () => {
-    const state = defaultState()
+  it('opens a fresh task on the Review arrangement, with fixed view cards still available', () => {
+    const state = freshDefaultState()
     expect(DEFAULT_LAYOUT_NAME).toBe('Chat')
-    expect(state.active).toBe(DEFAULT_LAYOUT_NAME)
-    expect(names(state)).toEqual(BORN)
-    // Terminal is the one view not pre-seeded: its card is minted on first use.
-    const seeded = VIEW_IDS.filter((view) => view !== 'terminal')
-    expect(names(state)).toEqual(seeded.map(viewLabel))
-    // Each card is one full-width column of the view it is named after — which is exactly what
-    // makes it the plain layout a FIXED card stands in for.
-    expect(state.layouts.map((layout) => layout.columns)).toEqual(
-      seeded.map((view) => [{ view, width: 100 }]),
-    )
-    expect(state.layouts[0]!.columns).toEqual([{ view: 'session', width: 100 }])
+    expect(state.active).toBe('Custom')
+    expect(names(state)).toEqual(['Custom'])
+    expect(state.layouts.at(-1)?.columns).toEqual([
+      { view: 'session', width: 55 },
+      { view: 'changes', width: 45 },
+    ])
   })
 
   it('is a factory, so one caller cannot mutate the default for the next', () => {
-    const first = defaultState()
-    first.layouts[0]!.name = 'tampered'
-    expect(defaultState().layouts[0]!.name).toBe(DEFAULT_LAYOUT_NAME)
+    const first = freshDefaultState()
+    first.layouts.at(-1)!.columns[0]!.width = 1
+    expect(freshDefaultState().layouts.at(-1)!.columns[0]!.width).toBe(55)
   })
 })
 
@@ -145,7 +146,7 @@ describe('addLayout', () => {
   it('gives a new card an automatic name and activates it', () => {
     // Spec §5.2: "gives it an automatic editable name" — `Layout N`, N being the card's position.
     // The name is positional, not derived from the view, so two cards on the same view are still
-    // distinct; a fresh task already holds six cards, so its first new one is the seventh.
+    // distinct; the legacy transition fixture starts with six cards.
     const state = addLayout(defaultState(), 'changes')
     expect(state.active).toBe('Layout 7')
     expect(findLayout(state)?.columns).toEqual([{ view: 'changes', width: 100 }])
@@ -182,7 +183,7 @@ describe('closeLayout', () => {
   it('falls back to the previous card when the closed one was last', () => {
     let state = addLayout(defaultState(), 'changes')
     state = closeLayout(state, 'Layout 7')
-    // The previous card in the list: the last of the six the task was born with.
+    // The previous card in the list is the final of the six born cards.
     expect(state.active).toBe('Graph')
   })
 
@@ -194,7 +195,7 @@ describe('closeLayout', () => {
   })
 
   it('empties the workspace when the last card goes, and that stays empty for the visit', () => {
-    // A fresh task has six cards now, so "the last card" is reached by closing every one of them.
+    // Keep only the final fixed view.
     let state = defaultState()
     for (const name of BORN.slice(0, -1)) state = closeLayout(state, name)
     expect(names(state)).toEqual(['Graph'])
@@ -212,7 +213,7 @@ describe('closeLayout', () => {
 
 describe('renameLayout', () => {
   it('renames the card and follows the selection across', () => {
-    const state = renameLayout(defaultState(), 'Chat', 'Debug')
+    const state = renameLayout(chatState(), 'Chat', 'Debug')
     expect(state.layouts[0]!.name).toBe('Debug')
     expect(state.active).toBe('Debug')
   })
@@ -232,7 +233,7 @@ describe('renameLayout', () => {
 
 describe('addColumn', () => {
   it('splits two columns in half and three in thirds', () => {
-    let state = addColumn(defaultState(), 'Chat', 'changes')
+    let state = addColumn(chatState(), 'Chat', 'changes')
     expect(widths(state)).toEqual([50, 50])
     state = addColumn(state, 'Chat', 'files')
     expect(widths(state)?.reduce((sum, width) => sum + width, 0)).toBe(100)
@@ -240,12 +241,12 @@ describe('addColumn', () => {
   })
 
   it('allows the same view in more than one column', () => {
-    const state = addColumn(defaultState(), 'Chat', 'session')
+    const state = addColumn(chatState(), 'Chat', 'session')
     expect(views(state)).toEqual(['session', 'session'])
   })
 
   it('caps at three columns', () => {
-    let state = defaultState()
+    let state = chatState()
     state = addColumn(state, 'Chat', 'changes')
     state = addColumn(state, 'Chat', 'files')
     const capped = addColumn(state, 'Chat', 'commits')
@@ -256,7 +257,7 @@ describe('addColumn', () => {
 
 describe('closeColumn', () => {
   it('divides the remaining columns equally', () => {
-    let state = addColumn(addColumn(defaultState(), 'Chat', 'changes'), 'Chat', 'files')
+    let state = addColumn(addColumn(chatState(), 'Chat', 'changes'), 'Chat', 'files')
     state = resizeColumns(state, 'Chat', 0, 10)
     state = closeColumn(state, 'Chat', 2)
     expect(widths(state)).toEqual([50, 50])
@@ -265,7 +266,7 @@ describe('closeColumn', () => {
   it('leaves the card in place, empty, when the last column goes', () => {
     // Spec §5.2 and §10: an emptied layout KEEPS its card and offers `+`; it is not the same act
     // as closing the card, which has its own X.
-    const state = closeColumn(defaultState(), 'Chat', 0)
+    const state = closeColumn(chatState(), 'Chat', 0)
     expect(names(state)).toEqual(BORN)
     expect(state.layouts[0]!.columns).toEqual([])
     expect(state.active).toBe('Chat')
@@ -279,7 +280,7 @@ describe('closeColumn', () => {
 
 describe('setColumnView', () => {
   it('repoints a column and keeps its width', () => {
-    let state = addColumn(defaultState(), 'Chat', 'changes')
+    let state = addColumn(chatState(), 'Chat', 'changes')
     state = resizeColumns(state, 'Chat', 0, 20)
     const before = widths(state)
     state = setColumnView(state, 'Chat', 1, 'files')
@@ -288,33 +289,33 @@ describe('setColumnView', () => {
   })
 
   it('is a no-op when the view is already showing', () => {
-    const state = defaultState()
+    const state = chatState()
     expect(setColumnView(state, 'Chat', 0, 'session')).toBe(state)
   })
 })
 
 describe('resizeColumns', () => {
   it('trades width between the pair either side of the divider', () => {
-    const state = resizeColumns(addColumn(defaultState(), 'Chat', 'changes'), 'Chat', 0, 10)
+    const state = resizeColumns(addColumn(chatState(), 'Chat', 'changes'), 'Chat', 0, 10)
     expect(widths(state)).toEqual([60, 40])
   })
 
   it('leaves the far column of a three-way split untouched', () => {
-    let state = addColumn(addColumn(defaultState(), 'Chat', 'changes'), 'Chat', 'files')
+    let state = addColumn(addColumn(chatState(), 'Chat', 'changes'), 'Chat', 'files')
     const far = widths(state)?.[2]
     state = resizeColumns(state, 'Chat', 0, 10)
     expect(widths(state)?.[2]).toBe(far)
   })
 
   it('stops dead at the floor instead of pushing a neighbour out of the row', () => {
-    const state = resizeColumns(addColumn(defaultState(), 'Chat', 'changes'), 'Chat', 0, 999)
+    const state = resizeColumns(addColumn(chatState(), 'Chat', 'changes'), 'Chat', 0, 999)
     const [left, right] = widths(state) ?? []
     expect(right).toBe(MIN_COLUMN_WIDTH)
     expect(left! + right!).toBe(100)
   })
 
   it('refuses the divider after the last column, and a non-move', () => {
-    const state = addColumn(defaultState(), 'Chat', 'changes')
+    const state = addColumn(chatState(), 'Chat', 'changes')
     expect(resizeColumns(state, 'Chat', 1, 5)).toBe(state)
     expect(resizeColumns(state, 'Chat', 0, 0)).toBe(state)
     expect(resizeColumns(state, 'Chat', 0, Number.NaN)).toBe(state)
@@ -323,7 +324,7 @@ describe('resizeColumns', () => {
 
 describe('moveColumn', () => {
   it('reorders and equalizes every width', () => {
-    let state = addColumn(addColumn(defaultState(), 'Chat', 'changes'), 'Chat', 'files')
+    let state = addColumn(addColumn(chatState(), 'Chat', 'changes'), 'Chat', 'files')
     state = resizeColumns(state, 'Chat', 0, 15)
     state = moveColumn(state, 'Chat', 2, 0)
     expect(views(state)).toEqual(['files', 'session', 'changes'])
@@ -332,7 +333,7 @@ describe('moveColumn', () => {
   })
 
   it('ignores an out-of-range or no-op move', () => {
-    const state = addColumn(defaultState(), 'Chat', 'changes')
+    const state = addColumn(chatState(), 'Chat', 'changes')
     expect(moveColumn(state, 'Chat', 0, 0)).toBe(state)
     expect(moveColumn(state, 'Chat', 0, 9)).toBe(state)
   })
@@ -500,7 +501,7 @@ describe('openDeepLink', () => {
   })
 
   it('does not reuse a multi-column card that happens to contain the view', () => {
-    const before = addColumn(defaultState(), 'Chat', 'changes')
+    const before = addColumn(chatState(), 'Chat', 'changes')
     const state = openDeepLink(before, 'changes')
     expect(state.layouts).toHaveLength(6)
     expect(state.active).toBe('Changes')
@@ -534,7 +535,7 @@ describe('round trip through the host', () => {
   })
 
   it('survives a round trip through JSON unchanged', () => {
-    let state = addColumn(defaultState(), 'Chat', 'changes')
+    let state = addColumn(chatState(), 'Chat', 'changes')
     state = resizeColumns(state, 'Chat', 0, 12)
     state = addLayout(state, 'files')
     const read = throughHost(state)
@@ -552,21 +553,21 @@ describe('round trip through the host', () => {
   it('round-trips a workspace the user emptied on purpose', () => {
     // §5.2: a saved layout may intentionally have no columns — so an emptied card must come
     // back as an emptied card, not as a fresh default.
-    const emptied = closeColumn(defaultState(), 'Chat', 0)
+    const emptied = closeColumn(chatState(), 'Chat', 0)
     expect(emptied.layouts[0]!.columns).toEqual([])
     expect(throughHost(emptied)).toEqual(asRead(emptied))
     expect(throughHost(emptied).layouts[0]).toEqual({ name: 'Chat', columns: [] })
   })
 
   it('recovers from junk rather than throwing', () => {
-    expect(reviveState('not a workspace')).toEqual(defaultState())
+    expect(reviveState('not a workspace')).toEqual(freshDefaultState())
   })
 })
 
 describe('reviveState', () => {
   it('recovers to the default for every shape that is not a workspace', () => {
     for (const junk of [null, 42, 'x', {}, { layouts: 'no' }, { layouts: [] }]) {
-      expect(reviveState(junk)).toEqual(defaultState())
+      expect(reviveState(junk)).toEqual(freshDefaultState())
     }
   })
 
@@ -774,7 +775,7 @@ describe('the terminal view (main)', () => {
   })
 
   it('sits beside the chat in a split, and survives a save round trip', () => {
-    const placed = openBeside(defaultState(), 'terminal')!
+    const placed = openBeside(chatState(), 'terminal')!
     const layout = findLayout(placed.state, placed.name)!
     expect(layout.columns.map((column) => column.view)).toEqual(['session', 'terminal'])
     const revived = reviveState(JSON.parse(JSON.stringify(placed.state)))

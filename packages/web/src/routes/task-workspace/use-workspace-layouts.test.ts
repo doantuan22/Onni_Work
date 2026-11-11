@@ -179,8 +179,8 @@ describe('a failed read of the saved layouts', () => {
     const { result } = await mounted()
 
     // The workspace is usable from memory…
-    act(() => result.current.selectLayout('Changes'))
-    expect(result.current.state.active).toBe('Changes')
+    act(() => result.current.addLayout('changes'))
+    expect(result.current.state.active).toBe('Layout 2')
     await tick(1000)
     // …but the fabricated default must not replace what the host holds.
     expect(putRunLayouts).not.toHaveBeenCalled()
@@ -197,7 +197,7 @@ describe('a failed read of the saved layouts', () => {
   it('does not write on the way out either', async () => {
     getRunLayouts.mockRejectedValue(new Error('offline'))
     const { result, unmount } = await mounted()
-    act(() => result.current.selectLayout('Changes'))
+    act(() => result.current.addLayout('changes'))
     act(() => {
       window.dispatchEvent(new Event('pagehide'))
     })
@@ -209,15 +209,15 @@ describe('a failed read of the saved layouts', () => {
   it('keeps what was built meanwhile once the host says the task was never opened', async () => {
     getRunLayouts.mockRejectedValueOnce(new Error('502')).mockResolvedValue({ layouts: null })
     const { result } = await mounted()
-    act(() => result.current.selectLayout('Changes'))
+    act(() => result.current.addLayout('changes'))
     await tick(3000)
     expect(result.current.loadFailed).toBe(false)
     expect(putRunLayouts).not.toHaveBeenCalled()
     // The debounce is armed by the render that learns the host answered.
     await tick(1000)
-    expect(result.current.state.active).toBe('Changes')
+    expect(result.current.state.active).toBe('Layout 2')
     expect(putRunLayouts).toHaveBeenCalledTimes(1)
-    expect((putRunLayouts.mock.calls[0] as unknown[])[1]).toMatchObject({ active: 'Changes' })
+    expect((putRunLayouts.mock.calls[0] as unknown[])[1]).toMatchObject({ active: 'Layout 2' })
   })
 })
 
@@ -240,12 +240,12 @@ describe('a late answer, against a debounce armed on the stand-in', () => {
     // The retry is out and unanswered; a change on the stand-in arms the debounce.
     await tick(2000)
     expect(getRunLayouts).toHaveBeenCalledTimes(2)
-    act(() => result.current.selectLayout('Changes'))
+    act(() => result.current.addLayout('changes'))
 
     // The host answers. Outside `act`, so the fetch continuation runs and React has NOT committed.
     answer({ layouts: SAVED })
     for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
-    expect(result.current.state.active).toBe('Changes')
+    expect(result.current.state.active).toBe('Layout 2')
     // …and the debounce comes due in exactly that gap.
     vi.advanceTimersByTime(400)
     expect(putRunLayouts).not.toHaveBeenCalled()
@@ -324,7 +324,7 @@ describe('the contract bounds, client-side', () => {
 
 describe('Open in Browser on a fixed card', () => {
   it('opens the working arrangement and leaves the fixed card the one view it stands for', async () => {
-    // `null` is a task never opened: the six born cards, Chat active.
+    // `null` is a task never opened: the Review working arrangement is active.
     getRunLayouts.mockResolvedValue({ layouts: null })
     const hook = renderHook(() => useWorkspaceLayouts('r1'))
     await waitFor(() => expect(hook.result.current.ready).toBe(true))
@@ -336,14 +336,15 @@ describe('Open in Browser on a fixed card', () => {
     })
     expect(answer).toBe(true)
     expect(result.current.layout!.name).toBe('Custom')
-    expect(result.current.layout!.columns.map((column) => column.view)).toEqual(['session', 'browser'])
-    expect(result.current.layout!.columns[1]!.browser).toEqual({ tabs: ['http://localhost:3000/'], active: 0 })
-    const chat = result.current.state.layouts.find((layout) => layout.name === 'Chat')!
-    expect(fixedViewOf(chat)).toBe('session')
+    expect(result.current.layout!.columns.map((column) => column.view)).toEqual(['session', 'changes', 'browser'])
+    expect(result.current.layout!.columns[2]!.browser).toEqual({ tabs: ['http://localhost:3000/'], active: 0 })
+    expect(result.current.state.layouts.some((layout) => layout.name === 'Chat')).toBe(false)
 
-    // The fixed Chat card still leads home, and mints nothing.
+    // Opening the Chat view creates its fixed card on demand.
     act(() => result.current.openDeepLink('session'))
     expect(result.current.state.active).toBe('Chat')
+    const chat = result.current.state.layouts.find((layout) => layout.name === 'Chat')!
+    expect(fixedViewOf(chat)).toBe('session')
     expect(result.current.state.layouts.map((layout) => layout.name)).not.toContain('Chat 2')
   })
 })

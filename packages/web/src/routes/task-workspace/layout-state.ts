@@ -203,19 +203,31 @@ export function dividerFloor(pair: number): number {
  *  card named `Czat`"). */
 export const DEFAULT_LAYOUT_NAME = VIEW_LABELS.session
 
-/** The state a task with nothing saved opens with: one card per view — Chat, Changes, Commits,
- *  Files, Browser, Graph — each a single full-width column, with Chat active. A new task has every
- *  surface one click away instead of behind the `+`; the cards are ordinary saved layouts from
- *  then on, so any of them can be closed, renamed or split.
+/** The named layouts users can start from. The Review preset fits the current ViewId vocabulary;
+ *  Workbench waits for Phase 3's files-tree/editor panes and vertical stack support.
+ */
+export const REVIEW_LAYOUT_PRESET: SavedLayout = {
+  name: 'Review',
+  columns: [
+    { view: 'session', width: 55 },
+    { view: 'changes', width: 45 },
+  ],
+}
+
+/** Phase 3 target only: Chat | Files tree | Editor | Terminal over Preview. Not offered yet. */
+export const WORKBENCH_PRESET_PHASE = 'Phase 3: files-tree and editor panes with a Terminal/Preview vertical stack'
+
+/** The state a task with nothing saved opens with: the active Review arrangement (Chat at 55%,
+ *  Changes at 45%). View tabs remain available independently of saved layouts. Old saved layouts
+ *  are revived independently and keep their state.
  *
  *  Also the recovery target for state that is missing, malformed, or names views this build does
  *  not have (spec §5.3). A factory rather than a shared constant so no caller can mutate the
  *  default for everyone else. */
 export function defaultState(): WorkspaceState {
   return {
-    // Terminal is not pre-seeded: its card is minted on first use, like any deep link.
-    layouts: VIEW_IDS.filter((view) => view !== 'terminal').map((view) => ({ name: VIEW_LABELS[view], columns: [{ view, width: 100 }] })),
-    active: DEFAULT_LAYOUT_NAME,
+    layouts: [{ name: WORKING_LAYOUT_NAME, columns: REVIEW_LAYOUT_PRESET.columns.map((column) => ({ ...column })) }],
+    active: WORKING_LAYOUT_NAME,
   }
 }
 
