@@ -19,6 +19,7 @@ import { resetToasts, Toaster } from '@/components/ui/toaster'
 
 import { readDraft, resetDraft, writeDraft } from './new-task-draft'
 import { NewTaskRoute } from './new-task'
+import { NewTaskSurface } from './new-task-surface'
 import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
@@ -341,6 +342,37 @@ function renderNewTask(entry = '/new') {
   return { ...rendered, client }
 }
 
+function renderNewTaskSurface({
+  onStarted = vi.fn(),
+  onScheduled = vi.fn(),
+}: {
+  onStarted?: (created: { id: string }) => void
+  onScheduled?: () => void
+} = {}) {
+  const client = createQueryClient()
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/new']}>
+        <Routes>
+          <Route
+            path="/new"
+            element={(
+              <NewTaskSurface
+                projectId="surface-test"
+                draftId="surface-test"
+                onStarted={onStarted}
+                onScheduled={onScheduled}
+              />
+            )}
+          />
+        </Routes>
+        <Toaster />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+  return { onStarted, onScheduled }
+}
+
 const textarea = () => screen.getByLabelText('Describe a task for the agent') as HTMLTextAreaElement
 
 const pngFile = (name = 'shot.png', bytes: number[] = [1, 2, 3]) =>
@@ -362,6 +394,19 @@ const location = () => screen.getByTestId('location').textContent
  *  keeps a skill from following the user into every task after the one they picked it for. */
 const draftSource = (source: { source: 'skill' | 'workflow'; ref: string }) =>
   writeDraft({ ...readDraft(), source })
+
+describe('NewTaskSurface callbacks', () => {
+  it('calls onStarted for an immediate task', async () => {
+    serve()
+    const immediate = renderNewTaskSurface()
+    await pillReady()
+    fireEvent.change(textarea(), { target: { value: 'Start through the pane host' } })
+    await startTask()
+    await waitFor(() => expect(immediate.onStarted).toHaveBeenCalledWith({ id: 'r1' }))
+    expect(immediate.onScheduled).not.toHaveBeenCalled()
+  })
+
+})
 
 /** The Task settings panel starts folded: open it from the summary line's settings control. */
 async function openPanel() {
