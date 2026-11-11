@@ -11,9 +11,19 @@ import { z } from 'zod';
  * turn the store into a dumping ground.
  */
 
-/** The surfaces a column can show. `terminal` is deliberately absent — it is the bottom drawer,
- *  not a column (§5.1). Kept in step with the cockpit's own `ViewId`. */
-export const workspaceViewSchema = z.enum(['session', 'changes', 'commits', 'files', 'browser', 'graph', 'terminal']);
+/** The surfaces a column can show. Kept in step with the cockpit's own `ViewId`. */
+export const workspaceViewSchema = z.enum([
+  'session',
+  'changes',
+  'commits',
+  'files',
+  'files-tree',
+  'editor',
+  'browser',
+  'tree',
+  'graph',
+  'terminal',
+]);
 export type WorkspaceView = z.infer<typeof workspaceViewSchema>;
 
 /** The bounds, exported so the cockpit enforces the SAME ones where state grows: the whole
@@ -37,6 +47,9 @@ export const workspaceColumnSchema = z.object({
    *  to 100 is recoverable rather than rejected. */
   width: z.number().finite().min(0).max(100),
   browser: workspaceBrowserSchema.optional(),
+  /** D6 is enforced by the cockpit reviver; the wire stays additive for old saved layouts. */
+  stack: workspaceViewSchema.optional(),
+  stackRatio: z.number().finite().min(0).max(100).optional(),
 });
 export type WorkspaceColumnState = z.infer<typeof workspaceColumnSchema>;
 
@@ -81,7 +94,12 @@ export const MAX_SAVED_WORKSPACE_LAYOUTS = 50;
 export const savedWorkspaceLayoutSchema = z.object({
   name: z.string().trim().min(1).max(MAX_WORKSPACE_LAYOUT_NAME_LENGTH),
   columns: z
-    .array(z.object({ view: workspaceViewSchema, width: z.number().finite().min(0).max(100) }))
+    .array(z.object({
+      view: workspaceViewSchema,
+      width: z.number().finite().min(0).max(100),
+      stack: workspaceViewSchema.optional(),
+      stackRatio: z.number().finite().min(0).max(100).optional(),
+    }))
     .min(1)
     .max(MAX_WORKSPACE_COLUMNS),
 });

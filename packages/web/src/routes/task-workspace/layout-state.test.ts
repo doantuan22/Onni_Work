@@ -13,6 +13,7 @@ import {
   toSavedLayout,
   WORKING_LAYOUT_NAME,
   DEFAULT_LAYOUT_NAME,
+  DEFAULT_STACK_RATIO,
   findLayout,
   fixedViewOf,
   forgetTask,
@@ -32,6 +33,7 @@ import {
   splitCards,
   uniqueName,
   VIEW_IDS,
+  WORKBENCH_LAYOUT_PRESET,
   viewLabel,
   type WorkspaceState,
 } from './layout-state'
@@ -51,7 +53,7 @@ const views = (state: WorkspaceState) => activeLayout(state)?.columns.map((colum
 const names = (state: WorkspaceState) => state.layouts.map((layout) => layout.name)
 /** Old persisted shape used to exercise transitions that are independent of the fresh-task seed. */
 const defaultState = (): WorkspaceState => ({
-  layouts: VIEW_IDS.filter((view) => view !== 'terminal').map((view) => ({ name: viewLabel(view), columns: [{ view, width: 100 }] })),
+  layouts: VIEW_IDS.filter((view) => !['terminal', 'files-tree', 'editor', 'tree'].includes(view)).map((view) => ({ name: viewLabel(view), columns: [{ view, width: 100 }] })),
   active: 'Chat',
 })
 const chatState = () => selectLayout(defaultState(), 'Chat')
@@ -74,6 +76,21 @@ describe('defaultState', () => {
     const first = freshDefaultState()
     first.layouts.at(-1)!.columns[0]!.width = 1
     expect(freshDefaultState().layouts.at(-1)!.columns[0]!.width).toBe(55)
+  })
+})
+
+describe('Phase 3 workbench vocabulary', () => {
+  it('exports the deferred four-zone Workbench preset without changing the three-column cap', () => {
+    expect(WORKBENCH_LAYOUT_PRESET).toEqual({
+      name: 'Workbench',
+      columns: [
+        { view: 'session', width: 28 },
+        { view: 'files-tree', width: 13 },
+        { view: 'editor', width: 29 },
+        { view: 'terminal', width: 30, stack: 'browser', stackRatio: DEFAULT_STACK_RATIO },
+      ],
+    })
+    expect(MAX_COLUMNS).toBe(3)
   })
 })
 
@@ -424,6 +441,16 @@ describe('saved layouts', () => {
     // A saved name that collides with a view tab is never applied over it.
     expect(applySavedLayout(defaultState(), { ...saved, name: 'Chat' })).toEqual(defaultState())
   })
+
+  it('keeps a valid vertical stack when saving and applying a layout', () => {
+    const stacked = reviveState({
+      layouts: [{ name: 'Custom', columns: [{ view: 'terminal', width: 100, stack: 'browser', stackRatio: 63 }] }],
+      active: 'Custom',
+    })
+    const saved = toSavedLayout(stacked, 'Workbench')!
+    expect(saved.columns).toEqual([{ view: 'terminal', width: 100, stack: 'browser', stackRatio: 63 }])
+    expect(findLayout(applySavedLayout(defaultState(), saved), 'Workbench')?.columns).toEqual(saved.columns)
+  })
 })
 
 describe('openDeepLink', () => {
@@ -578,6 +605,35 @@ describe('reviveState', () => {
       active: 'Mixed',
     })
     expect(state.layouts[0]!.columns).toEqual([{ view: 'session', width: 100 }])
+  })
+
+  it('keeps only the Terminal-over-Preview stack and defaults its upper height', () => {
+    const state = reviveState({
+      layouts: [{
+        name: 'Workbench',
+        columns: [
+          { view: 'terminal', width: 50, stack: 'browser' },
+          { view: 'editor', width: 50, stack: 'browser', stackRatio: 20 },
+        ],
+      }],
+      active: 'Workbench',
+    })
+    expect(state.layouts[0]!.columns).toEqual([
+      { view: 'terminal', width: 50, stack: 'browser', stackRatio: DEFAULT_STACK_RATIO },
+      { view: 'editor', width: 50 },
+    ])
+  })
+
+  it('round-trips a valid stack and drops an unusable stack ratio to its default', () => {
+    const original = {
+      layouts: [{ name: 'Workbench', columns: [{ view: 'terminal', width: 100, stack: 'browser', stackRatio: 67 }] }],
+      active: 'Workbench',
+    }
+    expect(reviveState(JSON.parse(JSON.stringify(original)))).toEqual(original)
+    expect(reviveState({
+      layouts: [{ name: 'Bad ratio', columns: [{ view: 'terminal', width: 100, stack: 'browser', stackRatio: 100 }] }],
+      active: 'Bad ratio',
+    }).layouts[0]!.columns[0]).toEqual({ view: 'terminal', width: 100, stack: 'browser', stackRatio: DEFAULT_STACK_RATIO })
   })
 
   it('applies the column cap to what SURVIVES, not to what arrived', () => {
