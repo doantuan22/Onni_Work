@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createWorkspaceState,
   enableSplit,
+  openDraft,
   openRun,
   readWorkspaceState,
   resetWorkspaceStateStores,
@@ -14,9 +15,15 @@ import type { ViewId } from '@/routes/task-workspace/layout-state'
 
 import { WorkspaceHost } from './workspace-host'
 
-const { toastMock } = vi.hoisted(() => ({ toastMock: vi.fn() }))
+const { toastMock, healthMock } = vi.hoisted(() => ({
+  toastMock: vi.fn(),
+  healthMock: vi.fn((): { data: { capabilities: { terminal: boolean } } } => ({
+    data: { capabilities: { terminal: false } },
+  })),
+}))
 
 vi.mock('@/components/ui/toaster', () => ({ toast: toastMock }))
+vi.mock('@/api/queries', () => ({ useHealth: healthMock }))
 vi.mock('@/routes/new-task-surface', () => ({
   NewTaskSurface: ({
     draftId,
@@ -40,6 +47,7 @@ afterEach(() => {
   localStorage.clear()
   resetWorkspaceStateStores()
   toastMock.mockReset()
+  healthMock.mockReturnValue({ data: { capabilities: { terminal: false } } })
   vi.unstubAllGlobals()
 })
 
@@ -175,7 +183,7 @@ describe('WorkspaceHost', () => {
     // Split tab strip exists and labels both panes
     const tabStrip = document.querySelector('[data-slot="split-tab-strip"]')!
     expect(tabStrip).not.toBeNull()
-    expect(tabStrip.getAttribute('role')).toBe('tablist')
+    expect(tabStrip.querySelector('[role="tablist"]')?.getAttribute('aria-label')).toBe('Split conversation panes')
     const tabs = tabStrip.querySelectorAll('[role="tab"]')
     expect(tabs).toHaveLength(2)
     expect(tabs[0]!.textContent).toContain('run-1')
@@ -368,6 +376,31 @@ describe('WorkspaceHost', () => {
     expect(panes[1]!.textContent).toBe('run-3:default')
   })
 
+  it('does not offer a draft pane in the picker as if it were a run', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const state = enableSplit(
+      openDraft(openRun(openRun(createWorkspaceState(), run1), run2), {
+        kind: 'draft', paneId: 'draft:shop', projectId: 'shop', draftId: 'default',
+      }),
+      run1.paneId,
+      run2.paneId,
+    )
+    writeWorkspaceState('shop', state)
+
+    renderAt('/p/shop/tasks/run-1')
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    fireEvent.pointerDown(screen.getByRole('button', { name: /pick another open thread/i }), {
+      button: 0, ctrlKey: false, pointerType: 'mouse',
+    })
+    await waitFor(() => expect(screen.getByRole('menu')).toBeDefined())
+
+    expect(screen.getByRole('menuitem', { name: 'No other open threads' })).toBeDefined()
+    expect(screen.queryByRole('menuitem', { name: /new task/i })).toBeNull()
+    expect(readWorkspaceState('shop').threads).toEqual(state.threads)
+    expect(readWorkspaceState('shop').split).toEqual({ a: run1.paneId, b: run2.paneId })
+  })
+
   it('below 1024px shows ONE conversation pane at a time even if split is set, with tabs to switch', async () => {
     vi.stubGlobal('matchMedia', () => ({
       matches: false,
@@ -395,11 +428,24 @@ describe('WorkspaceHost', () => {
     expect(tabStrip).not.toBeNull()
     const tabs = tabStrip.querySelectorAll('[role="tab"]')
     expect(tabs).toHaveLength(2)
+    for (const tab of tabs) {
+      const panel = document.getElementById(tab.getAttribute('aria-controls')!)
+      expect(panel?.getAttribute('role')).toBe('tabpanel')
+      expect(panel?.getAttribute('aria-labelledby')).toBe(tab.id)
+    }
 
-    // Switch to second tab
-    fireEvent.click(tabs[1]!)
+    // Keyboard navigation keeps one tab in the tab order and activates the matching pane.
+    expect(tabs[0]!.getAttribute('tabindex')).toBe('0')
+    expect(tabs[1]!.getAttribute('tabindex')).toBe('-1')
+    fireEvent.keyDown(tabs[0]!, { key: 'ArrowRight' })
+    expect(tabs[1]!.getAttribute('aria-selected')).toBe('true')
+    expect(tabs[1]!.getAttribute('tabindex')).toBe('0')
 
     await waitFor(() => expect(screen.getByTestId('task-workspace').textContent).toBe('run-2:default'))
+    fireEvent.keyDown(tabs[1]!, { key: 'Home' })
+    expect(tabs[0]!.getAttribute('aria-selected')).toBe('true')
+    fireEvent.keyDown(tabs[0]!, { key: 'End' })
+    expect(tabs[1]!.getAttribute('aria-selected')).toBe('true')
     const nextPanes = document.querySelectorAll('[data-slot="workspace-pane"]')
     expect(nextPanes).toHaveLength(1)
     expect(nextPanes[0]!.getAttribute('data-pane-id')).toBe('run:shop:run-2')
@@ -431,6 +477,11 @@ describe('WorkspaceHost', () => {
 
     await waitFor(() => expect(document.querySelector('[data-slot="context-sheet"]')).not.toBeNull())
 
+    const contextTabs = within(document.querySelector('[data-slot="context-sheet"]')!).getAllByRole('tab')
+    expect(contextTabs.map((tab) => tab.getAttribute('data-view'))).toContain('files-tree')
+    expect(contextTabs.map((tab) => tab.getAttribute('data-view'))).toContain('editor')
+    expect(contextTabs.map((tab) => tab.getAttribute('data-view'))).not.toContain('terminal')
+
     // Context sheet renders tabs and content
     const sheetTabs = document.querySelector('[data-slot="context-sheet-tabs"]')!
     expect(sheetTabs).not.toBeNull()
@@ -453,5 +504,24 @@ describe('WorkspaceHost', () => {
     fireEvent.click(closeBtn)
 
     await waitFor(() => expect(document.querySelector('[data-slot="context-sheet"]')).toBeNull())
+  })
+
+  it('passes supported ContextSheet views in mobile split mode and includes Terminal when allowed', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
+    healthMock.mockReturnValue({ data: { capabilities: { terminal: true } } })
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    writeWorkspaceState('shop', enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId))
+
+    renderAt('/p/shop/tasks/run-1')
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: /context views/i }))
+    await waitFor(() => expect(document.querySelector('[data-slot="context-sheet"]')).not.toBeNull())
+
+    const tabs = within(document.querySelector('[data-slot="context-sheet"]')!).getAllByRole('tab')
+    const views = tabs.map((tab) => tab.getAttribute('data-view'))
+    expect(views).toContain('files-tree')
+    expect(views).toContain('editor')
+    expect(views).toContain('terminal')
   })
 })

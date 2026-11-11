@@ -84,6 +84,33 @@ describe('toWorkspacePanesPayload and serializePanes', () => {
     const str2 = serializePanes(payload)
     expect(str1).toBe(str2)
   })
+
+  it('keeps active and both split panes inside the 50-thread mirror cap', () => {
+    const threads = Array.from({ length: 52 }, (_, index) => ({
+      kind: 'run' as const,
+      paneId: `pane-${index + 1}`,
+      projectId,
+      runId: `run-${index + 1}`,
+    }))
+    const state: WorkspaceState = {
+      ...createWorkspaceState(),
+      threads,
+      active: 'pane-52',
+      split: { a: 'pane-51', b: 'pane-52' },
+    }
+
+    const payload = toWorkspacePanesPayload(state)
+    const retainedIds = new Set(payload.threads.map((thread) => thread.paneId))
+
+    expect(payload.threads).toHaveLength(50)
+    expect(retainedIds.has('pane-51')).toBe(true)
+    expect(retainedIds.has('pane-52')).toBe(true)
+    expect(payload.active).toBe('pane-52')
+    expect(payload.split).toEqual({ a: 'pane-51', b: 'pane-52' })
+    expect(retainedIds.has(payload.active!)).toBe(true)
+    expect(retainedIds.has(payload.split === 'none' ? '' : payload.split.a)).toBe(true)
+    expect(retainedIds.has(payload.split === 'none' ? '' : payload.split.b)).toBe(true)
+  })
 })
 
 describe('useWorkspacePanesSync', () => {
