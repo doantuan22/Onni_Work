@@ -8,12 +8,14 @@ import {
   disableSplit,
   enableSplit,
   normalizeWorkspaceState,
+  openBeside,
   openDraft,
   openRun,
   promoteDraft,
   readWorkspaceState,
   resetWorkspaceStateStores,
   setActive,
+  useOpenBeside,
   useWorkspaceState,
   workspaceStorageKey,
   writeWorkspaceState,
@@ -78,6 +80,41 @@ describe('workspace state reducers', () => {
     expect(enableSplit(state, runA.paneId, 'missing')).toBe(state)
     expect(disableSplit(split).split).toBe('none')
   })
+
+  it('opens a run beside the active pane, enabling split or replacing the inactive split pane', () => {
+    const runC = { kind: 'run' as const, paneId: 'pane-c', projectId, runId: 'run-c' }
+    // 1-up: openBeside enables split with active pane and new run
+    const state1 = openRun(createWorkspaceState(), runA)
+    const split1 = openBeside(state1, 'run-b', projectId)
+    expect(split1.split).toEqual({ a: runA.paneId, b: 'run:shop:run-b' })
+    expect(split1.active).toBe('run:shop:run-b')
+    expect(split1.threads).toHaveLength(2)
+
+    // openBeside when target is already active pane is a no-op / keeps active
+    expect(openBeside(state1, runA.runId, projectId)).toBe(state1)
+
+    // Already split (active is a): replaces b with target
+    const twoRuns = setActive(openRun(openRun(createWorkspaceState(), runA), runB), runA.paneId)
+    const split2 = openBeside(twoRuns, runB.runId)
+    expect(split2.split).toEqual({ a: runA.paneId, b: runB.paneId })
+    expect(split2.active).toBe(runB.paneId)
+
+    const splitActiveA = setActive(split2, runA.paneId)
+    const split3 = openBeside(splitActiveA, runC)
+    expect(split3.split).toEqual({ a: runA.paneId, b: runC.paneId })
+    expect(split3.active).toBe(runC.paneId)
+
+    // Already split (active is b): replaces a with target
+    const splitActiveB = setActive(split2, runB.paneId)
+    const split4 = openBeside(splitActiveB, runC)
+    expect(split4.split).toEqual({ a: runC.paneId, b: runB.paneId })
+    expect(split4.active).toBe(runC.paneId)
+
+    // Already visible in split: activates it
+    const splitActivate = openBeside(split4, runB.runId)
+    expect(splitActivate.active).toBe(runB.paneId)
+    expect(splitActivate.split).toEqual(split4.split)
+  })
 })
 
 describe('workspace persistence', () => {
@@ -129,5 +166,19 @@ describe('useWorkspaceState', () => {
 
     expect(screen.getByRole('button').textContent).toBe(runA.paneId)
     expect(readWorkspaceState(projectId)).toMatchObject({ threads: [runA], active: runA.paneId })
+  })
+
+  it('exposes openBeside which enables split with the target run', () => {
+    function OpenBesideProbe() {
+      const openBeside = useOpenBeside(projectId)
+      return createElement('button', { onClick: () => openBeside('run-b') }, 'split')
+    }
+
+    // Set initial 1-up state with runA
+    writeWorkspaceState(projectId, openRun(createWorkspaceState(), runA))
+    render(createElement(OpenBesideProbe))
+
+    act(() => screen.getByRole('button').click())
+    expect(readWorkspaceState(projectId).split).toEqual({ a: runA.paneId, b: 'run:shop:run-b' })
   })
 })

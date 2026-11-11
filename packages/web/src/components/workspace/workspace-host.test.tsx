@@ -2,7 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { readWorkspaceState, resetWorkspaceStateStores } from '@/lib/workspace-state'
+import {
+  createWorkspaceState,
+  enableSplit,
+  openRun,
+  readWorkspaceState,
+  resetWorkspaceStateStores,
+  writeWorkspaceState,
+} from '@/lib/workspace-state'
 import type { ViewId } from '@/routes/task-workspace/layout-state'
 
 import { WorkspaceHost } from './workspace-host'
@@ -46,9 +53,14 @@ function RunHost({ view }: { view?: ViewId }) {
     <WorkspaceHost
       projectId={projectId}
       target={{ kind: 'run', runId: id, ...(view === undefined ? {} : { view }) }}
-      renderRun={(activeView) => <div data-testid="task-workspace">{id}:{activeView ?? 'default'}</div>}
+      renderRun={(activeView, runId) => <div data-testid="task-workspace">{runId ?? id}:{activeView ?? 'default'}</div>}
     />
   )
+}
+
+function RunHostWithView() {
+  const { view } = useParams<{ view: ViewId }>()
+  return <RunHost view={view} />
 }
 
 function renderAt(entry: string) {
@@ -60,6 +72,7 @@ function renderAt(entry: string) {
           element={<WorkspaceHost projectId="shop" target={{ kind: 'draft' }} renderRun={() => null} />}
         />
         <Route path="/p/:projectId/tasks/:id" element={<RunHost />} />
+        <Route path="/p/:projectId/tasks/:id/:view" element={<RunHostWithView />} />
       </Routes>
       <LocationProbe />
     </MemoryRouter>,
@@ -102,5 +115,171 @@ describe('WorkspaceHost', () => {
     await waitFor(() => expect(readWorkspaceState('shop').threads).toEqual([]))
     expect(screen.getByTestId('location').textContent).toBe('/p/shop/new')
     expect(toastMock).toHaveBeenCalledWith('Task scheduled.')
+  })
+
+  it('renders two conversation panes side by side with a labelled split tab strip when split is on', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const run3 = { kind: 'run' as const, paneId: 'run:shop:run-3', projectId: 'shop', runId: 'run-3' }
+    const initial = enableSplit(openRun(openRun(openRun(createWorkspaceState(), run1), run2), run3), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const panes = screen.getAllByTestId('task-workspace')
+    expect(panes[0]!.textContent).toBe('run-1:default')
+    expect(panes[1]!.textContent).toBe('run-2:default')
+
+    // Exactly 2 panes visible, run3 is hidden and renders nothing
+    const sectionPanes = document.querySelectorAll('[data-slot="workspace-pane"]')
+    expect(sectionPanes).toHaveLength(2)
+    expect(sectionPanes[0]!.getAttribute('data-pane-id')).toBe('run:shop:run-1')
+    expect(sectionPanes[0]!.getAttribute('data-active')).toBe('true')
+    expect(sectionPanes[0]!.getAttribute('aria-selected')).toBe('true')
+    expect(sectionPanes[1]!.getAttribute('data-pane-id')).toBe('run:shop:run-2')
+    expect(sectionPanes[1]!.getAttribute('data-active')).toBeNull()
+    expect(sectionPanes[1]!.getAttribute('aria-selected')).toBe('false')
+
+    // Split tab strip exists and labels both panes
+    const tabStrip = document.querySelector('[data-slot="split-tab-strip"]')!
+    expect(tabStrip).not.toBeNull()
+    expect(tabStrip.getAttribute('role')).toBe('tablist')
+    const tabs = tabStrip.querySelectorAll('[role="tab"]')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[0]!.textContent).toContain('run-1')
+    expect(tabs[0]!.getAttribute('aria-selected')).toBe('true')
+    expect(tabs[1]!.textContent).toContain('run-2')
+    expect(tabs[1]!.getAttribute('aria-selected')).toBe('false')
+  })
+
+  it('switches active pane via pointerdown on pane or tab click', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const initial = enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const tabStrip = document.querySelector('[data-slot="split-tab-strip"]')!
+    const tabs = tabStrip.querySelectorAll('[role="tab"]')
+    const sectionPanes = document.querySelectorAll('[data-slot="workspace-pane"]')
+
+    // Click Tab B to activate pane 2
+    fireEvent.click(tabs[1]!)
+
+    expect(tabs[1]!.getAttribute('aria-selected')).toBe('true')
+    expect(tabs[0]!.getAttribute('aria-selected')).toBe('false')
+    expect(sectionPanes[1]!.getAttribute('data-active')).toBe('true')
+    expect(sectionPanes[1]!.getAttribute('aria-selected')).toBe('true')
+    expect(sectionPanes[0]!.getAttribute('data-active')).toBeNull()
+    expect(sectionPanes[0]!.getAttribute('aria-selected')).toBe('false')
+    expect(readWorkspaceState('shop').active).toBe('run:shop:run-2')
+
+    // PointerDown on pane 1 activates pane 1
+    fireEvent.pointerDown(sectionPanes[0]!)
+    expect(tabs[0]!.getAttribute('aria-selected')).toBe('true')
+    expect(sectionPanes[0]!.getAttribute('data-active')).toBe('true')
+    expect(readWorkspaceState('shop').active).toBe('run:shop:run-1')
+  })
+
+  it('shows NO tab strip when split is not enabled (1-up mode)', async () => {
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getByTestId('task-workspace')).toBeDefined())
+    expect(document.querySelector('[data-slot="split-tab-strip"]')).toBeNull()
+    expect(document.querySelectorAll('[data-slot="workspace-pane"]')).toHaveLength(1)
+  })
+
+  it('unsplit button disables split and returns to 1-up mode', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const initial = enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const unsplitBtn = screen.getByRole('button', { name: 'Unsplit' })
+    fireEvent.click(unsplitBtn)
+
+    await waitFor(() => expect(document.querySelector('[data-slot="split-tab-strip"]')).toBeNull())
+    expect(document.querySelectorAll('[data-slot="workspace-pane"]')).toHaveLength(1)
+    expect(readWorkspaceState('shop').split).toBe('none')
+  })
+
+  it('closing a tab in split mode returns to 1-up mode with the remaining tab', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const initial = enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const closeTab1 = screen.getByRole('button', { name: /close run-1/i })
+    fireEvent.click(closeTab1)
+
+    await waitFor(() => expect(document.querySelector('[data-slot="split-tab-strip"]')).toBeNull())
+    const remainingPanes = document.querySelectorAll('[data-slot="workspace-pane"]')
+    expect(remainingPanes).toHaveLength(1)
+    expect(remainingPanes[0]!.getAttribute('data-pane-id')).toBe('run:shop:run-2')
+    expect(readWorkspaceState('shop').split).toBe('none')
+    expect(readWorkspaceState('shop').active).toBe('run:shop:run-2')
+  })
+
+  it('context area follows the active pane only', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const initial = enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1/changes')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const panes = screen.getAllByTestId('task-workspace')
+    // Active pane (run-1) receives 'changes', inactive pane (run-2) receives 'default'
+    expect(panes[0]!.textContent).toBe('run-1:changes')
+    expect(panes[1]!.textContent).toBe('run-2:default')
+  })
+
+  it('tracks per-pane scroll position and restores on re-mount', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const initial = enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const sectionPanes = document.querySelectorAll('[data-slot="workspace-pane"]')
+    fireEvent.scroll(sectionPanes[0]!, { target: { scrollTop: 150 } })
+
+    expect(sectionPanes[0]!.getAttribute('data-scroll-anchor')).toBe('150')
+  })
+
+  it('picks another open thread from the header button to switch it into split', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const run3 = { kind: 'run' as const, paneId: 'run:shop:run-3', projectId: 'shop', runId: 'run-3' }
+    const initial = enableSplit(openRun(openRun(openRun(createWorkspaceState(), run1), run2), run3), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const pickBtn = screen.getByRole('button', { name: /pick another open thread/i })
+    fireEvent.pointerDown(pickBtn, { button: 0, ctrlKey: false, pointerType: 'mouse' })
+
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: 'run-3' })).toBeDefined())
+    fireEvent.click(screen.getByRole('menuitem', { name: 'run-3' }))
+
+    await waitFor(() => {
+      expect(readWorkspaceState('shop').split).toEqual({ a: run1.paneId, b: run3.paneId })
+    })
+    const panes = screen.getAllByTestId('task-workspace')
+    expect(panes[0]!.textContent).toBe('run-1:default')
+    expect(panes[1]!.textContent).toBe('run-3:default')
   })
 })
