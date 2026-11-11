@@ -405,6 +405,8 @@ export const runRecordSchema = z.object({
   seenAt: z.string().optional(),
   /** Highest event `seq` handed out for this run (ephemeral frames included). Absent on older runs. */
   lastSeq: z.number().int().nonnegative().optional(),
+  /** Highest event sequence number viewed by the user in this run thread. Absent on older runs or unviewed runs. */
+  lastViewedSeq: z.number().int().nonnegative().optional(),
   currentStepId: z.string().optional(),
   error: z.string().optional(),
   steps: z.array(stepStateSchema),
@@ -480,6 +482,8 @@ export const runIndexEntrySchema = z.object({
    *  palette lead with "finished while you weren't looking" across every project, not just the
    *  one you happen to be standing in. */
   seenAt: z.string().optional(),
+  /** Highest event sequence number viewed by the user in this run thread. */
+  lastViewedSeq: z.number().int().nonnegative().optional(),
   /** Always present, like `RunRecord.archived`: absent would read as "not archived", and the
    *  unread rule treats archiving as a stronger "done with this" than reading. */
   archived: z.boolean(),
