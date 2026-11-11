@@ -120,6 +120,8 @@ export function SidebarFrame({
   width,
   onWidthChange,
   titlebarInset = false,
+  resizable = true,
+  rail = false,
   children,
 }: SidebarResize & {
   /** The `data-slot` the tests and e2e address this column by. */
@@ -128,11 +130,16 @@ export function SidebarFrame({
    *  sidebar needs it; the settings column renders inside the main region, which already sits
    *  below that strip, so it does not. */
   titlebarInset?: boolean
+  /** The icon rail has a fixed width; keep the expanded sidebar's splitter out of its way. */
+  resizable?: boolean
+  /** Exposes the desktop navigator mode without changing the saved expanded width. */
+  rail?: boolean
   children: ReactNode
 }) {
   return (
     <aside
       data-slot={slot}
+      data-rail={rail ? '' : undefined}
       style={{ width }}
       className={cn(
         'relative hidden shrink-0 flex-col border-r border-border bg-sidebar md:flex',
@@ -140,7 +147,7 @@ export function SidebarFrame({
       )}
     >
       {children}
-      <SidebarResizeHandle width={width} onWidthChange={onWidthChange} />
+      {resizable ? <SidebarResizeHandle width={width} onWidthChange={onWidthChange} /> : null}
     </aside>
   )
 }

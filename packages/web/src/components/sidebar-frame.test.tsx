@@ -89,4 +89,17 @@ describe('useSidebarWidth — one width for every sidebar, live', () => {
     fireEvent.doubleClick(handle('sidebar'))
     expect(frame('sidebar').style.width).toBe('264px')
   })
+
+  it('can become a fixed rail without changing the stored expanded width', () => {
+    render(
+      <SidebarFrame slot="sidebar" width={55} onWidthChange={() => {}} resizable={false} rail>
+        <span>rail</span>
+      </SidebarFrame>,
+    )
+
+    expect(frame('sidebar').dataset.rail).toBe('')
+    expect(frame('sidebar').style.width).toBe('55px')
+    expect(frame('sidebar').querySelector('[data-slot="sidebar-resize-handle"]')).toBeNull()
+    expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBeNull()
+  })
 })
