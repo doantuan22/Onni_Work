@@ -1,3 +1,4 @@
+import { cleanup, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
@@ -5,10 +6,11 @@ import {
   railIsCollapsed,
   railStorageKey,
   readStoredRailOverride,
+  useRailState,
   writeStoredRailOverride,
 } from './rail-state'
 
-afterEach(() => localStorage.clear())
+afterEach(() => { cleanup(); localStorage.clear() })
 
 describe('navigator rail state', () => {
   it('stores a manual override per project under its own key', () => {
@@ -38,5 +40,17 @@ describe('navigator rail state', () => {
   it('lets a manual choice override both automatic collapse conditions', () => {
     expect(railIsCollapsed({ windowWidth: 1200, contentZoneCount: 4, manualOverride: 'expanded' })).toBe(false)
     expect(railIsCollapsed({ windowWidth: 1600, contentZoneCount: 1, manualOverride: 'collapsed' })).toBe(true)
+  })
+
+  it('uses the new project override on the first render after a project change', () => {
+    localStorage.setItem(railStorageKey('a'), 'collapsed')
+    localStorage.setItem(railStorageKey('b'), 'expanded')
+    const hook = renderHook(({ projectId }) => useRailState(projectId, 1), { initialProps: { projectId: 'a' } })
+    expect(hook.result.current.collapsed).toBe(true)
+
+    hook.rerender({ projectId: 'b' })
+
+    expect(hook.result.current.manualOverride).toBe('expanded')
+    expect(hook.result.current.collapsed).toBe(false)
   })
 })

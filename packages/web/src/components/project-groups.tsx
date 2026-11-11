@@ -29,10 +29,11 @@ import { QuickListBuckets, RepoBaseContext } from '@/components/task-quick-list'
 import { toast } from '@/components/ui/toaster'
 import { Link, pathnameProjectId, scopeTo, stripProjectPrefix, useProjectMatch } from '@/lib/project-router'
 import { groupNavigatorRows } from '@/lib/navigator-groups'
+import { isNavigatorNeedsYou } from '@/lib/attention'
 import { moveProjectId, orderProjects } from '@/lib/project-order'
 import { isProjectCollapsed, readStoredCollapsed, writeStoredCollapsed } from '@/lib/sidebar-collapse'
 import { filterRunsByOrigin } from '@/lib/task-filters'
-import { capBuckets, groupRuns, listCounts, type ListView } from '@/lib/task-groups'
+import { capBuckets, groupRuns, type ListView } from '@/lib/task-groups'
 import { useTaskOrigin } from '@/lib/task-origin'
 import { useProjectOrder } from '@/lib/use-project-order'
 import { taskReference, taskReferences } from '@/lib/tasks-table'
@@ -459,7 +460,9 @@ function ProjectGroup({
   // The badge counts EVERY run that needs you, automation-started or not — a question nobody sees
   // is the one failure a filter must not cause. The rows follow the remembered origin split.
   const [origin] = useTaskOrigin()
-  const waiting = runs.data ? listCounts(runs.data).waiting : 0
+  const waiting = runs.data
+    ? runs.data.filter((run) => !run.archived && isNavigatorNeedsYou(run)).length
+    : 0
   const buckets = runs.data
     ? groupNavigatorRows(capBuckets(groupRuns(filterRunsByOrigin(runs.data, origin), view), RECENT_LIMIT))
     : []

@@ -69,6 +69,10 @@ export const AppShellContainer = memo(function AppShellContainer({ children }: {
     [projectsData, projectId, health.data],
   )
   const titleContext = pageTitleContext(pathname)
+  // A task workspace can show the Navigator plus three content columns (D5's four-zone
+  // threshold). The shell lives above the route, so its route is the stable signal that the
+  // workspace layout is active; other pages have a single content zone.
+  const contentZoneCount = pathname.match(/(?:^|\/)tasks\/[^/]+/) ? 4 : 1
   const bootProjectId = registry?.bootProject ?? health.data?.bootProject ?? null
   // Unread done items (#unread-done-items) for the Tasks badge. This shell sits ABOVE the routed
   // project provider, so name the URL project explicitly instead of reading the module scope.
@@ -176,6 +180,7 @@ export const AppShellContainer = memo(function AppShellContainer({ children }: {
         tracker={tracker}
         banner={banner}
         singleProject={health.data?.capabilities.singleProject === true}
+        contentZoneCount={contentZoneCount}
         taskQuickList={taskQuickList}
         hostWidget={hostWidget}
         // Present only in a multi-project workspace; `AppShell` renders the flat nav and the
