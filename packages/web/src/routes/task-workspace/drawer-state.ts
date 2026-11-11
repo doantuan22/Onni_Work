@@ -107,3 +107,35 @@ export function writeDrawerState(taskId: string, state: DrawerState): void {
     // Private mode or a full quota: the drawer still works for this visit.
   }
 }
+
+export const TOGGLE_DRAWER_EVENT = 'onni:toggle-drawer'
+
+export function readStoredDrawerState(taskId: string): DrawerState {
+  try {
+    const raw = localStorage.getItem(drawerStorageKey(taskId))
+    if (raw === null) return defaultDrawerState()
+    const parsed = JSON.parse(raw) as { open?: unknown; height?: unknown }
+    return {
+      open: parsed.open === true,
+      height: clampDrawerHeight(parsed.height),
+    }
+  } catch {
+    return defaultDrawerState()
+  }
+}
+
+export function toggleDrawerState(taskId?: string): DrawerState | null {
+  if (!taskId) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(TOGGLE_DRAWER_EVENT, { detail: { taskId } }))
+    }
+    return null
+  }
+  const current = readStoredDrawerState(taskId)
+  const next: DrawerState = { ...current, open: !current.open }
+  writeDrawerState(taskId, next)
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(TOGGLE_DRAWER_EVENT, { detail: { taskId, state: next } }))
+  }
+  return next
+}

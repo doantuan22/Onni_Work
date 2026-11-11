@@ -24,6 +24,7 @@ import type { ViewId } from '@/routes/task-workspace/layout-state'
 
 import { ActivePaneProvider, useActivePane } from './active-pane-context'
 import { SplitTabStrip } from './split-tab-strip'
+import { useWorkspaceShortcuts } from './use-workspace-shortcuts'
 
 export type WorkspaceHostTarget =
   | { kind: 'run'; runId: string; view?: ViewId }
@@ -76,6 +77,8 @@ function WorkspaceHostPane({
   const { projectId: scopeProjectId } = useProjectScope()
   const navigate = useNavigate()
   const { t } = useI18n()
+
+  useWorkspaceShortcuts({ projectId })
 
   const [scrollAnchors, setScrollAnchors] = useState<Record<string, number>>({})
 
