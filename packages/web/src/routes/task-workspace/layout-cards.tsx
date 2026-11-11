@@ -21,6 +21,7 @@ import {
   isReservedLayoutName,
   layoutDisplayName,
   MAX_LAYOUT_NAME_LENGTH,
+  REVIEW_LAYOUT_PRESET,
   viewLabel,
   WORKING_LAYOUT_NAME,
   type SavedLayout,
@@ -532,6 +533,15 @@ function LayoutMenu({
               }
             />
           ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>{t('Presets')}</DropdownMenuLabel>
+          <LayoutRow
+            name={REVIEW_LAYOUT_PRESET.name}
+            count={REVIEW_LAYOUT_PRESET.columns.length}
+            selected={false}
+            kind="preset"
+            onPick={() => onApplySaved?.(REVIEW_LAYOUT_PRESET)}
+          />
           {local.length > 0 ? (
             <>
               <DropdownMenuSeparator />
@@ -593,7 +603,7 @@ function LayoutRow({
   name: string
   count: number
   selected: boolean
-  kind: 'saved' | 'task'
+  kind: 'saved' | 'task' | 'preset'
   onPick: () => void
   remove?: { label: string; run: () => void }
 }) {

@@ -154,6 +154,10 @@ const terminalTab = () => document.querySelector<HTMLElement>('[data-slot="layou
 const openLayoutMenu = () => fireEvent.keyDown(screen.getByRole('button', { name: /^Layout/ }), { key: 'Enter' })
 const columnViews = () =>
   Array.from(document.querySelectorAll('[data-slot="workspace-layout"][data-active] [data-slot="workspace-column"]')).map((column) => column.getAttribute('data-view'))
+const columnWidths = () =>
+  Array.from(document.querySelectorAll<HTMLElement>('[data-slot="workspace-layout"][data-active] [data-slot="workspace-column"]')).map((column) =>
+    Number.parseFloat(column.style.width),
+  )
 
 async function ready() {
   await waitFor(() => expect(document.querySelector('[data-route="task-workspace"]')).not.toBeNull())
@@ -167,18 +171,32 @@ async function pickTile(view: ViewId) {
 }
 
 describe('the task workspace (main)', () => {
-  it('opens on Chat, with the layout strip in place of the route tabs', async () => {
+  it('opens on the Chat and Changes Review arrangement, with the layout strip in place of route tabs', async () => {
     stubFetch()
     renderWorkspace()
     await ready()
 
     // Changes second; Terminal last, as a tab that toggles the drawer.
     expect(cardNames()).toEqual(['Chat', 'Changes', 'Commits', 'Files', 'Preview', 'Terminal'])
-    expect(activeCard()).toBe('Chat')
+    expect(activeCard()).toBe('Custom')
+    expect(columnViews()).toEqual(['session', 'changes'])
+    expect(columnWidths()).toEqual([55, 45])
     // One strip, never both: the old route links are gone from the header.
     expect(screen.queryByRole('link', { name: 'Changes' })).toBeNull()
     // Opening the task saves nothing: the host has never been written to.
     expect(hostLayouts.r1).toBeUndefined()
+  })
+
+  it('offers the Review preset in the Layout menu', async () => {
+    stubFetch()
+    renderWorkspace()
+    await ready()
+
+    openLayoutMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Review' }))
+    await waitFor(() => expect(activeCard()).toBe('Review'))
+    expect(columnViews()).toEqual(['session', 'changes'])
+    expect(columnWidths()).toEqual([55, 45])
   })
 
   it('holding ⌘ prints each tab’s number on it; a quick ⌘ press or letting go hides them', async () => {
@@ -371,6 +389,8 @@ describe('the task workspace (main)', () => {
   })
 
   it('gives a lone view its bar — the split only: no name, no view switcher, no close', async () => {
+    // Exercise an existing fixed-view layout; fresh tasks now start on the Review arrangement.
+    hostLayouts.r1 = { layouts: [{ name: 'Chat', columns: [{ view: 'session', width: 100 }] }], active: 'Chat' }
     stubFetch()
     renderWorkspace()
     await ready()
@@ -418,7 +438,7 @@ describe('the task workspace (main)', () => {
     await ready()
 
     await waitFor(() => expect(cardNames().length).toBeLessThanOrEqual(2))
-    expect(activeCard()).toBe('Chat')
+    expect(activeCard()).toBe('Custom')
     expect(screen.getByRole('button', { name: /more views/ })).not.toBeNull()
     expect(screen.getByRole('button', { name: /^Layout/ })).not.toBeNull()
   })
@@ -538,7 +558,7 @@ describe('the task workspace (main)', () => {
 
   it('splits the screen when a view tab is dropped beside the chat', async () => {
     stubFetch()
-    renderWorkspace()
+    renderWorkspace('session')
     await ready()
 
     const tab = document.querySelector('[data-slot="layout-card"][data-fixed="changes"]') as HTMLElement
