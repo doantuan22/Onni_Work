@@ -133,6 +133,31 @@ describe('TaskQuickList', () => {
     expect(screen.getByRole('link', { name: /Bump zod to v4/ }).getAttribute('href')).toBe('/tasks/abc123')
   })
 
+  it('marks open workspace runs and closes them without activating the row link', () => {
+    const onCloseRun = vi.fn()
+    renderList({
+      runs: [run({ id: 'open-run', title: 'Open task' })],
+      openRunIds: new Set(['open-run']),
+      onCloseRun,
+    })
+
+    expect(row('open-run')?.getAttribute('data-open')).toBe('true')
+    expect(row('open-run')?.getAttribute('data-active')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Close Open task' }))
+    expect(onCloseRun).toHaveBeenCalledWith('open-run')
+  })
+
+  it('shows a closable New task draft at the top of Open', () => {
+    const onCloseDraft = vi.fn()
+    renderList({ draftOpen: true, onCloseDraft })
+
+    const openThreads = document.querySelector('[data-slot="open-threads"]') as HTMLElement
+    expect(within(openThreads).getByRole('heading', { name: 'Open' })).toBeTruthy()
+    expect(within(openThreads).getByRole('link', { name: 'New task' }).getAttribute('href')).toBe('/new')
+    fireEvent.click(within(openThreads).getByRole('button', { name: 'Close New task' }))
+    expect(onCloseDraft).toHaveBeenCalledOnce()
+  })
+
   it('names a row by its auto-summary once one exists — the title, the tooltip and the PR chip agree', () => {
     renderList({
       runs: [

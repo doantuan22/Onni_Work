@@ -1,7 +1,7 @@
 import { queueWaitLabel } from '@/lib/queue-wait-label'
 import { ScheduledTasks } from '@/components/scheduled-tasks'
 import { useScheduledTasksGate } from '@/lib/scheduled-tasks-gate'
-import { ChevronDownIcon, ChevronRightIcon, ScaleIcon } from 'lucide-react'
+import { ChevronDownIcon, ChevronRightIcon, ScaleIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
 import { useArchiveRun, useHealth, usePinRun, useProjectRepoBase, useReferenceProjectId, useRunsForProject } from '@/api/queries'
 import { Link, scopeTo, useActiveProjectId, useProjectMatch } from '@/lib/project-router'
@@ -40,6 +40,7 @@ import { usageMetricVisibility } from '@/lib/token-metrics'
 import { useNow } from '@/lib/use-now'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
+import { useOpenThreads } from '@/lib/use-open-threads'
 
 /**
  * The sidebar's task quick-list (spec, "App shell & navigation"): Active/Archived tabs, then the
@@ -52,6 +53,7 @@ import { cn } from '@/lib/utils'
 /** The repo web root of the project a list of rows belongs to — what turns a reference known only
  *  by number into a link. Provided by whichever container knows the project; absent = no link. */
 export const RepoBaseContext = React.createContext<string | undefined>(undefined)
+const EMPTY_OPEN_RUNS: ReadonlySet<string> = new Set()
 
 export function TaskQuickList({
   runs,
@@ -63,6 +65,10 @@ export function TaskQuickList({
   showCost = true,
   onTogglePin,
   onToggleArchive,
+  openRunIds = EMPTY_OPEN_RUNS,
+  draftOpen = false,
+  onCloseRun,
+  onCloseDraft,
 }: {
   runs: RunRecord[]
   view: ListView
@@ -78,6 +84,10 @@ export function TaskQuickList({
    *  belongs to is a container's question — this list is painted for other projects too. */
   onTogglePin?: (run: RunRecord, pinned: boolean) => void
   onToggleArchive?: (run: RunRecord, archived: boolean) => void
+  openRunIds?: ReadonlySet<string>
+  draftOpen?: boolean
+  onCloseRun?: (runId: string) => void
+  onCloseDraft?: () => void
 }) {
   const { t } = useI18n()
   const counts = listCounts(runs)
@@ -109,6 +119,26 @@ export function TaskQuickList({
           running or already-settled manager would otherwise be invisible here. SSE-fed, no socket. */}
       {view === 'active' ? <NeedsYouStrip runs={runs} /> : null}
 
+      {view === 'active' && draftOpen ? (
+        <div data-slot="open-threads" className="px-1 pb-1">
+          <h2 className="px-2 pt-2.5 pb-1 text-[11px] font-semibold tracking-[0.04em] text-soft-foreground uppercase">{t('Open')}</h2>
+          <div data-slot="draft-task-row" className="group/task-row flex items-center gap-2 rounded-sm pl-2.5 hover:bg-muted">
+            <Link to="/new" data-slot="draft-task-link" className="flex min-w-0 flex-1 items-center gap-2 py-[7px] pr-0.5 text-[13px] font-medium">
+              {t('New task')}
+            </Link>
+            <button
+              type="button"
+              data-slot="close-draft"
+              aria-label={t('Close New task')}
+              onClick={onCloseDraft}
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-soft-foreground hover:bg-muted hover:text-foreground"
+            >
+              <XIcon className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {buckets.length === 0 ? (
         <p className="px-3 py-3.5 text-xs text-soft-foreground">
           {view === 'archived' ? t('Nothing archived yet.') : t('No tasks yet — describe one.')}
@@ -122,6 +152,8 @@ export function TaskQuickList({
           showCost={showCost}
           onTogglePin={pinToggle}
           onToggleArchive={onToggleArchive}
+          openRunIds={openRunIds}
+          onCloseRun={onCloseRun}
         />
       )}
     </div>
@@ -181,6 +213,8 @@ export function QuickListBuckets({
   showCost = true,
   onTogglePin,
   onToggleArchive,
+  openRunIds = EMPTY_OPEN_RUNS,
+  onCloseRun,
 }: {
   buckets: NavigatorBucket[]
   currentRunId?: string | null
@@ -190,6 +224,8 @@ export function QuickListBuckets({
   showCost?: boolean
   onTogglePin?: (run: RunRecord, pinned: boolean) => void
   onToggleArchive?: (run: RunRecord, archived: boolean) => void
+  openRunIds?: ReadonlySet<string>
+  onCloseRun?: (runId: string) => void
 }) {
   const { t } = useI18n()
   // Which variant groups are open. Local: it is view state about this list, nothing else reads it.
@@ -234,6 +270,8 @@ export function QuickListBuckets({
               onToggle={toggleGroup}
               onTogglePin={onTogglePin}
               onToggleArchive={onToggleArchive}
+              openRunIds={openRunIds}
+              onCloseRun={onCloseRun}
             />
           ))}
         </div>
@@ -381,6 +419,8 @@ function Row({
   showCost,
   onTogglePin,
   onToggleArchive,
+  openRunIds = EMPTY_OPEN_RUNS,
+  onCloseRun,
 }: {
   row: QuickListRow
   /** Nesting level under the task that dispatched this one; 0 for a top-level row. */
@@ -399,6 +439,8 @@ function Row({
   showCost: boolean
   onTogglePin?: (run: RunRecord, pinned: boolean) => void
   onToggleArchive?: (run: RunRecord, archived: boolean) => void
+  openRunIds?: ReadonlySet<string>
+  onCloseRun?: (runId: string) => void
 }) {
   const { t } = useI18n()
   if (row.kind === 'run') {
@@ -417,6 +459,8 @@ function Row({
         showCost={showCost}
         onTogglePin={onTogglePin}
         onToggleArchive={onToggleArchive}
+        openRunIds={openRunIds}
+        onCloseRun={onCloseRun}
       />
     )
   }
@@ -471,6 +515,8 @@ function Row({
               showCost={showCost}
               onTogglePin={onTogglePin}
               onToggleArchive={onToggleArchive}
+              openRunIds={openRunIds}
+              onCloseRun={onCloseRun}
             />
           ))
         : null}
@@ -549,6 +595,8 @@ const RunRow = React.memo(function RunRow({
   showCost,
   onTogglePin,
   onToggleArchive,
+  openRunIds = EMPTY_OPEN_RUNS,
+  onCloseRun,
 }: {
   run: RunRecord
   /** Nesting level under the task that dispatched this one; 0 for a top-level row. A member row
@@ -570,6 +618,8 @@ const RunRow = React.memo(function RunRow({
   showCost: boolean
   onTogglePin?: (run: RunRecord, pinned: boolean) => void
   onToggleArchive?: (run: RunRecord, archived: boolean) => void
+  openRunIds?: ReadonlySet<string>
+  onCloseRun?: (runId: string) => void
 }) {
   const { t } = useI18n()
   // The header's rule (`runActionFlags`): a run the engine still owns is not archivable.
@@ -577,6 +627,7 @@ const RunRow = React.memo(function RunRow({
   const hasActions = Boolean(onTogglePin) || canArchive
   const attention = deriveAttention(run)
   const isActive = run.id === currentRunId
+  const isOpen = openRunIds.has(run.id)
   // The strongest tracker reference the run knows about — the PR once one exists, else the issue
   // it was opened on. It is the row's leading chip AND the reason the title may drop its `NNN: `
   // prefix (#788, option C): the number is painted once, as a link, instead of twice as digits.
@@ -610,6 +661,7 @@ const RunRow = React.memo(function RunRow({
       // Link), so the active state has to be readable here rather than only from the Link's
       // `aria-current`.
       data-active={isActive ? 'true' : undefined}
+      data-open={isOpen ? 'true' : undefined}
       data-depth={depth}
       // Inline, not a class: depth is unbounded (a dispatched task may dispatch its own), and
       // Tailwind cannot generate a class per level. 10px is the row's own `pl-2.5`, plus 14px a
@@ -759,8 +811,19 @@ const RunRow = React.memo(function RunRow({
       </Link>
       {/* The actions, SIBLINGS of the Link for the same reason the status dot and the reference
           chip are: a button inside an anchor is invalid, and each has its own target. */}
-      {hasActions ? (
+      {hasActions || isOpen ? (
         <div data-slot="task-row-actions" className={ROW_ACTIONS_CLASS}>
+          {isOpen && onCloseRun ? (
+            <button
+              type="button"
+              data-slot="close-open-run"
+              aria-label={t(`Close ${title}`)}
+              onClick={() => onCloseRun(run.id)}
+              className={ROW_ACTION_BUTTON_CLASS}
+            >
+              <XIcon className="size-3.5" aria-hidden="true" />
+            </button>
+          ) : null}
           {onTogglePin ? (
             <PinToggle
               pinned={Boolean(run.pinned)}
@@ -801,6 +864,7 @@ function variantLabel(run: RunRecord, showTokens: boolean, showCost: boolean): s
 export function TaskQuickListContainer() {
   const health = useHealth()
   const activeProjectId = useActiveProjectId()
+  const openThreads = useOpenThreads(activeProjectId ?? health.data?.bootProject ?? 'default')
   const runs = useRunsForProject(activeProjectId, health.data?.bootProject ?? null)
   const pinMutation = usePinRun()
   const visibility = usageMetricVisibility(health.data)
@@ -874,6 +938,10 @@ export function TaskQuickListContainer() {
         // scoped client already addresses the one the URL names.
         onTogglePin={onTogglePin}
         onToggleArchive={onToggleArchive}
+        openRunIds={openThreads.openRunIds}
+        draftOpen={openThreads.draftOpen}
+        onCloseRun={openThreads.closeRun}
+        onCloseDraft={openThreads.closeDraft}
       />
       </RepoBaseContext.Provider>
     </ReferenceStatusProvider>
