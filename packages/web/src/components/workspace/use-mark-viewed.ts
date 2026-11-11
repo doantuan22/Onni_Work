@@ -99,7 +99,8 @@ export function useMarkSingleRunViewed({
   const currentLastViewedSeq = explicitLastViewedSeq ?? (runQuery.data as ThreadRunRecord | undefined)?.lastViewedSeq
 
   const markRunViewed = useMarkRunViewed()
-  const lastMarkedSeqRef = useRef<number>(0)
+  const lastMarkedSeqRef = useRef(new Map<string, number>())
+  const watermarkKey = JSON.stringify([projectId, runId])
 
   const [isDocVisible, setIsDocVisible] = useState(() =>
     typeof document !== 'undefined' ? document.visibilityState === 'visible' : true,
@@ -121,7 +122,7 @@ export function useMarkSingleRunViewed({
     if (typeof currentLastSeq !== 'number' || currentLastSeq <= 0) return
 
     const knownViewed = currentLastViewedSeq ?? 0
-    if (currentLastSeq <= knownViewed || currentLastSeq <= lastMarkedSeqRef.current) {
+    if (currentLastSeq <= knownViewed || currentLastSeq <= (lastMarkedSeqRef.current.get(watermarkKey) ?? 0)) {
       return
     }
 
@@ -129,7 +130,7 @@ export function useMarkSingleRunViewed({
       const stillDocVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true
       if (!stillDocVisible) return
 
-      lastMarkedSeqRef.current = currentLastSeq
+      lastMarkedSeqRef.current.set(watermarkKey, currentLastSeq)
       markRunViewed.mutate({
         projectId,
         runId,
@@ -145,6 +146,7 @@ export function useMarkSingleRunViewed({
     isDocVisible,
     projectId,
     runId,
+    watermarkKey,
     currentLastSeq,
     currentLastViewedSeq,
     debounceMs,

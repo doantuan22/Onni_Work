@@ -113,6 +113,27 @@ describe('use-mark-viewed', () => {
   })
 
   describe('useMarkSingleRunViewed', () => {
+    it('keeps the viewed watermark separate for each project and run', () => {
+      const { rerender } = renderHook(
+        ({ projectId, runId, seq }: { projectId: string; runId: string; seq: number }) =>
+          useMarkSingleRunViewed({ projectId, runId, lastSeq: seq, lastViewedSeq: 0, visible: true, debounceMs: 100 }),
+        {
+          initialProps: { projectId: 'proj-1', runId: 'run-a', seq: 100 },
+          wrapper: createWrapper(queryClient),
+        },
+      )
+
+      act(() => vi.advanceTimersByTime(100))
+      expect(mockMutate).toHaveBeenCalledWith({ projectId: 'proj-1', runId: 'run-a', seq: 100 })
+      rerender({ projectId: 'proj-1', runId: 'run-b', seq: 3 })
+      act(() => vi.advanceTimersByTime(100))
+      expect(mockMutate).toHaveBeenCalledWith({ projectId: 'proj-1', runId: 'run-b', seq: 3 })
+      rerender({ projectId: 'proj-2', runId: 'run-b', seq: 2 })
+      act(() => vi.advanceTimersByTime(100))
+      expect(mockMutate).toHaveBeenCalledWith({ projectId: 'proj-2', runId: 'run-b', seq: 2 })
+      expect(mockMutate).toHaveBeenCalledTimes(3)
+    })
+
     it('marks run viewed debounced ~1s when visible and document visible', () => {
       renderHook(
         () =>

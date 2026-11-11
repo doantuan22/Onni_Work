@@ -244,7 +244,7 @@ export function useRunEvents(runId: string | undefined, options: RunEventStreamO
     const subscription = subscribeRunStream(
       runId,
       {
-        cursor: optionsRef.current.cursor,
+        cursor: () => optionsRef.current.cursor,
         afterSeq: pageHighWaterRef.current,
         onFrame,
         onRun,

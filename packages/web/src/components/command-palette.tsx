@@ -734,7 +734,8 @@ function PaletteContent({ close }: { close: () => void }) {
   const searching = search.trim() !== ''
   const trimmedSearch = search.trim()
   const debouncedSearch = useDebouncedSearch(trimmedSearch, TRANSCRIPT_SEARCH_DEBOUNCE_MS)
-  const isSearchActive = debouncedSearch.length >= 2
+  const isSearchCurrent = trimmedSearch === debouncedSearch
+  const isSearchActive = isSearchCurrent && debouncedSearch.length >= 2
   const transcriptSearch = useTranscriptSearch(debouncedSearch, {
     enabled: isSearchActive,
   })

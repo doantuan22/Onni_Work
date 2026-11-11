@@ -1246,6 +1246,27 @@ describe('the pure ordering helpers', () => {
 })
 
 describe('Transcript matches in command palette', () => {
+  it('hides prior transcript results immediately while a new query is debouncing', async () => {
+    mockUseTranscriptSearch.mockReturnValue({
+      data: { items: [{ runId: 'old-run', projectId: 'shop', seq: 7, snippet: 'old search result' }] },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      status: 'success',
+    })
+    renderPalette({ projects: [project({ id: 'shop', name: 'shop' })], entry: '/p/shop/' })
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+    const input = screen.getByRole('combobox')
+    fireEvent.change(input, { target: { value: 'old query' } })
+    await waitFor(() => expect(mockUseTranscriptSearch).toHaveBeenCalledWith('old query', expect.objectContaining({ enabled: true })))
+    await waitFor(() => expect(document.querySelector('[data-run-id="old-run"]')).not.toBeNull())
+
+    fireEvent.change(input, { target: { value: 'new query' } })
+
+    expect(document.querySelector('[data-run-id="old-run"]')).toBeNull()
+  })
+
   it('does not trigger transcript search or display transcript group when query is shorter than 2 chars', async () => {
     renderPalette()
     openWith({ metaKey: true })
