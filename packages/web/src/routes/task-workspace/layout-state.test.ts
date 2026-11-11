@@ -14,6 +14,8 @@ import {
   WORKING_LAYOUT_NAME,
   DEFAULT_LAYOUT_NAME,
   DEFAULT_STACK_RATIO,
+  MIN_STACK_RATIO,
+  MAX_STACK_RATIO,
   findLayout,
   fixedViewOf,
   forgetTask,
@@ -30,11 +32,13 @@ import {
   reviveState,
   selectLayout,
   setColumnView,
+  setStackRatio,
   splitCards,
   uniqueName,
   VIEW_IDS,
   WORKBENCH_LAYOUT_PRESET,
   viewLabel,
+  type WorkspaceLayout,
   type WorkspaceState,
 } from './layout-state'
 import { drawerStorageKey } from './drawer-state'
@@ -837,5 +841,75 @@ describe('the terminal view (main)', () => {
     const revived = reviveState(JSON.parse(JSON.stringify(placed.state)))
     expect(revived.active).toBe(placed.name)
     expect(findLayout(revived, placed.name)).toEqual(layout)
+  })
+})
+
+describe('setStackRatio', () => {
+  const sampleLayout: WorkspaceLayout = {
+    name: 'Workbench',
+    columns: [
+      { view: 'session', width: 50 },
+      { view: 'terminal', width: 50, stack: 'browser', stackRatio: 58 },
+    ],
+  }
+
+  it('updates the stack ratio of the target column within 15..85', () => {
+    const updated = setStackRatio(sampleLayout, 1, 40)
+    expect(updated).not.toBe(sampleLayout)
+    expect(updated.columns[1]?.stackRatio).toBe(40)
+    expect(updated.columns[0]?.width).toBe(50)
+    // original layout remains unmodified
+    expect(sampleLayout.columns[1]?.stackRatio).toBe(58)
+  })
+
+  it('clamps ratio below 15 to 15 (MIN_STACK_RATIO)', () => {
+    const updated = setStackRatio(sampleLayout, 1, 5)
+    expect(updated.columns[1]?.stackRatio).toBe(MIN_STACK_RATIO)
+    expect(MIN_STACK_RATIO).toBe(15)
+  })
+
+  it('clamps ratio above 85 to 85 (MAX_STACK_RATIO)', () => {
+    const updated = setStackRatio(sampleLayout, 1, 95)
+    expect(updated.columns[1]?.stackRatio).toBe(MAX_STACK_RATIO)
+    expect(MAX_STACK_RATIO).toBe(85)
+  })
+
+  it('accepts exact boundary ratios 15 and 85', () => {
+    expect(setStackRatio(sampleLayout, 1, 15).columns[1]?.stackRatio).toBe(15)
+    expect(setStackRatio(sampleLayout, 1, 85).columns[1]?.stackRatio).toBe(85)
+  })
+
+  it('rounds floating-point ratios to 2 decimal places', () => {
+    const updated = setStackRatio(sampleLayout, 1, 62.456)
+    expect(updated.columns[1]?.stackRatio).toBe(62.46)
+  })
+
+  it('returns original layout instance when ratio does not change or clamps to existing value', () => {
+    expect(setStackRatio(sampleLayout, 1, 58)).toBe(sampleLayout)
+    const atMin: WorkspaceLayout = {
+      name: 'Min',
+      columns: [{ view: 'terminal', width: 100, stack: 'browser', stackRatio: 15 }],
+    }
+    expect(setStackRatio(atMin, 0, 10)).toBe(atMin)
+  })
+
+  it('returns original layout instance on out-of-bounds column index', () => {
+    expect(setStackRatio(sampleLayout, -1, 50)).toBe(sampleLayout)
+    expect(setStackRatio(sampleLayout, 99, 50)).toBe(sampleLayout)
+  })
+
+  it('returns original layout instance on non-finite ratio', () => {
+    expect(setStackRatio(sampleLayout, 1, Number.NaN)).toBe(sampleLayout)
+    expect(setStackRatio(sampleLayout, 1, Number.POSITIVE_INFINITY)).toBe(sampleLayout)
+  })
+
+  it('supports WorkspaceState overload to update active layout by name', () => {
+    const state: WorkspaceState = {
+      layouts: [sampleLayout],
+      active: 'Workbench',
+    }
+    const updated = setStackRatio(state, 'Workbench', 1, 70)
+    expect(updated).not.toBe(state)
+    expect(findLayout(updated, 'Workbench')?.columns[1]?.stackRatio).toBe(70)
   })
 })
