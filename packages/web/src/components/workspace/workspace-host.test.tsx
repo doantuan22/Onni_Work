@@ -40,6 +40,7 @@ afterEach(() => {
   localStorage.clear()
   resetWorkspaceStateStores()
   toastMock.mockReset()
+  vi.unstubAllGlobals()
 })
 
 function LocationProbe() {
@@ -281,5 +282,92 @@ describe('WorkspaceHost', () => {
     const panes = screen.getAllByTestId('task-workspace')
     expect(panes[0]!.textContent).toBe('run-1:default')
     expect(panes[1]!.textContent).toBe('run-3:default')
+  })
+
+  it('below 1024px shows ONE conversation pane at a time even if split is set, with tabs to switch', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const initial = enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    // Exactly 1 pane rendered below 1024px, no horizontal split overflow
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(1))
+    expect(screen.getByTestId('task-workspace').textContent).toBe('run-1:default')
+
+    const sectionPanes = document.querySelectorAll('[data-slot="workspace-pane"]')
+    expect(sectionPanes).toHaveLength(1)
+    expect(sectionPanes[0]!.getAttribute('data-pane-id')).toBe('run:shop:run-1')
+
+    // Tab strip is present as simple tabs in conversation header
+    const tabStrip = document.querySelector('[data-slot="split-tab-strip"]')!
+    expect(tabStrip).not.toBeNull()
+    const tabs = tabStrip.querySelectorAll('[role="tab"]')
+    expect(tabs).toHaveLength(2)
+
+    // Switch to second tab
+    fireEvent.click(tabs[1]!)
+
+    await waitFor(() => expect(screen.getByTestId('task-workspace').textContent).toBe('run-2:default'))
+    const nextPanes = document.querySelectorAll('[data-slot="workspace-pane"]')
+    expect(nextPanes).toHaveLength(1)
+    expect(nextPanes[0]!.getAttribute('data-pane-id')).toBe('run:shop:run-2')
+  })
+
+  it('below 1024px opens the Context Sheet from the button in the conversation header', async () => {
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getByTestId('task-workspace')).toBeDefined())
+
+    // Header exists and contains the Context button
+    const header = document.querySelector('[data-slot="conversation-header"]')!
+    expect(header).not.toBeNull()
+
+    const contextButton = screen.getByRole('button', { name: /context views/i })
+    expect(contextButton).toBeDefined()
+
+    // Sheet is initially closed
+    expect(document.querySelector('[data-slot="context-sheet"]')).toBeNull()
+
+    // Click to open context sheet
+    fireEvent.click(contextButton)
+
+    await waitFor(() => expect(document.querySelector('[data-slot="context-sheet"]')).not.toBeNull())
+
+    // Context sheet renders tabs and content
+    const sheetTabs = document.querySelector('[data-slot="context-sheet-tabs"]')!
+    expect(sheetTabs).not.toBeNull()
+
+    // Default view is 'changes' (or active target view)
+    const activeWorkspacePanes = screen.getAllByTestId('task-workspace')
+    expect(activeWorkspacePanes.some((el) => el.textContent === 'run-1:changes')).toBe(true)
+
+    // Click 'Files' tab in context sheet
+    const filesTab = screen.getByRole('tab', { name: /files/i })
+    fireEvent.click(filesTab)
+
+    await waitFor(() => {
+      const panes = screen.getAllByTestId('task-workspace')
+      expect(panes.some((el) => el.textContent === 'run-1:files')).toBe(true)
+    })
+
+    // Close the sheet
+    const closeBtn = screen.getByRole('button', { name: /close/i })
+    fireEvent.click(closeBtn)
+
+    await waitFor(() => expect(document.querySelector('[data-slot="context-sheet"]')).toBeNull())
   })
 })
