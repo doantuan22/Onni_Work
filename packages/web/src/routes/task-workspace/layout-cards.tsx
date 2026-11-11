@@ -23,6 +23,7 @@ import {
   MAX_LAYOUT_NAME_LENGTH,
   REVIEW_LAYOUT_PRESET,
   viewLabel,
+  WORKBENCH_LAYOUT_PRESET,
   WORKING_LAYOUT_NAME,
   type SavedLayout,
   type ViewId,
@@ -541,6 +542,13 @@ function LayoutMenu({
             selected={false}
             kind="preset"
             onPick={() => onApplySaved?.(REVIEW_LAYOUT_PRESET)}
+          />
+          <LayoutRow
+            name={WORKBENCH_LAYOUT_PRESET.name}
+            count={WORKBENCH_LAYOUT_PRESET.columns.length}
+            selected={false}
+            kind="preset"
+            onPick={() => onApplySaved?.(WORKBENCH_LAYOUT_PRESET)}
           />
           {local.length > 0 ? (
             <>

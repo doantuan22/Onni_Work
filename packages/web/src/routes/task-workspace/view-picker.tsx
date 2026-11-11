@@ -1,7 +1,10 @@
 import {
+  FileCodeIcon,
   FileDiffIcon,
-  CodeXmlIcon,
+  FolderTreeIcon,
   GitCommitHorizontalIcon,
+  GitForkIcon,
+  CodeXmlIcon,
   GlobeIcon,
   MessageSquareTextIcon,
   TerminalIcon,
@@ -36,7 +39,10 @@ export const VIEW_ICONS: Record<ViewId, ComponentType<{ className?: string }>> =
   changes: FileDiffIcon,
   commits: GitCommitHorizontalIcon,
   files: CodeXmlIcon,
+  'files-tree': FolderTreeIcon,
+  editor: FileCodeIcon,
   browser: GlobeIcon,
+  tree: GitForkIcon,
   // The same icon the standalone graph route uses, so the tile and the surface agree.
   graph: WorkflowIcon,
   terminal: TerminalIcon,
@@ -146,7 +152,18 @@ export function ViewPickerMenu({
 }
 
 /** The tiles' order — the same as the fixed cards on the strip. */
-const TILE_ORDER: readonly ViewId[] = ['session', 'graph', 'changes', 'commits', 'files', 'browser', 'terminal']
+const TILE_ORDER: readonly ViewId[] = [
+  'session',
+  'graph',
+  'changes',
+  'commits',
+  'files',
+  'files-tree',
+  'editor',
+  'browser',
+  'tree',
+  'terminal',
+]
 
 /** One line per view, for the tiles of an empty layout. */
 const VIEW_HINTS: Record<ViewId, string> = {
@@ -155,7 +172,10 @@ const VIEW_HINTS: Record<ViewId, string> = {
   changes: 'What this task changed, as a diff',
   commits: 'The commits on the task branch',
   files: 'The worktree, file by file',
+  'files-tree': 'The worktree directory tree',
+  editor: 'Open and read worktree files',
   browser: "The task's app, with Design Mode",
+  tree: 'The task and subagent hierarchy',
   terminal: 'A shell in the task worktree',
 }
 
