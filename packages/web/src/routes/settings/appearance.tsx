@@ -1,7 +1,7 @@
 import { MonitorIcon, MoonIcon, SunIcon, UploadIcon } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import type { ComponentType, ReactNode, SVGProps } from 'react'
+import type { ComponentType, KeyboardEvent, ReactNode, SVGProps } from 'react'
 
 import { useProjects, useWorkspaceConfig, workspaceQueryKeys } from '@/api/queries'
 import type { WorkspaceConfigResponse } from '@onni/api-client'
@@ -69,6 +69,21 @@ function Segmented<V extends string>({
   options: Array<{ value: V; label: string; icon?: ComponentType<SVGProps<SVGSVGElement>>; swatch?: string }>
   onChange: (value: V) => void
 }) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const offset = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+      ? 1
+      : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+        ? -1
+        : 0
+    if (offset === 0) return
+    event.preventDefault()
+    const nextIndex = (index + offset + options.length) % options.length
+    const nextOption = options[nextIndex]
+    if (!nextOption) return
+    onChange(nextOption.value)
+    document.querySelector<HTMLButtonElement>(`[data-slot="${slot}"] [data-value="${nextOption.value}"]`)?.focus()
+  }
+
   return (
     <div
       role="radiogroup"
@@ -84,7 +99,9 @@ function Segmented<V extends string>({
             type="button"
             role="radio"
             aria-checked={checked}
+            tabIndex={checked ? 0 : -1}
             data-value={option.value}
+            onKeyDown={(event) => handleKeyDown(event, options.indexOf(option))}
             onClick={() => onChange(option.value)}
             className={cn(
               'flex items-center gap-2 rounded-sm px-3 py-1.5 text-[13px] font-medium transition-colors',

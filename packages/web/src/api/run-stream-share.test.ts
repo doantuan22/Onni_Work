@@ -144,6 +144,22 @@ describe('subscribeRunStream (stream share manager)', () => {
     sub2.unsubscribe()
   })
 
+  it('reads the live history cursor again when reconnecting after compaction', () => {
+    let cursor = 'before-compaction'
+    const sub = subscribeRunStream('run-1', { cursor: () => cursor })
+    expect(FakeEventSource.last.url).toContain('cursor=before-compaction')
+
+    cursor = 'after-compaction'
+    const closedSource = FakeEventSource.last
+    closedSource.readyState = 2
+    closedSource.emit('error', '')
+    act(() => vi.advanceTimersByTime(1_500))
+
+    expect(FakeEventSource.instances).toHaveLength(2)
+    expect(FakeEventSource.last.url).toContain('cursor=after-compaction')
+    sub.unsubscribe()
+  })
+
   it('distributes all frame types: run, ui-event, run-event, ping', () => {
     const events: string[] = []
     const runs: RunRecord[] = []

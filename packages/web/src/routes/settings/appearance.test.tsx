@@ -1,5 +1,5 @@
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
@@ -93,6 +93,30 @@ afterEach(() => {
 })
 
 describe('Settings → Appearance: project order', () => {
+  it('uses arrow keys to move and focus the selected radio in a segmented group', async () => {
+    renderSection(['onni'])
+    await waitFor(() => expect(screen.getByText('Reading width')).not.toBeNull())
+
+    const group = screen.getByRole('radiogroup', { name: 'Theme' })
+    const radios = within(group).getAllByRole('radio')
+    const selectedIndex = radios.findIndex((radio) => radio.getAttribute('aria-checked') === 'true')
+    const selected = radios[selectedIndex]!
+    const next = radios[(selectedIndex + 1) % radios.length]!
+    expect(selected.getAttribute('tabindex')).toBe('0')
+    expect(radios.filter((radio) => radio !== selected).every((radio) => radio.getAttribute('tabindex') === '-1')).toBe(true)
+
+    selected.focus()
+    fireEvent.keyDown(selected, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(next)
+    expect(next.getAttribute('aria-checked')).toBe('true')
+    expect(next.getAttribute('tabindex')).toBe('0')
+    expect(selected.getAttribute('tabindex')).toBe('-1')
+
+    fireEvent.keyDown(next, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(selected)
+    expect(selected.getAttribute('aria-checked')).toBe('true')
+  })
+
   it('keeps appearance choices focused on theme, density, and reading width', async () => {
     serve({ appearance: { accent: 'lime' } })
     renderSection(['onni'])

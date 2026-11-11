@@ -41,7 +41,7 @@ export interface RunStreamSubscriber {
   onPing?: (event: Event) => void
   onRun?: (run: RunRecord, event: MessageEvent<string>) => void
   onError?: (event: Event) => void
-  cursor?: string
+  cursor?: string | (() => string | undefined)
   afterSeq?: number
 }
 
@@ -111,9 +111,13 @@ function openSource(stream: SharedStreamState): void {
   stream.lastFrameAt = Date.now()
 
   const params = new URLSearchParams()
-  if (stream.cursor !== undefined) params.set('cursor', stream.cursor)
+  const liveCursor = [...stream.subscribers]
+    .map((subscriber) => typeof subscriber.cursor === 'function' ? subscriber.cursor() : subscriber.cursor)
+    .find((cursor) => cursor !== undefined)
+  const cursor = liveCursor ?? stream.cursor
+  if (cursor !== undefined) params.set('cursor', cursor)
   const highWater = Math.max(stream.initialAfterSeq, stream.maxSeq)
-  if (stream.cursor !== undefined || highWater > 0) params.set('afterSeq', String(highWater))
+  if (cursor !== undefined || highWater > 0) params.set('afterSeq', String(highWater))
   const query = params.size > 0 ? `?${params.toString()}` : ''
 
   const url = buildRunEventsPath(stream.scope, stream.runId, query)
@@ -213,7 +217,7 @@ export function subscribeRunStream(
       lastFrameAt: Date.now(),
       maxSeq: 0,
       initialAfterSeq: subscriber.afterSeq ?? 0,
-      cursor: subscriber.cursor,
+      cursor: typeof subscriber.cursor === 'string' ? subscriber.cursor : subscriber.cursor?.(),
       disposed: false,
     }
     sharedStreams.set(key, stream)
@@ -256,17 +260,21 @@ export function subscribeRunStream(
       openSource(stream!)
     }, LIVENESS_CHECK_MS)
 
-    openSource(stream)
   } else {
     if (subscriber.afterSeq !== undefined && subscriber.afterSeq > 0) {
       stream.initialAfterSeq = Math.max(stream.initialAfterSeq, subscriber.afterSeq)
     }
-    if (subscriber.cursor !== undefined && stream.cursor === undefined) {
+    if (typeof subscriber.cursor === 'string' && stream.cursor === undefined) {
       stream.cursor = subscriber.cursor
     }
   }
 
   stream.subscribers.add(subscriber)
+  if (!stream.source) {
+    clearTimeout(stream.reopenTimer)
+    stream.reopenTimer = undefined
+    openSource(stream)
+  }
 
   let unsubscribed = false
   return {
