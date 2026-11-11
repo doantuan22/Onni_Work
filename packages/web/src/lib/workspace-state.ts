@@ -11,6 +11,7 @@ export interface RunPaneRef {
   paneId: PaneId
   projectId: string
   runId: string
+  title?: string
 }
 
 export interface DraftPaneRef {
@@ -18,6 +19,7 @@ export interface DraftPaneRef {
   paneId: PaneId
   projectId: string
   draftId: string
+  title?: string
 }
 
 export type PaneRef = RunPaneRef | DraftPaneRef
@@ -138,6 +140,77 @@ export function disableSplit(state: WorkspaceState): WorkspaceState {
   return state.split === 'none' ? state : { ...state, split: 'none' }
 }
 
+/**
+ * Opens a run beside the current active pane (or replaces the inactive split pane).
+ * If 1-up, enables a 2-up split with the active pane and the target run.
+ * If already split, replaces the non-active split pane with the target run.
+ */
+export function openBeside(
+  state: WorkspaceState,
+  target: string | RunPaneRef,
+  projectId?: string,
+): WorkspaceState {
+  let targetPane: RunPaneRef
+  if (typeof target === 'object') {
+    targetPane = target
+  } else {
+    const existing = state.threads.find(
+      (thread): thread is RunPaneRef =>
+        thread.kind === 'run' && (thread.paneId === target || thread.runId === target),
+    )
+    if (existing) {
+      targetPane = existing
+    } else {
+      const proj = projectId ?? state.threads[0]?.projectId ?? 'default'
+      const runId = target.startsWith(`run:${proj}:`) ? target.slice(`run:${proj}:`.length) : target
+      targetPane = {
+        kind: 'run',
+        paneId: `run:${proj}:${runId}`,
+        projectId: proj,
+        runId,
+      }
+    }
+  }
+
+  let nextState = state
+  if (!state.threads.some((t) => t.paneId === targetPane.paneId)) {
+    nextState = {
+      ...state,
+      threads: [...state.threads, targetPane],
+    }
+  }
+
+  const anchor = nextState.active ?? nextState.threads[0]?.paneId
+  if (!anchor || anchor === targetPane.paneId) {
+    return withActive(nextState, targetPane.paneId)
+  }
+
+  if (nextState.split !== 'none') {
+    const { a, b } = nextState.split
+    if (targetPane.paneId === a || targetPane.paneId === b) {
+      return withActive(nextState, targetPane.paneId)
+    }
+    if (nextState.active === b) {
+      return {
+        ...nextState,
+        split: { a: targetPane.paneId, b },
+        active: targetPane.paneId,
+      }
+    }
+    return {
+      ...nextState,
+      split: { a, b: targetPane.paneId },
+      active: targetPane.paneId,
+    }
+  }
+
+  return {
+    ...nextState,
+    split: { a: anchor, b: targetPane.paneId },
+    active: targetPane.paneId,
+  }
+}
+
 function isObject(raw: unknown): raw is Record<string, unknown> {
   return typeof raw === 'object' && raw !== null && !Array.isArray(raw)
 }
@@ -148,11 +221,12 @@ function optionalWidth(raw: unknown): number | undefined {
 
 function normalizePane(raw: unknown, projectId: string): PaneRef | null {
   if (!isObject(raw) || raw.projectId !== projectId || typeof raw.paneId !== 'string' || raw.paneId === '') return null
+  const title = typeof raw.title === 'string' && raw.title !== '' ? raw.title : undefined
   if (raw.kind === 'run' && typeof raw.runId === 'string' && raw.runId !== '') {
-    return { kind: 'run', paneId: raw.paneId, projectId, runId: raw.runId }
+    return { kind: 'run', paneId: raw.paneId, projectId, runId: raw.runId, ...(title ? { title } : {}) }
   }
   if (raw.kind === 'draft' && typeof raw.draftId === 'string' && raw.draftId !== '') {
-    return { kind: 'draft', paneId: raw.paneId, projectId, draftId: raw.draftId }
+    return { kind: 'draft', paneId: raw.paneId, projectId, draftId: raw.draftId, ...(title ? { title } : {}) }
   }
   return null
 }
@@ -279,8 +353,25 @@ export function useWorkspaceState(projectId: string) {
   const update = useCallback((reducer: (current: WorkspaceState) => WorkspaceState) => {
     store.set(reducer(store.getSnapshot()))
   }, [store])
+  const openBesidePane = useCallback(
+    (runId: string) => {
+      store.set(openBeside(store.getSnapshot(), runId, projectId))
+    },
+    [projectId, store],
+  )
 
-  return { state, setState, update }
+  return { state, setState, update, openBeside: openBesidePane }
+}
+
+/** Hook to open a run beside the active pane in the specified project. */
+export function useOpenBeside(projectId: string) {
+  const { update } = useWorkspaceState(projectId)
+  return useCallback(
+    (runId: string) => {
+      update((current) => openBeside(current, runId, projectId))
+    },
+    [projectId, update],
+  )
 }
 
 /** Test seam: storage remains intact, but the next read behaves like a fresh page load. */
