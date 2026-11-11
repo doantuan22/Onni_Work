@@ -129,7 +129,7 @@ export function WorkspaceColumns({
   const shown = columns.length + (pending === null ? 0 : 1)
   const widthOf = (column: WorkspaceColumn) => (pending === null ? column.width : 100 / shown)
   const pendingHeader = (
-    <header className="flex h-8 shrink-0 items-center gap-1.5 border-b border-border/70 bg-background pl-4 pr-1.5 text-xs font-medium text-muted-foreground">
+    <header className="flex h-header shrink-0 items-center gap-1.5 border-b border-border/70 bg-background pl-4 pr-1.5 text-xs font-medium text-muted-foreground">
       <LayoutGridIcon aria-hidden="true" className="size-3.5 shrink-0" />
       <span className="min-w-0 flex-1 truncate">{t('New window')}</span>
       <Button
@@ -412,7 +412,7 @@ function ColumnHeader({
         actions.moveColumn(from, index)
       }}
       className={cn(
-        'group/column flex h-8 shrink-0 items-center gap-0.5 border-b border-border/70 bg-background pl-4 pr-1.5',
+        'group/column flex h-header shrink-0 items-center gap-0.5 border-b border-border/70 bg-background pl-4 pr-1.5',
         dropTarget && 'bg-muted',
       )}
     >

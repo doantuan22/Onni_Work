@@ -46,6 +46,10 @@ import { ChangesView } from '../task-git/task-changes'
 import { CommitsView } from '../task-git/task-commits'
 import { FilesView } from '../task-git/task-files'
 import { useDiffComments } from '../task-thread/diff-comments'
+import { TaskEditor } from '../task-git/task-editor'
+import { TaskFilesTree } from '../task-git/task-files-tree'
+import { useTaskOpenFiles } from '@/lib/task-open-files'
+import { TaskTreePane } from '../task-tree/task-tree-pane'
 import { RunHeader, type RunTab } from '../task-thread/run-header'
 import { useRunRecordReconcile } from '../task-thread/run-reconcile'
 import { ThreadView } from '../task-thread/task-thread'
@@ -180,6 +184,7 @@ function WorkspaceView({
   onMarkedUnread: (runId: string) => void
 }) {
   const layouts = useWorkspaceLayouts(run.id)
+  const openFiles = useTaskOpenFiles(run.id)
   const { openDeepLink, addLayout, closeLayout, selectLayout, setColumnBrowser, openInBrowser, applySaved, keepAs } = layouts
   // Layouts saved for every task: nothing is saved until the user names one (Layout menu).
   const savedLayouts = useSavedLayouts()
@@ -561,6 +566,7 @@ function WorkspaceView({
       setColumnView: requestColumnView,
       resizeColumns: layouts.resizeColumns,
       moveColumn: layouts.moveColumn,
+      setStackRatio: (layouts as { setStackRatio?: (index: number, ratio: number) => void }).setStackRatio,
     }),
     [
       fixedActive,
@@ -571,6 +577,7 @@ function WorkspaceView({
       requestColumnView,
       layouts.resizeColumns,
       layouts.moveColumn,
+      (layouts as { setStackRatio?: (index: number, ratio: number) => void }).setStackRatio,
     ],
   )
 
@@ -741,9 +748,33 @@ function WorkspaceView({
             />
           )
         case 'files-tree':
+          return (
+            <TaskFilesTree
+              key={run.id}
+              runId={run.id}
+              selectedPath={openFiles.activePath}
+              onOpenFile={openFiles.open}
+            />
+          )
         case 'editor':
+          return (
+            <TaskEditor
+              key={run.id}
+              runId={run.id}
+              openPaths={openFiles.openPaths}
+              activePath={openFiles.activePath}
+              onSelect={openFiles.activate}
+              onClose={openFiles.close}
+            />
+          )
         case 'tree':
-          return null
+          return (
+            <TaskTreePane
+              key={run.id}
+              runId={run.id}
+              onOpenRun={(targetRunId) => navigate(`/tasks/${targetRunId}`)}
+            />
+          )
         default:
           return null
       }
@@ -753,8 +784,14 @@ function WorkspaceView({
       designMarks,
       designNotes,
       escapeNote,
+      navigate,
       noteFor,
       onMarkedUnread,
+      openFiles.activate,
+      openFiles.activePath,
+      openFiles.close,
+      openFiles.open,
+      openFiles.openPaths,
       openInBrowser,
       openReference,
       run,
@@ -811,6 +848,7 @@ function WorkspaceView({
                   actions={actions}
                   renderView={renderView}
                   headerExtras={headerExtras}
+                  onRatioChange={actions.setStackRatio}
                 />
               ))
             ) : (
@@ -922,12 +960,14 @@ function KeptLayout({
   actions,
   renderView,
   headerExtras,
+  onRatioChange,
 }: {
   layout: WorkspaceLayout
   active: boolean
   actions: ColumnActions
   renderView: (view: ViewId, index: number, column: WorkspaceColumn, layoutName: string) => ReactNode
   headerExtras?: (view: ViewId, index: number) => ReactNode
+  onRatioChange?: (index: number, ratio: number) => void
 }) {
   const name = layout.name
   const render = useCallback(
@@ -943,6 +983,7 @@ function KeptLayout({
           actions={actions}
           renderView={render}
           headerExtras={headerExtras}
+          onRatioChange={onRatioChange}
         />
       </div>
     </Activity>

@@ -215,6 +215,19 @@ describe('the task workspace (main)', () => {
     expect(columnWidths()).toEqual([55, 45])
   })
 
+  it('offers the Workbench preset in the Layout menu and applies it', async () => {
+    stubFetch()
+    renderWorkspace()
+    await ready()
+
+    openLayoutMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Workbench' }))
+    await waitFor(() => expect(activeCard()).toBe('Workbench'))
+    expect(columnViews()).toContain('session')
+    expect(columnViews()).toContain('files-tree')
+    expect(columnViews()).toContain('editor')
+  })
+
   it('admits an async deep link to the workspace, then replaces its URL for a local context switch', async () => {
     let pathname = ''
     function LocationProbe() {
