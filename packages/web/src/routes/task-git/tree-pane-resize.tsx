@@ -9,6 +9,7 @@ import {
   readStoredTreePaneWidth,
   writeStoredTreePaneWidth,
 } from '@/lib/tree-pane-width'
+import { useSplitter } from '@/components/splitter/use-splitter'
 import { useI18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -80,50 +81,23 @@ export function TreePaneResizeHandle({
   className?: string
 }) {
   const { t } = useI18n()
-  const origin = React.useRef<{ x: number; width: number } | null>(null)
 
   const current = () => width ?? Math.round(paneRef.current?.getBoundingClientRect().width ?? 0)
   // jsdom (and a detached pane) measures 0: no body-relative cap then, only the fixed bounds.
   const clamp = (next: number) =>
     clampTreePaneWidth(next, paneRef.current?.parentElement?.clientWidth || Number.POSITIVE_INFINITY)
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return
-    origin.current = { x: event.clientX, width: current() }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    event.preventDefault()
-    event.currentTarget.focus()
-  }
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const start = origin.current
-    if (!start) return
-    onWidthChange(clamp(start.width + (event.clientX - start.x)))
-  }
-
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!origin.current) return
-    origin.current = null
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const next =
-      event.key === 'ArrowLeft'
-        ? current() - TREE_PANE_WIDTH_STEP
-        : event.key === 'ArrowRight'
-          ? current() + TREE_PANE_WIDTH_STEP
-          : event.key === 'Home'
-            ? MIN_TREE_PANE_WIDTH
-            : event.key === 'End'
-              ? MAX_TREE_PANE_WIDTH
-              : null
-    if (next === null) return
-    event.preventDefault()
-    onWidthChange(clamp(next))
-  }
+  const splitter = useSplitter({
+    unit: 'px',
+    axis: 'vertical',
+    getRange: () => ({ value: current(), min: MIN_TREE_PANE_WIDTH, max: clamp(MAX_TREE_PANE_WIDTH)! }),
+    step: TREE_PANE_WIDTH_STEP,
+    pointerToValue: (start, delta) => clamp(start + delta)!,
+    keys: { ArrowLeft: -1, ArrowRight: 1, Home: 'min', End: 'max' },
+    onChange: onWidthChange,
+    reset: () => onWidthChange(null),
+    ariaValue: false,
+  })
 
   return (
     <div data-slot="tree-pane-resize" className={cn('relative -mr-5 w-0 shrink-0', className)}>
@@ -136,12 +110,12 @@ export function TreePaneResizeHandle({
         aria-valuemin={MIN_TREE_PANE_WIDTH}
         aria-valuemax={MAX_TREE_PANE_WIDTH}
         tabIndex={0}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onKeyDown={onKeyDown}
-        onDoubleClick={() => onWidthChange(null)}
+        onPointerDown={splitter.onPointerDown}
+        onPointerMove={splitter.onPointerMove}
+        onPointerUp={splitter.onPointerUp}
+        onPointerCancel={splitter.onPointerCancel}
+        onKeyDown={splitter.onKeyDown}
+        onDoubleClick={splitter.onDoubleClick}
         title={t('Drag to resize the file tree — double-click to reset')}
         // `touch-none`: without it a touch drag pans the page instead of resizing.
         className="absolute inset-y-0 -left-[14px] z-10 w-2 cursor-col-resize touch-none rounded-full bg-transparent transition-colors hover:bg-violet/40 focus-visible:bg-violet/60 focus-visible:outline-none"

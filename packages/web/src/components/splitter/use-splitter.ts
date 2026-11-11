@@ -11,7 +11,7 @@ export interface SplitterAdapter {
   step: number
   largeStep?: number
   /** Convert a pointer displacement from the drag origin to an absolute value. */
-  pointerToValue: (startValue: number, delta: number, event: ReactPointerEvent<HTMLElement>) => number
+  pointerToValue: (startValue: number, delta: number, event: ReactPointerEvent<HTMLElement>) => number | null
   /** Arrow key sign and Home/End destinations are adapter-specific. */
   keys: Partial<Record<string, number | 'min' | 'max' | 'reset'>>
   onChange: (value: number | null) => void
@@ -23,7 +23,7 @@ export interface SplitterAdapter {
 
 /** Headless pointer and keyboard mechanics; wrappers retain their DOM, ARIA labels and persistence. */
 export function useSplitter(adapter: SplitterAdapter) {
-  const drag = useRef<{ coordinate: number; value: number } | null>(null)
+  const drag = useRef<{ coordinate: number; value: number; latestValue: number | null } | null>(null)
   const range = adapter.getRange()
   const clamp = useCallback((value: number) => {
     const { min, max } = adapter.getRange()
@@ -35,7 +35,7 @@ export function useSplitter(adapter: SplitterAdapter) {
     const value = adapter.getRange().value
     if (value === null) return
     const coordinate = adapter.axis === 'vertical' ? event.clientX : event.clientY
-    drag.current = { coordinate, value }
+    drag.current = { coordinate, value, latestValue: null }
     event.currentTarget.setPointerCapture(event.pointerId)
     event.preventDefault()
     if (adapter.focusOnDown !== false) event.currentTarget.focus()
@@ -45,14 +45,19 @@ export function useSplitter(adapter: SplitterAdapter) {
     const start = drag.current
     if (!start) return
     const coordinate = adapter.axis === 'vertical' ? event.clientX : event.clientY
-    adapter.onChange(clamp(adapter.pointerToValue(start.value, coordinate - start.coordinate, event)))
+    const value = adapter.pointerToValue(start.value, coordinate - start.coordinate, event)
+    if (value === null) return
+    const next = clamp(value)
+    start.latestValue = next
+    adapter.onChange(next)
   }, [adapter, clamp])
 
   const onPointerEnd = useCallback((event: React.PointerEvent<HTMLElement>) => {
     if (!drag.current) return
+    const next = drag.current.latestValue ?? adapter.getRange().value
     drag.current = null
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    adapter.onCommit?.(adapter.getRange().value)
+    adapter.onCommit?.(next)
   }, [adapter])
 
   const onKeyDown = useCallback((event: React.KeyboardEvent<HTMLElement>) => {
@@ -64,9 +69,15 @@ export function useSplitter(adapter: SplitterAdapter) {
       return
     }
     const { value } = adapter.getRange()
-    if (action === 'min' || action === 'max') adapter.onChange(action === 'min' ? adapter.getRange().min : adapter.getRange().max)
-    else if (typeof action === 'number' && value !== null) adapter.onChange(clamp(value + action * (event.shiftKey ? adapter.largeStep ?? adapter.step : adapter.step)))
-    adapter.onCommit?.(adapter.getRange().value)
+    const next = action === 'min'
+      ? adapter.getRange().min
+      : action === 'max'
+        ? adapter.getRange().max
+        : typeof action === 'number' && value !== null
+          ? clamp(value + action * (event.shiftKey ? adapter.largeStep ?? adapter.step : adapter.step))
+          : null
+    if (next !== null) adapter.onChange(next)
+    adapter.onCommit?.(next)
   }, [adapter, clamp])
 
   const onDoubleClick = useCallback(() => adapter.reset?.(), [adapter])

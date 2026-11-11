@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 
+import { useSplitter } from '@/components/splitter/use-splitter'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -533,47 +534,21 @@ function ColumnDivider({
   rowRef: React.RefObject<HTMLDivElement | null>
   onResize: (index: number, delta: number) => void
 }) {
-  const origin = useRef<{ x: number; width: number } | null>(null)
   const { t } = useI18n()
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return
-    origin.current = { x: event.clientX, width }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    // Without this the drag selects the text of both columns as it passes over them…
-    event.preventDefault()
-    // …and preventing the default also suppresses the focus the press would have given this
-    // `tabIndex=0` element, leaving a mouse user unable to fine-tune with the arrows right after.
-    event.currentTarget.focus()
-  }
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const start = origin.current
-    const row = rowRef.current
-    if (!start || !row) return
-    const rowWidth = row.getBoundingClientRect().width
-    if (rowWidth <= 0) return
-    const target = start.width + ((event.clientX - start.x) / rowWidth) * 100
-    onResize(index, target - width)
-  }
-
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!origin.current) return
-    origin.current = null
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const step = event.shiftKey ? RESIZE_STEP_LARGE : RESIZE_STEP
-    const delta =
-      event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : null
-    if (delta === null) return
-    // Only for the keys we handled: Tab, Escape and the rest stay the browser's.
-    event.preventDefault()
-    onResize(index, delta)
-  }
+  const splitter = useSplitter({
+    unit: 'percent',
+    axis: 'vertical',
+    getRange: () => ({ value: width, min: dividerFloor(pair), max: pair - dividerFloor(pair) }),
+    step: RESIZE_STEP,
+    largeStep: RESIZE_STEP_LARGE,
+    pointerToValue: (start, delta) => {
+      const rowWidth = rowRef.current?.getBoundingClientRect().width ?? 0
+      return rowWidth > 0 ? start + (delta / rowWidth) * 100 : null
+    },
+    keys: { ArrowLeft: -1, ArrowRight: 1 },
+    onChange: (next) => { if (next !== null) onResize(index, next - width) },
+  })
 
   return (
     <div
@@ -589,11 +564,11 @@ function ColumnDivider({
       aria-valuemin={Math.round(dividerFloor(pair))}
       aria-valuemax={Math.round(pair - dividerFloor(pair))}
       tabIndex={0}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      onKeyDown={onKeyDown}
+      onPointerDown={splitter.onPointerDown}
+      onPointerMove={splitter.onPointerMove}
+      onPointerUp={splitter.onPointerUp}
+      onPointerCancel={splitter.onPointerCancel}
+      onKeyDown={splitter.onKeyDown}
       title={t('Drag to resize — arrow keys adjust precisely')}
       // A 9px grab strip straddling the seam, invisible until reached for — the hit target §12
       // asks to be defined, at the low end of what a pointer can comfortably catch. It is
