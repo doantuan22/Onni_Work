@@ -545,6 +545,9 @@ describe('manager complexity policy', () => {
 
   it('is in the manager brief by default, with the thresholds and the out-of-calls rule', () => {
     const prompt = managerPrompt(ROSTER, left);
+    expect(prompt).toContain('The roster can change while you work. The CURRENT roster is authoritative');
+    expect(prompt).toContain('onni task roster add <backend[:model]>');
+    expect(prompt).toContain('onni task roster remove <backend[:model]>');
     expect(prompt).toContain('Sizing the work');
     expect(prompt).toContain(`at most ${COMPLEXITY.simpleMaxFiles} files`);
     expect(prompt).toContain('You may not do a whole complex task alone');

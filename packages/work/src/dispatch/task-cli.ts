@@ -10,7 +10,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, MANAGER_CANCEL_REASON_MAX_CHARS, MANAGER_MESSAGE_MAX_CHARS, MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, type DispatchBudget, type DispatchConflicts, type DispatchManagerCancelResult, type DispatchManagerMessageResult, type DispatchManagerRedirectResult, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type TreePlan } from '@onni/contract';
+import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, MANAGER_CANCEL_REASON_MAX_CHARS, MANAGER_MESSAGE_MAX_CHARS, MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, rosterWorkerKey, rosterWorkerSchema, type DispatchBudget, type DispatchConflicts, type DispatchManagerCancelResult, type DispatchManagerMessageResult, type DispatchManagerRedirectResult, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type Roster, type RosterWorker, type TreePlan } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
@@ -100,6 +100,20 @@ function checkArg(raw: string): { command: string; exitCode: number } {
   const command = match?.[1]?.trim();
   if (!match || !command) throw new Error(`--check must be "<command>=<exit code>", got "${raw}"`);
   return { command, exitCode: Number(match[2]) };
+}
+
+function formatRoster(roster: Roster): string {
+  return [`Manager: ${roster.manager.runner}${roster.manager.model ? `:${roster.manager.model}` : ''}`,
+    ...roster.workers.map((worker) => `- ${worker.runner}${worker.model ? `:${worker.model}` : ''}${worker.role ? ` — ${worker.role}` : ''}${worker.tier ? ` [${worker.tier}]` : ''}${worker.kinds?.length ? ` (${worker.kinds.join(', ')})` : ''}; concurrent ${worker.maxConcurrent}`),
+  ].join('\n');
+}
+
+function workerIdentity(raw: string): Pick<RosterWorker, 'runner'> & { model?: string } {
+  const separator = raw.indexOf(':');
+  const runner = (separator < 0 ? raw : raw.slice(0, separator)).trim();
+  const model = separator < 0 ? undefined : raw.slice(separator + 1).trim();
+  if (!runner || (separator >= 0 && !model)) throw new Error('worker must be <backend> or <backend:model>');
+  return { runner, ...(model ? { model } : {}) };
 }
 
 export async function runTaskCommand(
@@ -270,6 +284,52 @@ export async function runTaskCommand(
           method: 'GET',
         }, 'could not read the budget —')) as DispatchBudget;
         io.log(formatBudgetLine(budget));
+        return 0;
+      }
+      case 'roster': {
+        if (!env.ONNI_TASK_ID) throw new Error('ONNI_TASK_ID is not set — only a running task can read or change its roster');
+        const { values, positionals } = parseArgs({
+          args: rest,
+          allowPositionals: true,
+          options: {
+            role: { type: 'string' }, tier: { type: 'string' }, kinds: { type: 'string' }, concurrent: { type: 'string' },
+          },
+        });
+        const action = positionals[0];
+        if (!action) {
+          if (positionals.length) throw new Error('usage: onni task roster [add <backend[:model]> | remove <backend[:model]>]');
+          const result = await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/roster`, { method: 'GET' }, 'could not read the roster —') as { roster: Roster };
+          io.log(formatRoster(result.roster));
+          return 0;
+        }
+        if (action !== 'add' && action !== 'remove') throw new Error('usage: onni task roster [add <backend[:model]> [--role <text>] [--tier light|standard|heavy] [--kinds implement,test,explore,review] [--concurrent N] | remove <backend[:model]>]');
+        const identity = workerIdentity(positionals[1] ?? '');
+        if (positionals.length !== 2) throw new Error(`usage: onni task roster ${action} <backend[:model]>`);
+        if (action === 'remove' && (values.role !== undefined || values.tier !== undefined || values.kinds !== undefined || values.concurrent !== undefined)) {
+          throw new Error('roster remove does not accept worker options');
+        }
+        const current = await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/roster`, { method: 'GET' }, 'could not read the roster —') as { roster: Roster };
+        let workers = [...current.roster.workers];
+        if (action === 'add') {
+          const rawConcurrent = number(values.concurrent, 'concurrent');
+          const candidate = rosterWorkerSchema.safeParse({
+            ...identity,
+            ...(values.role !== undefined ? { role: values.role } : {}),
+            ...(values.tier !== undefined ? { tier: values.tier } : {}),
+            ...(values.kinds !== undefined ? { kinds: values.kinds.split(',').map((kind) => kind.trim()).filter(Boolean) } : {}),
+            ...(rawConcurrent !== undefined ? { maxConcurrent: rawConcurrent } : {}),
+          });
+          if (!candidate.success) throw new Error(`invalid worker: ${candidate.error.issues.map((issue) => issue.message).join('; ')}`);
+          workers.push(candidate.data);
+        } else {
+          workers = workers.filter((worker) => rosterWorkerKey(worker) !== rosterWorkerKey(identity));
+          if (workers.length === current.roster.workers.length) throw new Error(`worker ${rosterWorkerKey(identity)} is not in the current roster`);
+          if (!workers.length) throw new Error('the roster must keep at least one worker');
+        }
+        const updated = await callRoute(api, io, `/runs/${encodeURIComponent(env.ONNI_TASK_ID)}/roster`, {
+          method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ workers }),
+        }, (status, _body, reason) => `roster ${action} refused (${status === 409 ? 'conflict' : status === 400 ? 'invalid roster' : status}) — ${reason}`) as { roster: Roster };
+        io.log(`roster updated\n${formatRoster(updated.roster)}`);
         return 0;
       }
       case 'peek': {

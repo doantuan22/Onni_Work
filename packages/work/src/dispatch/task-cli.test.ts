@@ -15,6 +15,13 @@ function containsRunnerToken(text: string, runner: string): boolean {
 describe('onni task', () => {
   const env = { ONNI_API_URL: 'http://127.0.0.1:4321/', ONNI_PROJECT_ID: 'proj', ONNI_TASK_ID: 'run-1' };
 
+  it('documents the live roster command in task help', async () => {
+    const h = harness({ status: 200, body: {} });
+    expect(await runTaskCommand(['--help'], env, h.io)).toBe(0);
+    expect(h.out.join('\n')).toContain('onni task roster add <backend[:model]>');
+    expect(h.out.join('\n')).toContain('onni task roster remove <backend[:model]>');
+  });
+
   const harness = (reply: { status: number; body: unknown }) => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const out: string[] = [];
@@ -74,6 +81,49 @@ describe('onni task', () => {
     const h = harness({ status: 409, body: { error: 'no budget left' } });
     expect(await runTaskCommand(['create', 'x'], env, h.io)).toBe(1);
     expect(h.err[0]).toContain('dispatch refused — no budget left');
+  });
+
+  it('reads and updates the live roster from the latest server state', async () => {
+    const initial = { manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'existing', maxConcurrent: 1 }] };
+    const added = { manager: initial.manager, workers: [...initial.workers, { runner: 'pi', model: 'fast', role: 'docs', tier: 'light', kinds: ['explore'], maxConcurrent: 2 }] };
+    const h = sequence([
+      { status: 200, body: { roster: initial } },
+      { status: 200, body: { roster: added } },
+    ]);
+    expect(await runTaskCommand(['roster', 'add', 'pi:fast', '--role', 'docs', '--tier', 'light', '--kinds', 'explore', '--concurrent', '2'], env, h.io)).toBe(0);
+    expect(h.calls.map((call) => [call.init?.method ?? 'GET', call.url])).toEqual([
+      ['GET', 'http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/roster'],
+      ['PATCH', 'http://127.0.0.1:4321/api/v1/p/proj/runs/run-1/roster'],
+    ]);
+    expect(JSON.parse(String(h.calls[1]?.init?.body))).toEqual({ workers: added.workers });
+
+    const shown = harness({ status: 200, body: { roster: initial } });
+    expect(await runTaskCommand(['roster'], env, shown.io)).toBe(0);
+    expect(shown.out[0]).toContain('Manager: claude');
+    expect(shown.out[0]).toContain('- codex — existing');
+  });
+
+  it('removes from the fetched roster and explains invalid or conflicting updates', async () => {
+    const roster = { manager: { runner: 'claude' }, workers: [{ runner: 'codex', maxConcurrent: 1 }, { runner: 'pi', maxConcurrent: 1 }] };
+    const h = sequence([
+      { status: 200, body: { roster } },
+      { status: 200, body: { roster: { ...roster, workers: [roster.workers[1]] } } },
+    ]);
+    expect(await runTaskCommand(['roster', 'remove', 'codex'], env, h.io)).toBe(0);
+    expect(JSON.parse(String(h.calls[1]?.init?.body))).toEqual({ workers: [roster.workers[1]] });
+
+    const conflict = sequence([
+      { status: 200, body: { roster } },
+      { status: 409, body: { error: 'provider unavailable' } },
+    ]);
+    expect(await runTaskCommand(['roster', 'add', 'pi'], env, conflict.io)).toBe(1);
+    expect(conflict.err[0]).toContain('roster add refused (conflict) — provider unavailable');
+    const invalid = sequence([
+      { status: 200, body: { roster } },
+      { status: 400, body: { error: 'bad worker entry' } },
+    ]);
+    expect(await runTaskCommand(['roster', 'add', 'pi'], env, invalid.io)).toBe(1);
+    expect(invalid.err[0]).toContain('roster add refused (invalid roster) — bad worker entry');
   });
 
   it('reads a 404 on a route the running server lacks as a version mismatch (H4)', async () => {
