@@ -56,6 +56,13 @@ describe('workspace state reducers', () => {
     expect(repeated.context.open).toBe(false)
     expect(promoted.threads).toEqual([{ kind: 'run', paneId: draft.paneId, projectId, runId: 'run-from-draft' }])
     expect(promoted.active).toBe(draft.paneId)
+
+    const reopened = openDraft(promoted, draft)
+    expect(reopened.threads).toEqual([
+      { kind: 'run', paneId: draft.paneId, projectId, runId: 'run-from-draft' },
+      { ...draft, paneId: `${draft.paneId}:2` },
+    ])
+    expect(reopened.active).toBe(`${draft.paneId}:2`)
   })
 
   it('only activates known panes and selects a neighbor when the active pane closes', () => {

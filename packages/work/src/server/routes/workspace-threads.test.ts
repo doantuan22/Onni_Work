@@ -270,7 +270,7 @@ describe('workspace threads route and viewed read receipts', () => {
       store.updateRun(runSoftAsk.id, {
         dispatch: {
           rootRunId: runSoftAsk.id,
-          softAsk: { requestId: 'req-1', question: 'Choice?', optionCount: 2 },
+          softAsk: { requestId: 'req-1', askedAt: '2026-11-10T12:00:00Z', question: 'Choice?', optionCount: 2 },
         },
       });
 
