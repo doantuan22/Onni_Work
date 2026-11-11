@@ -74,6 +74,15 @@ export const TASK_COMMANDS: readonly TaskCommand[] = [
     oneLine: "see what is left of this tree's ceilings",
   },
   {
+    name: 'roster',
+    role: 'manager',
+    usage: `onni task roster                                      show the current manager and workers
+  onni task roster add <backend[:model]> [--role <text>] [--tier light|standard|heavy] [--kinds implement,test,explore,review] [--concurrent N]
+  onni task roster remove <backend[:model]>       remove a worker from future dispatches`,
+    brief: 'onni task roster | roster add <backend[:model]> [--role ...] [--tier ...] [--kinds ...] [--concurrent N] | roster remove <backend[:model]>   manage the live worker roster',
+    oneLine: 'show or change the live worker roster',
+  },
+  {
     name: 'peek',
     role: 'manager',
     usage: 'onni task peek [<worker id>] [--all] [--tail <1-30>]   a worker\'s state, changed files and recent lines (read-only)',

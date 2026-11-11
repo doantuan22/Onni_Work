@@ -10,7 +10,7 @@ import { MANAGER_MEMORY_MAX_BYTES } from '@onni/contract';
  *  measured against the shipped text in `docs/design/manager-worker.md` (Phụ lục B): 6 · 413 at
  *  the worst-case roster. The 4 000 placeholder could never bound the text it describes, and a
  *  budget below its own text passes only until the next block is added. */
-export const MANAGER_PROMPT_BASE_MAX_CHARS = 6_500;
+export const MANAGER_PROMPT_BASE_MAX_CHARS = 7_000;
 /** Roster: `ROSTER_MAX_WORKERS` capability lines. */
 export const MANAGER_CAPABILITIES_MAX_CHARS = 1_200;
 /** The command block generated from `dispatch/commands.ts`. */

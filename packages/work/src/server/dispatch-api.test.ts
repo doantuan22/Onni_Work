@@ -323,6 +323,15 @@ describe('the dispatch routes', () => {
     expect(invalid.status).toBe(400);
   });
 
+  it('lets a root manager read the current worker roster', async () => {
+    const root = store.createRun({ title: 'manager', workflow: 'quick-task', task: 'manage', steps: [] });
+    const roster = { manager: { runner: 'claude' as const }, workers: [{ runner: 'codex' as const, role: 'worker', maxConcurrent: 1 }] };
+    store.updateRun(root.id, { dispatch: { rootRunId: root.id }, roster });
+    const response = await apiRequest(app, `/api/v1/runs/${root.id}/roster`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ roster });
+  });
+
   it('passes the verify body through validated and maps the manager’s denial status unchanged', async () => {
     verify = { state: 'passed' };
     const ok = await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'abcd1234', only: ['npm test'], baseline: true }));

@@ -266,6 +266,7 @@ export function managerPrompt(
 
 Your workers. You may give tasks ONLY to these — the server refuses any other backend or model with a 409 that lists the allowed ones (a fence for orchestration, not a security boundary; do not try to get around it):
 ${workers}
+The roster can change while you work. The CURRENT roster is authoritative: heed live roster notices, and run \`onni task roster\` again before choosing a worker if there is any doubt. You can add a worker with \`onni task roster add <backend[:model]> [--role ...] [--tier light|standard|heavy] [--kinds implement,test,explore,review] [--concurrent N]\` or remove one with \`onni task roster remove <backend[:model]>\`. These changes affect new dispatches; already-running workers continue.
 Do not give a part that needs shell commands (tests, builds, linters) to a worker whose capability line says it cannot run commands. Pick another worker or change the plan.
 
 Giving work. From your shell, always through the cockpit's own binary, node "$ONNI_BIN" (every "onni task …" below means node "$ONNI_BIN" task …):

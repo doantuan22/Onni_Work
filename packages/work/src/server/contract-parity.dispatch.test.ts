@@ -80,6 +80,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type PlanPatchBody = InferRequestType<Run['plan']['parts'][':partId']['$patch']>['json'];
   type ManagerRoster200 = InferResponseType<Run['roster']['$patch'], 200>;
   type ManagerRosterBody = InferRequestType<Run['roster']['$patch']>['json'];
+  type ManagerRosterGet200 = InferResponseType<Run['roster']['$get'], 200>;
   type UserRoster200 = InferResponseType<Run['roster']['$put'], 200>;
   type UserRosterBody = InferRequestType<Run['roster']['$put']>['json'];
 
@@ -116,6 +117,7 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.infer<typeof treePlanSchema>, PlanPatch200>>,
     Assert<Exact<z.input<typeof treePlanPatchSchema>, PlanPatchBody>>,
     Assert<Exact<z.infer<typeof rosterUpdateResponseSchema>, ManagerRoster200>>,
+    Assert<Exact<z.infer<typeof rosterUpdateResponseSchema>, ManagerRosterGet200>>,
     Assert<Exact<z.input<typeof managerRosterUpdateInputSchema>, ManagerRosterBody>>,
     Assert<Exact<z.infer<typeof rosterUpdateResponseSchema>, UserRoster200>>,
     Assert<Exact<z.input<typeof rosterUpdateInputSchema>, UserRosterBody>>,

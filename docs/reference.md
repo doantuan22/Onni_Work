@@ -603,7 +603,16 @@ onni runs list                       # this project's tasks, newest first
 onni runs list --status running,review --json
 onni automation list                 # automations, with state and counts
 onni task tree <run id>              # a dispatch tree
+onni task roster                    # current manager and workers (inside a manager task)
+onni task roster add codex:codex-1 --role "tests" --tier standard --kinds test --concurrent 2
+onni task roster remove codex:codex-1
 ```
+
+The manager can change the live worker roster while the task is running. `onni task roster` shows
+the current authoritative list; add/remove changes apply to future dispatches, while existing
+workers continue. Use `onni task roster add <backend[:model]> [--role <text>] [--tier
+light|standard|heavy] [--kinds implement,test,explore,review] [--concurrent N]` or
+`onni task roster remove <backend[:model]>`.
 
 On a cockpit that serves several projects, add `ONNI_PROJECT_ID=<id>`
 (`onni projects` lists the ids); without it every command addresses the

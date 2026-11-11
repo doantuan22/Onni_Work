@@ -74,6 +74,13 @@ export function createDispatchRoutes(deps: {
       if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
       return c.json({ roster: outcome.roster });
     })
+    .get('/runs/:id/roster', (c) => {
+      const project = c.get('project');
+      const run = project.store.getRun(c.req.param('id'));
+      const access = requireRootManager(run, 'read the worker roster');
+      if (!access.ok) return c.json({ error: access.denied }, access.status);
+      return c.json({ roster: run!.roster! });
+    })
 
     /** Root-manager controls for a direct worker. Guard questions remain for the user to answer. */
     .post('/runs/:id/worker-message', jsonZodValidator(dispatchManagerMessageInputSchema), (c) => {
