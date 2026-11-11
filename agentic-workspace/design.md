@@ -183,6 +183,10 @@ these by using the existing index + client-side state.
    Workbench; 48px header token on column headers; one terminal per run + branch chip in terminal header.
    Known env artifact: 2 web tsc errors in `use-workspace-layouts.ts` come from `@onni/contract` resolving to the parent checkout.
 4. **Split conversations** (2-up), per-pane drafts/scroll, shortcut set, mobile model.
+   **✅ DONE 2026-11-11.** Delivered: ref-counted per-run SSE share (`api/run-stream-share.ts`, hidden panes release streams);
+   2-up split in `workspace-host.tsx` with labelled `SplitTabStrip` only while split, per-pane scroll anchors, `openBeside`;
+   workspace chords bound (`use-workspace-shortcuts.ts`: Alt+1..9, Mod+Alt+Left/Right/Down, yielding to inputs/xterm/dialogs);
+   mobile (<1024px) single pane + full-screen `ContextSheet`.
 5. **Contract additions** (§7 items 1–4) and unread-for-active-threads; transcript search.
 6. Optional: approvals lifecycle (pending decision 3).
 
