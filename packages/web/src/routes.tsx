@@ -12,6 +12,8 @@ import {
 
 import { useHealth, useProjects } from './api/queries'
 import { ProjectScopeProvider } from './api/project-scope-context'
+import { WorkspaceHost } from './components/workspace/workspace-host'
+import type { ViewId } from './routes/task-workspace/layout-state'
 import { useI18n } from './lib/i18n'
 import { lazyRoute } from './lib/lazy-route'
 import { bareRootLanding, locationToRestore, readStoredLastLocation } from './lib/last-location'
@@ -20,7 +22,6 @@ import { AutomationsLoading } from './routes/automations/automations-loading'
 import { CompareLoading } from './routes/compare-loading'
 import { GithubLoading } from './routes/github/github-loading'
 import { InboxRoute } from './routes/inbox'
-import { NewTaskRoute } from './routes/new-task'
 import { NotFoundRoute } from './routes/not-found'
 import { RepoGitLoading } from './routes/repo-git/repo-git-loading'
 import { SkillsLoading } from './routes/skills-loading'
@@ -234,7 +235,19 @@ function ProjectScopeRoute() {
  */
 function NewTaskProjectRoute() {
   const { projectId = '' } = useParams()
-  return <NewTaskRoute key={projectId} />
+  return <WorkspaceHost projectId={projectId} target={{ kind: 'draft' }} renderRun={() => null} />
+}
+
+/** Route adapter for a URL-selected workspace pane; the host retains the task route's lazy edge. */
+function TaskWorkspaceProjectRoute({ view }: { view?: ViewId }) {
+  const { projectId = '', id = '' } = useParams()
+  return (
+    <WorkspaceHost
+      projectId={projectId}
+      target={{ kind: 'run', runId: id, ...(view === undefined ? {} : { view }) }}
+      renderRun={(activeView) => <TaskWorkspaceRoute view={activeView} />}
+    />
+  )
 }
 
 /**
@@ -351,7 +364,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id"
           element={
             <Suspense fallback={<ThreadLoading />}>
-              <TaskWorkspaceRoute />
+              <TaskWorkspaceProjectRoute />
             </Suspense>
           }
         />
@@ -359,7 +372,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id/chat"
           element={
             <Suspense fallback={<ThreadLoading />}>
-              <TaskWorkspaceRoute view="session" />
+              <TaskWorkspaceProjectRoute view="session" />
             </Suspense>
           }
         />
@@ -367,7 +380,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id/changes"
           element={
             <Suspense fallback={<GitTabLoading tab="changes" />}>
-              <TaskWorkspaceRoute view="changes" />
+              <TaskWorkspaceProjectRoute view="changes" />
             </Suspense>
           }
         />
@@ -375,7 +388,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id/files"
           element={
             <Suspense fallback={<GitTabLoading tab="files" />}>
-              <TaskWorkspaceRoute view="files" />
+              <TaskWorkspaceProjectRoute view="files" />
             </Suspense>
           }
         />
@@ -383,7 +396,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id/graph"
           element={
             <Suspense fallback={<GitTabLoading tab="changes" />}>
-              <TaskWorkspaceRoute view="graph" />
+              <TaskWorkspaceProjectRoute view="graph" />
             </Suspense>
           }
         />
@@ -391,7 +404,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id/commits"
           element={
             <Suspense fallback={<GitTabLoading tab="changes" />}>
-              <TaskWorkspaceRoute view="commits" />
+              <TaskWorkspaceProjectRoute view="commits" />
             </Suspense>
           }
         />
@@ -407,7 +420,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id/preview"
           element={
             <Suspense fallback={<GitTabLoading tab="preview" />}>
-              <TaskWorkspaceRoute view="browser" />
+              <TaskWorkspaceProjectRoute view="browser" />
             </Suspense>
           }
         />
@@ -423,7 +436,7 @@ export const AppRoutes = memo(function AppRoutes() {
           path="tasks/:id/terminal"
           element={
             <Suspense fallback={<GitTabLoading tab="terminal" />}>
-              <TaskWorkspaceRoute view="terminal" />
+              <TaskWorkspaceProjectRoute view="terminal" />
             </Suspense>
           }
         />
