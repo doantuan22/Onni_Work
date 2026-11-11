@@ -6,6 +6,7 @@ import {
   ATTENTION_RANK,
   budgetStop,
   deriveAttention,
+  isNavigatorNeedsYou,
   wantsAttention,
   type Attention,
   type AttentionTone,
@@ -254,5 +255,13 @@ describe('lifecycle attention', () => {
   })
   it('identifies setup independently of agent activity', () => {
     expect(deriveAttention(run({worktreeLifecycle:{worktreeId:'worktree',generation:1,activeOperationId:'operation',phase:'setup',state:'running',needsAttention:false}})).label).toBe('preparing worktree')
+  })
+})
+
+describe('navigator attention', () => {
+  it('elevates actionable failures but leaves scheduled retries in Running', () => {
+    expect(isNavigatorNeedsYou(run({ status: 'failed' }))).toBe(true)
+    expect(isNavigatorNeedsYou(run({ status: 'failed', autoResumeAt: '2026-11-12T00:00:00.000Z' }))).toBe(false)
+    expect(isNavigatorNeedsYou(run({ status: 'review' }))).toBe(true)
   })
 })

@@ -115,10 +115,17 @@ describe('TaskQuickList', () => {
     })
 
     const headers = [...document.querySelectorAll('[data-slot="quick-list-bucket"] h2')].map((h) => h.textContent)
-    expect(headers).toEqual(['Needs you', 'Working', 'Recent'])
+    expect(headers).toEqual(['Needs you', 'Running', 'Recent'])
     expect(rowsIn('Needs you')).toEqual(['Structured changes endpoint1m'])
-    expect(rowsIn('Working')).toEqual(['Normalize agent-event protocol1m'])
+    expect(rowsIn('Running')).toEqual(['Normalize agent-event protocol1m'])
     expect(rowsIn('Recent')).toEqual(['README parallel-agents tagline1m'])
+  })
+
+  it('puts a failed task in Needs you while retaining its title and status', () => {
+    renderList({ runs: [run({ id: 'failed-task', title: 'Repair failed build', status: 'failed' })] })
+    expect(rowsIn('Needs you')).toEqual(['Repair failed build1m'])
+    expect(row('failed-task')?.querySelector('[data-slot="task-row-title"]')?.textContent).toContain('Repair failed build')
+    expect(dotOf('failed-task')?.getAttribute('aria-label')).toBe('failed')
   })
 
   it('links every row to its task', () => {
@@ -838,7 +845,7 @@ describe('TaskQuickListContainer', () => {
 /**
  * Task dispatch in the sidebar (spec `.ai/specs/2026-09-10-dispatch.md`): a dispatched child sits
  * under the task that ordered it, indented, rather than as a second top-level row. Nesting is per
- * BUCKET — a child asking for you in `Needs you` while its parent is still `Working` stays where
+ * BUCKET — a child asking for you in `Needs you` while its parent is still `Running` stays where
  * someone is looking for it.
  */
 describe('dispatched subtasks in the quick-list', () => {
@@ -920,7 +927,7 @@ describe('dispatched subtasks in the quick-list', () => {
         run({ id: 'c', status: 'waiting', dispatch: { rootRunId: 'p', parentRunId: 'p' } }),
       ],
     })
-    expect(idsIn('Working')).toEqual(['p'])
+    expect(idsIn('Running')).toEqual(['p'])
     expect(idsIn('Needs you')).toEqual(['c'])
     expect(row('c')?.getAttribute('data-depth')).toBe('0')
   })
