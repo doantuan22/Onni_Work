@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { savedWorkspaceLayoutSchema, workspaceColumnSchema, workspaceLayoutsSchema } from '@onni/contract'
 
 import {
   addColumn,
@@ -84,7 +85,7 @@ describe('defaultState', () => {
 })
 
 describe('Phase 3 workbench vocabulary', () => {
-  it('exports the deferred four-zone Workbench preset without changing the three-column cap', () => {
+  it('keeps all four Workbench zones within the additive four-column cap', () => {
     expect(WORKBENCH_LAYOUT_PRESET).toEqual({
       name: 'Workbench',
       columns: [
@@ -94,7 +95,26 @@ describe('Phase 3 workbench vocabulary', () => {
         { view: 'terminal', width: 30, stack: 'browser', stackRatio: DEFAULT_STACK_RATIO },
       ],
     })
-    expect(MAX_COLUMNS).toBe(3)
+    expect(MAX_COLUMNS).toBe(4)
+    const state = applySavedLayout(defaultState(), WORKBENCH_LAYOUT_PRESET)
+    expect(findLayout(state, 'Workbench')?.columns.map(({ view, stack }) => [view, stack])).toEqual([
+      ['session', undefined], ['files-tree', undefined], ['editor', undefined], ['terminal', 'browser'],
+    ])
+  })
+
+  it('validates the four-zone layout and only the supported stack shape at the contract boundary', () => {
+    expect(workspaceLayoutsSchema.safeParse({ layouts: [WORKBENCH_LAYOUT_PRESET], active: 'Workbench' }).success).toBe(true)
+    expect(workspaceColumnSchema.safeParse({ view: 'session', width: 100 }).success).toBe(true)
+    for (const column of [
+      { view: 'files', width: 100, stack: 'commits', stackRatio: 50 },
+      { view: 'terminal', width: 100, stackRatio: 50 },
+    ]) {
+      expect(workspaceColumnSchema.safeParse(column).success).toBe(false)
+      expect(savedWorkspaceLayoutSchema.safeParse({ name: 'Bad', columns: [column] }).success).toBe(false)
+    }
+    const supported = { view: 'terminal', width: 100, stack: 'browser', stackRatio: 50 }
+    expect(workspaceColumnSchema.safeParse(supported).success).toBe(true)
+    expect(savedWorkspaceLayoutSchema.safeParse({ name: 'Good', columns: [supported] }).success).toBe(true)
   })
 })
 
@@ -283,11 +303,12 @@ describe('addColumn', () => {
     expect(rejected).toBe(stackedState)
   })
 
-  it('caps at three columns', () => {
+  it('caps at four columns', () => {
     let state = chatState()
     state = addColumn(state, 'Chat', 'changes')
     state = addColumn(state, 'Chat', 'files')
-    const capped = addColumn(state, 'Chat', 'commits')
+    state = addColumn(state, 'Chat', 'commits')
+    const capped = addColumn(state, 'Chat', 'graph')
     expect(capped).toBe(state)
     expect(activeLayout(capped)?.columns).toHaveLength(MAX_COLUMNS)
   })
@@ -446,9 +467,10 @@ describe('dropView', () => {
   })
 
   it(`stops at ${MAX_COLUMNS} columns`, () => {
-    const three = dropView(dropView(defaultState(), 'changes', 1, 'insert'), 'files', 2, 'insert')
-    expect(dropView(three, 'commits', 0, 'insert')).toBe(three)
-    expect(views(dropView(three, 'commits', 1, 'replace'))).toEqual(['session', 'commits', 'files'])
+    const four = dropView(dropView(dropView(defaultState(), 'changes', 1, 'insert'), 'files', 2, 'insert'), 'commits', 3, 'insert')
+    expect(views(four)).toEqual(['session', 'changes', 'files', 'commits'])
+    expect(dropView(four, 'graph', 0, 'insert')).toBe(four)
+    expect(views(dropView(four, 'commits', 1, 'replace'))).toEqual(['session', 'commits', 'files', 'changes'])
   })
 })
 
@@ -589,6 +611,24 @@ describe('openDeepLink', () => {
     expect(minted.active).toBe('Changes')
     expect(views(minted)).toEqual(['changes'])
     expect(findLayout(minted, 'Chat')?.columns).toEqual(findLayout(before, 'Chat')?.columns)
+  })
+
+  it('keeps the active layout selected when a terminal deep link targets its existing terminal', () => {
+    const before: WorkspaceState = {
+      layouts: [{
+        name: 'Custom',
+        columns: [
+          { view: 'session', width: 28 },
+          { view: 'files-tree', width: 13 },
+          { view: 'editor', width: 29 },
+          { view: 'terminal', width: 30, stack: 'browser', stackRatio: 58 },
+        ],
+      }],
+      active: 'Custom',
+    }
+    expect(openDeepLink(before, 'terminal')).toBe(before)
+    expect(openDeepLink(before, 'terminal').layouts.flatMap(({ columns }) => columns)
+      .filter((column) => column.view === 'terminal' || column.stack === 'terminal')).toHaveLength(1)
   })
 })
 
@@ -759,7 +799,7 @@ describe('reviveState', () => {
     ])
   })
 
-  it('still takes only the first three when more than three are valid', () => {
+  it('still takes only the first four when more than four are valid', () => {
     const state = reviveState({
       layouts: [{
         name: 'Cztery',
@@ -768,11 +808,12 @@ describe('reviveState', () => {
           { view: 'changes', width: 25 },
           { view: 'files', width: 25 },
           { view: 'commits', width: 25 },
+          { view: 'graph', width: 25 },
         ],
       }],
       active: 'Cztery',
     })
-    expect(state.layouts[0]!.columns.map((column) => column.view)).toEqual(['session', 'changes', 'files'])
+    expect(state.layouts[0]!.columns.map((column) => column.view)).toEqual(['session', 'changes', 'files', 'commits'])
   })
 
   it('restores a Browser column together with its own tabs', () => {

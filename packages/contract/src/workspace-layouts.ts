@@ -28,7 +28,7 @@ export type WorkspaceView = z.infer<typeof workspaceViewSchema>;
 
 /** The bounds, exported so the cockpit enforces the SAME ones where state grows: the whole
  *  document is validated per PUT, so one over-limit value fails every later save. */
-export const MAX_WORKSPACE_COLUMNS = 3;
+export const MAX_WORKSPACE_COLUMNS = 4;
 export const MAX_WORKSPACE_BROWSER_TABS = 12;
 export const MAX_WORKSPACE_TAB_URL_LENGTH = 2048;
 export const MAX_WORKSPACE_LAYOUT_NAME_LENGTH = 80;
@@ -47,13 +47,18 @@ export const workspaceColumnSchema = z.object({
    *  to 100 is recoverable rather than rejected. */
   width: z.number().finite().min(0).max(100),
   browser: workspaceBrowserSchema.optional(),
-  /** D6 is enforced by the cockpit reviver; the wire stays additive for old saved layouts. */
+  /** D6 supports only Terminal over Preview; optional for older saved layouts. */
   stack: workspaceViewSchema.optional(),
   stackRatio: z.number().finite().min(0).max(100).optional(),
-});
+}).refine(
+  ({ view, stack, stackRatio }) =>
+    (stack === undefined || (view === 'terminal' && stack === 'browser')) &&
+    (stackRatio === undefined || stack !== undefined),
+  { message: 'stack supports only terminal over browser, and stackRatio requires stack' },
+);
 export type WorkspaceColumnState = z.infer<typeof workspaceColumnSchema>;
 
-/** A layout holds ZERO to three columns — zero because §10 says "A saved layout may
+/** A layout holds ZERO to four columns — zero because §10 says "A saved layout may
  *  intentionally have no columns", which is the shape closing the last column leaves behind. */
 export const workspaceLayoutSchema = z.object({
   name: z.string().min(1).max(MAX_WORKSPACE_LAYOUT_NAME_LENGTH),
@@ -99,7 +104,12 @@ export const savedWorkspaceLayoutSchema = z.object({
       width: z.number().finite().min(0).max(100),
       stack: workspaceViewSchema.optional(),
       stackRatio: z.number().finite().min(0).max(100).optional(),
-    }))
+    }).refine(
+      ({ view, stack, stackRatio }) =>
+        (stack === undefined || (view === 'terminal' && stack === 'browser')) &&
+        (stackRatio === undefined || stack !== undefined),
+      { message: 'stack supports only terminal over browser, and stackRatio requires stack' },
+    ))
     .min(1)
     .max(MAX_WORKSPACE_COLUMNS),
 });
