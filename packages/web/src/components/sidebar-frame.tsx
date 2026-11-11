@@ -206,6 +206,7 @@ function SidebarResizeHandle({ width, onWidthChange }: SidebarResize) {
       onPointerMove={splitter.onPointerMove}
       onPointerUp={splitter.onPointerUp}
       onPointerCancel={splitter.onPointerCancel}
+      onLostPointerCapture={splitter.onLostPointerCapture}
       onKeyDown={splitter.onKeyDown}
       onDoubleClick={splitter.onDoubleClick}
       title={t('Drag to resize the sidebar — double-click to reset')}

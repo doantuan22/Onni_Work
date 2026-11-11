@@ -58,6 +58,7 @@ export function VerticalSplit({
         onDoubleClick={splitter.onDoubleClick}
         onKeyDown={splitter.onKeyDown}
         onPointerCancel={splitter.onPointerCancel}
+        onLostPointerCapture={splitter.onLostPointerCapture}
         onPointerDown={splitter.onPointerDown}
         onPointerMove={splitter.onPointerMove}
         onPointerUp={splitter.onPointerUp}

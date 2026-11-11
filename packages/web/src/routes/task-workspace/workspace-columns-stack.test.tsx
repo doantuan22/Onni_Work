@@ -55,7 +55,7 @@ describe('WorkspaceColumns vertical stack rendering', () => {
     expect(screen.getByTestId('view-terminal')).toBeDefined()
     expect(screen.getByTestId('view-browser')).toBeDefined()
 
-    const separator = screen.getByRole('separator')
+    const separator = screen.getByRole('separator', { name: 'Resize Terminal and Preview panels' })
     expect(separator.getAttribute('aria-orientation')).toBe('horizontal')
     expect(separator.getAttribute('aria-valuenow')).toBe('58')
     expect(separator.getAttribute('aria-valuemin')).toBe('15')
