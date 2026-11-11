@@ -647,6 +647,23 @@ describe('document title wiring', () => {
   })
 })
 
+describe('task workspace rail density', () => {
+  it('passes the four-zone density to the shell on a task workspace route', async () => {
+    serve({ '/api/v1/health': HEALTH, '/api/v1/todos': [], '/api/v1/p/onni/runs': [] })
+    renderScopedShell('/p/onni/tasks/run-1', 'onni')
+
+    await waitFor(() => expect(document.querySelector('[data-slot="sidebar"]')?.hasAttribute('data-rail')).toBe(true))
+  })
+
+  it('keeps ordinary project pages below the four-zone rail threshold', async () => {
+    serve({ '/api/v1/health': HEALTH, '/api/v1/todos': [], '/api/v1/p/onni/runs': [] })
+    renderScopedShell('/p/onni/', 'onni')
+
+    await waitFor(() => expect(document.querySelector('[data-slot="sidebar"]')).not.toBeNull())
+    expect(document.querySelector('[data-slot="sidebar"]')?.hasAttribute('data-rail')).toBe(false)
+  })
+})
+
 // #1410 — health describes the boot folder only. Booted in `$HOME` (never registered) with ONE
 // cloned GitHub project, the registry has a single entry, so the shell renders the FLAT nav —
 // which must gate GitHub on that project's own remote, not on the boot folder's `forge: null`.

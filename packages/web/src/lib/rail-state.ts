@@ -68,13 +68,19 @@ function useNarrowRailViewport(): boolean {
 
 /** The project-scoped manual choice wins over changing viewport and pane density. */
 export function useRailState(projectId: string, contentZoneCount: number) {
-  const [manualOverride, setManualOverride] = React.useState<RailManualOverride | null>(() =>
-    typeof window === 'undefined' ? null : readStoredRailOverride(projectId),
-  )
+  const [storedChoice, setStoredChoice] = React.useState(() => ({
+    projectId,
+    value: typeof window === 'undefined' ? null : readStoredRailOverride(projectId),
+  }) as { projectId: string; value: RailManualOverride | null });
+  // Key the state by project so the previous project's choice cannot affect the first render
+  // after navigation, before the synchronization effect runs.
+  const manualOverride = storedChoice.projectId === projectId
+    ? storedChoice.value
+    : typeof window === 'undefined' ? null : readStoredRailOverride(projectId);
   const narrowViewport = useNarrowRailViewport()
 
   React.useEffect(() => {
-    setManualOverride(readStoredRailOverride(projectId))
+    setStoredChoice({ projectId, value: readStoredRailOverride(projectId) })
   }, [projectId])
 
   const collapsed = railIsCollapsed({
@@ -85,7 +91,7 @@ export function useRailState(projectId: string, contentZoneCount: number) {
   const toggle = React.useCallback(() => {
     const next: RailManualOverride = collapsed ? 'expanded' : 'collapsed'
     writeStoredRailOverride(projectId, next)
-    setManualOverride(next)
+    setStoredChoice({ projectId, value: next })
   }, [collapsed, projectId])
 
   React.useEffect(() => {

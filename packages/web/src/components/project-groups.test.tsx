@@ -297,6 +297,21 @@ describe('ProjectGroups', () => {
     expect(group('shop').querySelector('[data-slot="project-attention"]')).toBeNull()
   })
 
+  it('includes unscheduled failures in the project needs-you badge', async () => {
+    serve({
+      '/api/v1/p/onni/runs': [
+        run({ id: 'failed', status: 'failed' }),
+        run({ id: 'scheduled', status: 'failed', autoResumeAt: '2026-11-12T00:00:00.000Z' }),
+        run({ id: 'archived-failure', status: 'failed', archived: true }),
+      ],
+    })
+    renderGroups([project(), project({ id: 'shop', name: 'shop', lastOpenedAt: '2026-07-19T00:00:00.000Z' })])
+
+    await waitFor(() =>
+      expect(group('onni').querySelector('[data-slot="project-attention"]')?.textContent).toBe('1'),
+    )
+  })
+
   it("the boot group reads the 'default' cache entry — the one the stream patches", async () => {
     // The boot project mounts UNSCOPED (routes.tsx), so the main view and the SSE patcher both
     // live under the 'default' scope key. The boot group must share that entry, or its list and
