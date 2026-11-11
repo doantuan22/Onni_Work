@@ -178,6 +178,8 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
       'POST /runs/:id/worker-message',
       'POST /runs/:id/worker-cancel',
       'POST /runs/:id/worker-redirect',
+      'PUT /runs/:id/roster',
+      'PATCH /runs/:id/roster',
       'POST /runs/:id/cancel',
       'POST /runs/archive-finished',
       'PUT /ui-state',
@@ -255,6 +257,8 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     await expectParity(`/runs/${runId}/worker-message`, json('POST', {}));
     await expectParity(`/runs/${runId}/worker-cancel`, json('POST', {}));
     await expectParity(`/runs/${runId}/worker-redirect`, json('POST', {}));
+    await expectParity('/runs/no-such-run/roster', json('PUT', { roster: { manager: { runner: 'claude' }, workers: [{ runner: 'codex' }] } }));
+    await expectParity('/runs/no-such-run/roster', json('PATCH', { workers: [{ runner: 'codex' }] }));
     await expectParity(`/runs/${runId}/cancel`, () => ({ method: 'POST' }));
     await expectParity('/runs/no-such-run', json('PATCH', { title: 't' }));
     await expectParity('/workflows/no-such-workflow', () => ({

@@ -21,9 +21,12 @@ import {
   dispatchVerifyResultSchema,
   managerAskInputSchema,
   managerAskResponseSchema,
+  managerRosterUpdateInputSchema,
   managerMemoryAddSchema,
   managerMemoryPutSchema,
   managerMemoryReadSchema,
+  rosterUpdateInputSchema,
+  rosterUpdateResponseSchema,
   treePlanPatchSchema,
   treePlanPutSchema,
   treePlanSchema,
@@ -75,6 +78,10 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
   type PlanPutBody = InferRequestType<Run['plan']['$put']>['json'];
   type PlanPatch200 = InferResponseType<Run['plan']['parts'][':partId']['$patch'], 200>;
   type PlanPatchBody = InferRequestType<Run['plan']['parts'][':partId']['$patch']>['json'];
+  type ManagerRoster200 = InferResponseType<Run['roster']['$patch'], 200>;
+  type ManagerRosterBody = InferRequestType<Run['roster']['$patch']>['json'];
+  type UserRoster200 = InferResponseType<Run['roster']['$put'], 200>;
+  type UserRosterBody = InferRequestType<Run['roster']['$put']>['json'];
 
   type _Checks = [
     Assert<Exact<z.infer<typeof dispatchResponseSchema>, Dispatch201>>,
@@ -108,6 +115,10 @@ describe('src/contract/dispatch.ts matches the dispatch routes exactly', () => {
     Assert<Exact<z.input<typeof treePlanPutSchema>, PlanPutBody>>,
     Assert<Exact<z.infer<typeof treePlanSchema>, PlanPatch200>>,
     Assert<Exact<z.input<typeof treePlanPatchSchema>, PlanPatchBody>>,
+    Assert<Exact<z.infer<typeof rosterUpdateResponseSchema>, ManagerRoster200>>,
+    Assert<Exact<z.input<typeof managerRosterUpdateInputSchema>, ManagerRosterBody>>,
+    Assert<Exact<z.infer<typeof rosterUpdateResponseSchema>, UserRoster200>>,
+    Assert<Exact<z.input<typeof rosterUpdateInputSchema>, UserRosterBody>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {

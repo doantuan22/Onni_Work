@@ -7,6 +7,7 @@ import {
   dispatchReportSchema,
   dispatchVerifyInputSchema,
   managerAskInputSchema,
+  managerRosterUpdateInputSchema,
   mergeInputSchema,
   PEEK_TAIL_MAX_LINES,
   treePlanPatchSchema,
@@ -16,6 +17,9 @@ import {
 import type { ProjectContext } from '../project-context.ts';
 import { jsonZodValidator, queryZodValidator } from '../validators.ts';
 import { z } from 'zod';
+import type { ProviderId } from '../../core/provider-auth.ts';
+import type { ProviderAccountScope } from '../provider-action-gate.ts';
+import { requireRootManager } from '../../dispatch/access.ts';
 
 type ProjectApiEnv = { Variables: { project: ProjectContext } };
 
@@ -27,6 +31,7 @@ const queryValue = z.union([z.string(), z.array(z.string()).transform((v) => v[0
 // its environment; nothing stops a human or a script from calling them too.
 export function createDispatchRoutes(deps: {
   requireDispatch: MiddlewareHandler<ProjectApiEnv>;
+  providerActionError: (required: readonly ProviderId[], scope?: ProviderAccountScope) => Promise<string | null>;
 }) {
   return new Hono<ProjectApiEnv>()
     .use('/runs/:id/dispatch', deps.requireDispatch)
@@ -42,6 +47,7 @@ export function createDispatchRoutes(deps: {
     .use('/runs/:id/ask', deps.requireDispatch)
     .use('/runs/:id/plan', deps.requireDispatch)
     .use('/runs/:id/plan/parts/:partId', deps.requireDispatch)
+    .use('/runs/:id/roster', deps.requireDispatch)
 
     /** Create ONE child of run `:id`. Refusals (cap, budget, settled parent) are 409 with the
      *  reason — the same text the parent's transcript notes. */
@@ -50,6 +56,23 @@ export function createDispatchRoutes(deps: {
       const outcome = await manager.dispatchFromAgent(c.req.param('id'), c.req.valid('json'));
       if ('refused' in outcome) return c.json({ error: outcome.refused }, 409);
       return c.json(outcome, 201);
+    })
+
+    /** Root managers can adjust worker entries only; the manager identity and safety settings stay fixed. */
+    .patch('/runs/:id/roster', jsonZodValidator(managerRosterUpdateInputSchema), async (c) => {
+      const project = c.get('project');
+      const runId = c.req.param('id');
+      const access = requireRootManager(project.store.getRun(runId), 'update the worker roster');
+      if (!access.ok) return c.json({ error: access.denied }, access.status);
+      const input = c.req.valid('json');
+      const unavailable = await deps.providerActionError(
+        [...new Set(input.workers.map((worker) => worker.runner))],
+        { repoRoot: project.root },
+      );
+      if (unavailable) return c.json({ error: unavailable }, 409);
+      const outcome = project.manager.updateRosterFromManager(runId, input);
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json({ roster: outcome.roster });
     })
 
     /** Root-manager controls for a direct worker. Guard questions remain for the user to answer. */

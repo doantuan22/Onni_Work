@@ -4,7 +4,7 @@ import { runnerSchema, type Runner } from './health.ts';
 /**
  * Manager / Worker (docs/design/manager-worker.md): one agent manages a task tree and may hand
  * work ONLY to the workers listed here. The roster is chosen by the user (never "every agent on
- * the machine"), snapshotted on the root run at start, and enforced by the server in `dispatch()`.
+ * the machine"), stored on the root run, and enforced by the server in `dispatch()`.
  * It is an orchestration fence, not a security boundary: an agent can still call a CLI or the HTTP
  * API directly.
  */
@@ -111,6 +111,19 @@ export const rosterSchema = z
     });
   });
 export type Roster = z.infer<typeof rosterSchema>;
+
+/** Replace a live tree's full roster from the cockpit. The manager identity is immutable in the store. */
+export const rosterUpdateInputSchema = z.strictObject({ roster: rosterSchema });
+export type RosterUpdateInput = z.infer<typeof rosterUpdateInputSchema>;
+
+/** Manager-authored changes are limited to the worker list. */
+export const managerRosterUpdateInputSchema = z.strictObject({
+  workers: z.array(rosterWorkerSchema).min(1).max(ROSTER_MAX_WORKERS),
+});
+export type ManagerRosterUpdateInput = z.infer<typeof managerRosterUpdateInputSchema>;
+
+export const rosterUpdateResponseSchema = z.strictObject({ roster: rosterSchema });
+export type RosterUpdateResponse = z.infer<typeof rosterUpdateResponseSchema>;
 
 /** A saved roster, shared by every project of the workspace; a run can override it. */
 export const managerPresetSchema = z.strictObject({

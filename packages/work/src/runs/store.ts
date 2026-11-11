@@ -65,7 +65,7 @@ import { MAX_REF } from './task-refs.ts';
 import { workflowDefSchema } from '../workflows/types.ts';
 // A contract VALUE, like `workspaceUiStateSchema` in `workspace/migrations.ts`: the persisted
 // `dispatch` object and its wire half are literally the same schema, so they cannot drift.
-import { limitHitSchema, limitUsageSchema, rosterSchema, runLimitsSchema } from '@onni/contract';
+import { limitHitSchema, limitUsageSchema, rosterSchema, rosterWorkerKey, runLimitsSchema, type Roster } from '@onni/contract';
 import { dispatchSchema, trackerAssociationSchema, trackerAutomationEventSchema, webhookAttentionRequestSchema, webhookCompletionReasonSchema, worktreeLifecycleProjectionSchema } from '@onni/contract';
 
 import { RUNNER_IDS } from '../core/agent-runner.ts';
@@ -1474,6 +1474,22 @@ export class RunStore extends EventEmitter {
     }
     this.touch(run);
     return run;
+  }
+
+  /** Atomically replace a live root's roster while preserving the manager identity. */
+  updateRoster(id: string, roster: Roster): { ok: true; roster: Roster } | { ok: false; reason: 'missing' | 'not-root' | 'manager-changed' | 'invalid' } {
+    const parsed = rosterSchema.safeParse(roster);
+    if (!parsed.success) return { ok: false, reason: 'invalid' };
+    const run = this.getRun(id);
+    if (!run) return { ok: false, reason: 'missing' };
+    if (!run.roster || run.dispatch?.rootRunId !== id) return { ok: false, reason: 'not-root' };
+    if (rosterWorkerKey(parsed.data.manager) !== rosterWorkerKey(run.roster.manager)) {
+      return { ok: false, reason: 'manager-changed' };
+    }
+    // Removal only affects future dispatch admission. Existing children keep running under their
+    // original records; dispatch() resolves against this root's current roster on every call.
+    this.updateRun(id, { roster: parsed.data });
+    return { ok: true, roster: parsed.data };
   }
 
   /**

@@ -29,11 +29,13 @@ import {
   type DispatchManagerRedirectFailure,
   type DispatchManagerRedirectInput,
   type DispatchManagerRedirectResult,
+  type ManagerRosterUpdateInput,
   type DispatchOrderSnapshot,
   type DispatchPeek,
   type DispatchPeekEntry,
   type DispatchTrialMerge,
   type RunDispatch,
+  type Roster,
 } from '@onni/contract';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -73,6 +75,86 @@ import type {
   ManagerControlSessionState,
   RedirectDispatchOrigin,
 } from './internal-types.ts';
+
+function rosterSummary(ctx: ManagerControlContext, rootId: string, roster: Roster): string {
+  return roster.workers.map((worker) => {
+    const role = ctx.store.redactRunText(rootId, worker.role);
+    return `${rosterWorkerKey(worker)}${role ? ` — ${role}` : ''}`;
+  }).join('; ');
+}
+
+function workerDiff(previous: Roster, next: Roster): string[] {
+  const before = new Map(previous.workers.map((worker) => [rosterWorkerKey(worker), worker]));
+  const after = new Map(next.workers.map((worker) => [rosterWorkerKey(worker), worker]));
+  const changes = [
+    ...[...after.keys()].filter((key) => !before.has(key)).map((key) => `added ${key}`),
+    ...[...before.keys()].filter((key) => !after.has(key)).map((key) => `removed ${key}`),
+    ...[...after.entries()]
+      .filter(([key, worker]) => before.has(key) && JSON.stringify(before.get(key)) !== JSON.stringify(worker))
+      .map(([key]) => `adjusted ${key}`),
+  ];
+  if (previous.workers.map(rosterWorkerKey).join('\0') !== next.workers.map(rosterWorkerKey).join('\0') &&
+      previous.workers.length === next.workers.length && previous.workers.every((worker) => after.has(rosterWorkerKey(worker)))) {
+    changes.push('worker order changed');
+  }
+  return changes;
+}
+
+function recordRosterChange(ctx: ManagerControlContext, root: RunRecord, previous: Roster, roster: Roster, by: 'user' | 'manager'): void {
+  const changes = workerDiff(previous, roster);
+  const summary = rosterSummary(ctx, root.id, roster);
+  appendLedger(ctx.dataDir, root.id, {
+    type: 'roster-change',
+    by,
+    manager: rosterWorkerKey(roster.manager),
+    changes,
+    workers: roster.workers.map((worker) => ({
+      key: rosterWorkerKey(worker),
+      role: ctx.store.redactRunText(root.id, worker.role),
+      concurrency: worker.maxConcurrent,
+    })),
+  });
+  const message = `worker roster updated by ${by}; ${changes.length ? changes.join('; ') : 'no worker changes'}; current workers: ${summary}`;
+  ctx.store.appendEvent(root.id, { type: 'roster-change', by, changes, message });
+  const content: PastedContent[] = [{ type: 'text', text: message }];
+  if (!ctx.sendMessage(root.id, content) && !ctx.deferMessage(root.id, content)) {
+    const latest = ctx.store.getRun(root.id);
+    if (latest) ctx.store.updateRun(root.id, {
+      queuedMessages: [...(latest.queuedMessages ?? []), { id: randomUUID(), text: message, createdAt: new Date().toISOString() }],
+    });
+  }
+}
+
+export function updateRosterFromUser(ctx: ManagerControlContext, runId: string, roster: Roster):
+  | { roster: Roster }
+  | { denied: string; status: 400 | 404 | 409 } {
+  const run = ctx.store.getRun(runId);
+  if (!run) return { denied: `no such run: ${runId}`, status: 404 };
+  if (!run.roster || run.dispatch?.rootRunId !== run.id) return { denied: 'run is not a manager–worker tree root', status: 409 };
+  if (!['queued', 'running', 'waiting'].includes(run.status)) return { denied: 'task is not live', status: 409 };
+  const previous = run.roster;
+  const updated = ctx.store.updateRoster(run.id, roster);
+  if (!updated.ok) return { denied: updated.reason === 'manager-changed' ? 'the manager backend and model cannot be changed' : 'roster could not be updated', status: updated.reason === 'invalid' ? 400 : 409 };
+  if (workerDiff(previous, updated.roster).length) recordRosterChange(ctx, run, previous, updated.roster, 'user');
+  return { roster: updated.roster };
+}
+
+export function updateRosterFromManager(ctx: ManagerControlContext, runId: string, input: ManagerRosterUpdateInput):
+  | { roster: Roster }
+  | { denied: string; status: 400 | 403 | 404 | 409 } {
+  if (!dispatchEnabled(ctx)) return { denied: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0)', status: 409 };
+  const run = ctx.store.getRun(runId);
+  const access = requireRootManager(run, 'update the worker roster');
+  if (!access.ok) return { denied: access.denied, status: access.status };
+  if (!run) return { denied: `no such run: ${runId}`, status: 404 };
+  if (!run.roster) return { denied: 'run has no manager–worker roster', status: 409 };
+  if (!['queued', 'running', 'waiting'].includes(run.status)) return { denied: 'task is not live', status: 409 };
+  const previous = run.roster;
+  const updated = ctx.store.updateRoster(run.id, { manager: run.roster.manager, workers: input.workers });
+  if (!updated.ok) return { denied: updated.reason === 'invalid' ? 'worker roster is invalid' : 'roster could not be updated', status: updated.reason === 'invalid' ? 400 : 409 };
+  if (workerDiff(previous, updated.roster).length) recordRosterChange(ctx, run, previous, updated.roster, 'manager');
+  return { roster: updated.roster };
+}
 /** Is dispatch on at all? One read, so the gate cannot drift between the sites below. */
 export function dispatchEnabled(ctx: ManagerControlContext): boolean {
     return resolveCapabilities(ctx.managerEnv()).dispatch;

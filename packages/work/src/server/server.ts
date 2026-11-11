@@ -1897,7 +1897,7 @@ export function createApp(deps: ServerDeps) {
     await next();
   };
 
-  const dispatchRoutes = createDispatchRoutes({ requireDispatch });
+  const dispatchRoutes = createDispatchRoutes({ requireDispatch, providerActionError });
 
   const memoryRoutes = createMemoryRoutes({ requireDispatch });
 

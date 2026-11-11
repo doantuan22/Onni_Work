@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, realpathSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -50,6 +50,48 @@ function queuedWorker(runner: Runner = 'codex', extraDispatch: Record<string, un
 }
 
 describe('manager message and cancellation controls', () => {
+  it('lets the user replace a live root roster without changing the manager and queues a durable notice', () => {
+    const updated = manager.updateRosterFromUser(managerRunId, {
+      manager: { runner: 'claude' },
+      workers: [{ runner: 'pi', role: 'new worker', maxConcurrent: 2 }],
+    });
+    expect(updated).toMatchObject({ roster: { manager: { runner: 'claude' }, workers: [{ runner: 'pi' }] } });
+    expect(store.getRun(managerRunId)?.queuedMessages?.at(-1)?.text).toContain('worker roster updated by user');
+    expect(store.readEvents(managerRunId).some((event) => event.type === 'roster-change')).toBe(true);
+    expect(readFileSync(join(root, '.ai', 'onni', 'dispatch', managerRunId, 'ledger.jsonl'), 'utf8')).toContain('roster-change');
+  });
+
+  it('injects a precise roster-change notice into the live manager session', () => {
+    const sendMessage = vi.fn(() => true);
+    const seam = manager as unknown as { active: Map<string, unknown> };
+    seam.active.set(managerRunId, { cancelled: false, session: { open: true, sendMessage } });
+    manager.updateRosterFromUser(managerRunId, {
+      manager: { runner: 'claude' },
+      workers: [{ runner: 'pi', role: 'new parser worker', maxConcurrent: 1 }],
+    });
+    expect(sendMessage).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ type: 'text', text: expect.stringContaining('added pi:') }),
+    ]));
+  });
+
+  it('lets the manager change workers only and records the actor', () => {
+    const updated = manager.updateRosterFromManager(managerRunId, {
+      workers: [{ runner: 'pi', role: 'updated', maxConcurrent: 1 }],
+    });
+    expect(updated).toMatchObject({ roster: { manager: { runner: 'claude' }, workers: [{ runner: 'pi', role: 'updated' }] } });
+    expect(store.getRun(managerRunId)?.managerFullAccess).toBeUndefined();
+    expect(store.getRun(managerRunId)?.limits).toBeUndefined();
+    expect(readFileSync(join(root, '.ai', 'onni', 'dispatch', managerRunId, 'ledger.jsonl'), 'utf8')).toContain('"by":"manager"');
+  });
+
+  it('refuses a user roster update that changes the manager identity', () => {
+    expect(manager.updateRosterFromUser(managerRunId, {
+      manager: { runner: 'pi' },
+      workers: [{ runner: 'codex', role: 'worker', maxConcurrent: 1 }],
+    })).toMatchObject({ status: 409, denied: 'the manager backend and model cannot be changed' });
+    expect(store.getRun(managerRunId)?.roster?.manager.runner).toBe('claude');
+  });
+
   it('persists only delivery metadata while queueing a manager message', () => {
     const worker = queuedWorker('codex');
     const result = manager.messageFor(managerRunId, { target: worker.id, text: 'please finish the parser' });
