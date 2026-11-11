@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
+import { ProjectScopeProvider } from '@/api/project-scope-context'
 import { workspaceQueryKeys } from '@/api/queries'
 import type {
   AgentProfilesResponse,
@@ -16,6 +17,8 @@ import type {
   WorkflowsResponse,
 } from '@onni/api-client'
 import { resetToasts, Toaster } from '@/components/ui/toaster'
+import { readWorkspaceState, resetWorkspaceStateStores } from '@/lib/workspace-state'
+import { WorkspaceHost } from '@/components/workspace/workspace-host'
 
 import { readDraft, resetDraft, writeDraft } from './new-task-draft'
 import { NewTaskRoute } from './new-task'
@@ -49,6 +52,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   resetToasts()
+  resetWorkspaceStateStores()
   vi.unstubAllGlobals()
 })
 
@@ -373,6 +377,32 @@ function renderNewTaskSurface({
   return { onStarted, onScheduled }
 }
 
+function renderWorkspaceNewTask() {
+  const client = createQueryClient()
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/p/shop/new']}>
+        <ProjectScopeProvider projectId="shop">
+          <Routes>
+            <Route
+              path="/p/:projectId/new"
+              element={(
+                <WorkspaceHost
+                  projectId="shop"
+                  target={{ kind: 'draft' }}
+                  renderRun={() => <div>Run pane</div>}
+                />
+              )}
+            />
+          </Routes>
+          <LocationProbe />
+          <Toaster />
+        </ProjectScopeProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
 const textarea = () => screen.getByLabelText('Describe a task for the agent') as HTMLTextAreaElement
 
 const pngFile = (name = 'shot.png', bytes: number[] = [1, 2, 3]) =>
@@ -406,6 +436,25 @@ describe('NewTaskSurface callbacks', () => {
     expect(immediate.onScheduled).not.toHaveBeenCalled()
   })
 
+})
+
+it('lets WorkspaceHost close the draft after scheduling without leaving /new', async () => {
+  serve({
+    health: { ...HEALTH, capabilities: { ...HEALTH.capabilities, automations: true } },
+    deferredPreview: async () => new Response(JSON.stringify({ available: true, notBefore: '2099-01-01T09:00:00Z', timeZone: 'UTC', previewRevision: 'r' }), { status: 200, headers: { 'content-type': 'application/json' } }),
+  })
+  renderWorkspaceNewTask()
+  await pillReady()
+  fireEvent.change(textarea(), { target: { value: 'Schedule from the workspace' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Choose task start time' }))
+  await waitFor(() => expect((screen.getByLabelText('After usage limit resets') as HTMLInputElement).disabled).toBe(false))
+  fireEvent.click(screen.getByLabelText('After usage limit resets'))
+  const send = () => screen.getByRole('button', { name: 'Schedule task' }) as HTMLButtonElement
+  await waitFor(() => expect(send().disabled).toBe(false), { timeout: 3000 })
+  fireEvent.click(send())
+
+  await waitFor(() => expect(readWorkspaceState('shop').threads).toEqual([]))
+  expect(location()).toBe('/p/shop/new')
 })
 
 /** The Task settings panel starts folded: open it from the summary line's settings control. */

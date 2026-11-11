@@ -733,7 +733,11 @@ export function NewTaskSurface({
     setScheduleRecovery(null)
     await queryClient.invalidateQueries({ queryKey: automationsQueryKey() })
     if (scheduled.outcome === 'cancelled') toast(t('The original schedule was already cancelled.'))
-    navigate(scheduled.outcome === 'launched' && scheduled.runIds[0] ? `/tasks/${scheduled.runIds[0]}` : '/')
+    // A scoped /p/:projectId/new route is rendered by WorkspaceHost, which owns the draft pane
+    // and its URL. The legacy standalone surface still navigates after scheduling.
+    if (urlProjectId === undefined) {
+      navigate(scheduled.outcome === 'launched' && scheduled.runIds[0] ? `/tasks/${scheduled.runIds[0]}` : '/')
+    }
   }
   const sendSchedule = async (request: DeferredCreateInput, preserveDraft = false) => {
     const wasAmbiguous = scheduleRequest.current !== null
