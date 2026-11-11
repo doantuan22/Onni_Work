@@ -740,6 +740,12 @@ function WorkspaceView({
               }}
             />
           )
+        case 'files-tree':
+        case 'editor':
+        case 'tree':
+          return null
+        default:
+          return null
       }
     },
     [

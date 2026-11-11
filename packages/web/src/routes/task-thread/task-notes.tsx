@@ -8,7 +8,7 @@ import { useNavigate } from '@/lib/project-router'
 
 import { GitTabLoadError, GitTabLoading } from '../task-git/git-tab-loading'
 import { LayoutCards } from '../task-workspace/layout-cards'
-import { FIXED_VIEW_ORDER, VIEW_PATHS } from '../task-workspace/layout-state'
+import { FIXED_VIEW_ORDER, isDeepLinkViewId, VIEW_PATHS, viewLabel } from '../task-workspace/layout-state'
 import { stripEntries, useStripKeyHints } from '../task-workspace/strip'
 import { Markdown } from './markdown'
 import { RunHeader } from './run-header'
@@ -55,7 +55,7 @@ function NotesHeader({ run }: { run: ApiRun }) {
         layouts={[]}
         active=""
         fixedViews={fixedViews}
-        onSelectFixed={(view) => navigate(`/tasks/${run.id}/${VIEW_PATHS[view]}`)}
+        onSelectFixed={(view) => navigate(`/tasks/${run.id}/${isDeepLinkViewId(view) ? VIEW_PATHS[view] : viewLabel(view).toLowerCase().replace(/\s+/g, '-')}`)}
         onSelect={noop}
         onClose={noop}
         notesHref={`/tasks/${run.id}/notes`}
