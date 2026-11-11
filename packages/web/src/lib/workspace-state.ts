@@ -281,6 +281,51 @@ export function normalizeWorkspaceState(raw: unknown, projectId: string): Worksp
   }
 }
 
+/**
+ * Hydrates local workspace state from an external pane state (e.g. server mirror).
+ * Preserves local navigator and context settings while updating threads, active, and split.
+ * If incoming has no valid threads, the current state is preserved intact.
+ */
+export function hydrate(
+  state: WorkspaceState,
+  incoming: unknown,
+  projectId?: string,
+): WorkspaceState {
+  if (!isObject(incoming) || !Array.isArray(incoming.threads) || incoming.threads.length === 0) {
+    return state
+  }
+
+  const targetProject =
+    projectId ??
+    (incoming.threads.find((t) => isObject(t) && typeof (t as Record<string, unknown>).projectId === 'string') as
+      | PaneRef
+      | undefined)?.projectId ??
+    state.threads[0]?.projectId ??
+    ''
+
+  const activeCandidate =
+    typeof incoming.active === 'string'
+      ? incoming.active
+      : state.active
+
+  const normalized = normalizeWorkspaceState(
+    {
+      navigator: state.navigator,
+      threads: incoming.threads,
+      active: activeCandidate,
+      split: incoming.split ?? state.split,
+      context: state.context,
+    },
+    targetProject,
+  )
+
+  if (normalized.threads.length === 0) {
+    return state
+  }
+
+  return normalized
+}
+
 export function readWorkspaceState(projectId: string): WorkspaceState {
   if (typeof window === 'undefined') return createWorkspaceState()
   try {

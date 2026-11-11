@@ -8,6 +8,7 @@ import { useI18n } from '@/lib/i18n'
 import { useNavigate } from '@/lib/project-router'
 import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
+import { useWorkspacePanesSync } from '@/lib/workspace-panes-sync'
 import {
   closePane,
   disableSplit,
@@ -63,6 +64,7 @@ function paneTitle(pane: PaneRef, fallbackNewTask: string): string {
  * keeping its conversation stream and context ownership unambiguous until split panes ship.
  */
 export function WorkspaceHost({ projectId, target, renderRun }: WorkspaceHostProps) {
+  useWorkspacePanesSync(projectId)
   const { state, update } = useWorkspaceState(projectId)
 
   return (

@@ -7,6 +7,7 @@ import {
   createWorkspaceState,
   disableSplit,
   enableSplit,
+  hydrate,
   normalizeWorkspaceState,
   openBeside,
   openDraft,
@@ -114,6 +115,52 @@ describe('workspace state reducers', () => {
     const splitActivate = openBeside(split4, runB.runId)
     expect(splitActivate.active).toBe(runB.paneId)
     expect(splitActivate.split).toEqual(split4.split)
+  })
+
+  it('hydrates empty state from external panes preserving navigator and context settings', () => {
+    const initial: WorkspaceState = {
+      ...createWorkspaceState(),
+      navigator: { collapsed: true, width: 320 },
+      context: { open: true, view: 'files' },
+    }
+    const incoming = {
+      threads: [runA, runB],
+      active: runB.paneId,
+      split: { a: runA.paneId, b: runB.paneId },
+    }
+    const hydrated = hydrate(initial, incoming, projectId)
+
+    expect(hydrated.threads).toEqual([runA, runB])
+    expect(hydrated.active).toBe(runB.paneId)
+    expect(hydrated.split).toEqual({ a: runA.paneId, b: runB.paneId })
+    expect(hydrated.navigator).toEqual({ collapsed: true, width: 320 })
+    expect(hydrated.context).toEqual({ open: true, view: 'files' })
+  })
+
+  it('hydrate preserves state when incoming is empty, invalid, or cross-project', () => {
+    const initial = openRun(createWorkspaceState(), runA)
+
+    expect(hydrate(initial, null)).toBe(initial)
+    expect(hydrate(initial, {})).toBe(initial)
+    expect(hydrate(initial, { threads: [] })).toBe(initial)
+    expect(hydrate(initial, { threads: [{ ...runB, projectId: 'different' }] }, projectId)).toBe(initial)
+  })
+
+  it('hydrate closes context if hydrated active pane is a draft', () => {
+    const initial: WorkspaceState = {
+      ...createWorkspaceState(),
+      context: { open: true, view: 'terminal' },
+    }
+    const incoming = {
+      threads: [draft],
+      active: draft.paneId,
+      split: 'none',
+    }
+    const hydrated = hydrate(initial, incoming, projectId)
+
+    expect(hydrated.threads).toEqual([draft])
+    expect(hydrated.active).toBe(draft.paneId)
+    expect(hydrated.context.open).toBe(false)
   })
 })
 
