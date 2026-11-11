@@ -59,6 +59,7 @@ import { projectIdSchema, projectsRoutes as createProjectsRoutes } from './route
 import { workspaceConfigRoutes as createWorkspaceConfigRoutes } from './routes/workspace-config.ts';
 import { runsIndexRoutes as createRunsIndexRoutes } from './routes/runs-index.ts';
 import { createWorkspaceSearchRoutes } from './routes/workspace-search.ts';
+import { createWorkspaceThreadsRoutes } from './routes/workspace-threads.ts';
 export { brandingLogoUploadSchema } from './routes/workspace-config.ts';
 export type { ProjectsResponse, RegisterProjectResponse, RemoveProjectResponse, UpdateProjectResponse } from './routes/projects.ts';
 import { createFsBrowseRoutes } from './routes/fs-browse.ts';
@@ -2254,6 +2255,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', createAutomationChecksRoutes({ requireAutomations, listProjects, manualChecks }))
     .route('/', runsIndexRoutes)
     .route('/', createWorkspaceSearchRoutes({ listProjects, resolveBootProject, bootContext, bootRoot, contexts }))
+    .route('/', createWorkspaceThreadsRoutes({ capabilities, resolveBootProject, listProjects, bootContext, contexts }))
     .route('/', dashboardRoutes(dashboard, () => ({ tokens: capabilities().tokenUsageMetrics, cost: capabilities().costMetrics }), () => capabilities().automations))
     .route('/', workspaceEventsRoutes)
 

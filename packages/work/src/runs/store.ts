@@ -460,6 +460,8 @@ export const runRecordSchema = z.object({
   /** Highest `seq` handed out for this run, ephemeral frames included, so a restart resumes the
    *  counter without parsing the transcript. Absent on older records, which fall back to that parse. */
   lastSeq: z.number().int().nonnegative().optional(),
+  /** Highest event sequence number viewed by the user in this run thread. Absent on older runs or unviewed runs. */
+  lastViewedSeq: z.number().int().nonnegative().optional(),
   currentStepId: z.string().optional(),
   error: z.string().optional(),
   steps: z.array(stepStateSchema),
@@ -1597,6 +1599,9 @@ export class RunStore extends EventEmitter {
     const run = this.runs.get(id);
     if (!run) return undefined;
     run.seenAt = new Date().toISOString();
+    if (run.lastSeq !== undefined && (run.lastViewedSeq === undefined || run.lastSeq > run.lastViewedSeq)) {
+      run.lastViewedSeq = run.lastSeq;
+    }
     this.touch(run);
     return run;
   }
@@ -1618,7 +1623,20 @@ export class RunStore extends EventEmitter {
     const run = this.runs.get(id);
     if (!run) return undefined;
     delete run.seenAt;
+    delete run.lastViewedSeq;
     this.touch(run);
+    return run;
+  }
+
+  /** Record the highest event sequence viewed by the user (#viewed). Monotonically
+   *  non-decreasing: a lower sequence number is ignored. */
+  markViewed(id: string, seq: number): RunRecord | undefined {
+    const run = this.runs.get(id);
+    if (!run) return undefined;
+    if (run.lastViewedSeq === undefined || seq > run.lastViewedSeq) {
+      run.lastViewedSeq = seq;
+      this.touch(run);
+    }
     return run;
   }
 
@@ -1997,47 +2015,12 @@ export class RunStore extends EventEmitter {
    * that is outside the answer, never a reason to read the rest.
    */
   readEventsTail(runId: string, count: number): RunEvent[] {
-    if (count <= 0) return [];
-    let fd: number | undefined;
-    try {
-      fd = openSync(this.eventsPath(runId), 'r');
-      const size = fstatSync(fd).size;
-      const chunkSize = 64 * 1024;
-      const maxBytes = 1024 * 1024;
-      let pos = size;
-      let read = 0;
-      let bytes = Buffer.alloc(0);
-      let newlines = 0;
-      // One more newline than events wanted: the last line may be unterminated.
-      while (pos > 0 && newlines <= count && read < maxBytes) {
-        const len = Math.min(chunkSize, pos, maxBytes - read);
-        pos -= len;
-        read += len;
-        const buffer = Buffer.allocUnsafe(len);
-        readSync(fd, buffer, 0, len, pos);
-        for (let at = buffer.indexOf(0x0a); at !== -1; at = buffer.indexOf(0x0a, at + 1)) newlines += 1;
-        bytes = Buffer.concat([buffer, bytes]);
-      }
-      // Decoded ONCE, after the chunks are joined: decoding each on its own turned a character that
-      // straddles a chunk boundary into two U+FFFD.
-      const text = bytes.toString('utf8');
-      const lines = text.split('\n').filter(Boolean);
-      // A read that stopped mid-file begins inside a line: that fragment is not an event.
-      const complete = pos > 0 ? lines.slice(1) : lines;
-      const events: RunEvent[] = [];
-      for (const line of complete.slice(-count)) {
-        try {
-          events.push(JSON.parse(line) as RunEvent);
-        } catch {
-          // A torn write at the tail is not an event.
-        }
-      }
-      return events;
-    } catch {
-      return [];
-    } finally {
-      if (fd !== undefined) closeSync(fd);
-    }
+    return readEventsTailFromPath(this.eventsPath(runId), count);
+  }
+
+  /** Derive preview cheaply from the last assistant text snippet (<=280 chars) in the run store. */
+  getRunPreview(runId: string): string | undefined {
+    return extractAssistantPreview(this.readEventsTail(runId, 50));
   }
 
   deleteRun(id: string): boolean {
@@ -2293,4 +2276,81 @@ export class RunStore extends EventEmitter {
     }
     return [...merged.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
+}
+
+/**
+ * Extract the last completed/started assistant message text snippet (up to 280 chars),
+ * or undefined if absent or unparseable.
+ */
+export function extractAssistantPreview(events: readonly RunEvent[]): string | undefined {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i]!;
+    if (event.type === 'item.completed' || event.type === 'item.started') {
+      const item = event.item as { kind?: unknown; role?: unknown; text?: unknown } | undefined;
+      if (item && item.kind === 'message' && item.role === 'assistant' && typeof item.text === 'string') {
+        const text = item.text.trim();
+        if (text) {
+          return text.length > 280 ? text.slice(0, 280) : text;
+        }
+      }
+    }
+    if (event.type === 'text') {
+      const raw = (event as Record<string, unknown>).text;
+      const text = typeof raw === 'string' ? raw.trim() : '';
+      if (text) {
+        return text.length > 280 ? text.slice(0, 280) : text;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Read the last `count` events from an NDJSON event file on disk.
+ */
+export function readEventsTailFromPath(filePath: string, count: number): RunEvent[] {
+  if (count <= 0) return [];
+  let fd: number | undefined;
+  try {
+    fd = openSync(filePath, 'r');
+    const size = fstatSync(fd).size;
+    const chunkSize = 64 * 1024;
+    const maxBytes = 1024 * 1024;
+    let pos = size;
+    let read = 0;
+    let bytes = Buffer.alloc(0);
+    let newlines = 0;
+    while (pos > 0 && newlines <= count && read < maxBytes) {
+      const len = Math.min(chunkSize, pos, maxBytes - read);
+      pos -= len;
+      read += len;
+      const buffer = Buffer.allocUnsafe(len);
+      readSync(fd, buffer, 0, len, pos);
+      for (let at = buffer.indexOf(0x0a); at !== -1; at = buffer.indexOf(0x0a, at + 1)) newlines += 1;
+      bytes = Buffer.concat([buffer, bytes]);
+    }
+    const text = bytes.toString('utf8');
+    const lines = text.split('\n').filter(Boolean);
+    const complete = pos > 0 ? lines.slice(1) : lines;
+    const events: RunEvent[] = [];
+    for (const line of complete.slice(-count)) {
+      try {
+        events.push(JSON.parse(line) as RunEvent);
+      } catch {
+        // A torn write at the tail is not an event.
+      }
+    }
+    return events;
+  } catch {
+    return [];
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/**
+ * Read the preview snippet directly from an NDJSON events file on disk without opening a store.
+ */
+export function readRunPreviewFromDisk(eventsPath: string): string | undefined {
+  return extractAssistantPreview(readEventsTailFromPath(eventsPath, 50));
 }

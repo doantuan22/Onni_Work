@@ -8,6 +8,7 @@ import {
   attachmentListSchema,
   clearProjectDataInputSchema,
   continueInputSchema,
+  markViewedInputSchema,
   runHistoryQuerySchema,
   runIdParamSchema,
   runsListQuerySchema,
@@ -396,6 +397,18 @@ export function createRunsRoutes(deps: RunsRouteDeps) {
       const run = c.get('project').store.setUnread(c.req.param('id'));
       return run ? c.json(run) : c.json({ error: 'not found' }, 404);
     })
+
+    .post(
+      '/runs/:id/viewed',
+      paramZodValidator(runIdParamSchema),
+      jsonZodValidator(markViewedInputSchema),
+      (c) => {
+        const { id } = c.req.valid('param');
+        const { seq } = c.req.valid('json');
+        const run = c.get('project').store.markViewed(id, seq);
+        return run ? c.json(run) : c.json({ error: 'not found' }, 404);
+      },
+    )
 
     .post('/runs', jsonZodValidator(startRunSchema), async (c) => {
       const { root: repoRoot, dataDir, manager } = c.get('project');
