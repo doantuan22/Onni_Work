@@ -27,7 +27,7 @@ import type { GitAction, GitActionId } from '@/lib/git-actions'
 import type { TaskWorkspaceBridge } from '@/lib/task-workspace-bridge'
 import { isRunActive, resumeHint, runActionFlags } from '@/routes/task-thread/run-actions'
 import { GIT_ACTION_ICONS, GIT_ACTION_PENDING_LABELS } from '@/routes/task-git/git-toolbar'
-import { FIXED_VIEW_ORDER, VIEW_PATHS, viewLabel, type ViewId } from '@/routes/task-workspace/layout-state'
+import { FIXED_VIEW_ORDER, isDeepLinkViewId, VIEW_PATHS, viewLabel, type ViewId } from '@/routes/task-workspace/layout-state'
 import { stripEntries, stripTabs, type StripEntry } from '@/routes/task-workspace/strip'
 import { VIEW_ICONS } from '@/routes/task-workspace/view-picker'
 
@@ -266,7 +266,8 @@ function viewCommands({ run, workspace, terminalAvailable }: TaskCommandInput, o
     return workspace && at < 9 ? { shortcut: String(at + 1) } : {}
   }
   const commands: TaskCommand[] = views.map((view) => {
-    const Icon = VIEW_ICONS[view]
+    const Icon = (view in VIEW_ICONS ? VIEW_ICONS[view as keyof typeof VIEW_ICONS] : undefined) ?? LayoutGridIcon
+    const targetPath = isDeepLinkViewId(view) ? VIEW_PATHS[view] : viewLabel(view).toLowerCase().replace(/\s+/g, '-')
     return {
       id: `view:${view}`,
       group: 'views',
@@ -275,7 +276,7 @@ function viewCommands({ run, workspace, terminalAvailable }: TaskCommandInput, o
       keywords: ['view', 'go', 'tab', view],
       ...shortcutOf(view),
       pressed: workspace?.activeView === view,
-      perform: workspace ? () => workspace.openView(view) : () => on.navigate(`${base}/${VIEW_PATHS[view]}`),
+      perform: workspace ? () => workspace.openView(view) : () => on.navigate(`${base}/${targetPath}`),
       ...(workspace ? { performBeside: () => workspace.openViewBeside(view) } : {}),
     }
   })

@@ -71,6 +71,11 @@ export const VIEW_PATHS: Record<DeepLinkViewId, string> = {
   terminal: 'terminal',
 }
 
+/** Whether a view has a dedicated deep-link route (Notes / standalone pages). */
+export function isDeepLinkViewId(view: ViewId): view is DeepLinkViewId {
+  return (view as string) in VIEW_PATHS
+}
+
 /** What the layout cards and column headers read, and what an automatic layout name is derived
  *  from. */
 const VIEW_LABELS: Record<ViewId, string> = {
@@ -871,6 +876,8 @@ export interface SavedLayout {
   name: string
   columns: readonly { view: ViewId; width: number; stack?: ViewId; stackRatio?: number }[]
 }
+
+export type SavedLayoutColumn = SavedLayout['columns'][number]
 
 /** The active layout as a saved one, or `null` when there is nothing to save. */
 export function toSavedLayout(state: WorkspaceState, name: string): SavedLayout | null {

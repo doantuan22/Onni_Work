@@ -7,11 +7,21 @@ import { toast } from '@/components/ui/toaster'
 import {
   MAX_SAVED_WORKSPACE_LAYOUTS,
   savedWorkspaceLayoutSchema,
-  type SavedWorkspaceLayout,
   type WorkspaceUiState,
 } from '@onni/api-client'
 
-import { isReservedLayoutName, isViewId, type SavedLayout } from './layout-state'
+import {
+  isReservedLayoutName,
+  isViewId,
+  type SavedLayout,
+  type SavedLayoutColumn,
+  type ViewId,
+} from './layout-state'
+
+export interface SavedWorkspaceLayout {
+  name: string
+  columns: SavedLayoutColumn[]
+}
 
 const NONE: readonly SavedLayout[] = []
 
@@ -59,11 +69,11 @@ export function useSavedLayouts(): {
       const current = queryClient.getQueryData<WorkspaceUiState>(workspaceQueryKeys.uiState)
       if (current === undefined) return
       const savedLayouts = change(readSavedLayouts(current.savedLayouts)).slice(0, MAX_SAVED_WORKSPACE_LAYOUTS)
-      queryClient.setQueryData<WorkspaceUiState>(workspaceQueryKeys.uiState, { ...current, savedLayouts })
+      queryClient.setQueryData<WorkspaceUiState>(workspaceQueryKeys.uiState, { ...current, savedLayouts: savedLayouts as any })
 
       const writeSequence = ++sequence.current
       const pending = writeChain.current.then(async () => {
-        const merged = await putWorkspaceUiState({ savedLayouts }, { keepalive: true })
+        const merged = await putWorkspaceUiState({ savedLayouts: savedLayouts as any }, { keepalive: true })
         if (writeSequence === sequence.current) queryClient.setQueryData(workspaceQueryKeys.uiState, merged)
       })
       writeChain.current = pending.catch((error: unknown) => {
@@ -77,7 +87,14 @@ export function useSavedLayouts(): {
   const save = React.useCallback(
     (layout: SavedLayout) =>
       write((list) => {
-        const copy: SavedWorkspaceLayout = { name: layout.name, columns: layout.columns.map(({ view, width }) => ({ view, width })) }
+        const copy: SavedWorkspaceLayout = {
+          name: layout.name,
+          columns: layout.columns.map(({ view, width, stack, stackRatio }) => ({
+            view,
+            width,
+            ...(stack ? { stack, ...(stackRatio === undefined ? {} : { stackRatio }) } : {}),
+          })),
+        }
         const at = list.findIndex((entry) => entry.name === layout.name)
         return at < 0 ? [...list, copy] : list.map((entry, index) => (index === at ? copy : entry))
       }),
