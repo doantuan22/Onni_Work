@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { SheetClose, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { useSplitter } from '@/components/splitter/use-splitter'
 import {
   DEFAULT_SIDEBAR_WIDTH,
   MAX_SIDEBAR_WIDTH,
@@ -171,53 +172,23 @@ export function SidebarFrame({
  */
 function SidebarResizeHandle({ width, onWidthChange }: SidebarResize) {
   const { t } = useI18n()
-  // The width the drag started from, plus the pointer x it started at. Refs, not state: they
-  // change on every pointermove and nothing renders from them.
-  const origin = React.useRef<{ x: number; width: number } | null>(null)
-
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    // Primary button only — a right-click on the border must not start a resize.
-    if (event.button !== 0) return
-    origin.current = { x: event.clientX, width }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    // Without this the drag selects the sidebar's text as it passes over it.
-    event.preventDefault()
-    // …but preventing the default also suppresses the focus the press would have given a
-    // `tabIndex=0` element, which would leave someone who grabbed the handle with a mouse unable
-    // to fine-tune with the arrow keys immediately afterwards. Focus it explicitly instead.
-    event.currentTarget.focus()
-  }
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const start = origin.current
-    if (!start) return
-    onWidthChange(clampSidebarWidth(start.width + (event.clientX - start.x)))
-  }
-
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!origin.current) return
-    origin.current = null
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const next =
-      event.key === 'ArrowLeft'
-        ? width - SIDEBAR_WIDTH_STEP
-        : event.key === 'ArrowRight'
-          ? width + SIDEBAR_WIDTH_STEP
-          : event.key === 'Home'
-            ? MIN_SIDEBAR_WIDTH
-            : event.key === 'End'
-              ? MAX_SIDEBAR_WIDTH
-              : null
-    if (next === null) return
-    // Only for the keys we handled: Tab, Escape and the rest stay the browser's.
-    event.preventDefault()
-    onWidthChange(clampSidebarWidth(next))
-  }
+  const splitter = useSplitter({
+    unit: 'px',
+    axis: 'vertical',
+    getRange: () => ({ value: width, min: MIN_SIDEBAR_WIDTH, max: MAX_SIDEBAR_WIDTH }),
+    step: SIDEBAR_WIDTH_STEP,
+    pointerToValue: (start, delta) => start + delta,
+    keys: {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      Home: 'min',
+      End: 'max',
+    },
+    onChange: onWidthChange,
+    reset: () => onWidthChange(DEFAULT_SIDEBAR_WIDTH),
+    focusOnDown: true,
+    ariaValue: true,
+  })
 
   return (
     <div
@@ -225,16 +196,16 @@ function SidebarResizeHandle({ width, onWidthChange }: SidebarResize) {
       role="separator"
       aria-orientation="vertical"
       aria-label={t('Resize the sidebar')}
-      aria-valuenow={width}
+      aria-valuenow={splitter.ariaValueNow}
       aria-valuemin={MIN_SIDEBAR_WIDTH}
       aria-valuemax={MAX_SIDEBAR_WIDTH}
       tabIndex={0}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      onKeyDown={onKeyDown}
-      onDoubleClick={() => onWidthChange(DEFAULT_SIDEBAR_WIDTH)}
+      onPointerDown={splitter.onPointerDown}
+      onPointerMove={splitter.onPointerMove}
+      onPointerUp={splitter.onPointerUp}
+      onPointerCancel={splitter.onPointerCancel}
+      onKeyDown={splitter.onKeyDown}
+      onDoubleClick={splitter.onDoubleClick}
       title={t('Drag to resize the sidebar — double-click to reset')}
       // A 5px grab strip straddling the border, invisible until you reach for it. `touch-none`
       // is load-bearing rather than decorative: without it a touch drag is claimed by the
