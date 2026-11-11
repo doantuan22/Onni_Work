@@ -384,5 +384,22 @@ describe('transcript-search', () => {
       );
       expect(result).toEqual({ items: [] });
     });
+
+    it('skips candidate runs with unsafe runIds or paths escaping runsDir (QA7-A01)', async () => {
+      const outsideFile = join(tempDir, 'secret.ndjson');
+      writeFileSync(
+        outsideFile,
+        JSON.stringify({ type: 'text', text: 'secret traversal needle', seq: 1, ts: '2026-11-11T10:00:00Z' }) + '\n',
+      );
+
+      const candidateRuns: CandidateRun[] = [
+        { projectId: 'p', runId: '../secret', filePath: outsideFile },
+        { projectId: 'p', runId: '../../secret', filePath: outsideFile },
+        { projectId: 'p', runId: '..', filePath: outsideFile },
+      ];
+
+      const result = await searchTranscripts({ q: 'secret traversal needle' }, candidateRuns);
+      expect(result.items).toEqual([]);
+    });
   });
 });

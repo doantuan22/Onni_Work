@@ -13,6 +13,7 @@ import {
   type TranscriptSearchOptions,
 } from '../../runs/transcript-search.ts';
 import { readRunIndexFromDisk, compareIsoDesc, lastActivityAt } from '../../runs/run-index.ts';
+import { isSafeRunId, resolveRunEventsPath } from '../../runs/store.ts';
 import type { ProjectContext, ProjectContexts } from '../project-context.ts';
 import type { ProjectListEntry, ProjectListSelector } from '../../workspace/projects.ts';
 import type { WorkspaceProject } from '../../workspace/config.ts';
@@ -44,6 +45,9 @@ export function createWorkspaceSearchRoutes(deps: WorkspaceSearchDeps) {
     queryZodValidator(transcriptSearchQuerySchema),
     async (c) => {
       const query = c.req.valid('query');
+      if (query.runId !== undefined && !isSafeRunId(query.runId)) {
+        return c.json({ items: [] } satisfies TranscriptSearchPage);
+      }
 
       let projects: ProjectListEntry[] = [];
       try {
@@ -74,11 +78,14 @@ export function createWorkspaceSearchRoutes(deps: WorkspaceSearchDeps) {
 
         for (const run of runs) {
           if (query.runId && run.id !== query.runId) continue;
-          const transcriptPath = join(dataDir, 'runs', `${run.id}.ndjson`);
+          if (!isSafeRunId(run.id)) continue;
+          const transcriptPath = resolveRunEventsPath(dataDir, run.id);
+          if (!transcriptPath) continue;
           candidateRuns.push({
             projectId: project.id,
             runId: run.id,
             filePath: transcriptPath,
+            runsDir: join(dataDir, 'runs'),
             lastActivityAt: lastActivityAt(run),
           });
         }

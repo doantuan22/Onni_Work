@@ -4,7 +4,13 @@ import { threadId } from 'node:worker_threads';
 import { hostname, tmpdir, uptime } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RunStore } from './store.ts';
+import {
+  isSafeRunId,
+  readEventsTailFromPath,
+  readRunPreviewFromDisk,
+  resolveRunEventsPath,
+  RunStore,
+} from './store.ts';
 
 import type { RunRecord } from './store.ts';
 
@@ -2859,5 +2865,69 @@ describe('RunStore — index lock failures', () => {
     const run = store.createRun({ title: 'after container restart', workflow: 'test', task: 'test', steps: [] });
     expect(() => store.flushCreatedRun(run)).not.toThrow();
     expect(existsSync(leftover)).toBe(false);
+  });
+});
+
+describe('RunStore — run id validation and path traversal guard (QA7-A01)', () => {
+  let dataDir: string;
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), 'onni-store-qa7-a01-'));
+  });
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it('rejects path-traversal run ids in runs.json on open and merge, and refuses reading/writing outside runs/', () => {
+    const outsideEvent = JSON.stringify({
+      seq: 1,
+      ts: '2026-11-11T10:00:00Z',
+      type: 'text',
+      text: 'OUTSIDE_SECRET_LINE',
+    }) + '\n';
+    const outsidePath = join(dataDir, 'secret.ndjson');
+    writeFileSync(outsidePath, outsideEvent, 'utf8');
+    writeFileSync(
+      join(dataDir, 'runs.json'),
+      JSON.stringify([{ ...LEGACY_RUN, id: '../secret' }]),
+      'utf8',
+    );
+
+    const store = RunStore.open(dataDir);
+    expect(store.getRun('../secret')).toBeUndefined();
+    expect(store.readEvents('../secret')).toEqual([]);
+    expect(store.readEventsTail('../secret', 10)).toEqual([]);
+    expect(store.getRunPreview('../secret')).toBeUndefined();
+    expect(store.markViewed('../secret', 5)).toBeUndefined();
+    expect(store.setRead('../secret')).toBeUndefined();
+    expect(store.setUnread('../secret')).toBeUndefined();
+    expect(store.deleteRun('../secret')).toBe(false);
+    expect(existsSync(outsidePath)).toBe(true);
+
+    expect(() =>
+      store.createRun({
+        id: '../secret',
+        title: 'bad',
+        workflow: 'quick-task',
+        task: 'bad',
+        steps: [],
+      }),
+    ).toThrow(/invalid run id/i);
+
+    expect(isSafeRunId('valid-run_1.0')).toBe(true);
+    expect(isSafeRunId('.')).toBe(false);
+    expect(isSafeRunId('..')).toBe(false);
+    expect(isSafeRunId('foo..bar')).toBe(false);
+    expect(isSafeRunId('../secret')).toBe(false);
+    expect(isSafeRunId('a/b')).toBe(false);
+    expect(isSafeRunId('a\\b')).toBe(false);
+
+    expect(resolveRunEventsPath(dataDir, '../secret')).toBeNull();
+    expect(resolveRunEventsPath(dataDir, '..')).toBeNull();
+    expect(resolveRunEventsPath(dataDir, 'valid-run')).toBe(join(dataDir, 'runs', 'valid-run.ndjson'));
+
+    const runsDir = join(dataDir, 'runs');
+    expect(readEventsTailFromPath(outsidePath, 10, runsDir)).toEqual([]);
+    expect(readRunPreviewFromDisk(outsidePath, runsDir)).toBeUndefined();
+    expect(readEventsTailFromPath(join(runsDir, '../secret.ndjson'), 10)).toEqual([]);
   });
 });
