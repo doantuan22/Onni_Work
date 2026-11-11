@@ -701,7 +701,7 @@ function WorkspaceView({
         case 'terminal':
           return terminalAllowed ? (
             <Suspense fallback={<ColumnLoading title="Loading terminal…" />}>
-              <TerminalDrawer runId={run.id} height={0} onHeightChange={noop} onOpenInBrowser={openInBrowser} fill />
+              <TerminalDrawer runId={run.id} branch={run.branch} height={0} onHeightChange={noop} onOpenInBrowser={openInBrowser} fill />
             </Suspense>
           ) : (
             <CenteredState
@@ -869,6 +869,7 @@ function WorkspaceView({
         <Suspense fallback={null}>
           <TerminalDrawer
             runId={run.id}
+            branch={run.branch}
             height={drawer.height}
             onHeightChange={(height) => updateDrawer({ height })}
             onClose={() => updateDrawer({ open: false })}

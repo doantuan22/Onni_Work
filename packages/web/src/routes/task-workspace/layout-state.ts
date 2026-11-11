@@ -404,15 +404,22 @@ function reviveLayout(entry: unknown, taken: readonly WorkspaceLayout[]): Worksp
   // The cap is applied to what SURVIVES, not to what arrived. Slicing first meant a layout saved
   // by a later onni whose first three columns named views this build lacks lost the two valid
   // ones behind them — and then, having no columns left, was dropped whole by the guard below.
+  let seenTerminal = false
   for (const column of source.columns) {
     if (views.length >= MAX_COLUMNS) break
     if (typeof column !== 'object' || column === null) continue
     const candidate = column as { view?: unknown; width?: unknown; browser?: unknown; stack?: unknown; stackRatio?: unknown }
     if (!isViewId(candidate.view)) continue
+    const stack = reviveStack(candidate.view, candidate.stack, candidate.stackRatio)
+    const isTerminalCol = candidate.view === 'terminal' || stack?.stack === 'terminal' || candidate.stack === 'terminal'
+    if (isTerminalCol) {
+      if (seenTerminal) continue
+      seenTerminal = true
+    }
     views.push(candidate.view)
     widths.push(typeof candidate.width === 'number' ? candidate.width : Number.NaN)
     browsers.push(candidate.view === 'browser' ? reviveBrowserState(candidate.browser) : undefined)
-    stacks.push(reviveStack(candidate.view, candidate.stack, candidate.stackRatio))
+    stacks.push(stack)
   }
   // An EMPTY layout survives; a layout EMPTIED BY RECOVERY does not.
   //
@@ -570,11 +577,18 @@ export function renameLayout(state: WorkspaceState, name: string, requested: str
   return replaceLayout(state, name, { ...layout, name: uniqueName(trimmed, state.layouts, name) })
 }
 
+/** Whether a column contains a terminal surface (as primary view or stack member). */
+export function hasTerminal(column: { view: ViewId; stack?: ViewId }): boolean {
+  return column.view === 'terminal' || column.stack === 'terminal'
+}
+
 /** Add a column at the right, equalizing widths. A no-op at `MAX_COLUMNS` — the control that
- *  reaches this is disabled there too, and a silent cap is better than a thrown away click. */
+ *  reaches this is disabled there too, and a silent cap is better than a thrown away click.
+ *  Enforces at most one terminal surface per run. */
 export function addColumn(state: WorkspaceState, name: string, view: ViewId): WorkspaceState {
   const layout = findLayout(state, name)
   if (!layout || layout.columns.length >= MAX_COLUMNS) return state
+  if (view === 'terminal' && layout.columns.some(hasTerminal)) return state
   return replaceLayout(state, name, {
     ...layout,
     columns: withEqualWidths([...layout.columns, newColumn(view)]),
@@ -676,6 +690,9 @@ export function setColumnView(
   const layout = findLayout(state, name)
   if (!layout || index < 0 || index >= layout.columns.length) return state
   if (layout.columns[index]?.view === view) return state
+  if (view === 'terminal' && layout.columns.some((column, position) => position !== index && hasTerminal(column))) {
+    return state
+  }
   return replaceLayout(state, name, {
     ...layout,
     columns: layout.columns.map((column, position) =>
@@ -829,6 +846,7 @@ export function dropView(
   const current = activeLayout(state)
   const columns: WorkspaceColumn[] = current?.columns.map((column) => ({ ...column })) ?? []
   const from = columns.findIndex((column) => column.view === view)
+  if (view === 'terminal' && from < 0 && columns.some(hasTerminal)) return state
   const moved = from >= 0 ? columns[from]! : newColumn(view)
   let next: WorkspaceColumn[]
   if (mode === 'replace') {
@@ -902,15 +920,24 @@ export function toSavedLayout(state: WorkspaceState, name: string): SavedLayout 
 export function applySavedLayout(state: WorkspaceState, saved: SavedLayout): WorkspaceState {
   if (isReservedLayoutName(saved.name)) return state
   const existing = findLayout(state, saved.name)
-  const signature = saved.columns.map((column) => `${column.view}|${column.stack ?? ''}|${column.stackRatio ?? ''}`).join('||')
+  let seenTerminal = false
+  const dedupedColumns: SavedLayoutColumn[] = []
+  for (const column of saved.columns.slice(0, MAX_COLUMNS)) {
+    const isTerminalCol = column.view === 'terminal' || column.stack === 'terminal'
+    if (isTerminalCol) {
+      if (seenTerminal) continue
+      seenTerminal = true
+    }
+    dedupedColumns.push(column)
+  }
+  const signature = dedupedColumns.map((column) => `${column.view}|${column.stack ?? ''}|${column.stackRatio ?? ''}`).join('||')
   if (existing && existing.columns.map((column) => `${column.view}|${column.stack ?? ''}|${column.stackRatio ?? ''}`).join('||') === signature) {
     return selectLayout(state, saved.name)
   }
-  const columns = saved.columns.slice(0, MAX_COLUMNS)
-  const widths = normalizeWidths(columns.map((column) => column.width))
+  const widths = normalizeWidths(dedupedColumns.map((column) => column.width))
   const layout = {
     name: saved.name,
-    columns: columns.map((column, index) => ({
+    columns: dedupedColumns.map((column, index) => ({
       ...newColumn(column.view),
       width: widths[index] ?? 0,
       ...reviveStack(column.view, column.stack, column.stackRatio),

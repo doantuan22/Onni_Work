@@ -66,10 +66,11 @@ function session(id: string, overrides: Partial<TerminalSession> = {}): Terminal
   }
 }
 
-const drawer = (onClose = () => {}) =>
+const drawer = (onClose = () => {}, { branch }: { branch?: string } = {}) =>
   render(
     <TerminalDrawer
       runId="r1"
+      branch={branch}
       height={320}
       onHeightChange={() => {}}
       onClose={onClose}
@@ -248,5 +249,25 @@ describe('TerminalDrawer — closing a tab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Terminal s-1' }))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+})
+
+describe('TerminalDrawer — branch chip', () => {
+  it('shows the branch chip when branch is passed', async () => {
+    getRunTerminal.mockResolvedValue({ available: true, sessions: [session('s-1')] })
+    drawer(() => {}, { branch: 'onni/feat-branch' })
+
+    await waitFor(() => expect(screen.queryByTestId('pane')).not.toBeNull())
+    const chip = document.querySelector('[data-slot="branch-chip"]')
+    expect(chip).not.toBeNull()
+    expect(chip?.textContent).toContain('onni/feat-branch')
+  })
+
+  it('omits the branch chip when branch is absent', async () => {
+    getRunTerminal.mockResolvedValue({ available: true, sessions: [session('s-1')] })
+    drawer()
+
+    await waitFor(() => expect(screen.queryByTestId('pane')).not.toBeNull())
+    expect(document.querySelector('[data-slot="branch-chip"]')).toBeNull()
   })
 })

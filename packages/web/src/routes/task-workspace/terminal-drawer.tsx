@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createRunTerminal, getRunTerminal, stopRunTerminal, writeRunTerminal } from '@/api/client'
 import { useHealth } from '@/api/queries'
 import type { TerminalSession } from '@onni/api-client'
+import { BranchChip } from '@/components/branch-chip'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +57,7 @@ const STATE_REFRESH_MS = 2_000
 
 export function TerminalDrawer({
   runId,
+  branch,
   height,
   onHeightChange,
   onClose,
@@ -64,6 +66,7 @@ export function TerminalDrawer({
   fill = false,
 }: {
   runId: string
+  branch?: string
   height: number
   onHeightChange: (height: number) => void
   /** Absent in a workspace column, which the column's own header closes. */
@@ -319,21 +322,30 @@ export function TerminalDrawer({
         </Tabs>
 
         {active ? (
-          // HOST · PROJECT · WORKTREE, stated (spec §6: terminal input "must be explicitly
-          // user-initiated and clearly identify host, project and worktree"). A shell that does
-          // not say whose machine it is typing on is a trap — the worktree path alone reads the
-          // same whether this cockpit is localhost or a VPS.
+          // HOST · PROJECT · BRANCH · WORKTREE, stated (spec §6, §11.5: terminal header shows
+          // host, project, branch and worktree path). A shell that does not say whose machine
+          // it is typing on is a trap — the worktree path alone reads the same whether this
+          // cockpit is localhost or a VPS.
           //
           // CAPPED, because the path is long and the tab strip shares this row with it: an
           // uncapped `shrink` takes its content width as its basis, which pushed every tab after
           // the first out of view on a real path. The title carries the whole thing.
-          <span className="hidden max-w-[34%] shrink lg:block" title={`${hostLabel} · ${projectLabel} · ${active.cwd}`}>
-            <span className="block truncate text-[11px] text-soft-foreground">
-              <span className="text-muted-foreground">{hostLabel}</span>
-              {' · '}
-              {projectLabel}
-              {' · '}
-              {active.cwd}
+          <span
+            className="hidden max-w-[34%] shrink lg:block"
+            title={`${hostLabel} · ${projectLabel}${branch ? ` · ${branch}` : ''} · ${active.cwd}`}
+          >
+            <span className="flex items-center gap-1.5 truncate text-[11px] text-soft-foreground">
+              <span className="shrink-0 text-muted-foreground">{hostLabel}</span>
+              <span className="shrink-0">·</span>
+              <span className="shrink-0">{projectLabel}</span>
+              {branch ? (
+                <>
+                  <span className="shrink-0">·</span>
+                  <BranchChip className="shrink-0 text-[10px] leading-tight py-0.5">{branch}</BranchChip>
+                </>
+              ) : null}
+              <span className="shrink-0">·</span>
+              <span className="truncate">{active.cwd}</span>
             </span>
           </span>
         ) : null}
