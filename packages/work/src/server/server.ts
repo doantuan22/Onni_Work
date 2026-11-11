@@ -58,6 +58,7 @@ import { agentProfilesRoutes as createAgentProfilesRoutes } from './routes/agent
 import { projectIdSchema, projectsRoutes as createProjectsRoutes } from './routes/projects.ts';
 import { workspaceConfigRoutes as createWorkspaceConfigRoutes } from './routes/workspace-config.ts';
 import { runsIndexRoutes as createRunsIndexRoutes } from './routes/runs-index.ts';
+import { createWorkspaceSearchRoutes } from './routes/workspace-search.ts';
 export { brandingLogoUploadSchema } from './routes/workspace-config.ts';
 export type { ProjectsResponse, RegisterProjectResponse, RemoveProjectResponse, UpdateProjectResponse } from './routes/projects.ts';
 import { createFsBrowseRoutes } from './routes/fs-browse.ts';
@@ -2250,6 +2251,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', fsBrowseRoutes)
     .route('/', createAutomationChecksRoutes({ requireAutomations, listProjects, manualChecks }))
     .route('/', runsIndexRoutes)
+    .route('/', createWorkspaceSearchRoutes({ listProjects, resolveBootProject, bootContext, bootRoot, contexts }))
     .route('/', dashboardRoutes(dashboard, () => ({ tokens: capabilities().tokenUsageMetrics, cost: capabilities().costMetrics }), () => capabilities().automations))
     .route('/', workspaceEventsRoutes)
 
