@@ -16,6 +16,7 @@ import type {
   editQueuedMessageResponseSchema,
   finishResponseSchema,
   landResponseSchema,
+  markViewedInputSchema,
   gitCommitResponseSchema,
   gitPushResponseSchema,
   gitStatusResponseSchema,
@@ -68,6 +69,7 @@ describe('src/contract/runs.ts matches the runs routes exactly', () => {
   type QueuedPatch200 = InferResponseType<Run['queued-messages'][':msgId']['$patch'], 200>;
   type QueuedDelete200 = InferResponseType<Run['queued-messages'][':msgId']['$delete'], 200>;
   type Finish200 = InferResponseType<Run['finish']['$post'], 200>;
+  type MarkViewedBody = InferRequestType<Run['viewed']['$post']>['json'];
   type StartNow200 = InferResponseType<Run['start-now']['$post'], 200>;
   type Land200 = InferResponseType<Run['land']['$post'], 200>;
   type Continue200 = InferResponseType<Run['continue']['$post'], 200>;
@@ -90,6 +92,9 @@ describe('src/contract/runs.ts matches the runs routes exactly', () => {
     // the record, in both of its two forms
     Assert<Exact<z.infer<typeof apiRunSchema>[], RunsList200[number][]>>,
     Assert<Exact<z.infer<typeof apiRunSchema>, RunGet200>>,
+    // Phase 5's viewed receipt returns the canonical run record too.
+    Assert<Exact<z.infer<typeof runRecordSchema>, InferResponseType<Run['viewed']['$post'], 200>>>,
+    Assert<Exact<z.input<typeof markViewedInputSchema>, MarkViewedBody>>,
     Assert<Exact<z.infer<typeof runRecordSchema>, RunArchive200>>,
     // the pin (#935) answers the record too — pinned here is what stops it drifting into a
     // bespoke `{pinned: true}` payload the moment someone finds that shorter to write

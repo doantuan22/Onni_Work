@@ -86,6 +86,21 @@ it('keeps a newer persisted record when a stale store flushes an unrelated chang
   expect(RunStore.open(dir, { keepLive: true }).getRun(first.id)?.title).toBe('newer title');
 });
 
+it('keeps viewed sequence monotonic when a stale process writes a lower receipt (QA7-A03)', () => {
+  const dir = setup();
+  const a = RunStore.open(dir, { keepLive: true });
+  const run = a.createRun({ title: 'viewed', workflow: 'test', task: 'test', steps: [] });
+  a.flush();
+  const b = RunStore.open(dir, { keepLive: true });
+
+  a.markViewed(run.id, 15);
+  a.flush();
+  b.markViewed(run.id, 10);
+  b.flush();
+
+  expect(RunStore.open(dir, { keepLive: true }).getRun(run.id)?.lastViewedSeq).toBe(15);
+});
+
 it('reclaims a killed writer without stealing a live paused writer', async () => {
   const dir = setup();
   const a = start(dir, 'A', 'strict', 'rename');

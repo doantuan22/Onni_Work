@@ -82,6 +82,9 @@ describe('every mutating route carries a typed body into AppType', () => {
     Assert<HasTypedBody<'/api/v1/ui-state', '$put'>>,
     Assert<HasTypedBody<'/api/v1/workspace/config', '$put'>>,
     Assert<HasTypedBody<'/api/v1/workspace/ui-state', '$put'>>,
+    // Phase 5 request bodies (viewed receipt and saved panes).
+    Assert<HasTypedBody<'/api/v1/runs/:id/viewed', '$post'>>,
+    Assert<HasTypedBody<'/api/v1/workspace/panes', '$put'>>,
   ];
 
   type WorkspaceUiStatePutBody = Schema['/api/v1/workspace/ui-state']['$put']['input']['json'];
@@ -134,6 +137,9 @@ describe('every mutating route carries a typed body into AppType', () => {
     Assert<HasTypedInput<'/api/v1/runs/:id/drafts/:surface/images', '$post', 'param'>>,
     Assert<HasTypedInput<'/api/v1/runs/:id/drafts/:surface/images/:imageId', '$get', 'param'>>,
     Assert<HasTypedInput<'/api/v1/runs/:id/drafts/:surface/images/:imageId', '$delete', 'param'>>,
+    // Phase 5 workspace reads must keep their query validators in the typed client.
+    Assert<HasTypedInput<'/api/v1/workspace/threads', '$get', 'query'>>,
+    Assert<HasTypedInput<'/api/v1/workspace/search', '$get', 'query'>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {

@@ -3,7 +3,16 @@ import { hc } from 'hono/client';
 import type { JSONParsed, JSONValue } from 'hono/utils/types';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
-import { workspaceLayoutsResponseSchema, workspaceLayoutsSchema } from '@onni/contract';
+import {
+  transcriptSearchPageSchema,
+  transcriptSearchQuerySchema,
+  threadsPageSchema,
+  threadsQuerySchema,
+  workspaceLayoutsResponseSchema,
+  workspaceLayoutsSchema,
+  workspacePanesSchema,
+  workspacePanesInputSchema,
+} from '@onni/contract';
 import type { brandingLogoUploadSchema } from './server.ts';
 import type {
   agentAccountDetailsResponseSchema,
@@ -172,6 +181,16 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     (typeof client.api.v1.workspace)['runs-index']['$get'],
     200
   >;
+  type Threads = (typeof client.api.v1.workspace)['threads'];
+  type Threads200 = InferResponseType<Threads['$get'], 200>;
+  type ThreadsQuery = InferRequestType<Threads['$get']>['query'];
+  type WorkspaceSearch = (typeof client.api.v1.workspace)['search'];
+  type WorkspaceSearch200 = InferResponseType<WorkspaceSearch['$get'], 200>;
+  type WorkspaceSearchQuery = InferRequestType<WorkspaceSearch['$get']>['query'];
+  type WorkspacePanes = (typeof client.api.v1.workspace)['panes'];
+  type WorkspacePanesGet200 = InferResponseType<WorkspacePanes['$get'], 200>;
+  type WorkspacePanesPut200 = InferResponseType<WorkspacePanes['$put'], 200>;
+  type WorkspacePanesPutBody = InferRequestType<WorkspacePanes['$put']>['json'];
   type RunLayouts = (typeof client.api.v1.runs)[':id']['layouts'];
   type RunLayoutsGet200 = InferResponseType<RunLayouts['$get'], 200>;
   type RunLayoutsPut200 = InferResponseType<RunLayouts['$put'], 200>;
@@ -182,6 +201,14 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     Assert<Exact<z.infer<typeof projectsResponseSchema>, Projects200>>,
     // the cross-project task index behind ⌘K
     Assert<Exact<z.infer<typeof runsIndexResponseSchema>, RunsIndex200>>,
+    // Phase 5 workspace-only routes: query, body and response must stay aligned.
+    Assert<Exact<z.input<typeof threadsQuerySchema>, ThreadsQuery>>,
+    Assert<Exact<z.infer<typeof threadsPageSchema>, Threads200>>,
+    Assert<Exact<z.input<typeof transcriptSearchQuerySchema>, WorkspaceSearchQuery>>,
+    Assert<Exact<z.infer<typeof transcriptSearchPageSchema>, WorkspaceSearch200>>,
+    Assert<Exact<z.infer<typeof workspacePanesSchema>, WorkspacePanesGet200>>,
+    Assert<Exact<z.infer<typeof workspacePanesSchema>, WorkspacePanesPut200>>,
+    Assert<Exact<z.input<typeof workspacePanesInputSchema>, WorkspacePanesPutBody>>,
     Assert<Exact<z.infer<typeof registerProjectResponseSchema>, RegisterProject200>>,
     Assert<Exact<z.infer<typeof registerProjectResponseSchema>, Checkout200>>,
     Assert<Exact<z.infer<typeof updateProjectResponseSchema>, UpdateProject200>>,

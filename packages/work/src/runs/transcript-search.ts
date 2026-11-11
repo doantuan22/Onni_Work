@@ -1,6 +1,5 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { basename } from 'node:path';
-import { createInterface } from 'node:readline';
 import { z } from 'zod';
 import {
   MAX_THREAD_CURSOR_LENGTH,
@@ -193,6 +192,8 @@ function parseLine(line: string): RunHistoryEvent | null {
   }
 }
 
+const MAX_EVENT_LINE_BYTES = 256 * 1024;
+
 /**
  * Read NDJSON lines incrementally up to a maximum byte budget without throwing on missing or corrupt files.
  */
@@ -215,22 +216,50 @@ export async function* streamRunEventsBounded(
   }
 
   let input: ReturnType<typeof createReadStream> | undefined;
-  let lines: ReturnType<typeof createInterface> | undefined;
   try {
-    input = createReadStream(filePath, { encoding: 'utf8' });
+    input = createReadStream(filePath);
     input.on('error', () => {});
-    lines = createInterface({ input, crlfDelay: Infinity });
-    for await (const line of lines) {
-      const event = parseLine(line);
-      if (event) yield event;
-      if (input.bytesRead >= maxBytes) {
-        break;
+    let bytesRead = 0;
+    let lineBytes: Buffer[] = [];
+    let lineLength = 0;
+    const parsePendingLine = (): RunHistoryEvent | null => {
+      const line = Buffer.concat(lineBytes, lineLength).toString('utf8');
+      lineBytes = [];
+      lineLength = 0;
+      return parseLine(line);
+    };
+    for await (const chunk of input) {
+      const bytes = chunk as Buffer;
+      const allowed = Math.min(bytes.length, Math.max(0, maxBytes - bytesRead));
+      const bounded = bytes.subarray(0, allowed);
+      bytesRead += allowed;
+      let start = 0;
+      while (start < bounded.length) {
+        const newline = bounded.indexOf(0x0a, start);
+        const end = newline === -1 ? bounded.length : newline;
+        const segment = bounded.subarray(start, end);
+        if (lineLength + segment.length > MAX_EVENT_LINE_BYTES) return;
+        if (segment.length > 0) {
+          lineBytes.push(segment);
+          lineLength += segment.length;
+        }
+        if (newline !== -1) {
+          const event = parsePendingLine();
+          if (event) yield event;
+          start = newline + 1;
+        } else {
+          start = bounded.length;
+        }
       }
+      if (allowed < bytes.length || bytesRead >= maxBytes) break;
+    }
+    if (lineLength <= MAX_EVENT_LINE_BYTES) {
+      const event = parsePendingLine();
+      if (event) yield event;
     }
   } catch {
     return;
   } finally {
-    lines?.close();
     input?.destroy();
   }
 }

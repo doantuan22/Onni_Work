@@ -39,6 +39,8 @@ const cursorPayloadSchema = z.object({
   v: z.literal(1),
   updatedAt: z.string(),
   runId: z.string(),
+  // Optional for cursors emitted before projectId became the final tie-break key.
+  projectId: z.string().optional(),
 });
 type CursorPayload = z.infer<typeof cursorPayloadSchema>;
 
@@ -57,12 +59,14 @@ export function decodeThreadCursor(cursor: string): CursorPayload | null {
 }
 
 export function compareThreads(
-  a: { updatedAt: string; runId: string },
-  b: { updatedAt: string; runId: string },
+  a: { updatedAt: string; runId: string; projectId?: string },
+  b: { updatedAt: string; runId: string; projectId?: string },
 ): number {
   const timeDiff = compareIsoDesc(a.updatedAt, b.updatedAt);
   if (timeDiff !== 0) return timeDiff;
-  return a.runId.localeCompare(b.runId);
+  const runDiff = a.runId.localeCompare(b.runId);
+  if (runDiff !== 0) return runDiff;
+  return (a.projectId ?? '').localeCompare(b.projectId ?? '');
 }
 
 export function matchesStatusFilter(run: RunRecord, statusQuery?: string): boolean {
@@ -209,15 +213,19 @@ export function createWorkspaceThreadsRoutes(deps: WorkspaceThreadsRouteDeps) {
       }
 
       candidates.sort((a, b) => compareThreads(
-        { updatedAt: a.updatedAt, runId: a.run.id },
-        { updatedAt: b.updatedAt, runId: b.run.id },
+        { updatedAt: a.updatedAt, runId: a.run.id, projectId: a.project.id },
+        { updatedAt: b.updatedAt, runId: b.run.id, projectId: b.project.id },
       ));
 
       let eligible = candidates;
       if (decodedCursor) {
-        const cursorRef = { updatedAt: decodedCursor.updatedAt, runId: decodedCursor.runId };
+        const cursorRef = {
+          updatedAt: decodedCursor.updatedAt,
+          runId: decodedCursor.runId,
+          projectId: decodedCursor.projectId,
+        };
         const startIndex = candidates.findIndex((item) =>
-          compareThreads({ updatedAt: item.updatedAt, runId: item.run.id }, cursorRef) > 0,
+          compareThreads({ updatedAt: item.updatedAt, runId: item.run.id, projectId: item.project.id }, cursorRef) > 0,
         );
         eligible = startIndex === -1 ? [] : candidates.slice(startIndex);
       }
@@ -259,6 +267,7 @@ export function createWorkspaceThreadsRoutes(deps: WorkspaceThreadsRouteDeps) {
           v: 1,
           updatedAt: last.updatedAt,
           runId: last.run.id,
+          projectId: last.project.id,
         });
       }
 
