@@ -235,6 +235,10 @@ export function WorkspaceColumns({
                   labels={{
                     top: viewLabel(column.view),
                     bottom: viewLabel(column.stack),
+                    separator: t('Resize {top} and {bottom} panels', {
+                      top: t(viewLabel(column.view)),
+                      bottom: t(viewLabel(column.stack)),
+                    }),
                   }}
                   top={
                     <div data-slot="main" className="h-full min-h-0 overflow-y-auto overscroll-contain">
@@ -318,6 +322,10 @@ export function WorkspaceColumns({
                 labels={{
                   top: viewLabel(column.view),
                   bottom: viewLabel(column.stack),
+                  separator: t('Resize {top} and {bottom} panels', {
+                    top: t(viewLabel(column.view)),
+                    bottom: t(viewLabel(column.stack)),
+                  }),
                 }}
                 top={
                   <div data-slot="main" className="h-full min-h-0 overflow-y-auto overscroll-contain">
@@ -633,6 +641,7 @@ function ColumnDivider({
       onPointerMove={splitter.onPointerMove}
       onPointerUp={splitter.onPointerUp}
       onPointerCancel={splitter.onPointerCancel}
+      onLostPointerCapture={splitter.onLostPointerCapture}
       onKeyDown={splitter.onKeyDown}
       title={t('Drag to resize — arrow keys adjust precisely')}
       // A 9px grab strip straddling the seam, invisible until reached for — the hit target §12

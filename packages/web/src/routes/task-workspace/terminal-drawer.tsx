@@ -544,6 +544,7 @@ function DrawerResizeHandle({
       onPointerMove={splitter.onPointerMove}
       onPointerUp={splitter.onPointerUp}
       onPointerCancel={splitter.onPointerCancel}
+      onLostPointerCapture={splitter.onLostPointerCapture}
       onKeyDown={splitter.onKeyDown}
       title={t('Drag to resize — arrow keys adjust precisely')}
       // A 5px grab strip straddling the top border, invisible until reached for. `touch-none` is

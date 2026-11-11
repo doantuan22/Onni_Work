@@ -23,7 +23,7 @@ export interface SplitterAdapter {
 
 /** Headless pointer and keyboard mechanics; wrappers retain their DOM, ARIA labels and persistence. */
 export function useSplitter(adapter: SplitterAdapter) {
-  const drag = useRef<{ coordinate: number; value: number; latestValue: number | null } | null>(null)
+  const drag = useRef<{ pointerId: number; coordinate: number; value: number; latestValue: number | null } | null>(null)
   const range = adapter.getRange()
   const clamp = useCallback((value: number) => {
     const { min, max } = adapter.getRange()
@@ -31,11 +31,11 @@ export function useSplitter(adapter: SplitterAdapter) {
   }, [adapter])
 
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (event.button !== 0) return
+    if (drag.current || event.button !== 0) return
     const value = adapter.getRange().value
     if (value === null) return
     const coordinate = adapter.axis === 'vertical' ? event.clientX : event.clientY
-    drag.current = { coordinate, value, latestValue: null }
+    drag.current = { pointerId: event.pointerId, coordinate, value, latestValue: null }
     event.currentTarget.setPointerCapture(event.pointerId)
     event.preventDefault()
     if (adapter.focusOnDown !== false) event.currentTarget.focus()
@@ -43,7 +43,7 @@ export function useSplitter(adapter: SplitterAdapter) {
 
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLElement>) => {
     const start = drag.current
-    if (!start) return
+    if (!start || event.pointerId !== start.pointerId) return
     const coordinate = adapter.axis === 'vertical' ? event.clientX : event.clientY
     const value = adapter.pointerToValue(start.value, coordinate - start.coordinate, event)
     if (value === null) return
@@ -52,13 +52,24 @@ export function useSplitter(adapter: SplitterAdapter) {
     adapter.onChange(next)
   }, [adapter, clamp])
 
-  const onPointerEnd = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (!drag.current) return
-    const next = drag.current.latestValue ?? adapter.getRange().value
+  const onPointerUp = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    const active = drag.current
+    if (!active || event.pointerId !== active.pointerId) return
+    const next = active.latestValue ?? adapter.getRange().value
     drag.current = null
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
     adapter.onCommit?.(next)
   }, [adapter])
+
+  const onPointerCancel = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    if (drag.current?.pointerId !== event.pointerId) return
+    drag.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }, [])
+
+  const onLostPointerCapture = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    if (drag.current?.pointerId === event.pointerId) drag.current = null
+  }, [])
 
   const onKeyDown = useCallback((event: React.KeyboardEvent<HTMLElement>) => {
     const action = adapter.keys[event.key]
@@ -84,7 +95,7 @@ export function useSplitter(adapter: SplitterAdapter) {
 
   return {
     ariaValueNow: adapter.ariaValue === false ? undefined : range.value ?? undefined,
-    onPointerDown, onPointerMove, onPointerUp: onPointerEnd, onPointerCancel: onPointerEnd,
+    onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onLostPointerCapture,
     onKeyDown, onDoubleClick,
   }
 }
