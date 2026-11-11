@@ -1,10 +1,11 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createQueryClient } from '@/api/query-client'
 import { resetViewMemory } from '@/lib/view-memory'
+import { readWorkspaceState, resetWorkspaceStateStores } from '@/lib/workspace-state'
 import type { ApiRun, HealthResponse } from '@onni/api-client'
 
 import { reviveState, type ViewId } from './layout-state'
@@ -28,6 +29,7 @@ let hostUiState: Record<string, unknown> = {}
 
 beforeEach(() => {
   localStorage.clear()
+  resetWorkspaceStateStores()
   hostLayouts = {}
   hostUiState = {}
   // jsdom lays nothing out; give the strip room so it does not fold every card into `…`.
@@ -39,6 +41,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   localStorage.clear()
+  resetWorkspaceStateStores()
   resetViewMemory()
 })
 
@@ -129,16 +132,29 @@ function stubFetch({ terminal = true }: { terminal?: boolean } = {}) {
 }
 
 function renderWorkspace(view?: ViewId) {
-  const path = view === undefined ? '/tasks/:id' : `/tasks/:id/${view}`
-  const entry = view === undefined ? '/tasks/r1' : `/tasks/r1/${view}`
+  const suffix = view === undefined ? '' : view === 'session' ? '/chat' : view === 'browser' ? '/preview' : `/${view}`
+  const entry = `/tasks/r1${suffix}`
   return render(
     <QueryClientProvider client={createQueryClient()}>
       <MemoryRouter initialEntries={[entry]}>
-        <Routes>
-          <Route path={path} element={<TaskWorkspaceRoute view={view} />} />
-        </Routes>
+        <TaskWorkspaceRoutes />
       </MemoryRouter>
     </QueryClientProvider>,
+  )
+}
+
+function TaskWorkspaceRoutes() {
+  return (
+    <Routes>
+      <Route path="/tasks/:id" element={<TaskWorkspaceRoute />} />
+      <Route path="/tasks/:id/chat" element={<TaskWorkspaceRoute view="session" />} />
+      <Route path="/tasks/:id/changes" element={<TaskWorkspaceRoute view="changes" />} />
+      <Route path="/tasks/:id/files" element={<TaskWorkspaceRoute view="files" />} />
+      <Route path="/tasks/:id/graph" element={<TaskWorkspaceRoute view="graph" />} />
+      <Route path="/tasks/:id/commits" element={<TaskWorkspaceRoute view="commits" />} />
+      <Route path="/tasks/:id/preview" element={<TaskWorkspaceRoute view="browser" />} />
+      <Route path="/tasks/:id/terminal" element={<TaskWorkspaceRoute view="terminal" />} />
+    </Routes>
   )
 }
 
@@ -197,6 +213,64 @@ describe('the task workspace (main)', () => {
     await waitFor(() => expect(activeCard()).toBe('Review'))
     expect(columnViews()).toEqual(['session', 'changes'])
     expect(columnWidths()).toEqual([55, 45])
+  })
+
+  it('admits an async deep link to the workspace, then replaces its URL for a local context switch', async () => {
+    let pathname = ''
+    function LocationProbe() {
+      pathname = useLocation().pathname
+      return null
+    }
+
+    stubFetch()
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <MemoryRouter initialEntries={['/tasks/r1/changes']}>
+          <LocationProbe />
+          <TaskWorkspaceRoutes />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await ready()
+    await waitFor(() => expect(activeCard()).toBe('Changes'))
+    await waitFor(() => {
+      const state = readWorkspaceState('')
+      expect(state.threads).toEqual([expect.objectContaining({ kind: 'run', runId: 'r1' })])
+      expect(state.active).toBe(state.threads[0]?.paneId)
+    })
+
+    fireEvent.click(document.querySelector<HTMLElement>('[data-fixed="files"]')!)
+    await waitFor(() => expect(pathname).toBe('/tasks/r1/files'))
+    await waitFor(() => expect(activeCard()).toBe('Files'))
+  })
+
+  it('converges the loaded layout again when browser Back and Forward revisit a deep link', async () => {
+    let pathname = ''
+    let go: (delta: number) => void = () => {}
+    function Navigator() {
+      const navigate = useNavigate()
+      pathname = useLocation().pathname
+      go = (delta) => void navigate(delta)
+      return null
+    }
+
+    stubFetch()
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <MemoryRouter initialEntries={['/tasks/r1', '/tasks/r1/changes']} initialIndex={1}>
+          <Navigator />
+          <TaskWorkspaceRoutes />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await ready()
+    await waitFor(() => expect(activeCard()).toBe('Changes'))
+
+    go(-1)
+    await waitFor(() => expect(pathname).toBe('/tasks/r1'))
+    go(1)
+    await waitFor(() => expect(pathname).toBe('/tasks/r1/changes'))
+    await waitFor(() => expect(activeCard()).toBe('Changes'))
   })
 
   it('holding ⌘ prints each tab’s number on it; a quick ⌘ press or letting go hides them', async () => {
@@ -539,6 +613,11 @@ describe('the task workspace (main)', () => {
 
     navigate('/tasks/r2')
     await waitFor(() => expect(document.querySelector('[data-route="task-workspace"]')?.getAttribute('data-run-id')).toBe('r2'))
+    await waitFor(() => {
+      const state = readWorkspaceState('')
+      expect(state.threads.map((pane) => pane.kind === 'run' ? pane.runId : null)).toEqual(['r1', 'r2'])
+      expect(state.active).toBe(state.threads[1]?.paneId)
+    })
     await waitFor(() => expect(changesView()).not.toBeNull())
     expect(changesView()).not.toBe(first)
   })
