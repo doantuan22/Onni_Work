@@ -150,7 +150,7 @@ describe('workspace threads route and viewed read receipts', () => {
       const run = store.createRun({ title: 'Boot collision', workflow: 'quick-task', task: 'same', steps: [] });
       const timestamp = '2026-11-11T10:00:00Z';
       store.updateRun(run.id, { createdAt: timestamp, startedAt: timestamp });
-      seedRunEvents(store.dataDir, run.id, []);
+      seedRunEvents(join(repoRoot, '.ai/onni'), run.id, []);
       seedColdProject(otherRoot, [storedRun({ id: run.id, title: 'Other collision', createdAt: timestamp, startedAt: timestamp })]);
       seedRunEvents(join(otherRoot, '.ai/onni'), run.id, []);
 

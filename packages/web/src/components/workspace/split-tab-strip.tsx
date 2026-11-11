@@ -47,7 +47,8 @@ export function SplitTabStrip({
 
   const panes = [paneA, paneB]
   const otherThreads = state.threads.filter(
-    (thread) => thread.kind === 'run' && thread.paneId !== paneA.paneId && thread.paneId !== paneB.paneId,
+    (thread): thread is Extract<typeof thread, { kind: 'run' }> =>
+      thread.kind === 'run' && thread.paneId !== paneA.paneId && thread.paneId !== paneB.paneId,
   )
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let nextIndex: number | undefined

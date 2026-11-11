@@ -60,7 +60,7 @@ describe('ContextSheet', () => {
 
     expect(screen.getByTestId('rendered-view').textContent).toBe('changes')
 
-    const filesTab = screen.getByRole('tab', { name: 'Files', exact: true })
+    const filesTab = screen.getByRole('tab', { name: /^Files$/ })
     fireEvent.click(filesTab)
 
     expect(handleViewChange).toHaveBeenCalledWith('files')
@@ -124,7 +124,7 @@ describe('ContextSheet', () => {
     changesTab.focus()
     fireEvent.keyDown(changesTab, { key: 'ArrowRight' })
     expect(onViewChange).toHaveBeenLastCalledWith('files')
-    const filesTab = screen.getByRole('tab', { name: 'Files', exact: true })
+    const filesTab = screen.getByRole('tab', { name: /^Files$/ })
     expect(document.activeElement).toBe(filesTab)
 
     fireEvent.keyDown(filesTab, { key: 'End' })
