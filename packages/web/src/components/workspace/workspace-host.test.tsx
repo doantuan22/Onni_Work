@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation, useNavigate as useRouterNavigate, useParams } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -440,7 +440,7 @@ describe('WorkspaceHost', () => {
     expect(activeWorkspacePanes.some((el) => el.textContent === 'run-1:changes')).toBe(true)
 
     // Click 'Files' tab in context sheet
-    const filesTab = screen.getByRole('tab', { name: /files/i })
+    const filesTab = within(document.querySelector('[data-slot="context-sheet"]')!).getByRole('tab', { name: 'Files' })
     fireEvent.click(filesTab)
 
     await waitFor(() => {

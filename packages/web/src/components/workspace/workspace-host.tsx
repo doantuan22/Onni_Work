@@ -6,7 +6,7 @@ import { useProjectScope } from '@/api/project-scope-context'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
-import { scopeToProject, useNavigate } from '@/lib/project-router'
+import { useNavigate } from '@/lib/project-router'
 import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 import { useWorkspacePanesSync } from '@/lib/workspace-panes-sync'
@@ -26,7 +26,7 @@ import {
 import { clearStartedDraft } from '@/routes/new-task-draft'
 import { startedRunPath } from '@/routes/new-task-form'
 import { NewTaskSurface } from '@/routes/new-task-surface'
-import type { ViewId } from '@/routes/task-workspace/layout-state'
+import { VIEW_IDS, type ViewId } from '@/routes/task-workspace/layout-state'
 import { navigateWorkspacePane } from '@/routes/task-workspace/url-sync'
 
 import { ActivePaneProvider, useActivePane } from './active-pane-context'
@@ -36,6 +36,7 @@ import { useMarkViewed } from './use-mark-viewed'
 import { useWorkspaceShortcuts } from './use-workspace-shortcuts'
 
 const SIDE_BY_SIDE_MIN_WIDTH = 1024
+const HOST_CONTEXT_VIEWS = VIEW_IDS.filter((view) => view !== 'session')
 
 export type WorkspaceHostTarget =
   | { kind: 'run'; runId: string; view?: ViewId }
@@ -132,6 +133,7 @@ function WorkspaceHostPane({
   useMarkViewed({ projectId, state, target })
 
   const [scrollAnchors, setScrollAnchors] = useState<Record<string, number>>({})
+  const pendingUrlPaneRef = useRef<string | null>(null)
 
   const updateScrollAnchor = useCallback((paneId: string, scrollTop: number) => {
     setScrollAnchors((prev) => {
@@ -146,9 +148,9 @@ function WorkspaceHostPane({
       const openRunIds = currentThreads
         .filter((thread): thread is RunPaneRef => thread.kind === 'run')
         .map((thread) => thread.runId)
-      navigateWorkspacePane(
+      const action = navigateWorkspacePane(
         (to, options) => {
-          void navigate(projectId ? scopeToProject(to, projectId) : to, options)
+          void navigate(to, options)
         },
         {
           route: target,
@@ -156,6 +158,8 @@ function WorkspaceHostPane({
           openRunIds,
         },
       )
+      if (action !== 'none') pendingUrlPaneRef.current = nextPane.paneId
+      return action
     },
     [navigate, projectId, target],
   )
@@ -175,6 +179,10 @@ function WorkspaceHostPane({
     if (state.active) activePane.setActive(state.active)
     const prev = prevSyncRef.current
     prevSyncRef.current = { targetPaneId, activePaneId: state.active }
+    if (pendingUrlPaneRef.current === state.active) {
+      pendingUrlPaneRef.current = null
+      return
+    }
     if (
       prev.targetPaneId === targetPaneId
       && prev.activePaneId === targetPaneId
@@ -409,6 +417,7 @@ function WorkspaceHostPane({
             projectId={projectId}
             runId={activePaneRef.runId}
             title={activePaneRef.title ?? activePaneRef.runId}
+            views={HOST_CONTEXT_VIEWS}
             activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
             onViewChange={(view) =>
               update((current) => ({
@@ -484,6 +493,7 @@ function WorkspaceHostPane({
           projectId={projectId}
           runId={pane.runId}
           title={pane.title ?? pane.runId}
+          views={HOST_CONTEXT_VIEWS}
           activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
           onViewChange={(view) =>
             update((current) => ({
