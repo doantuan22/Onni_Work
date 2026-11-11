@@ -16,6 +16,7 @@ import { StatusDot } from '@/components/status-dot'
 import { toast } from '@/components/ui/toaster'
 import { UnreadMarker } from '@/components/unread-marker'
 import { deriveAttention } from '@/lib/attention'
+import { groupNavigatorRows, type NavigatorBucket } from '@/lib/navigator-groups'
 import { shortAge } from '@/lib/format'
 import { needsYou } from '@/lib/needs-you'
 import { isReadDoneItem, isUnread } from '@/lib/read-state'
@@ -29,7 +30,6 @@ import {
   runTitle,
   splitRefPrefix,
   type ListView,
-  type QuickListBucket,
   type QuickListRow,
 } from '@/lib/task-groups'
 import { filterRunsByOrigin } from '@/lib/task-filters'
@@ -81,7 +81,7 @@ export function TaskQuickList({
 }) {
   const { t } = useI18n()
   const counts = listCounts(runs)
-  const buckets = groupRuns(runs, view)
+  const buckets = groupNavigatorRows(groupRuns(runs, view))
   // Withheld in the archived view, where `groupRuns` answers one `Archived` bucket and never
   // reads `run.pinned` — the same call the thread header makes on an archived run.
   const pinToggle = view === 'archived' ? undefined : onTogglePin
@@ -182,7 +182,7 @@ export function QuickListBuckets({
   onTogglePin,
   onToggleArchive,
 }: {
-  buckets: QuickListBucket[]
+  buckets: NavigatorBucket[]
   currentRunId?: string | null
   now?: number
   scope?: string | null

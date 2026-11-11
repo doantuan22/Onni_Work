@@ -108,6 +108,11 @@ export function isNeedsYouStatus(run: Pick<RunRecord, 'status' | 'awaitingAnswer
   return !!run.worktreeLifecycle?.needsAttention || run.status === 'waiting' || run.status === 'review' || isAwaitingAnswer(run)
 }
 
+/** Navigator action bucket: terminal failures need triage unless a scheduled retry will resume itself. */
+export function isNavigatorNeedsYou(run: Pick<RunRecord, 'status' | 'awaitingAnswerSince' | 'worktreeLifecycle' | 'autoResumeAt'>): boolean {
+  return isNeedsYouStatus(run) || (run.status === 'failed' && run.autoResumeAt === undefined)
+}
+
 /**
  * `RunRecord` → attention.
  *
