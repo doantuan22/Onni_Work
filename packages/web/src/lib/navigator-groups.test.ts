@@ -20,7 +20,7 @@ describe('groupNavigatorRows', () => {
       bucket('Needs you', run('ask', 'waiting')),
     ])
     expect(groups.map(({ label }) => label)).toEqual(['Needs you', 'Running', 'Recent'])
-    expect(groups[0].rows.map((row) => row.kind === 'run' && row.run.id)).toEqual(['failed', 'ask'])
+    expect(groups[0]!.rows.map((row) => row.kind === 'run' && row.run.id)).toEqual(['failed', 'ask'])
   })
 
   it('keeps pinned and archived placement and promotes a variant tile as a unit', () => {
@@ -31,6 +31,6 @@ describe('groupNavigatorRows', () => {
       bucket('Archived', run('old', 'failed', { archived: true })),
     ])
     expect(groups.map(({ label }) => label)).toEqual(['Pinned', 'Needs you', 'Archived'])
-    expect(groups[1].rows[0]).toMatchObject({ kind: 'group', groupId: 'g' })
+    expect(groups[1]!.rows[0]).toMatchObject({ kind: 'group', groupId: 'g' })
   })
 })

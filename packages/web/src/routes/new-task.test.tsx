@@ -19,7 +19,7 @@ import { resetToasts, Toaster } from '@/components/ui/toaster'
 
 import { readDraft, resetDraft, writeDraft } from './new-task-draft'
 import { NewTaskRoute } from './new-task'
-import { NewTaskSurface } from './new-task-surface'
+import { NewTaskSurface, type NewTaskSurfaceProps } from './new-task-surface'
 import { optionValues, pickOption, selectValue } from '@/test-utils/app-select'
 
 /**
@@ -346,7 +346,7 @@ function renderNewTaskSurface({
   onStarted = vi.fn(),
   onScheduled = vi.fn(),
 }: {
-  onStarted?: (created: { id: string }) => void
+  onStarted?: NewTaskSurfaceProps['onStarted']
   onScheduled?: () => void
 } = {}) {
   const client = createQueryClient()
@@ -1582,16 +1582,21 @@ describe('drafts and prefill', () => {
     expect(body.generateFollowups).toBe(false)
   })
 
-  it('submit spends the draft text', async () => {
+  it('starting a task clears the spent draft', async () => {
     serve()
+    writeDraft({
+      ...readDraft(),
+      text: 'send me',
+      source: { source: 'skill', ref: 'om-fix' },
+      branchName: 'spent-draft',
+    })
     renderNewTask()
-    await pillReady()
-    fireEvent.change(textarea(), { target: { value: 'send me' } })
+    await pillReady('om-fix')
     await startTask()
     await waitFor(() => expect(screen.queryByTestId('elsewhere')).not.toBeNull())
 
-    renderNewTask()
-    expect(textarea().value).toBe('')
+    expect(readDraft()).toMatchObject({ text: '', source: null })
+    expect(readDraft()).not.toHaveProperty('branchName')
   })
 })
 

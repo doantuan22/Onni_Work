@@ -184,7 +184,9 @@ function SidebarResizeHandle({ width, onWidthChange }: SidebarResize) {
       Home: 'min',
       End: 'max',
     },
-    onChange: onWidthChange,
+    onChange: (nextWidth) => {
+      if (nextWidth !== null) onWidthChange(nextWidth)
+    },
     reset: () => onWidthChange(DEFAULT_SIDEBAR_WIDTH),
     focusOnDown: true,
     ariaValue: true,

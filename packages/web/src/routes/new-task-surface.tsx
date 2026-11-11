@@ -113,6 +113,7 @@ import {
   type DeepLinkNotice,
 } from './new-task-autostart'
 import {
+  clearStartedDraft,
   autoLandsUnreviewed,
   composerRunModeNote,
   explicitWorktreeFor,
