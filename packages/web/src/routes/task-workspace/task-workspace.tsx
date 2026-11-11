@@ -35,6 +35,7 @@ import { publishTaskWorkspace, takeQueuedFileOpen, withdrawTaskWorkspace, type T
 import { isEditableTarget } from '@/lib/use-command-shortcut'
 import { cn } from '@/lib/utils'
 import { rememberViewState } from '@/lib/view-memory'
+import { openRun, useWorkspaceState } from '@/lib/workspace-state'
 
 import { GitTabLoading } from '../task-git/git-tab-loading'
 import { BrowserView } from '../task-preview/browser-view'
@@ -66,6 +67,7 @@ import {
 } from './layout-state'
 import { FullViewExit, usePanelCover, WorkspaceMaximizeContext } from './maximize'
 import { stripEntries, stripTabs, useStripKeyHints } from './strip'
+import { navigateTaskWorkspace } from './url-sync'
 import { useSavedLayouts } from './use-saved-layouts'
 import { useWorkspaceLayouts } from './use-workspace-layouts'
 import { AvailableViewsContext } from './view-picker'
@@ -93,6 +95,19 @@ export function TaskWorkspaceRoute({ view }: { view?: ViewId }) {
   const { id } = useParams<{ id: string }>()
   const run = useRun(id)
   const { t } = useI18n()
+  const projectId = useActiveProjectId() ?? ''
+  const workspace = useWorkspaceState(projectId)
+
+  // A route is a request to focus one workspace thread. `openRun` appends unknown deep links and
+  // is idempotent for the active thread, so POP and async data loading converge without a URL loop.
+  useEffect(() => {
+    if (!id) return
+    const active = workspace.state.threads.find((pane) => pane.paneId === workspace.state.active)
+    if (active?.kind === 'run' && active.projectId === projectId && active.runId === id) return
+    workspace.update((state) =>
+      openRun(state, { kind: 'run', paneId: `run:${projectId}:${id}`, projectId, runId: id }),
+    )
+  }, [id, projectId, workspace.state.active, workspace.state.threads, workspace.update])
 
   // The read receipt, moved here from the Session route (#unread-done-items, #775): visiting the
   // task marks it read even when no Chat column is showing.
@@ -258,6 +273,27 @@ function WorkspaceView({
   const strip = useMemo(() => stripEntries(fixedViews), [fixedViews])
   const { hints: keyHints, show: keysHeld } = useStripKeyHints(strip)
   const navigate = useNavigate()
+  const projectId = useActiveProjectId()
+  const workspace = useWorkspaceState(projectId ?? '')
+  const navigateContextView = useCallback(
+    (next: ViewId) => {
+      navigateTaskWorkspace(navigate, {
+        route: { runId: run.id, view: deepLinkView },
+        effective: { runId: run.id, view: next },
+        // The routed run is becoming active in the parent effect; include it here so an early
+        // first click is still a local view replacement rather than an ignored route admission.
+        openRunIds: [run.id, ...workspace.state.threads.filter((pane) => pane.kind === 'run').map((pane) => pane.runId)],
+      })
+    },
+    [deepLinkView, navigate, run.id, workspace.state.threads],
+  )
+  const openContextView = useCallback(
+    (next: ViewId) => {
+      navigateContextView(next)
+      openDeepLink(next)
+    },
+    [navigateContextView, openDeepLink],
+  )
 
   // A view tab being dragged: the stage shows its drop zones until the drag ends. Set a tick late,
   // because changing the page under a drag that has only just started can cancel it.
@@ -283,10 +319,10 @@ function WorkspaceView({
         selectLayout(back.name)
         return back.columns.length
       }
-      openDeepLink(view === 'session' ? 'changes' : 'session')
+      openContextView(view === 'session' ? 'changes' : 'session')
       return 1
     },
-    [fixedActive, layouts.state.layouts, openDeepLink, selectLayout],
+    [fixedActive, layouts.state.layouts, openContextView, selectLayout],
   )
   const dropViewHere = useCallback(
     (view: ViewId, at: number, mode: 'insert' | 'replace') => {
@@ -331,7 +367,6 @@ function WorkspaceView({
   // A Terminal column already shows this task's shells; a drawer under it would be a second view
   // of the same sessions, fighting over the PTY's size.
   const terminalColumnShown = layouts.layout?.columns.some((column) => column.view === 'terminal') ?? false
-  const projectId = useActiveProjectId()
   const drawerShown = terminalAllowed && drawer.open && !terminalColumnShown
 
   const [maximized, setMaximized] = useState(false)
@@ -358,9 +393,9 @@ function WorkspaceView({
     const index = terminalColumns?.findIndex((column) => column.view === 'terminal') ?? -1
     if (index < 0) return
     // A layout of the shells alone has nothing to fall back to but Chat.
-    if (fixedActive !== null || terminalColumns!.length === 1) openDeepLink('session')
+    if (fixedActive !== null || terminalColumns!.length === 1) openContextView('session')
     else closeColumn(index)
-  }, [closeColumn, fixedActive, openDeepLink, terminalColumns, updateDrawer])
+  }, [closeColumn, fixedActive, openContextView, terminalColumns, updateDrawer])
   const onViews = useMemo<readonly ViewId[]>(
     () => (drawerShown || terminalColumnShown ? ['terminal'] : []),
     [drawerShown, terminalColumnShown],
@@ -375,7 +410,7 @@ function WorkspaceView({
         fixedViews={fixedViews}
         fixedActive={fixedActive}
         onViews={onViews}
-        onSelectFixed={openDeepLink}
+        onSelectFixed={openContextView}
         onSelect={selectLayout}
         onClose={closeLayout}
         saved={savedLayouts.saved}
@@ -397,7 +432,7 @@ function WorkspaceView({
       fixedViews,
       fixedActive,
       onViews,
-      openDeepLink,
+      openContextView,
       selectLayout,
       closeLayout,
       savedLayouts.saved,
@@ -440,23 +475,23 @@ function WorkspaceView({
    */
   const stripOrder = useMemo(
     () => [
-      ...fixedViews.map((view) => ({ select: () => openDeepLink(view), active: fixedActive === view })),
+      ...fixedViews.map((view) => ({ select: () => openContextView(view), active: fixedActive === view })),
       ...cardLayouts.map((layout) => ({
         select: () => selectLayout(layout.name),
         active: fixedActive === null && layout.name === layouts.state.active,
       })),
     ],
-    [fixedViews, cardLayouts, fixedActive, layouts.state.active, openDeepLink, selectLayout],
+    [fixedViews, cardLayouts, fixedActive, layouts.state.active, openContextView, selectLayout],
   )
   // The 1–9 keys: the numbered tabs only (`strip.ts` — views and Notes; no layouts), so the key
   // is the number the tab wears. `[` `]` still step through every card, layouts included.
   const numbered = useMemo(
     () => [
       ...stripTabs(fixedViews).map((tab) =>
-        tab === 'notes' ? () => navigate(`/tasks/${run.id}/notes`) : () => openDeepLink(tab),
+        tab === 'notes' ? () => navigate(`/tasks/${run.id}/notes`) : () => openContextView(tab),
       ),
     ],
-    [fixedViews, openDeepLink, navigate, run.id],
+    [fixedViews, openContextView, navigate, run.id],
   )
   const keys = useRef({ stripOrder, numbered, toggleMaximized, terminalAllowed, toggleDrawer })
   keys.current = { stripOrder, numbered, toggleMaximized, terminalAllowed, toggleDrawer }
@@ -511,9 +546,10 @@ function WorkspaceView({
         setPendingView({ index, view })
         return
       }
+      navigateContextView(view)
       layouts.setColumnView(index, view)
     },
-    [columns, diffComments.comments.length, layouts.setColumnView],
+    [columns, diffComments.comments.length, layouts.setColumnView, navigateContextView],
   )
 
   const actions: ColumnActions = useMemo(
@@ -568,7 +604,7 @@ function WorkspaceView({
       runId: run.id,
       views: fixedViews,
       activeView: fixedActive,
-      openView: openDeepLink,
+      openView: openContextView,
       openViewBeside,
       layouts: cardLayouts.map((layout) => ({
         name: layout.name,
@@ -811,7 +847,10 @@ function WorkspaceView({
             <AlertDialogCancel>{t('Go back')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (pendingView) layouts.setColumnView(pendingView.index, pendingView.view)
+                if (pendingView) {
+                  navigateContextView(pendingView.view)
+                  layouts.setColumnView(pendingView.index, pendingView.view)
+                }
                 setPendingView(null)
               }}
             >
