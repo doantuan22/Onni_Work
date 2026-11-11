@@ -1,9 +1,13 @@
+import { PanelRightIcon } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { useProjectScope } from '@/api/project-scope-context'
+import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
 import { useNavigate } from '@/lib/project-router'
+import { useIsDesktop } from '@/lib/use-desktop'
+import { cn } from '@/lib/utils'
 import {
   closePane,
   disableSplit,
@@ -23,7 +27,10 @@ import { NewTaskSurface } from '@/routes/new-task-surface'
 import type { ViewId } from '@/routes/task-workspace/layout-state'
 
 import { ActivePaneProvider, useActivePane } from './active-pane-context'
+import { ContextSheet } from './context-sheet'
 import { SplitTabStrip } from './split-tab-strip'
+
+const SIDE_BY_SIDE_MIN_WIDTH = 1024
 
 export type WorkspaceHostTarget =
   | { kind: 'run'; runId: string; view?: ViewId }
@@ -43,6 +50,11 @@ function runPane(projectId: string, runId: string): RunPaneRef {
 function draftPane(projectId: string): DraftPaneRef {
   // The legacy route's draft id keeps bookmarks and existing in-progress compositions intact.
   return { kind: 'draft', paneId: `draft:${projectId}`, projectId, draftId: 'default' }
+}
+
+function paneTitle(pane: PaneRef, fallbackNewTask: string): string {
+  if (pane.kind === 'draft') return pane.title ?? fallbackNewTask
+  return pane.title ?? pane.runId
 }
 
 /**
@@ -76,6 +88,7 @@ function WorkspaceHostPane({
   const { projectId: scopeProjectId } = useProjectScope()
   const navigate = useNavigate()
   const { t } = useI18n()
+  const isDesktop = useIsDesktop(SIDE_BY_SIDE_MIN_WIDTH)
 
   const [scrollAnchors, setScrollAnchors] = useState<Record<string, number>>({})
 
@@ -189,19 +202,115 @@ function WorkspaceHostPane({
 
     if (!matchesTarget) return null
 
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <SplitTabStrip
-          state={state}
-          onActivate={activate}
-          onClose={handleClosePane}
-          onUnsplit={() => update(disableSplit)}
-          onPickThread={(runId) => update((current) => openBeside(current, runId, projectId))}
-        />
-        <div className="flex min-h-0 flex-1 flex-row divide-x divide-border">
-          {renderPane(paneA)}
-          {renderPane(paneB)}
+    if (isDesktop) {
+      return (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SplitTabStrip
+            state={state}
+            onActivate={activate}
+            onClose={handleClosePane}
+            onUnsplit={() => update(disableSplit)}
+            onPickThread={(runId) => update((current) => openBeside(current, runId, projectId))}
+          />
+          <div className="flex min-h-0 flex-1 flex-row divide-x divide-border">
+            {renderPane(paneA)}
+            {renderPane(paneB)}
+          </div>
         </div>
+      )
+    }
+
+    // Below 1024px: ONE conversation pane at a time (the active one)
+    const activePaneRef = state.active === paneB.paneId ? paneB : paneA
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div
+          data-slot="conversation-header"
+          className="flex h-[var(--header-h,48px)] min-w-0 shrink-0 items-center justify-between border-b border-border bg-muted/40 px-3 text-xs"
+        >
+          <div
+            role="tablist"
+            aria-label={t('Split conversation panes')}
+            data-slot="split-tab-strip"
+            className="flex min-w-0 items-center gap-1.5"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={state.active === paneA.paneId}
+              data-active={state.active === paneA.paneId ? 'true' : undefined}
+              data-pane-id={paneA.paneId}
+              className={cn(
+                'group flex h-8 items-center gap-2 rounded-md px-2.5 font-medium transition-colors cursor-pointer select-none',
+                state.active === paneA.paneId
+                  ? 'bg-background text-foreground shadow-xs ring-1 ring-border'
+                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+              )}
+              onClick={() => activate(paneA.paneId)}
+            >
+              <span className="max-w-[120px] truncate">{paneTitle(paneA, t('New task'))}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={state.active === paneB.paneId}
+              data-active={state.active === paneB.paneId ? 'true' : undefined}
+              data-pane-id={paneB.paneId}
+              className={cn(
+                'group flex h-8 items-center gap-2 rounded-md px-2.5 font-medium transition-colors cursor-pointer select-none',
+                state.active === paneB.paneId
+                  ? 'bg-background text-foreground shadow-xs ring-1 ring-border'
+                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+              )}
+              onClick={() => activate(paneB.paneId)}
+            >
+              <span className="max-w-[120px] truncate">{paneTitle(paneB, t('New task'))}</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {activePaneRef?.kind === 'run' ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                aria-label={t('Context views')}
+                data-slot="open-context-button"
+                onClick={() =>
+                  update((current) => ({
+                    ...current,
+                    context: { ...current.context, open: true },
+                  }))
+                }
+              >
+                <PanelRightIcon className="h-3.5 w-3.5" />
+                <span>{t('Context')}</span>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        {renderPane(activePaneRef)}
+        {activePaneRef?.kind === 'run' ? (
+          <ContextSheet
+            open={Boolean(state.context.open)}
+            onOpenChange={(open) =>
+              update((current) => ({
+                ...current,
+                context: { ...current.context, open },
+              }))
+            }
+            projectId={projectId}
+            runId={activePaneRef.runId}
+            title={activePaneRef.title ?? activePaneRef.runId}
+            activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
+            onViewChange={(view) =>
+              update((current) => ({
+                ...current,
+                context: { ...current.context, view },
+              }))
+            }
+            renderContent={(view) => renderRun(view, activePaneRef.runId, activePaneRef)}
+          />
+        ) : null}
       </div>
     )
   }
@@ -214,5 +323,65 @@ function WorkspaceHostPane({
   // Do not briefly mount a persisted, unrelated thread while a deep link is taking focus.
   if (!pane || !matchesTarget) return null
 
-  return renderPane(pane)
+  if (isDesktop) {
+    return renderPane(pane)
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        data-slot="conversation-header"
+        className="flex h-[var(--header-h,48px)] min-w-0 shrink-0 items-center justify-between border-b border-border bg-muted/40 px-3 text-xs"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium text-foreground">
+            {paneTitle(pane, t('New task'))}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {pane.kind === 'run' ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              aria-label={t('Context views')}
+              data-slot="open-context-button"
+              onClick={() =>
+                update((current) => ({
+                  ...current,
+                  context: { ...current.context, open: true },
+                }))
+              }
+            >
+              <PanelRightIcon className="h-3.5 w-3.5" />
+              <span>{t('Context')}</span>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      {renderPane(pane)}
+      {pane.kind === 'run' ? (
+        <ContextSheet
+          open={Boolean(state.context.open)}
+          onOpenChange={(open) =>
+            update((current) => ({
+              ...current,
+              context: { ...current.context, open },
+            }))
+          }
+          projectId={projectId}
+          runId={pane.runId}
+          title={pane.title ?? pane.runId}
+          activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
+          onViewChange={(view) =>
+            update((current) => ({
+              ...current,
+              context: { ...current.context, view },
+            }))
+          }
+          renderContent={(view) => renderRun(view, pane.runId, pane)}
+        />
+      ) : null}
+    </div>
+  )
 }
