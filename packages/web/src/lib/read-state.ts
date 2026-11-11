@@ -23,7 +23,11 @@ const UNREAD_ELIGIBLE: readonly RunRecord['status'][] = ['done', 'failed']
 export type ReadStateInput = Pick<
   RunRecord,
   'status' | 'finishedAt' | 'seenAt' | 'archived' | 'autoResumeAt' | 'awaitingAnswerSince'
->
+> & {
+  lastSeq?: number
+  lastViewedSeq?: number
+  isCurrentlyVisible?: boolean
+}
 
 /**
  * A run stopped by a provider usage limit with a resume already scheduled (spec
@@ -78,20 +82,33 @@ export function canBeUnread(run: ReadStateInput): boolean {
 }
 
 /**
- * Whether a done item is *unread*: a finished run you have not opened since it finished.
+ * Whether a run is *unread*.
  *
- * Eligible (`canBeUnread` above) and unread until seen SINCE it finished. Comparing
- * `seenAt < finishedAt` (not merely "has a receipt") is what makes a resumed-and-re-finished
- * run go unread again for free — its `finishedAt` moves past the old receipt. An explicit
- * "Mark unread" (#775) takes the other road: it *clears* the receipt, and an absent one is
- * unread by this same clause.
+ * For active or finished runs with event sequence numbers (Phase 5):
+ * When both `lastViewedSeq` and `lastSeq` are present, any run (including live ones like
+ * `running` or `waiting`) is unread when `lastViewedSeq < lastSeq` and it is not the currently
+ * visible thread.
+ *
+ * Fallback (when `lastViewedSeq` is absent):
+ * Uses the finished-run `seenAt` rule: a done/failed run you have not opened since it finished
+ * (`seenAt === undefined || seenAt < finishedAt`).
  *
  * ISO-8601 strings compare lexicographically because every timestamp onni writes is UTC
  * (`toISOString()` → trailing `Z`), so `<` on the strings is `<` on the instants.
  */
-export function isUnread(run: ReadStateInput): boolean {
-  // Read into a local so the narrowing survives the `canBeUnread` call, which checks the same
-  // clause but cannot narrow the caller's field.
+export function isUnread(run: ReadStateInput, isCurrentlyVisible?: boolean): boolean {
+  if (run.archived) return false
+  if (isScheduledResume(run) || isAwaitingAnswer(run)) return false
+  if (run.status === 'cancelled') return false
+
+  const currentlyVisible = Boolean(isCurrentlyVisible ?? run.isCurrentlyVisible)
+
+  if (typeof run.lastViewedSeq === 'number' && typeof run.lastSeq === 'number') {
+    if (currentlyVisible) return false
+    return run.lastViewedSeq < run.lastSeq
+  }
+
+  // Fallback for finished runs when lastViewedSeq is absent
   const finishedAt = run.finishedAt
   if (finishedAt === undefined) return false
   if (!canBeUnread(run)) return false
@@ -104,9 +121,9 @@ export function isUnread(run: ReadStateInput): boolean {
  * steps back so the unread rows read at a glance. Non-finished rows are never "read" — they show
  * their live attention state, not a past outcome — so they are excluded here.
  */
-export function isReadDoneItem(run: ReadStateInput): boolean {
+export function isReadDoneItem(run: ReadStateInput, isCurrentlyVisible?: boolean): boolean {
   if (isScheduledResume(run) || isAwaitingAnswer(run)) return false
-  return isDoneItem(run.status) && !isUnread(run)
+  return isDoneItem(run.status) && !isUnread(run, isCurrentlyVisible)
 }
 
 /** How many done items are unread — the Tasks nav badge's number. Archived runs are already

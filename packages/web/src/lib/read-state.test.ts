@@ -71,6 +71,90 @@ describe('isUnread', () => {
   it('is never unread once archived — archiving is a stronger "handled" than reading', () => {
     expect(isUnread(done({ archived: true, seenAt: undefined }))).toBe(false)
   })
+
+  describe('with sequence numbers (Phase 5 active threads)', () => {
+    it('is unread for running or waiting runs when lastViewedSeq < lastSeq and not currently visible', () => {
+      expect(isUnread({ status: 'running', lastViewedSeq: 2, lastSeq: 5, archived: false })).toBe(true)
+      expect(isUnread({ status: 'waiting', lastViewedSeq: 0, lastSeq: 1, archived: false })).toBe(true)
+      expect(isUnread({ status: 'queued', lastViewedSeq: 3, lastSeq: 10, archived: false })).toBe(true)
+      expect(isUnread({ status: 'review', lastViewedSeq: 1, lastSeq: 4, archived: false })).toBe(true)
+    })
+
+    it('is unread for done or failed runs when lastViewedSeq < lastSeq and not currently visible', () => {
+      expect(isUnread({ status: 'done', lastViewedSeq: 3, lastSeq: 8, archived: false })).toBe(true)
+      expect(isUnread({ status: 'failed', lastViewedSeq: 1, lastSeq: 2, archived: false })).toBe(true)
+    })
+
+    it('is read (not unread) when lastViewedSeq >= lastSeq', () => {
+      expect(isUnread({ status: 'running', lastViewedSeq: 5, lastSeq: 5, archived: false })).toBe(false)
+      expect(isUnread({ status: 'waiting', lastViewedSeq: 6, lastSeq: 5, archived: false })).toBe(false)
+      expect(isUnread({ status: 'done', lastViewedSeq: 10, lastSeq: 10, archived: false })).toBe(false)
+    })
+
+    it('is read (not unread) when it is the currently visible thread', () => {
+      // Via second parameter
+      expect(isUnread({ status: 'running', lastViewedSeq: 2, lastSeq: 5, archived: false }, true)).toBe(false)
+      expect(isUnread({ status: 'waiting', lastViewedSeq: 0, lastSeq: 3, archived: false }, true)).toBe(false)
+      expect(isUnread({ status: 'done', lastViewedSeq: 1, lastSeq: 5, archived: false }, true)).toBe(false)
+
+      // Via isCurrentlyVisible on the record
+      expect(isUnread({ status: 'running', lastViewedSeq: 2, lastSeq: 5, archived: false, isCurrentlyVisible: true })).toBe(false)
+    })
+
+    it('is never unread once archived even if lastViewedSeq < lastSeq', () => {
+      expect(isUnread({ status: 'running', lastViewedSeq: 0, lastSeq: 10, archived: true })).toBe(false)
+      expect(isUnread({ status: 'done', lastViewedSeq: 0, lastSeq: 10, archived: true })).toBe(false)
+    })
+
+    it('is never unread for cancelled runs even if lastViewedSeq < lastSeq', () => {
+      expect(isUnread({ status: 'cancelled', lastViewedSeq: 1, lastSeq: 5, archived: false })).toBe(false)
+    })
+
+    it('is not unread when autoResumeAt or awaitingAnswerSince is set', () => {
+      expect(
+        isUnread({
+          status: 'failed',
+          lastViewedSeq: 0,
+          lastSeq: 5,
+          archived: false,
+          autoResumeAt: '2026-11-11T12:00:00Z',
+        }),
+      ).toBe(false)
+      expect(
+        isUnread({
+          status: 'failed',
+          lastViewedSeq: 0,
+          lastSeq: 5,
+          archived: false,
+          awaitingAnswerSince: '2026-11-11T12:00:00Z',
+        }),
+      ).toBe(false)
+    })
+
+    it('falls back to finished-run seenAt rule when lastViewedSeq is absent', () => {
+      // Live runs without lastViewedSeq are not unread
+      expect(isUnread({ status: 'running', lastSeq: 5, archived: false })).toBe(false)
+      // Finished run without lastViewedSeq uses seenAt vs finishedAt
+      expect(
+        isUnread({
+          status: 'done',
+          lastSeq: 5,
+          finishedAt: '2026-11-11T10:00:00Z',
+          seenAt: undefined,
+          archived: false,
+        }),
+      ).toBe(true)
+      expect(
+        isUnread({
+          status: 'done',
+          lastSeq: 5,
+          finishedAt: '2026-11-11T10:00:00Z',
+          seenAt: '2026-11-11T10:05:00Z',
+          archived: false,
+        }),
+      ).toBe(false)
+    })
+  })
 })
 
 describe('canBeUnread — the receipt-independent half (#775)', () => {
