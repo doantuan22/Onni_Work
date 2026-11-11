@@ -60,7 +60,7 @@ const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
 /** Stubs fetch, records every request, and lets a test override specific `METHOD path` keys.
- *  Defaults: the diff answers `DIFF`, the runs list is empty, every mutation succeeds. */
+ *  Defaults: the changes endpoint answers `CHANGES`, the runs list is empty, every mutation succeeds. */
 function stubFetch(overrides: Record<string, () => Response> = {}): SentRequest[] {
   const sent: SentRequest[] = []
   vi.stubGlobal(
@@ -75,7 +75,12 @@ function stubFetch(overrides: Record<string, () => Response> = {}): SentRequest[
       })
       const override = overrides[`${method} ${path}`]
       if (override) return override()
-      if (method === 'GET' && path === '/api/v1/runs/r1/diff') return new Response(DIFF, { status: 200 })
+      if (method === 'GET' && path === '/api/v1/runs/r1/changes') {
+        return jsonResponse({
+          files: [{ path: 'notes.md', status: 'modified', adds: 2, dels: 1, binary: false, patch: DIFF }],
+          stat: { adds: 2, dels: 1, files: 1 },
+        })
+      }
       if (method === 'GET' && path === '/api/v1/runs') return jsonResponse([])
       if (method === 'GET' && path === '/api/v1/providers/status') {
         return jsonResponse({
@@ -117,8 +122,8 @@ function renderWithProviders(ui: ReactElement) {
   }
 }
 
-const diffFetches = (sent: SentRequest[]) =>
-  sent.filter((r) => r.method === 'GET' && r.path === '/api/v1/runs/r1/diff').length
+const changesFetches = (sent: SentRequest[]) =>
+  sent.filter((r) => r.method === 'GET' && r.path === '/api/v1/runs/r1/changes').length
 
 describe('the review gate on the thread', () => {
   it('renders the violet banner + panel ONLY while the run rests at review', () => {
@@ -168,7 +173,7 @@ describe('the review gate on the thread', () => {
     })
     expect(document.querySelector('[data-slot="diff-file-path"]')?.textContent).toBe('notes.md')
     // The summary line and the per-file counts agree with the hunk.
-    expect(document.querySelector('[data-slot="run-diff"]')?.textContent).toContain('1 file changed')
+    expect(document.querySelector('[data-slot="diff-totals"]')?.textContent).toContain('1 file changed')
     expect(document.querySelector('[data-slot="diff-file"]')?.textContent).toContain('+2')
     expect(document.querySelector('[data-slot="diff-file"]')?.textContent).toContain('−1')
     // Line tinting comes from the --diff-* tokens.
@@ -177,26 +182,24 @@ describe('the review gate on the thread', () => {
     expect(body.querySelectorAll('.bg-diff-del')).toHaveLength(1)
   })
 
-  it('a non-diff server answer ("(no worktree — …)") renders as its own words', async () => {
+  it('a failed changes load renders an error state, not the empty state', async () => {
     stubFetch({
-      'GET /api/v1/runs/r1/diff': () =>
-        new Response('(no worktree — this task ran directly in the repo working tree)', { status: 200 }),
+      'GET /api/v1/runs/r1/changes': () => jsonResponse({ error: 'changes unavailable' }, 500),
     })
     renderWithProviders(<ReviewPanel run={run('review')} />)
     await waitFor(() => {
-      expect(document.querySelector('[data-slot="run-diff-empty"]')?.textContent).toContain(
-        'no worktree',
-      )
+      expect(document.querySelector('[data-slot="review-diff-error"]')?.textContent).toContain('changes unavailable')
     })
+    expect(document.querySelector('[data-slot="review-diff-empty"]')).toBeNull()
   })
 
-  it('refetches the diff on every re-entry into review (legacy parity)', async () => {
+  it('refetches changes on every re-entry into review', async () => {
     const sent = stubFetch()
     const { rerenderWithProviders } = renderWithProviders(
       <ThreadView run={run('review')} thread={reduceThread([])} />,
     )
     await waitFor(() => expect(document.querySelector('[data-slot="diff-file"]')).not.toBeNull())
-    const afterFirstEntry = diffFetches(sent)
+    const afterFirstEntry = changesFetches(sent)
     expect(afterFirstEntry).toBeGreaterThanOrEqual(1)
 
     // Send-back path: the run leaves review (panel unmounts), works, and gates again.
@@ -205,7 +208,7 @@ describe('the review gate on the thread', () => {
     rerenderWithProviders(<ThreadView run={run('review')} thread={reduceThread([])} />)
 
     // Re-entry must hit the server again — never show the pre-send-back diff from cache.
-    await waitFor(() => expect(diffFetches(sent)).toBeGreaterThan(afterFirstEntry))
+    await waitFor(() => expect(changesFetches(sent)).toBeGreaterThan(afterFirstEntry))
   })
 
   it('↩ Send back delivers the notes as legacy continue semantics and clears the box', async () => {

@@ -11,10 +11,10 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ApiError, continueRun, createRunPr } from '@/api/client'
-import { queryKeys } from '@/api/queries'
+import { queryKeys, useRunChanges } from '@/api/queries'
 import type { ApiRun, RunStatus } from '@onni/api-client'
 import { TwinkleBackdrop } from '@/components/centered-state'
-import { RunDiff } from '@/components/run-diff'
+import { Diff, type DiffNewLineComment } from '@/components/diff'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toaster'
@@ -32,12 +32,12 @@ import { MESSAGE_TEXT_MAX, messageWithReview, type DiffComments } from './diff-c
 import { useDraft } from './thread-draft'
 import { useFinishRun } from './use-finish-run'
 import { writeClipboard } from '@/lib/clipboard'
+import { isRunActive } from './run-actions'
 
 /**
  * The review gate (spec 009, §"Task thread" review bullet) on the new surface — onni's core
  * promise that nothing auto-merges. The flow is UNCHANGED from web/app.js `renderReviewPanel`;
- * only the surface is redesigned: a violet review banner, the diff as collapsible per-file
- * sections (`RunDiff` in components/run-diff.tsx — shared with the variants compare view),
+ * only the surface is redesigned: a violet review banner and the rich ChangesView `<Diff>`,
  * a notes box with ↩ Send back (`POST /continue` with the `Review feedback:` prefix
  * — legacy semantics verbatim), Draft PR (`POST /pr`; 409 → the copyable `git merge` manual
  * fallback), and ✓ Accept (the shared finish action from use-finish-run.ts).
@@ -63,9 +63,59 @@ export function ReviewPanel({ run, diffComments }: { run: ApiRun; diffComments?:
         </p>
       </div>
 
-      <RunDiff runId={run.id} />
+      <ReviewDiff run={run} diffComments={diffComments} />
       <ReviewActions run={run} diffComments={diffComments} />
     </section>
+  )
+}
+
+/** The gate shares ChangesView's structured run-changes query and the owning thread's comment
+ *  store, so comments added here appear in that run's composer and Send back action. */
+function ReviewDiff({ run, diffComments }: { run: ApiRun; diffComments?: DiffComments }) {
+  const { t } = useI18n()
+  const changes = useRunChanges(run.id, isRunActive(run.status))
+  const addComment = useCallback(
+    (comment: DiffNewLineComment) => diffComments?.add(comment),
+    [diffComments],
+  )
+
+  if (changes.isPending) {
+    return (
+      <p data-slot="review-diff-loading" className="px-4 py-6 text-center text-xs text-soft-foreground">
+        {t('Loading changes…')}
+      </p>
+    )
+  }
+  if (changes.isError) {
+    return (
+      <div
+        data-slot="review-diff-error"
+        role="alert"
+        className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm"
+      >
+        <p className="font-medium">{t('Could not load the changes')}</p>
+        <p className="mt-1 text-muted-foreground">{changes.error.message}</p>
+      </div>
+    )
+  }
+  if (changes.data.files.length === 0) {
+    return (
+      <p data-slot="review-diff-empty" className="px-4 py-6 text-center text-xs text-soft-foreground">
+        {t('No changes yet')}
+      </p>
+    )
+  }
+
+  return (
+    <Diff
+      key={run.id}
+      files={changes.data.files}
+      comments={diffComments?.comments}
+      onAddComment={diffComments?.ready ? addComment : undefined}
+      onEditComment={diffComments?.update}
+      onRemoveComment={diffComments?.remove}
+      className="min-w-0"
+    />
   )
 }
 
