@@ -1,11 +1,12 @@
 import { PanelRightIcon } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { UNSAFE_RouteContext } from 'react-router'
 
 import { useProjectScope } from '@/api/project-scope-context'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
-import { useNavigate } from '@/lib/project-router'
+import { scopeToProject, useNavigate } from '@/lib/project-router'
 import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 import { useWorkspacePanesSync } from '@/lib/workspace-panes-sync'
@@ -26,6 +27,7 @@ import { clearStartedDraft } from '@/routes/new-task-draft'
 import { startedRunPath } from '@/routes/new-task-form'
 import { NewTaskSurface } from '@/routes/new-task-surface'
 import type { ViewId } from '@/routes/task-workspace/layout-state'
+import { navigateWorkspacePane } from '@/routes/task-workspace/url-sync'
 
 import { ActivePaneProvider, useActivePane } from './active-pane-context'
 import { ContextSheet } from './context-sheet'
@@ -61,8 +63,40 @@ function paneTitle(pane: PaneRef, fallbackNewTask: string): string {
 }
 
 /**
- * Project-scoped thread host. The URL chooses which pane is focused; only the active pane mounts,
- * keeping its conversation stream and context ownership unambiguous until split panes ship.
+ * Scopes `useParams()` inside a rendered run pane to that pane's own `runId` and `projectId`,
+ * so split panes never read the other pane's route param from the outer URL match.
+ */
+function PaneRouteScope({
+  projectId,
+  runId,
+  children,
+}: {
+  projectId: string
+  runId: string
+  children: ReactNode
+}) {
+  const routeContext = useContext(UNSAFE_RouteContext)
+  const scopedContext = useMemo(() => {
+    if (routeContext.matches.length === 0) return routeContext
+    const matches = routeContext.matches.map((match, index) =>
+      index === routeContext.matches.length - 1
+        ? { ...match, params: { ...match.params, projectId, id: runId } }
+        : match,
+    )
+    return { ...routeContext, matches }
+  }, [projectId, routeContext, runId])
+
+  return (
+    <UNSAFE_RouteContext.Provider value={scopedContext}>
+      {children}
+    </UNSAFE_RouteContext.Provider>
+  )
+}
+
+/**
+ * Project-scoped thread host. The URL and active pane converge in both 1-up and 2-up split modes:
+ * URL visits (including Back/Forward) focus their target pane, while local pane activations push
+ * the newly active pane's URL through `navigateWorkspacePane`.
  */
 export function WorkspaceHost({ projectId, target, renderRun }: WorkspaceHostProps) {
   useWorkspacePanesSync(projectId)
@@ -106,6 +140,29 @@ function WorkspaceHostPane({
     })
   }, [])
 
+  const syncPaneUrl = useCallback(
+    (nextPane: PaneRef | undefined, currentThreads: readonly PaneRef[]) => {
+      if (!nextPane) return
+      const openRunIds = currentThreads
+        .filter((thread): thread is RunPaneRef => thread.kind === 'run')
+        .map((thread) => thread.runId)
+      navigateWorkspacePane(
+        (to, options) => {
+          void navigate(projectId ? scopeToProject(to, projectId) : to, options)
+        },
+        {
+          route: target,
+          effective: nextPane.kind === 'run' ? { kind: 'run', runId: nextPane.runId } : { kind: 'draft' },
+          openRunIds,
+        },
+      )
+    },
+    [navigate, projectId, target],
+  )
+
+  const targetPaneId = target.kind === 'run' ? `run:${projectId}:${target.runId}` : `draft:${projectId}`
+  const prevSyncRef = useRef({ targetPaneId, activePaneId: state.active })
+
   useEffect(() => {
     update((current) =>
       target.kind === 'run'
@@ -116,29 +173,71 @@ function WorkspaceHostPane({
 
   useEffect(() => {
     if (state.active) activePane.setActive(state.active)
-  }, [activePane, state.active])
+    const prev = prevSyncRef.current
+    prevSyncRef.current = { targetPaneId, activePaneId: state.active }
+    if (
+      prev.targetPaneId === targetPaneId
+      && prev.activePaneId === targetPaneId
+      && state.active !== undefined
+      && state.active !== targetPaneId
+    ) {
+      const activeThread = state.threads.find((thread) => thread.paneId === state.active)
+      syncPaneUrl(activeThread, state.threads)
+    }
+  }, [activePane, state.active, state.threads, syncPaneUrl, targetPaneId])
 
-  const activate = useCallback((paneId: string) => {
-    activePane.setActive(paneId)
-    update((current) => setActive(current, paneId))
-  }, [activePane, update])
+  const activate = useCallback(
+    (paneId: string) => {
+      activePane.setActive(paneId)
+      let activatedPane: PaneRef | undefined
+      let nextThreads: readonly PaneRef[] = []
+      update((current) => {
+        const next = setActive(current, paneId)
+        activatedPane = next.threads.find((thread) => thread.paneId === next.active)
+        nextThreads = next.threads
+        return next
+      })
+      syncPaneUrl(activatedPane, nextThreads)
+    },
+    [activePane, syncPaneUrl, update],
+  )
 
   const handleClosePane = useCallback(
     (paneId: string) => {
+      let nextActivePane: PaneRef | undefined
+      let nextThreads: readonly PaneRef[] = []
       update((current) => {
         const next = closePane(current, paneId)
         if (current.active === paneId && next.active) {
-          const nextPane = next.threads.find((t) => t.paneId === next.active)
-          if (nextPane?.kind === 'run') {
-            void navigate(`/p/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(nextPane.runId)}`)
-          } else if (nextPane?.kind === 'draft') {
-            void navigate(`/p/${encodeURIComponent(projectId)}/new`)
-          }
+          nextActivePane = next.threads.find((t) => t.paneId === next.active)
+          nextThreads = next.threads
         }
         return next
       })
+      if (nextActivePane) {
+        activePane.setActive(nextActivePane.paneId)
+        syncPaneUrl(nextActivePane, nextThreads)
+      }
     },
-    [navigate, projectId, update],
+    [activePane, syncPaneUrl, update],
+  )
+
+  const handlePickThread = useCallback(
+    (runId: string) => {
+      let pickedPane: PaneRef | undefined
+      let nextThreads: readonly PaneRef[] = []
+      update((current) => {
+        const next = openBeside(current, runId, projectId)
+        pickedPane = next.threads.find((t) => t.paneId === next.active)
+        nextThreads = next.threads
+        return next
+      })
+      if (pickedPane) {
+        activePane.setActive(pickedPane.paneId)
+        syncPaneUrl(pickedPane, nextThreads)
+      }
+    },
+    [activePane, projectId, syncPaneUrl, update],
   )
 
   const split = state.split
@@ -174,7 +273,9 @@ function WorkspaceHostPane({
         onScroll={(e) => updateScrollAnchor(pane.paneId, e.currentTarget.scrollTop)}
       >
         {pane.kind === 'run' ? (
-          renderRun(paneView, pane.runId, pane)
+          <PaneRouteScope projectId={projectId} runId={pane.runId}>
+            {renderRun(paneView, pane.runId, pane)}
+          </PaneRouteScope>
         ) : (
           <NewTaskSurface
             draftId={pane.draftId}
@@ -217,7 +318,7 @@ function WorkspaceHostPane({
             onActivate={activate}
             onClose={handleClosePane}
             onUnsplit={() => update(disableSplit)}
-            onPickThread={(runId) => update((current) => openBeside(current, runId, projectId))}
+            onPickThread={handlePickThread}
           />
           <div className="flex min-h-0 flex-1 flex-row divide-x divide-border">
             {renderPane(paneA)}
@@ -315,7 +416,11 @@ function WorkspaceHostPane({
                 context: { ...current.context, view },
               }))
             }
-            renderContent={(view) => renderRun(view, activePaneRef.runId, activePaneRef)}
+            renderContent={(view) => (
+              <PaneRouteScope projectId={projectId} runId={activePaneRef.runId}>
+                {renderRun(view, activePaneRef.runId, activePaneRef)}
+              </PaneRouteScope>
+            )}
           />
         ) : null}
       </div>
@@ -386,7 +491,11 @@ function WorkspaceHostPane({
               context: { ...current.context, view },
             }))
           }
-          renderContent={(view) => renderRun(view, pane.runId, pane)}
+          renderContent={(view) => (
+            <PaneRouteScope projectId={projectId} runId={pane.runId}>
+              {renderRun(view, pane.runId, pane)}
+            </PaneRouteScope>
+          )}
         />
       ) : null}
     </div>
