@@ -171,6 +171,24 @@ describe('the dispatch routes', () => {
     expect((await apiRequest(app, '/api/v1/runs/plain/report', json(report))).status).toBe(404);
   });
 
+  it('refuses live roster replacement when dispatch is disabled', async () => {
+    serverEnv.ONNI_DISPATCH = '0';
+    const rootRun = store.createRun({ title: 'manager', task: 'manage workers', workflow: 'quick-task', runner: 'claude', steps: [] });
+    store.updateRun(rootRun.id, {
+      dispatch: { rootRunId: rootRun.id },
+      roster: { manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'worker', maxConcurrent: 1 }] },
+    });
+
+    const res = await apiRequest(app, `/api/v1/runs/${rootRun.id}/roster`, json({
+      roster: { manager: { runner: 'claude' }, workers: [{ runner: 'pi', role: 'new worker', maxConcurrent: 1 }] },
+    }, 'PUT'));
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: expect.stringContaining('ONNI_DISPATCH=0') });
+    expect(calls).toEqual([]);
+    expect(store.getRun(rootRun.id)?.roster?.workers[0]?.runner).toBe('codex');
+  });
+
   it('returns the tree budget for any run id, and 404 for one the manager does not know', async () => {
     budget = { costUsd: 3.2, tokens: 120_000, minutes: null, steps: 800, subtasks: 2, subtaskCap: 8, maxDepth: 1, overBudget: false };
     const res = await apiRequest(app, '/api/v1/runs/child-1/budget');

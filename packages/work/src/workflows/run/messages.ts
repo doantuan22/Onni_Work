@@ -540,7 +540,7 @@ export function deliverMessage(
   }
   if (delivered) {
     for (const write of imageLibraryWrites) write();
-    ctx.clearPendingAsk(runId);
+    if (userAuthored) ctx.clearPendingAsk(runId);
     if (answering) ctx.clearSoftAsk(runId);
     ctx.clearIdleTimer(state);
     ctx.clearMonitoringWakeTimer(state, runId);
