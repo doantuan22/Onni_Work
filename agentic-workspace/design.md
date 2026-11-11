@@ -188,7 +188,12 @@ these by using the existing index + client-side state.
    workspace chords bound (`use-workspace-shortcuts.ts`: Alt+1..9, Mod+Alt+Left/Right/Down, yielding to inputs/xterm/dialogs);
    mobile (<1024px) single pane + full-screen `ContextSheet`.
 5. **Contract additions** (§7 items 1–4) and unread-for-active-threads; transcript search.
-6. Optional: approvals lifecycle (pending decision 3).
+   **✅ DONE 2026-11-11.** Delivered: `packages/contract/src/workspace-threads.ts` (+ optional `lastViewedSeq`);
+   `GET /workspace/threads` (cursor-paged index, preview, awaitingAsk, workerCount), `POST /runs/:id/viewed`,
+   `GET /workspace/search` (bounded transcript search), `GET|PUT /workspace/panes` (+ `workspace-panes.json` gitignored);
+   web hooks (`api/workspace-threads.ts`), unread for running/waiting threads, transcript matches in the command palette,
+   localStorage-first pane state mirrored to the server.
+6. Optional: approvals lifecycle (pending decision 3). **Not started — deferred by owner decision (§8 #3).**
 
 ## 10. Risks and tests to watch
 
