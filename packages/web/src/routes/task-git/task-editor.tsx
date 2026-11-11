@@ -1,3 +1,4 @@
+import { useId, useRef, type KeyboardEvent } from 'react'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -18,8 +19,25 @@ export function TaskEditor({
   onSelect: (path: string) => void
   onClose: (path: string) => void
 }) {
+  const id = useId()
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const hasOpenFile = openPaths.length > 0 && activePath !== null && openPaths.includes(activePath)
   const segments = hasOpenFile ? activePath.split('/').filter(Boolean) : []
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | undefined
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % openPaths.length
+    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + openPaths.length) % openPaths.length
+    if (event.key === 'Home') nextIndex = 0
+    if (event.key === 'End') nextIndex = openPaths.length - 1
+    if (nextIndex === undefined || openPaths.length === 0) return
+
+    event.preventDefault()
+    const nextPath = openPaths[nextIndex]
+    if (nextPath === undefined) return
+    onSelect(nextPath)
+    tabRefs.current[nextIndex]?.focus()
+  }
 
   return (
     <section data-route="task-editor" className="flex h-full min-h-0 min-w-0 flex-col bg-background">
@@ -31,7 +49,7 @@ export function TaskEditor({
             data-slot="editor-tabs"
             className="flex h-full min-w-0 flex-1 overflow-x-auto overscroll-x-contain"
           >
-            {openPaths.map((path) => {
+            {openPaths.map((path, index) => {
               const name = path.split('/').filter(Boolean).at(-1) ?? path
               const selected = path === activePath
               return (
@@ -46,9 +64,14 @@ export function TaskEditor({
                   <button
                     type="button"
                     role="tab"
+                    id={`${id}-tab-${index}`}
+                    aria-controls={`${id}-panel`}
                     aria-selected={selected}
+                    tabIndex={selected ? 0 : -1}
                     title={path}
+                    ref={(element) => { tabRefs.current[index] = element }}
                     onClick={() => onSelect(path)}
+                    onKeyDown={(event) => handleTabKeyDown(event, index)}
                     className={cn(
                       'min-w-0 flex-1 truncate px-3 text-left text-xs',
                       selected ? 'font-medium' : 'hover:bg-muted hover:text-foreground',
@@ -99,7 +122,9 @@ export function TaskEditor({
           </nav>
           <div
             data-slot="editor-content"
-            role="region"
+            id={`${id}-panel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-tab-${openPaths.indexOf(activePath)}`}
             aria-label="File contents"
             tabIndex={0}
             className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain"

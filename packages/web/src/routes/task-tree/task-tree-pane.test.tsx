@@ -167,6 +167,7 @@ describe('TaskTreePane', () => {
 
     // Check worker-2 row (depth 2)
     expect(rows[2]?.getAttribute('data-depth')).toBe('2')
+    expect(rows[2]?.getAttribute('aria-level')).toBe('3')
     expect(rows[2]?.getAttribute('data-run-id')).toBe('worker-2')
     expect(rows[2]?.textContent).toContain('Worker Nested Review')
     expect(rows[2]?.querySelector('[data-slot="backend-chip"]')?.textContent).toContain('antigravity')
@@ -180,6 +181,30 @@ describe('TaskTreePane', () => {
     // Test keyboard activation on run row
     fireEvent.keyDown(rows[2]!, { key: 'Enter' })
     expect(onOpenRun).toHaveBeenCalledWith('worker-2')
+  })
+
+  it('supports tree navigation across rows and nested parent/child levels', () => {
+    stubFetch()
+    const runs: ApiRun[] = [
+      makeRun('manager-1', { dispatch: { rootRunId: 'manager-1' } }),
+      makeRun('worker-1', { dispatch: { rootRunId: 'manager-1', parentRunId: 'manager-1' } }),
+      makeRun('worker-2', { dispatch: { rootRunId: 'manager-1', parentRunId: 'worker-1' } }),
+      makeRun('worker-3', { dispatch: { rootRunId: 'manager-1', parentRunId: 'manager-1' } }),
+    ]
+    renderTree({ runs })
+
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-slot="task-tree-row"]')]
+    rows[0]!.focus()
+    fireEvent.keyDown(rows[0]!, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(rows[1])
+    fireEvent.keyDown(rows[1]!, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(rows[2])
+    fireEvent.keyDown(rows[2]!, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(rows[1])
+    fireEvent.keyDown(rows[1]!, { key: 'End' })
+    expect(document.activeElement).toBe(rows[3])
+    fireEvent.keyDown(rows[3]!, { key: 'Home' })
+    expect(document.activeElement).toBe(rows[0])
   })
 
   it('renders runner subagents in a separate section from subagent-dock data', () => {
