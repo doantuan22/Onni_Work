@@ -161,6 +161,41 @@ describe('AppShell', () => {
     ])
   })
 
+  it('uses the 55px icon rail for a dense workspace while keeping every nav route reachable', () => {
+    renderShell('/', { contentZoneCount: 4 })
+
+    expect(sidebar().dataset.rail).toBe('')
+    expect(sidebar().style.width).toBe('55px')
+    expect(sidebar().querySelector('[data-slot="sidebar-resize-handle"]')).toBeNull()
+    for (const item of visibleNavItems({ forge: true, inbox: true, automations: true })) {
+      expect(screen.getByRole('link', { name: item.label })).toBeTruthy()
+    }
+    expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeTruthy()
+  })
+
+  it('auto-collapses below 1360px and keeps an explicit expansion across reloads', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) => ({
+        matches: query === '(max-width: 1359px)',
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }),
+    )
+    const first = renderShell()
+
+    expect(sidebar().dataset.rail).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }))
+    expect(sidebar().dataset.rail).toBeUndefined()
+    expect(sidebar().style.width).toBe('264px')
+    expect(localStorage.getItem('onni-sidebar-rail:default')).toBe('expanded')
+
+    first.unmount()
+    renderShell()
+    expect(sidebar().dataset.rail).toBeUndefined()
+  })
+
   // R6 Step 1.1: no forge, no GitHub tab — the nav item disappears entirely (spec's
   // degradation table), it does not render disabled.
   it('drops the GitHub item when the forge is unavailable', () => {

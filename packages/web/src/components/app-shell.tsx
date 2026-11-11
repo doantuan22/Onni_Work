@@ -5,6 +5,8 @@ import {
   LayersIcon,
   LayoutDashboardIcon,
   MenuIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   PlusIcon,
   SettingsIcon,
   XIcon,
@@ -20,9 +22,10 @@ import { CreateProjectDialog } from '@/components/create-project-dialog'
 import { DialogErrorBoundary } from '@/components/dialog-error-boundary'
 import { CommandPaletteHint } from '@/components/command-palette-hint'
 import { GithubIcon } from '@/components/icons'
-import { Link, stripProjectPrefix } from '@/lib/project-router'
+import { Link, pathnameProjectId, stripProjectPrefix, useActiveProjectId } from '@/lib/project-router'
 import { isSettingsPathname } from '@/lib/settings-path'
-import { BrandLockup } from '@/components/brand-mark'
+import { BrandLockup, BrandMark } from '@/components/brand-mark'
+import { IconTooltip } from '@/components/ui/icon-tooltip'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +41,7 @@ import type { TrackerKind } from '@onni/api-client'
 import { SidebarDrawer, SidebarFrame, useDesktopShell, useSidebarWidth, type SidebarResize } from '@/components/sidebar-frame'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n'
+import { RAIL_WIDTH, useRailState } from '@/lib/rail-state'
 /** Tailwind's `md`. The drawer is the `<md` affordance, so this must stay in step with the
  *  `md:hidden` / `md:flex` classes below — they are the same breakpoint expressed twice, once
  *  for CSS and once for the state machine. */
@@ -98,6 +102,8 @@ export type AppShellProps = {
   projectGroups?: ReactNode
   brandName?: string
   brandLogoUrl?: string | null
+  /** The active workspace's visible content zones. Four zones make the navigator a rail. */
+  contentZoneCount?: number
 }
 
 /**
@@ -175,6 +181,7 @@ export const AppShell = React.memo(function AppShell({
   projectGroups,
   brandName = 'onni',
   brandLogoUrl = null,
+  contentZoneCount = 1,
 }: AppShellProps) {
   const { pathname } = useLocation()
   const { t } = useI18n()
@@ -254,6 +261,10 @@ export const AppShell = React.memo(function AppShell({
   }
 
   const desktop = useDesktopShell()
+  // The shell is inside the project scope in the app; the URL fallback keeps standalone shell
+  // callers scoped too. `default` is only for a shell rendered before either source is known.
+  const railProjectId = useActiveProjectId() ?? pathnameProjectId(pathname) ?? 'default'
+  const rail = useRailState(railProjectId, contentZoneCount)
 
   return (
     <div
@@ -277,7 +288,14 @@ export const AppShell = React.memo(function AppShell({
         />
       ) : null}
       {chromeless ? null : (
-        <Sidebar {...nav} width={sidebarWidth} onWidthChange={changeSidebarWidth} desktop={desktop} />
+        <Sidebar
+          {...nav}
+          width={sidebarWidth}
+          onWidthChange={changeSidebarWidth}
+          desktop={desktop}
+          rail={rail.collapsed}
+          onRailToggle={rail.toggle}
+        />
       )}
       <div
         className={cn(
@@ -338,11 +356,27 @@ const Sidebar = React.memo(function Sidebar({
   width,
   onWidthChange,
   desktop = null,
+  rail,
+  onRailToggle,
   ...props
-}: NavProps & SidebarResize & { desktop?: 'macos' | 'windows' | 'linux' | null }) {
+}: NavProps & SidebarResize & {
+  desktop?: 'macos' | 'windows' | 'linux' | null
+  rail: boolean
+  onRailToggle: () => void
+}) {
   return (
-    <SidebarFrame width={width} onWidthChange={onWidthChange} titlebarInset={desktop === 'macos'}>
-      <SidebarContent {...props} compactHeader={desktop === 'macos'} />
+    <SidebarFrame
+      width={rail ? RAIL_WIDTH : width}
+      onWidthChange={onWidthChange}
+      titlebarInset={desktop === 'macos'}
+      resizable={!rail}
+      rail={rail}
+    >
+      {rail ? (
+        <RailSidebarContent {...props} onRailToggle={onRailToggle} />
+      ) : (
+        <SidebarContent {...props} compactHeader={desktop === 'macos'} onRailToggle={onRailToggle} />
+      )}
     </SidebarFrame>
   )
 })
@@ -382,6 +416,7 @@ function SidebarContent({
   onNavigate,
   headerAction,
   compactHeader = false,
+  onRailToggle,
 }: NavProps & {
   brandName: string
   brandLogoUrl: string | null
@@ -395,6 +430,8 @@ function SidebarContent({
    *  gives up most of its own top padding — otherwise the logo floats a full toolbar's height
    *  below the traffic lights. */
   compactHeader?: boolean
+  /** A manual desktop choice is sticky per project; the mobile drawer deliberately has no rail. */
+  onRailToggle?: () => void
 }) {
   const { t, tn } = useI18n()
   return (
@@ -409,6 +446,20 @@ function SidebarContent({
       <div className={cn('px-3.5 pb-2.5', compactHeader ? 'pt-1.5' : 'pt-3.5')}>
         <div className="flex items-center gap-[9px]">
           <BrandLockup name={brandName} logoUrl={brandLogoUrl} />
+          {onRailToggle ? (
+            <IconTooltip label={t('Collapse sidebar')} side="right">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t('Collapse sidebar')}
+                className="ml-auto size-8"
+                onClick={onRailToggle}
+              >
+                <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
+              </Button>
+            </IconTooltip>
+          ) : null}
           {headerAction ? <div className="ml-auto shrink-0">{headerAction}</div> : null}
         </div>
         {/* With project groups mounted the boot repo/branch is one group header among many —
@@ -557,6 +608,107 @@ function SidebarContent({
           <ThemeToggle />
         </div>
       </div>
+    </div>
+  )
+}
+
+/** The desktop-only dense navigator. It intentionally does not render the task list or project
+ * groups: Cmd/Ctrl+K and the Tasks icon remain the compact navigation path from the Workbench. */
+function RailSidebarContent({
+  activeTo,
+  items,
+  brandName,
+  brandLogoUrl,
+  onRailToggle,
+}: Pick<NavProps, 'activeTo' | 'items' | 'brandName' | 'brandLogoUrl'> & {
+  onRailToggle: () => void
+}) {
+  const { t } = useI18n()
+  const settings = items.find((item) => item.to === '/settings')
+  const primaryItems = items.filter((item) => item.to !== '/settings')
+
+  const railLink = (item: NavItem) => {
+    const Icon = item.icon
+    const isActive = item.to === activeTo
+    return (
+      <IconTooltip key={item.to} label={t(item.label)} side="right">
+        <Link
+          to={item.to}
+          data-slot="rail-nav-link"
+          aria-label={t(item.label)}
+          aria-current={isActive ? 'page' : undefined}
+          className={cn(
+            'flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+            isActive && 'bg-muted text-foreground',
+          )}
+        >
+          <Icon className="size-4" aria-hidden="true" />
+        </Link>
+      </IconTooltip>
+    )
+  }
+
+  return (
+    <div
+      data-slot="sidebar-content"
+      data-rail=""
+      className="flex min-h-0 flex-1 flex-col items-center py-2"
+    >
+      <div className="flex w-full flex-col items-center gap-2">
+        <IconTooltip label={brandName} side="right">
+          <Link
+            to="/"
+            data-slot="rail-brand"
+            aria-label={brandName}
+            className="flex size-9 items-center justify-center rounded-md hover:bg-muted"
+          >
+            {brandLogoUrl ? (
+              <img src={brandLogoUrl} alt="" aria-hidden="true" className="size-7 object-contain" />
+            ) : (
+              <BrandMark height={28} />
+            )}
+          </Link>
+        </IconTooltip>
+        <IconTooltip label={t('Expand sidebar')} side="right">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={t('Expand sidebar')}
+            className="size-9"
+            onClick={onRailToggle}
+          >
+            <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
+          </Button>
+        </IconTooltip>
+        <IconTooltip label={t('New task')} side="right">
+          <Button asChild variant="contrast" size="icon" className="size-9">
+            <Link to="/new" aria-label={t('New task')}>
+              <PlusIcon className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        </IconTooltip>
+      </div>
+
+      <nav aria-label={t('Main')} className="mt-3 flex flex-col items-center gap-1">
+        <IconTooltip label={t('Dashboard')} side="right">
+          <RouterLink
+            to="/dashboard"
+            data-slot="rail-dashboard-link"
+            aria-label={t('Dashboard')}
+            className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <LayoutDashboardIcon className="size-4" aria-hidden="true" />
+          </RouterLink>
+        </IconTooltip>
+        {primaryItems.map(railLink)}
+      </nav>
+
+      {settings ? (
+        <nav aria-label={t('Sidebar settings')} className="mt-auto flex flex-col items-center">
+          {railLink(settings)}
+        </nav>
+      ) : null}
     </div>
   )
 }
