@@ -1,9 +1,9 @@
-/* Appearance preferences (accent + density): the pure half, mirroring `lib/theme.ts`.
+/* Appearance preferences (density + width): the pure half, mirroring `lib/theme.ts`.
  *
  * The authoritative store is the server's `ui-state.json` (`GET/PUT /api/ui-state`, additive
  * `appearance` key) so the choice follows the repo, not the browser. localStorage keeps a
  * per-browser MIRROR of the last-applied values purely so the pre-paint script in
- * `packages/web/index.html` can stamp `data-accent`/`data-density`/`data-width` before first paint — the same
+ * `packages/web/index.html` can stamp its historical `data-accent`/`data-density`/`data-width` values before first paint — the same
  * no-flash trick the theme uses. When the server answers, its value wins and the mirror is
  * rewritten.
  *
@@ -15,10 +15,11 @@ export const ACCENT_STORAGE_KEY = 'onni-accent'
 export const DENSITY_STORAGE_KEY = 'onni-density'
 export const WIDTH_STORAGE_KEY = 'onni-width'
 
-/** The two accents the token sheet can express today: `lime` is `--primary` as shipped;
- *  `violet` swaps the `--primary` family onto the existing `--violet` tokens (index.css
- *  `:root[data-accent="violet"]`). More accents = more token families there, nothing here. */
-export type Accent = 'lime' | 'violet'
+/**
+ * Accent remains in persisted appearance records solely for backwards compatibility. The visual
+ * system no longer offers a choice: old values normalize to the one fixed violet accent.
+ */
+export type Accent = 'violet'
 
 /** Density shrinks Tailwind v4's one spacing token (`--spacing`, default 4px/unit) so every
  *  padding/gap/control height tightens while type stays full-size: `compact` → 3.5px (~12%),
@@ -30,7 +31,7 @@ export type Density = 'comfortable' | 'compact' | 'ultra'
  *  820px reading column. Used by task and skill detail views; type size and spacing stay untouched. */
 export type Width = 'narrow' | 'wide'
 
-export const DEFAULT_ACCENT: Accent = 'lime'
+export const DEFAULT_ACCENT: Accent = 'violet'
 export const DEFAULT_DENSITY: Density = 'comfortable'
 export const DEFAULT_WIDTH: Width = 'wide'
 
@@ -40,9 +41,10 @@ export interface Appearance {
   width: Width
 }
 
-/** Coerce anything (missing key, a future value, garbage) into an Accent. */
+/** Coerce historic accent records to the fixed violet accent without rejecting old ui-state. */
 export function normalizeAccent(raw: unknown): Accent {
-  return raw === 'lime' || raw === 'violet' ? raw : DEFAULT_ACCENT
+  void raw
+  return DEFAULT_ACCENT
 }
 
 export function normalizeDensity(raw: unknown): Density {
@@ -87,11 +89,13 @@ export function writeStoredAppearance(appearance: Appearance): void {
   }
 }
 
-/** Stamp the root element. Defaults REMOVE the attribute rather than writing `data-accent="lime"`,
- *  so the stock token sheet applies untouched and the CSS only ever names the non-default cases. */
+/**
+ * The fixed accent never needs a DOM attribute. Removing a historical stamp makes an old mirror
+ * converge after startup while the token sheet stays violet even before that effect runs.
+ */
 export function applyAppearance(root: HTMLElement, appearance: Appearance): void {
-  if (appearance.accent === DEFAULT_ACCENT) delete root.dataset.accent
-  else root.dataset.accent = appearance.accent
+  void appearance.accent
+  delete root.dataset.accent
   if (appearance.density === DEFAULT_DENSITY) delete root.dataset.density
   else root.dataset.density = appearance.density
   if (appearance.width === DEFAULT_WIDTH) delete root.dataset.width

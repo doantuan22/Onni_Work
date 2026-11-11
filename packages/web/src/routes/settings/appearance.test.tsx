@@ -93,6 +93,16 @@ afterEach(() => {
 })
 
 describe('Settings → Appearance: project order', () => {
+  it('keeps appearance choices focused on theme, density, and reading width', async () => {
+    serve({ appearance: { accent: 'lime' } })
+    renderSection(['onni'])
+
+    await waitFor(() => expect(screen.getByText('Reading width')).not.toBeNull())
+    expect(screen.queryByRole('radiogroup', { name: 'Accent' })).toBeNull()
+    expect(screen.queryByText('Lime')).toBeNull()
+    expect(screen.queryByText('Violet')).toBeNull()
+  })
+
   it('previews a selected logo and uploads only after Save logo', async () => {
     serve()
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:logo-preview', revokeObjectURL: vi.fn() }))
