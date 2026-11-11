@@ -4,6 +4,12 @@ import * as React from 'react'
 export const RAIL_STORAGE_KEY_PREFIX = 'onni-sidebar-rail:'
 export const RAIL_WIDTH = 55
 export const RAIL_COLLAPSE_MEDIA_QUERY = '(max-width: 1359px)'
+export const TOGGLE_NAVIGATOR_EVENT = 'onni:toggle-navigator'
+
+export function toggleNavigatorRail(projectId?: string): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(TOGGLE_NAVIGATOR_EVENT, { detail: { projectId } }))
+}
 
 export type RailManualOverride = 'collapsed' | 'expanded'
 
@@ -81,6 +87,19 @@ export function useRailState(projectId: string, contentZoneCount: number) {
     writeStoredRailOverride(projectId, next)
     setManualOverride(next)
   }, [collapsed, projectId])
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onToggle = (event: Event) => {
+      const custom = event as CustomEvent<{ projectId?: string } | undefined>
+      const targetProject = custom.detail?.projectId
+      if (!targetProject || targetProject === projectId) {
+        toggle()
+      }
+    }
+    window.addEventListener(TOGGLE_NAVIGATOR_EVENT, onToggle)
+    return () => window.removeEventListener(TOGGLE_NAVIGATOR_EVENT, onToggle)
+  }, [projectId, toggle])
 
   return { collapsed, manualOverride, toggle }
 }
