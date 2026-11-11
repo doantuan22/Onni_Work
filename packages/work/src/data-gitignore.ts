@@ -36,6 +36,9 @@ export const DATA_GITIGNORE_ENTRIES = [
   'drafts/',
   // Per-task workspace layouts (spec `2026-10-07-task-workspace` §5.3): a screen preference, not repo content.
   'layouts/', // unsent composer text + pasted screenshots (#939) — never in git history
+  'workspace-panes.json',
+  'workspace-panes.json.tmp',
+  'workspace-panes.json.*.tmp',
   'todos.json',
   'todos.json.tmp',
   // Private, per-project MCP servers (spec 2026-10-07-private-project-mcp) — personal tokens.

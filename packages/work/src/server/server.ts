@@ -66,6 +66,7 @@ import { createPreviewRoutes } from './routes/preview.ts';
 import { createHealthRoutes } from './routes/health.ts';
 import { createDraftsRoutes } from './routes/drafts.ts';
 import { createLayoutsRoutes } from './routes/layouts.ts';
+import { createWorkspacePanesRoutes } from './routes/workspace-panes.ts';
 import { createE2eRoutes } from './routes/e2e.ts';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { createWorkflowsRoutes } from './routes/workflows.ts';
@@ -2170,6 +2171,7 @@ export function createApp(deps: ServerDeps) {
     .route('/', runsRoutes)
     .route('/', draftRoutes)
     .route('/', layoutRoutes)
+    .route('/', createWorkspacePanesRoutes())
     .route('/', groupsRoutes({ pickSchema, stopTaskProcesses, legacyWorktreeMutation }))
     .route('/', openTargetsRoutes({ capabilities, detectOpenTargets, agentCliRunner, openApp }))
     .route('/', worktreesRoutes())
