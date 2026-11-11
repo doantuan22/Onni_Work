@@ -266,6 +266,23 @@ describe('addColumn', () => {
     expect(views(state)).toEqual(['session', 'session'])
   })
 
+  it('enforces at most one terminal column per layout by rejecting a second terminal', () => {
+    let state = addColumn(chatState(), 'Chat', 'terminal')
+    expect(views(state)).toEqual(['session', 'terminal'])
+    const rejected = addColumn(state, 'Chat', 'terminal')
+    expect(rejected).toBe(state)
+    expect(views(rejected)).toEqual(['session', 'terminal'])
+  })
+
+  it('rejects adding a terminal column when a stacked terminal column already exists', () => {
+    const stackedState: WorkspaceState = {
+      layouts: [{ name: 'Custom', columns: [{ view: 'terminal', width: 100, stack: 'browser', stackRatio: 58 }] }],
+      active: 'Custom',
+    }
+    const rejected = addColumn(stackedState, 'Custom', 'terminal')
+    expect(rejected).toBe(stackedState)
+  })
+
   it('caps at three columns', () => {
     let state = chatState()
     state = addColumn(state, 'Chat', 'changes')
@@ -312,6 +329,35 @@ describe('setColumnView', () => {
   it('is a no-op when the view is already showing', () => {
     const state = chatState()
     expect(setColumnView(state, 'Chat', 0, 'session')).toBe(state)
+  })
+
+  it('rejects changing a column to terminal when another column is already terminal', () => {
+    let state = addColumn(chatState(), 'Chat', 'terminal')
+    expect(views(state)).toEqual(['session', 'terminal'])
+    const rejected = setColumnView(state, 'Chat', 0, 'terminal')
+    expect(rejected).toBe(state)
+    expect(views(rejected)).toEqual(['session', 'terminal'])
+  })
+
+  it('rejects changing a column to terminal when another column is a stacked terminal', () => {
+    const stackedState: WorkspaceState = {
+      layouts: [{
+        name: 'Custom',
+        columns: [
+          { view: 'session', width: 50 },
+          { view: 'terminal', width: 50, stack: 'browser', stackRatio: 58 },
+        ],
+      }],
+      active: 'Custom',
+    }
+    const rejected = setColumnView(stackedState, 'Custom', 0, 'terminal')
+    expect(rejected).toBe(stackedState)
+  })
+
+  it('allows repointing an existing terminal column to another view', () => {
+    let state = addColumn(chatState(), 'Chat', 'terminal')
+    state = setColumnView(state, 'Chat', 1, 'files')
+    expect(views(state)).toEqual(['session', 'files'])
   })
 })
 
@@ -625,6 +671,54 @@ describe('reviveState', () => {
     expect(state.layouts[0]!.columns).toEqual([
       { view: 'terminal', width: 50, stack: 'browser', stackRatio: DEFAULT_STACK_RATIO },
       { view: 'editor', width: 50 },
+    ])
+  })
+
+  it('dedupes duplicate terminal columns to enforce exactly one terminal surface per run', () => {
+    const state = reviveState({
+      layouts: [{
+        name: 'Dual Terminal',
+        columns: [
+          { view: 'terminal', width: 50 },
+          { view: 'terminal', width: 50 },
+        ],
+      }],
+      active: 'Dual Terminal',
+    })
+    expect(state.layouts[0]!.columns).toEqual([{ view: 'terminal', width: 100 }])
+  })
+
+  it('dedupes a second terminal column when the first is stacked', () => {
+    const state = reviveState({
+      layouts: [{
+        name: 'Workbench Duplicate',
+        columns: [
+          { view: 'terminal', width: 50, stack: 'browser' },
+          { view: 'terminal', width: 50 },
+        ],
+      }],
+      active: 'Workbench Duplicate',
+    })
+    expect(state.layouts[0]!.columns).toEqual([
+      { view: 'terminal', width: 100, stack: 'browser', stackRatio: DEFAULT_STACK_RATIO },
+    ])
+  })
+
+  it('dedupes a stacked terminal column when an earlier terminal column is already present', () => {
+    const state = reviveState({
+      layouts: [{
+        name: 'Terminal First',
+        columns: [
+          { view: 'session', width: 50 },
+          { view: 'terminal', width: 25 },
+          { view: 'terminal', width: 25, stack: 'browser' },
+        ],
+      }],
+      active: 'Terminal First',
+    })
+    expect(state.layouts[0]!.columns).toEqual([
+      { view: 'session', width: 66.67 },
+      { view: 'terminal', width: 33.33 },
     ])
   })
 
