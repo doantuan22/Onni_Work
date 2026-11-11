@@ -170,6 +170,10 @@ these by using the existing index + client-side state.
    `VerticalSplit` primitive; reserved workspace chords + `ActivePaneContext` (`components/workspace/`);
    Navigator "Needs you/Running/Recent" grouping (`lib/navigator-groups.ts`); icon rail (`lib/rail-state.ts`).
 2. **Host**: workspace state + thread tabs (single visible pane), active-pane routing, URL sync.
+   **✅ DONE 2026-11-11.** Delivered: `lib/workspace-state.ts` (PaneRef union, per-project localStorage);
+   `components/workspace/workspace-host.tsx` (ActivePane wiring, `/new` as draft pane, promote-on-start);
+   `NewTaskSurface` + draftId-keyed drafts; URL sync (`task-workspace/url-sync.ts`); Review layout seed +
+   Layout-menu preset; Navigator Open list with close. Web `tsc` is clean.
 3. **Context area**: wrap existing `WorkspaceColumns` views as the right-hand tabbed area; unify
    review onto `<Diff>`; unified task-tree pane.
 4. **Split conversations** (2-up), per-pane drafts/scroll, shortcut set, mobile model.
