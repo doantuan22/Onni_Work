@@ -454,7 +454,7 @@ export async function runAgentStep(
   state.currentStepId = step.id;
   ctx.beginUsageInvocation(runId, state, step.id);
   if (state.cancelled) return 'cancelled';
-  const permissionSpec = await ctx.agentPermissionSpec(runId, stepBackend, onEvent);
+  const permissionSpec = await ctx.agentPermissionSpec(runId, stepBackend, onEvent, step.bashAllowlist);
   const launch = (launchSessionId: string, resume: boolean, prompt: string): AgentSession =>
     runner.startSession(
       {

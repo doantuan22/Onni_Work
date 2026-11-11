@@ -1471,8 +1471,9 @@ export class RunManager {
     runId: string,
     backend: string,
     onEvent: (event: AgentEvent) => void,
-  ): Promise<{ permissionLevel?: AgentPermissionLevel }> {
-    return buildAgentPermissionSpec(this.startContext(), runId, backend, onEvent);
+    bashAllowlist?: readonly string[],
+  ): Promise<{ permissionLevel?: AgentPermissionLevel; bashAllowlist?: string[] }> {
+    return buildAgentPermissionSpec(this.startContext(), runId, backend, onEvent, bashAllowlist);
   }
 
   private recordNoteMeta(runId: string, event: Extract<AgentEvent, { type: 'note' }>): void {
@@ -2769,7 +2770,7 @@ export class RunManager {
       abandonCancelledStart: (runId) => this.abandonCancelledStart(runId),
       acquireRepoRoot: (runId, run) => this.acquireRepoRoot(runId, state(run)),
       agentEnvForStep: (runId, backend, options) => this.agentEnvForStep(runId, backend, options),
-      agentPermissionSpec: (runId, backend, onEvent) => this.agentPermissionSpec(runId, backend, onEvent),
+      agentPermissionSpec: (runId, backend, onEvent, bashAllowlist) => this.agentPermissionSpec(runId, backend, onEvent, bashAllowlist),
       armAutosave: (runId, run) => this.armAutosave(runId, state(run)),
       armIdleTimer: (runId, run) => this.armIdleTimer(runId, state(run)),
       armMonitoringWakeTimer: (runId, run) => this.armMonitoringWakeTimer(runId, state(run)),
@@ -3082,7 +3083,7 @@ export class RunManager {
       recordNoteMeta: (runId, event) => this.recordNoteMeta(runId, event),
       agentEnvForStep: (runId, backend, options) => this.agentEnvForStep(runId, backend, options),
       privateMcpForLaunch: (backend, onEvent) => this.privateMcpForLaunch(backend, onEvent),
-      agentPermissionSpec: (runId, backend, onEvent) => this.agentPermissionSpec(runId, backend, onEvent),
+      agentPermissionSpec: (runId, backend, onEvent, bashAllowlist) => this.agentPermissionSpec(runId, backend, onEvent, bashAllowlist),
       markQueuedManagerDeliveriesDelivered: (runId) => this.markQueuedManagerDeliveriesDelivered(runId),
       handleDispatchTurn: (runId, text, turn) => this.handleDispatchTurn(runId, text, turn as { state: ActiveRun; stepId: string; done: boolean }),
       recordTurnEnd: (runId, text, state) => this.recordTurnEnd(runId, text, state as ActiveRun | undefined),

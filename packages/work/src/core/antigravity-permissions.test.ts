@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import {
   antigravitySettings,
   commandGrants,
   discoverVerifyCommands,
+  discoverTaskTestCommands,
   effectiveAntigravityLevel,
 } from './antigravity-permissions.ts';
 import { workerPrompt } from '../workflows/manager-worker.ts';
@@ -175,6 +176,31 @@ describe('discoverVerifyCommands', () => {
       expect(antigravitySettings('allow-rules', { bashAllowlist: discoverVerifyCommands(dir) })).toContain('command(npm run build)');
       // Never at files-only: that level passes no command grants at all.
       expect(antigravitySettings('files-only', { bashAllowlist: discoverVerifyCommands(dir) })).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('discoverTaskTestCommands', () => {
+  it('grants exact test-file invocations named by the order and beside named source files', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agy-task-tests-'));
+    try {
+      const source = join(dir, 'packages', 'work', 'src', 'core');
+      mkdirSync(source, { recursive: true });
+      writeFileSync(join(source, 'permissions.ts'), '');
+      writeFileSync(join(source, 'permissions.test.ts'), '');
+      writeFileSync(join(source, 'other.test.ts'), '');
+      const task = 'Change packages/work/src/core/permissions.ts and verify packages/work/src/core/other.test.ts.';
+      expect(discoverTaskTestCommands(dir, task)).toEqual([
+        'npm test -- packages/work/src/core/permissions.test.ts',
+        'npm test -- packages/work/src/core/other.test.ts',
+      ]);
+      expect(commandGrants(discoverTaskTestCommands(dir, task))).toEqual([
+        'command(npm test -- packages/work/src/core/permissions.test.ts)',
+        'command(npm test -- packages/work/src/core/other.test.ts)',
+      ]);
+      expect(discoverTaskTestCommands(dir, 'Ignore ../outside.test.ts')).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

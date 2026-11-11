@@ -12,8 +12,35 @@
  * argument, a redirect, a chain, a pipe or a substitution — and it cannot be a pattern either:
  * `command(git add *)` matched nothing. Every grant below is therefore one exact line.
  */
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { AgentPermissionLevel } from '@onni/contract';
 export { discoverVerifyCommands } from './verify-commands.ts';
+
+const TASK_FILE_REFERENCE = /(?:^|[\s`"'(])((?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs))(?=$|[\s`"'),:.])/g;
+const TASK_TEST_COMMAND_LIMIT = 12;
+
+/** Exact invocations for test files named by a dispatched order or beside its named source files. */
+export function discoverTaskTestCommands(cwd: string | undefined, task: string): string[] {
+  if (!cwd) return [];
+  const candidates = new Set<string>();
+  for (const match of task.matchAll(TASK_FILE_REFERENCE)) {
+    const file = match[1]!;
+    if (file.split('/').some((part) => !part || part === '.' || part === '..')) continue;
+    const absolute = join(cwd, file);
+    if (!existsSync(absolute)) continue;
+    if (/\.test\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(file)) candidates.add(file);
+    else if (/\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(file)) {
+      const base = file.replace(/\.(?:ts|tsx|js|jsx|mjs|cjs)$/i, '');
+      for (const ext of ['.test.ts', '.test.tsx', '.test.js', '.test.jsx']) {
+        const testFile = `${base}${ext}`;
+        if (existsSync(join(cwd, testFile))) candidates.add(testFile);
+      }
+    }
+    if (candidates.size >= TASK_TEST_COMMAND_LIMIT) break;
+  }
+  return [...candidates].slice(0, TASK_TEST_COMMAND_LIMIT).map((file) => `npm test -- ${file}`);
+}
 
 /**
  * A narrow worker set: read-only git inspection only. Staging, commit, push, network, destructive
