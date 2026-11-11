@@ -167,6 +167,27 @@ describe('the dispatch engine (spec 2026-09-10-dispatch)', () => {
   // ---- dispatch ------------------------------------------------------------------------------
 
   describe('dispatch()', () => {
+    it('uses the root roster at dispatch time after workers are added or removed', async () => {
+      const parent = await parkedRoot();
+      const initial = rosterSchema.parse({ manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'existing' }] });
+      store.updateRun(parent.id, { roster: initial });
+      const added = manager.updateRosterFromUser(parent.id, {
+        manager: { runner: 'claude' },
+        workers: [{ runner: 'codex', role: 'existing', maxConcurrent: 1 }, { runner: 'pi', role: 'added live', maxConcurrent: 1 }],
+      });
+      expect('denied' in added).toBe(false);
+      const accepted = manager.dispatch(parent.id, order('mock:done use the added worker', { backend: 'pi' }));
+      expect('refused' in accepted).toBe(false);
+      if (!('refused' in accepted)) started.push(accepted.id);
+
+      const removed = manager.updateRosterFromUser(parent.id, {
+        manager: { runner: 'claude' },
+        workers: [{ runner: 'codex', role: 'existing', maxConcurrent: 1 }],
+      });
+      expect('denied' in removed).toBe(false);
+      expect(refusal(parent.id, order('mock:done use removed worker', { backend: 'pi' }))).toContain('allowed workers');
+    }, 40_000);
+
     it('creates a child forked off the parent branch, with its order, budget and tree files', async () => {
       reboot({ maxParallel: 1, maxMonitoringSessions: 0 });
       const parent = await parkedRoot(20);

@@ -19,7 +19,7 @@ describe('the dispatch routes', () => {
   let repoRoot: string;
   let store: RunStore;
   let app: Hono;
-  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'verify' | 'conflicts' | 'memory' | 'ask' | 'plan' | 'message' | 'cancel' | 'redirect'; runId: string; body: unknown }>;
+  let calls: Array<{ kind: 'dispatch' | 'report' | 'peek' | 'verify' | 'conflicts' | 'memory' | 'ask' | 'plan' | 'message' | 'cancel' | 'redirect' | 'roster'; runId: string; body: unknown }>;
   let outcome: { id: string; branch?: string } | { refused: string };
   let reportOk: boolean;
   let budget: Record<string, unknown> | undefined;
@@ -97,6 +97,14 @@ describe('the dispatch routes', () => {
         calls.push({ kind: 'message', runId, body });
         return message;
       },
+      updateRosterFromManager: (runId: string, body: unknown) => {
+        calls.push({ kind: 'roster', runId, body });
+        return { roster: { manager: { runner: 'claude' }, workers: (body as { workers: unknown[] }).workers } };
+      },
+      updateRosterFromUser: (runId: string, roster: unknown) => {
+        calls.push({ kind: 'roster', runId, body: roster });
+        return { roster };
+      },
       cancelFor: (runId: string, body: unknown) => {
         calls.push({ kind: 'cancel', runId, body });
         return cancel;
@@ -130,7 +138,7 @@ describe('the dispatch routes', () => {
     rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  const json = (body: unknown) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const json = (body: unknown, method = 'POST') => ({ method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
   it('creates a child through the manager and answers its id and branch', async () => {
     const res = await apiRequest(app, '/api/v1/runs/parent-1/dispatch', json({ objective: 'take the flank', max_cost: 2 }));
@@ -298,6 +306,23 @@ describe('the dispatch routes', () => {
     expect(calls).toEqual([{ kind: 'dispatch', runId: 'root', body: { objective: 'take the flank', partId: 'p1' } }]);
   });
 
+  it('validates both live roster update routes and keeps manager updates worker-only', async () => {
+    const root = store.createRun({ title: 'manager', workflow: 'quick-task', task: 'manage', steps: [] });
+    const roster = { manager: { runner: 'claude' as const }, workers: [{ runner: 'codex' as const, role: 'worker', maxConcurrent: 1 }] };
+    store.updateRun(root.id, { dispatch: { rootRunId: root.id }, roster });
+
+    const user = await apiRequest(app, `/api/v1/runs/${root.id}/roster`, json({ roster: { ...roster, workers: [{ runner: 'pi', role: 'added' }] } }, 'PUT'));
+    expect(user.status).toBe(200);
+    expect(calls.at(-1)).toMatchObject({ kind: 'roster', runId: root.id, body: { manager: { runner: 'claude' }, workers: [{ runner: 'pi', role: 'added' }] } });
+
+    const agent = await apiRequest(app, `/api/v1/runs/${root.id}/roster`, json({ workers: [{ runner: 'pi', role: 'manager-added' }] }, 'PATCH'));
+    expect(agent.status).toBe(200);
+    expect(calls.at(-1)).toMatchObject({ kind: 'roster', runId: root.id, body: { workers: [{ runner: 'pi', role: 'manager-added' }] } });
+
+    const invalid = await apiRequest(app, `/api/v1/runs/${root.id}/roster`, json({ manager: { runner: 'pi' }, workers: [] }, 'PATCH'));
+    expect(invalid.status).toBe(400);
+  });
+
   it('passes the verify body through validated and maps the manager’s denial status unchanged', async () => {
     verify = { state: 'passed' };
     const ok = await apiRequest(app, '/api/v1/runs/root/verify', json({ target: 'abcd1234', only: ['npm test'], baseline: true }));
@@ -405,7 +430,7 @@ describe('the dispatch routes', () => {
   it('answers 409 on both routes while ONNI_DISPATCH=0, before touching the manager', async () => {
     serverEnv.ONNI_DISPATCH = '0';
     app = createApp({ repoRoot, store, manager: {} as RunManager, version: '0.0.0-test', env: serverEnv, providerAuth: connectedProviderAuth() });
-    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/conflicts', '/api/v1/runs/p/worker-message', '/api/v1/runs/p/worker-cancel', '/api/v1/runs/p/worker-redirect', '/api/v1/runs/p/ask']) {
+    for (const path of ['/api/v1/runs/p/dispatch', '/api/v1/runs/p/report', '/api/v1/runs/p/budget', '/api/v1/runs/p/peek', '/api/v1/runs/p/verify', '/api/v1/runs/p/conflicts', '/api/v1/runs/p/worker-message', '/api/v1/runs/p/worker-cancel', '/api/v1/runs/p/worker-redirect', '/api/v1/runs/p/ask', '/api/v1/runs/p/roster']) {
       const res = await apiRequest(app, path, json({ objective: 'x', status: 'done', result: 'r', question: 'q' }));
       expect(res.status).toBe(409);
       expect(((await res.json()) as { error: string }).error).toMatch(/^dispatch is disabled on this cockpit \(ONNI_DISPATCH=0\).*stop and report/);

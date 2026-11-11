@@ -192,7 +192,7 @@ export const runRecordSchema = z.object({
   autonomous: z.boolean().optional(),
   /** The cost / token / time / iteration ceilings this run started with (snapshot; absent on old runs). */
   limits: runLimitsSchema.optional(),
-  /** Manager–worker roster of this task tree (on the root; snapshotted at start). */
+  /** Manager–worker roster of this task tree (on the root; mutable while the task is live). */
   roster: rosterSchema.optional(),
   /** The manager may merge ("Full quyền manager"): snapshotted at start on the root, absent = off. */
   managerFullAccess: z.boolean().optional(),

@@ -16,6 +16,7 @@ import {
   TASK_OR_ATTACHMENTS_ISSUE,
   dispatchIntentSchema,
   rosterSchema,
+  rosterUpdateInputSchema,
   runLimitsRequestSchema,
   type AttachmentEntry,
   type ClearProjectDataResult,
@@ -327,6 +328,20 @@ export function createRunsRoutes(deps: RunsRouteDeps) {
           .store.listRuns()
           .map((run) => withUsage(full || !run.workflowDef ? run : { ...run, workflowDef: undefined })),
       );
+    })
+
+    /** Replace a live manager–worker tree's roster. Existing children continue; future dispatches use the update. */
+    .put('/runs/:id/roster', jsonZodValidator(rosterUpdateInputSchema), async (c) => {
+      const { store, root: repoRoot, manager } = c.get('project');
+      const run = store.getRun(c.req.param('id'));
+      if (!run) return c.json({ error: 'no such run' }, 404);
+      const roster = c.req.valid('json').roster;
+      const backends = [...new Set([roster.manager.runner, ...roster.workers.map((worker) => worker.runner)])];
+      const unavailable = await providerActionError(backends, { repoRoot });
+      if (unavailable) return c.json({ error: unavailable }, 409);
+      const outcome = manager.updateRosterFromUser(run.id, roster);
+      if ('denied' in outcome) return c.json({ error: outcome.denied }, outcome.status);
+      return c.json({ roster: outcome.roster });
     })
 
     // Registered before the `/:id/...` routes so "archive-finished" and "read-all"

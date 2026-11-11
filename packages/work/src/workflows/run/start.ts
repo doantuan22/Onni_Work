@@ -352,8 +352,8 @@ export function startRun(ctx: StartContext,
   if (input.dispatch) ctx.store.updateRun(run.id, { dispatch: input.dispatch });
   else if (input.dispatchIntent) ctx.store.updateRun(run.id, { dispatch: { rootRunId: run.id, intent: input.dispatchIntent } });
   if (input.roster) {
-    // The roster is snapshotted here and never re-read: a worker cannot widen it, and a later
-    // preset edit does not touch a tree that is already running.
+    // The root record owns the live fence; dispatch() reads it for every admission, and only the
+    // validated roster update routes may change it after this initial write.
     ctx.store.updateRun(run.id, { roster: input.roster, ...(input.managerFullAccess ?? ctx.semaphore.safety().managerFullAccess ? { managerFullAccess: true } : {}), dispatch: { ...(ctx.store.getRun(run.id)?.dispatch ?? { rootRunId: run.id }), rootRunId: run.id } });
   }
   // Initial pasted attachments must be visible while the run is still queued (#612),
