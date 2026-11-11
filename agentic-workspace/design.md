@@ -165,6 +165,10 @@ these by using the existing index + client-side state.
 ## 9. Phasing (each phase ships independently, default path unchanged until the last)
 
 1. **Primitives**: shared `Splitter`, Navigator attention grouping/collapse rail, status bar.
+   **✅ DONE 2026-11-11** (status bar dropped per §12.5 #8). Delivered: violet token swap + `--header-h` 48px (D1/D7);
+   `useSplitter` hook adopted by sidebar, column, drawer and tree handles + characterization tests;
+   `VerticalSplit` primitive; reserved workspace chords + `ActivePaneContext` (`components/workspace/`);
+   Navigator "Needs you/Running/Recent" grouping (`lib/navigator-groups.ts`); icon rail (`lib/rail-state.ts`).
 2. **Host**: workspace state + thread tabs (single visible pane), active-pane routing, URL sync.
 3. **Context area**: wrap existing `WorkspaceColumns` views as the right-hand tabbed area; unify
    review onto `<Diff>`; unified task-tree pane.
