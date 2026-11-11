@@ -144,6 +144,28 @@ describe('workspace threads route and viewed read receipts', () => {
       expect(page3.nextCursor).toBeUndefined();
     });
 
+    it('uses projectId to paginate colliding run IDs and activity times (QA7-A04)', async () => {
+      const boot = await registerProject(repoRoot);
+      const other = await registerProject(otherRoot);
+      const run = store.createRun({ title: 'Boot collision', workflow: 'quick-task', task: 'same', steps: [] });
+      const timestamp = '2026-11-11T10:00:00Z';
+      store.updateRun(run.id, { createdAt: timestamp, startedAt: timestamp });
+      seedRunEvents(store.dataDir, run.id, []);
+      seedColdProject(otherRoot, [storedRun({ id: run.id, title: 'Other collision', createdAt: timestamp, startedAt: timestamp })]);
+      seedRunEvents(join(otherRoot, '.ai/onni'), run.id, []);
+
+      const app = makeApp();
+      const firstResponse = await apiRequest(app, '/api/v1/workspace/threads?limit=1');
+      const first = (await firstResponse.json()) as ThreadsPage;
+      expect(first.items).toHaveLength(1);
+      expect(first.nextCursor).toBeDefined();
+      const secondResponse = await apiRequest(app, `/api/v1/workspace/threads?limit=1&cursor=${first.nextCursor}`);
+      const second = (await secondResponse.json()) as ThreadsPage;
+
+      expect([first.items[0]!.projectId, second.items[0]!.projectId].sort()).toEqual([boot.id, other.id].sort());
+      expect(second.items[0]!.runId).toBe(run.id);
+    });
+
     it('rejects an invalid cursor with 400', async () => {
       const app = makeApp();
       const res = await apiRequest(app, '/api/v1/workspace/threads?cursor=not-a-valid-cursor');

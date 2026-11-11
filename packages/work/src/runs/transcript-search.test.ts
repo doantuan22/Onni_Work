@@ -9,6 +9,7 @@ import {
   extractEventTexts,
   SearchCursorError,
   searchTranscripts,
+  streamRunEventsBounded,
   type CandidateRun,
 } from './transcript-search.ts';
 
@@ -333,6 +334,21 @@ describe('transcript-search', () => {
       // Should have read only the first few events before hitting 300 bytes
       expect(result.items.length).toBeGreaterThan(0);
       expect(result.items.length).toBeLessThan(10);
+    });
+
+    it('stops before accumulating or parsing an oversized NDJSON line (QA7-A02)', async () => {
+      const file = join(tempDir, 'oversized-line.ndjson');
+      const hugeLine = JSON.stringify({
+        type: 'text',
+        text: 'needle '.repeat(40_000),
+        seq: 1,
+        ts: '2026-11-11T10:00:00Z',
+      });
+      writeFileSync(file, `${hugeLine}\n${JSON.stringify({ type: 'text', text: 'later needle', seq: 2, ts: '2026-11-11T10:00:00Z' })}\n`);
+
+      const events = [];
+      for await (const event of streamRunEventsBounded(file, 1024 * 1024)) events.push(event);
+      expect(events).toEqual([]);
     });
 
     it('never throws on missing or corrupt files (skips them)', async () => {

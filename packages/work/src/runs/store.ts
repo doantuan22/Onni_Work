@@ -2299,7 +2299,8 @@ export class RunStore extends EventEmitter {
   /** Must run under lockRunIndex. Carry unknown runs through without recovery reconciliation,
    * and apply only locally changed fields to records we previously read. This keeps a stale
    * cockpit's unrelated flush from reverting another process's later update. Concurrent edits
-   * to the same field use the last serialized writer; this is not execution ownership.
+   * to the same field use the last serialized writer except lastViewedSeq, whose receipt is
+   * monotonic across processes; this is not execution ownership.
    * Local deletion tombstones still veto adoption. Absence alone is NOT a deletion signal:
    * older writers could have dropped our records. Cross-process deletion ownership requires a
    * separate durable tombstone protocol; it is not provided here. An unreadable index retains
@@ -2328,7 +2329,10 @@ export class RunStore extends EventEmitter {
       const combined = { ...disk } as unknown as Record<string, unknown>;
       for (const key of new Set([...Object.keys(baseline), ...Object.keys(local)])) {
         if (JSON.stringify(local[key]) === JSON.stringify(baseline[key])) continue;
-        if (key in local) combined[key] = local[key];
+        if (key === 'lastViewedSeq' && typeof local[key] === 'number') {
+          const diskViewed = disk.lastViewedSeq;
+          combined[key] = typeof diskViewed === 'number' ? Math.max(local[key], diskViewed) : local[key];
+        } else if (key in local) combined[key] = local[key];
         else delete combined[key];
       }
       merged.set(mine.id, combined as RunRecord);

@@ -201,6 +201,8 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
       'POST /projects',
       'GET /fs/browse',
       'GET /workspace/runs-index',
+      'GET /workspace/threads',
+      'GET /workspace/search',
       'GET /workspace/host-usage',
       'GET /workspace/agent-profiles',
       'POST /workspace/agent-profiles',
@@ -216,6 +218,11 @@ describe('project-route alias parity (unprefixed vs /api/v1/p/<boot> vs /api/v1/
     ]) {
       expect(keys, workspaceOnly).not.toContain(workspaceOnly);
     }
+    // The viewed receipt is project-scoped (and therefore deliberately absent from this list).
+    expect(keys).toContain('POST /runs/:id/viewed');
+    // Panes are intentionally mounted on both workspace and project-scoped surfaces.
+    expect(keys).toContain('GET /workspace/panes');
+    expect(keys).toContain('PUT /workspace/panes');
   });
 
   // Three requests per GET route, run back to back: ~1 s alone, past 5 s under the full suite.
