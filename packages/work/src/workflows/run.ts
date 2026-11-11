@@ -1840,6 +1840,7 @@ export class RunManager {
       isActive: (runId) => this.isActive(runId),
       waitInactive: (runId, timeoutMs) => this.waitInactive(runId, timeoutMs),
       sendMessage: (runId, content, replyTo, deliveryId) => this.sendMessage(runId, content, replyTo, deliveryId),
+      deliverMessage: (runId, content, userAuthored) => this.deliverMessage(runId, content, userAuthored),
       enqueueMessage: (runId, content, deliveryId) => this.enqueueMessage(runId, content, deliveryId),
       deferMessage: (runId, content, deliveryId) => this.deferMessage(runId, content, deliveryId),
       clearSoftAsk: (runId) => this.clearSoftAsk(runId),

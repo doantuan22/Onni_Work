@@ -332,6 +332,9 @@ export function createRunsRoutes(deps: RunsRouteDeps) {
 
     /** Replace a live manager–worker tree's roster. Existing children continue; future dispatches use the update. */
     .put('/runs/:id/roster', jsonZodValidator(rosterUpdateInputSchema), async (c) => {
+      if (!capabilities().dispatch) {
+        return c.json({ error: 'manager–worker needs task dispatch, which this cockpit has turned off (ONNI_DISPATCH=0)' }, 409);
+      }
       const { store, root: repoRoot, manager } = c.get('project');
       const run = store.getRun(c.req.param('id'));
       if (!run) return c.json({ error: 'no such run' }, 404);

@@ -116,18 +116,18 @@ function recordRosterChange(ctx: ManagerControlContext, root: RunRecord, previou
   });
   const message = `worker roster updated by ${by}; ${changes.length ? changes.join('; ') : 'no worker changes'}; current workers: ${summary}`;
   ctx.store.appendEvent(root.id, { type: 'roster-change', by, changes, message });
-  const content: PastedContent[] = [{ type: 'text', text: message }];
-  if (!ctx.sendMessage(root.id, content) && !ctx.deferMessage(root.id, content)) {
-    const latest = ctx.store.getRun(root.id);
-    if (latest) ctx.store.updateRun(root.id, {
-      queuedMessages: [...(latest.queuedMessages ?? []), { id: randomUUID(), text: message, createdAt: new Date().toISOString() }],
-    });
+  if (by === 'user') {
+    const content: PastedContent[] = [{ type: 'text', text: message }];
+    if (!ctx.deliverMessage(root.id, content, false) && !ctx.enqueueMessage(root.id, content)) {
+      ctx.deferMessage(root.id, content);
+    }
   }
 }
 
 export function updateRosterFromUser(ctx: ManagerControlContext, runId: string, roster: Roster):
   | { roster: Roster }
   | { denied: string; status: 400 | 404 | 409 } {
+  if (!dispatchEnabled(ctx)) return { denied: 'dispatch is disabled on this cockpit (ONNI_DISPATCH=0)', status: 409 };
   const run = ctx.store.getRun(runId);
   if (!run) return { denied: `no such run: ${runId}`, status: 404 };
   if (!run.roster || run.dispatch?.rootRunId !== run.id) return { denied: 'run is not a manager–worker tree root', status: 409 };
@@ -135,7 +135,10 @@ export function updateRosterFromUser(ctx: ManagerControlContext, runId: string, 
   const previous = run.roster;
   const updated = ctx.store.updateRoster(run.id, roster);
   if (!updated.ok) return { denied: updated.reason === 'manager-changed' ? 'the manager backend and model cannot be changed' : 'roster could not be updated', status: updated.reason === 'invalid' ? 400 : 409 };
-  if (workerDiff(previous, updated.roster).length) recordRosterChange(ctx, run, previous, updated.roster, 'user');
+  if (workerDiff(previous, updated.roster).length) {
+    recordRosterChange(ctx, run, previous, updated.roster, 'user');
+    void ctx.pump();
+  }
   return { roster: updated.roster };
 }
 
@@ -152,7 +155,10 @@ export function updateRosterFromManager(ctx: ManagerControlContext, runId: strin
   const previous = run.roster;
   const updated = ctx.store.updateRoster(run.id, { manager: run.roster.manager, workers: input.workers });
   if (!updated.ok) return { denied: updated.reason === 'invalid' ? 'worker roster is invalid' : 'roster could not be updated', status: updated.reason === 'invalid' ? 400 : 409 };
-  if (workerDiff(previous, updated.roster).length) recordRosterChange(ctx, run, previous, updated.roster, 'manager');
+  if (workerDiff(previous, updated.roster).length) {
+    recordRosterChange(ctx, run, previous, updated.roster, 'manager');
+    void ctx.pump();
+  }
   return { roster: updated.roster };
 }
 /** Is dispatch on at all? One read, so the gate cannot drift between the sites below. */

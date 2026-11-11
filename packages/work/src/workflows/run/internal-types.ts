@@ -242,6 +242,7 @@ export interface ManagerControlContext {
   isActive: (runId: string) => boolean;
   waitInactive: (runId: string, timeoutMs: number) => Promise<boolean>;
   sendMessage: (runId: string, content: PastedContent[], replyTo?: string, managerDeliveryId?: string) => boolean;
+  deliverMessage: (runId: string, content: PastedContent[], userAuthored: boolean) => boolean;
   enqueueMessage: (runId: string, content: PastedContent[], managerDeliveryId?: string) => QueuedMessage | null;
   deferMessage: (runId: string, content: PastedContent[], managerDeliveryId?: string) => boolean;
   clearSoftAsk: (runId: string) => void;

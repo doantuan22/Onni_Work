@@ -51,6 +51,9 @@ function queuedWorker(runner: Runner = 'codex', extraDispatch: Record<string, un
 
 describe('manager message and cancellation controls', () => {
   it('lets the user replace a live root roster without changing the manager and queues a durable notice', () => {
+    const seam = manager as unknown as { pendingJobs: Map<string, unknown> };
+    seam.pendingJobs.set(managerRunId, { workflow: { name: 'quick-task', source: 'built-in', steps: [] }, input: {} });
+    vi.spyOn(manager as unknown as { pump: () => Promise<void> }, 'pump').mockResolvedValue();
     const updated = manager.updateRosterFromUser(managerRunId, {
       manager: { runner: 'claude' },
       workers: [{ runner: 'pi', role: 'new worker', maxConcurrent: 2 }],
@@ -61,10 +64,17 @@ describe('manager message and cancellation controls', () => {
     expect(readFileSync(join(root, '.ai', 'onni', 'dispatch', managerRunId, 'ledger.jsonl'), 'utf8')).toContain('roster-change');
   });
 
-  it('injects a precise roster-change notice into the live manager session', () => {
+  it('delivers user roster changes as synthetic notices without answering an open ask', () => {
     const sendMessage = vi.fn(() => true);
-    const seam = manager as unknown as { active: Map<string, unknown> };
-    seam.active.set(managerRunId, { cancelled: false, session: { open: true, sendMessage } });
+    const seam = manager as unknown as { active: Map<string, unknown>; pump: () => Promise<void> };
+    seam.active.set(managerRunId, { cancelled: false, sessionEverOpened: true, session: { open: true, sendMessage } });
+    vi.spyOn(seam, 'pump').mockResolvedValue();
+    store.updateRun(managerRunId, {
+      status: 'waiting',
+      askParked: true,
+      dispatch: { rootRunId: managerRunId, pendingAsk: { questions: ['May I proceed?'], askedAt: new Date().toISOString() } },
+    });
+    expect(store.getRun(managerRunId)?.dispatch?.pendingAsk?.questions).toEqual(['May I proceed?']);
     manager.updateRosterFromUser(managerRunId, {
       manager: { runner: 'claude' },
       workers: [{ runner: 'pi', role: 'new parser worker', maxConcurrent: 1 }],
@@ -72,9 +82,55 @@ describe('manager message and cancellation controls', () => {
     expect(sendMessage).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({ type: 'text', text: expect.stringContaining('added pi:') }),
     ]));
+    expect(store.getRun(managerRunId)?.dispatch?.pendingAsk?.questions).toEqual(['May I proceed?']);
+    expect(store.readEvents(managerRunId).some((event) => event.type === 'user-message')).toBe(false);
+  });
+
+  it('records manager roster changes without sending the manager its own notice', () => {
+    const sendMessage = vi.fn(() => true);
+    const seam = manager as unknown as { active: Map<string, unknown>; pump: () => Promise<void> };
+    seam.active.set(managerRunId, { cancelled: false, sessionEverOpened: true, session: { open: true, sendMessage } });
+    const pump = vi.spyOn(seam, 'pump').mockResolvedValue();
+
+    manager.updateRosterFromManager(managerRunId, {
+      workers: [{ runner: 'pi', role: 'updated', maxConcurrent: 1 }],
+    });
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(store.getRun(managerRunId)?.queuedMessages ?? []).toHaveLength(0);
+    expect(store.readEvents(managerRunId).some((event) => event.type === 'roster-change')).toBe(true);
+    expect(pump).toHaveBeenCalledOnce();
+  });
+
+  it('pumps the queue when a roster change frees a worker entry', () => {
+    const worker = queuedWorker('codex');
+    const seam = manager as unknown as { pump: () => Promise<void> };
+    const pump = vi.spyOn(seam, 'pump').mockResolvedValue();
+
+    manager.updateRosterFromUser(managerRunId, {
+      manager: { runner: 'claude' },
+      workers: [{ runner: 'codex', role: 'worker', maxConcurrent: 2 }],
+    });
+
+    expect(store.getRun(worker.id)?.status).toBe('queued');
+    expect(pump).toHaveBeenCalledOnce();
+  });
+
+  it('refuses user roster updates when dispatch is disabled', () => {
+    const disabled = new RunManager(store, root, { env: () => ({ ONNI_DISPATCH: '0' }) });
+    try {
+      expect(disabled.updateRosterFromUser(managerRunId, {
+        manager: { runner: 'claude' },
+        workers: [{ runner: 'pi', role: 'new worker', maxConcurrent: 1 }],
+      })).toMatchObject({ denied: expect.stringContaining('dispatch is disabled'), status: 409 });
+      expect(store.getRun(managerRunId)?.roster?.workers[0]?.runner).toBe('codex');
+    } finally {
+      disabled.dispose();
+    }
   });
 
   it('lets the manager change workers only and records the actor', () => {
+    vi.spyOn(manager as unknown as { pump: () => Promise<void> }, 'pump').mockResolvedValue();
     const updated = manager.updateRosterFromManager(managerRunId, {
       workers: [{ runner: 'pi', role: 'updated', maxConcurrent: 1 }],
     });
