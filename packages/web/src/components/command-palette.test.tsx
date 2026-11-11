@@ -17,10 +17,21 @@ import {
   orderProjects,
   orderRuns,
   paletteScore,
+  useDebouncedSearch,
 } from '@/components/command-palette'
+import { highlightMatch } from '@/components/transcript-match-item'
 import { orderSkills } from '@/lib/skills'
 import { ThemeProvider } from '@/components/theme-provider'
 import { THEME_STORAGE_KEY, type Theme } from '@/lib/theme'
+
+const mockUseTranscriptSearch = vi.fn()
+vi.mock('@/api/workspace-threads', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/workspace-threads')>()
+  return {
+    ...actual,
+    useTranscriptSearch: (...args: unknown[]) => mockUseTranscriptSearch(...args),
+  }
+})
 
 afterEach(cleanup)
 
@@ -34,6 +45,14 @@ beforeAll(() => {
 beforeEach(() => {
   localStorage.clear()
   document.documentElement.className = ''
+  mockUseTranscriptSearch.mockReset()
+  mockUseTranscriptSearch.mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    isFetching: false,
+    isError: false,
+    status: 'idle',
+  })
   vi.stubGlobal('fetch', fetchMock)
   // jsdom ships no matchMedia; the ThemeProvider needs one to resolve `system`.
   vi.stubGlobal(
@@ -1225,3 +1244,238 @@ describe('the pure ordering helpers', () => {
     ])
   })
 })
+
+describe('Transcript matches in command palette', () => {
+  it('does not trigger transcript search or display transcript group when query is shorter than 2 chars', async () => {
+    renderPalette()
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'a' } })
+
+    // Wait past the debounce window
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(mockUseTranscriptSearch).not.toHaveBeenCalledWith('a', expect.objectContaining({ enabled: true }))
+    expect(screen.queryByText('Transcript matches')).toBeNull()
+  })
+
+  it('debounces transcript search query by ~250ms when input >= 2 chars', async () => {
+    renderPalette()
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'needle' } })
+
+    await waitFor(() => {
+      expect(mockUseTranscriptSearch).toHaveBeenCalledWith('needle', expect.objectContaining({ enabled: true }))
+    })
+  })
+
+  it('shows distinct loading state while transcript search is in flight', async () => {
+    mockUseTranscriptSearch.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isFetching: true,
+      isError: false,
+      status: 'pending',
+    })
+
+    renderPalette()
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'loading-test' } })
+
+    await screen.findByText('Transcript matches')
+    expect(document.querySelector('[data-slot="palette-transcript-loading"]')).not.toBeNull()
+    expect(screen.getByText('Searching transcripts…')).toBeTruthy()
+  })
+
+  it('shows distinct error state when transcript search fails (must not read as empty)', async () => {
+    mockUseTranscriptSearch.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      isError: true,
+      status: 'error',
+    })
+
+    renderPalette()
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'fail-query' } })
+
+    await screen.findByText('Transcript matches')
+    expect(document.querySelector('[data-slot="palette-transcript-error"]')).not.toBeNull()
+    expect(screen.getByText('Failed to search transcripts')).toBeTruthy()
+    expect(screen.queryByText('No transcript matches')).toBeNull()
+  })
+
+  it('shows distinct no matches state when search completes with 0 results', async () => {
+    mockUseTranscriptSearch.mockReturnValue({
+      data: { items: [] },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      status: 'success',
+    })
+
+    renderPalette()
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zero-results' } })
+
+    await screen.findByText('Transcript matches')
+    expect(document.querySelector('[data-slot="palette-transcript-empty"]')).not.toBeNull()
+    expect(screen.getByText('No transcript matches')).toBeTruthy()
+  })
+
+  it('renders transcript matches with looked up run title, one-line snippet, highlighted match', async () => {
+    renderPalette({
+      projects: [project({ id: 'onni', name: 'onni' }), project({ id: 'shop', name: 'shop' })],
+      entry: '/p/onni/',
+      runs: [run({ id: 'r-live', title: 'Fix user login auth bug' })],
+      indexed: [indexed({ id: 'r-shop', projectId: 'shop', title: 'Payment checkout flow' })],
+    })
+
+    mockUseTranscriptSearch.mockReturnValue({
+      data: {
+        items: [
+          {
+            runId: 'r-live',
+            projectId: 'onni',
+            seq: 10,
+            snippet: 'Error 401 needle authentication failure',
+          },
+          {
+            runId: 'r-shop',
+            projectId: 'shop',
+            seq: 25,
+            snippet: 'Multi-line needle snippet\nwith line breaks\r\nand spaces',
+          },
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      status: 'success',
+    })
+
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'needle' } })
+
+    await screen.findByText('Transcript matches')
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-slot="palette-transcript-match"]')]
+    expect(rows).toHaveLength(2)
+
+    // Row for live run: title looked up from live runs data
+    const rowLive = rows.find((row) => row.getAttribute('data-run-id') === 'r-live')
+    expect(rowLive).toBeDefined()
+    expect(rowLive?.querySelector('[data-slot="palette-transcript-title"]')?.textContent).toBe('Fix user login auth bug')
+    expect(rowLive?.querySelector('[data-slot="transcript-highlight"]')?.textContent).toBe('needle')
+
+    // Row for indexed run: title looked up from indexed runs data, multiline snippet collapsed into one line
+    const rowShop = rows.find((row) => row.getAttribute('data-run-id') === 'r-shop')
+    expect(rowShop).toBeDefined()
+    expect(rowShop?.querySelector('[data-slot="palette-transcript-title"]')?.textContent).toBe('Payment checkout flow')
+    expect(rowShop?.querySelector('[data-slot="palette-transcript-project"]')?.textContent).toBe('shop')
+    const snippetText = rowShop?.querySelector('[data-slot="palette-transcript-snippet"]')?.textContent
+    expect(snippetText).toBe('Multi-line needle snippet with line breaks and spaces')
+    expect(snippetText).not.toContain('\n')
+  })
+
+  it('clicking a transcript match navigates to /p/:projectId/tasks/:runId and closes the palette', async () => {
+    renderPalette({
+      projects: [project({ id: 'shop', name: 'shop' })],
+      entry: '/p/shop/',
+    })
+
+    mockUseTranscriptSearch.mockReturnValue({
+      data: {
+        items: [
+          {
+            runId: 'r-target',
+            projectId: 'shop',
+            seq: 5,
+            snippet: 'Found target string here',
+          },
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      status: 'success',
+    })
+
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'target' } })
+
+    await screen.findByText('Transcript matches')
+    const matchRow = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-slot="palette-transcript-match"]')
+      expect(found).not.toBeNull()
+      return found!
+    })
+
+    fireEvent.click(matchRow)
+
+    expect(location()).toBe('/p/shop/tasks/r-target')
+    await waitFor(() => expect(dialog()).toBeNull())
+  })
+
+  it('shows metadata matches (tasks, projects, views) before transcript matches', async () => {
+    renderPalette({
+      runs: [run({ id: 'r-meta', title: 'Needle metadata task' })],
+    })
+
+    mockUseTranscriptSearch.mockReturnValue({
+      data: {
+        items: [
+          {
+            runId: 'r-content',
+            projectId: 'onni',
+            seq: 1,
+            snippet: 'transcript mentioning needle here',
+          },
+        ],
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      status: 'success',
+    })
+
+    openWith({ metaKey: true })
+    await screen.findByRole('dialog')
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'needle' } })
+
+    await screen.findByText('Transcript matches')
+    const taskRow = document.querySelector<HTMLElement>('[data-slot="palette-task"]')
+    const transcriptRow = document.querySelector<HTMLElement>('[data-slot="palette-transcript-match"]')
+
+    expect(taskRow).not.toBeNull()
+    expect(transcriptRow).not.toBeNull()
+
+    // Tasks match appears before transcript match in the DOM
+    expect(taskRow!.compareDocumentPosition(transcriptRow!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('highlightMatch highlights case-insensitive tokens and handles regex specials safely', () => {
+    const rendered = highlightMatch('Testing [brackets] and error codes', 'error [brackets]')
+    expect(rendered).toBeTruthy()
+
+    // Empty text/query returns unchanged
+    expect(highlightMatch('', 'abc')).toBe('')
+    expect(highlightMatch('test', '')).toBe('test')
+    expect(highlightMatch('test', '   ')).toBe('test')
+  })
+})
+

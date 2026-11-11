@@ -1,4 +1,14 @@
-import { CheckIcon, FolderOpenIcon, LayersIcon, MoonIcon, PlusIcon, SettingsIcon, ZapIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  FolderOpenIcon,
+  LayersIcon,
+  LoaderCircleIcon,
+  MoonIcon,
+  PlusIcon,
+  SettingsIcon,
+  TriangleAlertIcon,
+  ZapIcon,
+} from 'lucide-react'
 import * as React from 'react'
 import { useNavigate as useRouterNavigate } from 'react-router'
 import {
@@ -18,6 +28,8 @@ import { scopeTo, useActiveProjectId, useNavigate } from '@/lib/project-router'
 import { useActiveForge } from '@/lib/active-forge'
 import type { ProjectListEntry, RunIndexEntry, RunRecord } from '@onni/api-client'
 import { visibleNavItems } from '@/components/nav-items'
+import { TranscriptMatchItem } from '@/components/transcript-match-item'
+import { useTranscriptSearch, type TranscriptSearchItem } from '@/api/workspace-threads'
 import { StatusDot } from '@/components/status-dot'
 import { NEXT_THEME } from '@/components/theme-toggle'
 import { useTheme } from '@/components/theme-provider'
@@ -311,6 +323,26 @@ export function searchableTasks(
 /** How many task rows a palette mounts. Hundreds of cmdk items made every keystroke filter,
  *  re-sort and re-render all of them; nobody reads past this many matches — they type more. */
 export const TASK_ROW_LIMIT = 50
+
+/** Debounce window for transcript queries in the palette (~250ms). */
+export const TRANSCRIPT_SEARCH_DEBOUNCE_MS = 250
+
+/**
+ * Debounce search input for transcript queries.
+ * Clears immediately when input has fewer than 2 characters.
+ */
+export function useDebouncedSearch(value: string, delayMs = TRANSCRIPT_SEARCH_DEBOUNCE_MS): string {
+  const [debounced, setDebounced] = React.useState(value)
+  React.useEffect(() => {
+    if (value.trim().length < 2) {
+      setDebounced(value.trim())
+      return
+    }
+    const timer = setTimeout(() => setDebounced(value.trim()), delayMs)
+    return () => clearTimeout(timer)
+  }, [value, delayMs])
+  return debounced
+}
 
 /**
  * The best `limit` tasks for `query`, best first, by the palette's own scorer — the work cmdk
@@ -700,6 +732,21 @@ function PaletteContent({ close }: { close: () => void }) {
   // ranking (`paletteScore`); this only decides which SECTIONS exist.
   const [search, setSearch] = React.useState('')
   const searching = search.trim() !== ''
+  const trimmedSearch = search.trim()
+  const debouncedSearch = useDebouncedSearch(trimmedSearch, TRANSCRIPT_SEARCH_DEBOUNCE_MS)
+  const isSearchActive = debouncedSearch.length >= 2
+  const transcriptSearch = useTranscriptSearch(debouncedSearch, {
+    enabled: isSearchActive,
+  })
+  const isTranscriptLoading =
+    isSearchActive && (transcriptSearch.isLoading || (transcriptSearch.isFetching && !transcriptSearch.data))
+  const isTranscriptError =
+    isSearchActive && !isTranscriptLoading && transcriptSearch.isError
+  const transcriptItems =
+    isSearchActive && !isTranscriptLoading && !isTranscriptError
+      ? (transcriptSearch.data?.items ?? [])
+      : []
+
   const { theme, setTheme } = useTheme()
   const { activeProjectId, registry, health, multiProject, projectNames, repoBases, tasks } = usePaletteTasks()
   // The Views row's GitHub gate follows the active project's forge, not the boot folder's (#1410).
@@ -761,6 +808,20 @@ function PaletteContent({ close }: { close: () => void }) {
     (task: PaletteTask) => {
       close()
       navigate(paletteTaskPath(task))
+    },
+    [close, navigate],
+  )
+  const taskTitles = React.useMemo(() => {
+    const map = new Map<string, string>()
+    for (const task of tasks) {
+      map.set(task.id, runTitle(task))
+    }
+    return map
+  }, [tasks])
+  const selectTranscriptMatch = React.useCallback(
+    (item: TranscriptSearchItem) => {
+      close()
+      navigate(paletteTaskPath({ projectId: item.projectId || null, id: item.runId }))
     },
     [close, navigate],
   )
@@ -909,6 +970,55 @@ function PaletteContent({ close }: { close: () => void }) {
           </CommandGroup>
         ) : null}
         </PaletteReferenceStatuses>
+
+        {isSearchActive ? (
+          <CommandGroup heading={t('Transcript matches')} className={TASK_GROUP_CLASS}>
+            {isTranscriptLoading ? (
+              <CommandItem
+                forceMount
+                disabled
+                value="__transcript-loading"
+                data-slot="palette-transcript-loading"
+                className="flex items-center gap-2 py-2 text-xs text-soft-foreground data-[disabled=true]:opacity-100"
+              >
+                <LoaderCircleIcon aria-hidden="true" className="size-3.5 motion-safe:animate-spin" />
+                <span>{t('Searching transcripts…')}</span>
+              </CommandItem>
+            ) : isTranscriptError ? (
+              <CommandItem
+                forceMount
+                disabled
+                value="__transcript-error"
+                data-slot="palette-transcript-error"
+                className="flex items-center gap-2 py-2 text-xs text-danger data-[disabled=true]:opacity-100"
+              >
+                <TriangleAlertIcon aria-hidden="true" className="size-3.5 text-danger shrink-0" />
+                <span>{t('Failed to search transcripts')}</span>
+              </CommandItem>
+            ) : transcriptItems.length === 0 ? (
+              <CommandItem
+                forceMount
+                disabled
+                value="__transcript-empty"
+                data-slot="palette-transcript-empty"
+                className="py-2 text-xs text-soft-foreground data-[disabled=true]:opacity-100"
+              >
+                {t('No transcript matches')}
+              </CommandItem>
+            ) : (
+              transcriptItems.map((item) => (
+                <TranscriptMatchItem
+                  key={`${item.projectId}:${item.runId}:${item.seq}`}
+                  item={item}
+                  query={trimmedSearch}
+                  runTitle={taskTitles.get(item.runId) ?? item.runId}
+                  projectName={showProjectOnTasks ? (projectNames.get(item.projectId) ?? null) : null}
+                  onSelect={selectTranscriptMatch}
+                />
+              ))
+            )}
+          </CommandGroup>
+        ) : null}
 
         <CommandGroup heading={t('Actions')}>
           <CommandItem
