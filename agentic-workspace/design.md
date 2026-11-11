@@ -176,6 +176,13 @@ these by using the existing index + client-side state.
    Layout-menu preset; Navigator Open list with close. Web `tsc` is clean.
 3. **Context area**: wrap existing `WorkspaceColumns` views as the right-hand tabbed area; unify
    review onto `<Diff>`; unified task-tree pane.
+   **⏸ PARTIAL / PAUSED 2026-11-11.** Done + merged: P3a review gate on `<Diff>`; P3c read-only
+   `TaskEditor` (`routes/task-git/task-editor.tsx`); P3d `TaskFilesTree` + `lib/task-open-files.ts`.
+   Not done: P3b new ViewIds `files-tree`/`editor`/`tree` + optional `stack` column field (partial work,
+   unmerged, on branch `onni/d80c36f4`); P3f task-tree pane (`routes/task-tree/`); P3e vertical-stack
+   rendering in `workspace-columns.tsx`; P3g wiring + Workbench preset + 48px header; P3h one terminal
+   per run + branch in terminal header. Blocker: codex usage limit until 17:03; antigravity blocked on
+   command permission.
 4. **Split conversations** (2-up), per-pane drafts/scroll, shortcut set, mobile model.
 5. **Contract additions** (§7 items 1–4) and unread-for-active-threads; transcript search.
 6. Optional: approvals lifecycle (pending decision 3).
