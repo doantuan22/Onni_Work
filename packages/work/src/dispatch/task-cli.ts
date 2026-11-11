@@ -10,7 +10,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, MANAGER_CANCEL_REASON_MAX_CHARS, MANAGER_MESSAGE_MAX_CHARS, MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, rosterWorkerKey, rosterWorkerSchema, type DispatchBudget, type DispatchConflicts, type DispatchManagerCancelResult, type DispatchManagerMessageResult, type DispatchManagerRedirectResult, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type Roster, type RosterWorker, type TreePlan } from '@onni/contract';
+import { MANAGER_ASK_TIMEOUT_MINUTES_MAX, MANAGER_CANCEL_REASON_MAX_CHARS, MANAGER_MESSAGE_MAX_CHARS, MANAGER_REDIRECT_INSTRUCTION_MAX_CHARS, REPORT_CHECKS_MAX, PEEK_TAIL_MAX_LINES, VERIFY_TOTAL_TIMEOUT_MS, rosterWorkerKey, rosterWorkerSchema, runnerSchema, type DispatchBudget, type DispatchConflicts, type DispatchManagerCancelResult, type DispatchManagerMessageResult, type DispatchManagerRedirectResult, type DispatchPeek, type DispatchVerifyResult, type ManagerMemoryRead, type Roster, type RosterWorker, type TreePlan } from '@onni/contract';
 import { missingCockpitMessage } from '../cockpit-address.ts';
 import { formatBudgetLine } from './budget-format.ts';
 import { formatPeek } from './peek.ts';
@@ -113,7 +113,9 @@ function workerIdentity(raw: string): Pick<RosterWorker, 'runner'> & { model?: s
   const runner = (separator < 0 ? raw : raw.slice(0, separator)).trim();
   const model = separator < 0 ? undefined : raw.slice(separator + 1).trim();
   if (!runner || (separator >= 0 && !model)) throw new Error('worker must be <backend> or <backend:model>');
-  return { runner, ...(model ? { model } : {}) };
+  const parsed = runnerSchema.safeParse(runner);
+  if (!parsed.success) throw new Error(`unknown backend "${runner}"`);
+  return { runner: parsed.data, ...(model ? { model } : {}) };
 }
 
 export async function runTaskCommand(
