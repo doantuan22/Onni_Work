@@ -945,16 +945,15 @@ describe('dispatched subtasks in the quick-list', () => {
     expect(row('c')).not.toBeNull()
   })
 
-  it('keeps a child in its own bucket when the parent is in another one', () => {
+  it('keeps a child grouped under its manager when the child needs attention (§12.1, QA2-A04)', () => {
     renderList({
       runs: [
         run({ id: 'p', status: 'running' }),
         run({ id: 'c', status: 'waiting', dispatch: { rootRunId: 'p', parentRunId: 'p' } }),
       ],
     })
-    expect(idsIn('Running')).toEqual(['p'])
-    expect(idsIn('Needs you')).toEqual(['c'])
-    expect(row('c')?.getAttribute('data-depth')).toBe('0')
+    expect(idsIn('Needs you')).toEqual(['p', 'c'])
+    expect(row('c')?.getAttribute('data-depth')).toBe('1')
   })
 
   it('shows a child whose parent is not in the list at all as a top-level row', () => {
