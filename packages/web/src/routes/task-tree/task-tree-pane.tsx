@@ -112,6 +112,8 @@ export function TaskTreePane({
   className,
 }: TaskTreePaneProps) {
   const { t } = useI18n()
+  const [focusedTreeIndex, setFocusedTreeIndex] = React.useState(0)
+  const treeRef = React.useRef<HTMLDivElement>(null)
   const runsQuery = useRuns()
   const runs = runsProp ?? runsQuery.data
 
@@ -177,6 +179,12 @@ export function TaskTreePane({
   }, [subagentsProp, threadTurns, runIsTerminal])
 
   const subagentCount = subagents.length
+
+  const focusTreeItem = (index: number) => {
+    setFocusedTreeIndex(index)
+    const items = treeRef.current?.querySelectorAll<HTMLElement>('[data-slot="task-tree-row"]')
+    items?.[index]?.focus()
+  }
 
   // Error state: failure fetching runs
   if (runsQuery.isError && !runsProp) {
@@ -280,8 +288,8 @@ export function TaskTreePane({
               {t('No dispatched tasks')}
             </p>
           ) : (
-            <div role="tree" aria-label={t('Task hierarchy')} className="flex flex-col">
-              {treeNodes.map((node) => {
+            <div ref={treeRef} role="tree" aria-label={t('Task hierarchy')} className="flex flex-col">
+              {treeNodes.map((node, index) => {
                 const attention = deriveAttention(node.run)
                 const reportSummary = getReportSummary(node.run)
                 const changedFiles = getChangedFilesCount(node.run)
@@ -298,9 +306,30 @@ export function TaskTreePane({
                     data-run-id={node.run.id}
                     data-depth={node.depth}
                     data-current={isCurrent ? 'true' : undefined}
-                    tabIndex={0}
+                    tabIndex={index === Math.min(focusedTreeIndex, treeNodes.length - 1) ? 0 : -1}
                     onClick={() => onOpenRun?.(node.run.id)}
                     onKeyDown={(e) => {
+                      let targetIndex: number | undefined
+                      if (e.key === 'ArrowDown') targetIndex = Math.min(index + 1, treeNodes.length - 1)
+                      if (e.key === 'ArrowUp') targetIndex = Math.max(index - 1, 0)
+                      if (e.key === 'Home') targetIndex = 0
+                      if (e.key === 'End') targetIndex = treeNodes.length - 1
+                      if (e.key === 'ArrowLeft') {
+                        for (let parentIndex = index - 1; parentIndex >= 0; parentIndex -= 1) {
+                          if (treeNodes[parentIndex]!.depth < node.depth) {
+                            targetIndex = parentIndex
+                            break
+                          }
+                        }
+                      }
+                      if (e.key === 'ArrowRight' && treeNodes[index + 1]?.depth === node.depth + 1) {
+                        targetIndex = index + 1
+                      }
+                      if (targetIndex !== undefined) {
+                        e.preventDefault()
+                        focusTreeItem(targetIndex)
+                        return
+                      }
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
                         onOpenRun?.(node.run.id)

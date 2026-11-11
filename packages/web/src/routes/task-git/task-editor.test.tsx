@@ -83,6 +83,30 @@ describe('TaskEditor', () => {
     await waitFor(() => expect(document.querySelector('[data-slot="file-preview-code"]')).not.toBeNull())
   })
 
+  it('supports tab arrow and Home/End navigation with linked panel semantics', () => {
+    stubFetch()
+    const { onSelect } = renderEditor({
+      openPaths: ['src/hello.ts', 'src/other.ts'],
+      activePath: 'src/hello.ts',
+    })
+
+    const firstTab = screen.getByRole('tab', { name: 'hello.ts' })
+    const lastTab = screen.getByRole('tab', { name: 'other.ts' })
+    const panel = screen.getByRole('tabpanel', { name: 'hello.ts' })
+    expect(firstTab.getAttribute('aria-controls')).toBe(panel.id)
+    expect(panel.getAttribute('aria-labelledby')).toBe(firstTab.id)
+
+    firstTab.focus()
+    fireEvent.keyDown(firstTab, { key: 'ArrowRight' })
+    expect(onSelect).toHaveBeenLastCalledWith('src/other.ts')
+    expect(document.activeElement).toBe(lastTab)
+    fireEvent.keyDown(lastTab, { key: 'End' })
+    expect(onSelect).toHaveBeenLastCalledWith('src/other.ts')
+    fireEvent.keyDown(lastTab, { key: 'Home' })
+    expect(onSelect).toHaveBeenLastCalledWith('src/hello.ts')
+    expect(document.activeElement).toBe(firstTab)
+  })
+
   it('shows the active path breadcrumb and read-only line-numbered highlighted content', async () => {
     stubFetch()
     renderEditor({ openPaths: ['src/hello.ts'], activePath: 'src/hello.ts' })

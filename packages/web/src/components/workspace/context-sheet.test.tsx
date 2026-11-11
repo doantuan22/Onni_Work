@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ContextSheet, DEFAULT_CONTEXT_VIEWS } from './context-sheet'
+import { ContextSheet } from './context-sheet'
+
+const HOST_VIEWS = ['changes', 'files', 'files-tree', 'editor'] as const
 
 afterEach(() => {
   cleanup()
@@ -10,7 +12,7 @@ afterEach(() => {
 describe('ContextSheet', () => {
   it('does not render content when open is false', () => {
     render(
-      <ContextSheet open={false} onOpenChange={vi.fn()} title="Task 1">
+      <ContextSheet open={false} onOpenChange={vi.fn()} title="Task 1" views={HOST_VIEWS}>
         <div data-testid="context-child">Child Content</div>
       </ContextSheet>,
     )
@@ -21,7 +23,7 @@ describe('ContextSheet', () => {
 
   it('renders full-screen sheet with title, default tabs, and content when open is true', () => {
     render(
-      <ContextSheet open={true} onOpenChange={vi.fn()} title="Task 1">
+      <ContextSheet open={true} onOpenChange={vi.fn()} title="Task 1" views={HOST_VIEWS}>
         <div data-testid="context-child">Child Content</div>
       </ContextSheet>,
     )
@@ -38,7 +40,7 @@ describe('ContextSheet', () => {
     expect(tablist).toBeDefined()
 
     const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(DEFAULT_CONTEXT_VIEWS.length)
+    expect(tabs).toHaveLength(HOST_VIEWS.length)
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true')
   })
 
@@ -49,6 +51,7 @@ describe('ContextSheet', () => {
         open={true}
         onOpenChange={vi.fn()}
         title="Task 1"
+        views={HOST_VIEWS}
         activeView="changes"
         onViewChange={handleViewChange}
         renderContent={(view) => <div data-testid="rendered-view">{view}</div>}
@@ -57,7 +60,7 @@ describe('ContextSheet', () => {
 
     expect(screen.getByTestId('rendered-view').textContent).toBe('changes')
 
-    const filesTab = screen.getByRole('tab', { name: /files/i })
+    const filesTab = screen.getByRole('tab', { name: 'Files', exact: true })
     fireEvent.click(filesTab)
 
     expect(handleViewChange).toHaveBeenCalledWith('files')
@@ -66,7 +69,7 @@ describe('ContextSheet', () => {
   it('calls onOpenChange(false) when the close button is clicked', () => {
     const handleOpenChange = vi.fn()
     render(
-      <ContextSheet open={true} onOpenChange={handleOpenChange} title="Task 1">
+      <ContextSheet open={true} onOpenChange={handleOpenChange} title="Task 1" views={HOST_VIEWS}>
         <div>Content</div>
       </ContextSheet>,
     )
@@ -93,5 +96,42 @@ describe('ContextSheet', () => {
     expect(tabs).toHaveLength(2)
     expect(screen.getByRole('tab', { name: /changes/i })).toBeDefined()
     expect(screen.getByRole('tab', { name: /terminal/i })).toBeDefined()
+  })
+
+  it('renders host-provided Workbench views and exposes a keyboard-operable tab panel', () => {
+    const onViewChange = vi.fn()
+    render(
+      <ContextSheet
+        open
+        onOpenChange={vi.fn()}
+        views={HOST_VIEWS}
+        activeView="changes"
+        onViewChange={onViewChange}
+        renderContent={(view) => <span>{view}</span>}
+      />,
+    )
+
+    const treeTab = screen.getByRole('tab', { name: /files tree/i })
+    const editorTab = screen.getByRole('tab', { name: /editor/i })
+    expect(treeTab).toBeTruthy()
+    expect(editorTab).toBeTruthy()
+
+    const panel = screen.getByRole('tabpanel')
+    expect(treeTab.getAttribute('aria-controls')).toBe(panel.id)
+    expect(panel.getAttribute('aria-labelledby')).toBe(screen.getByRole('tab', { name: /changes/i }).id)
+
+    const changesTab = screen.getByRole('tab', { name: /changes/i })
+    changesTab.focus()
+    fireEvent.keyDown(changesTab, { key: 'ArrowRight' })
+    expect(onViewChange).toHaveBeenLastCalledWith('files')
+    const filesTab = screen.getByRole('tab', { name: 'Files', exact: true })
+    expect(document.activeElement).toBe(filesTab)
+
+    fireEvent.keyDown(filesTab, { key: 'End' })
+    expect(onViewChange).toHaveBeenLastCalledWith('editor')
+    expect(document.activeElement).toBe(editorTab)
+    fireEvent.keyDown(editorTab, { key: 'Home' })
+    expect(onViewChange).toHaveBeenLastCalledWith('changes')
+    expect(document.activeElement).toBe(changesTab)
   })
 })
