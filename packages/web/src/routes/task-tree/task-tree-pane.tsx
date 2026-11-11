@@ -106,11 +106,18 @@ function TaskTreeHeader({ rootRun }: { rootRun?: ApiRun }) {
   const [open, setOpen] = React.useState(false)
   const [draft, setDraft] = React.useState<RosterDraft | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+  const [saving, setSaving] = React.useState(false)
+  const savingRef = React.useRef(false)
   const active = rootRun?.status === 'running' || rootRun?.status === 'queued' || rootRun?.status === 'waiting'
   const editable = Boolean(rootRun?.roster && active)
   const parsed = draft ? rosterFromDraft(draft) : null
+  React.useEffect(() => {
+    if (open && !editable) setOpen(false)
+  }, [open, editable])
   const save = async () => {
-    if (!rootRun || !parsed?.ok) return
+    if (!rootRun || !editable || !parsed?.ok || savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     setError(null)
     try {
       const result = await putRunRoster(rootRun.id, parsed.roster)
@@ -124,6 +131,9 @@ function TaskTreeHeader({ rootRun }: { rootRun?: ApiRun }) {
       setOpen(false)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t('Could not update workers'))
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
@@ -154,12 +164,12 @@ function TaskTreeHeader({ rootRun }: { rootRun?: ApiRun }) {
             <DialogTitle>{t('Edit workers')}</DialogTitle>
             <DialogDescription>{t('Changes apply to future dispatches. Existing workers keep running.')}</DialogDescription>
           </DialogHeader>
-          {draft ? <RosterEditor draft={draft} onChange={setDraft} connected={connected} disabled={false} managerLocked /> : null}
+          {draft ? <RosterEditor draft={draft} onChange={setDraft} connected={connected} disabled={!editable || saving} managerLocked /> : null}
           {parsed && !parsed.ok ? <p role="alert" className="text-sm text-danger">{parsed.error}</p> : null}
           {error ? <p role="alert" data-slot="roster-save-error" className="text-sm text-danger">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t('Cancel')}</Button>
-            <Button type="button" data-slot="save-workers" disabled={!parsed?.ok} onClick={() => void save()}>{t('Save workers')}</Button>
+            <Button type="button" data-slot="save-workers" disabled={!editable || !parsed?.ok || saving} onClick={() => void save()}>{t('Save workers')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

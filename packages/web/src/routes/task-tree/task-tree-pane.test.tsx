@@ -120,6 +120,40 @@ describe('TaskTreePane', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('task is settled')
   })
 
+  it('closes the worker editor when the root task settles', () => {
+    stubFetch()
+    const { rerender } = renderTree({ runs: [makeRun('manager-1', { roster: LIVE_ROSTER })], subagents: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit workers' }))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    rerender(
+      <QueryClientProvider client={createQueryClient()}>
+        <TaskTreePane runId="manager-1" runs={[makeRun('manager-1', { status: 'done', roster: LIVE_ROSTER })]} subagents={[]} />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('disables Save while a worker roster update is in flight', async () => {
+    let finishSave!: (response: Response) => void
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input).includes('/providers/status')) return Promise.resolve(new Response(JSON.stringify({ providers: [] }), { status: 200 }))
+      if (String(input).includes('/runs/manager-1/roster')) return new Promise<Response>((resolve) => { finishSave = resolve })
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderTree({ runs: [makeRun('manager-1', { roster: LIVE_ROSTER })], subagents: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit workers' }))
+    const save = screen.getByRole('button', { name: 'Save workers' })
+    fireEvent.click(save)
+    expect(save).toHaveProperty('disabled', true)
+    fireEvent.click(save)
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).includes('/runs/manager-1/roster'))).toHaveLength(1)
+    finishSave(new Response(JSON.stringify({ roster: LIVE_ROSTER }), { status: 200 }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
   it('shows the empty prompt when no dispatched tasks or runner subagents exist', () => {
     stubFetch([])
     renderTree({ runs: [makeRun('manager-1')] })

@@ -103,6 +103,18 @@ describe('onni task', () => {
     expect(shown.out[0]).toContain('- codex — existing');
   });
 
+  it('updates an existing single worker instead of adding a duplicate', async () => {
+    const initial = { manager: { runner: 'claude' }, workers: [{ runner: 'codex', role: 'old', tier: 'light', kinds: ['explore'], maxConcurrent: 1 }] };
+    const updated = { manager: initial.manager, workers: [{ runner: 'codex', role: 'tests', tier: 'heavy', kinds: ['test'], maxConcurrent: 3 }] };
+    const h = sequence([
+      { status: 200, body: { roster: initial } },
+      { status: 200, body: { roster: updated } },
+    ]);
+
+    expect(await runTaskCommand(['roster', 'add', 'codex', '--role', 'tests', '--tier', 'heavy', '--kinds', 'test', '--concurrent', '3'], env, h.io)).toBe(0);
+    expect(JSON.parse(String(h.calls[1]?.init?.body))).toEqual({ workers: updated.workers });
+  });
+
   it('removes from the fetched roster and explains invalid or conflicting updates', async () => {
     const roster = { manager: { runner: 'claude' }, workers: [{ runner: 'codex', maxConcurrent: 1 }, { runner: 'pi', maxConcurrent: 1 }] };
     const h = sequence([
@@ -124,6 +136,11 @@ describe('onni task', () => {
     ]);
     expect(await runTaskCommand(['roster', 'add', 'pi'], env, invalid.io)).toBe(1);
     expect(invalid.err[0]).toContain('roster add refused (invalid roster) — bad worker entry');
+
+    const single = harness({ status: 200, body: { roster: { manager: roster.manager, workers: [roster.workers[0]] } } });
+    expect(await runTaskCommand(['roster', 'remove', 'codex'], env, single.io)).toBe(1);
+    expect(single.err[0]).toContain('the roster must keep at least one worker');
+    expect(single.calls).toHaveLength(1);
   });
 
   it('reads a 404 on a route the running server lacks as a version mismatch (H4)', async () => {

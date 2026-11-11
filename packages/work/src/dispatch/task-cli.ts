@@ -314,7 +314,10 @@ export async function runTaskCommand(
         let workers = [...current.roster.workers];
         if (action === 'add') {
           const rawConcurrent = number(values.concurrent, 'concurrent');
+          const existingIndex = workers.findIndex((worker) => rosterWorkerKey(worker) === rosterWorkerKey(identity));
+          const existing = existingIndex >= 0 ? workers[existingIndex] : undefined;
           const candidate = rosterWorkerSchema.safeParse({
+            ...existing,
             ...identity,
             ...(values.role !== undefined ? { role: values.role } : {}),
             ...(values.tier !== undefined ? { tier: values.tier } : {}),
@@ -322,7 +325,8 @@ export async function runTaskCommand(
             ...(rawConcurrent !== undefined ? { maxConcurrent: rawConcurrent } : {}),
           });
           if (!candidate.success) throw new Error(`invalid worker: ${candidate.error.issues.map((issue) => issue.message).join('; ')}`);
-          workers.push(candidate.data);
+          if (existingIndex >= 0) workers[existingIndex] = candidate.data;
+          else workers.push(candidate.data);
         } else {
           workers = workers.filter((worker) => rosterWorkerKey(worker) !== rosterWorkerKey(identity));
           if (workers.length === current.roster.workers.length) throw new Error(`worker ${rosterWorkerKey(identity)} is not in the current roster`);
