@@ -209,7 +209,7 @@ export interface WorkspaceState {
   active: string
 }
 
-/** A layout holds one to three side-by-side columns — no rows, no nesting (spec §5.2). */
+/** A layout holds one to four side-by-side columns — no rows, no nesting (spec §5.2). */
 export const MAX_COLUMNS = MAX_WORKSPACE_COLUMNS
 
 /** The narrowest a column may be dragged, in percent. Three columns at the floor still leave a
@@ -838,6 +838,9 @@ export function openDeepLink(state: WorkspaceState, view: ViewId): WorkspaceStat
   )
   if (born) return selectLayout(state, born.name)
   const current = activeLayout(state)
+  // A terminal route may be reached from a custom arrangement without a fixed Terminal card.
+  // Keep that arrangement selected when it already owns the run's terminal surface.
+  if (view === 'terminal' && current?.columns.some(hasTerminal)) return state
   if (current && current.columns.length === 1 && current.columns[0]?.view === view) {
     return state
   }
