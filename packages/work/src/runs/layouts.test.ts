@@ -61,9 +61,9 @@ describe('the per-run layout store', () => {
   });
 
   it('refuses a value the contract does not accept', () => {
-    // Four columns is past the spec's cap of three, so it must not reach the disk at all.
+    // Five columns is past the cap of four, so it must not reach the disk at all.
     const tooWide = {
-      layouts: [{ name: 'X', columns: Array.from({ length: 4 }, () => ({ view: 'files' as const, width: 25 })) }],
+      layouts: [{ name: 'X', columns: Array.from({ length: 5 }, () => ({ view: 'files' as const, width: 20 })) }],
       active: 'X',
     };
     expect(writeRunLayouts(dataDir, 'run-1', tooWide)).toBe(false);

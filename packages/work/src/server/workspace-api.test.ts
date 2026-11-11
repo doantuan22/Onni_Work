@@ -551,7 +551,7 @@ describe('the workspace settings API (step 2.7)', () => {
     const review = { name: 'Review', columns: [{ view: 'session', width: 50 }, { view: 'changes', width: 50 }] };
     expect((await putUiState({ savedLayouts: [review] })).status).toBe(200);
     expect(rawUiState().savedLayouts).toEqual([review]);
-    const four = { name: 'Wide', columns: Array.from({ length: 4 }, () => ({ view: 'files', width: 25 })) };
+    const four = { name: 'Wide', columns: Array.from({ length: 5 }, () => ({ view: 'files', width: 20 })) };
     expect((await putUiState({ savedLayouts: [four] })).status).toBe(400);
     expect((await putUiState({ savedLayouts: [{ name: ' ', columns: review.columns }] })).status).toBe(400);
     expect(rawUiState().savedLayouts).toEqual([review]);
