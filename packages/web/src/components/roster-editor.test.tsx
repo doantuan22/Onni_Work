@@ -66,6 +66,13 @@ describe('RosterEditor', () => {
     renderEditor(<RosterEditor draft={draft} onChange={vi.fn()} connected={['claude', 'codex']} disabled />)
     expect(screen.getByRole('group', { name: 'Worker 1 suits' }).querySelectorAll('button:disabled')).toHaveLength(4)
   })
+  it('keeps the manager fixed while allowing worker edits for an active task', () => {
+    renderEditor(<RosterEditor draft={draft} onChange={vi.fn()} connected={['claude', 'codex']} managerLocked />)
+    expect((screen.getByLabelText('Manager backend') as HTMLSelectElement).disabled).toBe(true)
+    expect((screen.getByLabelText('Manager model') as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByLabelText('Worker 1 role') as HTMLInputElement).disabled).toBe(false)
+    expect(screen.getByText('The manager is fixed for a running task.')).toBeTruthy()
+  })
   it('offers the backend’s own model list, filtered as you type, instead of a free-text guess', async () => {
     vi.stubGlobal(
       'fetch',

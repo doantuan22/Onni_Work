@@ -130,6 +130,7 @@ import type {
   RepoResponse,
   RepoTree,
   Runner,
+  Roster,
   ModelDiscoveryRunner,
   RunnerModelCatalogResponse,
   RunRecord,
@@ -598,6 +599,17 @@ export async function getRun(id: string, opts?: ReadOptions): Promise<ApiRun> {
       init(opts),
     ),
     runPath(id),
+  )
+}
+
+/** Replace a live manager task's worker roster. The manager entry is preserved by the editor. */
+export async function putRunRoster(id: string, roster: Roster): Promise<{ roster: Roster }> {
+  return unwrap(
+    await onni.api.v1.p[':projectId'].runs[':id'].roster.$put({
+      param: { projectId: queryScope(), id: encodeURIComponent(id) },
+      json: { roster },
+    }),
+    runPath(id, '/roster'),
   )
 }
 

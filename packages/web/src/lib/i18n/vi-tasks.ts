@@ -1,5 +1,10 @@
 /** Vietnamese for the task list, task detail, inbox and dashboard. Keys are exact English source strings. */
 export const viTasks: Record<string, string> = {
+  'Edit workers': 'Chỉnh sửa worker',
+  'Changes apply to future dispatches. Existing workers keep running.': 'Thay đổi áp dụng cho các lần giao việc sau. Các worker hiện tại vẫn tiếp tục chạy.',
+  'The manager is fixed for a running task.': 'Quản lý được giữ cố định khi nhiệm vụ đang chạy.',
+  'Save workers': 'Lưu worker',
+  'Could not update workers': 'Không thể cập nhật worker',
   ' — #{position} in queue': ' — #{position} trong hàng đợi',
   ' · No measured value': ' · Không có giá trị đo được',
   '— the task went on without it': '— nhiệm vụ vẫn tiếp tục mà không có nó',
