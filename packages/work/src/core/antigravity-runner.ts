@@ -425,8 +425,23 @@ export class AntigravityRunner implements AgentRunner {
         return { text, toolCalls, tokensUsed, sessionId };
       }
 
+      const stderr = stderrChunks.join('').trim();
+      if (
+        exitCode !== 0 &&
+        exitCode !== null &&
+        exitCode !== AGY_ERROR_EXIT_CODE &&
+        resultSeen &&
+        !resultError &&
+        text.length > 0 &&
+        !needsSignIn(saidOutside()) &&
+        !isHeadlessPermissionDenial(stderr)
+      ) {
+        onEvent?.({ type: 'note', message: `antigravity exited with code ${exitCode} after a successful result; accepting the completed turn` });
+        onEvent?.({ type: 'done' });
+        return { text, toolCalls, tokensUsed, sessionId };
+      }
+
       if (exitCode !== 0 && exitCode !== null) {
-        const stderr = stderrChunks.join('').trim();
         const structured = parseAgyError(stderr);
         const lastLine = stderr.split(String.fromCharCode(10)).filter(Boolean).at(-1) ?? '';
         const detail = stderr ? ` — ${(structured?.text ?? stderr.split(String.fromCharCode(10)).slice(-3).join(' | ')).slice(0, 400)}` : '';

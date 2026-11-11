@@ -250,6 +250,19 @@ describe('buildAntigravityArgs', () => {
 });
 
 describe('AntigravityRunner stderr', () => {
+  it('accepts a completed non-empty result when agy exits 1 during shutdown', async () => {
+    const bin = fileURLToPath(new URL('./__fixtures__/antigravity/stub-success-exit-1.mjs', import.meta.url));
+    const events: AgentEvent[] = [];
+    const session = new AntigravityRunner({ bin, ...FAST }).startSession({ userPrompt: 'hi', cwd: dir }, (e) => events.push(e));
+
+    const result = await session.result;
+
+    expect(result.text).toBe('Completed successfully.');
+    expect(events.some((e) => e.type === 'error')).toBe(false);
+    expect(events.some((e) => e.type === 'note' && e.message.includes('exited with code 1'))).toBe(true);
+    expect(events.at(-1)).toEqual({ type: 'done' });
+  }, 20_000);
+
   it('keeps a character that arrives split across two stderr chunks', async () => {
     const bin = fileURLToPath(new URL('./__fixtures__/antigravity/stub-splits-stderr-char.mjs', import.meta.url));
     const cwd = mkdtempSync(join(tmpdir(), 'agy-stderr-'));
