@@ -11,6 +11,7 @@ import {
 import { useRef, useState, type ReactNode } from 'react'
 
 import { useSplitter } from '@/components/splitter/use-splitter'
+import { VerticalSplit } from '@/components/vertical-split'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -27,6 +28,7 @@ import { useIsDesktop } from '@/lib/use-desktop'
 import { cn } from '@/lib/utils'
 
 import {
+  DEFAULT_STACK_RATIO,
   MAX_COLUMNS,
   RESIZE_STEP,
   RESIZE_STEP_LARGE,
@@ -48,6 +50,7 @@ export interface ColumnActions {
   setColumnView: (index: number, view: ViewId) => void
   resizeColumns: (index: number, delta: number) => void
   moveColumn: (from: number, to: number) => void
+  setStackRatio?: (index: number, ratio: number) => void
 }
 
 /**
@@ -67,12 +70,14 @@ export function WorkspaceColumns({
   actions,
   renderView,
   headerExtras,
+  onRatioChange,
 }: {
   columns: readonly WorkspaceColumn[]
   actions: ColumnActions
   renderView: (view: ViewId, index: number, column: WorkspaceColumn) => ReactNode
   /** Controls a view adds to its window's bar, before the split (the terminal's "Move to bottom"). */
   headerExtras?: (view: ViewId, index: number) => ReactNode
+  onRatioChange?: (index: number, ratio: number) => void
 }) {
   // Columns go side by side only from `lg` up. The shared default (`md`, 768px) is the threshold
   // for a different question — whether a diff should wrap — and it left a 768-1024px tablet with
@@ -219,9 +224,39 @@ export function WorkspaceColumns({
               grip={false}
               extras={headerExtras?.(column.view, slot as number)}
             />
-            <div data-slot="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              {renderView(column.view, slot as number, column)}
-            </div>
+            {column.stack ? (
+              <div className="min-h-0 flex-1">
+                <VerticalSplit
+                  ratio={column.stackRatio ?? DEFAULT_STACK_RATIO}
+                  onRatioChange={(ratio) => {
+                    actions.setStackRatio?.(slot as number, ratio)
+                    onRatioChange?.(slot as number, ratio)
+                  }}
+                  labels={{
+                    top: viewLabel(column.view),
+                    bottom: viewLabel(column.stack),
+                  }}
+                  top={
+                    <div data-slot="main" className="h-full min-h-0 overflow-y-auto overscroll-contain">
+                      <WorkspaceMaximizeContext.Provider value={null}>
+                        {renderView(column.view, slot as number, column)}
+                      </WorkspaceMaximizeContext.Provider>
+                    </div>
+                  }
+                  bottom={
+                    <div data-slot="main" className="h-full min-h-0 overflow-y-auto overscroll-contain">
+                      <WorkspaceMaximizeContext.Provider value={null}>
+                        {renderView(column.stack, slot as number, { ...column, view: column.stack })}
+                      </WorkspaceMaximizeContext.Provider>
+                    </div>
+                  }
+                />
+              </div>
+            ) : (
+              <div data-slot="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {renderView(column.view, slot as number, column)}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -272,11 +307,41 @@ export function WorkspaceColumns({
             trailing={index === columns.length - 1 ? <FullViewExit className="ml-1.5" /> : null}
             extras={headerExtras?.(column.view, index)}
           />
-          <div data-slot="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <WorkspaceMaximizeContext.Provider value={null}>
-              {renderView(column.view, index, column)}
-            </WorkspaceMaximizeContext.Provider>
-          </div>
+          {column.stack ? (
+            <div className="min-h-0 flex-1">
+              <VerticalSplit
+                ratio={column.stackRatio ?? DEFAULT_STACK_RATIO}
+                onRatioChange={(ratio) => {
+                  actions.setStackRatio?.(index, ratio)
+                  onRatioChange?.(index, ratio)
+                }}
+                labels={{
+                  top: viewLabel(column.view),
+                  bottom: viewLabel(column.stack),
+                }}
+                top={
+                  <div data-slot="main" className="h-full min-h-0 overflow-y-auto overscroll-contain">
+                    <WorkspaceMaximizeContext.Provider value={null}>
+                      {renderView(column.view, index, column)}
+                    </WorkspaceMaximizeContext.Provider>
+                  </div>
+                }
+                bottom={
+                  <div data-slot="main" className="h-full min-h-0 overflow-y-auto overscroll-contain">
+                    <WorkspaceMaximizeContext.Provider value={null}>
+                      {renderView(column.stack, index, { ...column, view: column.stack })}
+                    </WorkspaceMaximizeContext.Provider>
+                  </div>
+                }
+              />
+            </div>
+          ) : (
+            <div data-slot="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <WorkspaceMaximizeContext.Provider value={null}>
+                {renderView(column.view, index, column)}
+              </WorkspaceMaximizeContext.Provider>
+            </div>
+          )}
         </div>,
       ])}
       {pending === columns.length ? pendingWindow : null}

@@ -258,6 +258,8 @@ export const WORKBENCH_LAYOUT_PRESET: SavedLayout = {
 
 /** D6: Terminal occupies 58% of its Preview stack unless the layout says otherwise. */
 export const DEFAULT_STACK_RATIO = 58
+export const MIN_STACK_RATIO = 15
+export const MAX_STACK_RATIO = 85
 
 /** The state a task with nothing saved opens with: the active Review arrangement (Chat at 55%,
  *  Changes at 45%). View tabs remain available independently of saved layouts. Old saved layouts
@@ -737,6 +739,53 @@ export function moveColumn(
   if (!moved) return state
   columns.splice(to, 0, moved)
   return replaceLayout(state, name, { ...layout, columns: withEqualWidths(columns) })
+}
+
+/**
+ * Set the vertical split ratio of column `columnIndex` (design D6, 12.2).
+ *
+ * Clamped to 15..85 percent so neither pane can be dragged to a sliver. Pure and non-mutating:
+ * returns a new layout when the ratio changes, or the same instance when clamped to the existing value
+ * or when the index is out of bounds.
+ */
+export function setStackRatio(
+  layout: WorkspaceLayout,
+  columnIndex: number,
+  ratio: number,
+): WorkspaceLayout
+export function setStackRatio(
+  state: WorkspaceState,
+  name: string,
+  columnIndex: number,
+  ratio: number,
+): WorkspaceState
+export function setStackRatio(
+  target: WorkspaceLayout | WorkspaceState,
+  arg2: number | string,
+  arg3: number,
+  arg4?: number,
+): WorkspaceLayout | WorkspaceState {
+  if (typeof arg2 === 'string') {
+    const state = target as WorkspaceState
+    const layout = findLayout(state, arg2)
+    if (!layout || arg4 === undefined) return state
+    const next = setStackRatio(layout, arg3, arg4)
+    if (next === layout) return state
+    return replaceLayout(state, arg2, next)
+  }
+  const layout = target as WorkspaceLayout
+  const columnIndex = arg2
+  const ratio = arg3
+  const column = layout.columns[columnIndex]
+  if (!column || !Number.isFinite(ratio)) return layout
+  const clamped = Math.min(MAX_STACK_RATIO, Math.max(MIN_STACK_RATIO, round2(ratio)))
+  if (column.stackRatio === clamped) return layout
+  return {
+    ...layout,
+    columns: layout.columns.map((col, idx) =>
+      idx === columnIndex ? { ...col, stackRatio: clamped } : col,
+    ),
+  }
 }
 
 /**
