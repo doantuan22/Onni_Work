@@ -120,16 +120,15 @@
   --contrast: #ebebeb;
   --contrast-foreground: #171717;
 
-  /* accents — `--accent-lime` is the stable name for the brand lime; `--primary` points at
-   * whichever accent family is active (Settings → Appearance swaps it via [data-accent]). */
-  --accent-lime: #a8f372;
-  --primary: var(--accent-lime);
-  --primary-foreground: #0d0d0d;
+  /* Violet is the cockpit's single interactive accent. Keep every semantic use pointed at this
+   * family so links, active tabs and focus treatments cannot drift apart. */
   --violet: #8f86e8;
-  /* Text/icons printed *on* --violet (the Inbox count badge). White in both themes — the violet
-   * never lightens enough for ink to pass AA against it. */
-  --violet-foreground: #ffffff;
-  --ring: #a8f372;
+  --violet-foreground: #0d0d0d;
+  --primary: var(--violet);
+  --primary-foreground: var(--violet-foreground);
+  --ring: var(--violet);
+  --link: var(--violet);
+  --active-tab: var(--violet);
 
   /* status */
   --danger: #ef4444;
@@ -179,6 +178,9 @@
    * column. Consumed as `max-w-[var(--measure)]` so one token moves every column together. */
   --measure: none;
 
+  /* Shared pane/zone header strip. Components will adopt `h-header` in later layout phases. */
+  --header-h: 48px;
+
   /* shiki syntax highlighting (dark) */
   --syn-key: #c4b5fd;
   --syn-str: #86efac;
@@ -219,11 +221,9 @@
   --contrast: #262626;
   --contrast-foreground: #ffffff;
 
-  --ring: #171717;
-
-  /* The dark violet is 3.1:1 as ink on white and as a ground for white text. This step clears AA
-   * both ways (4.6:1 on --muted), so text-violet and the white-on-violet badges stay legible. */
+  /* This light-theme violet clears AA as page ink and as a fill behind white text. */
   --violet: #6d5fd6;
+  --violet-foreground: #ffffff;
 
   /* blue-700, not blue-300 — the same per-theme darkening the syntax blue already makes. */
   --info: #1d4ed8;
@@ -251,21 +251,11 @@
   --syn-var: #111827;
 }
 
-/* ---------- appearance: accent + density (Settings → Appearance, redesign R6) ----------
- * `data-accent` / `data-density` land on <html> before first paint (the index.html pre-paint
+/* ---------- appearance: density + width (Settings → Appearance, redesign R6) ----------
+ * `data-density` / `data-width` land on <html> before first paint (the index.html pre-paint
  * script reads the localStorage mirror; ui-state.json is the authoritative store — see
- * src/lib/appearance.ts). The default (lime / comfortable) is the ABSENCE of the attribute,
- * so these blocks only name the deviations.
+ * src/lib/appearance.ts). The fixed violet accent needs no data attribute.
  */
-
-/* Violet accent: the `--primary` family swaps onto the existing violet tokens. An accent is
- * exactly a `--primary` family swap — a new accent = a new block here + one entry in
- * ACCENT_OPTIONS (routes/settings/appearance.tsx). */
-:root[data-accent='violet'] {
-  --primary: var(--violet);
-  --primary-foreground: var(--violet-foreground);
-  --ring: var(--violet);
-}
 
 /* Compact density: Tailwind v4's whole numeric spacing scale keys off ONE token (`--spacing`,
  * default 0.25rem — every `p-4`/`gap-2`/`h-14` is `calc(var(--spacing) * n)`), so shrinking it
@@ -343,6 +333,8 @@
   --color-violet: var(--violet);
   --color-violet-foreground: var(--violet-foreground);
   --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-active-tab: var(--active-tab);
 
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
@@ -371,6 +363,8 @@
 
   --font-sans: var(--sans);
   --font-mono: var(--mono);
+
+  --spacing-header: var(--header-h);
 
   /* `rounded-md` is the default control radius — the token sheet spells that step `--radius`. */
   --radius-md: var(--radius);

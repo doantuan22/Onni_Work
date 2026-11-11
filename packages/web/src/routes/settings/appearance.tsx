@@ -11,7 +11,7 @@ import { useAppearance } from '@/components/appearance-provider'
 import { useTheme } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { Accent, Density, Width } from '@/lib/appearance'
+import type { Density, Width } from '@/lib/appearance'
 import type { Theme } from '@/lib/theme'
 import { useI18n, type Language } from '@/lib/i18n'
 import { useProjectOrder } from '@/lib/use-project-order'
@@ -23,26 +23,18 @@ import { toast } from '@/components/ui/toaster'
  * Each knob is honest about where it persists:
  *  - THEME rides the existing theme system (localStorage `onni-theme`, shared with the legacy
  *    cockpit and the pre-paint script) — per-browser by design, like every OS theme choice;
- *  - ACCENT + DENSITY persist in `ui-state.json` through the AppearanceProvider (additive
+ *  - DENSITY + READING WIDTH persist in `ui-state.json` through the AppearanceProvider (additive
  *    `appearance` key), mirrored to localStorage for pre-paint;
  *  - PROJECT ORDER (#952) lives in the same workspace file under `sidebar.projectOrder`, so this
  *    section only offers the reset — the order itself is set by dragging the drawer.
  *
- * Every control is a real one: accent swaps the `--primary` token family, density shrinks
- * the Tailwind spacing token (see index.css). No dead knobs.
+ * Every control is a real one: density shrinks the Tailwind spacing token (see index.css).
  */
 
 const THEME_OPTIONS: Array<{ value: Theme; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }> = [
   { value: 'system', label: 'System', icon: MonitorIcon },
   { value: 'light', label: 'Light', icon: SunIcon },
   { value: 'dark', label: 'Dark', icon: MoonIcon },
-]
-
-/** Swatches point at the STABLE family tokens (`--accent-lime`, `--violet`), not `--primary` —
- *  the whole point of the control is that `--primary` changes under it. */
-const ACCENT_OPTIONS: Array<{ value: Accent; label: string; swatch: string }> = [
-  { value: 'lime', label: 'Lime', swatch: 'var(--accent-lime)' },
-  { value: 'violet', label: 'Violet', swatch: 'var(--violet)' },
 ]
 
 const DENSITY_OPTIONS: Array<{ value: Density; label: string }> = [
@@ -259,7 +251,7 @@ function BrandingFields() {
 export function AppearanceSection() {
   const { t } = useI18n()
   const { theme, setTheme } = useTheme()
-  const { accent, density, width, setAccent, setDensity, setWidth } = useAppearance()
+  const { density, width, setDensity, setWidth } = useAppearance()
   const translateOptions = <O extends { label: string }>(options: O[]): O[] =>
     options.map((option) => ({ ...option, label: t(option.label) }))
 
@@ -272,10 +264,6 @@ export function AppearanceSection() {
       <LanguageField />
       <Field title={t('Theme')} hint={t('System follows your OS preference. Applies to this browser.')}>
         <Segmented slot="appearance-theme" label={t('Theme')} value={theme} options={translateOptions(THEME_OPTIONS)} onChange={setTheme} />
-      </Field>
-
-      <Field title={t('Accent')} hint={t("The primary action color. Saved with this repo's cockpit state.")}>
-        <Segmented slot="appearance-accent" label={t('Accent')} value={accent} options={translateOptions(ACCENT_OPTIONS)} onChange={setAccent} />
       </Field>
 
       <Field

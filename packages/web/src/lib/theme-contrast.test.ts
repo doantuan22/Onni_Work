@@ -13,7 +13,7 @@ function block(selector: string): Record<string, string> {
   const start = css.indexOf(`\n${selector} {`)
   const body = css.slice(start, css.indexOf('\n}', start))
   const tokens: Record<string, string> = {}
-  for (const m of body.matchAll(/^\s*(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/gm)) tokens[m[1]!] = m[2]!
+  for (const m of body.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) tokens[m[1]!] = m[2]!.trim()
   return tokens
 }
 
@@ -43,9 +43,23 @@ describe('theme contrast (WCAG AA, 4.5:1)', () => {
     }
   })
 
-  it('light violet works as ink on the page and as a ground for white text', () => {
-    expect(ratio(light['--violet']!, light['--background']!)).toBeGreaterThanOrEqual(4.5)
-    expect(ratio(light['--violet']!, light['--muted']!)).toBeGreaterThanOrEqual(4.5)
-    expect(ratio(light['--violet']!, light['--violet-foreground']!)).toBeGreaterThanOrEqual(4.5)
+  it.each([
+    ['dark', dark, ['--background', '--card', '--card-2']],
+    ['light', light, ['--background', '--sidebar', '--muted']],
+  ] as const)('violet is readable as ink on every %s surface', (_name, tokens, surfaces) => {
+    for (const surface of surfaces) {
+      expect(ratio(tokens['--violet']!, tokens[surface]!), surface).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it.each([
+    ['dark', dark],
+    ['light', light],
+  ] as const)('the %s violet fill has AA text and drives every interactive token', (_name, tokens) => {
+    expect(ratio(tokens['--violet']!, tokens['--violet-foreground']!)).toBeGreaterThanOrEqual(4.5)
+    expect(tokens['--primary']).toBe('var(--violet)')
+    expect(tokens['--ring']).toBe('var(--violet)')
+    expect(tokens['--link']).toBe('var(--violet)')
+    expect(tokens['--active-tab']).toBe('var(--violet)')
   })
 })
