@@ -95,8 +95,9 @@ const GraphColumn = lazy(() =>
  * else. `/changes`, `/files`, `/commits`, `/graph`, `/preview` and `/terminal` render this route with `view`
  * set, which opens that view as a card and leaves every saved layout alone (§5.3).
  */
-export function TaskWorkspaceRoute({ view }: { view?: ViewId }) {
-  const { id } = useParams<{ id: string }>()
+export function TaskWorkspaceRoute({ view, runId }: { view?: ViewId; runId?: string }) {
+  const { id: routeId } = useParams<{ id: string }>()
+  const id = runId ?? routeId
   const run = useRun(id)
   const { t } = useI18n()
   const projectId = useActiveProjectId() ?? ''
@@ -104,14 +105,16 @@ export function TaskWorkspaceRoute({ view }: { view?: ViewId }) {
 
   // A route is a request to focus one workspace thread. `openRun` appends unknown deep links and
   // is idempotent for the active thread, so POP and async data loading converge without a URL loop.
+  // When hosted in a `WorkspaceHost` pane (`runId` provided), the host owns thread admission and
+  // active-pane focus so an inactive split pane never hijacks `workspace.state.active`.
   useEffect(() => {
-    if (!id) return
+    if (runId !== undefined || !id) return
     const active = workspace.state.threads.find((pane) => pane.paneId === workspace.state.active)
     if (active?.kind === 'run' && active.projectId === projectId && active.runId === id) return
     workspace.update((state) =>
       openRun(state, { kind: 'run', paneId: `run:${projectId}:${id}`, projectId, runId: id }),
     )
-  }, [id, projectId, workspace.state.active, workspace.state.threads, workspace.update])
+  }, [id, projectId, runId, workspace.state.active, workspace.state.threads, workspace.update])
 
   // The read receipt, moved here from the Session route (#unread-done-items, #775): visiting the
   // task marks it read even when no Chat column is showing.

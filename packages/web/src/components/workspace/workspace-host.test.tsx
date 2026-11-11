@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate as useRouterNavigate, useParams } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -48,13 +48,36 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname}</output>
 }
 
+function HistoryControls() {
+  const navigate = useRouterNavigate()
+  return (
+    <div>
+      <button type="button" onClick={() => void navigate(-1)}>
+        History Back
+      </button>
+      <button type="button" onClick={() => void navigate(1)}>
+        History Forward
+      </button>
+    </div>
+  )
+}
+
+function ParamReadingWorkspace({ view, runId }: { view?: ViewId; runId?: string }) {
+  const { id } = useParams<{ id: string }>()
+  return (
+    <div data-testid="task-workspace" data-param-id={id}>
+      {(runId ?? id)}:{view ?? 'default'}
+    </div>
+  )
+}
+
 function RunHost({ view }: { view?: ViewId }) {
   const { projectId = '', id = '' } = useParams()
   return (
     <WorkspaceHost
       projectId={projectId}
       target={{ kind: 'run', runId: id, ...(view === undefined ? {} : { view }) }}
-      renderRun={(activeView, runId) => <div data-testid="task-workspace">{runId ?? id}:{activeView ?? 'default'}</div>}
+      renderRun={(activeView, runId) => <ParamReadingWorkspace view={activeView} runId={runId} />}
     />
   )
 }
@@ -70,12 +93,19 @@ function renderAt(entry: string) {
       <Routes>
         <Route
           path="/p/:projectId/new"
-          element={<WorkspaceHost projectId="shop" target={{ kind: 'draft' }} renderRun={() => null} />}
+          element={
+            <WorkspaceHost
+              projectId="shop"
+              target={{ kind: 'draft' }}
+              renderRun={(activeView, runId) => <ParamReadingWorkspace view={activeView} runId={runId} />}
+            />
+          }
         />
         <Route path="/p/:projectId/tasks/:id" element={<RunHost />} />
         <Route path="/p/:projectId/tasks/:id/:view" element={<RunHostWithView />} />
       </Routes>
       <LocationProbe />
+      <HistoryControls />
     </MemoryRouter>,
   )
 }
@@ -177,12 +207,64 @@ describe('WorkspaceHost', () => {
     expect(sectionPanes[0]!.getAttribute('data-active')).toBeNull()
     expect(sectionPanes[0]!.getAttribute('aria-selected')).toBe('false')
     expect(readWorkspaceState('shop').active).toBe('run:shop:run-2')
+    expect(screen.getByTestId('location').textContent).toBe('/p/shop/tasks/run-2')
 
     // PointerDown on pane 1 activates pane 1
     fireEvent.pointerDown(sectionPanes[0]!)
     expect(tabs[0]!.getAttribute('aria-selected')).toBe('true')
     expect(sectionPanes[0]!.getAttribute('data-active')).toBe('true')
     expect(readWorkspaceState('shop').active).toBe('run:shop:run-1')
+    expect(screen.getByTestId('location').textContent).toBe('/p/shop/tasks/run-1')
+  })
+
+  it('converges split panes, active pane, and URL across pane switches and browser Back/Forward', async () => {
+    const run1 = { kind: 'run' as const, paneId: 'run:shop:run-1', projectId: 'shop', runId: 'run-1' }
+    const run2 = { kind: 'run' as const, paneId: 'run:shop:run-2', projectId: 'shop', runId: 'run-2' }
+    const initial = enableSplit(openRun(openRun(createWorkspaceState(), run1), run2), run1.paneId, run2.paneId)
+    writeWorkspaceState('shop', initial)
+
+    renderAt('/p/shop/tasks/run-1')
+
+    await waitFor(() => expect(screen.getAllByTestId('task-workspace')).toHaveLength(2))
+    const initialPanes = screen.getAllByTestId('task-workspace')
+    // Each pane renders its own runId both via renderRun(view, runId) and via scoped useParams().id
+    expect(initialPanes[0]!.textContent).toBe('run-1:default')
+    expect(initialPanes[0]!.getAttribute('data-param-id')).toBe('run-1')
+    expect(initialPanes[1]!.textContent).toBe('run-2:default')
+    expect(initialPanes[1]!.getAttribute('data-param-id')).toBe('run-2')
+    expect(screen.getByTestId('location').textContent).toBe('/p/shop/tasks/run-1')
+
+    const tabStrip = document.querySelector('[data-slot="split-tab-strip"]')!
+    const tabs = tabStrip.querySelectorAll('[role="tab"]')
+
+    // Switch active pane from run-1 to run-2: URL pushes /p/shop/tasks/run-2 and split stays intact
+    fireEvent.click(tabs[1]!)
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/p/shop/tasks/run-2'))
+    expect(readWorkspaceState('shop').active).toBe('run:shop:run-2')
+    expect(readWorkspaceState('shop').split).toEqual({ a: 'run:shop:run-1', b: 'run:shop:run-2' })
+    const afterSwitchPanes = screen.getAllByTestId('task-workspace')
+    expect(afterSwitchPanes[0]!.textContent).toBe('run-1:default')
+    expect(afterSwitchPanes[0]!.getAttribute('data-param-id')).toBe('run-1')
+    expect(afterSwitchPanes[1]!.textContent).toBe('run-2:default')
+    expect(afterSwitchPanes[1]!.getAttribute('data-param-id')).toBe('run-2')
+
+    // Browser Back: URL returns to /p/shop/tasks/run-1 and active pane converges to run-1
+    fireEvent.click(screen.getByRole('button', { name: 'History Back' }))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/p/shop/tasks/run-1'))
+    await waitFor(() => expect(readWorkspaceState('shop').active).toBe('run:shop:run-1'))
+    expect(readWorkspaceState('shop').split).toEqual({ a: 'run:shop:run-1', b: 'run:shop:run-2' })
+    const sectionPanesAfterBack = document.querySelectorAll('[data-slot="workspace-pane"]')
+    expect(sectionPanesAfterBack[0]!.getAttribute('data-active')).toBe('true')
+    expect(sectionPanesAfterBack[1]!.getAttribute('data-active')).toBeNull()
+
+    // Browser Forward: URL advances to /p/shop/tasks/run-2 and active pane converges to run-2
+    fireEvent.click(screen.getByRole('button', { name: 'History Forward' }))
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/p/shop/tasks/run-2'))
+    await waitFor(() => expect(readWorkspaceState('shop').active).toBe('run:shop:run-2'))
+    expect(readWorkspaceState('shop').split).toEqual({ a: 'run:shop:run-1', b: 'run:shop:run-2' })
+    const sectionPanesAfterForward = document.querySelectorAll('[data-slot="workspace-pane"]')
+    expect(sectionPanesAfterForward[0]!.getAttribute('data-active')).toBeNull()
+    expect(sectionPanesAfterForward[1]!.getAttribute('data-active')).toBe('true')
   })
 
   it('shows NO tab strip when split is not enabled (1-up mode)', async () => {
@@ -279,6 +361,8 @@ describe('WorkspaceHost', () => {
     await waitFor(() => {
       expect(readWorkspaceState('shop').split).toEqual({ a: run1.paneId, b: run3.paneId })
     })
+    expect(readWorkspaceState('shop').active).toBe(run3.paneId)
+    expect(screen.getByTestId('location').textContent).toBe('/p/shop/tasks/run-3')
     const panes = screen.getAllByTestId('task-workspace')
     expect(panes[0]!.textContent).toBe('run-1:default')
     expect(panes[1]!.textContent).toBe('run-3:default')
@@ -356,7 +440,7 @@ describe('WorkspaceHost', () => {
     expect(activeWorkspacePanes.some((el) => el.textContent === 'run-1:changes')).toBe(true)
 
     // Click 'Files' tab in context sheet
-    const filesTab = screen.getByRole('tab', { name: /files/i })
+    const filesTab = within(document.querySelector('[data-slot="context-sheet"]')!).getByRole('tab', { name: 'Files' })
     fireEvent.click(filesTab)
 
     await waitFor(() => {

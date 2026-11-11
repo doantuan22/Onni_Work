@@ -48,3 +48,45 @@ export function navigateTaskWorkspace(
   if (action === 'replace view') navigate(taskWorkspacePath(input.effective), { replace: true })
   return action
 }
+
+export type WorkspaceRouteSelection =
+  | ({ kind: 'run' } & TaskRouteSelection)
+  | { kind: 'draft' }
+
+export interface WorkspacePaneUrlSyncInput {
+  route: WorkspaceRouteSelection
+  effective: WorkspaceRouteSelection
+  openRunIds?: readonly string[]
+}
+
+export function workspaceSelectionPath(selection: WorkspaceRouteSelection): string {
+  return selection.kind === 'draft' ? '/new' : taskWorkspacePath(selection)
+}
+
+/**
+ * Unified local pane navigation helper: converges the URL with the newly active workspace pane
+ * (run or draft) using the same push-run / replace-view history policy.
+ */
+export function navigateWorkspacePane(
+  navigate: TaskWorkspaceNavigate,
+  { route, effective, openRunIds }: WorkspacePaneUrlSyncInput,
+): UrlSyncAction {
+  if (route.kind === 'run' && effective.kind === 'run') {
+    const knownRunIds = openRunIds ?? [route.runId, effective.runId]
+    return navigateTaskWorkspace(navigate, {
+      route: { runId: route.runId, ...(route.view === undefined ? {} : { view: route.view }) },
+      effective: {
+        runId: effective.runId,
+        ...(effective.view === undefined
+          ? route.runId === effective.runId && route.view !== undefined
+            ? { view: route.view }
+            : {}
+          : { view: effective.view }),
+      },
+      openRunIds: knownRunIds.includes(route.runId) ? knownRunIds : [route.runId, ...knownRunIds],
+    })
+  }
+  if (route.kind === effective.kind) return 'none'
+  navigate(workspaceSelectionPath(effective))
+  return 'push run'
+}

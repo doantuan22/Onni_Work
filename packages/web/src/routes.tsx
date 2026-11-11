@@ -235,7 +235,13 @@ function ProjectScopeRoute() {
  */
 function NewTaskProjectRoute() {
   const { projectId = '' } = useParams()
-  return <WorkspaceHost projectId={projectId} target={{ kind: 'draft' }} renderRun={() => null} />
+  return (
+    <WorkspaceHost
+      projectId={projectId}
+      target={{ kind: 'draft' }}
+      renderRun={(activeView, runId) => <TaskWorkspaceRoute view={activeView} runId={runId} />}
+    />
+  )
 }
 
 /** Route adapter for a URL-selected workspace pane; the host retains the task route's lazy edge. */
@@ -245,7 +251,7 @@ function TaskWorkspaceProjectRoute({ view }: { view?: ViewId }) {
     <WorkspaceHost
       projectId={projectId}
       target={{ kind: 'run', runId: id, ...(view === undefined ? {} : { view }) }}
-      renderRun={(activeView) => <TaskWorkspaceRoute view={activeView} />}
+      renderRun={(activeView, runId) => <TaskWorkspaceRoute view={activeView} runId={runId} />}
     />
   )
 }
