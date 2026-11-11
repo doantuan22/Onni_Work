@@ -3,6 +3,7 @@ import { hc } from 'hono/client';
 import type { JSONParsed, JSONValue } from 'hono/utils/types';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
+import { workspaceLayoutsResponseSchema, workspaceLayoutsSchema } from '@onni/contract';
 import type { brandingLogoUploadSchema } from './server.ts';
 import type {
   agentAccountDetailsResponseSchema,
@@ -171,6 +172,10 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     (typeof client.api.v1.workspace)['runs-index']['$get'],
     200
   >;
+  type RunLayouts = (typeof client.api.v1.runs)[':id']['layouts'];
+  type RunLayoutsGet200 = InferResponseType<RunLayouts['$get'], 200>;
+  type RunLayoutsPut200 = InferResponseType<RunLayouts['$put'], 200>;
+  type RunLayoutsPutBody = InferRequestType<RunLayouts['$put']>['json'];
 
   type _Checks = [
     // the registry
@@ -221,6 +226,11 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
     Assert<Exact<z.infer<typeof agentAccountDetailsResponseSchema>, AgentAccountDetails200>>,
     Assert<Exact<z.infer<typeof agentAccountStatusResponseSchema>, AgentAccountStatus200>>,
     Assert<Exact<z.infer<typeof openAgentAccountFileResponseSchema>, OpenAgentAccountFile200>>,
+    // The per-run workspace model is persisted directly by this route, so its response and body
+    // must stay in lockstep with the contract as its optional Phase 3 fields evolve.
+    Assert<Exact<z.infer<typeof workspaceLayoutsResponseSchema>, RunLayoutsGet200>>,
+    Assert<Exact<z.infer<typeof workspaceLayoutsResponseSchema>, RunLayoutsPut200>>,
+    Assert<Exact<z.input<typeof workspaceLayoutsSchema>, RunLayoutsPutBody>>,
   ];
 
   it('is enforced by tsc, not at runtime', () => {
@@ -245,5 +255,21 @@ describe('src/contract projects/workspace schemas match the routes exactly', () 
       'schema-is-wider',
       'route-is-wider',
     ]);
+  });
+
+  it('accepts additive views and stack fields while preserving pre-stack layouts', () => {
+    const oldLayout = {
+      layouts: [{ name: 'Review', columns: [{ view: 'session', width: 55 }, { view: 'changes', width: 45 }] }],
+      active: 'Review',
+    };
+    const phaseThreeLayout = {
+      layouts: [{
+        name: 'Workbench',
+        columns: [{ view: 'terminal', width: 100, stack: 'browser', stackRatio: 58 }],
+      }],
+      active: 'Workbench',
+    };
+    expect(workspaceLayoutsSchema.safeParse(oldLayout).success).toBe(true);
+    expect(workspaceLayoutsSchema.safeParse(phaseThreeLayout).success).toBe(true);
   });
 });

@@ -27,17 +27,41 @@ import { drawerStorageKey } from './drawer-state'
  *  `graph` is the task's live workflow graph. It is offered on every task, like `browser` and for
  *  the same reason: a task with no stored definition gets the view's own honest empty state
  *  ("No workflow graph") rather than a tile that silently is not there. */
-export type ViewId = 'session' | 'changes' | 'commits' | 'files' | 'browser' | 'graph' | 'terminal'
+export type ViewId =
+  | 'session'
+  | 'changes'
+  | 'commits'
+  | 'files'
+  | 'files-tree'
+  | 'editor'
+  | 'browser'
+  | 'tree'
+  | 'graph'
+  | 'terminal'
 
-export const VIEW_IDS: readonly ViewId[] = ['session', 'changes', 'commits', 'files', 'browser', 'graph', 'terminal']
+export const VIEW_IDS: readonly ViewId[] = [
+  'session',
+  'changes',
+  'commits',
+  'files',
+  'files-tree',
+  'editor',
+  'browser',
+  'tree',
+  'graph',
+  'terminal',
+]
+
+/** These routes predate the Phase 3 panes, which deliberately have no deep link yet. */
+export type DeepLinkViewId = Exclude<ViewId, 'files-tree' | 'editor' | 'tree'>
 
 /** The view tabs, left to right: Chat is home and Changes is what a task is reviewed by; the
  *  rarely opened Graph sits near the end, and Notes (its own page) lands before Preview
  *  (`strip.ts`). Terminal is last; the ` key docks it as a drawer instead. */
-export const FIXED_VIEW_ORDER: readonly ViewId[] = ['session', 'changes', 'commits', 'files', 'graph', 'browser', 'terminal']
+export const FIXED_VIEW_ORDER: readonly DeepLinkViewId[] = ['session', 'changes', 'commits', 'files', 'graph', 'browser', 'terminal']
 
 /** The route each view tab deep-links to, for pages that are not the workspace (Notes). */
-export const VIEW_PATHS: Record<ViewId, string> = {
+export const VIEW_PATHS: Record<DeepLinkViewId, string> = {
   session: 'chat',
   changes: 'changes',
   commits: 'commits',
@@ -54,8 +78,11 @@ const VIEW_LABELS: Record<ViewId, string> = {
   changes: 'Changes',
   commits: 'Commits',
   files: 'Files',
+  'files-tree': 'Files tree',
+  editor: 'Editor',
   // The task's app, with Design Mode (spec 2026-10-09-design-mode).
   browser: 'Preview',
+  tree: 'Task tree',
   graph: 'Graph',
   terminal: 'Terminal',
 }
@@ -126,6 +153,10 @@ export interface WorkspaceColumn {
   /** Present only on a Browser column. Carried in the column rather than beside it so a column
    *  and its tabs cannot drift apart when columns are reordered or closed. */
   browser?: BrowserState
+  /** A second surface below this one. D6 permits Terminal over Preview only in v1. */
+  stack?: ViewId
+  /** Height of the upper surface, in percent. Defaults to 58 when a valid stack is revived. */
+  stackRatio?: number
 }
 
 /** A Browser column with nothing loaded: one blank tab, which is what `+` and a fresh column
@@ -214,8 +245,19 @@ export const REVIEW_LAYOUT_PRESET: SavedLayout = {
   ],
 }
 
-/** Phase 3 target only: Chat | Files tree | Editor | Terminal over Preview. Not offered yet. */
-export const WORKBENCH_PRESET_PHASE = 'Phase 3: files-tree and editor panes with a Terminal/Preview vertical stack'
+/** The Phase 3 Workbench target. It is exported for the menu work, but not offered yet. */
+export const WORKBENCH_LAYOUT_PRESET: SavedLayout = {
+  name: 'Workbench',
+  columns: [
+    { view: 'session', width: 28 },
+    { view: 'files-tree', width: 13 },
+    { view: 'editor', width: 29 },
+    { view: 'terminal', width: 30, stack: 'browser', stackRatio: 58 },
+  ],
+}
+
+/** D6: Terminal occupies 58% of its Preview stack unless the layout says otherwise. */
+export const DEFAULT_STACK_RATIO = 58
 
 /** The state a task with nothing saved opens with: the active Review arrangement (Chat at 55%,
  *  Changes at 45%). View tabs remain available independently of saved layouts. Old saved layouts
@@ -353,17 +395,19 @@ function reviveLayout(entry: unknown, taken: readonly WorkspaceLayout[]): Worksp
   const views: ViewId[] = []
   const widths: number[] = []
   const browsers: Array<BrowserState | undefined> = []
+  const stacks: Array<{ stack: ViewId; stackRatio: number } | undefined> = []
   // The cap is applied to what SURVIVES, not to what arrived. Slicing first meant a layout saved
   // by a later onni whose first three columns named views this build lacks lost the two valid
   // ones behind them — and then, having no columns left, was dropped whole by the guard below.
   for (const column of source.columns) {
     if (views.length >= MAX_COLUMNS) break
     if (typeof column !== 'object' || column === null) continue
-    const candidate = column as { view?: unknown; width?: unknown; browser?: unknown }
+    const candidate = column as { view?: unknown; width?: unknown; browser?: unknown; stack?: unknown; stackRatio?: unknown }
     if (!isViewId(candidate.view)) continue
     views.push(candidate.view)
     widths.push(typeof candidate.width === 'number' ? candidate.width : Number.NaN)
     browsers.push(candidate.view === 'browser' ? reviveBrowserState(candidate.browser) : undefined)
+    stacks.push(reviveStack(candidate.view, candidate.stack, candidate.stackRatio))
   }
   // An EMPTY layout survives; a layout EMPTIED BY RECOVERY does not.
   //
@@ -382,8 +426,18 @@ function reviveLayout(entry: unknown, taken: readonly WorkspaceLayout[]): Worksp
       view,
       width: normalized[index] ?? 0,
       ...(browsers[index] ? { browser: browsers[index] } : {}),
+      ...(stacks[index] ? stacks[index] : {}),
     })),
   }
+}
+
+/** The v1 stack is intentionally one exact pair, not a general tiling engine (design D6). */
+function reviveStack(view: ViewId, rawStack: unknown, rawRatio: unknown): { stack: ViewId; stackRatio: number } | undefined {
+  if (view !== 'terminal' || rawStack !== 'browser') return undefined
+  const ratio = typeof rawRatio === 'number' && Number.isFinite(rawRatio) && rawRatio > 0 && rawRatio < 100
+    ? rawRatio
+    : DEFAULT_STACK_RATIO
+  return { stack: rawStack, stackRatio: ratio }
 }
 
 /**
@@ -815,7 +869,7 @@ function toWorking(state: WorkspaceState, columns: WorkspaceColumn[]): Workspace
 /** A layout saved for every task: its arrangement only (`savedWorkspaceLayoutSchema`). */
 export interface SavedLayout {
   name: string
-  columns: readonly { view: ViewId; width: number }[]
+  columns: readonly { view: ViewId; width: number; stack?: ViewId; stackRatio?: number }[]
 }
 
 /** The active layout as a saved one, or `null` when there is nothing to save. */
@@ -823,7 +877,14 @@ export function toSavedLayout(state: WorkspaceState, name: string): SavedLayout 
   const current = activeLayout(state)
   const trimmed = name.trim().slice(0, MAX_LAYOUT_NAME_LENGTH)
   if (!current || current.columns.length === 0 || trimmed === '' || isReservedLayoutName(trimmed)) return null
-  return { name: trimmed, columns: current.columns.map(({ view, width }) => ({ view, width })) }
+  return {
+    name: trimmed,
+    columns: current.columns.map(({ view, width, stack, stackRatio }) => ({
+      view,
+      width,
+      ...(stack ? { stack, ...(stackRatio === undefined ? {} : { stackRatio }) } : {}),
+    })),
+  }
 }
 
 /**
@@ -834,14 +895,19 @@ export function toSavedLayout(state: WorkspaceState, name: string): SavedLayout 
 export function applySavedLayout(state: WorkspaceState, saved: SavedLayout): WorkspaceState {
   if (isReservedLayoutName(saved.name)) return state
   const existing = findLayout(state, saved.name)
-  const views = saved.columns.map((column) => column.view).join('|')
-  if (existing && existing.columns.map((column) => column.view).join('|') === views) {
+  const signature = saved.columns.map((column) => `${column.view}|${column.stack ?? ''}|${column.stackRatio ?? ''}`).join('||')
+  if (existing && existing.columns.map((column) => `${column.view}|${column.stack ?? ''}|${column.stackRatio ?? ''}`).join('||') === signature) {
     return selectLayout(state, saved.name)
   }
-  const widths = normalizeWidths(saved.columns.map((column) => column.width))
+  const columns = saved.columns.slice(0, MAX_COLUMNS)
+  const widths = normalizeWidths(columns.map((column) => column.width))
   const layout = {
     name: saved.name,
-    columns: saved.columns.slice(0, MAX_COLUMNS).map((column, index) => ({ ...newColumn(column.view), width: widths[index] ?? 0 })),
+    columns: columns.map((column, index) => ({
+      ...newColumn(column.view),
+      width: widths[index] ?? 0,
+      ...reviveStack(column.view, column.stack, column.stackRatio),
+    })),
   }
   if (existing) return { ...replaceLayout(state, saved.name, layout), active: saved.name }
   if (state.layouts.length >= MAX_LAYOUTS) return state
