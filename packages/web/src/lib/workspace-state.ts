@@ -77,10 +77,16 @@ export function openDraft(state: WorkspaceState, pane: DraftPaneRef): WorkspaceS
     (thread): thread is DraftPaneRef => thread.kind === 'draft' && thread.projectId === pane.projectId,
   )
   if (existing) return setActive(state, existing.paneId)
+  // A started draft keeps its pane id when it becomes a run. Reopening /new must make a fresh
+  // draft instead of adding a duplicate id that normalization would discard.
+  let paneId = pane.paneId
+  for (let suffix = 2; state.threads.some((thread) => thread.paneId === paneId); suffix += 1) {
+    paneId = `${pane.paneId}:${suffix}`
+  }
   return {
     ...state,
-    threads: [...state.threads, pane],
-    active: pane.paneId,
+    threads: [...state.threads, { ...pane, paneId }],
+    active: paneId,
     context: { ...state.context, open: false },
   }
 }

@@ -18,7 +18,7 @@ import {
   MAX_TRANSCRIPT_SEARCH_QUERY_LENGTH,
   MAX_TRANSCRIPT_SEARCH_SNIPPET_LENGTH,
   MAX_WORKSPACE_PANES_THREADS,
-} from '../../../contract/src/index.ts';
+} from '@onni/contract';
 
 describe('Phase 5 contract schemas: workspace threads, search, viewed, and panes', () => {
   describe('(1) threadsQuerySchema, threadSummarySchema, threadsPageSchema', () => {

@@ -40,12 +40,15 @@ describe('layout transitions stay inside the contract bounds', () => {
     for (let count = 0; count < 60; count += 1) state = addLayout(state)
     expect(state.layouts).toHaveLength(50)
     expect(addLayout(state)).toBe(state)
-    expect(openBeside(state, 'files')).toBeNull()
-    expect(accepted(state)).toBe(true)
+    // Review is the initial working layout, so a split at the card cap can replace it without
+    // growing the saved-card list.
+    const opened = openBeside(state, 'files')
+    expect(opened?.state.layouts).toHaveLength(50)
+    expect(accepted(opened?.state ?? state)).toBe(true)
   })
 
   it('bounds what a Browser column is handed: tab count, active index, address length', () => {
-    const base = { ...defaultState(), active: 'Preview' }
+    const base = addLayout(defaultState(), 'browser', 'Preview')
     const tabs = Array.from({ length: 13 }, (_, index) => `http://localhost:${3000 + index}/`)
     const many = setColumnBrowser(base, 'Preview', 0, { tabs, active: 12 })
     expect(many.layouts.find((layout) => layout.name === 'Preview')!.columns[0]!.browser).toEqual({

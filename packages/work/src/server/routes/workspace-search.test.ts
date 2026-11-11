@@ -6,7 +6,7 @@ import { hc, type InferResponseType } from 'hono/client';
 import {
   transcriptSearchPageSchema,
   type TranscriptSearchPage,
-} from '../../../../contract/src/index.ts';
+} from '@onni/contract';
 import { RunStore } from '../../runs/store.ts';
 import type { RunManager } from '../../workflows/run.ts';
 import { clearProjectProbeCache, registerProject } from '../../workspace/projects.ts';
