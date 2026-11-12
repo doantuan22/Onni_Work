@@ -1,7 +1,7 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { applyDocumentLanguage, readStoredLanguage, writeStoredLanguage, type Language } from './language'
-import { translate } from './messages'
+import { loadViMessages, translate } from './messages'
 
 type Vars = Record<string, string | number>
 
@@ -32,9 +32,23 @@ const I18nContext = createContext<I18nValue>(englishIdentity)
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => readStoredLanguage())
+  // The VI dictionary arrives in its own chunk. Until then `t` answers English — the key — and
+  // this counter re-renders the tree once the translations exist.
+  const [dictionaryLoads, setDictionaryLoads] = useState(0)
 
   useLayoutEffect(() => {
     applyDocumentLanguage(language)
+  }, [language])
+
+  useEffect(() => {
+    if (language !== 'vi') return
+    let live = true
+    void loadViMessages().then(() => {
+      if (live) setDictionaryLoads((count) => count + 1)
+    })
+    return () => {
+      live = false
+    }
   }, [language])
 
   const setLanguage = useCallback((next: Language) => {
@@ -50,7 +64,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       tn: (count, singular, plural, vars) =>
         translate(language, count === 1 ? singular : plural, { ...vars, count }),
     }),
-    [language, setLanguage],
+    // `dictionaryLoads` is not read above; it is the signal that `translate` now has a dictionary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [language, setLanguage, dictionaryLoads],
   )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>

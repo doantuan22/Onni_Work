@@ -1713,9 +1713,35 @@ fn open_url(url: &str) {
     #[cfg(target_os = "macos")]
     let _ = Command::new("open").arg(url).spawn();
     #[cfg(windows)]
-    let _ = Command::new("cmd").args(["/C", "start", "", url]).spawn();
+    {
+        // `ShellExecuteW`, never `cmd /C start`: the command line parsed `&`, `|`, `^` and `%`
+        // in the URL, so a crafted link ran a command instead of opening a page.
+        if let Some(url_wide) = wide(url) {
+            let verb: Vec<u16> = "open".encode_utf16().chain(std::iter::once(0)).collect();
+            let _ = unsafe {
+                windows_sys::Win32::UI::Shell::ShellExecuteW(
+                    std::ptr::null_mut(),
+                    verb.as_ptr(),
+                    url_wide.as_ptr(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
+                )
+            };
+        }
+    }
     #[cfg(all(unix, not(target_os = "macos")))]
     let _ = Command::new("xdg-open").arg(url).spawn();
+}
+
+/// The UTF-16, NUL-terminated form the Win32 shell takes. Interior NUL would truncate at the
+/// shell, so a URL carrying one is dropped rather than opened as something else.
+#[cfg(windows)]
+fn wide(text: &str) -> Option<Vec<u16>> {
+    if text.contains('\0') {
+        return None;
+    }
+    Some(text.encode_utf16().chain(std::iter::once(0)).collect())
 }
 
 /// A one-shot loopback HTTP GET without an HTTP client dependency. Answers the body of a 200,
@@ -2151,6 +2177,24 @@ mod tests {
 
     fn url(raw: &str) -> url::Url {
         url::Url::parse(raw).unwrap()
+    }
+
+    /// A URL with cmd metacharacters used to reach `cmd /C start` as command text; it must reach
+    /// the shell as one argument, unchanged.
+    #[cfg(windows)]
+    #[test]
+    fn a_url_reaches_the_shell_as_one_argument() {
+        let raw = "https://e.test/?a=1&ver|calc^%PATH%";
+        let buffer = wide(raw).unwrap();
+        assert_eq!(*buffer.last().unwrap(), 0);
+        assert_eq!(String::from_utf16(&buffer[..buffer.len() - 1]).unwrap(), raw);
+        assert!(buffer.contains(&('&' as u16)));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_url_with_an_interior_nul_is_dropped() {
+        assert!(wide("https://e.test/\0calc").is_none());
     }
 
     /// The boot project rides `--repo`, never the cwd: a cwd the app may not read made onni

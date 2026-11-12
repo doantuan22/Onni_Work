@@ -3,7 +3,8 @@ import { tr } from '@/lib/i18n'
 import * as React from 'react'
 import { matchPath, useLocation } from 'react-router'
 
-import { useHealth, usePatchRun, useProjects, useRun, useRunTree } from '@/api/queries'
+import { useHealth, usePatchRun, useProjectRun, useProjects, useRunTree } from '@/api/queries'
+import { useCommittedProjectScope } from '@/api/project-scope-context'
 import type { ApiRun } from '@onni/api-client'
 import {
   paletteScore,
@@ -113,7 +114,7 @@ export function TaskPalette() {
   const location = useLocation()
   const pageTaskId = taskIdFromPath(location.pathname)
   const navigate = useNavigate()
-  const liveProjectId = useLiveProjectId()
+  const liveProject = useLiveProject()
 
   const [open, setOpen] = React.useState(false)
   const [subjectId, setSubjectId] = React.useState<string | null>(null)
@@ -192,7 +193,7 @@ export function TaskPalette() {
   /** Act on `subject`: in place when it is in the project on screen, else go there and re-open. */
   const actOn = React.useCallback(
     (subject: TaskPaletteSubject) => {
-      if (subject.projectId === null || subject.projectId === liveProjectId) {
+      if (subject.projectId === null || subject.projectId === liveProject.projectId) {
         show(subject.runId, '')
         return
       }
@@ -200,7 +201,7 @@ export function TaskPalette() {
       setOpen(false)
       navigate(paletteTaskPath({ id: subject.runId, projectId: subject.projectId }))
     },
-    [liveProjectId, navigate, show],
+    [liveProject.projectId, navigate, show],
   )
 
   React.useEffect(() => {
@@ -395,6 +396,9 @@ export function TaskPalette() {
         <SubjectHost
           key={subjectId ?? pageTaskId}
           runId={(subjectId ?? pageTaskId)!}
+          projectId={liveProject.projectId}
+          boot={liveProject.boot}
+          ready={liveProject.ready}
           apiRef={subjectApi}
           onCommands={setPublished}
           onRename={beginRename}
@@ -446,7 +450,14 @@ export function TaskPalette() {
             value={search}
             onValueChange={setSearch}
           />
-          {subjectId && !renaming && mode !== 'tasks' ? <SubjectBar runId={subjectId} picked={subjectId !== pageTaskId} /> : null}
+          {subjectId && !renaming && mode !== 'tasks' ? (
+            <SubjectBar
+              runId={subjectId}
+              picked={subjectId !== pageTaskId}
+              projectId={liveProject.projectId}
+              boot={liveProject.boot}
+            />
+          ) : null}
           <CommandList className="max-h-[55vh] min-h-[14rem] sm:max-h-[60vh] lg:max-h-[68vh]">
             {recording ? (
               <CommandGroup heading={t('Shortcut for {command}', { command: t(recording.label) })}>
@@ -531,19 +542,51 @@ function placeholder(mode: PaletteMode | 'rename'): string {
   }
 }
 
-/** The project whose live run list the palettes read — see `usePaletteTasks`. */
-function useLiveProjectId(): string | null {
+/**
+ * The project whose live run list the palettes read — see `usePaletteTasks` — plus whether it is
+ * the boot project, whose cache keys are `'default'`-led (it mounts unscoped).
+ *
+ * The URL answers this before the registry does, which is what the subject read needs: the
+ * palettes sit ABOVE `ProjectScopeProvider` and mount the task on screen even while the palette
+ * is shut, so a cold `/p/<id>/tasks/<run>` must name `<id>` itself rather than read a module
+ * scope that is still unset (`useRun` there sent the read to the boot project — a 404 the boot
+ * project honestly answers, for a run in another project).
+ */
+function useLiveProject(): { projectId: string | null; boot: boolean; ready: boolean } {
   const activeProjectId = useActiveProjectId()
   const projects = useProjects()
   const health = useHealth()
+  const committed = useCommittedProjectScope()
   const bootProjectId = projects.data?.bootProject ?? health.data?.bootProject ?? null
-  return (activeProjectId === 'default' ? null : activeProjectId) ?? bootProjectId
+  const projectId = (activeProjectId === 'default' ? null : activeProjectId) ?? bootProjectId
+  // The boot project mounts UNSCOPED: its requests are correct while the module scope is null,
+  // whether or not the route has committed its provider yet.
+  const expected = projectId !== null && projectId === bootProjectId ? null : projectId
+  return {
+    projectId,
+    boot: expected === null && projectId !== null,
+    // The subject's commands ask the SAME scope-led hooks the task page does. This host mounts
+    // above the routed provider, and on a cold deep link it can commit before that provider
+    // does — the reads would leave unprefixed against the boot project (a 404 the page never
+    // shows). Wait for the route to have committed the scope the URL names.
+    ready: projectId !== null && committed === expected,
+  }
 }
 
 /** Which task the palette is acting on — the header row under the input. */
-function SubjectBar({ runId, picked }: { runId: string; picked: boolean }) {
+function SubjectBar({
+  runId,
+  picked,
+  projectId,
+  boot,
+}: {
+  runId: string
+  picked: boolean
+  projectId: string | null
+  boot: boolean
+}) {
   const { t } = useI18n()
-  const run = useRun(runId).data
+  const run = useProjectRun(projectId ?? undefined, runId, projectId !== null, boot).data
   if (!run) return null
   const attention = deriveAttention(run)
   return (
@@ -777,6 +820,12 @@ function PaletteFooter({ mode }: { mode: PaletteMode | 'rename' | 'record' }) {
  */
 const SubjectHost = React.memo(function SubjectHost(props: {
   runId: string
+  /** The project the URL names — read here, not from the module scope: this host is mounted
+   *  above `ProjectScopeProvider` (it serves the page's shortcuts while the palette is shut). */
+  projectId: string | null
+  boot: boolean
+  /** The route has committed a provider for `projectId` (or the boot project is unscoped). */
+  ready: boolean
   /** Changes only on open/close — re-reads the workspace for the listed commands then, and not
    *  on every keystroke. */
   open: boolean
@@ -786,13 +835,26 @@ const SubjectHost = React.memo(function SubjectHost(props: {
   /** A dialog this host opened has closed, and nothing it started is still in flight. */
   onDialogDone: () => void
 }) {
-  const run = useRun(props.runId).data
-  if (!run) return null
-  return <SubjectReferences run={run} {...props} />
+  const run = useProjectRun(props.projectId ?? undefined, props.runId, props.projectId !== null, props.boot).data
+  // The read above is explicit about its project, so it may start at once; the commands below
+  // are not (they ask the scope-led hooks the page uses), so they wait for the route's scope.
+  if (!props.ready || !run) return null
+  return (
+    <SubjectReferences
+      run={run}
+      projectId={props.projectId}
+      apiRef={props.apiRef}
+      onCommands={props.onCommands}
+      onRename={props.onRename}
+      onDialogDone={props.onDialogDone}
+    />
+  )
 })
 
 function SubjectReferences(props: {
   run: ApiRun
+  /** The project whose scope the route has committed — what the task URL names. */
+  projectId: string | null
   apiRef: React.RefObject<SubjectApi | null>
   onCommands: (published: { runId: string; commands: TaskCommand[] }) => void
   onRename: () => void
@@ -810,12 +872,14 @@ function SubjectReferences(props: {
 
 function SubjectCommands({
   run,
+  projectId,
   apiRef,
   onCommands,
   onRename,
   onDialogDone,
 }: {
   run: ApiRun
+  projectId: string | null
   apiRef: React.RefObject<SubjectApi | null>
   onCommands: (published: { runId: string; commands: TaskCommand[] }) => void
   onRename: () => void
@@ -831,7 +895,6 @@ function SubjectCommands({
   const terminalAvailable = useHealth().data?.capabilities?.terminal === true
   const patch = usePatchRun(run.id)
   const navigate = useNavigate()
-  const liveProjectId = useLiveProjectId()
   const owned = ownedTaskPr(run)
 
   const build = () =>
@@ -845,7 +908,7 @@ function SubjectCommands({
       terminalAvailable,
       openChoices: openIn.choices,
       prUrl: owned?.url,
-      taskUrl: `${window.location.origin}${liveProjectId ? (scopeTo(liveProjectId, `/tasks/${run.id}`) as string) : `/tasks/${run.id}`}`,
+      taskUrl: `${window.location.origin}${projectId ? (scopeTo(projectId, `/tasks/${run.id}`) as string) : `/tasks/${run.id}`}`,
     },
     {
       markRead: () => actions.markRead.mutate(),

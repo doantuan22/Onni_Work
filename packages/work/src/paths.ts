@@ -130,10 +130,15 @@ export function agentAccountsPath(): string {
  * every consumer that must touch the REAL directory — the writability probe on
  * `PUT /api/workspace/config`, the browse root in
  * `src/server/fs-browse.ts` — expands it through this one helper.
+ *
+ * Windows spells the separator `\`, so `~\projects` is as much a home path as `~/projects` —
+ * and without this it failed `isAbsolutePath` and came back as `not a folder: …`.
  */
-export function expandTilde(path: string): string {
+export function expandTilde(path: string, platform: NodeJS.Platform = process.platform): string {
   if (path === '~') return homedir();
-  return path.startsWith('~/') ? join(homedir(), path.slice(2)) : path;
+  if (path.startsWith('~/')) return join(homedir(), path.slice(2));
+  if (platform === 'win32' && path.startsWith('~\\')) return join(homedir(), path.slice(2));
+  return path;
 }
 
 /**

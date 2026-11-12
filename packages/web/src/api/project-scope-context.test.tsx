@@ -2,7 +2,7 @@ import { cleanup, render } from '@testing-library/react'
 import { StrictMode, useEffect } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { ProjectScopeProvider, useProjectScope } from './project-scope-context'
+import { ProjectScopeProvider, useCommittedProjectScope, useProjectScope } from './project-scope-context'
 import { getApiScope, queryScope, apiPath, setApiScope } from '@onni/api-client'
 
 afterEach(() => {
@@ -147,5 +147,29 @@ describe('ProjectScopeProvider', () => {
       </ProjectScopeProvider>,
     )
     expect(view.getByTestId('probe').textContent).toBe('-|/api/v1|default|/api/v1/runs')
+  })
+
+  // The ⌘P palette mounts outside the provider and, on a cold deep link, can commit before the
+  // routed provider does. It gates its scope-led reads on this signal — the module scope is
+  // written during render, long before the provider's commit is known to have landed.
+  it('publishes the committed scope to components outside the provider, and clears it on unmount', () => {
+    let seen: string | null = null
+    function Outside() {
+      seen = useCommittedProjectScope()
+      return null
+    }
+
+    const view = render(
+      <>
+        <Outside />
+        <ProjectScopeProvider projectId="a">
+          <Probe />
+        </ProjectScopeProvider>
+      </>,
+    )
+    expect(seen).toBe('a')
+
+    view.rerender(<Outside />)
+    expect(seen).toBeNull()
   })
 })

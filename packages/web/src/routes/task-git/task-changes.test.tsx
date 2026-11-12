@@ -372,6 +372,20 @@ describe('the Changes tab route', () => {
     expect(gitButton()).toBeNull()
   })
 
+  it('a 409 while the run is still going is the setup race — it reads as preparing, not as an answer', async () => {
+    const noWorktree = () => jsonResponse({ error: 'no worktree — this task ran directly in the repo working tree' }, 409)
+    stubFetch({
+      'GET /api/v1/runs/r1': () => jsonResponse({ ...RUN, status: 'running' }),
+      'GET /api/v1/runs/r1/changes': noWorktree,
+      'GET /api/v1/runs/r1/git/status': noWorktree,
+    })
+    renderChangesRoute()
+    await waitFor(() => expect(document.querySelector('[data-slot="changes-preparing"]')).not.toBeNull())
+    // The server's sentence is wrong for an isolated run whose worktree is still landing.
+    expect(screen.queryByRole('heading', { level: 2, name: 'No changes to show' })).toBeNull()
+    expect(document.querySelector('[data-slot="changes-preparing"]')?.textContent).toBe('Preparing worktree')
+  })
+
   it('no PR yet: Create PR opens a ready-for-review PR; its chevron offers a draft', async () => {
     const sent = stubFetch({
       'POST /api/v1/runs/r1/pr': () => jsonResponse({ url: 'https://github.com/acme/demo/pull/9', dryRun: true }, 201),

@@ -1,8 +1,10 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, useLocation } from 'react-router'
+import type { ReactNode } from 'react'
+import { matchPath, MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ProjectScopeProvider } from '@/api/project-scope-context'
 import { createQueryClient } from '@/api/query-client'
 import type { HealthResponse, RunRecord } from '@onni/api-client'
 import { CommandPalette } from '@/components/command-palette'
@@ -128,16 +130,29 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname}</output>
 }
 
-function renderPalettes(entry: string, options: { multiProject?: boolean } = {}) {
+/** Stands in for the `/p/:projectId` gate: binds whatever project the URL names, the way the
+ *  real route does — so the palette sits above a committed scope, as it does in the app. */
+function UrlScope({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  const projectId = matchPath('/p/:projectId/*', location.pathname)?.params.projectId ?? null
+  return <ProjectScopeProvider projectId={projectId}>{children}</ProjectScopeProvider>
+}
+
+function renderPalettes(entry: string, options: { multiProject?: boolean; unmounted?: boolean } = {}) {
   serve(RUNS, options)
+  const view = (
+    <>
+      <CommandPalette />
+      <TaskPalette />
+      <LocationProbe />
+      <textarea data-testid="composer" aria-label="composer" />
+    </>
+  )
   render(
     <QueryClientProvider client={createQueryClient()}>
       <ThemeProvider>
         <MemoryRouter initialEntries={[entry]}>
-          <CommandPalette />
-          <TaskPalette />
-          <LocationProbe />
-          <textarea data-testid="composer" aria-label="composer" />
+          {options.unmounted ? view : <UrlScope>{view}</UrlScope>}
         </MemoryRouter>
       </ThemeProvider>
     </QueryClientProvider>,
@@ -381,6 +396,27 @@ describe('⌘P off a task page', () => {
     await pressP()
     expect(input().value).toBe('@')
     await waitFor(() => expect(selectedRow()?.dataset.runId).toBe('r3'))
+  })
+})
+
+describe('a cold deep link into another project', () => {
+  // The palette mounts above the routed provider, so a cold `/p/<id>/tasks/<run>` can commit
+  // before that provider does. The subject's own run read names its project; the commands behind
+  // it ask the SAME scope-led hooks the page does, so an unprefixed `/runs/:id` (a 404 the boot
+  // project honestly answers) must not leave before the scope is committed.
+  const unprefixedProjectRead = (path: string) => /^\/api\/v1\/(?:runs|repo|config)(?:\/|$)/.test(path)
+
+  it('reads the task by name but holds the scope-led commands until the route binds the scope', async () => {
+    renderPalettes('/p/blog/tasks/b1', { multiProject: true, unmounted: true })
+    await waitFor(() => expect(sent.some((call) => call.path === '/api/v1/p/blog/runs/b1')).toBe(true))
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(sent.filter((call) => unprefixedProjectRead(call.path))).toEqual([])
+  })
+
+  it('runs them under the project scope once a provider has committed it', async () => {
+    renderPalettes('/p/blog/tasks/b1', { multiProject: true })
+    await waitFor(() => expect(sent.some((call) => call.path === '/api/v1/p/blog/repo')).toBe(true))
+    expect(sent.filter((call) => unprefixedProjectRead(call.path))).toEqual([])
   })
 })
 

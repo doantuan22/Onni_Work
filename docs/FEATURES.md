@@ -342,7 +342,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | Mục | Hiện tượng | Bằng chứng |
 | --- | --- | --- |
 | Step status `review` và `skipped` | Khai báo trong `stepStatusSchema` nhưng **không có chỗ nào ghi**: cả 2 chỗ `status:'review'` trong repo đều là cấp run (`store.updateRun`). UI vẫn có nhánh render `skipped` không bao giờ chạy | `contract/runs.ts:69-78` · `server.ts:5829` · `run.ts:7714` · `web/src/routes/task-thread/step-rail.tsx:31,41` |
-| `ONNI_AUTO_NAMING` | 2 test stub biến này nhưng **không source nào đọc**; biến thật là `ONNI_AUTONAME` | `workflows/landing-lifecycle.test.ts:16`, `lifecycle-settlement.test.ts:28` vs `runs/auto-name.ts:25` |
+| ~~`ONNI_AUTO_NAMING`~~ | **Đã sửa 2026-11-12**: 3 test stub đổi sang biến thật `ONNI_AUTONAME`; không còn chỗ nào nhắc tên cũ | `runs/auto-name.ts:25` |
 | ~~Dispatch depth~~ | **Đã xử lý 2026-11-01**: trần độ sâu mặc định 1 — xem §5 và §17 | |
 | ~~`retry_limit` dispatch~~ | **Đã xử lý 2026-11-01**: được thực thi — xem §5 | |
 | ~~`maxSubtasks` dispatch~~ | Ghi nhận sai trong bản chụp: bộ đếm có sẵn khi root có `intent`; từ 2026-11-01 cây không `intent` cũng bị trần mặc định 12 | |
@@ -352,7 +352,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | `git-worktree` recovery trên Windows | `createWorktree` idempotent trả `path` **forward-slash** lần thứ 2 (`git worktree list`), back-slash lần đầu → `expect(second).toEqual(first)` fail | `git-worktree.test.ts:161` fail; branch/baseBranch vẫn khớp |
 | Xoá tracker connection | Xoá file `.env` local, **không revoke** token phía Jira/Linear | `server/tracker/connections-cli.ts:9` |
 | `.ai/cezar/` | State runtime của tên cũ (`attachments`, `launch-key`, `runs`, `runs.json`, `tmp`) còn trên đĩa, untracked | `git status` khi chụp |
-| `ONNI_DESKTOP_DEBUG_IPC` | Có trong code, không có trong `.env.example` | `desktop/src-tauri/src/lib.rs:1660` |
+| ~~`ONNI_DESKTOP_DEBUG_IPC`~~ | **Đã sửa 2026-11-12**: đã thêm vào `.env.example` (cùng `ONNI_CODEX_REASONING`) | `.env.example` |
 | Desktop build tại máy này | `cargo build/check` bị Smart App Control chặn (os error 4551) | memory + `AGENTS.md` §Windows |
 | 13 test guard theo nền tảng | `describe.skipIf` / `it.skipIf` / `runIf` — không phải `.skip`, nhưng vẫn không chạy trên Windows | `claude-bin.test.ts:18,184`, `cursor-bin.test.ts:20`, `disclaim-spawn.test.ts:40`, `task-processes.test.ts:119`, `agent-tmpdir.test.ts:82`, `store.test.ts:80`, `copilot-acp-runner.smoke.test.ts:34` |
 | Webhook inbound | Chỉ có outbound; không route nào nhận POST từ GitHub | `server/webhooks.ts` không có `app.post` inbound; `automations/types.ts:92` polling |
@@ -364,7 +364,7 @@ Lệnh tái hiện: `npm test` (toàn bộ) hoặc hẹp hơn:
 | `AGENTS.md` (invariants) | "Không có auto-merge anywhere" | Đúng, nhưng `POST /api/v1/github/prs/:number/merge` (`server.ts:6725`) merge **trực tiếp** khi user bấm — tài liệu cần nói rõ đây là nút người bấm, không phải luồng tự động |
 | `AGENTS.md` layout | "server phục vụ cockpit từ `packages/work/web/dist`" | Đúng; nhưng cũng có 2 mount point `/api/v1` (`server.ts:7785-7787`) — 380 route đăng ký, **216 route gốc distinct**, 164 path scoped-project. Tài liệu không nêu con số này nên dễ đếm nhầm gấp đôi |
 | `AGENTS.md` §Commands | "`npm run test:unit` phủ core modules" | Trên Windows bộ này fail ~340 test vì môi trường (chmod/`/bin.sh`/EPERM) — fail **không** nghĩa là hỏng code; CI là authority |
-| `AGENTS.md` §Zero config | "mọi `ONNI_*` đổi tên/thay default phải cập nhật `.env.example` cùng commit" | `ONNI_CODEX_REASONING`, `ONNI_DESKTOP_DEBUG_IPC`, `ONNI_ALLOW_TEST_SPAWN`, `ONNI_GUARD_PROBE_FOR_CHECKS` có trong code mà **không** có trong `.env.example` |
+| `AGENTS.md` §Zero config | "mọi `ONNI_*` đổi tên/thay default phải cập nhật `.env.example` cùng commit" | `ONNI_CODEX_REASONING` và `ONNI_DESKTOP_DEBUG_IPC` **đã bổ sung 2026-11-12**; còn `ONNI_ALLOW_TEST_SPAWN` (escape hatch test của `open-in-terminal.ts:171`) và `ONNI_GUARD_PROBE_FOR_CHECKS` (chỉ là giá trị probe trong `secrets.test.ts`) chưa có trong `.env.example` |
 | `docs/reference.md:521` | `VITE_ONNI_API_BASE` là build-time | Đúng (`web/src/main.tsx:21`), và `<meta name="onni-api-base">` thắng — tài liệu nói đúng, nhưng `.env.example:265` chỉ ghi biến env, không ghi meta |
 | `docs/project-overview.md:57` | Sơ đồ kênh ghi "SSE `/api/v1/workspace/events` · WS `/api/v1/ws`" | Code có **hai** stream SSE: `/runs/:id/events` (`server.ts:6094`) — chính là dòng mang step/tool/diff của task — và `/workspace/events` (`:6225`), cộng bản root-mount `/events` (`:6177`). Sơ đồ bỏ mất stream quan trọng nhất |
 | `.ai/specs/*` | Dùng tên cũ (brand trước khi đổi) + event kind `RUN_EVENT_*` cũ | Source đã đổi sang `onni`/`ONNI_*`; `AGENTS.md` xác nhận specs là hồ sơ lịch sử, **code thắng** |

@@ -44,13 +44,14 @@ describe('I18nProvider', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Vietnamese' }))
     })
 
+    // The dictionary is its own chunk; the switch applies once it has arrived.
+    expect((await screen.findByText('Ngôn ngữ')).textContent).toBe('Ngôn ngữ')
     expect(screen.getByTestId('language').textContent).toBe('vi')
-    expect(screen.getByTestId('text').textContent).toBe('Ngôn ngữ')
     expect(localStorage.getItem('onni-language')).toBe('vi')
     expect(document.documentElement.lang).toBe('vi')
   })
 
-  it('reads a stored choice on first paint', () => {
+  it('reads a stored choice on first paint and loads its dictionary', async () => {
     localStorage.setItem('onni-language', 'vi')
     render(
       <I18nProvider>
@@ -59,5 +60,6 @@ describe('I18nProvider', () => {
     )
     expect(screen.getByTestId('language').textContent).toBe('vi')
     expect(document.documentElement.lang).toBe('vi')
+    expect((await screen.findByText('Ngôn ngữ')).textContent).toBe('Ngôn ngữ')
   })
 })

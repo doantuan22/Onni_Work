@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
-import { interpolate, translate, viMessages } from './messages'
+import { interpolate, loadViMessages, setViMessages, translate } from './messages'
+import { viMessages } from './vi-messages'
+
+beforeEach(() => setViMessages(viMessages))
 
 describe('translate', () => {
   it('returns English untouched, byte for byte', () => {
@@ -26,5 +29,12 @@ describe('translate', () => {
     const key = 'Language'
     expect(translate('vi', key)).toBe(viMessages[key])
     expect(viMessages[key]).not.toBe(key)
+  })
+
+  it('answers English until the VI chunk loads, then translates', async () => {
+    setViMessages({})
+    expect(translate('vi', 'Language')).toBe('Language')
+    await loadViMessages()
+    expect(translate('vi', 'Language')).toBe(viMessages['Language'])
   })
 })
