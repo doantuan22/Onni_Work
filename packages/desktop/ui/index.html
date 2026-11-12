@@ -23,11 +23,8 @@
         --accent-ink: #00142e;
         --accent-glow: rgba(0, 106, 254, 0.28);
         --accent-line: rgba(0, 106, 254, 0.6);
-        --teal-glow: rgba(0, 106, 254, 0.14);
         --mark-shadow: rgba(0, 106, 254, 0.3);
         --vignette: rgba(0, 0, 0, 0.32);
-        --grid-opacity: 0.9;
-        --noise-opacity: 0.035;
         --sans: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
         --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
       }
@@ -45,11 +42,8 @@
           --accent-ink: #ffffff;
           --accent-glow: rgba(0, 106, 254, 0.2);
           --accent-line: rgba(0, 82, 198, 0.55);
-          --teal-glow: rgba(0, 106, 254, 0.08);
           --mark-shadow: rgba(0, 82, 198, 0.24);
           --vignette: rgba(21, 24, 15, 0.05);
-          --grid-opacity: 0.75;
-          --noise-opacity: 0.045;
         }
       }
       html,
@@ -79,58 +73,13 @@
         overflow: hidden;
         pointer-events: none;
       }
+      /* A single quiet wash behind the mark: the hero is the mark, not the wallpaper. */
       .backdrop::before {
         content: '';
         position: absolute;
         inset: 0;
-        background:
-          radial-gradient(1100px 620px at 50% -8%, var(--accent-glow), transparent 62%),
-          radial-gradient(760px 520px at 90% 108%, var(--teal-glow), transparent 66%),
-          radial-gradient(620px 460px at 2% 98%, var(--accent-glow), transparent 70%);
-        opacity: 0.55;
-        animation: breathe-bg 12s ease-in-out infinite;
-      }
-      .grid {
-        position: absolute;
-        inset: -2px;
-        background-image:
-          linear-gradient(var(--line) 1px, transparent 1px),
-          linear-gradient(90deg, var(--line) 1px, transparent 1px);
-        background-size: 46px 46px;
-        -webkit-mask-image: radial-gradient(ellipse 62% 58% at 50% 46%, #000 0%, rgba(0, 0, 0, 0.5) 48%, transparent 80%);
-        mask-image: radial-gradient(ellipse 62% 58% at 50% 46%, #000 0%, rgba(0, 0, 0, 0.5) 48%, transparent 80%);
-        opacity: var(--grid-opacity);
-      }
-      .blob {
-        position: absolute;
-        width: 540px;
-        height: 540px;
-        border-radius: 50%;
-        opacity: 0.55;
-        will-change: transform;
-      }
-      @media (prefers-color-scheme: light) {
-        .blob {
-          opacity: 0.38;
-        }
-      }
-      .blob-a {
-        left: -160px;
-        top: -150px;
-        background: radial-gradient(circle, var(--accent-glow), transparent 66%);
-        animation: drift-a 26s ease-in-out infinite alternate;
-      }
-      .blob-b {
-        right: -200px;
-        bottom: -180px;
-        background: radial-gradient(circle, var(--teal-glow), transparent 66%);
-        animation: drift-b 32s ease-in-out infinite alternate;
-      }
-      .noise {
-        position: absolute;
-        inset: 0;
-        opacity: var(--noise-opacity);
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background: radial-gradient(900px 520px at 50% -6%, var(--accent-glow), transparent 64%);
+        opacity: 0.5;
       }
       .vignette {
         position: absolute;
@@ -192,43 +141,53 @@
         place-items: center;
         margin-bottom: 30px;
       }
-      .mark-halo {
+      /* The azure under-glow breathes behind the glyph — the loading "heartbeat". */
+      .mark-glow {
         position: absolute;
-        inset: -40px;
+        inset: -26px;
         border-radius: 50%;
-        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 68%);
-        animation: halo 5s ease-in-out infinite;
-      }
-      /* The orbit is an SVG arc rather than a masked conic gradient: mask shorthand rendering
-         differs across WebView2 / WKWebView, and an unmasked wedge looked like a stray leaf. */
-      .orbit {
-        position: absolute;
-        inset: -16px;
-        width: 128px;
-        height: 128px;
-        animation: spin 5s linear infinite;
-      }
-      .orbit-base {
-        fill: none;
-        stroke: var(--line-strong);
-        stroke-width: 1;
-      }
-      .orbit-arc {
-        fill: none;
-        stroke: var(--accent);
-        stroke-width: 2;
-        stroke-linecap: round;
-        stroke-dasharray: 74 297;
-        filter: drop-shadow(0 0 5px var(--accent-glow));
+        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 62%);
+        animation: glow-breathe 3.6s ease-in-out infinite;
       }
       .mark {
         position: relative;
         width: 84px;
         height: 84px;
+        animation: float 6s ease-in-out infinite;
+      }
+      /* The mark is a transparent glyph (no tile), so a box-shadow would paint a rectangle
+         behind it; drop-shadow follows the glyph's alpha and keeps the failure state's red glow. */
+      .mark-glyph {
+        width: 100%;
+        height: 100%;
         display: block;
-        /* The mark is a transparent glyph now (no tile), so a box-shadow would paint a rectangle
-           behind it; drop-shadow follows the glyph's alpha and keeps the failure state's red glow. */
         filter: drop-shadow(0 18px 30px var(--mark-shadow));
+      }
+      /* A light glint sweeps across the glyph every few seconds — the one intentional accent,
+         clipped to the mark's own alpha so it reads as a reflection off the logo. */
+      .mark-shine {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        -webkit-mask-image: url('icon.svg');
+        mask-image: url('icon.svg');
+        -webkit-mask-size: 100% 100%;
+        mask-size: 100% 100%;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+      }
+      .mark-shine::before {
+        content: '';
+        position: absolute;
+        top: -60%;
+        bottom: -60%;
+        left: 0;
+        width: 36%;
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+        transform: translateX(-260%) skewX(-16deg);
+        animation: glint-sweep 4.6s cubic-bezier(0.55, 0.06, 0.2, 0.95) infinite;
+        will-change: transform;
       }
 
       h1 {
@@ -271,26 +230,15 @@
         border-radius: 999px;
         background: var(--line-strong);
         overflow: hidden;
-        box-shadow:
-          0 0 20px var(--accent-glow),
-          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        box-shadow: 0 0 20px var(--accent-glow);
       }
       .progress .track {
         position: absolute;
         inset: 0;
-        width: 38%;
+        width: 42%;
         border-radius: inherit;
-        background: linear-gradient(90deg, transparent 0%, var(--accent) 32%, var(--accent-bright) 64%, transparent 100%);
-        animation: sweep 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-      }
-      .progress::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        width: 18%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-        animation: sweep 2.8s linear infinite;
-        opacity: 0.3;
+        background: linear-gradient(90deg, transparent, var(--accent-bright), transparent);
+        animation: sweep 1.9s cubic-bezier(0.65, 0, 0.35, 1) infinite;
       }
 
       pre {
@@ -418,28 +366,20 @@
           --mark-shadow: rgba(194, 65, 45, 0.2);
         }
       }
-      body.failed .orbit,
-      body.failed .mark-halo {
+      body.failed .backdrop::before {
+        opacity: 0.45;
+      }
+      body.failed .mark,
+      body.failed .mark-glow,
+      body.failed .mark-shine::before {
         animation-play-state: paused;
       }
-      body.failed .mark-halo {
+      body.failed .mark-glow {
         opacity: 0.5;
-      }
-      body.failed .orbit {
-        opacity: 0.45;
-      }
-      body.failed .backdrop::before {
-        animation: none;
-        opacity: 0.45;
       }
 
       /* ---- motion ------------------------------------------------------------------ */
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      @keyframes halo {
+      @keyframes glow-breathe {
         0%,
         100% {
           opacity: 0.55;
@@ -450,29 +390,22 @@
           transform: scale(1.06);
         }
       }
-      @keyframes breathe-bg {
+      @keyframes float {
         0%,
         100% {
-          opacity: 0.45;
+          transform: translateY(0);
         }
         50% {
-          opacity: 0.72;
+          transform: translateY(-5px);
         }
       }
-      @keyframes drift-a {
-        from {
-          transform: translate3d(0, 0, 0) scale(1);
+      @keyframes glint-sweep {
+        0% {
+          transform: translateX(-260%) skewX(-16deg);
         }
-        to {
-          transform: translate3d(70px, 50px, 0) scale(1.14);
-        }
-      }
-      @keyframes drift-b {
-        from {
-          transform: translate3d(0, 0, 0) scale(1.08);
-        }
-        to {
-          transform: translate3d(-60px, -40px, 0) scale(1);
+        45%,
+        100% {
+          transform: translateX(440%) skewX(-16deg);
         }
       }
       @keyframes sweep {
@@ -504,16 +437,18 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .backdrop::before,
-        .blob,
-        .mark-halo,
-        .orbit,
-        .progress::after,
+        .mark-glow,
+        .mark,
+        .mark-shine::before,
         .progress .track,
         .footer .dot {
           animation: none;
         }
         .stage > * {
           animation: none;
+        }
+        .mark-shine {
+          opacity: 0;
         }
         .progress .track {
           width: 100%;
@@ -543,12 +478,9 @@
         .mark {
           width: 66px;
           height: 66px;
-          border-radius: 18px;
         }
-        .orbit {
-          inset: -13px;
-          width: 102px;
-          height: 102px;
+        .mark-glow {
+          inset: -20px;
         }
         h1 {
           font-size: 19px;
@@ -562,22 +494,17 @@
   <body>
     <div class="titlebar" data-tauri-drag-region></div>
     <div class="backdrop" aria-hidden="true">
-      <div class="blob blob-a"></div>
-      <div class="blob blob-b"></div>
-      <div class="grid"></div>
-      <div class="noise"></div>
       <div class="vignette"></div>
     </div>
     <main>
       <section class="stage" aria-live="polite">
         <span class="eyebrow">Local cockpit</span>
         <div class="mark-wrap" aria-hidden="true">
-          <div class="mark-halo"></div>
-          <svg class="orbit" viewBox="0 0 128 128">
-            <circle class="orbit-base" cx="64" cy="64" r="59" />
-            <circle class="orbit-arc" cx="64" cy="64" r="59" />
-          </svg>
-          <img class="mark" src="icon.svg" alt="" />
+          <div class="mark-glow"></div>
+          <div class="mark">
+            <img class="mark-glyph" src="icon.svg" alt="" />
+            <span class="mark-shine"></span>
+          </div>
         </div>
         <h1 id="title">Starting OnniCode…</h1>
         <p id="detail" class="detail">Launching the local cockpit.</p>
@@ -605,7 +532,6 @@
           document.getElementById('title').textContent = title
           const line = document.getElementById('detail')
           line.textContent = detail
-          // The engine path is usually longer than the pill; the tooltip keeps it readable.
           line.title = detail
         },
         fail(title, detail, log) {

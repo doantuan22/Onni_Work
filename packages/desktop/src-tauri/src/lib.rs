@@ -755,7 +755,7 @@ fn supervise(app: AppHandle, shell: Arc<Shell>) {
         shell.port.store(port, Ordering::SeqCst);
         let project = pick_project();
         refresh_versions_menu(&app, &shell);
-        splash_reset(&window, "Starting OnniCode…", &entry.to_string_lossy());
+        splash_reset(&window, "Starting OnniCode…", "Launching the local cockpit.");
 
         let log: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
         let mut child = match spawn_sidecar(&entry, port, project.as_deref(), log.clone()) {
