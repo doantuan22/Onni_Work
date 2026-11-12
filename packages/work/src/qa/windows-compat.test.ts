@@ -69,6 +69,13 @@ describe('expandTilde', () => {
     expect(expandTilde('~/projects/app')).toBe(join(homedir(), 'projects', 'app'));
   });
 
+  it('accepts the Windows separator on Windows — `~\\projects` is a home path there', () => {
+    expect(expandTilde('~\\projects\\app', 'win32')).toBe(join(homedir(), 'projects', 'app'));
+    expect(expandTilde('~\\', 'win32')).toBe(homedir());
+    // The same string on POSIX stays a literal (unexpanded) path.
+    expect(expandTilde('~\\projects', 'linux')).toBe('~\\projects');
+  });
+
   it('leaves absolute paths and unknown shorthands untouched', () => {
     expect(expandTilde(join('C:', 'repo'))).toBe(join('C:', 'repo'));
     expect(expandTilde('/srv/repo')).toBe('/srv/repo');

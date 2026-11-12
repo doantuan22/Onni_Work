@@ -1,6 +1,6 @@
 export { LANGUAGE_STORAGE_KEY, isLanguage, readStoredLanguage, writeStoredLanguage, applyDocumentLanguage } from './language'
 export type { Language } from './language'
-export { interpolate, translate, viMessages } from './messages'
+export { interpolate, translate } from './messages'
 export { I18nProvider, useI18n } from './provider'
 export type { I18nValue, Translate } from './provider'
 

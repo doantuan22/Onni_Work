@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react'
 
 import { API_PREFIX, getApiScope, setApiScope } from '@onni/api-client'
 
@@ -24,6 +24,34 @@ export const ProjectScopeContext = createContext<ProjectScope>(UNSCOPED)
  *  the boot project's normal state until 3.2 mounts the provider. */
 export function useProjectScope(): ProjectScope {
   return useContext(ProjectScopeContext)
+}
+
+let committedScope: string | null = null
+const committedScopeListeners = new Set<() => void>()
+
+/**
+ * A provider has COMMITTED this scope, as opposed to `getApiScope()`, which the provider writes
+ * during render. Components mounted OUTSIDE the provider (the ⌘P task palette lives in the shell,
+ * above the routed tree) cannot read its context, and on a cold deep link they can render a commit
+ * before the route's provider does — their scope-led reads would then leave unprefixed against the
+ * boot project. This signal is published from the provider's layout effects, so it is only true
+ * once the scope really is in effect for a committed subtree.
+ */
+export function useCommittedProjectScope(): string | null {
+  return useSyncExternalStore(subscribeCommittedScope, () => committedScope)
+}
+
+function subscribeCommittedScope(listener: () => void): () => void {
+  committedScopeListeners.add(listener)
+  return () => {
+    committedScopeListeners.delete(listener)
+  }
+}
+
+function publishCommittedScope(scope: string | null): void {
+  if (committedScope === scope) return
+  committedScope = scope
+  for (const listener of committedScopeListeners) listener()
 }
 
 /**
@@ -73,13 +101,20 @@ export function ProjectScopeProvider({
 
   useLayoutEffect(() => {
     setApiScope(projectId)
+    publishCommittedScope(projectId)
   }, [projectId])
 
   // Unmount only — see the note above on why this cannot be the cleanup of the effect above, and
   // why both are layout effects: destroys run before creates, so the re-created `[projectId]`
   // effect re-asserts the scope after this one nulled it, and the whole exchange happens in the
   // layout phase — before the passive effects where every request of the commit is made.
-  useLayoutEffect(() => () => setApiScope(null), [])
+  useLayoutEffect(
+    () => () => {
+      setApiScope(null)
+      publishCommittedScope(null)
+    },
+    [],
+  )
 
   const value = useMemo<ProjectScope>(
     // Built from the same prefix the request path uses — the version is one fact, not two.

@@ -74,8 +74,12 @@ export function ChangesView({
   // from `/api/health.repo`: health is bound to the boot folder, so a onni booted outside a git
   // repo reported no remote for every project (#791).
   const repo = useRepo()
-  // Poll while the run is active so writes appear as the agent makes them.
-  const changes = useRunChanges(run.id, isRunActive(run.status))
+  // Poll while the run is active — or while its worktree is still being prepared. The record's
+  // `worktreePath` can be set before the directory exists, and a cold `/changes` in that window
+  // answers 409 "no worktree — this task ran directly in the repo working tree": a sentence that is
+  // wrong for an isolated run, and one this pane used to keep until the user navigated away.
+  const worktreeBusy = Boolean(run.worktreeLifecycle?.activeOperationId)
+  const changes = useRunChanges(run.id, isRunActive(run.status) || worktreeBusy)
   const desktop = useIsDesktop()
 
   const [mode, setMode] = useState<DiffMode>('unified')
@@ -142,6 +146,10 @@ export function ChangesView({
 
   // A 409 from /changes is an answer, not an outage: "no worktree — …" (or a git failure).
   const changesRefused = changes.isError && changes.error instanceof ApiError && changes.error.status === 409
+  // …but a refusal while the run is live or its worktree is being set up is the setup race, not an
+  // outcome: the worktree dir may land a moment later, and the server's sentence would be a lie in
+  // an isolated run. Say "preparing" and keep polling instead of ending on "No changes to show".
+  const preparingWorktree = changesRefused && (worktreeBusy || isRunActive(run.status))
 
   const files = changes.data?.files ?? NO_FILES
   const baseSha = changes.data?.baseSha
@@ -246,9 +254,9 @@ export function ChangesView({
         </p>
       ) : null}
 
-      {changes.isPending ? (
-        <p data-slot="changes-loading" className="px-4 py-6 text-center text-xs text-soft-foreground md:px-6">
-          {t('Loading changes…')}
+      {changes.isPending || preparingWorktree ? (
+        <p data-slot={preparingWorktree ? 'changes-preparing' : 'changes-loading'} className="px-4 py-6 text-center text-xs text-soft-foreground md:px-6">
+          {preparingWorktree ? t('Preparing worktree') : t('Loading changes…')}
         </p>
       ) : changes.isError ? (
         <CenteredState

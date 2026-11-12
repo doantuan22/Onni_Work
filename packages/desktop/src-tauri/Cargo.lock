@@ -2417,6 +2417,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-single-instance",
  "url",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

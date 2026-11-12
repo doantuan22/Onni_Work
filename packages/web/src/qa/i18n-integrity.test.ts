@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { viMessages } from '../lib/i18n/messages'
+import { viMessages } from '../lib/i18n/vi-messages'
 
 /**
  * Integrity of the Vietnamese UI layer. English text is the key, so a translation
@@ -37,6 +37,33 @@ describe('the Vietnamese dictionary', () => {
     for (const [key, value] of entries) {
       expect(value.split('\n').length, `line count changed for: ${key}`).toBe(key.split('\n').length)
       expect(/\r|\t/.test(value) && !/\r|\t/.test(key), `control whitespace in: ${key}`).toBe(false)
+    }
+  })
+
+  it('covers every label the task list paints from deriveAttention', () => {
+    // These are the status labels `lib/attention.ts` can return; the quick list and its dot render
+    // them through `t`, so a missing entry shows English inside a Vietnamese cockpit. Mirrors the
+    // label literals there — the audit found `running` and `cancelled` missing.
+    const attentionLabels = [
+      'setup needs attention',
+      'cleanup needs attention',
+      'preparing worktree',
+      'cleaning up worktree',
+      'needs permission',
+      'scheduled',
+      'needs you',
+      'failed',
+      'budget reached',
+      'needs review',
+      'monitoring',
+      'running',
+      'unseen',
+      'queued',
+      'done',
+      'cancelled',
+    ]
+    for (const label of attentionLabels) {
+      expect(viMessages[label], `missing VI for attention label: ${label}`).toBeDefined()
     }
   })
 })

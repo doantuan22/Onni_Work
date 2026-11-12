@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { translate } from '@/lib/i18n'
+import { setViMessages } from '@/lib/i18n/messages'
+import { viMessages } from '@/lib/i18n/vi-messages'
 import { translateNote } from '@/lib/note-i18n'
+
+// The VI dictionary is its own chunk (see `loadViMessages`); a direct `translate('vi', …)` in a
+// test never mounts the provider that would load it, so seed it the way the app ends up.
+beforeEach(() => setViMessages(viMessages))
 
 const vi = (text: string, vars?: Record<string, string | number>) => translate('vi', text, vars)
 const en = (text: string, vars?: Record<string, string | number>) => translate('en', text, vars)

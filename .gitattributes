@@ -1,0 +1,5 @@
+# A CRLF `sh` script breaks under CI/WSL and in heredocs — the shell is the one tool whose
+# line endings are not cosmetic. PowerShell's parser accepts both, but CRLF is its native form
+# and what `Set-Content`/`Out-File` write, so a normalization pass never fights the OS.
+*.sh text eol=lf
+*.ps1 text eol=crlf

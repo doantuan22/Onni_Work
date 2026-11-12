@@ -61,7 +61,7 @@ let receiverId: string;
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), 'onni-lifecycle-settlement-'));
   vi.stubEnv('ONNI_WEBHOOKS', '1');
-  vi.stubEnv('ONNI_AUTO_NAMING', '0');
+  vi.stubEnv('ONNI_AUTONAME', '0');
   vi.stubEnv('ONNI_DRY_RUN', '0');
   vi.stubEnv('ONNI_REVIEW_GATE', '0');
   vi.stubEnv('ONNI_CLAUDE_BIN', join(import.meta.dirname, '../../scripts/mock-claude.mjs'));

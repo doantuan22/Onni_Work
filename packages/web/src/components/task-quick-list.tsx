@@ -189,7 +189,7 @@ function NeedsYouStrip({ runs }: { runs: RunRecord[] }) {
             <span className="max-w-[60%] shrink-0 truncate font-medium text-foreground" title={runTitle(run)}>
               {runTitle(run)}
             </span>
-            <span className="min-w-0 truncate">{question ?? deriveAttention(run).label}</span>
+            <span className="min-w-0 truncate">{question ?? t(deriveAttention(run).label)}</span>
           </Link>
         ))}
       </div>
@@ -690,7 +690,7 @@ const RunRow = React.memo(function RunRow({
           <ChevronRightIcon className={cn('size-3 transition-transform', childrenOpen && 'rotate-90')} aria-hidden="true" />
         </button>
       ) : null}
-      <StatusDot tone={attention.tone} pulse={attention.pulse} aria-label={attention.label} role="img" />
+      <StatusDot tone={attention.tone} pulse={attention.pulse} aria-label={t(attention.label)} role="img" />
       {/* The reference, ONCE (#788, option C): the number that used to be both a `775: ` title
           prefix and a trailing `PR ↗` chip is now one leading chip that is itself the link. */}
       {reference ? (

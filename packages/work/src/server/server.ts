@@ -222,14 +222,8 @@ import { ProviderRuntimeAuthObserver } from './provider-auth-runtime.ts';
 
 
 import { providersRequiredByWorkflow, unavailableProviderMessage, withSelectedAccounts, type ProviderAccountScope } from './provider-action-gate.ts';
-import {
-  ASSET_CACHE_CONTROL,
-  SHELL_CACHE_CONTROL,
-  BUILD_HINT_HTML,
-  assetContentType,
-  isSafeAssetFilename,
-  resolveGetRequest,
-} from './static-ui.ts';
+import { SHELL_CACHE_CONTROL, BUILD_HINT_HTML, resolveGetRequest } from './static-ui.ts';
+import { AssetCache } from './static-assets.ts';
 
 export interface ServerDeps {
   /** Register app-owned cleanup for the hosting server lifecycle. */
@@ -1324,21 +1318,16 @@ export function createApp(deps: ServerDeps) {
   };
 
   // Hashed bundles/fonts of the built app. Vite fingerprints every name, so
-  // the bytes behind a URL never change — cache them hard. Only plain
-  // filenames are served: `basename('..')` is `'..'` (it resolves to the
-  // assets dir itself and readFileSync would throw EISDIR), so dot-segments
-  // and separator-bearing params get a 404, not a 500.
+  // the bytes behind a URL never change — cache them hard and read each file
+  // once per process (see `static-assets.ts`). Only plain filenames are
+  // served: `basename('..')` is `'..'` (it resolves to the assets dir itself
+  // and readFileSync would throw EISDIR), so dot-segments and separator-bearing
+  // params get a 404, not a 500.
+  const assets = new AssetCache(join(distDir, 'assets'));
   app.get('/assets/:file', (c) => {
-    const file = c.req.param('file');
-    if (!isSafeAssetFilename(file)) return c.json({ error: 'not found' }, 404);
-    const path = join(distDir, 'assets', file);
-    if (!existsSync(path) || !statSync(path).isFile()) return c.json({ error: 'not found' }, 404);
-    return new Response(readFileSync(path), {
-      headers: {
-        'content-type': assetContentType(file),
-        'cache-control': ASSET_CACHE_CONTROL,
-      },
-    });
+    const plan = assets.respond(c.req.param('file'), c.req.header('accept-encoding'));
+    if (!plan) return c.json({ error: 'not found' }, 404);
+    return new Response(plan.body, { headers: plan.headers });
   });
 
   // The favicon packages/web/index.html points at (`/icon.svg`).

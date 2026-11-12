@@ -1129,14 +1129,25 @@ export function useRun(id: string | undefined) {
 /**
  * One run of a NAMED project — what a surface outside `/p/:projectId` has to use.
  *
- * `enabled` is the point as much as the project: the only caller is a panel that opens on hover
- * (the conflict chip's "Resolve conflicts"), and a table must not fetch a record per row for
- * panels nobody has opened. Keyed by the project, so the global page and that project's own page
- * share one cache entry rather than two spellings of the same run.
+ * `enabled` is the point as much as the project: the conflict chip opens its panel on hover, so a
+ * table must not fetch a record per row for panels nobody has opened. Keyed by the project, so the
+ * global page and that project's own page share one cache entry rather than two spellings of the
+ * same run — and so the palette subject, which also lives above the routed provider, reads the
+ * SAME detail entry the thread fills (and the stream patches).
+ *
+ * `boot` aliases the key scope to `'default'` for the boot project, which mounts unscoped
+ * (`routes.tsx` keeps its legacy `/api/*` surface): without it the palette would keep a second
+ * cache entry under the boot id and never see the thread's updates. The fetch itself still goes to
+ * `/api/p/<bootId>/runs/:id`, which the server answers byte-identically (route-parity contract).
  */
-export function useProjectRun(projectId: string | undefined, id: string | undefined, enabled = true) {
+export function useProjectRun(
+  projectId: string | undefined,
+  id: string | undefined,
+  enabled = true,
+  boot = false,
+) {
   return useQuery({
-    queryKey: [projectId ?? 'default', 'runs', 'detail', id ?? ''] as const,
+    queryKey: [(boot ? 'default' : projectId) ?? 'default', 'runs', 'detail', id ?? ''] as const,
     queryFn: ({ signal }) => getProjectRun(projectId as string, id as string, { signal }),
     enabled: enabled && Boolean(projectId) && Boolean(id),
   })
