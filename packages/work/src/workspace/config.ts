@@ -298,6 +298,10 @@ export const workspaceConfigSchema = z
     disabledProviders: disabledProvidersSchema,
     /** Machine-wide agent/model defaults for repos that set none of their own. */
     agentDefaults: agentDefaultsSchema.default(() => ({})).catch(() => ({})),
+    /** Set when the user removes the LAST project. Boot then never re-seeds the registry from the
+     *  launch folder, so "remove every project" stays true across restarts. Absent on a fresh
+     *  install, where the first launch folder is still seeded once. */
+    registryEmptied: z.boolean().optional().catch(undefined),
     /** Per-entry salvage: a corrupt entry is dropped, the rest of the registry
      *  survives (a whole-array `.catch([])` would evict every project over one
      *  bad row). */

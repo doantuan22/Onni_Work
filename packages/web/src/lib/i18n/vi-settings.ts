@@ -565,10 +565,6 @@ export const viSettings: Record<string, string> = {
     'onni cài nó cho dự án này, trỏ vào dev server của bạn, viết một smoke test và một',
   'onni is serving this folder because you started it here — starting onni somewhere new never adds it to your project list for you. Adding it keeps it in the sidebar between runs and gives it a registry entry to hold settings like the task cap. Nothing on disk changes either way.':
     'onni đang phục vụ thư mục này vì bạn khởi động nó ở đây — khởi động onni ở nơi khác sẽ không tự thêm vào danh sách dự án. Thêm vào giúp nó luôn có trên thanh bên giữa các lần chạy và có mục trong sổ đăng ký để lưu cài đặt như giới hạn nhiệm vụ. Không có gì trên đĩa thay đổi dù chọn cách nào.',
-  'onni is serving this project — stop it and use `onni projects remove`':
-    'onni đang phục vụ dự án này — hãy dừng nó và dùng `onni projects remove`',
-  'onni is serving this project — stop onni and run `onni projects remove` to drop it.':
-    'onni đang phục vụ dự án này — dừng onni và chạy `onni projects remove` để bỏ nó.',
   'onni: this PR/issue': 'onni: PR/issue này',
   'Open the draft PR': 'Mở PR nháp',
   'Open the setup task': 'Mở nhiệm vụ thiết lập',

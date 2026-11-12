@@ -194,13 +194,11 @@ describe('the General page', () => {
     })
   })
 
-  it('refuses to remove the boot project before the click, with the reason', async () => {
+  it('lets the project onni is serving be removed like any other', async () => {
     renderAt('/p/boot/settings')
     const remove = await screen.findByRole('button', { name: /^Remove onni from the workspace/ })
-    expect(remove.hasAttribute('disabled')).toBe(true)
-    expect(document.querySelector('[data-slot="project-general-remove-boot"]')?.textContent).toContain(
-      'onni is serving this project',
-    )
+    expect(remove.hasAttribute('disabled')).toBe(false)
+    expect(document.querySelector('[data-slot="project-general-remove-boot"]')).toBeNull()
   })
 
   it('offers to add — not manage — the folder onni is serving but has not saved', async () => {

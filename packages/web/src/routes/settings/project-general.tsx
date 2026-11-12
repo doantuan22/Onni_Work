@@ -197,24 +197,20 @@ function ProjectFacts({ project, canRemove }: { project: ProjectListEntry; canRe
  * Deregister this project — the registry table's per-row Remove, offered where the user already
  * is. Same hook, same dialog, same words (remove-project.tsx).
  *
- * The boot project cannot be removed from the cockpit: this server is serving that folder, and
- * dropping its registry row would break the session's own sidebar, so the server 409s. Disabling
- * here means the explanation arrives before the click rather than as an error toast after it —
- * and the offline gesture (`onni projects remove`, which has no such refusal) is what the
- * message points at.
+ * Every project can be removed, the one this server was started in included — removing only
+ * unregisters it, and the boot folder keeps being served for the running session.
  *
  * On success the URL this page lives at (`/p/<id>/settings`) has just stopped resolving, so the
  * navigation is part of the action, not a nicety. It targets the BOOT project explicitly rather
  * than `/`: the bare root restores the last saved location, and whether the removed project has
- * already left the registry cache when that check runs is a race — this is the one project that
- * is always registered.
+ * already left the registry cache when that check runs is a race — the boot project's scope
+ * always resolves, registered or not.
  */
 function RemoveProject({ project, bootProject }: { project: ProjectListEntry; bootProject: string }) {
   const { t } = useI18n()
   const [confirming, setConfirming] = useState<ProjectListEntry | null>(null)
   const remove = useProjectRemoval()
   const navigate = useNavigate()
-  const isBoot = project.id === bootProject
 
   return (
     <SettingsField
@@ -231,18 +227,12 @@ function RemoveProject({ project, bootProject }: { project: ProjectListEntry; bo
           // reach it, then says what "Remove" actually does — the row context that makes a bare
           // "Remove" safe-sounding isn't read out with it.
           aria-label={t('Remove {name} from the workspace — unregisters it, no files are deleted', { name: project.name })}
-          title={isBoot ? t('onni is serving this project — stop it and use `onni projects remove`') : undefined}
-          disabled={isBoot || remove.isPending}
+          disabled={remove.isPending}
           onClick={() => setConfirming(project)}
           className="text-danger"
         >
           {t('Remove {name}', { name: project.name })}
         </Button>
-        {isBoot ? (
-          <span data-slot="project-general-remove-boot" className="text-[11px] text-soft-foreground">
-            {t('onni is serving this project — stop onni and run `onni projects remove` to drop it.')}
-          </span>
-        ) : null}
       </div>
       <RemoveProjectDialog
         project={confirming}

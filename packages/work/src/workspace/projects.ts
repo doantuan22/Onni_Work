@@ -155,8 +155,10 @@ export async function shouldAutoRegisterProject(
   const real = await normalizeRoot(repoRoot);
   if (!(await isRegistrableRoot(real, repoRoot))) return false;
   if (env.ONNI_SINGLE_PROJECT === '1') return true;
-  const { projects } = await loadWorkspaceConfig();
-  return projects.length === 0 || projects.some((project) => project.root === real);
+  const { projects, registryEmptied } = await loadWorkspaceConfig();
+  if (projects.some((project) => project.root === real)) return true;
+  // Empty registry: seed it once on a fresh install, but not after the user removed everything.
+  return projects.length === 0 && registryEmptied !== true;
 }
 
 /**
@@ -367,6 +369,9 @@ export async function removeProject(id: string): Promise<boolean> {
     const next = config.projects.filter((p) => p.id !== id);
     removed = next.length !== config.projects.length;
     config.projects = next;
+    // Emptying the registry is a decision, not a fresh install: remember it so boot does not
+    // quietly put the launch folder back (`shouldAutoRegisterProject`).
+    if (removed && next.length === 0) config.registryEmptied = true;
   });
   return removed;
 }

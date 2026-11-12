@@ -179,8 +179,9 @@ and task list — and the new-task composer names the project it will run in.
 
 Removing a project (**Settings → Projects**) drops the registry entry only — the
 repo and its `.ai/onni/` are never touched, so re-adding it later finds all its
-tasks intact. The project OnniCode is currently serving can't be removed from the
-cockpit — stop the server and use `onni projects remove <id>` instead.
+tasks intact. Any project can be removed, the one OnniCode was started in included,
+and removing the last one sticks: the launch folder is not registered again on the
+next start (add it back with **Add project** or `onni projects add`).
 
 To start a project over without unregistering it, **project Settings → General → Delete project data**
 deletes every task of that project with its chat, notes, worktree and branch (`POST /api/v1/project-data/clear`).

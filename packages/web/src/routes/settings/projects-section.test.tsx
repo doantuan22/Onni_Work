@@ -701,13 +701,11 @@ describe('Global settings → Projects', () => {
     })
   })
 
-  it('disables Remove for the project onni is serving', async () => {
+  it('enables Remove for every project, the one onni is serving included', async () => {
     serve()
     renderProjects()
     await waitFor(() => expect(rows()).toHaveLength(3))
-    // The server refuses it too (it is serving that repo); disabling explains it first.
-    expect(removeButton('onni')?.disabled).toBe(true)
-    expect(removeButton('onni')?.title).toContain('is serving this project')
+    expect(removeButton('onni')?.disabled).toBe(false)
   })
 
   /**

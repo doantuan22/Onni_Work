@@ -215,21 +215,11 @@ export function projectsRoutes(deps: ProjectsRouteDeps) {
       }
       if (!entry) return c.json({ error: `unknown project: ${id}` }, 404);
 
-      // The boot project is refused, not removed: this server is serving that
-      // repo right now, and dropping its registry row would break the session's
-      // own sidebar while the process keeps running out of it. Offline removal
-      // is the honest gesture — `onni projects remove` has no such refusal
-      // because it runs with no server. The pane disables the button and says
-      // the same thing.
-      if (id === bootId) {
-        return c.json(
-          {
-            error: `onni is serving ${entry.name} right now — stop it and run \`onni projects remove ${id}\` to drop the registry entry`,
-          },
-          409,
-        );
-      }
-
+      // Every project can be removed, the one this server was started in included: removing is
+      // only unregistering. The boot context lives outside `contexts`, so it keeps answering
+      // `/p/<id>/…` for the running session and nothing is stranded; with the registry empty the
+      // folder is listed as "not registered" and the removal sticks across restarts
+      // (`registryEmptied`).
       const active = activeRunCount(id);
       if (active > 0) {
         return c.json(

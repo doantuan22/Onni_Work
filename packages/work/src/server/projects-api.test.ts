@@ -20,6 +20,7 @@ import {
   clearProjectProbeCache,
   listProjects,
   registerProject,
+  shouldAutoRegisterProject,
   type ProjectListEntry,
 } from '../workspace/projects.ts';
 import * as workspaceProjects from '../workspace/projects.ts';
@@ -784,14 +785,22 @@ describe('workspace projects API', () => {
       expect(await registeredIds()).toEqual([other.id]);
     });
 
-    it('refuses the boot project (and its `default` alias) — this server is serving it', async () => {
-      const boot = await registerProject(repoRoot);
-      for (const id of [boot.id, 'default']) {
-        const { status, body } = await del(id);
-        expect(status, id).toBe(409);
-        expect(body.error, id).toContain('is serving');
+    it('removes the boot project too, by id or by its `default` alias', async () => {
+      for (const alias of ['id', 'default']) {
+        const boot = await registerProject(repoRoot);
+        const { status } = await del(alias === 'id' ? boot.id : 'default');
+        expect(status, alias).toBe(200);
+        expect((await loadWorkspaceConfig()).projects, alias).toEqual([]);
       }
-      expect((await getProjects()).projects.map((p) => p.id)).toEqual([boot.id]);
+    });
+
+    it('keeps an emptied registry empty: boot does not seed the launch folder again', async () => {
+      const boot = await registerProject(repoRoot);
+      // A fresh install still seeds once…
+      expect(await shouldAutoRegisterProject(repoRoot)).toBe(true);
+      expect((await del(boot.id)).status).toBe(200);
+      // …but removing the last project is a decision that survives a restart.
+      expect(await shouldAutoRegisterProject(repoRoot)).toBe(false);
     });
   });
 
