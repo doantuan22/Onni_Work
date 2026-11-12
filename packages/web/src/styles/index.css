@@ -181,6 +181,9 @@
   /* Shared pane/zone header strip. Components will adopt `h-header` in later layout phases. */
   --header-h: 48px;
 
+  /* The plate the navy brand mark sits on in the dark theme (BrandMark); light never uses it. */
+  --brand-tile: #ffffff;
+
   /* shiki syntax highlighting (dark) */
   --syn-key: #c4b5fd;
   --syn-str: #86efac;

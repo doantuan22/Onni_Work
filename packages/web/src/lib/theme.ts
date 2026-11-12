@@ -9,14 +9,14 @@
 /** Shared with the legacy cockpit (`web/app.js`), which reads/writes the same key. */
 export const THEME_STORAGE_KEY = 'onni-theme'
 
-/** The media query `system` follows. Light is the query (not dark) because dark is our default. */
+/** The media query `system` follows. */
 export const LIGHT_MEDIA_QUERY = '(prefers-color-scheme: light)'
 
 export type Theme = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
-/** Dark, matching the legacy page's `localStorage.getItem('onni-theme') || 'dark'`. */
-export const DEFAULT_THEME: Theme = 'dark'
+/** Light on a fresh install (nothing stored); a stored 'dark' or 'system' choice is untouched. */
+export const DEFAULT_THEME: Theme = 'light'
 
 /** Coerce anything (missing key, a future value, garbage) into a Theme. */
 export function normalizeTheme(raw: unknown): Theme {
@@ -26,9 +26,9 @@ export function normalizeTheme(raw: unknown): Theme {
 /** Which palette actually paints. Deliberately defensive about `pref` — it can come from
  *  localStorage, where the type system doesn't reach. */
 export function resolveTheme(pref: Theme, systemPrefersLight: boolean): ResolvedTheme {
-  if (pref === 'light') return 'light'
+  if (pref === 'dark') return 'dark'
   if (pref === 'system') return systemPrefersLight ? 'light' : 'dark'
-  return 'dark'
+  return 'light'
 }
 
 /** The stored preference, or the default when storage is empty/unreadable (private mode). */

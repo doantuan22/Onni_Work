@@ -44,10 +44,10 @@ describe('resolveTheme', () => {
   // The value comes from localStorage, where types don't reach — a stale/garbage preference must
   // land on the default palette rather than throw or produce an unstyled root.
   it.each([undefined, null, '', 'System', 'sepia', 42, {}])(
-    'falls back to dark for the untyped value %o',
+    'falls back to light for the untyped value %o',
     (garbage) => {
-      expect(resolveTheme(garbage as unknown as Theme, false)).toBe('dark')
-      expect(resolveTheme(garbage as unknown as Theme, true)).toBe('dark')
+      expect(resolveTheme(garbage as unknown as Theme, false)).toBe('light')
+      expect(resolveTheme(garbage as unknown as Theme, true)).toBe('light')
     }
   )
 })
@@ -61,8 +61,8 @@ describe('normalizeTheme', () => {
     expect(normalizeTheme(garbage)).toBe(DEFAULT_THEME)
   })
 
-  it('defaults to dark, matching the legacy page', () => {
-    expect(DEFAULT_THEME).toBe('dark')
+  it('defaults to light on a fresh install', () => {
+    expect(DEFAULT_THEME).toBe('light')
   })
 })
 
@@ -82,13 +82,13 @@ describe('stored preference', () => {
   })
 
   it('defaults when nothing is stored', () => {
-    expect(readStoredTheme()).toBe('dark')
+    expect(readStoredTheme()).toBe('light')
   })
 
   it('defaults when the stored value is garbage', () => {
     localStorage.setItem(THEME_STORAGE_KEY, '{"theme":"neon"}')
 
-    expect(readStoredTheme()).toBe('dark')
+    expect(readStoredTheme()).toBe('light')
   })
 
   it('survives storage being unavailable', () => {
@@ -99,7 +99,7 @@ describe('stored preference', () => {
       throw new Error('private mode')
     })
 
-    expect(readStoredTheme()).toBe('dark')
+    expect(readStoredTheme()).toBe('light')
     expect(() => writeStoredTheme('light')).not.toThrow()
   })
 })

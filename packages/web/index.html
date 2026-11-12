@@ -14,18 +14,21 @@
     <title>OnniCode</title>
     <!-- Theme before first paint — no flash. Mirrors resolveTheme()/applyResolvedTheme() in
          src/lib/theme.ts; keep the two in sync. Shares the legacy cockpit's `onni-theme` key
-         ('light' | 'dark' | 'system'); anything else falls back to dark, as legacy does. -->
+         ('light' | 'dark' | 'system'); anything else falls back to light (the default). -->
     <script>
       (function () {
         try {
           var pref = localStorage.getItem('onni-theme')
           var light =
-            pref === 'light' ||
-            (pref === 'system' && matchMedia('(prefers-color-scheme: light)').matches)
+            pref === 'system'
+              ? matchMedia('(prefers-color-scheme: light)').matches
+              : pref !== 'dark'
           document.documentElement.classList.toggle('light', light)
           document.documentElement.style.colorScheme = light ? 'light' : 'dark'
         } catch (e) {
-          // Storage or matchMedia unavailable — the default dark tokens already apply.
+          // Storage or matchMedia unavailable — fall back to the default (light).
+          document.documentElement.classList.add('light')
+          document.documentElement.style.colorScheme = 'light'
         }
         // Accent + density + reading width before first paint, from the localStorage MIRROR of ui-state.json
         // (src/lib/appearance.ts owns the contract; keep the two in sync). Defaults are the
