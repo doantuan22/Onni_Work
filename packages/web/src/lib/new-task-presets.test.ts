@@ -24,6 +24,7 @@ import {
   renameTaskPreset,
   resolvePanelWorktree,
   saveTaskPreset,
+  updateTaskPreset,
   setAutonomous,
   setWorktreeMode,
   storedTaskPresets,
@@ -353,6 +354,16 @@ describe('task-preset CRUD', () => {
     const panel = userTaskPresets(stored)
     expect(panel[0]).toMatchObject({ id: 'task-preset-2', name: 'Mine', origin: 'user' })
     expect(storedTaskPresets([...builtinTaskPresets({}), ...panel])).toEqual(stored)
+  })
+
+  it('updates only a user preset, keeping its id and name', () => {
+    const presets = [builtinTaskPresets({})[0]!, userPreset('task-preset-2', 'Mine')]
+    const next = { ...snapshot, model: 'opus' }
+    const updated = updateTaskPreset(presets, 'task-preset-2', next)
+    expect(updated[1]).toMatchObject({ id: 'task-preset-2', name: 'Mine', origin: 'user', settings: next })
+    // Built-ins are immutable, and an unknown id changes nothing.
+    expect(updateTaskPreset(presets, 'builtin-quick', next)[0]).toEqual(presets[0])
+    expect(updateTaskPreset(presets, 'nope', next)).toEqual(presets)
   })
 
   it('renames and deletes only user presets', () => {

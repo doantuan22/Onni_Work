@@ -435,6 +435,17 @@ export function renameTaskPreset(
   )
 }
 
+/** Overwrite a user preset's settings in place; built-in and Manager–Worker presets stay read-only. */
+export function updateTaskPreset(
+  presets: readonly TaskPreset[],
+  id: string,
+  settings: TaskSettingsSnapshot,
+): TaskPreset[] {
+  return presets.map((preset) =>
+    preset.id === id && preset.origin === 'user' ? { ...preset, settings } : preset,
+  )
+}
+
 export function deleteTaskPreset(presets: readonly TaskPreset[], id: string): TaskPreset[] {
   return presets.filter((preset) => !(preset.id === id && preset.origin === 'user'))
 }

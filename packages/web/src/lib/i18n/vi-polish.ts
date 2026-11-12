@@ -129,6 +129,12 @@ export const viPolish: Record<string, string> = {
   'Delete preset': 'Xoá preset',
   'Name this preset…': 'Đặt tên cho preset này…',
   'Save current as preset': 'Lưu cấu hình hiện tại thành preset',
+  On: 'Bật',
+  Off: 'Tắt',
+  'Update preset': 'Cập nhật preset',
+  'Save as new': 'Lưu thành preset mới',
+  'You changed “{name}”. Keep the changes in the preset, or save them as a new one.':
+    'Bạn đã chỉnh sửa “{name}”. Cập nhật các thay đổi vào preset này, hoặc lưu thành preset mới.',
 
   // New task
   'Splits this task into subtasks it runs as separate tasks. Worktree stays on. Its own limits are in Advanced.':

@@ -117,6 +117,30 @@ describe('Task settings panel', () => {
     expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull()
   })
 
+  it('offers "Update preset" on a modified user preset and reports its id', () => {
+    const onUpdatePreset = vi.fn()
+    render(panel({ presets: [quick, mine], selectedPresetId: mine.id, modified: true, onUpdatePreset }))
+    fireEvent.click(screen.getByRole('button', { name: 'Update preset' }))
+    expect(onUpdatePreset).toHaveBeenCalledWith(mine.id)
+  })
+
+  it('does not offer "Update preset" for a built-in, only "Save as new" prefilled', () => {
+    const onSavePreset = vi.fn()
+    render(
+      panel({ presets: [quick, mine], selectedPresetId: quick.id, modified: true, onUpdatePreset: vi.fn(), onSavePreset }),
+    )
+    expect(screen.queryByRole('button', { name: 'Update preset' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Save as new' }))
+    expect((screen.getByLabelText('Preset name') as HTMLInputElement).value).toBe('Quick (custom)')
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSavePreset).toHaveBeenCalledWith('Quick (custom)')
+  })
+
+  it('shows no update bar while the selection is untouched', () => {
+    render(panel({ presets: [quick, mine], selectedPresetId: mine.id, modified: false, onUpdatePreset: vi.fn() }))
+    expect(screen.queryByRole('button', { name: 'Update preset' })).toBeNull()
+  })
+
   it('saves the current settings under a typed name', () => {
     const onSavePreset = vi.fn()
     render(panel({ onSavePreset }))

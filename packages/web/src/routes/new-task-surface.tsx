@@ -98,6 +98,7 @@ import {
   storedTaskPresets,
   taskSettingsEqual,
   taskSummarySegments,
+  updateTaskPreset,
   userTaskPresets,
   type PanelSection,
   type TaskPreset,
@@ -588,6 +589,7 @@ export function NewTaskSurface({
     commitPresets(next)
     if (created) selectPreset(created.id)
   }
+  const updatePreset = (id: string) => commitPresets(updateTaskPreset(presets, id, currentSettings))
   const renamePreset = (id: string, name: string) => commitPresets(renameTaskPreset(presets, id, name))
   const removePreset = (id: string) => {
     commitPresets(deleteTaskPreset(presets, id))
@@ -905,7 +907,7 @@ export function NewTaskSurface({
   return (
     <div
       data-route="new"
-      className="relative isolate flex min-h-full flex-col items-center overflow-x-clip px-6 pt-[clamp(32px,7vh,84px)] pb-16 max-md:px-3.5 max-md:pt-7"
+      className="relative isolate flex min-h-full w-full min-w-0 flex-1 flex-col items-center overflow-x-clip px-6 pt-[clamp(32px,7vh,84px)] pb-16 max-md:px-3.5 max-md:pt-7"
     >
       <TwinkleBackdrop />
       <GhostCodeBackdrop />
@@ -1078,6 +1080,7 @@ export function NewTaskSurface({
           modified={presetModified}
           onApplyPreset={applyPreset}
           onSavePreset={saveCurrentPreset}
+          onUpdatePreset={updatePreset}
           onRenamePreset={renamePreset}
           onDeletePreset={removePreset}
           presetsDisabled={savePresets.isPending}
@@ -1087,13 +1090,14 @@ export function NewTaskSurface({
             // Two ways to staff a task, side by side: ONE agent that does the work, or a manager that
             // plans and hands parts to listed workers. The server runs the roster's manager in place
             // of the Agent/Model below, so with a roster on those fields are not shown at all.
-            <div className="flex flex-col divide-y divide-border">
+            <div className="flex flex-col gap-3">
               <div
                 data-slot="single-agent"
                 data-active={!rosterMode ? 'true' : 'false'}
                 className={cn(
-                  'flex flex-col gap-3 border-l-2 py-4 pl-4 first:pt-0',
-                  rosterMode ? 'border-transparent' : 'border-primary',
+                  // The same "chosen card" look as Where it runs: a tinted, outlined block, not a bar.
+                  'flex flex-col gap-3 rounded-lg border p-4 transition-colors',
+                  rosterMode ? 'border-border' : 'border-primary/60 bg-primary/[0.04]',
                 )}
               >
                 <div className="text-xs font-semibold text-foreground">
@@ -1173,8 +1177,8 @@ export function NewTaskSurface({
                 data-slot="manager-worker"
                 data-active={rosterMode ? 'true' : 'false'}
                 className={cn(
-                  'flex flex-col gap-3 border-l-2 py-4 pl-4 last:pb-0',
-                  rosterMode ? 'border-primary' : 'border-transparent',
+                  'flex flex-col gap-3 rounded-lg border p-4 transition-colors',
+                  rosterMode ? 'border-primary/60 bg-primary/[0.04]' : 'border-border',
                 )}
               >
                 <div className="text-xs font-semibold text-foreground">
@@ -1330,8 +1334,24 @@ export function NewTaskSurface({
                 </Field>
               ) : null}
               {dispatchAvailable ? (
-                <div className="flex flex-col gap-1 @xl:col-span-2">
-                  <Field label={t('Dispatch (subtasks)')}>
+                // A labelled row: the toggle itself is a compact icon pill built for the composer, so on
+                // its own here it read as an unlabelled, stretched bar.
+                <div
+                  data-slot="dispatch-row"
+                  className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background px-3 py-2 @xl:col-span-2"
+                >
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-xs font-medium text-foreground">
+                      {t('Dispatch (subtasks)')}
+                      <span className="ml-1.5 font-normal text-soft-foreground">
+                        {dispatchOn ? t('On') : t('Off')}
+                      </span>
+                    </span>
+                    <p className="text-xs leading-snug text-soft-foreground">
+                      {t('Tap to turn it on; its own limits open from the arrow beside it.')}
+                    </p>
+                  </div>
+                  <div className="shrink-0">
                     <DispatchToggle
                       available={dispatchAvailable}
                       value={dispatch}
@@ -1344,10 +1364,7 @@ export function NewTaskSurface({
                       // discovers its own inside the toggle, which is the only place that knows it.
                       parentModels={models}
                     />
-                  </Field>
-                  <p className="text-xs leading-snug text-soft-foreground">
-                    {t('Tap to turn it on; its own limits open from the arrow beside it.')}
-                  </p>
+                  </div>
                 </div>
               ) : null}
             </div>

@@ -46,6 +46,8 @@ export interface TaskSettingsPanelProps {
   modified: boolean
   onApplyPreset: (preset: TaskPreset) => void
   onSavePreset: (name: string) => void
+  /** Overwrite a user preset with the settings as they are now. */
+  onUpdatePreset?: (id: string) => void
   onRenamePreset: (id: string, name: string) => void
   onDeletePreset: (id: string) => void
   presetsDisabled?: boolean
@@ -169,6 +171,7 @@ function PanelBody({
   modified,
   onApplyPreset,
   onSavePreset,
+  onUpdatePreset,
   onRenamePreset,
   onDeletePreset,
   presetsDisabled,
@@ -203,8 +206,33 @@ function PanelBody({
   }, [focusSection])
 
   const sections: readonly PanelSection[] = ['presets', 'who', 'where', 'autonomy', 'skill', 'advanced']
+  // The rail marks the group at the top of the body, so it answers "where am I" while scrolling.
+  // Where IntersectionObserver is missing (jsdom) it simply stays on the last jump.
+  const [activeSection, setActiveSection] = useState<PanelSection>('presets')
+  useEffect(() => {
+    const body = bodyRef.current
+    if (!body || typeof IntersectionObserver === 'undefined') return
+    const visible = new Set<PanelSection>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.section as PanelSection
+          if (entry.isIntersecting) visible.add(id)
+          else visible.delete(id)
+        }
+        const first = sections.find((section) => visible.has(section))
+        if (first) setActiveSection(first)
+      },
+      { root: body, rootMargin: '0px 0px -55% 0px' },
+    )
+    body.querySelectorAll<HTMLElement>('[data-section]').forEach((node) => observer.observe(node))
+    return () => observer.disconnect()
+    // `sections` is a constant list; the body's sections do not change identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [advancedOpen])
   const jump = (section: PanelSection) => {
     if (section === 'advanced') setAdvancedOpen(true)
+    setActiveSection(section)
     const target = bodyRef.current?.querySelector<HTMLElement>(`[data-section="${section}"]`)
     target?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
   }
@@ -229,24 +257,33 @@ function PanelBody({
           <XIcon aria-hidden="true" className="size-4" />
         </button>
       </header>
-      <div className="grid min-h-0 grid-cols-1 md:grid-cols-[11rem_minmax(0,1fr)]">
+      <div className="grid min-h-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[11rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]">
+        {/* A chip strip across the top on a phone, a rail down the side from `md`: the same
+            jump list either way, so a 1800px-tall body on a phone is no longer one long scroll. */}
         <nav
           data-slot="task-settings-nav"
           aria-label={t('Task settings sections')}
-          className="hidden flex-col gap-0.5 border-r border-border p-3 md:flex"
+          className="flex gap-1 overflow-x-auto border-b border-border p-2 md:flex-col md:gap-0.5 md:overflow-x-visible md:overflow-y-auto md:border-r md:border-b-0 md:p-3"
         >
           {sections.map((section) => {
             const Icon = SECTION_ICONS[section]
+            const current = section === activeSection
             return (
               <button
                 key={section}
                 type="button"
                 data-slot={`task-settings-nav-${section}`}
                 aria-label={t('Go to {section}', { section: t(sectionLabel(section)) })}
+                aria-current={current ? 'true' : undefined}
                 onClick={() => jump(section)}
-                className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className={cn(
+                  'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors md:whitespace-normal',
+                  current
+                    ? 'bg-primary/10 font-medium text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
               >
-                <Icon aria-hidden="true" className="size-4 shrink-0" />
+                <Icon aria-hidden="true" className={cn('size-4 shrink-0', current && 'text-primary')} />
                 {t(sectionLabel(section))}
               </button>
             )
@@ -268,6 +305,7 @@ function PanelBody({
             disabled={presetsDisabled}
             onApply={onApplyPreset}
             onSave={onSavePreset}
+            onUpdate={onUpdatePreset}
             onRename={onRenamePreset}
             onDelete={onDeletePreset}
           />
@@ -410,6 +448,7 @@ function PresetList({
   disabled,
   onApply,
   onSave,
+  onUpdate,
   onRename,
   onDelete,
 }: {
@@ -419,6 +458,7 @@ function PresetList({
   disabled?: boolean
   onApply: (preset: TaskPreset) => void
   onSave: (name: string) => void
+  onUpdate?: (id: string) => void
   onRename: (id: string, name: string) => void
   onDelete: (id: string) => void
 }) {
@@ -437,8 +477,46 @@ function PresetList({
     setSaving(false)
   }
 
+  const changed = modified ? presets.find((preset) => preset.id === selectedPresetId) : undefined
+
   return (
-    <div className="grid gap-2 @xl:grid-cols-3">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-2 @xl:grid-cols-2">
+      {changed ? (
+        <div
+          data-slot="preset-modified-bar"
+          role="status"
+          className="col-span-full flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs"
+        >
+          <span className="min-w-0 flex-1 text-muted-foreground">
+            {t('You changed “{name}”. Keep the changes in the preset, or save them as a new one.', { name: changed.name })}
+          </span>
+          {changed.origin === 'user' && onUpdate ? (
+            <Button
+              type="button"
+              size="sm"
+              data-slot="update-task-preset"
+              disabled={disabled}
+              onClick={() => onUpdate(changed.id)}
+            >
+              <SaveIcon aria-hidden="true" className="size-3.5" />
+              {t('Update preset')}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-slot="save-as-new-task-preset"
+            disabled={disabled}
+            onClick={() => {
+              setName(changed.origin === 'user' ? `${changed.name} (2)` : `${changed.name} (custom)`)
+              setSaving(true)
+            }}
+          >
+            {t('Save as new')}
+          </Button>
+        </div>
+      ) : null}
       {presets.map((preset) => {
         const selected = preset.id === selectedPresetId
         const readOnly = preset.origin !== 'user'
@@ -605,18 +683,18 @@ function PresetList({
           </Button>
         </div>
       ) : (
-        <Button
+        // A dashed tile in the grid, same footprint as a preset: "add one more" reads as part of the
+        // list instead of a stray button floating at the right edge.
+        <button
           type="button"
-          size="sm"
-          variant="outline"
           data-slot="new-task-preset"
           disabled={disabled}
           onClick={() => setSaving(true)}
-          className="col-span-full justify-self-end"
+          className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/[0.04] hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
         >
           <PlusIcon aria-hidden="true" className="size-3.5" />
           {t('Save current as preset')}
-        </Button>
+        </button>
       )}
     </div>
   )
