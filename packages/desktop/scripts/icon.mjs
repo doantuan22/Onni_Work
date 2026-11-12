@@ -8,7 +8,7 @@
 // The SVG is wrapped full-bleed: the tile's own fill covers the whole 1024px canvas, because
 // macOS masks the squircle itself and a transparent corner or margin gets a white plate behind
 // it in the Dock. The fill is `--bg` when given, the mark's gradient when it has one, else the
-// brand tile's black. It is then rendered to PNG and fed to `tauri icon`, which writes the
+// brand tile's white. It is then rendered to PNG and fed to `tauri icon`, which writes the
 // .icns/.ico/.png set under src-tauri/icons. The splash logo (ui/icon.svg) is refreshed from
 // the same source.
 // Rendering uses rsvg-convert when present, else macOS's qlmanage.
@@ -24,8 +24,8 @@ const args = process.argv.slice(2)
 const bgAt = args.indexOf('--bg')
 const bgArg = bgAt >= 0 ? args[bgAt + 1] : undefined
 const positional = args.filter((arg, i) => arg !== '--bg' && (bgAt < 0 || i !== bgAt + 1))
-/** The brand tile's colour — what fills the corners the mark's own rounded tile leaves empty. */
-const TILE_COLOR = '#000000'
+/** The brand tile's colour — the mark is navy + azure and sits on white, so the tile is white. */
+const TILE_COLOR = '#ffffff'
 const source = resolve(positional[0] ?? resolve(desktop, '../web/public/icon.svg'))
 if (!existsSync(source)) {
   console.error(`icon: source not found: ${source}`)

@@ -21,9 +21,10 @@ function fills(svg: string): string[] {
  * splash. The canonical public URL is `/icon.svg`; `/onni.svg` is an alias on the server serving
  * the same bytes.
  *
- * It is the OnniCode cat, pixel art, embedded as a PNG inside a square SVG so the URL, the MIME type
- * and every consumer (`rsvg`, `tauri icon`, the browser) keep working unchanged. The earlier
- * geometric C was a vector (2026-09-28); the cat is a raster by nature, drawn pixelated.
+ * It is the OnniCode logo — navy + azure with a thin white outline — embedded as a PNG inside a
+ * square SVG so the URL, the MIME type and every consumer (`rsvg`, `tauri icon`, the browser) keep
+ * working unchanged. The earlier geometric C was a vector (2026-09-28); the mark is a transparent
+ * raster with an outline so it reads on dark surfaces without an SVG `rect`.
  */
 describe('cockpit brand asset', () => {
   it('ships a valid, square SVG at packages/web/public/icon.svg', () => {

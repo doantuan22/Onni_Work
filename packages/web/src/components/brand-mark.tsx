@@ -3,17 +3,16 @@ import { cn } from '@/lib/utils'
 /**
  * The onni mark and its lockup with the name.
  *
- * THE MARK is the OnniCode cat — pixel art — served as `/icon.svg` (a vector wrapper around the
- * raster, so the favicon, the server's `/onni.svg` alias and the desktop splash keep one URL).
- * It is drawn with `image-rendering: pixelated` so the pixels stay hard at 26px and on a
- * high-density display. Unlike the old geometric C it has its own colours, so it is not tinted with
- * `currentColor`; it is drawn for a dark surface and carries its own outline for a light one.
+ * THE MARK is the OnniCode logo — navy + azure — served as `/icon.svg` (a vector wrapper around
+ * the raster, so the favicon, the server's `/onni.svg` alias and the desktop splash keep one URL).
+ * The glyph is transparent with a thin white outline: navy reads on light surfaces, the outline
+ * gives it a boundary on the cockpit's dark ones. It is not tinted with `currentColor`.
  *
  * THE LOCKUP keeps the arithmetic stated once in `BRAND_LOCKUP`: the name is lowercase, Chakra
  * Petch SemiBold (600); the mark is ~1.9 × the type size tall; the gap is 0.5 × the type size.
  */
 
-/** The navigation lockup, in px. The cat sits in a padded square, so it needs ~40px to read as large as a 26px glyph would; gap 0.5 × the name. */
+/** The navigation lockup, in px. The mark sits in a padded square, so it needs ~40px to read as large as a 26px glyph would; gap 0.5 × the name. */
 export const BRAND_LOCKUP = { mark: 40, name: 21, gap: 10.5 } as const
 
 export function BrandMark({ height = BRAND_LOCKUP.mark, className }: { height?: number; className?: string }) {

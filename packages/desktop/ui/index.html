@@ -9,7 +9,7 @@
       /* The cockpit's own tokens (packages/web/src/styles/index.css) — dark is the cockpit's
          default, light follows the system. The splash cannot read the cockpit's saved theme
          (different origin), so this is the closest honest match. The accent is the brand mark:
-         lime on black, a deeper green on paper. */
+         azure on black, a deeper blue on paper. */
       :root {
         --bg: #070809;
         --fg: #f4f7f2;
@@ -18,13 +18,13 @@
         --line: rgba(255, 255, 255, 0.07);
         --line-strong: rgba(255, 255, 255, 0.13);
         --panel: rgba(255, 255, 255, 0.035);
-        --accent: #a8f372;
-        --accent-bright: #c9ff9f;
-        --accent-ink: #0b1407;
-        --accent-glow: rgba(168, 243, 114, 0.26);
-        --accent-line: rgba(168, 243, 114, 0.55);
-        --teal-glow: rgba(110, 231, 216, 0.12);
-        --mark-shadow: rgba(168, 243, 114, 0.22);
+        --accent: #006afe;
+        --accent-bright: #3b9bff;
+        --accent-ink: #00142e;
+        --accent-glow: rgba(0, 106, 254, 0.28);
+        --accent-line: rgba(0, 106, 254, 0.6);
+        --teal-glow: rgba(0, 106, 254, 0.14);
+        --mark-shadow: rgba(0, 106, 254, 0.3);
         --vignette: rgba(0, 0, 0, 0.32);
         --grid-opacity: 0.9;
         --noise-opacity: 0.035;
@@ -40,13 +40,13 @@
           --line: rgba(21, 24, 15, 0.08);
           --line-strong: rgba(21, 24, 15, 0.15);
           --panel: rgba(255, 255, 255, 0.7);
-          --accent: #4e8f1d;
-          --accent-bright: #6bb236;
+          --accent: #006afe;
+          --accent-bright: #0052c6;
           --accent-ink: #ffffff;
-          --accent-glow: rgba(168, 243, 114, 0.22);
-          --accent-line: rgba(94, 158, 46, 0.55);
-          --teal-glow: rgba(34, 170, 155, 0.07);
-          --mark-shadow: rgba(94, 158, 46, 0.22);
+          --accent-glow: rgba(0, 106, 254, 0.2);
+          --accent-line: rgba(0, 82, 198, 0.55);
+          --teal-glow: rgba(0, 106, 254, 0.08);
+          --mark-shadow: rgba(0, 82, 198, 0.24);
           --vignette: rgba(21, 24, 15, 0.05);
           --grid-opacity: 0.75;
           --noise-opacity: 0.045;
@@ -225,11 +225,10 @@
         position: relative;
         width: 84px;
         height: 84px;
-        border-radius: 24px;
         display: block;
-        box-shadow:
-          0 24px 50px -22px var(--mark-shadow),
-          0 0 0 1px var(--line-strong);
+        /* The mark is a transparent glyph now (no tile), so a box-shadow would paint a rectangle
+           behind it; drop-shadow follows the glyph's alpha and keeps the failure state's red glow. */
+        filter: drop-shadow(0 18px 30px var(--mark-shadow));
       }
 
       h1 {
