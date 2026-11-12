@@ -3,7 +3,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState, type Rea
 import { UNSAFE_RouteContext } from 'react-router'
 
 import { useProjectScope } from '@/api/project-scope-context'
-import { useHealth } from '@/api/queries'
+import { useHealth, useRuns } from '@/api/queries'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
 import { useI18n } from '@/lib/i18n'
@@ -61,9 +61,10 @@ function draftPane(projectId: string): DraftPaneRef {
   return { kind: 'draft', paneId: `draft:${projectId}`, projectId, draftId: 'default' }
 }
 
-function paneTitle(pane: PaneRef, fallbackNewTask: string): string {
+// A deep-linked pane has no stored title yet; the run list knows it, so a UUID never shows up as one.
+function paneTitle(pane: PaneRef, fallbackNewTask: string, runTitles?: ReadonlyMap<string, string>): string {
   if (pane.kind === 'draft') return pane.title ?? fallbackNewTask
-  return pane.title ?? pane.runId
+  return pane.title ?? runTitles?.get(pane.runId) ?? pane.runId
 }
 
 /**
@@ -132,6 +133,8 @@ function WorkspaceHostPane({
   const { t } = useI18n()
   const isDesktop = useIsDesktop(SIDE_BY_SIDE_MIN_WIDTH)
   const terminalAllowed = useHealth().data?.capabilities?.terminal === true
+  const runList = useRuns().data
+  const runTitles = useMemo(() => new Map((runList ?? []).map((run) => [run.id, run.title])), [runList])
   const contextViews = useMemo(() => hostContextViews(terminalAllowed), [terminalAllowed])
 
   useWorkspaceShortcuts({ projectId })
@@ -280,7 +283,12 @@ function WorkspaceHostPane({
         }}
         aria-label={pane.kind === 'run' ? t('Task workspace pane') : t('New task pane')}
         aria-selected={isActive}
-        className={isActive ? 'flex min-h-0 flex-1 overflow-auto ring-1 ring-inset ring-ring' : 'flex min-h-0 flex-1 overflow-auto'}
+        className={cn(
+          // The pane's single child (run view or new-task surface) must fill the row, not shrink
+          // to its content — otherwise a short transcript leaves the pane left-aligned and narrow.
+          'flex h-full min-h-0 min-w-0 flex-1 overflow-auto [&>*]:min-w-0 [&>*]:flex-1',
+          isActive && 'ring-1 ring-inset ring-ring',
+        )}
         data-active={isActive ? 'true' : undefined}
         data-pane-id={pane.paneId}
         data-scroll-anchor={scrollAnchors[pane.paneId] ?? 0}
@@ -393,7 +401,7 @@ function WorkspaceHostPane({
                 }
               }}
             >
-              <span className="max-w-[120px] truncate">{paneTitle(paneA, t('New task'))}</span>
+              <span className="max-w-[120px] truncate">{paneTitle(paneA, t('New task'), runTitles)}</span>
             </button>
             <button
               type="button"
@@ -428,7 +436,7 @@ function WorkspaceHostPane({
                 }
               }}
             >
-              <span className="max-w-[120px] truncate">{paneTitle(paneB, t('New task'))}</span>
+              <span className="max-w-[120px] truncate">{paneTitle(paneB, t('New task'), runTitles)}</span>
             </button>
           </div>
           <div className="flex items-center gap-1.5">
@@ -470,7 +478,7 @@ function WorkspaceHostPane({
             }
             projectId={projectId}
             runId={activePaneRef.runId}
-            title={activePaneRef.title ?? activePaneRef.runId}
+            title={paneTitle(activePaneRef, t('New task'), runTitles)}
             views={contextViews}
             activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
             onViewChange={(view) =>
@@ -510,7 +518,7 @@ function WorkspaceHostPane({
       >
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate font-medium text-foreground">
-            {paneTitle(pane, t('New task'))}
+            {paneTitle(pane, t('New task'), runTitles)}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -546,7 +554,7 @@ function WorkspaceHostPane({
           }
           projectId={projectId}
           runId={pane.runId}
-          title={pane.title ?? pane.runId}
+          title={paneTitle(pane, t('New task'), runTitles)}
           views={contextViews}
           activeView={state.context.view ?? (target.kind === 'run' ? target.view : undefined)}
           onViewChange={(view) =>

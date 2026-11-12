@@ -23,7 +23,7 @@ const { toastMock, healthMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/components/ui/toaster', () => ({ toast: toastMock }))
-vi.mock('@/api/queries', () => ({ useHealth: healthMock }))
+vi.mock('@/api/queries', () => ({ useHealth: healthMock, useRuns: () => ({ data: [] }) }))
 vi.mock('@/routes/new-task-surface', () => ({
   NewTaskSurface: ({
     draftId,
