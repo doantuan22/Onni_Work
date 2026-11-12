@@ -52,6 +52,19 @@ describe('theme contrast (WCAG AA, 4.5:1)', () => {
     }
   })
 
+  // `--success` and `--danger` carry small text ("+N"/"−N", error lines, "Completed tasks"), so
+  // both must stay AA as ink. The dark values pass; the light theme needs its own darker step.
+  it.each([
+    ['dark', dark, ['--background', '--card', '--card-2']],
+    ['light', light, ['--background', '--sidebar', '--muted']],
+  ] as const)('success and danger read as ink on every %s surface', (_name, tokens, surfaces) => {
+    for (const ink of ['--success', '--danger']) {
+      for (const surface of surfaces) {
+        expect(ratio(tokens[ink]!, tokens[surface]!), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
   it.each([
     ['dark', dark],
     ['light', light],

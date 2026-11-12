@@ -207,16 +207,19 @@
 .light {
   color-scheme: light;
 
-  --background: #ffffff;
+  /* Not pure white: the main reading surface is the one the eye spends hours on, and a soft
+   * off-white kills the glare while letting the white card step read as elevated — the surface
+   * steps the dark theme gets from #0d0d0d → #171717, restated a few percent apart. */
+  --background: #fafafa;
   --foreground: #171717;
   --card: #ffffff;
-  --card-2: #fbfbfb;
-  --sidebar: #fafafa;
-  --muted: #f7f7f7;
+  --card-2: #fcfcfc;
+  --sidebar: #f5f5f5;
+  --muted: #f5f5f5;
   --muted-foreground: #5c5c5c;
-  /* #a3a3a3 was 2.4:1 on the light surfaces. #6b6b6b clears AA on white, --sidebar and --muted. */
+  /* #a3a3a3 was 2.4:1 on the light surfaces. #6b6b6b clears AA on background, card, --sidebar and --muted. */
   --soft-foreground: #6b6b6b;
-  --border: #ebebeb;
+  --border: #e8e8e8;
   --input: #ebebeb;
   --contrast: #262626;
   --contrast-foreground: #ffffff;
@@ -235,6 +238,12 @@
   /* orange-700, for the same reason the amber above darkens: orange-400 as ink on white is ~2:1.
    * Far enough from `--pending-strong` (amber-700) to stay a different colour, not a shade. */
   --conflict: #c2410c;
+
+  /* red-700 and emerald-700 — the same per-theme darkening every other semantic ink above already
+   * gets. The dark values (red-500, emerald-500) as ink on white are 3.76:1 and 2.54:1, both below
+   * AA, and both carry small text ("+N"/"−N", error lines, "Completed tasks"). */
+  --danger: #b91c1c;
+  --success: #047857;
 
   --shadow-modal: 0 16px 48px 0 rgba(0, 0, 0, 0.12);
 
