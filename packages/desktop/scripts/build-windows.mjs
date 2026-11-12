@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { displayVersion, nextBuildVersion, writeBuildVersion } from './build-version.mjs';
 import { describeStage, stageEngine } from './stage-engine.mjs';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -14,7 +15,11 @@ const commit = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd: r
 const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: repoRoot, encoding: 'utf8' }).trim().length > 0;
 const revision = `${commit}${dirty ? '-dirty' : ''}`;
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-const buildId = `${manifest.version}-${revision}-${stamp}`;
+// Every build is one tenth above the last (0.1, 0.2, …). The files then always read the version
+// that was built; a failed build puts the previous one back, so a number is never burned.
+const previousVersion = manifest.version;
+const version = nextBuildVersion(previousVersion);
+const buildId = `${version}-${revision}-${stamp}`;
 
 function tempPath(...segments) {
   const target = path.resolve(tempRoot, ...segments);
@@ -36,27 +41,36 @@ if (!npmExecpath) throw new Error('build:windows must be run with `npm run build
 // One setup.exe is the whole app: the engine and its Node runtime travel inside the installer, and
 // the shell finds them next to its own executable. `--config` takes a FILE here because a JSON
 // string would not survive cmd.exe's quoting on the way through npm.
-const engineDir = stageEngine(stageRoot);
-console.log(`Bundling the engine into the installer: ${describeStage(engineDir)} from ${engineDir}`);
-const bundleConfig = path.join(stageRoot, 'tauri.bundle.json');
-writeFileSync(bundleConfig, JSON.stringify({ bundle: { resources: { [engineDir.replaceAll('\\', '/')]: 'engine' } } }));
+console.log(`Build version ${displayVersion(previousVersion)} -> ${displayVersion(version)} (${version})`);
+writeBuildVersion(packageRoot, version);
+let artifact;
+try {
+  const engineDir = stageEngine(stageRoot);
+  console.log(`Bundling the engine into the installer: ${describeStage(engineDir)} from ${engineDir}`);
+  const bundleConfig = path.join(stageRoot, 'tauri.bundle.json');
+  writeFileSync(bundleConfig, JSON.stringify({ bundle: { resources: { [engineDir.replaceAll('\\', '/')]: 'engine' } } }));
 
-// An isolated ignored target avoids patching a release executable the user may have open.
-execFileSync(process.execPath, [npmExecpath, 'run', 'tauri', '--', 'build', '--bundles', 'nsis', '--config', bundleConfig], {
-  cwd: packageRoot,
-  env: { ...process.env, CARGO_TARGET_DIR: buildRoot },
-  stdio: 'inherit',
-});
+  // An isolated ignored target avoids patching a release executable the user may have open.
+  execFileSync(process.execPath, [npmExecpath, 'run', 'tauri', '--', 'build', '--bundles', 'nsis', '--config', bundleConfig], {
+    cwd: packageRoot,
+    env: { ...process.env, CARGO_TARGET_DIR: buildRoot },
+    stdio: 'inherit',
+  });
 
-const nsisRoot = path.join(buildRoot, 'release', 'bundle', 'nsis');
-const installers = readdirSync(nsisRoot).filter((name) => /-setup\.exe$/i.test(name));
-if (installers.length !== 1) {
-  throw new Error(`build:windows expected one NSIS setup in ${nsisRoot}, found ${installers.length}`);
+  const nsisRoot = path.join(buildRoot, 'release', 'bundle', 'nsis');
+  const installers = readdirSync(nsisRoot).filter((name) => /-setup\.exe$/i.test(name));
+  if (installers.length !== 1) {
+    throw new Error(`build:windows expected one NSIS setup in ${nsisRoot}, found ${installers.length}`);
+  }
+
+  mkdirSync(artifactRoot, { recursive: true });
+  artifact = path.join(artifactRoot, installers[0]);
+  copyFileSync(path.join(nsisRoot, installers[0]), artifact);
+} catch (error) {
+  writeBuildVersion(packageRoot, previousVersion);
+  console.error(`Build failed; version put back to ${previousVersion}.`);
+  throw error;
 }
-
-mkdirSync(artifactRoot, { recursive: true });
-const artifact = path.join(artifactRoot, installers[0]);
-copyFileSync(path.join(nsisRoot, installers[0]), artifact);
 console.log(`Windows NSIS artifact: ${artifact}`);
 
 // The staged copy is inside the installer now; it is large and nothing reads it again.
