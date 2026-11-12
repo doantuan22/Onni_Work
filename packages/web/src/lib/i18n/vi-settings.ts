@@ -1189,10 +1189,12 @@ export const viSettings: Record<string, string> = {
   'API token': 'Token API',
 
   // Settings section registry — titles
-  'Secrets': 'Secrets',
+  'Project secrets': 'Secrets dự án',
+  'Workspace secrets': 'Secrets dùng chung',
   'External integrations': 'Tích hợp bên ngoài',
   'Agents': 'Agent',
-  'Instructions': 'Hướng dẫn',
+  'Project instructions': 'Hướng dẫn dự án',
+  'Global instructions': 'Hướng dẫn chung',
   'Tasks': 'Nhiệm vụ',
   'Agent config': 'Cấu hình agent',
   'Bookmarklets': 'Bookmarklet',

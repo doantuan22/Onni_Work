@@ -116,7 +116,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: 'secrets',
-    title: 'Secrets',
+    title: 'Project secrets',
     description: 'Encrypted values for this project’s check steps and onni — never for agents.',
     icon: KeyRoundIcon,
     component: ProjectSecretsSection,
@@ -148,7 +148,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: 'instructions',
-    title: 'Instructions',
+    title: 'Project instructions',
     description: 'What you write for the models: system prompt, branch naming, prompt templates.',
     icon: MessageSquareTextIcon,
     component: InstructionsSection,
@@ -254,7 +254,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: 'global-instructions',
-    title: 'Instructions',
+    title: 'Global instructions',
     description: 'A system prompt for every task in every project; a project’s own wins where they conflict.',
     icon: MessageSquareTextIcon,
     component: GlobalInstructionsSection,
@@ -262,7 +262,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: 'workspace-secrets',
-    title: 'Secrets',
+    title: 'Workspace secrets',
     description: 'Encrypted values shared by every project on this machine — never for agents.',
     icon: KeyRoundIcon,
     component: WorkspaceSecretsSection,

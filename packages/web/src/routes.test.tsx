@@ -233,7 +233,7 @@ const ROUTE_CASES: Array<[url: string, route: string, title: string]> = [
   // the boot project "onni".
   ['/settings', 'settings', 'onni'],
   ['/settings/agents', 'settings-agents', 'Agents'],
-  ['/settings/instructions', 'settings-instructions', 'Instructions'],
+  ['/settings/instructions', 'settings-instructions', 'Project instructions'],
   ['/settings/tasks', 'settings-tasks', 'Tasks'],
   ['/settings/agent-config', 'settings-agent-config', 'Agent config'],
   ['/settings/worktrees', 'settings-worktrees', 'Worktrees'],
