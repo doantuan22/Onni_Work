@@ -12,7 +12,7 @@ Tài liệu tổng hợp sáu báo cáo trong cùng thư mục:
 | [`research-engines.md`](research-engines.md) | 22 engine phân tích code, bản đồ repo cho agent, khai thác git | Nền |
 | [`research-viz.md`](research-viz.md) | 20 sản phẩm trực quan hóa, thư viện render | Nền |
 | [`survey-server.md`](survey-server.md), [`survey-web.md`](survey-web.md) | Khảo sát code server/web (số liệu 2026-11-06) | Nền, **một số con số đã cũ** (xem §2.1) |
-| [`PLAN-review.md`](PLAN-review.md) | Review độc lập bản 2026-11-06 (45 khẳng định) | Các sửa đổi "review #N" vẫn giữ |
+| Review độc lập bản 2026-11-06 (đã gỡ khỏi repo; xem lịch sử git, commit `b5f6172`) | 45 khẳng định | Các sửa đổi "review #N" vẫn giữ |
 
 Đọc kèm: [`AGENTS.md`](../../../AGENTS.md), [`.ai/perf/`](../../../.ai/perf/) (khảo sát hiệu năng hiện tại),
 [`docs/design/manager-worker-proposals.md`](../manager-worker-proposals.md),
@@ -182,7 +182,7 @@ hiệu năng (dựng ≤ 10 s, truy vấn ≤ 100 ms) và 6 giai đoạn đi t�
 | Co-change | Độc lập ngôn ngữ, nhiều nhiễu (commit lớn, test churn); phải lọc, min support, time decay, hiển thị commit mẫu | cùng, §Trả lời câu hỏi 4 |
 | UX | Graph sống khi gắn action (Nx affected, Dependabot); CodeSee/Sourcetrail đóng vì economics/maintenance, **không** chứng minh map vô ích | cùng, §Trả lời câu hỏi 3 |
 | Engine | Không engine nào đủ mọi thứ; tree-sitter cho breadth, TS compiler/SCIP cho depth và tốn cấu hình | `research-engines.md`; `research-agent-evidence.md` §Ngôn ngữ |
-| Giấy phép | Code Maat GPL-3.0, Cosmograph CC-BY-NC, ELK EPL/GPL: loại khỏi lựa chọn mặc định | `PLAN-review.md` #18–#20 |
+| Giấy phép | Code Maat GPL-3.0, Cosmograph CC-BY-NC, ELK EPL/GPL: loại khỏi lựa chọn mặc định | review bản 2026-11-06 #18–#20 (commit `b5f6172`) |
 
 Hạn chế phải nói thẳng: **không có nghiên cứu A/B hiện đại nào đo "chia phạm vi bằng graph" cho agent**
 (`research-impact-ux.md` §Trả lời câu hỏi 2); bằng chứng agent-graph chủ yếu là Python/SWE-bench. Vì vậy các cổng §9
@@ -733,7 +733,7 @@ quyết định riêng:
 ### 15.1 Xác minh
 
 1. **Review độc lập bản 2026-11-06 (đã chạy):** 29 CONFIRMED, 13 WRONG, 3 UNVERIFIABLE; các sửa đổi bắt buộc đã áp dụng
-   ([`PLAN-review.md`](PLAN-review.md)). Bản viết lại này **chưa được review lần hai**; các khẳng định code trong §2.1 và
+   (review đã gỡ khỏi repo, còn trong lịch sử git: commit `b5f6172`). Bản viết lại này **chưa được review lần hai**; các khẳng định code trong §2.1 và
    §3–§7 được `grep` lại 2026-11-13, nhưng số quy mô (~797 file/~1.510 cạnh) giữ nguyên từ khảo sát cũ và cần script tái lập
    (thuộc S3).
 2. **Cổng:** G0 sau Giai đoạn 0; G-A/G-B sau P1; G-C sau M1 (§9).
