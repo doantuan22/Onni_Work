@@ -1,61 +1,97 @@
-# Kế hoạch: Project Graph (đồ thị dự án)
+# Kế hoạch: Project Graph (đồ thị dự án) — bản neo vào hành động có số đo
 
-Trạng thái: **kế hoạch, chưa triển khai** (2026-11-06). Chủ dự án đã quyết: đây là chức năng **thêm mới, tách
-riêng**, không thay thế và không sửa Automations.
+Trạng thái: **kế hoạch, chưa triển khai** (bản viết lại 2026-11-13; bản trước 2026-11-06). Chủ dự án đã quyết: đây là
+chức năng **thêm mới, tách riêng**, không thay thế và không sửa Automations.
 
-Tài liệu này tổng hợp bốn báo cáo khảo sát (đã merge trong cùng thư mục):
+Tài liệu tổng hợp sáu báo cáo trong cùng thư mục:
 
-| Báo cáo | Nội dung | Người làm |
+| Báo cáo | Nội dung | Vai trò trong bản này |
 | --- | --- | --- |
-| [`survey-server.md`](survey-server.md) | Engine, state, HTTP, WS, CLI, git, run, đo TypeScript 7, quy mô | codex |
-| [`survey-web.md`](survey-web.md) | Route, nav, đồ thị hiện có, WS client, i18n, test, desktop | codex |
-| [`research-engines.md`](research-engines.md) | 22 engine phân tích code, bản đồ repo cho agent, khai thác git | codex |
-| [`research-viz.md`](research-viz.md) | 20 sản phẩm trực quan hóa, thư viện render, đề cương UX | codex |
+| [`research-agent-evidence.md`](research-agent-evidence.md) | Bằng chứng graph có giúp coding agent không (RepoGraph, LocAgent, Aider, ablation 2026…) | **Đầu vào chính** |
+| [`research-impact-ux.md`](research-impact-ux.md) | Impact/chọn test, va chạm giữa agent, co-change, vì sao graph UI sống/chết | **Đầu vào chính** |
+| [`research-engines.md`](research-engines.md) | 22 engine phân tích code, bản đồ repo cho agent, khai thác git | Nền |
+| [`research-viz.md`](research-viz.md) | 20 sản phẩm trực quan hóa, thư viện render | Nền |
+| [`survey-server.md`](survey-server.md), [`survey-web.md`](survey-web.md) | Khảo sát code server/web (số liệu 2026-11-06) | Nền, **một số con số đã cũ** (xem §2.1) |
+| [`PLAN-review.md`](PLAN-review.md) | Review độc lập bản 2026-11-06 (45 khẳng định) | Các sửa đổi "review #N" vẫn giữ |
 
-Đọc kèm: [`AGENTS.md`](../../../AGENTS.md), [`docs/design/manager-worker-proposals.md`](../manager-worker-proposals.md),
+Đọc kèm: [`AGENTS.md`](../../../AGENTS.md), [`.ai/perf/`](../../../.ai/perf/) (khảo sát hiệu năng hiện tại),
+[`docs/design/manager-worker-proposals.md`](../manager-worker-proposals.md),
 [`.ai/specs/2026-07-23-websocket-subscriptions.md`](../../../.ai/specs/2026-07-23-websocket-subscriptions.md).
 
-> **Cách đọc độ tin cậy.** Mọi khẳng định về code dẫn đường dẫn và symbol từ các khảo sát. Một worker review độc
-> lập đã đối chiếu bản đầu với code (45 khẳng định: 29 đúng, 13 sai, 3 chưa kiểm được); các sửa đổi bắt buộc đã
-> được áp dụng vào bản này (xem §14 và [`PLAN-review.md`](PLAN-review.md)). Chưa chạy review lần hai. Số liệu "mục tiêu"
-> (ngân sách hiệu năng, ngưỡng render) là **giả thuyết cần kiểm bằng spike ở Giai đoạn 0**, không phải kết quả đo.
-> Chỗ nào chưa kiểm được ghi "chưa kiểm".
+> **Cách đọc độ tin cậy.** Khẳng định về code dẫn đường dẫn/symbol và đã được `grep` lại ngày 2026-11-13. Khẳng định
+> về thế giới bên ngoài dẫn mục của hai báo cáo nghiên cứu mới. Mọi con số "mục tiêu" (độ trễ, ngưỡng precision) là
+> **giả thuyết cần đo ở các cổng §9**, không phải kết quả. Chỗ chưa kiểm ghi "chưa kiểm".
+
+---
+
+## Thay đổi so với bản 2026-11-06
+
+Bản cũ có đúng phần kỹ thuật (engine, cache, contract, an toàn) nhưng **không có phép đo giá trị**: mọi mục tiêu là
+hiệu năng (dựng ≤ 10 s, truy vấn ≤ 100 ms) và 6 giai đoạn đi từ màn hình vẽ đồ thị đến tính năng giá trị nhất. Bản này
+đảo thứ tự và thêm cổng đo.
+
+| # | Thay đổi | Vì sao (nguồn) |
+| --- | --- | --- |
+| 1 | **Neo lại trên hành động lặp lại**: "impact của diff/run" theo lớp, ứng viên test cho `verify`, sở hữu phạm vi + cảnh báo trùng trước khi giao. Bản đồ toàn repo hạ xuống thành *điểm vào* đến sau. | Graph sống được khi một lệnh/CI/tool tiêu thụ nó (Nx affected, GitHub dependency graph); map độc lập thì không có bằng chứng dùng lặp (`research-impact-ux.md` §"Graph UX", bài học 1) |
+| 2 | **Cổng go/no-go trước khi đầu tư**: G-A (A/B agent: graph-off vs graph-on vs grep), G-B (replay lịch sử git: precision/recall impact + test), G-C (co-change không chặn dispatch trước khi replay đạt). | Bằng chứng graph → resolve khiêm tốn (+2,3 điểm RepoGraph), chi phí tăng; chỉ ablation 2026 n=91 là mạnh (`research-agent-evidence.md` §Kết luận, bài học 1) |
+| 3 | **CLI/agent trước, UI sau**; view neo vào "graph của diff/run" trước bản đồ toàn repo. | Value cũ nằm ở Giai đoạn 3 và UI ở Giai đoạn 1 (đánh giá điểm 3) |
+| 4 | **Tái dùng authority có sẵn**: npm workspace graph, git, Nx/Turbo/Rush/Bazel/Pants nếu repo dùng, `vitest related/--changed`, `jest --findRelatedTests`; `onni task conflicts` (trial merge) vẫn là authority cho xung đột văn bản. Graph/co-change chỉ **cảnh báo**. | `research-impact-ux.md` §"Kết luận lựa chọn", bài học 2 và 8 |
+| 5 | **Xử lý hub ngay trong MVP**: nhóm theo lớp, giảm nhiễu hub, cạnh cấp export cho vài hub, ego 1–2 hop, personalized ranking. | Flatten 2-hop làm *giảm* resolve (26% < baseline) (`research-agent-evidence.md` §RepoGraph budget/hops, §Hub) |
+| 6 | **Ngôn ngữ**: tree-sitter breadth mặc định; TS semantic là adapter tùy chọn do spike quyết; **co-change được nâng lên MVP** (soft edge, có bộ lọc nhiễu). | `research-agent-evidence.md` §"Ngôn ngữ và parser"; `research-impact-ux.md` §4 |
+| 7 | **Freshness = correctness**: băm nội dung + HEAD, kiểm trước truy vấn, stale → fallback grep. | `research-agent-evidence.md` §Freshness, bài học 5 |
+| 8 | **Hiệu năng**: bỏ kế hoạch tái dùng poll 4 s `useRunChanges`; dùng tín hiệu WS; không thêm việc đồng bộ vào hot path `workflows/run*`. | `.ai/perf/c-cockpit-web.md` §3, `.ai/perf/a-server-state-git.md` §4–5, `.ai/perf/b-streaming-pipeline.md` §1, 3 |
+| 9 | **Cắt phạm vi**: automations hooks, tóm tắt AI, time travel, renderer thứ hai, tài liệu-spec → mục "Ngoài phạm vi" (§14), chỉ mở lại khi có số đo. | Đánh giá điểm 7 |
+| 10 | **Cập nhật theo code hiện tại**: `onni task verify` và `onni task conflicts` (trial merge `git merge-tree`) **đã có**; `workflows/run.ts` đã tách thành `workflows/run/*` (3.455 dòng) và `server.ts` còn 2.629 dòng. Bản cũ coi A1/A2 là chưa xây. | §2.1 (kiểm lại bằng `grep`/`wc -l`) |
+
+### Đối chiếu bảy điểm đánh giá của manager (2026-11-13)
+
+| Điểm | Kết luận | Xử lý trong bản này |
+| --- | --- | --- |
+| 1. Không có metric giá trị; cần spike CLI-only + A/B ~10 task manager–worker, có go/no-go | **Chấp nhận** | Cổng G-A ở §9.1; V1 (spike CLI) ở Giai đoạn 0 (§10). Metric: lượt, token, xung đột, test hit-rate |
+| 2. File-level yếu ở file hub; cần hub handling trong MVP, symbol không chỉ ở phase 5 | **Chấp nhận một phần** | Hub: nhóm + giảm nhiễu + cạnh cấp export cho hub (§4.4). **Symbol đầy đủ vẫn ngoài MVP**: bằng chứng cho thấy file/module dùng để khoanh vùng, symbol để chọn hàm (`research-agent-evidence.md` §Trả lời thiết kế); làm export-level ("outline") trước, call graph chỉ khi G-A cho thấy thiếu |
+| 3. Value dồn cuối; đảo thứ tự, CLI trước, view neo vào diff | **Chấp nhận** | Lộ trình §10: V1 CLI → P1 impact/tests → P2 manager → UI task-anchored. Ghi chú: phụ thuộc "A1/A2 chưa xây" nay **không còn đúng** — `verify` và `conflicts` đã có (§2.1) nên P2 nối vào cái đã tồn tại |
+| 4. Hẹp cho repo người dùng (chỉ TS/JS; contract-flow riêng Onni); co-change nên được nâng | **Chấp nhận** | Tree-sitter đa ngôn ngữ mặc định, `contract-flow` thành plugin quy ước tùy chọn (không phải lõi), co-change vào MVP làm soft edge (§4.5) |
+| 5. Tái dùng vitest related / jest findRelatedTests; `task conflicts` đã trial-merge | **Chấp nhận** | §3.2 (thang chọn test), §7 (graph chỉ cảnh báo, `task conflicts` là authority) |
+| 6. Xung đột với khảo sát perf: poll 4 s, hook đồng bộ trong hot path run | **Chấp nhận** | §8.4, §11: tín hiệu WS ngay từ đầu; ghi hook ở thời điểm settle, bất đồng bộ, ngoài hot path; build nhường event loop |
+| 7. Phạm vi quá rộng cho giả thuyết chưa chứng minh | **Chấp nhận** | 6 → 3 giai đoạn có cổng; 2 topic WS → 1; phần còn lại sang §14 |
 
 ---
 
 ## 0. Tóm tắt điều hành
 
-**Là gì.** Biểu diễn repository thành đồ thị node–cạnh (module, file, test, tài liệu, chuỗi contract
-schema→route→client→hook, đồng thay đổi theo git, run của agent) để (a) người dùng nhìn thấy liên kết trong dự
-án trên cockpit, (b) agent truy vấn qua CLI `onni graph …` với ngân sách token, (c) manager–worker dùng để chia
-phạm vi rời nhau, dự đoán xung đột và chọn test.
+**Là gì.** Một lớp *quan hệ* của dự án (file/module, import, test, package, co-change theo git) mà chương trình tính
+được, để trả lời ba câu hỏi lặp lại: (1) **"thay đổi này ảnh hưởng gì, cần chạy test nào?"**; (2) **"hai worker có
+đang đụng nhau không, mỗi phần nên giao cho ai?"**; (3) **"agent nên đọc file nào trước?"**. Giao diện chính là CLI
+`onni graph …` (agent và manager dùng) và một view *neo vào diff/run*. Bản đồ toàn repo chỉ là điểm vào đến sau.
 
-**Quyết định cốt lõi (đề xuất, xem §13 để chủ dự án xác nhận):**
+**Giả thuyết cần chứng minh** (mỗi cái gắn một cổng ở §9):
 
-1. **Xây bằng code, xác định, tăng dần.** Không cần agent để xây hay cập nhật cây. Agent chỉ là *người dùng*
-   của đồ thị. Lớp tóm tắt bằng LLM là tùy chọn, tắt mặc định, đến sau (Giai đoạn 5).
-2. **MVP là đồ thị cấp file/module**, không phải cấp symbol. Đủ để trả lời câu hỏi chính "đổi X thì cái gì bị
-   ảnh hưởng?" và rẻ, ổn định. Symbol, call graph, đa ngôn ngữ là giai đoạn sau, có điều kiện.
-3. **Engine phân tích chốt bằng spike, không chốt bằng tài liệu** (xem §3.1). Hai khảo sát cho kết luận chưa
-   khớp về TypeScript 7; phải đo trên máy thật (Windows, Node 20+, tarball).
-4. **Mỗi cạnh có nguồn gốc** `extracted | declared | inferred` cùng độ tin cậy; không bao giờ trộn.
-5. **Cache là bản dựng lại được** dưới `.ai/onni/project-graph/`; mất thì tự dựng lại; không bao giờ là điều
-   kiện để khởi động.
-6. **UI mặc định ở mức gộp** (workspace/package/folder), mở dần theo yêu cầu; tái dùng `@xyflow/react` cho đồ
-   thị nhỏ, đánh giá canvas/WebGL chỉ khi benchmark đòi hỏi.
-7. **Local-first tuyệt đối.** Đồ thị chỉ lưu đường dẫn, tên export, hash, quan hệ; không lưu nội dung code,
-   không upload.
-
-**Lộ trình ngắn gọn.**
-
-| Giai đoạn | Nội dung | Kết quả kiểm được |
+| # | Giả thuyết | Cổng |
 | --- | --- | --- |
-| 0 | Spike: engine phân tích, benchmark render, bộ vàng | Quyết định engine và renderer có số đo |
-| 1 | MVP: engine cấp file + contract/route/CLI đọc + màn hình xem | `onni graph neighbors/impact/path` chạy; màn Graph xem được |
-| 2 | Tín hiệu sống: git co-change, run-touched, overlay worktree, WS | Node sáng khi worker sửa; impact của diff |
-| 3 | Agent và manager–worker dùng đồ thị | `graph context` trong order; chia vùng; chọn test |
-| 4 | Automations gắn node, "giao task tại đây" có scope | Hành động trên node |
-| 5 | Symbol, đa ngôn ngữ, tóm tắt AI (opt-in), time travel | Mở rộng theo nhu cầu thật |
+| H1 | Agent có `graph context/impact` định vị đúng file nhanh hơn, ít lượt/token hơn, không giảm tỉ lệ pass so với tự `grep` | G-A |
+| H2 | Từ diff, "ứng viên test" từ graph + runner-native có recall ≥ ngưỡng trên lịch sử repo này | G-B |
+| H3 | Cảnh báo trùng vùng của graph bắt được thêm xung đột mà `onni task conflicts` (trial merge) chưa thấy ở thời điểm lập kế hoạch, với precision chấp nhận được | G-B, G-C |
+
+**Quyết định cốt lõi (đề xuất, xem §13):**
+
+1. **Xây bằng code, xác định, tăng dần**; không cần agent để xây. Không embeddings, không tóm tắt LLM mặc định
+   (`research-agent-evidence.md` bài học 7).
+2. **Tái dùng authority** trước khi tự tính (§3.2). Graph là *lớp giải thích và bổ sung*, không phải bản sao của Nx/Bazel.
+3. **Chỉ cảnh báo, không bao giờ nói "không xung đột/đã đủ test"**: tập ứng viên luôn kèm độ tin cậy và đường lui
+   (chạy rộng hơn).
+4. **Cạnh có nguồn gốc** `extracted | declared | inferred` + confidence; không trộn (giữ từ bản trước).
+5. **Cache dựng lại được** dưới `.ai/onni/project-graph/`; mất thì dựng lại; hỏng/stale thì **fallback grep** có nhãn.
+6. **Local-first tuyệt đối**; mọi số đo dùng nội bộ **chỉ trên máy** — `AGENTS.md` đã gỡ telemetry, không có đường gửi.
+7. **Mỗi giai đoạn sau Giai đoạn 0 chỉ bắt đầu khi cổng trước đạt**; không đạt thì dừng ở cái đã đạt (CLI nhỏ hoặc bỏ).
+
+**Lộ trình ngắn.**
+
+| Giai đoạn | Nội dung | Cổng ra |
+| --- | --- | --- |
+| 0 | Spike giá trị + engine: V1 CLI-only prototype, R1 replay lịch sử git, S1 engine, S3 bộ vàng | **G0**: chủ dự án duyệt số đo; R1/V1 quyết định có làm P1 không |
+| P1 | Engine lõi + CLI `impact/context/tests/overlap` + hub + co-change soft edge | **G-A** (A/B) và **G-B** (replay) |
+| P2 | Manager–worker: scope ownership, cảnh báo trùng trước khi giao, gợi ý test cho `verify` | **G-C** (cảnh báo không chặn khi chưa đạt precision) |
+| P3 | UI neo vào diff/run (overlay worktree, WS), sau đó mới điểm vào "bản đồ" | Phản hồi dùng thật, đo cục bộ |
 
 ---
 
@@ -63,625 +99,655 @@ phạm vi rời nhau, dự đoán xung đột và chọn test.
 
 ### 1.1 Mục tiêu
 
-- **Người dùng:** hiểu cấu trúc và liên kết dự án trong vài giây; thấy tác động của một thay đổi; thấy agent đang
-  đụng vào đâu.
-- **Agent:** truy vấn chính xác, có trần token, có dẫn chứng (đường đi và nguồn gốc cạnh), thay vì tự `grep` lại mỗi lần
-  (hai file `run.ts` 10.144 dòng và `server.ts` 8.422 dòng khiến việc định vị rất tốn lượt).
-- **Manager–worker:** phân vùng phạm vi rời nhau, cảnh báo trùng vùng trước khi giao, chọn đúng test cho `verify`
-  (liên hệ [`manager-worker-proposals.md`](../manager-worker-proposals.md) A1/A2).
+- **Người dùng:** nhìn một run/diff và thấy ngay *file nào bị kéo theo, test nào nên chạy, vì sao* (đường đi + nguồn gốc
+  cạnh); có danh sách/bảng trước, canvas sau.
+- **Agent:** truy vấn có trần token, outline trước, 1–2 hop, có dẫn chứng và cờ "đầy đủ/bị cắt", luôn có đường lui
+  `grep`/đọc source (`research-agent-evidence.md` bài học 2–3).
+- **Manager–worker:** mỗi file/vùng chung có một chủ; cảnh báo trước khi giao nếu vùng ảnh hưởng của hai worker giao
+  nhau; gợi ý tập test chạy trước cho `verify`.
 
-### 1.2 Không mục tiêu (giai đoạn này)
+### 1.2 Không mục tiêu
 
-- Không thay hay sửa Automations; chỉ thêm liên kết tùy chọn ở Giai đoạn 4.
-- Không xây call graph đầy đủ hay phân tích kiểu (type) ở MVP.
-- Không dịch vụ lưu trữ ngoài, không upload mã, không MCP server riêng (CLI và HTTP là đủ).
-- Không quét nền liên tục ở MVP (không watcher mặc định).
-- Không thay thế `AGENTS.md` hay hệ thống tài liệu; đồ thị *bổ sung* ngữ cảnh dự án.
+- Không thay hay sửa Automations; không móc Automations ở đợt này (§14).
+- Không dự đoán xung đột bằng ML; không khẳng định "không xung đột" (`research-impact-ux.md` bài học 8).
+- Không call graph/phân tích kiểu đầy đủ ở MVP; không embeddings; không tóm tắt AI mặc định.
+- Không dịch vụ ngoài, không upload, không MCP server riêng ở MVP (CLI/HTTP đủ; adapter MCP tùy chọn về sau).
+- Không watcher nền mặc định; không bản sao ngữ nghĩa Bazel/Nx/Pants.
 
 ### 1.3 Nguyên tắc ràng buộc (từ `AGENTS.md`)
 
 | Nguyên tắc | Hệ quả cho Project Graph |
 | --- | --- |
-| Zero config | Không file cấu hình bắt buộc; mọi khóa có mặc định; thiếu parser/git thì thu nhỏ, không hỏng boot |
-| State được ghi, không bắt buộc | Cache dưới `.ai/onni/project-graph/`, thêm vào `DATA_GITIGNORE_ENTRIES` cùng commit, xóa đi tự dựng lại |
-| Thứ làm tăng chi phí/phơi bày phải opt-in | Tóm tắt AI (`ONNI_PROJECT_GRAPH_AI_SUMMARY`), watcher nền, MCP: tắt mặc định, có công tắc `ONNI_*` ghi trong `.env.example`; cài đặt trong Settings không vượt qua công tắc env |
-| API chỉ `/api/v1`, mô tả bằng zod | Schema trong `packages/contract` (Node-free), route chuỗi vào family builder, validator là middleware |
-| Suy biến là giá trị | Lỗi git/parser/cache trả `{ available:false, reason }`, không throw |
-| Ghi nguyên tử | `writeAtomic` + `withPathLock` (`dispatch/state-file.ts`) |
-| Một socket WS | Thêm topic, không `new WebSocket` |
-| Test cạnh code, không `.skip` | Mỗi module có `*.test.ts`; test cần git/Windows dùng guard bên trong test |
-| Không bump version tay, commit kiểu Conventional | `feat(graph): …`, `docs(graph): …` |
+| Zero config | Không file cấu hình bắt buộc; thiếu parser/git thì thu nhỏ, không hỏng boot |
+| State được ghi, không bắt buộc | Cache `.ai/onni/project-graph/`, thêm vào `DATA_GITIGNORE_ENTRIES` (`data-gitignore.ts`) cùng commit; xóa đi tự dựng lại |
+| Thứ tăng chi phí/phơi bày phải opt-in | Nhân tố nào gọi subprocess ngoài (Nx/Turbo/runner `related`) hay chạy nền: có công tắc `ONNI_*` ghi `.env.example` |
+| API chỉ `/api/v1`, mô tả bằng zod | Schema ở `packages/contract` (Node-free), route chuỗi vào family builder, validator là middleware (`server/validators.ts`) |
+| Suy biến là giá trị | Lỗi git/parser/cache/subprocess trả `{ available:false, reason }`, không throw |
+| Ghi nguyên tử | `writeAtomic` + khóa (`dispatch/state-file.ts`); config chỉ qua `mergeWriteWorkspaceConfig` |
+| Một socket WS | Thêm topic, không `new WebSocket` (`server/ws.ts`, hook ở `web/src/api/ws.ts`) |
+| Test cạnh code, không `.skip` | Mỗi module có `*.test.ts`; guard bên trong test |
+| Run không tự merge, unattended bị rào | Graph **không** có đường merge/push; chỉ đọc + cảnh báo |
+| Conventional Commits có scope | `feat(graph): …`, `docs(graph): …` |
 
 ---
 
-## 2. Phát hiện chính từ khảo sát
+## 2. Hiện trạng và bằng chứng
 
-### 2.1 Từ code hiện tại
+### 2.1 Từ code (đã kiểm lại 2026-11-13)
 
-- **Quy mô vừa phải:** 797 file nguồn production (~199k dòng) + 837 file test trong bốn package; ước lượng sàn
-  ~800 node và ~1.510 cạnh import tương đối ở cấp file (≈1.634 node nếu tính cả test). Cấp file là khả thi trong
-  RAM và render; cấp symbol lớn hơn nhiều (`survey-server.md` §10).
-- **Mẫu để sao chép đã có:** `automations/` (store + coordinator + scheduler), `dispatch/` (state-file, tree-fs),
-  `worktree-lifecycle/` (store theo project); `requireRootManager`, git chỉ-đọc `worktreeChangedFilesReadOnly`,
-  `git-changes.ts` (có `git log`, `diff-tree -M` nhận rename, `listRepoPaths` giới hạn 20.000 path/8 MiB).
-- **Chưa có:** miner co-change, đồ thị theo commit, overlay worktree, mã hóa path→run (`RunRecord.diffStat` chỉ có
-  số lượng, không có danh sách path).
-- **TypeScript 7.0.2 (đã đo):** `require('typescript').createProgram` **không có**; có `typescript/unstable/sync`,
-  `/async` (`Project`) và `/ast`. Ở `packages/work`, TypeScript chỉ là `devDependency`, không có trong tarball.
-  Bất kỳ parser runtime nào cũng phải khai báo trong `packages/work/package.json` (`survey-server.md` §9).
-- **Web:** đã có `@xyflow/react ^12.12.0` + `@dagrejs/dagre ^3.1.1`; ba đồ thị hiện có (workflow, task,
-  activity) tái dùng được khung, panel, node memo hóa; **không** tái dùng được mô hình dữ liệu. Chưa có Sigma,
-  Cytoscape, ELK. Route lazy sẵn. Chuỗi UI dùng khóa tiếng Anh + bản dịch `vi-*.ts` (`survey-web.md` §1–§6).
-- **Tín hiệu live:** chưa có topic "worker đang sửa file nào"; chỉ có diff sau khi sinh ra (poll 4 giây
-  `useRunChanges`). Cần tín hiệu mới (§6.4).
-- **Chưa có trường scope dạng danh sách.** `parseNewTaskParams` trả `NewTaskParams` gồm `skill`, `ref`, `auto`,
-  `key` và `todo` (`task` là alias cũ của `ref`); `newTaskPrefillHref` chỉ nhận `skill`/`ref`/`todo`;
-  `NewTaskDraft` không có danh sách scope (`survey-web.md` §7; review #25).
+- **Quy mô** (từ `survey-server.md` §10, số của 2026-11-06, chưa đếm lại): ~797 file nguồn production (~199k dòng)
+  trong bốn package; ước ~800 node/~1.510 cạnh import (ước lượng, UNVERIFIABLE theo review #3). Cấp file khả thi trong RAM.
+- **Cái đã đổi so với bản cũ:**
+  - `workflows/run.ts` hiện **3.455 dòng**, logic đã tách ra `workflows/run/*.ts` (`dispatch.ts`, `settlement.ts`,
+    `verify.ts`, `manager-controls.ts`, `graph.ts`…). `server/server.ts` **2.629 dòng**, route nằm ở `server/routes/*.ts`.
+    Các con số 10.144/8.422 dòng của bản cũ (và `manager-worker-proposals.md` D1) đã **cũ**.
+  - `onni task verify <id> [--only] [--baseline]` đã có: `dispatch/commands.ts` (mục `verify`), route
+    `POST /runs/:id/verify` (`server/routes/dispatch.ts`), logic `workflows/run/verify.ts`, lệnh kiểm tra từ
+    `discoverVerifyCommands` (`core/verify-commands.ts`).
+  - `onni task conflicts [<worker id>]` đã có: `dispatch/task-cli.ts` (case `conflicts`) → `GET /runs/:id/conflicts`;
+    `dispatch/conflicts.ts` có `parseScope`, `findOverlaps`, `outsideScope`, `capOverlaps`, `formatConflicts`, và **trial
+    merge** (`git merge-tree`, nhãn "trial merges unavailable" khi thiếu). Đây là authority xung đột văn bản.
+- **Tái dùng được:** `resolveTaskDiffBase` (`git-diff-base.ts`) — neo diff duy nhất; `worktreeChangedFilesReadOnly`
+  (`git-worktree.ts`, đã dùng ở `workflows/run/dispatch.ts`, `manager-controls.ts`); `server/git-changes.ts` (`git log`,
+  `diff-tree -M`, `listRepoPaths` trần 20.000 path/8 MiB, `FILE_CONTENT_CAP`); `requireRootManager`
+  (`dispatch/access.ts`); `childSettleReport` (`dispatch/engine.ts`); `protectedByLiveTree` (`runs/retention.ts`);
+  `prompt-budget.ts` (trần block); mẫu store theo project `automations/`, `dispatch/state-file.ts`.
+- **Chưa có:** miner co-change; ánh xạ path→run (`RunRecord.diffStat` chỉ số lượng); danh sách scope có cấu trúc
+  (`NewTaskDraft` không có scope, `survey-web.md` §7); không có thư mục `packages/work/src/project-graph/`.
+- **Rủi ro hiệu năng đã được khảo sát** (`.ai/perf/`): (a) `useRunChanges` poll 4 s (`web/src/api/queries.ts:1167`,
+  `c-cockpit-web.md` §3) — khuyến nghị đổi sang WS marker; (b) `runs.json` ghi đồng bộ cả file mỗi flush
+  (`runs/store.ts` `saveNow`, `a-server-state-git.md` §4; `b-streaming-pipeline.md` §1, ≈117 ms/lần ở N=800);
+  (c) `appendFileSync` mỗi event (`runs/store.ts` `persistEvent`, `a` §5, `b` §3); (d) một trang diff có thể spawn nhiều
+  process git tuần tự (`a` §3). **Hệ quả thiết kế: graph không được thêm việc đồng bộ vào các đường này.**
+- **Hub (đo thô, grep import tương đối, ngoại suy được 1 bậc):** `runs/store` được import bởi ~62 file không-test,
+  `paths` ~27, `git-worktree` ~25, `workflows/run` ~15. Với ~62 dependents trực tiếp, impact cấp file của một thay đổi
+  trong `runs/store.ts` sẽ chạm hàng chục file chỉ ở 1 hop: đúng (nó thật sự quan trọng) nhưng **không phân biệt** —
+  xem §4.4.
+- **TypeScript 7.0.2 (đã đo ở bản trước):** `createProgram` không có; có `typescript/unstable/*`; ở `packages/work`
+  TypeScript chỉ là `devDependency`. Mọi parser runtime phải khai báo trong `packages/work/package.json`.
+- **Web:** có `@xyflow/react ^12.12.0` + `@dagrejs/dagre ^3.1.1`, ba đồ thị (workflow/task/activity); WS client
+  `web/src/api/ws.ts`. Chưa có Sigma/Cytoscape/ELK.
 
-### 2.2 Từ nghiên cứu bên ngoài
+### 2.2 Từ nghiên cứu bên ngoài (cô đọng)
 
-- Không có engine nào đáp ứng đồng thời: TS chính xác, đa ngôn ngữ, provenance, cập nhật tăng dần, UI nhúng,
-  nhẹ. Cần tự dựng schema đồ thị; mượn *thành phần*, không mượn *sản phẩm* (`research-engines.md` Tóm tắt).
-- **Aider repo-map** (PageRank + trần token) là mẫu tốt cho "ngữ cảnh gọn"; **Nx affected graph** là mẫu tốt
-  cho "đồ thị trả lời *sửa gì?*"; **CodeScene** cảnh báo co-change là suy luận, không phải phụ thuộc.
-- **scip-typescript** cần Node 22/24, trong khi `engines` của dự án là Node ≥20 → không dùng làm mặc định.
-- **stack-graphs đã archived (2025-09-09)**, Sourcetrail archived (2021): chỉ tham khảo, không phụ thuộc.
-- **Code Maat ghi GPL-3.0**; GPL cho phép dùng và phân phối thương mại theo điều khoản copyleft, nên không
-  *cấm* nhưng kéo theo nghĩa vụ công bố nguồn: không nhúng dependency GPL vào sản phẩm phân phối trước khi rà
-  soát. Joern cần JDK 21 (nặng). Vì vậy tự cài đặt thuật toán co-change đơn giản (đếm cặp file cùng commit
-  trong cửa sổ có trần) là lựa chọn MVP (review #18).
-- **Render:** React Flow không có trần cứng công bố; ngưỡng đề xuất ~1.500 node đang vẽ (cần benchmark);
-  Cytoscape.js 1.500–10.000; Sigma.js (WebGL) cho >10.000 nếu cần. **Cosmograph/cosmos.gl: giấy phép miễn phí là
-  CC-BY-NC-4.0 (phi thương mại); dùng thương mại cần giấy phép riêng theo trang chính thức** nên không đưa vào
-  kế hoạch. ELK: EPL-2.0 OR GPL-3.0-or-later và bundle ~427 kB gzip (số của elkjs 0.12.0 theo `research-viz.md`)
-  → chỉ khi thật cần compound layout (review #19, #20).
-- **UX:** mở ở mức gộp; "impact of this diff" là cửa vào chính; cạnh inferred không được giả làm phụ thuộc;
-  luôn có chế độ bảng/cây tương đương cho trình đọc màn hình (`research-viz.md` §Đề cương UX, Anti-patterns).
-
-### 2.3 Mâu thuẫn giữa các báo cáo, và cách xử lý
-
-| Điểm | Báo cáo A | Báo cáo B | Xử lý |
-| --- | --- | --- | --- |
-| Engine TS | `research-engines`: dùng TS Compiler API (+ ts-morph) qua adapter phiên bản | `survey-server`: TS 7.0.2 không có `createProgram`; `unstable` API; ts-morph × TS7 **chưa kiểm** | Spike S1 (§3.1) quyết định; **không** khóa TS API trong kế hoạch |
-| `es-module-lexer` | `survey-server`: "hỗ trợ JS/TS module syntax" | Review (#15) đối chiếu README upstream: bản **full** đọc JavaScript và *erasable* TypeScript (gồm `import/export type`) không cần transform; bản minimal chỉ JS. TSX và cú pháp TS không erasable chưa kiểm | Spike S1 thử trên chính `.ts/.tsx` của repo; chỉ thêm bước `esbuild` nếu fixture chứng minh cần |
-| Ngưỡng render | `survey-web`: không có hard cap | `research-viz`: ngưỡng thử ~1.500/10.000 | Dùng làm giả thuyết; Spike S2 đo trên máy Windows + WebView Tauri |
-
----
-
-## 3. Kiến trúc engine
-
-### 3.1 Chọn engine phân tích (Spike S1, bắt buộc trước khi viết engine)
-
-**Mục tiêu spike:** chọn bộ trích import/export cho `.ts/.tsx/.js/.mjs/.json` (và `package.json` exports/workspaces)
-đáp ứng đủ điều kiện sau; kết quả ghi vào `docs/design/project-graph/spikes/engine.md`.
-
-Ứng viên (đều phải thử trên chính repo này):
-
-| Ứng viên | Ghi chú đã biết | Cần kiểm |
+| Chủ đề | Kết luận dùng | Nguồn |
 | --- | --- | --- |
-| `oxc-parser` (hoặc `oxc` resolver) | Parser Rust, MIT, nhanh; có binding npm | Binary native có sẵn cho Windows/Linux/macOS? Có fallback WASM? Kích thước gói? |
-| `es-module-lexer` (bản full; `esbuild` đã là devDependency của `packages/work` nếu cần tiền xử lý) | Nhẹ, MIT; chỉ cho cạnh import/export; bản full đọc được erasable TypeScript | Có đọc được toàn bộ `.ts/.tsx` của repo không cần transform? TSX? Dynamic import? Chi phí nếu phải transform? |
-| TS 7 `typescript/unstable/*` (`Project`) | Có trong 7.0.2, nhãn *unstable*; README cảnh báo API 7.1 khác | Có chạy trong Node 20? Native optional packages trong tarball? Độ ổn định giữa 7.0 và 7.1 |
-| `tree-sitter` (WASM) + grammar TS/TSX | MIT, đa ngôn ngữ, chịu lỗi cú pháp | Kích thước grammar; Windows; tốc độ khởi động; bundling |
-| (đối chứng) tự viết bằng regex | Rẻ nhất | Chỉ để đo độ lệch so với "sự thật" |
+| Graph ↔ resolve | RepoGraph: resolve 27,33→29,67% (+2,34), file localization 68,7→74,3%, nhưng chi phí $0,34→$0,39 và token 42,4k→47,3k: **không phải tiết kiệm token** | `research-agent-evidence.md` §Benchmark |
+| Ablation mạnh nhất | Hybrid structural index ON/OFF cùng harness: acc@5 44,3→84,5%, resolve 41,9→50,4% — nhưng index gồm semantic+lexical+call graph, **n=91, preprint** | cùng, hàng "Code Isn't Memory" |
+| Grep vẫn mạnh | Với exhaustive/exact string, source đầy đủ grep/đọc thắng graph; đối chứng grep khác harness chưa đạt ý nghĩa thống kê (p=.08) | cùng, §Trả lời thiết kế, hàng Codebase-Memory |
+| Hub/budget | Ego 1-hop ~11,6 node, 2-hop ~54,5; **flatten 2-hop → 26% < baseline**; cắt output lặng lẽ làm 7 lượt thành 18, token 267k→708k | cùng, §Hub/§Budget |
+| Impact có sẵn | Nx/Turbo/Rush/Bazel/Pants chọn project affected; `vitest --changed/related`, `jest --findRelatedTests` chọn test | `research-impact-ux.md` §Impact và lựa chọn build/test |
+| Hub làm impact "không phân biệt" | Hiển thị theo lớp: changed → dependents → package/target → tests, kèm số lượng/confidence/lý do | cùng, §Trả lời câu hỏi 1 |
+| Va chạm | Worktree chỉ cô lập; thứ giảm va chạm là **một chủ mỗi vùng/file + hợp đồng trước + trial merge sớm**; graph/co-change chỉ xếp hạng cảnh báo | cùng, §Trả lời câu hỏi 2 |
+| Co-change | Độc lập ngôn ngữ, nhiều nhiễu (commit lớn, test churn); phải lọc, min support, time decay, hiển thị commit mẫu | cùng, §Trả lời câu hỏi 4 |
+| UX | Graph sống khi gắn action (Nx affected, Dependabot); CodeSee/Sourcetrail đóng vì economics/maintenance, **không** chứng minh map vô ích | cùng, §Trả lời câu hỏi 3 |
+| Engine | Không engine nào đủ mọi thứ; tree-sitter cho breadth, TS compiler/SCIP cho depth và tốn cấu hình | `research-engines.md`; `research-agent-evidence.md` §Ngôn ngữ |
+| Giấy phép | Code Maat GPL-3.0, Cosmograph CC-BY-NC, ELK EPL/GPL: loại khỏi lựa chọn mặc định | `PLAN-review.md` #18–#20 |
 
-**Điều kiện chấp nhận (mỗi ứng viên được chấm):**
+Hạn chế phải nói thẳng: **không có nghiên cứu A/B hiện đại nào đo "chia phạm vi bằng graph" cho agent**
+(`research-impact-ux.md` §Trả lời câu hỏi 2); bằng chứng agent-graph chủ yếu là Python/SWE-bench. Vì vậy các cổng §9
+là điều kiện cần, không phải hình thức.
 
-1. Chạy trên Windows 11 + Node 20 và 22; trong tarball của `@onni/work` (`npm pack` + cài thử) mà không cần
-   toolchain biên dịch.
-2. Khớp ≥ **99%** với *bộ vàng* (xem S3) về cạnh import tương đối, `export … from`, `import type`, `import()`
-   với chuỗi hằng, `package.json` workspaces, ánh xạ đuôi `.js→.ts` như repo đang dùng.
-3. Tốc độ: dựng nguội toàn repo (~1.634 file code) **mục tiêu ≤ 10 giây**; tăng dần 1 file **mục tiêu ≤ 300 ms**
-   (giả thuyết; spike ghi số đo thật).
-4. Bộ nhớ đỉnh **mục tiêu ≤ 200 MB**; không giữ AST của cả repo.
-5. Giấy phép thuận lợi cho phân phối thương mại (MIT/Apache-2.0/ISC). GPL/EPL/CC-NC không bị cấm tuyệt đối
-   nhưng cần rà soát nghĩa vụ riêng; mặc định loại khỏi lựa chọn (review #18–#20). Metadata npm ngày 2026-11-06:
-   `oxc-parser` 0.157.0 (MIT), `es-module-lexer` 3.0.4 (MIT), `cytoscape` 3.34.4 (MIT), `sigma` 4.0.4 (MIT),
-   `elkjs` 0.12.1 (EPL-2.0 OR GPL-3.0-or-later), `@cosmograph/react` 2.5.1 (CC-BY-NC-4.0).
-6. Dependency khai báo trong `packages/work/package.json` (quy tắc workspace), không đụng `contract`/`api-client`.
-7. Nâng cấp phiên bản không phá: có kiểm tra phiên bản trong test.
+---
 
-**Kết quả mong đợi:** một `GraphExtractor` (interface) cho cấp file; adapter symbol đến sau (Giai đoạn 5), tuỳ
-kết quả spike.
+## 3. Ba hành động neo
 
-### 3.2 Mô hình dữ liệu
+### 3.1 Impact của diff/run (hành động số 1)
 
-**Node**
+Đầu vào: một tập file đổi — từ `worktreeChangedFilesReadOnly` (worktree đang chạy) hoặc diff có neo
+`resolveTaskDiffBase` (run đã settle) hoặc danh sách `--files`. Đầu ra là **các lớp, mỗi lớp có đếm và mở rộng theo
+yêu cầu**, không phải một canvas:
 
-| Kind | ID | Nguồn | Ghi chú |
+| Lớp | Nội dung | Nguồn/độ tin cậy |
+| --- | --- | --- |
+| L0 Đã đổi | Các file đổi (+ rename qua `-M`) | `extracted` (git) |
+| L1 Dependents trực tiếp | File import L0 (1 hop), **nhóm theo thư mục/package**; hub được thu gọn (§4.4) | `extracted` (import) |
+| L2 Package/target | Package workspace bị kéo theo; nếu repo có Nx/Turbo/Rush/Bazel/Pants: kết quả của chính tool đó | `extracted`/`declared` (manifest, tool) |
+| L3 Ứng viên test | Giao của L1/L2 với test + test runner-native (§3.2) | gồm `confidence` + lý do |
+| LX Gợi ý mềm | File thường sửa cùng (co-change) mà chưa có trong L0 | `inferred`, tách riêng, có commit mẫu |
+
+Mỗi dòng mang: `provenance`, `confidence` (chỉ bắt buộc với `inferred`), lý do một dòng ("import `a.ts`"), và `via`
+(đường đi ngắn nhất tới L0). Kết quả có cờ `complete`/`truncated` và, khi graph `stale` hoặc thiếu parser cho ngôn
+ngữ của file, `coverage` nói rõ "không đánh giá được X file" — **không im lặng bỏ sót**.
+
+### 3.2 Ứng viên test cho `verify` (hành động số 2)
+
+Thang chọn, từ rẻ/chính xác nhất xuống, dừng ở nấc đầu tiên khả dụng và **luôn hợp nhất với nấc rộng hơn khi không
+chắc** (`research-impact-ux.md` §Trả lời câu hỏi 1):
+
+1. Tool của repo nếu có (`nx affected -t test`, `turbo run test --affected`, `rush`, `bazel query rdeps`, `pants
+   --changed-since`): đọc output, không tự cài, có timeout/trần output. **Opt-in** qua `ONNI_PROJECT_GRAPH_TOOLS=1`
+   (chạy subprocess ngoài; bật nhầm tốn CPU).
+2. Runner-native: `vitest related <files>` / `vitest run --changed <ref>`, `jest --findRelatedTests`. Repo này dùng Vitest
+   (`vitest ^4.1.10`, script `test`), nên nấc này là cái đầu tiên được thử trong Giai đoạn 0.
+3. Tự suy từ graph: `tested-by` (test import file) + test trong cùng package.
+4. Lưới an toàn: `discoverVerifyCommands` (`core/verify-commands.ts`) — toàn bộ lệnh kiểm tra như hôm nay.
+
+Đầu ra là **gợi ý đi kèm lý do**, không đổi hành vi `onni task verify` mặc định cho đến khi cổng G-B đạt
+(§9.2). Nếu replay phát hiện một failure thật bị bỏ sót, tính năng này **vĩnh viễn ở chế độ gợi ý** (chạy subset
+trước, toàn bộ sau), theo `research-impact-ux.md` §Kế hoạch kiểm chứng mục 5.
+
+### 3.3 Sở hữu phạm vi và cảnh báo trùng trước khi giao (hành động số 3)
+
+Chi tiết ở §7. Tóm lược: graph tính *vùng ảnh hưởng dự kiến* cho scope của từng phần việc, so với các worker đang
+chạy; trả cảnh báo xếp hạng (trùng chính xác = sự thật; trùng qua hub/co-change = gợi ý). Xung đột văn bản vẫn do
+`onni task conflicts` quyết định.
+
+---
+
+## 4. Kiến trúc engine
+
+### 4.1 Chiến lược ngôn ngữ
+
+- **Mặc định: tree-sitter (WASM)** cho file/module/import/định nghĩa (outline) đa ngôn ngữ — để repo Python/Go/Java của
+  người dùng cũng có giá trị, không chỉ TS (`research-agent-evidence.md` bài học 6; đánh giá điểm 4). Giới hạn đã biết:
+  không phân giải type/dispatch động/macro (C macro-heavy 0,58 vs 1,00 trong paper Codebase-Memory); cạnh không giải
+  được là `unresolved`, không bịa đích.
+- **Adapter TS semantic (tùy chọn):** `oxc-parser`/`es-module-lexer`/TS 7 `unstable` — chỉ thêm nếu spike S1 chứng minh
+  nó nâng độ chính xác import `.js→.ts`, `export … from`, workspace/alias đáng kể so với tree-sitter. Nếu không, bỏ.
+- **Ngoài graph tĩnh:** `package.json` workspaces/`exports` (npm), `go.mod`, `pyproject` ở mức package khi dễ; không
+  cố đạt đủ mọi ngôn ngữ.
+
+### 4.2 Spike S1 — chọn engine bằng đo, không bằng tài liệu
+
+Thang chấm giữ từ bản trước (7 điều kiện), **bỏ các ngưỡng "10 s/100 ms" làm cổng**; chúng chỉ còn là số báo cáo.
+
+| Điều kiện | Ngưỡng/ghi chú |
+| --- | --- |
+| Chạy Windows 11 + Node 20 và 22, trong tarball `@onni/work` (`npm pack` + cài thử), không cần toolchain biên dịch | bắt buộc |
+| Độ khớp với bộ vàng S3 trên cạnh import tương đối, `export … from`, `import type`, `import()` hằng, workspace | ≥ 99% cho adapter TS; tree-sitter đa ngôn ngữ báo riêng từng ngôn ngữ |
+| Thời gian dựng nguội ~1.600 file code; tăng dần 1 file; RAM đỉnh; không giữ AST cả repo | báo số đo, mục tiêu tham khảo |
+| **Event loop**: build chia lô, `await` nhường mỗi lô; đo độ trễ event loop khi build chạy cạnh một run đang stream | bắt buộc (§11) |
+| Giấy phép MIT/Apache/ISC; dependency khai trong `packages/work/package.json` | bắt buộc |
+
+Ứng viên: `tree-sitter` (WASM) + grammar; `oxc-parser`; `es-module-lexer` (+`esbuild` đã là devDependency của
+`packages/work`); TS 7 `unstable`; regex (đối chứng). Kết quả ghi `docs/design/project-graph/spikes/engine.md`.
+
+### 4.3 Mô hình dữ liệu
+
+**Node:** `package` (`pkg:<name>`), `dir`, `file` (`file:<posix path>`, thuộc tính ngôn ngữ, kích thước, hash nội
+dung, `roles[]` = `test|doc|…`), `ext` (phụ thuộc bên thứ ba gộp theo gói), `export` (`sym:<file>#<name>`, **chỉ cho
+file hub**, §4.4). *Run* không còn là node của đồ thị nền; quan hệ run→file là bảng riêng (§4.6). Test/doc là *role*
+trên node `file`, không phải node riêng (giữ từ review #40).
+
+**Cạnh:**
+
+| Kind | Hướng | Nguồn | Hiển thị mặc định |
 | --- | --- | --- | --- |
-| `package` | `pkg:<name>` | `package.json` của root `workspaces` | 4 npm workspace (`contract`, `api-client`, `work`, `web`); `packages/desktop` nằm ngoài workspace, chỉ thêm như package riêng nếu cần (review #1) |
-| `dir` | `dir:<repo-rel path>` | cây thư mục | Dùng để gộp khi thu nhỏ |
-| `file` | `file:<repo-rel posix path>` | `git ls-files` + untracked không ignore | Thuộc tính: ngôn ngữ, kích thước, hash nội dung, `roles[]` (`test`, `doc`, `schema`, `route`, `client`, `hook`), `isGenerated` |
-| `ext` | `ext:<pkg>` | import không tương đối **chưa resolve về workspace** | Chỉ phụ thuộc bên thứ ba, gộp theo tên gói. Import nội bộ `@onni/*` phải resolve về package/file nội bộ qua manifest, `exports` và alias (review #41) |
-| `run` | `run:<id>` | run store | Lớp sống, chỉ khi bật (§6.3) |
-| `symbol` | `sym:<file>#<name>` | adapter symbol | Giai đoạn 5, có điều kiện |
+| `imports`, `reexports` | file → file/ext | `extracted` | bật |
+| `tested-by` | file → test | `declared` (tên/vị trí) hoặc `extracted` (test import file) | bật |
+| `package-dep` | package → package | `extracted` (manifest) | bật |
+| `co-change` | file ↔ file | `inferred` (git; `count`, `support`, `confidence`, `window`, `lastCommit`) | **bật trong lớp LX, tách khỏi dependent** |
+| `exports-used` | file → export | `extracted` (chỉ hub) | theo yêu cầu |
+| `contract-flow` | schema → route → client → hook | `declared`, **plugin quy ước tùy chọn của repo Onni** (§4.8) | tắt ngoài repo khớp |
 
-**Test, tài liệu, schema/route/client/hook là *role* trên cùng một node `file`**, không phải node riêng có ID trùng:
-`test` theo quy ước `*.test.*`, `test/`, `e2e/` (cạnh `tested-by`); `doc` theo `*.md`, `docs/`, `.ai/specs` (có trạng thái
-spec, xem §10); `schema/route/client/hook` do bộ nhận diện `contract-flow` gán (§3.4). Bộ lọc UI và truy vấn lọc
-theo `roles`. Nếu sau này cần node riêng cho một role, cấp ID riêng và khai báo cạnh ánh xạ file↔role trước (review #40).
+Thuộc tính chung: `kind`, `from`, `to`, `provenance`, `confidence`, `extractor`+`extractorVersion`, `evidence`
+(path:dòng), `commit`. `unresolved` cho dynamic import không giải được.
 
-**Cạnh**
+ID là đường dẫn tương đối POSIX giữ nguyên hoa/thường; bảng `aliases` từ rename (`-M`) để link cũ vẫn trỏ đúng; không
+dùng đường dẫn tuyệt đối trong ID/cache key. `GRAPH_SCHEMA_VERSION` khác → bỏ cache, dựng lại.
 
-| Kind | Hướng | Nguồn | Mặc định hiển thị |
-| --- | --- | --- | --- |
-| `imports` | file → file/ext | `extracted` | bật |
-| `reexports` | file → file | `extracted` | bật |
-| `tested-by` | file → test | `declared` (quy ước tên/vị trí) hoặc `extracted` (test import file) | bật |
-| `documents` | doc → file/dir | `extracted` (đường dẫn nhắc trong markdown, link) / `inferred` (tên symbol) | bật |
-| `contract-flow` | schema → route → client → hook | `declared` bởi bộ nhận diện quy ước dự án (§3.4) | bật |
-| `co-change` | file ↔ file | `inferred` (git, có `count`, `window`, `lastCommit`) | tắt mặc định |
-| `run-touched` | run → file | `extracted` từ ảnh chụp thay đổi lúc settle | tắt mặc định |
-| `owns` / `declared-by` | node → node | `declared` (chú thích người viết) | bật, Giai đoạn 5 |
+### 4.4 Xử lý file hub (có trong MVP)
 
-**Thuộc tính chung của cạnh:** `kind`, `from`, `to`, `provenance`, `confidence` (0–1, chỉ bắt buộc với
-`inferred`), `extractor` + `extractorVersion`, `evidence` (path:dòng nếu có), `observedAt`/`commit`. Cạnh dynamic
-import không giải được là `unresolved` (không bịa đích).
+Hub = file có số dependents vào lớn (ví dụ `runs/store.ts` ~62 file, đo thô ở §2.1). Quy tắc:
 
-**ID ổn định qua đổi tên.** ID là đường dẫn tương đối chuẩn hoá POSIX, chữ thường *không* ép (giữ nguyên chữ
-hoa); khi git `-M` phát hiện rename, lưu bảng `aliases` (cũ → mới) trong snapshot để link sâu và dữ liệu run cũ vẫn
-trỏ đúng. Không dùng đường dẫn tuyệt đối trong bất kỳ ID hay cache key nào.
+1. **Ngưỡng hub tự thích nghi** (phân vị cao của in-degree, ví dụ ≥ p95 và ≥ N tuyệt đối; hằng số, spike S5 chỉnh).
+   Dưới ngưỡng: cạnh file→file như thường.
+2. **Giảm nhiễu khi là *hạt giống* hub:** thay vì "62 dependents", trả `62 file ở 14 thư mục` nhóm theo thư mục/package,
+   mỗi nhóm có đếm và 3 file đại diện; mở rộng theo yêu cầu (`--expand <nhóm>`).
+3. **Cạnh cấp export cho hub:** với file hub, ghi thêm `exports-used` (file X dùng export Y của hub) khi parser cho phép.
+   `impact` trên *export đã đổi* (nếu diff cho biết hàm nào đổi) chỉ kéo file dùng export đó — đây là cách **thoát khỏi
+   "half the repo"** mà không cần call graph. Khi không biết export nào đổi: trả nhóm + nhãn `hub: coarse`.
+4. **Personalized ranking** (Aider/RepoGraph): xếp hạng theo khoảng cách tới hạt giống + PageRank cá nhân hóa, không
+   dùng degree toàn cục; giới hạn 1–2 hop, dedupe (`research-agent-evidence.md` §Hub).
+5. Barrel `index.ts` re-export: tính `reexports` nhưng thu gọn đường đi qua barrel khi tính impact (nhãn `via barrel`).
 
-**Phiên bản schema:** `GRAPH_SCHEMA_VERSION` (số nguyên); khác phiên bản → bỏ cache cũ, dựng lại (không cố đọc).
+Đo hiệu quả bằng số **kích thước tập kết quả trung vị/p90 của impact** theo từng cách (không giảm, nhóm, export-level)
+trên replay R1; nếu export-level không thu hẹp đáng kể → ghi nhận, không chuyển sang call graph trừ khi G-A đòi.
 
-### 3.3 Pipeline, cache và cập nhật tăng dần
+### 4.5 Co-change (nâng lên MVP, làm soft edge)
+
+Language-agnostic, rẻ (chỉ `git log`). Tăng dần đến `lastIndexedCommit`; **tự cài thuật toán đếm cặp, không nhúng Code
+Maat (GPL)**. Bộ lọc nhiễu bắt buộc (`research-impact-ux.md` §Trả lời câu hỏi 4):
+
+- bỏ merge commit; bỏ commit bot/dependency bump/format/rename hàng loạt/generated/vendor/lockfile;
+- bỏ commit vượt ngưỡng số file (phân vị mạnh, hằng số);
+- yêu cầu `support` (số lần) ≥ N và `confidence` = P(B|A) ≥ ngưỡng; giảm trọng số theo tuổi commit (time decay);
+- tách code↔test và code↔config (test churn gây nhiễu theo study 10.1145/3607183);
+- luôn kèm commit mẫu để giải thích; cho loại trừ path.
+
+Đối xử: là *soft edge* hiển thị ở lớp LX, **không** đổi tên thành dependency và **không** tham gia chọn test tự động.
+**Không chặn dispatch cho đến khi replay (R1, cổng G-C) cho precision chấp nhận được** (§9.3). Công tắc nội bộ
+`ONNI_PROJECT_GRAPH_COCHANGE` mặc định theo quyết định D5; dưới G-C nó chỉ in cảnh báo, không bao giờ làm `dispatch()`
+trả 409.
+
+### 4.6 Pipeline, cache, freshness
 
 ```
-liệt kê file (git ls-files, ignore, denylist)
-      │
-      ▼
-băm nội dung ──► (cache theo hash: kết quả trích từng file) ──► ghép đồ thị
-                                                                   │
-                                          hậu xử lý: tested-by, documents, contract-flow, gộp dir/pkg
-                                                                   │
-                                           ghi snapshot nguyên tử + manifest
+liệt kê file (git ls-files, ignore, denylist) ──► băm nội dung ──► (cache theo hash: kết quả trích từng file)
+      ──► ghép đồ thị ──► hậu xử lý (tested-by, package-dep, hub, co-change) ──► ghi snapshot nguyên tử + manifest
 ```
 
-- **Vị trí:** `packages/work/src/project-graph/` (mới), tách khỏi HTTP/CLI; `server/project-graph.ts` chỉ nối dây
-  để không phình `server.ts`.
-- **Cache:** `.ai/onni/project-graph/` gồm `manifest.json` (schema, extractor+version, tsconfig/workspace hash,
-  `head`, số node/cạnh), `files/<hash>.json` (kết quả trích bất biến theo nội dung), `snapshot-<head>.ndjson`
-  (hoặc một shard/`nodes.ndjson`+`edges.ndjson`). Ghi qua `writeAtomic`; con trỏ manifest đổi sau cùng dưới khóa
-  liên tiến trình (mẫu `proper-lockfile` của Automations) vì `withPathLock` chỉ khóa trong một process.
-- **Tăng dần:** so hash nội dung (không dùng mtime một mình); file đổi → trích lại, thay node/cạnh sinh ra từ file
-  đó, **tính lại cạnh vào** (inbound) bị ảnh hưởng; rename/xóa dọn cạnh cũ; snapshot chỉ công bố khi lô thành
-  công; lỗi → giữ snapshot cũ + đánh dấu `stale`.
-- **Khi nào chạy:** theo yêu cầu (UI mở màn Graph, CLI, agent hỏi) và lúc kết thúc run; không quét nền vô hạn
-  ở MVP. Mọi lệnh có `AbortSignal`, trần thời gian, trần byte/file, trần node/cạnh, nhường event loop theo lô.
-- **Luôn có đường dựng lại toàn bộ.**
+- Vị trí: `packages/work/src/project-graph/` (mới); `server/project-graph.ts`/`server/routes/project-graph.ts` chỉ nối dây.
+- Cache: `.ai/onni/project-graph/` gồm `manifest.json` (schema, extractor+version, workspace hash, `head`, đếm),
+  `files/<hash>.json` (kết quả trích bất biến), snapshot NDJSON. Ghi qua `writeAtomic`; con trỏ manifest đổi sau cùng
+  dưới khóa liên tiến trình (mẫu `proper-lockfile` của Automations).
+- **Freshness (độ đúng, không phải tối ưu):** trước mỗi truy vấn, so `head` + hash file *liên quan tới câu hỏi* (lazy
+  validation). Khác → cập nhật tăng dần **nguyên tử** (thay node/cạnh sinh ra từ file đó, tính lại cạnh vào, dọn rename/
+  xóa) hoặc, nếu quá trần thời gian, trả kết quả cũ đánh dấu `stale` **và** chỉ dẫn "dùng grep/đọc source". Không có
+  watcher ở MVP (D4). Mọi kết quả mang `snapshot.head`/`builtAt`/`stale`.
+- **Event loop:** build chia lô (theo số file/thời gian), `await` nhường sau mỗi lô; mọi lệnh có `AbortSignal`, trần
+  thời gian, trần byte/file, trần node/cạnh, đồng thời tối đa M tác vụ. **Không** build trong handler đọc.
+- Dựng lại toàn bộ luôn khả dụng; cache hỏng → bỏ, dựng lại (không crash).
 
-### 3.4 Nhận diện chuỗi contract (đặc thù dự án này)
+Ghi **run→file** (cho "run đụng file nào", cần cho G-B và cảnh báo trùng): lấy từ ảnh chụp thay đổi lúc settle đã có ở
+`childSettleReport` (`dispatch/engine.ts`) — **đọc ở bước settle từ dữ liệu đã tính, ghi bất đồng bộ qua hàng đợi
+riêng**, không thêm `flush()`/`appendFileSync` vào hot path `workflows/run/*` (`.ai/perf/b-streaming-pipeline.md` §1, §3).
+Lọc path nhạy cảm, trần số path, theo retention của run store.
 
-`contract-flow` là điểm khác biệt, và là thứ phân tích import thuần không tạo ra trọn vẹn. Bộ nhận diện theo
-quy ước (mỗi quy ước một hàm có test, `provenance: declared`):
+### 4.7 An toàn, quyền riêng tư (giữ từ bản trước, cập nhật)
 
-1. `packages/contract/src/<family>.ts` ← route family trong `server/server.ts` và `server/*.ts` (file import schema
-   hoặc validator của family đó).
-2. `AppType` (`server/app-type.ts`) → `packages/api-client` → `packages/web/src/api/client.ts` / `queries.ts`.
-3. Hook/route cockpit import `queries.ts` hoặc `client.ts` → `packages/web/src/routes/**`.
-4. Test parity (`contract-parity*.test.ts`, `route-parity.test.ts`) → `tested-by` cho family.
+- **Denylist bí mật:** `.env`, `.env.*` (trừ `.env.example`), `*.pem`, `*.key`, `id_rsa*`, `*.p12`, toàn bộ `.npmrc` theo
+  đường dẫn, `.git/`, `node_modules`, `dist/`, `web/dist`, file sinh ra. File thuộc denylist **không đọc, không băm,
+  không cache, tên/đường dẫn không vào đồ thị**; tôn trọng `.gitignore` *và* denylist (file đã track vẫn bị chặn).
+  Đồ thị lưu tên/đường dẫn/hash, **không lưu mã**.
+- **Giới hạn:** trần byte mỗi file 512.000 byte (cùng cỡ `FILE_CONTENT_CAP` trong `server/git-changes.ts`), trần tổng,
+  trần node/cạnh, trần thời gian; symlink/junction không ra ngoài gốc repo; không giữ cả AST.
+- **Windows:** chuẩn hóa bằng `node:path` rồi tuần tự hóa POSIX; xử lý hoa/thường, CRLF, `EPERM` khi đổi tên
+  (`fs-rename.ts`); không yêu cầu symlink.
+- **WS:** `loopbackReadable` giữ `false` (path/symbol không công khai cho mọi origin cục bộ).
+- **Subprocess ngoài (Nx/Turbo/runner):** môi trường tối thiểu (không truyền `process.env` trần), timeout kill thật, trần
+  output, `redactRunText` — cùng quy tắc với `onni task verify`.
+- **Số đo giá trị chỉ lưu cục bộ** (xem §9.4); không có gửi đi.
 
-Ở cấp file, đây phần lớn là *tập con có nhãn* của đồ thị import (lọc theo thư mục + quy ước); cấp symbol
-(schema nào ↔ route nào) chờ Giai đoạn 5. Nếu quy ước không khớp (repo khác), bộ nhận diện trả rỗng, không đoán.
+### 4.8 `contract-flow` — plugin tùy chọn, không phải lõi
 
-### 3.5 Tín hiệu từ git
-
-- **Co-change** (Giai đoạn 2): đọc `git log --name-status -M --no-merges` có giới hạn commit (mặc định N gần
-  nhất, cấu hình hằng số), loại commit lớn (refactor/format: vượt ngưỡng số file/commit), đếm cặp file cùng
-  commit; lưu `count`, `window`, `lastCommit`; luôn `inferred`. Tính tăng dần đến `lastIndexedCommit`, không quét
-  toàn lịch sử mỗi yêu cầu. Cài đặt thuật toán đơn giản, **không** nhúng Code Maat (GPL).
-- **Neo diff:** dùng `resolveTaskDiffBase` (`git-diff-base.ts`) — không tự tính lại.
-- **Git chỉ đọc:** `worktreeChangedFilesReadOnly` và `gitReadOnly` (có timeout/`AbortSignal`); **không** dùng
-  `worktreeChangedFiles` (nó chạy `git add -N`, ghi index).
-
-### 3.6 Overlay theo worktree (mỗi task có worktree riêng)
-
-Đồ thị nền (base) bất biến theo commit. Một task xem **overlay** ngắn hạn: các file đổi (từ helper chỉ-đọc) thay
-thế/bổ sung node-cạnh tương ứng; overlay bị hủy khi worktree biến mất hoặc HEAD đổi; không sửa đồ thị nền để
-phản ánh file bẩn. Chuẩn hoá đường dẫn giữa gốc repo và đường dẫn worktree là bắt buộc (§7.5 `survey-web.md`).
-
-### 3.7 Cạnh `run-touched`
-
-Lấy từ ảnh chụp thay đổi lúc worker settle (đã có `changedFiles`/`filesOmitted` trong báo cáo, `run.ts`
-`childSettleReport`/`recordTurnEnd`), **không** suy từ transcript thô. Lưu `runId`, path tương đối, HEAD/base,
-thời điểm; lọc path nhạy cảm; trần số path; theo retention của run store. `run → symbol` chỉ là suy luận từ diff.
-
-### 3.8 An toàn, quyền riêng tư, hiệu năng
-
-- **Denylist bí mật:** `.env`, `.env.*` (trừ `.env.example`), khóa/chứng chỉ (`*.pem`, `*.key`, `id_rsa*`,
-  `*.p12`), **toàn bộ `.npmrc` theo đường dẫn** (không đọc nội dung để dò token — không thể biết có token mà không
-  đọc), `.git/`, `node_modules`, `dist/`, `web/dist`, sản phẩm sinh ra. File thuộc denylist **không được đọc, băm,
-  cache, và tên/đường dẫn của nó không đưa vào đồ thị**; tôn trọng `.gitignore` *và* denylist (file đã track vẫn bị
-  denylist chặn). Ngoại lệ chỉ qua quyết định riêng (review #45). Đồ thị lưu tên/đường dẫn/hash của file được
-  phép, không lưu mã.
-- **Giới hạn:** trần byte mỗi file (mặc định 512.000 byte, tương ứng `FILE_CONTENT_CAP`; không phải 512 KiB), trần tổng, trần node/cạnh, trần thời
-  gian, đồng thời tối đa M tác vụ; không giữ cả AST repo trong RAM; symlink/junction không đi ra ngoài gốc repo.
-- **Windows:** chuẩn hoá bằng `node:path` rồi tuần tự hoá POSIX; không nối đường dẫn POSIX thủ công; xử lý khác
-  biệt hoa/thường, CRLF, `EPERM` khi đổi tên (`fs-rename.ts`); không yêu cầu symlink.
-- **WS:** `loopbackReadable` giữ mặc định `false` (nội dung path/symbol không công khai cho mọi origin cục bộ).
+Chuỗi schema→route→client→hook (`packages/contract/src/<family>.ts` ← `server/routes/*.ts` ← `AppType` →
+`packages/api-client` → `packages/web/src/api/*`) là đặc thù Onni. Hạ xuống **bộ nhận diện quy ước bật khi repo khớp**,
+mỗi quy ước một hàm có test, `provenance: declared`, trả rỗng ở repo khác (không đoán). Không chặn MVP; giá trị chính của
+nó ở dogfooding (R1/G-B trên repo này), không phải lý do bán chức năng.
 
 ---
 
-## 4. API, WebSocket, CLI, công tắc
+## 5. API, WebSocket, CLI, công tắc
 
-### 4.1 Contract và route
+### 5.1 Contract và route (CLI trước, HTTP theo sau)
 
-`packages/contract/src/project-graph.ts` (Node-free; export qua `index.ts`):
+`packages/contract/src/project-graph.ts` (Node-free, export qua `index.ts`). Route family `projectGraphRoutes` chuỗi vào
+`v1`, validator làm middleware:
 
-| Route (family `projectGraphRoutes`, chuỗi vào `v1`) | Mô tả | Quyền |
+| Route | Mô tả | Giai đoạn |
 | --- | --- | --- |
-| `GET /graph` | Trạng thái (`status`: `ready/building/stale/unavailable`, `head`, đếm node/cạnh, thời điểm, lý do) | project |
-| `GET /graph/overview` | Cấp gộp (package/dir) với cạnh tổng hợp có `count` | project |
-| `GET /graph/neighbors` | `node`, `depth`, `kinds`, `minProvenance`, `limit` | project |
-| `GET /graph/impact` | `files[]` hoặc `runId`/`diff`; kết quả xếp hạng + lý do cạnh | project |
-| `GET /graph/path` | `from`, `to`, `kinds` | project |
-| `GET /graph/context` | `scope[]`, `maxTokens` → gói gọn (dùng cho agent) | project |
-| `GET /graph/search` | tìm node theo tên/đường dẫn | project |
-| `POST /graph/rebuild` | dựng lại (có trần tần suất) | project |
+| `GET /graph` | `status` (`ready/building/stale/unavailable`), `head`, đếm, thời điểm, lý do | P1 |
+| `GET /graph/impact` | `files[]` hoặc `runId`/`diff` → các lớp §3.1, có `complete/truncated/coverage` | P1 |
+| `GET /graph/tests` | ứng viên test (§3.2) | P1 |
+| `GET /graph/context` | `scope[]`, `maxTokens` → gói gọn cho agent | P1 |
+| `GET /graph/neighbors`, `/graph/path`, `/graph/search` | tra cứu cục bộ | P1 |
+| `GET /graph/overlap` | cảnh báo trùng vùng giữa worker/phần việc (§7) | P2 |
+| `GET /graph/overview` | cấp gộp (package/dir) — **điểm vào bản đồ, P3** | P3 |
+| `POST /graph/rebuild` | dựng lại (có trần tần suất) | P1 |
 
-Mọi phản hồi có trần (số node/cạnh/byte) và cờ `truncated`. Đi qua validator làm middleware; parity hai chiều
-(`contract-parity.projectGraph.test.ts`), `route-parity`, `versioned-surface`, `typed-bodies`. Đồ thị đọc theo
-snapshot hiện tại, không bao giờ tạo trong handler đọc nếu không có (trả `building`).
+Mọi phản hồi có trần số node/cạnh/byte, cờ `truncated`, `snapshot`. Parity hai chiều (`contract-parity.projectGraph.test.ts`),
+`route-parity`, `versioned-surface`, `typed-bodies`. Handler đọc không tạo đồ thị (trả `building`).
 
-### 4.2 WebSocket
+### 5.2 WebSocket — **một** topic
 
-Topic `project-graph` theo project: `snapshot` = `{status, revision}`; publisher bắt đầu ở 0→1 subscriber, lắng
-nghe notifier của coordinator (không tự re-index định kỳ), dừng ở 1→0. Payload chỉ phiên bản/vô hiệu hoá + id
-node bị tác động (nhỏ); dữ liệu đồ thị lấy qua HTTP. Topic thứ hai, `project-graph-activity` (Giai đoạn 2), phát
-`{runId, paths[], state}` cho "worker đang sửa node này", chỉ id/path/trạng thái, không nội dung file.
+Topic `project-graph` theo project: `{status, revision}` + id node bị tác động (nhỏ); dữ liệu lấy qua HTTP. Publisher
+khởi động ở 0→1 subscriber, dừng ở 1→0, **chỉ phát khi đổi** (`AGENTS.md`, live signals). Topic `project-graph-activity`
+của bản cũ **bỏ**: nhu cầu "worker đang sửa node nào" dùng cùng cơ chế marker WS "git changed" mà khảo sát perf đã
+khuyến nghị làm cho Changes view (`.ai/perf/c-cockpit-web.md` §3) — dùng chung, không tạo kênh riêng.
 
-### 4.3 CLI (`node "$ONNI_BIN" graph …`)
+### 5.3 CLI (`node "$ONNI_BIN" graph …`)
 
 ```
 onni graph status
 onni graph build [--full]
-onni graph neighbors <node> [--depth 2] [--kind imports,tested-by] [--min-provenance extracted]
-onni graph impact <file…> | --run <id> [--limit N]
-onni graph path <from> <to>
+onni graph impact <file…> | --run <id> | --diff [--expand <group>] [--max-tokens N] [--format text|json]
+onni graph tests  <file…> | --run <id>            ứng viên test + lý do + confidence
 onni graph context --scope <path…> [--max-tokens 3000] [--format text|json]
-onni graph search <text>
+onni graph overlap <scope…> [--against <worker id>]  (P2)
+onni graph neighbors <node> [--depth 2] [--kind …] ; onni graph path <from> <to> ; onni graph search <text>
 ```
 
-Bộ phân tích `project-graph/graph-cli.ts`, nhánh trong `index.ts`; đầu ra `json` ổn định cho máy, `text` gọn cho
-prompt. Mọi lệnh chỉ-đọc ngoại trừ `build`. Agent không nhận truy vấn tự do (không Cypher) — chỉ các động từ trên.
+Verb cố định (không Cypher). `json` ổn định cho máy, `text` gọn cho prompt; text có outline trước, signature + line range
+cho file lớn. Mọi lệnh chỉ-đọc ngoại trừ `build`. Cờ `--format json` mang `complete`, `truncated`, `stale`, `coverage`.
 
-### 4.4 Công tắc và cờ
+### 5.4 Công tắc
 
-- `ONNI_PROJECT_GRAPH=0` tắt hoàn toàn (nav ẩn, route 409, coordinator không khởi động) — *đề xuất mặc định BẬT*
-  vì phân tích tĩnh cục bộ rẻ và chỉ-đọc. **Đây là ngoại lệ default-on, chỉ có hiệu lực khi chủ dự án duyệt rõ**
-  theo `AGENTS.md` (§13 D1); **chưa được duyệt thì mặc định TẮT** (review #43). Thêm vào `.env.example` và
+- `ONNI_PROJECT_GRAPH=0` tắt hoàn toàn (nav ẩn, route 409, không khởi động coordinator). **Mặc định BẬT chỉ khi chủ dự
+  án duyệt ngoại lệ default-on (D1); chưa duyệt → mặc định TẮT** (review #43). Thêm vào `.env.example` và
   `docs/reference.md` cùng commit.
-- Tóm tắt AI (Giai đoạn 5): **tắt mặc định ở engine**, chỉ xử lý cục bộ (không upload dữ liệu Project Graph ra dịch
-  vụ ngoài). Bật qua biến `ONNI_PROJECT_GRAPH_AI_SUMMARY=1`; unset hoặc `0` là tắt. Biến phải được ghi trong
-  `.env.example` và `docs/reference.md`; công tắc theo project trong Settings **không thể vượt qua** biến này.
-  Nội dung sinh ra gắn nhãn "AI viết", cache theo hash nội dung (review #44).
-- Capability: thêm `projectGraph` vào `server/capabilities.ts` (`resolveCapabilities`), mẫu như `automations`.
+- `ONNI_PROJECT_GRAPH_TOOLS=1`: cho phép gọi tool/runner ngoài ở §3.2 (mặc định tắt).
+- `ONNI_PROJECT_GRAPH_COCHANGE=0|1`: quyết định D5; mặc định theo D5.
+- Capability `projectGraph` ở `server/capabilities.ts` (`resolveCapabilities`), mẫu như `automations`.
+- Bỏ khỏi bản này: `ONNI_PROJECT_GRAPH_AI_SUMMARY` (chuyển §14).
 
 ---
 
-## 5. Tích hợp agent
+## 6. Giao cho agent
 
-Nguyên tắc: **không nhét đồ thị vào prompt**; agent truy vấn khi cần. Điểm tiêm (đã khảo sát):
+Nguyên tắc: **agent truy vấn khi cần; không nhét đồ thị vào prompt** (pre-inject trả phí mỗi task và stale trong phiên,
+`research-agent-evidence.md` §MCP/CLI). Chỉ tiêm một map nhỏ cho task nhiều file/chưa rõ đường dẫn, và chỉ sau G-A.
 
-| Điểm | Việc cần làm | Giới hạn |
+| Điểm | Việc | Giới hạn |
 | --- | --- | --- |
-| `dispatch/commands.ts` (bảng lệnh) | Bảng/help riêng cho `onni graph` (không giả làm `task`); helper block cho manager và worker | Qua `prompt-budget.ts`: thêm hằng `GRAPH_COMMANDS_MAX_CHARS`, cập nhật `PROMPT_MAX_CHARS`, test trường hợp xấu nhất |
-| `workflows/manager-worker.ts` (`managerPrompt`, `workerPrompt`) | 1–3 dòng: khi nào dùng `impact`/`context`/`neighbors` | Trần block |
-| `workflows/run.ts` (`composeSystemPrompt`, `composeDispatchPrompt`, đường start + continuation) | Cùng một nguồn hướng dẫn cho run mới và run tiếp nối | Test hai đường |
-| Skill dựng sẵn (mẫu `automations/builtin-skill.ts`, `skills-provision.ts`) | Skill `project-graph` ngắn, chỉ hiện khi capability bật | |
-| `onni task create` | Tuỳ chọn `--context-from-graph` tự dựng gói `graph context` cho order (ghép vào mục tiêu, tôn trọng trần 4.000 ký tự của order — **hiện order bị giới hạn 4.000 ký tự**, nên gói phải ghi vào file trong thư mục cây, order chỉ trỏ tới) | Trần token |
-| Khi `ONNI_BIN` không có | Hướng dẫn nói rõ đồ thị không khả dụng | |
+| Bảng lệnh `dispatch/commands.ts` | Nhóm `graph` riêng (không giả làm `task`); mô tả 1–2 dòng | `prompt-budget.ts`: thêm hằng và test trường hợp xấu nhất (block lệnh hiện ~2.400 ký tự) |
+| `workflows/manager-worker.ts` (`managerPrompt`, `workerPrompt`) | 1–3 dòng: khi nào dùng `impact`/`tests`/`context` | trần block |
+| Run mới và run tiếp nối (`workflows/run/start.ts`, `continuation.ts`; `composeSystemPrompt`/`composeDispatchPrompt`) | cùng một nguồn hướng dẫn, test cả hai đường | tránh lệch twin |
+| Skill dựng sẵn (mẫu `automations/builtin-skill.ts`) | skill ngắn, chỉ hiện khi capability bật | |
+| `onni task create --context-from-graph` | gói `graph context` ghi vào **file trong thư mục cây**, order chỉ trỏ tới (order bị giới hạn 4.000 ký tự) | trần token |
 
-**Gói ngữ cảnh (`graph context`)**: node trong scope + láng giềng 1 bước theo loại cạnh ưu tiên (imports, tested-by,
-documents, contract-flow) + test liên quan + tài liệu liên quan; xếp hạng theo độ trung tâm (có thể dùng PageRank
-nhẹ, tham khảo Aider) và nguồn gốc cạnh; đầu ra dạng outline có đường dẫn và lý do; cắt cứng theo `maxTokens`
-(ước lượng bằng bộ tuần tự hoá thực, không đoán). Điều này đồng thời thực hiện đề xuất "gói ngữ cảnh cho order"
-đã nêu trước đó.
+**Hợp đồng đầu ra cho agent:**
 
----
+- Outline trước (path, symbol/export, line range), rồi quan hệ; ego 1–2 hop; nhóm hub; dedupe; **personalized ranking**
+  theo scope/diff; cắt theo `maxTokens` bằng bộ tuần tự hóa thật.
+- **Không cắt lặng lẽ:** luôn có `complete: true|false`, `truncated`, `nextPage`/`--expand` (trường hợp output bị cắt
+  khiến 7 lượt thành 18 trong case study, `research-agent-evidence.md` §Hub/§Budget).
+- Mỗi kết quả: `provenance`, `confidence`, `evidence`, `snapshot.head`, `stale`. Stale hoặc `unresolved` → nói rõ
+  **"dùng grep/đọc source"** (đường lui cố định).
+- Khi `ONNI_BIN` không có hoặc graph không khả dụng, hướng dẫn nói thẳng là không khả dụng — agent làm như cũ.
+- Backend antigravity (`agy`): theo `AGENTS.md`, lệnh cần khớp **cả dòng** và hạn chế; đồ thị là thứ dùng qua
+  manager đọc hộ (bản report), không giả định `agy` gọi được `onni graph`.
 
-## 6. Cockpit (web)
-
-### 6.1 Chỗ đặt và quy ước
-
-- Route project-scoped `/p/:projectId/graph` (lazy qua `lazyRoute`, có `GraphLoading`, `pageLabel`), mục nav mới
-  trong `nav-items.ts` (lọc theo capability `projectGraph`), tự có trong command palette (nhóm Views). Nhãn UI:
-  "Graph" (khóa tiếng Anh) / "Đồ thị dự án" (`vi-graph.ts` mới). Không chạm `routes/automations/`.
-- Dữ liệu qua hook TanStack Query trong `api/queries.ts`; query key gồm `projectId`, `head/revision` và tham số
-  truy vấn; phân biệt loading / chưa dựng (empty) / stale / lỗi / bị cắt (`truncated`).
-- Tuân theo `design-guardian.test.ts` (token màu, không `dark:`, `100dvh`, không `confirm()` gốc), WCAG AA,
-  `focus-visible`, `prefers-reduced-motion`.
-
-### 6.2 Màn hình và tương tác
-
-| Thành phần | Hành vi |
-| --- | --- |
-| Mặc định | Mức package/dir đã gộp, chú giải, trạng thái index + thời điểm; không bung mọi cấp |
-| Thu phóng ngữ nghĩa | Z1 package + phụ thuộc trực tiếp; Z2 dir/file + imports/test; Z3 (sau) symbol + contract |
-| Hàng xóm cục bộ | 1 bước mặc định, mở thêm theo yêu cầu; tìm kiếm → focus node |
-| Bộ lọc | Theo loại node (package/dir/file/test/doc/ext/run), theo đường dẫn/ngôn ngữ; công tắc riêng từng loại cạnh với hướng + nhãn provenance (nét liền/đứt) |
-| Overlay | Churn (kỳ chọn), co-change, task/worker đang hoạt động; ghi đơn vị/kỳ/nguồn; **dữ liệu thiếu không tô như 0** |
-| Panel node (tái dùng khung `FloatingPanel`) | Tên/đường dẫn/loại, láng giềng vào/ra có lý do + provenance, test gần nhất, tài liệu, run gần đây |
-| "Impact của diff" | Chọn run/diff → node đổi làm hạt giống; tô downstream + test ứng viên + độ tin cậy; click để thấy đường đi |
-| "Giao task tại đây" | Mở `/new` với scope điền sẵn (§6.5) |
-| "Worker đang sửa node này" | Node sáng qua WS topic hoạt động, tắt khi task kết thúc |
-| Bảng/cây tương đương | Luôn có (cho trình đọc màn hình, và khi canvas không khả dụng) |
-| Bàn phím | Tab vào đồ thị, mũi tên qua láng giềng, Enter chọn, Esc bỏ chọn, trợ giúp phím tắt |
-
-### 6.3 Renderer
-
-- **Mặc định:** `@xyflow/react` + layout phân cấp ổn định (Dagre đã có; tính ở server/worker cho vùng lớn, cache
-  toạ độ). Không force-layout toàn repo mỗi lần pan.
-- **Phía server gộp:** workspace → package → dir → file; cạnh tổng hợp mang `count` và nút "bung" ra đường dẫn thật;
-  trình duyệt không bao giờ nhận cả đồ thị cấp symbol.
-- **Ngưỡng chuyển (giả thuyết, Spike S2 đo):** ≤ ~1.500 node đang vẽ: React Flow; 1.500–10.000: Cytoscape.js
-  (canvas, LOD); > ~10.000 hoặc không đạt 30 FPS: Sigma.js (WebGL). Thêm thư viện mới chỉ khi benchmark cho thấy cần;
-  mô hình dữ liệu độc lập renderer để đổi được. Tránh Cosmograph (CC-BY-NC) và ELK (bundle/giấy phép) trừ khi có lý do.
-- **Desktop (Tauri):** cùng bundle web; WebGL/WASM cần QA riêng trên WebView Windows đóng gói.
-
-### 6.4 Sống (live)
-
-- Hook `useGraphStatus` đăng ký topic `project-graph` (`subscribeTopic`, trả hàm huỷ trong `useEffect`); khi
-  `revision` đổi → invalidate query. Topic hoạt động cho overlay worker. Không SSE/WS riêng cho tính năng.
-- Trước khi có tín hiệu hoạt động thật, overlay dùng `useRunChanges` (poll 4 giây) cho "đã đổi"; "đang sửa ngay
-  lúc này" cần tín hiệu mới từ runner (Giai đoạn 2).
-
-### 6.5 Tích hợp "Giao task tại đây"
-
-Hiện `parseNewTaskParams` trả `{skill, ref, auto, key, todo}` (`task` là alias cũ của `ref`), `newTaskPrefillHref`
-chỉ nhận `skill`/`ref`/`todo`, và `NewTaskDraft` không có scope. Cần: (a) trường
-`scope: string[]` trong draft (localStorage theo project) và một cách truyền ngắn trên URL (id đồ thị/ngưỡng độ dài;
-danh sách dài đi qua draft, không qua URL); (b) quyết định *scope là ngữ cảnh gợi ý trong prompt* (MVP) hay *giới
-hạn có cấu trúc do server thực thi* (sau, gắn với `--scope` của manager–worker). Đề xuất MVP: gợi ý trong prompt +
-gói `graph context` đính kèm.
-
-### 6.6 Cài đặt và dashboard
-
-- Công tắc project: Settings → Project (mục riêng nếu nhiều điều khiển): bật/tắt đồ thị, "dựng lại", (sau) "Tóm tắt AI".
-- Dashboard: thẻ nhẹ (số node, trạng thái index, số node đổi) → deep link; không nhúng đồ thị tương tác vào dashboard.
+Không dùng embeddings/tóm tắt LLM mặc định; chỉ xem lại nếu eval Onni cho thấy graph+grep còn thiếu
+(`research-agent-evidence.md` bài học 7).
 
 ---
 
-## 7. Quan hệ với Automations và manager–worker
+## 7. Manager–worker
 
-### 7.1 Automations (giữ nguyên)
+Nền đã có: `onni task conflicts` (trùng file + `outsideScope` + trial merge `git merge-tree`), `onni task verify`
+(`--baseline`), `requireRootManager`, phạm vi `scope` (hiện là chuỗi, `parseScope`/`globToRegExp` ở
+`dispatch/conflicts.ts`). Graph **bổ sung ở thời điểm lập kế hoạch**, nơi các công cụ đó chưa với tới:
 
-Hiện Automations là hệ con độc lập (~4.700 dòng server, ~3.300 dòng web runtime, nối vào >30 file) với
-`kind: github | schedule | tracker`. Giữ nguyên. Về sau (Giai đoạn 4), "hành động trên node" là *lớp cộng thêm*:
-
-1. Thêm `owner?: { kind: 'graph-node', nodeId }` tuỳ chọn trên định nghĩa automation (tương thích ngược,
-   `RunRecord`/definition cũ vẫn parse). UI "Lên lịch trên node này" tạo automation `schedule` thường + gắn owner.
-2. Chỉ khi cần "chạy khi node đổi" mới thêm kind mới `graph` + `graphTrigger` với nhánh scheduler rõ ràng; không đổi
-   nghĩa trigger GitHub/tracker.
-3. Kiểm tra `nodeId` tồn tại; đồ thị không khả dụng → trigger không chạy (không đoán).
-
-Cần quyết định riêng của chủ dự án trước khi làm (D6).
-
-### 7.2 Manager–worker
-
-| Khả năng | Cách dùng đồ thị | Phụ thuộc |
+| Khả năng | Cách dùng graph | Là gì so với authority hiện có |
 | --- | --- | --- |
-| Chia vùng rời nhau | Từ scope của các phần việc, tính vùng đóng (file + phụ thuộc trực tiếp); cảnh báo trùng vùng khi lập kế hoạch | `impact`, `neighbors` |
-| Dự đoán xung đột | Giao nhau giữa vùng ảnh hưởng của hai worker ⇒ cảnh báo trước khi giao (bổ sung cho A2 trong `manager-worker-proposals.md`) | Giai đoạn 3 |
-| Chọn test cho `verify` | `impact` → tập test ứng viên (`tested-by`) ⇒ chạy tập con trước, toàn bộ sau | A1 |
-| Review worker | Phạm vi review = vùng ảnh hưởng của diff | |
-| Brief của manager | 1–2 dòng hướng dẫn + bảng lệnh (trần prompt) | `prompt-budget.ts` |
+| Phân vùng khi lập kế hoạch | `graph overlap <scope…>`: vùng đóng = file trong scope + dependents trực tiếp (nhóm hub) + co-change mạnh; so giữa các phần việc | **Cảnh báo.** `conflicts` chỉ nhìn thay đổi *đã có*; đây nhìn *dự kiến* |
+| Chủ của file/vùng chung | Gợi ý một owner mỗi file hub / vùng chung (config, translations, type trung tâm); manager chọn | Convention + prompt; không khóa cứng |
+| Trước khi giao worker thứ hai | Chạy `overlap` giữa scope mới và scope đang chạy → cảnh báo xếp hạng (trùng chính xác > qua hub > co-change) | **Không chặn dispatch** cho đến khi G-C đạt; không bao giờ trả "không xung đột" |
+| Sau khi worker xong | Vẫn `onni task conflicts` (trial merge) — **là authority duy nhất cho xung đột văn bản** | Không đổi |
+| Chọn test cho `verify` | `graph tests` → subset chạy trước, **toàn bộ chạy sau** (theo lưới an toàn §3.2) | Gợi ý; chỉ đổi mặc định khi G-B đạt |
+| Review worker | Vùng review = L1 của diff | |
 
-Lưu ý: các tính năng ở bảng này phụ thuộc đề xuất A1/A2 trong tài liệu manager–worker, chưa được xây.
+Các ràng buộc `AGENTS.md` giữ nguyên: roster là rào chắn, worker chỉ report; graph chỉ đọc nên không thay đổi bất biến
+"không tự merge"; không có đường nào để graph gọi `merge`/`push`. Kiểm tra quyền ở server cho route `overlap` theo mẫu
+`requireRootManager` (manager) hoặc project (CLI người dùng).
+
+Điều kiện đưa vào prompt manager: chỉ sau khi G-A cho thấy manager dùng `overlap/impact` làm giảm xung đột hoặc lượt.
 
 ---
 
-## 8. Lộ trình chi tiết và phân công worker
+## 8. Cockpit (web) — sau CLI, neo vào diff/run
 
-Quy ước: mỗi bước = một PR nhỏ qua đủ cổng (`typecheck`, `test`, `test:unit`, `build`, `test:package`; trên Windows
-native CI là chuẩn). **Phạm vi file rời nhau cho các worker chạy song song**; các file nóng chung (`server.ts`,
-`index.ts`, `run.ts`, `routes.tsx`, `nav-items.ts`, `contract/src/index.ts`, `data-gitignore.ts`) chỉ một worker
-chạm trong một thời điểm. Backend: `codex` cho mọi việc cần chạy lệnh (test, build, git, web); `antigravity` chỉ cho
-khám phá đọc file (ở mức quyền mặc định không chạy được lệnh — đã ghi vào bộ nhớ dự án).
+### 8.1 Thứ tự
 
-### Giai đoạn 0 — Spike và nền chứng cứ (không đổi code sản phẩm)
+1. **P3a — thẻ "Impact" trong view của một task/run** (cạnh Changes): bảng lớp L0–L3/LX có đếm, nhóm hub, mở rộng
+   theo yêu cầu, "vì sao" (đường đi + provenance). Đây là view đầu tiên; **không** cần canvas.
+2. **P3b — "đồ thị của diff"** (xyflow, ≤ vài chục node): bật khi người dùng bấm từ thẻ Impact; có bảng/cây tương đương.
+3. **P3c — điểm vào bản đồ toàn repo** (package/dir gộp, mở dần) — chỉ khi dữ liệu dùng cục bộ (§9.4) cho thấy người dùng
+   quay lại P3a/P3b; nếu không thì không làm.
 
-| ID | Việc | Đầu ra | Điều kiện xong | Worker |
-| --- | --- | --- | --- | --- |
-| S1 | Spike engine phân tích (§3.1) | `docs/design/project-graph/spikes/engine.md` + script ngoài cây `src/` | Bảng chấm 5 ứng viên theo 7 điều kiện, có số đo Windows; khuyến nghị 1 lựa chọn + phương án dự phòng | codex |
-| S2 | Benchmark render | `…/spikes/render.md` + trang Vite tạm (ngoài `src/`, xoá sau) | FPS/bộ nhớ/first paint ở 500/1.500/5.000/10.000 node cho React Flow, Cytoscape, Sigma; chạy trên Chrome + WebView Tauri nếu có | codex |
-| S3 | Bộ vàng (golden) | `…/spikes/golden-graph.md` + fixture JSON nhỏ | Danh sách cạnh import "đúng" cho một tập con đại diện (kể cả `.js→.ts`, `export … from`, `import type`, dynamic import, workspace); cách sinh/kiểm lại | codex |
-| S4 | Đo hiệu năng git | `…/spikes/git.md` | Thời gian `git ls-files`, `git log --name-status -M` N commit trên repo này (Windows) | codex |
-| N0 | Baseline môi trường: `npm install` sạch trong worktree (đúng lockfile), chạy `typecheck`/`build`/`test:package`, phân loại lỗi còn lại (môi trường Windows hay lỗi thật; ví dụ `undici` `maxRedirections` ở `webhooks/transport.ts:108`) | `…/spikes/baseline.md`; không sửa code sản phẩm nếu chưa được duyệt | Bảng lệnh → kết quả → nguyên nhân; xác nhận cổng chất lượng dùng được cho Giai đoạn 1 | codex |
+### 8.2 Quy ước
 
-S1–S4 và N0 độc lập (mỗi worker một file báo cáo + thư mục tạm riêng). **Cổng quyết định G0:** chủ dự án xác nhận
-engine, ngưỡng renderer và baseline môi trường trước Giai đoạn 1.
+Route project-scoped `/p/:projectId/graph` (lazy qua `lazyRoute`), mục nav lọc theo capability `projectGraph`; nhãn
+"Graph"/"Đồ thị dự án" (`lib/i18n/vi-graph.ts`). Query key có `projectId`, `head/revision`, tham số; phân biệt loading /
+chưa dựng / stale / lỗi / bị cắt. Tuân `design-guardian.test.ts`, WCAG AA, `focus-visible`, `prefers-reduced-motion`;
+luôn có bảng/cây cho trình đọc màn hình. Không chạm `routes/automations/`.
 
-### Giai đoạn 1 — MVP cấp file
+### 8.3 Renderer
 
-| ID | Việc | Phạm vi file (độc quyền) | Phụ thuộc | Worker |
-| --- | --- | --- | --- | --- |
-| C0 | Contract Zod (§4.1) + fixture mẫu + tài liệu | `packages/contract/src/project-graph.ts`, `contract/src/index.ts` | G0 | codex |
-| E1 | Engine lõi: `GraphExtractor`, liệt kê file + denylist, băm, cache, ghép đồ thị, tested-by, documents, dir/pkg, contract-flow; test + bộ vàng | `packages/work/src/project-graph/**` (mới), dependency mới trong `packages/work/package.json` | C0, S1, S3 | codex |
-| W1 | Màn hình Graph: route, nav, hook, khung xyflow, panel, bộ lọc, bảng tương đương, i18n; chạy trên fixture C0 | `packages/web/src/routes/graph/**`, `lib/graph*`, `lib/i18n/vi-graph.ts`, + chạm tối thiểu `routes.tsx`, `nav-items.ts`, `api/queries.ts` | C0 | codex |
-| N1 | Nối dây server: coordinator, route family, validator, CLI `onni graph`, capability, `data-gitignore`, `.env.example`, `docs/reference.md`, test parity | `server/project-graph.ts`, `server/server.ts`, `index.ts`, `project-graph/graph-cli.ts`, `data-gitignore.ts`, `capabilities.ts` | E1 | codex |
+`@xyflow/react` + `@dagrejs/dagre` (đã có) đủ cho đồ thị diff nhỏ; **không thêm thư viện render thứ hai** trong phạm vi
+này (§14). Phía server gộp; trình duyệt không nhận cả đồ thị.
 
-Thứ tự: C0 → (E1 ∥ W1) → N1. E1 và W1 có phạm vi file rời nhau (W1 chạm tối thiểu `routes.tsx`/`nav-items.ts`/
-`queries.ts` — không worker nào khác chạm trong thời gian đó). N1 chạm các file nóng nên chạy một mình.
+### 8.4 Sống (live) — không poll
 
-**Tiêu chí chấp nhận Giai đoạn 1:**
+- **Không dùng `useRunChanges` (poll 4 s) làm tín hiệu** cho overlay. Khảo sát perf khuyến nghị đổi nó sang WS marker
+  (`.ai/perf/c-cockpit-web.md` §3); thẻ Impact **đăng ký marker đó** (và topic `project-graph` khi `revision` đổi) rồi
+  mới refetch, gộp (coalesce) một lần mỗi marker, có đối soát khi reconnect.
+- Việc phát marker từ server phải bất đồng bộ, **không** chèn thêm công việc đồng bộ vào `workflows/run/*`; nếu marker
+  "git changed" chưa có thì P3 đợi hoặc dùng nút "làm mới" thủ công — không quay lại poll.
+- Hook `useGraphStatus` dùng `subscribeTopic`, trả hàm huỷ trong `useEffect`.
 
-- `onni graph build` trên repo này xong trong ngân sách S1; `neighbors/impact/path/search` trả đúng trên bộ vàng.
-- Xoá `.ai/onni/project-graph/` rồi chạy lại: tự dựng, không lỗi; cache hỏng → dựng lại, không crash.
-- File `.env`/khoá không bao giờ được đọc (test).
-- Màn Graph mở ở mức gộp ≤ 1 giây (mục tiêu), pan/zoom mượt ở ≤ 1.500 node (mục tiêu), có bảng tương đương, điều hướng
-  bằng bàn phím; tất cả trạng thái loading/empty/stale/error/truncated.
-- `contract-parity`, `route-parity`, `versioned-surface`, `typed-bodies`, `design-guardian` xanh.
-- Tắt `ONNI_PROJECT_GRAPH=0`: nav ẩn, route 409, không process nền.
+### 8.5 "Giao task tại đây" (hoãn)
 
-### Giai đoạn 2 — Tín hiệu sống và tác động
+Cần trường `scope: string[]` có cấu trúc trong `NewTaskDraft` (hiện chưa có). **Hoãn (§14)** cho đến khi P2 chứng minh
+scope có giá trị; MVP chỉ cần `--scope` của manager (đã có dạng chuỗi).
 
-| ID | Việc | Worker |
-| --- | --- | --- |
-| ID | Việc | File độc quyền | Worker |
+---
+
+## 9. Cổng xác nhận giá trị (go/no-go)
+
+Cổng nằm **trước** khi đầu tư giai đoạn sau. Kết quả ghi `docs/design/project-graph/evals/*.md` (script nằm ngoài
+`src/`), chỉ gồm số đo và mô tả; **không** chứa nội dung code của người dùng.
+
+### 9.1 G-A — A/B trên tác vụ thật của OnniCode (H1)
+
+- **Thiết kế:** ~10 tác vụ thật rút từ lịch sử OnniCode (kể cả ~5 tác vụ manager–worker nhiều worker); cùng model, cùng
+  prompt, **cùng commit gốc**, **vài seed**; ba cánh: `graph-off` (như hiện nay), `graph-on` (CLI `impact/context`
+  + đường lui), `grep` (đối chứng grep/đọc thuần có chủ đích để tách tác động graph khỏi harness).
+- **Đo:** pass/resolve; định vị đúng file và hàm; token vào/ra; số lượt; thời gian; **số lần stale** gặp; với manager–
+  worker: xung đột (qua `onni task conflicts`), số lần re-dispatch, test hit-rate (test chọn có chứa test fail thật).
+- **Tiêu chí đi tiếp (đề xuất, chủ dự án duyệt ở G0):** định vị tăng, **pass không tụt, chi phí không tăng quá ngưỡng**
+  (RepoGraph cho thấy token có thể *tăng* nên không hứa tiết kiệm token). Nếu graph-on ≈ grep hoặc tệ hơn → **no-go**:
+  dừng ở CLI nhỏ (impact/tests) hoặc bỏ tiêm vào prompt.
+- Cảnh báo thiết kế: mẫu nhỏ, nhiễu seed lớn; báo khoảng tin cậy, không chỉ trung bình.
+
+### 9.2 G-B — Replay lịch sử git của repo này (H2, H3)
+
+- **Dữ liệu:** các commit lịch sử (repo có hơn 600 commit; `git log` đếm 611 trên nhánh này); với mỗi commit/PR dựng lại
+  tập file đổi và tập test thực sự thất bại/được sửa cùng.
+- **Đo trên từng cách chọn** (§3.2 nấc 2, 3, kết hợp, co-change): precision/recall của *impact* (so với file thực sự
+  đổi cùng nhau về sau) và của *ứng viên test* (test fail thật có nằm trong tập không?), kích thước tập kết quả trung vị/p90
+  (đo hiệu ứng hub §4.4), số test chọn so với toàn bộ.
+- **Cổng:** **không tự chọn subset test cho `verify` trước khi recall (không bỏ sót failure) đạt ngưỡng đã duyệt**; bất kỳ
+  failure bị bỏ sót trong tập validation → tính năng giữ ở chế độ gợi ý (§3.2).
+- Mở rộng (nếu thời gian): 3–5 repo khác đại diện (Python/Go) để kiểm tính tổng quát tree-sitter.
+
+### 9.3 G-C — Co-change và cảnh báo trùng không chặn dispatch (H3)
+
+- Replay ≥ 2 nhánh đồng thời: đo trùng file chính xác, xung đột `git merge-tree`, lỗi tích hợp, và **precision của cảnh
+  báo co-change/hub riêng**, báo theo từng cặp (không một điểm tổng).
+- **Điều kiện:** cho tới khi precision đạt ngưỡng đã duyệt, cảnh báo graph ở chế độ *thông tin* — không làm `dispatch()`
+  trả 409, không chặn merge, không ghi "đã kiểm tra, không xung đột". Chỉ `onni task conflicts` là có thẩm quyền.
+
+### 9.4 Đo sử dụng — chỉ cục bộ
+
+Số đếm hành động (mở thẻ Impact, bấm "vì sao", dùng `graph tests` trước `verify`, lặp lại theo ngày) ghi vào
+`.ai/onni/project-graph/usage.json` hoặc NDJSON cục bộ. **Không gửi đi bất cứ đâu** (`AGENTS.md`: telemetry đã gỡ, không
+có consent bar, không `/api/v1/telemetry/*`). Không ghi path/nội dung, chỉ loại hành động và bộ đếm. Dùng để quyết định
+P3c; xóa file là đủ để xóa số liệu.
+
+---
+
+## 10. Lộ trình và phân công
+
+Mỗi bước = một PR nhỏ qua đủ cổng (`typecheck`, `test`, `test:unit`, `build`, `test:package`; CI là chuẩn trên Windows,
+`AGENTS.md`). Phạm vi file rời nhau cho worker song song; file nóng chung (`server/server.ts`, `index.ts`,
+`workflows/run.ts`, `routes.tsx`, `nav-items.ts`, `contract/src/index.ts`, `data-gitignore.ts`, `dispatch/commands.ts`)
+chỉ một worker chạm tại một thời điểm. Backend `codex` cho việc cần chạy lệnh; `antigravity` chỉ cho khám phá đọc file.
+
+### Giai đoạn 0 — Spike giá trị và nền chứng cứ (không đổi code sản phẩm)
+
+| ID | Việc | Đầu ra | Điều kiện xong |
 | --- | --- | --- | --- |
-| G1 | Co-change miner (tăng dần, trần, loại commit lớn) + cạnh `co-change` + overlay churn | `project-graph/cochange/**` (mới), chạm tối thiểu `project-graph/index.ts` để đăng ký | codex |
-| G2 | Cạnh `run-touched` từ ảnh chụp lúc settle + retention | `workflows/run.ts` (điểm hook settle), `project-graph/run-edges/**` | codex |
-| G3 | Overlay worktree + "impact của diff" (HTTP + UI) | `project-graph/overlay/**`, `server/project-graph.ts`, `packages/web/src/routes/graph/**` | codex |
-| G4 | Topic WS `project-graph` + `project-graph-activity`; tín hiệu "đang sửa" từ runner; UI sáng node | `server/ws.ts` (đăng ký topic), `workflows/run.ts` (phát tín hiệu), `api/ws.ts` (hook), `routes/graph/**` | codex |
+| V1 | **Prototype CLI-only** `impact` + `tests` trên repo này (script ngoài `src/`), dùng `git` + import regex/lexer đơn giản + `vitest related`; chạy A/B nhỏ trên ~3 tác vụ thử | `spikes/value.md` | Có số định vị/lượt/token cho graph-off vs on; quyết định có làm P1 không |
+| R1 | **Replay lịch sử git** (G-B) bản thử nghiệm: precision/recall impact và chọn test, kích thước tập (hiệu ứng hub) | `spikes/replay.md` + script | Bảng số theo cách chọn; ngưỡng đề xuất cho chủ dự án |
+| S1 | Spike engine (§4.2) | `spikes/engine.md` | Bảng chấm ứng viên + số đo Windows + khuyến nghị; thêm đo độ trễ event loop |
+| S3 | Bộ vàng + fixture (kể cả barrel hub, dynamic import, subprocess, file sinh ra) | `spikes/golden-graph.md` | Danh sách cạnh đúng cho tập con đại diện; cách sinh lại |
+| S4 | Đo git: `git ls-files`, `git log --name-status -M` N commit (Windows) | `spikes/git.md` | Số đo thời gian |
+| S5 | Chỉnh ngưỡng hub và bộ lọc co-change trên R1 | `spikes/hub-cochange.md` | Bảng ngưỡng ↔ tập kết quả/precision |
+| N0 | Baseline môi trường: `npm install` sạch trong worktree, `typecheck/build/test:package`, phân loại lỗi (môi trường Windows hay lỗi thật; ví dụ lệch `undici` `maxRedirections` ở `webhooks/transport.ts` ghi ở bản cũ — **chưa kiểm lại**) | `spikes/baseline.md` | Cổng chất lượng dùng được cho P1 |
 
-**Quy tắc xếp lịch (review #42):** chỉ chạy song song các hàng có file độc quyền không chồng lấn. G2 và G4 cùng
-chạm `workflows/run.ts` ⇒ **tuần tự**. G3 và G4 cùng chạm `server/project-graph.ts`/`routes/graph/**` ⇒ **tuần
-tự**. G1 chỉ chạm thư mục con riêng nên có thể chạy song song với G2 hoặc G3, nhưng cả ba đều cần đăng ký qua
-`project-graph/index.ts` — việc đăng ký này do một worker làm trước (thêm sẵn các điểm mở rộng) để các hàng sau
-không sửa chung file. Mỗi bước giao phải ghi danh sách file độc quyền trong order.
+(S2 benchmark render của bản cũ **bỏ** — không còn cần cho Giai đoạn 0; đồ thị diff nhỏ chạy trên xyflow có sẵn.)
 
-### Giai đoạn 3 — Agent và manager–worker
+**Cổng G0:** chủ dự án xem V1/R1/S1 và duyệt D1–D8. V1/R1 **không cho thấy lợi ích** → dừng, ghi lại, không làm P1.
 
-| ID | Việc | Worker |
+### Giai đoạn P1 — Engine lõi + CLI hành động (cổng G-A, G-B)
+
+| ID | Việc | Phạm vi file độc quyền | Phụ thuộc |
+| --- | --- | --- | --- |
+| C0 | Contract zod (§5.1) cho `status/impact/tests/context/neighbors` + fixture | `packages/contract/src/project-graph.ts`, `contract/src/index.ts` | G0 |
+| E1 | Engine: `GraphExtractor` (tree-sitter + adapter nếu S1), liệt kê file + denylist, băm, cache, ghép đồ thị, tested-by, package-dep, hub (§4.4), freshness (§4.6), co-change (§4.5); test + bộ vàng | `packages/work/src/project-graph/**`, dependency mới trong `packages/work/package.json` | C0, S1, S3, S5 |
+| T1 | Ứng viên test (§3.2): đọc `package.json`/runner, gọi `vitest related` (và tool ngoài khi `ONNI_PROJECT_GRAPH_TOOLS=1`) | `packages/work/src/project-graph/tests-select/**` | E1 |
+| N1 | Nối dây: route, validator, CLI `onni graph`, capability, `data-gitignore`, `.env.example`, `docs/reference.md`, parity tests | `server/routes/project-graph.ts`, `server/server.ts`, `index.ts`, `project-graph/graph-cli.ts`, `data-gitignore.ts`, `capabilities.ts` | E1, T1 |
+
+**Chấp nhận P1:** `impact/tests/context` đúng trên bộ vàng; xóa cache → tự dựng; không đọc `.env`/khóa (test); build không
+làm trễ event loop quá ngưỡng đo ở S1 khi có run đang stream; tắt công tắc → route 409, không process nền; **G-A và G-B
+chạy trên bản này và có kết luận ghi lại.**
+
+### Giai đoạn P2 — Manager–worker (chỉ khi G-A không no-go)
+
+| ID | Việc | Phạm vi |
 | --- | --- | --- |
-| A1 | Tiêm hướng dẫn vào prompt (`commands.ts`, `prompts.ts`, `manager-worker.ts`, `run.ts` 2 đường), skill dựng sẵn, trần prompt | codex |
-| A2 | `graph context` ghi vào thư mục cây; `task create --context-from-graph` | codex |
-| A3 | Vùng rời nhau + cảnh báo trùng trước khi giao; chọn test cho `verify` (khi A1/A2 của manager–worker có) | codex |
+| M1 | `graph overlap`, vùng đóng của scope, gộp vào `onni task conflicts`/brief như dòng **cảnh báo** (không đổi kết quả trial merge) | `project-graph/overlap/**`, `dispatch/conflicts.ts` (nối nhỏ) |
+| M2 | Tiêm hướng dẫn prompt (`dispatch/commands.ts`, `prompt-budget.ts`, `workflows/manager-worker.ts`, hai đường start/continuation) + skill dựng sẵn + `--context-from-graph` | các file prompt (một worker, tuần tự với M1) |
+| M3 | Gợi ý subset test trong `onni task verify` (chỉ khi G-B đạt; ngược lại giữ ở `graph tests`) | `workflows/run/verify.ts`, `core/verify-commands.ts` |
 
-### Giai đoạn 4 — Hành động trên node
+`M1`/`M2`/`M3` cùng chạm vùng dispatch/prompt → **tuần tự**, order nêu danh sách file độc quyền (review #42). G-C chạy trên M1.
+
+### Giai đoạn P3 — Cockpit neo vào diff/run
 
 | ID | Việc |
 | --- | --- |
-| H1 | Trường `scope` có cấu trúc trong `NewTaskDraft` + "Giao task tại đây" |
-| H2 | `owner` tuỳ chọn trên automation + "Lên lịch trên node này" (cần duyệt D6) |
+| W1 | Thẻ Impact trong view task/run + hook `useGraphImpact` + WS `project-graph` (§8.1–8.4) |
+| W2 | Đồ thị diff nhỏ (xyflow) + bảng tương đương |
+| W3 | (có điều kiện, §8.1) điểm vào bản đồ toàn repo |
 
-### Giai đoạn 5 — Mở rộng có điều kiện
+W1/W2 chạm tối thiểu `routes.tsx`, `nav-items.ts`, `api/queries.ts`, `api/ws.ts` — không worker nào khác chạm trong lúc đó.
 
-Chỉ làm khi số đo/phản hồi cho thấy cần: adapter symbol (theo kết quả S1), `tree-sitter` đa ngôn ngữ, tóm tắt AI
-(opt-in, cache theo hash nội dung, nhãn "AI viết"), time travel theo commit, chú thích `declared`, renderer
-Cytoscape/Sigma, ngăn xếp tài liệu có trạng thái spec (§10).
-
-### Ước lượng thô (độ lớn, không phải cam kết)
+### Ước lượng thô (độ lớn, không cam kết)
 
 | Giai đoạn | Độ lớn | Rủi ro chính |
 | --- | --- | --- |
-| 0 | S | Kết luận engine ngược kỳ vọng |
-| 1 | L | Cache tăng dần đúng; nối dây file nóng |
-| 2 | M | Tín hiệu "đang sửa" cần chạm runner |
-| 3 | M | Trần prompt; tính nhất quán 2 đường start/continuation |
-| 4 | S–M | Chưa có scope có cấu trúc |
-| 5 | L+ | Phạm vi phình |
+| 0 | M | Kết quả V1/R1 không ủng hộ — đó là kết quả hợp lệ |
+| P1 | M–L | Cache tăng dần đúng; event loop; tree-sitter đóng gói |
+| P2 | M | Trần prompt; nhất quán 2 đường start/continuation |
+| P3 | S–M | Chưa có marker WS "git changed" |
 
 ---
 
-## 9. Kiểm thử và chất lượng
+## 11. Kiểm thử, hiệu năng, chất lượng
 
-- **Đơn vị:** extractor trên fixture nhỏ (mỗi quy ước một test); cache (thiếu/hỏng/sai phiên bản → dựng lại);
-  tăng dần (đổi 1 file, đổi tên, xoá); truy vấn (giới hạn depth/limit/token, `truncated`); denylist; chuẩn hoá path
-  Windows (guard *bên trong* test, không `.skip`).
-- **Git thật:** repo tạm cho rename `-M`, co-change, overlay, huỷ giữa chừng (guard khả năng git).
-- **Bộ vàng của chính repo này:** danh sách cạnh kiểm tay cho tập con; chạy lại mỗi lần đổi extractor; đo độ khớp.
+- **Đơn vị:** extractor theo fixture (mỗi quy ước một test); cache (thiếu/hỏng/sai phiên bản → dựng lại); tăng dần (đổi,
+  đổi tên, xóa); truy vấn (giới hạn depth/limit/token, `truncated`, `stale`); hub (nhóm, export-level); co-change
+  (bộ lọc: commit lớn, bot, min support, decay); denylist; path Windows (guard *bên trong* test, không `.skip`).
+- **Git thật:** repo tạm cho rename `-M`, co-change, huỷ giữa chừng (guard khả năng git).
+- **Bộ vàng của repo này:** chạy lại mỗi khi đổi extractor; đo độ khớp.
 - **Contract:** `contract-parity.projectGraph`, `route-parity`, `versioned-surface`, `typed-bodies`.
-- **Web:** Vitest + Testing Library (builder mô hình, lọc, gộp, panel, trạng thái, bàn phím, theme/token); test thuần
-  cho bộ gộp/chọn renderer; e2e `packages/web/e2e` + `.ai/scripts/e2e.sh` (deep link project, chọn node → panel,
-  "giao task tại đây", overlay); lưu ý `TEST_E2E_STATUS=skipped` **không phải** pass.
-- **Hiệu năng (mục tiêu, kiểm bằng benchmark có số đo, không đặt thành cổng CI nếu chưa ổn định):** dựng nguội ≤ 10 s,
-  tăng dần ≤ 300 ms, truy vấn ≤ 100 ms, RAM ≤ 200 MB, màn Graph mức gộp ≤ 1 s.
-- **Gói:** `npm run test:package` phải chứng minh parser runtime có trong tarball cài thử; `check-pack` không đủ
-  (nó không kiểm dependency parser).
-- **Ghi vết:** mỗi hành động ghi (rebuild, tạo task từ node) vào ledger; không ghi nội dung code.
+- **Web:** Vitest + Testing Library (thẻ Impact, nhóm hub, trạng thái stale/truncated, bàn phím, theme/token);
+  e2e `.ai/scripts/e2e.sh` — `TEST_E2E_STATUS=skipped` **không phải** pass.
+- **Hiệu năng — ràng buộc, không phải mục tiêu đẹp:**
+  - Build/cập nhật **chia lô và nhường event loop**; có test đo độ trễ vòng lặp khi build chạy cạnh stream giả.
+  - **Không** thêm việc đồng bộ vào `workflows/run/*` hay `runs/store.ts` (`.ai/perf/b-streaming-pipeline.md` §1,3;
+    `a-server-state-git.md` §4–5). Ghi run→file qua hàng đợi bất đồng bộ riêng.
+  - **Không** poll: dùng WS marker (§8.4).
+  - Spawn git của graph dùng helper chỉ-đọc có timeout/`AbortSignal`, gộp lô, không fan-out tuần tự nhiều process
+    (`a-server-state-git.md` §3).
+  - Số đo thời gian/RAM ghi trong spike; **không** đặt thành cổng CI cho đến khi ổn định.
+- **Gói:** `npm run test:package` phải chứng minh parser runtime (tree-sitter WASM/grammar) có trong tarball cài thử.
+- **Ghi vết:** mỗi hành động ghi (rebuild) vào ledger; không ghi nội dung code.
 
 ---
 
-## 10. Quản lý ngữ cảnh tài liệu đi kèm (liên quan nhưng tách việc)
+## 12. Rủi ro và danh sách file chạm
 
-Đồ thị chỉ hữu ích khi tài liệu nó trỏ tới còn đúng. Các việc này thuộc kế hoạch "ngữ cảnh dự án", không chặn
-Giai đoạn 1 nhưng nên làm song song:
-
-- Trạng thái spec (`draft/active/superseded`) trong front matter + mục lục `.ai/specs/README.md`; có 12 file
-  Markdown trong `.ai/specs` còn nhắc tên cũ (`cezar`, `CEZ_`) theo `rg -l -i`, không có tên file nào chứa chuỗi
-  đó (review #38); chạy lại phép kiểm kê này trước khi dọn.
-- Script CI kiểm đường dẫn/symbol được nhắc trong tài liệu còn tồn tại (cùng engine với cạnh `documents`).
-- Tách `AGENTS.md` (295 dòng) theo tầng; `AGENTS.md` lồng theo module; một nguồn → sinh file theo vendor.
-- Mở rộng trí nhớ dự án (có thẻ phạm vi, chia sẻ cho worker): chi tiết ở phần ngữ cảnh đã trao đổi.
-
----
-
-## 11. Rủi ro và giảm thiểu
+### 12.1 Rủi ro
 
 | Rủi ro | Mức | Giảm thiểu |
 | --- | --- | --- |
-| Đồ thị sai mà trông đáng tin | Cao | Nhãn provenance + commit tạo ra; `inferred` tách riêng; trạng thái `stale`; bộ vàng |
-| API TypeScript 7.x đổi/không ổn định | Cao | Không phụ thuộc `createProgram`; Spike S1; interface `GraphExtractor`; test khóa phiên bản |
-| Parser native không có trên mọi nền tảng/trong tarball | Cao | S1 điều kiện 1; phương án dự phòng WASM; `test:package` |
-| Hiệu năng repo lớn (repo của khách ≫ repo này) | Trung bình–Cao | Cấp file trước; gộp phía server; bung dần; ngân sách và benchmark; phân trang |
-| Phình phạm vi (đồ thị "mọi thứ") | Trung bình | Chốt câu hỏi chính "đổi X thì gì bị ảnh hưởng?"; giai đoạn có điều kiện |
-| Lộ bí mật qua tên file/đồ thị | Trung bình | Denylist, không lưu nội dung, `loopbackReadable=false` |
-| Xung đột file nóng giữa các worker | Trung bình | Phạm vi độc quyền; N1/G2/G4 tuần tự |
-| Trần prompt bị vượt khi thêm hướng dẫn | Trung bình | `prompt-budget.ts` + test trường hợp xấu nhất |
-| Giấy phép (GPL, CC-NC, EPL) lọt vào sản phẩm | Trung bình | Danh sách loại trừ ở §2.2; kiểm giấy phép khi thêm dependency |
-| Windows: đường dẫn, junction, `EPERM`, WebView | Trung bình | Chuẩn hoá path; test có guard; QA Tauri |
-| Co-change gây nhiễu | Thấp–Trung bình | Loại commit lớn; `count/window/confidence`; tắt mặc định |
-| Comment drift về `ONNI_AUTOMATIONS` (`capabilities.ts` ghi opt-in, code mặc định bật) | Thấp | Việc riêng, không trộn vào tính năng này |
+| Graph không tạo giá trị đo được (H1–H3 sai) | **Cao** | Cổng G0/G-A/G-B; no-go là kết quả hợp lệ; dừng sớm giữ phần CLI nhỏ |
+| Đồ thị sai mà trông đáng tin | Cao | Provenance + commit + `stale`; `inferred` tách riêng; bộ vàng; luôn có đường lui grep |
+| Tập impact quá rộng do hub | Cao | §4.4 nhóm + export-level + ranking; đo kích thước tập ở R1 |
+| Bỏ sót test khi chọn subset | Cao | Subset chỉ gợi ý; chạy toàn bộ sau; gate G-B; không bao giờ "đủ test" |
+| Cảnh báo co-change nhiễu làm manager mất tin | Trung bình | Chỉ thông tin trước G-C; commit mẫu; bộ lọc §4.5 |
+| Chi phí hiệu năng (event loop, spawn git) | Trung bình–Cao | Build chia lô; không đụng hot path; WS thay poll; trần |
+| Parser/WASM không có trong tarball/Windows | Cao | S1 điều kiện 1; `test:package`; phương án dự phòng |
+| API TypeScript 7.x thay đổi | Trung bình | Không phụ thuộc `createProgram`; adapter tùy chọn; test khóa phiên bản |
+| Trần prompt bị vượt khi thêm hướng dẫn | Trung bình | `prompt-budget.ts` + test xấu nhất |
+| Lộ bí mật qua tên file/đồ thị | Trung bình | Denylist; không lưu mã; `loopbackReadable=false` |
+| Xung đột file nóng giữa worker | Trung bình | Phạm vi độc quyền; N1/M1/M2 tuần tự |
+| Giấy phép (GPL, CC-NC, EPL) | Trung bình | Loại khỏi mặc định (§2.2); kiểm giấy phép khi thêm dependency |
+| Phình phạm vi | Trung bình | §14; cổng giai đoạn |
+| Comment drift `ONNI_AUTOMATIONS` (`capabilities.ts` nói opt-in, code mặc định bật) | Thấp | Việc riêng, không trộn vào đây |
 
----
-
-## 12. Danh sách file sẽ chạm (tổng hợp)
+### 12.2 Danh sách file chạm (tổng hợp)
 
 | Khu vực | File | Giai đoạn |
 | --- | --- | --- |
-| Contract | `packages/contract/src/project-graph.ts` (mới), `index.ts` | 1 |
-| Engine | `packages/work/src/project-graph/**` (mới), `packages/work/package.json` | 1–2 |
-| Server | `server/server.ts`, `server/project-graph.ts` (mới), `server/capabilities.ts`, `server/ws.ts` (đăng ký topic) | 1–2 |
-| CLI | `packages/work/src/index.ts`, `project-graph/graph-cli.ts` | 1 |
-| State | `packages/work/src/data-gitignore.ts` (thêm `project-graph/`) | 1 |
-| Run | `workflows/run.ts` (G2, G4, A1) | 2–3 |
-| Prompt | `dispatch/commands.ts`, `dispatch/prompts.ts`, `dispatch/prompt-budget.ts`, `workflows/manager-worker.ts`, skill dựng sẵn | 3 |
-| Web | `packages/web/src/routes/graph/**` (mới), `routes.tsx`, `components/nav-items.ts`, `api/queries.ts`, `api/ws.ts` (hook), `lib/i18n/vi-graph.ts`, `routes/new-task-*.ts` (H1), `routes/settings/**` | 1–4 |
-| Tài liệu | `.env.example`, `docs/reference.md`, `docs/design/` (spec thiết kế sau G0), `docs/design/manager-worker.md` | 1+ |
+| Contract | `packages/contract/src/project-graph.ts` (mới), `index.ts` | P1 |
+| Engine | `packages/work/src/project-graph/**` (mới), `packages/work/package.json` | P1–P2 |
+| Server | `server/server.ts`, `server/routes/project-graph.ts` (mới), `server/capabilities.ts`, `server/ws.ts` (topic) | P1–P3 |
+| CLI | `packages/work/src/index.ts`, `project-graph/graph-cli.ts` | P1 |
+| State | `packages/work/src/data-gitignore.ts` (thêm `project-graph/`) | P1 |
+| Dispatch | `dispatch/conflicts.ts` (nối cảnh báo), `dispatch/commands.ts`, `dispatch/prompt-budget.ts`, `workflows/manager-worker.ts`, `workflows/run/verify.ts` | P2 |
+| Run | `workflows/run/settlement.ts`/`dispatch.ts` (chỉ đọc dữ liệu settle, ghi bất đồng bộ) | P2 |
+| Web | `packages/web/src/routes/graph/**` hoặc thẻ trong view task, `routes.tsx`, `components/nav-items.ts`, `api/queries.ts`, `api/ws.ts`, `lib/i18n/vi-graph.ts` | P3 |
+| Tài liệu | `.env.example`, `docs/reference.md`, `docs/design/project-graph/{spikes,evals}/**`, `docs/design/manager-worker.md` | 0+ |
 
 ---
 
 ## 13. Quyết định cần chủ dự án xác nhận
 
-Mỗi mục có **mặc định đề xuất** để việc lập kế hoạch không bị chặn. **Mặc định chỉ có hiệu lực sau khi chủ dự án
-xác nhận tại cổng G0**; riêng D1 (ngoại lệ default-on) và D5 (AI summary) theo `AGENTS.md` cần duyệt rõ ràng, và
-khi chưa được duyệt thì chạy theo hướng an toàn (tắt mặc định) — im lặng không phải là phê duyệt (review #43).
+Mỗi mục có **mặc định đề xuất** để lập kế hoạch không bị chặn; **mặc định chỉ có hiệu lực sau khi chủ dự án xác nhận tại
+G0**. D1 (default-on) và D5 (co-change) cần duyệt rõ ràng; chưa duyệt → chạy hướng an toàn (tắt). Im lặng không phải
+là phê duyệt (review #43).
 
 | # | Quyết định | Mặc định đề xuất | Hệ quả nếu đổi |
 | --- | --- | --- | --- |
-| D1 | `ONNI_PROJECT_GRAPH` mặc định BẬT (ngoại lệ default-on theo `AGENTS.md`)? | Đề xuất bật, tắt bằng `=0`; **chưa duyệt thì mặc định tắt** | Nếu mặc định tắt: người dùng phải bật, giảm khả năng khám phá |
-| D2 | Phạm vi MVP: cấp file (không symbol, không đa ngôn ngữ) | Cấp file, TS/JS trước | Symbol/đa ngôn ngữ sớm ⇒ tăng mạnh công sức và rủi ro |
-| D3 | Hướng tới repo chỉ TypeScript hay đa ngôn ngữ cho bản thương mại? | TS/JS trước, đa ngôn ngữ ở Giai đoạn 5 | Quyết định dependency (oxc/TS7 vs tree-sitter) |
-| D4 | Quét nền (watcher)? | Không ở MVP; theo yêu cầu + cuối run | Watcher cần cờ `ONNI_*`, trần CPU/RAM |
-| D5 | Tóm tắt AI | Tắt mặc định ở engine, cần `ONNI_PROJECT_GRAPH_AI_SUMMARY=1` (+ công tắc project), xử lý cục bộ/không upload, Giai đoạn 5 | Mở sớm ⇒ tốn chi phí, cần UI chi phí |
-| D6 | Gắn Automations vào node (Giai đoạn 4) | Chỉ `owner` tùy chọn, chưa kind mới | Kind `graph` ⇒ đụng scheduler, cần thiết kế riêng |
-| D7 | Scope của "giao task tại đây" | Gợi ý trong prompt + gói ngữ cảnh | Scope thực thi cưỡng bức ⇒ liên quan manager–worker, phức tạp hơn |
-| D8 | Tên và vị trí nav | "Graph" / "Đồ thị dự án", cạnh Automations | Đổi tên là việc i18n nhỏ |
-| D9 | Thư viện render thứ hai | Chưa thêm; chờ S2 | Thêm Cytoscape/Sigma làm tăng bundle và công QA |
+| D1 | `ONNI_PROJECT_GRAPH` mặc định BẬT (ngoại lệ default-on theo `AGENTS.md`)? | Đề xuất bật (phân tích tĩnh cục bộ, chỉ đọc); **chưa duyệt → tắt**. Chỉ xét sau khi G-A không no-go | Mặc định tắt → khó khám phá, nhưng an toàn |
+| D2 | **Ngưỡng go/no-go** của G-A/G-B/G-C (định vị tăng bao nhiêu; chi phí/pass không tụt; recall test tối thiểu; precision cảnh báo tối thiểu) | Đề xuất số cụ thể sau V1/R1 (có khoảng tin cậy); chủ dự án duyệt | Ngưỡng lỏng → rủi ro đầu tư vào thứ chưa chứng minh |
+| D3 | Tập tác vụ A/B (~10 tác vụ OnniCode thật, trong đó ~5 manager–worker) và cánh `grep` đối chứng | Do V1 đề xuất, chủ dự án chọn | Tập khác → số đo khó so sánh |
+| D4 | Engine: tree-sitter breadth mặc định + adapter TS tùy chọn; quét nền (watcher) | Tree-sitter; **không watcher** (lazy hash validation) | Watcher cần cờ `ONNI_*`, trần CPU/RAM |
+| D5 | Co-change: soft edge ở lớp LX; có tham gia cảnh báo manager? | Có hiển thị; cảnh báo chỉ "thông tin" tới khi G-C đạt; **không chặn dispatch** | Chặn sớm → nguy cơ báo sai làm đứng cây |
+| D6 | Gọi tool ngoài (Nx/Turbo/Rush/Bazel/Pants, runner `related`) | Opt-in `ONNI_PROJECT_GRAPH_TOOLS=1`; `vitest related` thử ở spike | Mặc định bật → subprocess ngoài không lường |
+| D7 | Tiêm map nhỏ vào prompt agent (không chỉ lệnh CLI) | Không; chỉ sau G-A nếu nó cho thấy lợi ích | Pre-inject tốn token mỗi task |
+| D8 | Nav: tên/vị trí; có làm điểm vào bản đồ toàn repo (W3)? | "Graph"/"Đồ thị dự án"; W3 chỉ khi §9.4 cho thấy dùng lặp | Làm sớm → phí công nếu không ai quay lại |
+
+Các quyết định cũ **rút khỏi bản này** (chuyển §14): AI summary (D5 cũ), automations `owner` (D6 cũ), scope có cấu trúc
+trong "giao task tại đây" (D7 cũ), thư viện render thứ hai (D9 cũ).
 
 ---
 
-## 14. Xác minh kế hoạch này
+## 14. Ngoài phạm vi / sau khi có số đo
 
-1. **Review độc lập (đã chạy):** một worker `review` (codex) đã đối chiếu 45 khẳng định với repo và các báo cáo
-   khảo sát: 29 CONFIRMED, 13 WRONG, 3 UNVERIFIABLE; kết luận *ready after corrections*; kết quả ở
-   [`PLAN-review.md`](PLAN-review.md). **Cả 11 sửa đổi bắt buộc của review đã được áp dụng vào tài liệu này**
-   (đánh dấu "review #N" tại chỗ sửa). Chưa chạy lại review lần hai.
-   - Ba khẳng định UNVERIFIABLE còn mở: con số ~1.510 cạnh import (ước lượng, cần script kiểm kê tái lập — thuộc
-     S3), ts-morph × TS 7.0.2 (thuộc S1), và độc lập file của G1/G3/G4 (đã bổ sung ma trận file ở §8).
-   - **Tình trạng nền của repo (worker báo cáo; phần undici do tôi kiểm lại):** trên nhánh review,
-     `npm run typecheck` và `npm run build` dừng tại `packages/work/src/webhooks/transport.ts:108` (TS2353,
-     `maxRedirections` không có trong kiểu options của undici). Tôi xác nhận: `packages/work/package.json` khai báo
-     `"undici": "^6.29.0"` nhưng worktree này không có `node_modules` riêng và resolve `undici` **7.30.0** từ thư
-     mục cha (undici 7 đã bỏ tùy chọn đó khỏi kiểu `request`). Nhiều khả năng đây là **lệch môi trường** (cài
-     dependency không khớp lockfile), không phải lỗi code; chưa kiểm bằng `npm install` sạch trong worktree.
-     `npm test` có lỗi git/worktree đặc thù Windows (đúng như `AGENTS.md` nêu); `test:unit` 45/48 (2 lỗi
-     `/bin/sh`/`mkdir` ENOENT); `test:package` thiếu artifact vì build lỗi. Điều này **chặn cổng chất lượng** của
-     mọi bước triển khai nên cần xử lý trước Giai đoạn 1 (việc N0 ở §8).
-2. **Cổng G0** sau Giai đoạn 0 (chủ dự án xác nhận engine, renderer, D1–D9).
-3. Sau mỗi giai đoạn: cập nhật checklist dưới đây và `docs/design/manager-worker.md` nếu chạm manager–worker.
+Các mục dưới đây từng nằm trong bản 2026-11-06 và **bị cắt** vì chưa có bằng chứng; mở lại chỉ khi có kết quả cổng và
+quyết định riêng:
 
-## 15. Checklist tổng
+| Mục | Mở lại khi |
+| --- | --- |
+| Móc Automations (`owner` trên automation, "lên lịch trên node này", kind `graph`) | P2 chứng minh giá trị; cần quyết định riêng (đụng scheduler) |
+| Tóm tắt AI (`ONNI_PROJECT_GRAPH_AI_SUMMARY`) | Eval Onni cho thấy graph+grep còn thiếu; bằng chứng summary vừa giúp vừa hại (`research-agent-evidence.md` §RepoGraph hops) |
+| Time travel theo commit | Có nhu cầu từ §9.4 |
+| Renderer thứ hai (Cytoscape/Sigma), benchmark S2, ELK | Đồ thị diff vượt khả năng xyflow trong dùng thật |
+| Adapter symbol/call graph đầy đủ (ngoài export-level cho hub) | G-A cho thấy thiếu hụt mà outline + export-level không bù được |
+| Topic WS `project-graph-activity` | Marker "git changed" chung (§5.2) chưa đủ |
+| "Giao task tại đây" + scope có cấu trúc trong `NewTaskDraft` | P2 chứng minh scope giá trị |
+| Quản lý ngữ cảnh tài liệu: trạng thái spec, kiểm đường dẫn trong docs, tách `AGENTS.md`, bộ nhớ dự án có phạm vi | Việc riêng ("ngữ cảnh dự án"), không chặn graph |
+| MCP adapter, embeddings, ML dự đoán test kiểu Meta | Có dữ liệu và nhu cầu; Meta tự báo cáo trên dữ liệu nội bộ, không ngoại suy (`research-impact-ux.md` bài học 7) |
+| Quick-win kiến trúc (cycle/orphan/unused kiểu dependency-cruiser/Knip) | Tách thành finding CI riêng nếu cần; `research-impact-ux.md` bài học 6 |
 
-- [x] Khảo sát + nghiên cứu + kế hoạch + review độc lập + áp dụng sửa đổi (tài liệu này)
-- [ ] Giai đoạn 0: S1 engine · S2 render · S3 bộ vàng · S4 git · N0 baseline môi trường — rồi cổng G0
-- [ ] Giai đoạn 1: C0 contract · E1 engine · W1 màn hình · N1 nối dây — chấp nhận §8
-- [ ] Giai đoạn 2: G1 co-change · G2 run-touched · G3 overlay + impact · G4 WS + hoạt động
-- [ ] Giai đoạn 3: A1 prompt · A2 context-from-graph · A3 vùng/test cho manager–worker
-- [ ] Giai đoạn 4: H1 scope có cấu trúc · H2 owner cho automation
-- [ ] Giai đoạn 5: theo nhu cầu (symbol, đa ngôn ngữ, AI, time travel)
+---
+
+## 15. Xác minh kế hoạch và checklist
+
+### 15.1 Xác minh
+
+1. **Review độc lập bản 2026-11-06 (đã chạy):** 29 CONFIRMED, 13 WRONG, 3 UNVERIFIABLE; các sửa đổi bắt buộc đã áp dụng
+   ([`PLAN-review.md`](PLAN-review.md)). Bản viết lại này **chưa được review lần hai**; các khẳng định code trong §2.1 và
+   §3–§7 được `grep` lại 2026-11-13, nhưng số quy mô (~797 file/~1.510 cạnh) giữ nguyên từ khảo sát cũ và cần script tái lập
+   (thuộc S3).
+2. **Cổng:** G0 sau Giai đoạn 0; G-A/G-B sau P1; G-C sau M1 (§9).
+3. Sau mỗi giai đoạn: cập nhật checklist và `docs/design/manager-worker.md` nếu chạm manager–worker.
+
+### 15.2 Checklist tổng
+
+- [x] Khảo sát + nghiên cứu (server, web, engines, viz, agent-evidence, impact-ux) + kế hoạch + review bản trước
+- [x] Viết lại kế hoạch neo vào hành động có số đo (tài liệu này)
+- [ ] Giai đoạn 0: V1 prototype CLI · R1 replay · S1 engine · S3 bộ vàng · S4 git · S5 hub/co-change · N0 baseline — rồi cổng **G0**
+- [ ] P1: C0 contract · E1 engine (hub, freshness, co-change) · T1 ứng viên test · N1 nối dây — chấp nhận §10
+- [ ] **G-A** (A/B graph-off/on/grep) và **G-B** (replay precision/recall) có kết luận ghi lại — go/no-go P2
+- [ ] P2: M1 overlap (cảnh báo) · M2 prompt + skill + context-from-graph · M3 gợi ý subset test trong `verify` — rồi **G-C**
+- [ ] P3: W1 thẻ Impact · W2 đồ thị diff · W3 (có điều kiện) bản đồ toàn repo
 - [ ] Mỗi bước: contract + parity + CLI + prompt (nếu có) + UI (nếu có) + test + `.env.example`/`docs/reference.md`
 - [ ] Trước mỗi commit: `typecheck`, `test`, `test:unit`, `build`, `test:package`
+- [ ] Mọi số đo sử dụng chỉ lưu cục bộ; không có đường gửi đi
